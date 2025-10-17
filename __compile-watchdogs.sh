@@ -1,5 +1,6 @@
 set -euo pipefail
 TARGET="${1:-}"
+
 detect_platform() {
   if [[ -n "$TARGET" ]]; then
     echo "$TARGET"
@@ -17,19 +18,30 @@ detect_platform() {
   esac
   echo "linux"
 }
+
 target="$(detect_platform)"
+
 if [[ -z "${1:-}" ]]; then
   echo "Detected target: $target"
-  read -r -p "Press ENTER to continue or type (linux|termux|windows) to override: " reply
+  read -r -p "Press ENTER to continue or type (linux|termux|windows|debug|clean) to override: " reply
   if [[ -n "$reply" ]]; then
     target="$reply"
   fi
 fi
+
+if [[ "$target" == "clean" ]]; then
+  echo "=> Cleaning build files..."
+  make clean
+  echo "Clean completed."
+  exit 0
+fi
+
 echo "=> Running: make $target"
 if ! command -v make >/dev/null 2>&1; then
   echo "ERROR: make not found." >&2
   exit 2
 fi
+
 if [[ "$target" == "windows" ]] && ! make -v >/dev/null 2>&1; then
   if command -v mingw32-make >/dev/null 2>&1; then
     echo "Using mingw32-make for windows target"
@@ -41,11 +53,16 @@ if [[ "$target" == "windows" ]] && ! make -v >/dev/null 2>&1; then
 else
   make "$target"
 fi
-if [[ -x "./watchdogs" ]]; then
+
+if [[ "$target" == "debug" && -x "./watchdogs.debug" ]]; then
+  echo "Build succeeded. Running ./watchdogs.debug"
+  ./watchdogs.debug
+elif [[ -x "./watchdogs" ]]; then
   echo "Build succeeded. Running ./watchdogs"
   ./watchdogs
 else
-  echo "Build finished but ./watchdogs not found or not executable."
-  ls -l ./watchdogs || true
+  echo "Build finished but no executable found."
+  ls -l ./watchdogs* || true
   exit 3
 fi
+

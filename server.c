@@ -4,6 +4,7 @@
 #include <errno.h>
 #include <sys/types.h>
 #include <sys/stat.h>
+
 #ifdef _WIN32
 #include <direct.h>
 #include <windows.h>
@@ -18,29 +19,12 @@
 #include <dirent.h>
 #define PATH_SEP "/"
 #endif
+
 #include "cJSON/cJSON.h"
 #include "watchdogs.h"
 #include "color.h"
 #include "utils.h"
 #include "server.h"
-
-int dir_exists(const char *path) {
-        struct stat st;
-        return (stat(path, &st) == 0 && S_ISDIR(st.st_mode));
-}
-
-int kill_process(const char *name) {
-#ifdef _WIN32
-        char cmd[256];
-        snprintf(cmd, sizeof(cmd), "taskkill /F /IM \"%s\" > NUL 2>&1", name);
-        return system(cmd);
-#else
-        char cmd[256];
-        snprintf(cmd, sizeof(cmd),
-            "pkill -9 -f \"%s\" > /dev/null 2>&1", name);
-        return system(cmd);
-#endif
-}
 
 void watchdogs_server_stop_tasks(void) {
         kill_process("samp-server.exe");

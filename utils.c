@@ -2,6 +2,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <stdarg.h>
+
 #ifdef _WIN32
 #include <direct.h>
 #include <windows.h>
@@ -16,6 +17,7 @@
 #include <sys/stat.h>
 #define PATH_SEP "/"
 #endif
+
 #include <math.h>
 #include <limits.h>
 #include <ncursesw/curses.h>
@@ -32,6 +34,7 @@
 #include <readline/history.h>
 #include <archive.h>
 #include <archive_entry.h>
+
 #include "tomlc99/toml.h"
 #include "color.h"
 #include "utils.h"
@@ -228,6 +231,24 @@ int signal_system_os(void) {
                 return 0x00;
         
         return 0;
+}
+
+int dir_exists(const char *path) {
+        struct stat st;
+        return (stat(path, &st) == 0 && S_ISDIR(st.st_mode));
+}
+
+int kill_process(const char *name) {
+#ifdef _WIN32
+        char cmd[256];
+        snprintf(cmd, sizeof(cmd), "taskkill /F /IM \"%s\" > NUL 2>&1", name);
+        return system(cmd);
+#else
+        char cmd[256];
+        snprintf(cmd, sizeof(cmd),
+            "pkill -9 -f \"%s\" > /dev/null 2>&1", name);
+        return system(cmd);
+#endif
 }
 
 int watchdogs_toml_data(void)
@@ -447,186 +468,7 @@ int watchdogs_sef_wcopy(const char *c_src,
         return 0;
 }
 
-static int arch_copy_data(struct archive *ar, struct archive *aw) {
-        int a_read;
-        const void *a_buff;
-        size_t size;
-        la_int64_t offset;
-    
-        while (1) {
-            a_read = archive_read_data_block(ar, &a_buff, &size, &offset);
-            if (a_read == ARCHIVE_EOF) return ARCHIVE_OK;
-            if (a_read != ARCHIVE_OK) {
-                printf("Read error: %s\n", archive_error_string(ar));
-                return a_read;
-            }
-            a_read = archive_write_data_block(aw, a_buff, size, offset);
-            if (a_read != ARCHIVE_OK) {
-                printf("Write error: %s\n", archive_error_string(aw));
-                return a_read;
-            }
-        }
-}
-
-int watchdogs_extract_archive(const char *tar_files) {
-        struct archive *archive_write = archive_write_disk_new();
-        struct archive *archives = archive_read_new();
-        struct archive_entry *entry;
-        int a_read;
-        
-        archive_write_disk_set_options(archive_write,
-                ARCHIVE_EXTRACT_TIME |
-                ARCHIVE_EXTRACT_PERM |
-                ARCHIVE_EXTRACT_ACL |
-                ARCHIVE_EXTRACT_FFLAGS |
-                ARCHIVE_EXTRACT_UNLINK |
-                ARCHIVE_EXTRACT_SECURE_SYMLINKS |
-                ARCHIVE_EXTRACT_SECURE_NODOTDOT |
-                ARCHIVE_EXTRACT_NO_OVERWRITE_NEWER);
-            
-        archive_read_support_format_all(archives);
-        archive_read_support_filter_all(archives);
-        
-        a_read = archive_read_open_filename(archives, tar_files, 1024 * 1024);
-        if (a_read != ARCHIVE_OK) {
-                printf_error("Can't open file: %s\n", archive_error_string(archives));
-                archive_read_free(archives);
-                archive_write_free(archive_write);
-                return -1;
-        }
-    
-        while (1) {
-            a_read = archive_read_next_header(archives, &entry);
-            if (a_read == ARCHIVE_EOF) break;
-            if (a_read != ARCHIVE_OK) {
-                        printf_error("header: %s\n",
-                                archive_error_string(archives));
-                        break;
-            }
-    
-            a_read = archive_write_header(archive_write, entry);
-            if (a_read != ARCHIVE_OK) {
-                        printf_error("header: %s\n",
-                                archive_error_string(archive_write));
-                        break;
-            }
-    
-            if (archive_entry_size(entry) > 0) {
-                a_read = arch_copy_data(archives, archive_write);
-                if (a_read != ARCHIVE_OK) {
-                        printf_error("data: %s\n",
-                                archive_error_string(archives));
-                        break;
-                }
-            }
-    
-            archive_write_finish_entry(archive_write);
-        }
-    
-        archive_read_close(archives);
-        archive_read_free(archives);
-        archive_write_close(archive_write);
-        archive_write_free(archive_write);
-    
-        return (a_read == ARCHIVE_EOF) ? 0 : -1;
-}
-
-void watchdogs_extract_zip(const char *zip_path, const char *__dest_path)
-{
-        struct archive *archives;
-        struct archive *archive_write;
-        struct archive_entry *entry;
-        int a_read;
-
-        archives = archive_read_new();
-        archive_read_support_format_zip(archives);
-        archive_read_support_filter_all(archives);
-
-        if ((a_read = archive_read_open_filename(archives, zip_path, 1024 * 1024))) {
-                printf("Can't resume. sys can't write/open file %s\n", archive_error_string(archives));
-                __init(0);
-        }
-
-        archive_write = archive_write_disk_new();
-        archive_write_disk_set_options(archive_write, ARCHIVE_EXTRACT_TIME);
-        archive_write_disk_set_standard_lookup(archive_write);
-
-        int has_error = 0x0;
-
-        while (archive_read_next_header(archives, &entry) == ARCHIVE_OK) {
-                const char *__cur_file = archive_entry_pathname(entry);
-
-                char ext_full_path[128];
-                snprintf(ext_full_path, sizeof(ext_full_path), "%s/%s",
-                        __dest_path, __cur_file);
-                archive_entry_set_pathname(entry, ext_full_path);
-
-                a_read = archive_write_header(archive_write, entry);
-                if (a_read != ARCHIVE_OK) {
-                        if (!has_error) {
-                                printf_error("during extraction: %s\n",
-                                        archive_error_string(archive_write));
-                                has_error = 0x1;
-                                break;
-                        }
-                } else {
-                    const void *a_buff;
-                    size_t size;
-                    la_int64_t offset;
-
-                    while (1) {
-                        a_read = archive_read_data_block(archives, &a_buff, &size, &offset);
-                        if (a_read == ARCHIVE_EOF)
-                                break;
-                        if (a_read < ARCHIVE_OK) {
-                                if (!has_error) {
-                                        printf_error("reading block from archive: %s\n",
-                                                archive_error_string(archives));
-                                        has_error = 0x2;
-                                        break;
-                                }
-                        }
-                        a_read = archive_write_data_block(archive_write, a_buff, size, offset);
-                        if (a_read < ARCHIVE_OK) {
-                                if (!has_error) {
-                                        printf_error("writing block to destination: %s\n",
-                                                archive_error_string(archive_write));
-                                        has_error = 0x3;
-                                        break;
-                                }
-                        }
-                    }
-                }
-        }
-
-        archive_read_close(archives);
-        archive_read_free(archives);
-        archive_write_close(archive_write);
-        archive_write_free(archive_write);
-}
-
-static size_t write_file(void *ptr,
-                  size_t size,
-                  size_t nmemb,
-                  FILE *stream
-) {
-        size_t written = fwrite(ptr, size, nmemb, stream);
-        return written;
-}
-static int progress_callback(void *ptr,
-                             curl_off_t dltotal,
-                             curl_off_t dlnow,
-                             curl_off_t ultotal,
-                             curl_off_t ulnow)
-{
-    if (dltotal > 0 && dlnow <= 1000) {
-        printf("\rDownloading ...");
-        fflush(stdout);
-    }
-    return 0;
-}
-
-static void
+void
 install_pawncc_now(void) {
         int __watchdogs_os__ = signal_system_os();
         int find_pawncc_exe = watchdogs_sef_fdir(".", "pawncc.exe"),
@@ -788,89 +630,5 @@ install_pawncc_now(void) {
 
         printf_color(COL_YELLOW, "apply finished!\n");
         __init(0);
-}
-
-
-int watchdogs_download_file(const char *url, const char *fname) {
-        CURL *__curl;
-        FILE *__fp;
-        CURLcode __res;
-        long __response_code = 0;
-        int __retry = 0;
-        const int __max_retry = 5;
-
-        printf("Downloading %s\n", url);
-        printf(" Output file %s\n", fname);
-
-        do {
-                __fp = fopen(fname, "wb");
-                if (!__fp) {
-                        printf_error("fopen failed for %s\n", fname);
-                        return -1;
-                }
-
-                __curl = curl_easy_init();
-                if (!__curl) {
-                        printf_error("failed to init curl\n");
-                        fclose(__fp);
-                        return -1;
-                }
-
-                curl_easy_setopt(__curl, CURLOPT_URL, url);
-                curl_easy_setopt(__curl, CURLOPT_WRITEDATA, __fp);
-                curl_easy_setopt(__curl, CURLOPT_FAILONERROR, 1L);
-                curl_easy_setopt(__curl, CURLOPT_FOLLOWLOCATION, 1L);
-                curl_easy_setopt(__curl, CURLOPT_USERAGENT, "watchdogs/1.0");
-                curl_easy_setopt(__curl, CURLOPT_CONNECTTIMEOUT, 15L);
-                curl_easy_setopt(__curl, CURLOPT_TIMEOUT, 300L);
-                curl_easy_setopt(__curl, CURLOPT_SSL_VERIFYPEER, 1L);
-
-                __res = curl_easy_perform(__curl);
-                curl_easy_getinfo(__curl, CURLINFO_RESPONSE_CODE, &__response_code);
-                curl_easy_cleanup(__curl);
-                fclose(__fp);
-
-                if (__res == CURLE_OK && __response_code == 200) {
-                        struct stat __st;
-                        if (stat(fname, &__st) == 0 && __st.st_size > 1024) {
-                                printf("Download success %ld bytes\n", __st.st_size);
-                                printf(" Checking file type for extraction...\n");
-
-                                if (strstr(fname, ".tar") || strstr(fname, ".tar.gz")) {
-                                        printf(" Extracting TAR archive %s\n", fname);
-                                        watchdogs_extract_archive(fname);
-                                } else if (strstr(fname, ".zip")) {
-                                        printf(" Extracting ZIP archive %s\n", fname);
-                                        char __zip_ops[256];
-                                        if (strlen(fname) > 4 && strncmp(fname + strlen(fname) - 4, ".zip", 4) == 0) {
-                                                strncpy(__zip_ops, fname, strlen(fname) - 4);
-                                                __zip_ops[strlen(fname) - 4] = '\0';
-                                        } else { strcpy(__zip_ops, fname); }
-                                        watchdogs_extract_zip(fname, __zip_ops);
-                                } else {
-                                        printf("Unknown archive type, skipping extraction\n");
-                                }
-
-                                if (watchdogs_config.init_ipcc == 1) {
-                                        watchdogs_config.init_ipcc = 0;
-                                        char *__ptr_sigA = readline("apply pawncc now? [Y/n]: ");
-                                        if (__ptr_sigA == NULL || strlen(__ptr_sigA) == 0 ||
-                                                strcmp(__ptr_sigA, "Y") == 0 || strcmp(__ptr_sigA, "y") == 0) {
-                                                install_pawncc_now();
-                                        }
-                                        if (__ptr_sigA) free(__ptr_sigA);
-                                }
-
-                                return 0;
-                        } else printf_error("downloaded file too small %ld bytes\n", __st.st_size);
-                } else printf_error("download failed HTTP %ld CURLcode %d retrying...\n", __response_code, __res);
-
-                __retry++;
-                sleep(3);
-
-        } while (__retry < __max_retry);
-
-        printf_error("download failed after %d retries\n", __max_retry);
-        return -1;
 }
 

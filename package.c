@@ -4,8 +4,11 @@
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <stddef.h>
+
 #include "watchdogs.h"
 #include "utils.h"
+#include "archive.h"
+#include "curl.h"
 #include "package.h"
 
 typedef struct {

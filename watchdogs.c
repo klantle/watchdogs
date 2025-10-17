@@ -6,6 +6,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <stdarg.h>
+
 #ifdef _WIN32
 #include <direct.h>
 #include <windows.h>
@@ -17,6 +18,7 @@
 #include <unistd.h>
 #define PATH_SEP "/"
 #endif
+
 #include <limits.h>
 #include <ncursesw/curses.h>
 #include <dirent.h>
@@ -32,11 +34,14 @@
 #include <readline/history.h>
 #include <archive.h>
 #include <archive_entry.h>
+
 #include "tomlc99/toml.h"
 #include "color.h"
 #include "utils.h"
 #include "crypto.h"
 #include "package.h"
+#include "archive.h"
+#include "curl.h"
 #include "watchdogs.h"
 #include "server.h"
 

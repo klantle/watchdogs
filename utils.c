@@ -728,7 +728,8 @@ install_pawncc_now(void) {
                 char libpawnc_dest_path[1024];
                 for (int i = 0; i < watchdogs_config.watchdogs_sef_count; i++) {
                         if (strstr(watchdogs_config.watchdogs_sef_found[i], "libpawnc.so")) {
-                                snprintf(libpawnc_dest_path, sizeof(libpawnc_dest_path), "%s", watchdogs_config.watchdogs_sef_found[i]);
+                                snprintf(libpawnc_dest_path, sizeof(libpawnc_dest_path), "%s",
+                                                                                                watchdogs_config.watchdogs_sef_found[i]);
                                 break;
                         }
                 }
@@ -737,9 +738,9 @@ install_pawncc_now(void) {
                 int lib_or_lib32 = 0;
                 if (stat("/usr/local/lib32", &st) == 0 && S_ISDIR(st.st_mode)) {
                         lib_or_lib32=2; str_lib_path="/usr/local/lib32";
-                } else if (stat("/data/data/com.termux/files/usr/local/lib/", &st) == 0 && S_ISDIR(st.st_mode))
+                } else if (stat("/data/data/com.termux/files/usr/local/lib/", &st) == 0 && S_ISDIR(st.st_mode)) {
                         str_lib_path="/data/data/com.termux/files/usr/local/lib/";
-                else if (stat("/usr/local/lib", &st) == 0 && S_ISDIR(st.st_mode)) {
+                } else if (stat("/usr/local/lib", &st) == 0 && S_ISDIR(st.st_mode)) {
                         lib_or_lib32=1; str_lib_path="/usr/local/lib";
                 } else printf_error("Can't found ../usr/local/lib!");
 
@@ -833,21 +834,19 @@ int watchdogs_download_file(const char *url, const char *fname) {
                         struct stat __st;
                         if (stat(fname, &__st) == 0 && __st.st_size > 1024) {
                                 printf("Download success %ld bytes\n", __st.st_size);
-                                printf("Checking file type for extraction...\n");
+                                printf(" Checking file type for extraction...\n");
 
                                 if (strstr(fname, ".tar") || strstr(fname, ".tar.gz")) {
-                                        printf("Extracting TAR archive %s\n", fname);
+                                        printf(" Extracting TAR archive %s\n", fname);
                                         watchdogs_extract_archive(fname);
                                 } else if (strstr(fname, ".zip")) {
-                                        printf("Extracting ZIP archive %s\n", fname);
-                                        char __zip_of_pos[256];
+                                        printf(" Extracting ZIP archive %s\n", fname);
+                                        char __zip_ops[256];
                                         if (strlen(fname) > 4 && strncmp(fname + strlen(fname) - 4, ".zip", 4) == 0) {
-                                                strncpy(__zip_of_pos, fname, strlen(fname) - 4);
-                                                __zip_of_pos[strlen(fname) - 4] = '\0';
-                                        } else {
-                                                strcpy(__zip_of_pos, fname);
-                                        }
-                                        watchdogs_extract_zip(fname, __zip_of_pos);
+                                                strncpy(__zip_ops, fname, strlen(fname) - 4);
+                                                __zip_ops[strlen(fname) - 4] = '\0';
+                                        } else { strcpy(__zip_ops, fname); }
+                                        watchdogs_extract_zip(fname, __zip_ops);
                                 } else {
                                         printf("Unknown archive type, skipping extraction\n");
                                 }
@@ -863,12 +862,8 @@ int watchdogs_download_file(const char *url, const char *fname) {
                                 }
 
                                 return 0;
-                        } else {
-                                printf_error("downloaded file too small %ld bytes\n", __st.st_size);
-                        }
-                } else {
-                        printf_error("download failed HTTP %ld CURLcode %d retrying...\n", __response_code, __res);
-                }
+                        } else printf_error("downloaded file too small %ld bytes\n", __st.st_size);
+                } else printf_error("download failed HTTP %ld CURLcode %d retrying...\n", __response_code, __res);
 
                 __retry++;
                 sleep(3);

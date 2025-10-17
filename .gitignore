@@ -3,7 +3,9 @@ watchdogs
 watchdogs.exe
 watchdogs_termux
 watchdogs.exe
-pawnc-*
-pawno
-samp*
 watchdogs.debug
+watchdogs.toml
+pawnc*
+pawno
+samp
+samp*

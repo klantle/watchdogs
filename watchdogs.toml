@@ -1,7 +1,0 @@
-[general]
-   os = "linux"
-[compiler]
-   option = "-;+ -(+ -d3"
-   include_path = ["sample1", "sample2"]
-   input = "mymodes.pwn"
-   output = "mymodes.amx"

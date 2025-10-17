@@ -1,5 +1,9 @@
 # tomlc99
 
+>
+> **Note: OBSOLETED. There is a newer version of this library available at [tomlc17](https://github.com/cktan/tomlc17), which is compatible with c99.**
+>
+
 TOML in c99; v1.0 compliant.
 
 If you are looking for a C++ library, you might try this wrapper: [https://github.com/cktan/tomlcpp](https://github.com/cktan/tomlcpp).

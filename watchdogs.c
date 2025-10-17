@@ -181,17 +181,13 @@ int __init_wd(void)
         
             int find_pawncc = watchdogs_sef_fdir(".", ptr_pawncc);
             if (find_pawncc) {
-                static char *_compiler_ = NULL;
-                static size_t format_size_compiler = 2048;
-
-                if (_compiler_ == NULL) {
-                    _compiler_ = malloc(format_size_compiler);
-                    if (!_compiler_) {
-                        printf_error("Memory allocation failed for _compiler_!\n");
-                        return 0;
-                    }
+                size_t format_size_compiler = 2048;
+                char *_compiler_ = malloc(format_size_compiler);
+                if (!_compiler_) {
+                    printf_error("Memory allocation failed for _compiler_!\n");
+                    return 0;
                 }
-        
+
                 FILE *procc_f = fopen("watchdogs.toml", "r");
                 if (!procc_f)
                     printf_error("Can't read file %s\n", "watchdogs.toml");
@@ -289,7 +285,11 @@ int __init_wd(void)
 
                                 compiler_dur = (end.tv_sec - start.tv_sec) + (end.tv_nsec - start.tv_nsec) / 1e9;
                                 printf("[Finished in %.3fs]\n", compiler_dur);
-                                if (_compiler_) { free(_compiler_); }
+                                if (_compiler_) {
+                                    free(_compiler_);
+                                    _compiler_ = NULL;
+                                }
+
                             } else {
                                 printf_color(COL_RED, "Can't locate: ");
                                 printf("%s\n", watchdogs_config.wd_gamemode_input);
@@ -350,7 +350,10 @@ int __init_wd(void)
                                 compiler_dur = (end.tv_sec - start.tv_sec) + (end.tv_nsec - start.tv_nsec) / 1e9;
                                 printf("[Finished in %.3fs]\n", compiler_dur);
                                 
-                                if (_compiler_) { free(_compiler_); }
+                                if (_compiler_) {
+                                    free(_compiler_);
+                                    _compiler_ = NULL;
+                                }
                             } else {
                                 printf_color(COL_RED, "Can't locate: ");
                                 printf("%s\n", compile_args);

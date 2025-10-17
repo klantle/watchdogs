@@ -34,6 +34,7 @@
 #include <readline/history.h>
 #include <archive.h>
 #include <archive_entry.h>
+#include <errno.h>
 
 #include "tomlc99/toml.h"
 #include "color.h"
@@ -98,10 +99,10 @@ int __command_suggest(const char *s1, const char *s2) {
         for (int i = 1; i <= len1; i++) {
                 curr[0] = i;
                 for (int j = 1; j <= len2; j++) {
-                        int cost = (s1[i-1] == s2[j-1]) ? 0 : 1;
-                        int del = prev[j] + 1;
-                        int ins = curr[j-1] + 1;
-                        int sub = prev[j-1] + cost;
+                        int cost = (s1[i-1] == s2[j-1]) ? 0 : 1,
+                            del = prev[j] + 1,
+                            ins = curr[j-1] + 1,
+                            sub = prev[j-1] + cost;
                         curr[j] = (del < ins ? (del < sub ? del : sub)
                                                 : (ins < sub ? ins : sub));
                 }
@@ -239,16 +240,10 @@ int dir_exists(const char *path) {
 }
 
 int kill_process(const char *name) {
-#ifdef _WIN32
-        char cmd[256];
-        snprintf(cmd, sizeof(cmd), "taskkill /F /IM \"%s\" > NUL 2>&1", name);
-        return system(cmd);
-#else
         char cmd[256];
         snprintf(cmd, sizeof(cmd),
             "pkill -9 -f \"%s\" > /dev/null 2>&1", name);
         return system(cmd);
-#endif
 }
 
 int watchdogs_toml_data(void)
@@ -396,27 +391,46 @@ int watchdogs_sef_fdir(const char *sef_path, const char *sef_name) {
 #endif
 }
 
-int watchdogs_sef_wmv(const char *c_src,
-                      const char *c_dest)
+int watchdogs_sef_wmv(const char *c_src, const char *c_dest)
 {
         FILE *src_FILE = fopen(c_src, "rb");
-        if (src_FILE == NULL)
-            return 1;
-        
-        FILE *dest_FILE = fopen(c_dest, "wb");
-        if (dest_FILE == NULL) {
-            fclose(src_FILE);
+        if (!src_FILE) {
+            perror("fopen src");
             return 1;
         }
-    
-        char src_buff[520];
+
+        FILE *dest_FILE = fopen(c_dest, "wb");
+        if (!dest_FILE) {
+            if (errno == EACCES) {
+                fclose(src_FILE);
+
+                printf("Permission denied. Attempting with sudo...\n");
+
+                char cmd[2048];
+                snprintf(cmd, sizeof(cmd), "sudo cp \"%s\" \"%s\"", c_src, c_dest);
+
+                int ret = system(cmd);
+                if (ret == 0) {
+                    printf("Copied with sudo successfully: %s -> %s\n", c_src, c_dest);
+                    return 0;
+                } else {
+                    fprintf(stderr, "sudo copy failed with code %d\n", ret);
+                    return 1;
+                }
+            } else {
+                perror("fopen dest");
+                fclose(src_FILE);
+                return 1;
+            }
+        }
+
+        char buf[520];
         size_t bytes;
-        while ((bytes = fread(src_buff, 1, sizeof(src_buff), src_FILE)) > 0)
-            fwrite(src_buff, 1, bytes, dest_FILE);
-    
+        while ((bytes = fread(buf, 1, sizeof(buf), src_FILE)) > 0)
+            fwrite(buf, 1, bytes, dest_FILE);
+
         fclose(src_FILE);
         fclose(dest_FILE);
-    
         return 0;
 }
 

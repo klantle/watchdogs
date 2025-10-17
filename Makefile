@@ -1,4 +1,4 @@
-VERSION  = WD-10.17
+VERSION  = WD-10.18
 
 TARGET   ?= watchdogs
 CC       ?= gcc
@@ -11,7 +11,7 @@ SRCS = watchdogs.c utils.c archive.c curl.c package.c server.c crypto.c \
 
 OBJS = $(SRCS:.c=.o)
 
-.PHONY: all clean linux termux mingw64
+.PHONY: all clean linux termux mingw64 debug
 
 all: $(TARGET)
 
@@ -25,7 +25,7 @@ $(TARGET): $(OBJS)
 	$(CC) $(CFLAGS) -c $< -o $@
 
 clean:
-	rm -f $(OBJS) watchdogs watchdogs_termux watchdogs.exe
+	rm -f $(OBJS) watchdogs watchdogs_termux watchdogs.exe watchdogs.debug
 	@echo "Clean done."
 
 linux:
@@ -42,3 +42,12 @@ mingw64:
 	@$(MAKE) TARGET=watchdogs.exe CC=x86_64-w64-mingw32-gcc \
 	CFLAGS="$(CFLAGS) -DWIN32 -D_WIN32 -fno-pie" \
 	LDFLAGS="-lws2_32 -lwinmm -static"
+
+debug:
+	@echo "==> Building DEBUG version with sanitizers"
+	$(CC) -g -O0 -fno-omit-frame-pointer -fsanitize=address,undefined -fno-optimize-sibling-calls \
+	-D_GNU_SOURCE -I/usr/include/openssl \
+	$(SRCS) -o watchdogs.debug \
+	-lm -lcurl -ltinfo -lreadline -lncurses -larchive -lssl -lcrypto -pthread
+	@echo "==> Debug build complete: ./watchdogs.debug"
+

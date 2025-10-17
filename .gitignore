@@ -1,0 +1,9 @@
+*.o
+watchdogs
+watchdogs.exe
+watchdogs_termux
+watchdogs.exe
+pawnc-*
+pawno
+samp*
+watchdogs.debug

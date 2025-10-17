@@ -96,10 +96,17 @@ int watchdogs_download_file(const char *url, const char *fname) {
                                         watchdogs_extract_archive(fname);
                                 } else if (strstr(fname, ".zip")) {
                                         printf(" Extracting ZIP archive %s\n", fname);
-                                        char __zip_ops[256];
-                                        if (strlen(fname) > 4 && strncmp(fname + strlen(fname) - 4, ".zip", 4) == 0) {
-                                                strncpy(__zip_ops, fname, strlen(fname) - 4);
-                                                __zip_ops[strlen(fname) - 4] = '\0';
+                                        char
+                                            __zip_ops[256]
+                                        ;
+                                        size_t
+                                            len_fname = strlen(fname)
+                                        ;
+                                        if (len_fname > 4 && !strncmp(fname + len_fname - 4, ".zip", 4)) {
+                                                strncpy(__zip_ops,
+                                                        fname,
+                                                        len_fname - 4);
+                                                __zip_ops[len_fname - 4] = '\0';
                                         } else { strcpy(__zip_ops, fname); }
                                         watchdogs_extract_zip(fname, __zip_ops);
                                 } else {
@@ -109,9 +116,11 @@ int watchdogs_download_file(const char *url, const char *fname) {
                                 if (watchdogs_config.init_ipcc == 1) {
                                         watchdogs_config.init_ipcc = 0;
                                         char *__ptr_sigA = readline("apply pawncc now? [Y/n]: ");
-                                        if (__ptr_sigA == NULL || strlen(__ptr_sigA) == 0 ||
-                                                strcmp(__ptr_sigA, "Y") == 0 || strcmp(__ptr_sigA, "y") == 0) {
-                                                install_pawncc_now();
+                                        if (__ptr_sigA == NULL ||
+                                            strlen(__ptr_sigA) == 0 ||
+                                            strcmp(__ptr_sigA, "Y") == 0 ||
+                                            strcmp(__ptr_sigA, "y") == 0) {
+                                            install_pawncc_now();
                                         }
                                         if (__ptr_sigA) free(__ptr_sigA);
                                 }

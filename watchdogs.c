@@ -1,3 +1,104 @@
+/*
+ * What is this?:
+ * ------------------------------------------------------------
+ * This program serves as a comprehensive management tool for running,
+ * compiling, and controlling multiplayer game servers, specifically
+ * SA-MP (San Andreas Multiplayer) and Open.MP servers, along with
+ * Pawno/Pawncc-PawnCC compilation for gamemodes. It provides an interactive
+ * command-line interface to execute various tasks such as starting,
+ * stopping, compiling, and debugging server projects.
+ *
+ *
+ * Script Algorithm:
+ * ------------------------------------------------------------
+ * 1. Initialize the program:
+ *      - Load configuration from TOML files.
+ *      - Set up user history for commands.
+ *      - Reset internal state variables.
+ * 2. Present the command prompt to the user (`watchdogs > `).
+ * 3. Handle user commands:
+ *      - `help`    : Show available commands and their usage.
+ *      - `exit`    : Quit the watchdogs program.
+ *      - `clear`   : Clear the terminal display.
+ *      - `kill`    : Restart the terminal session.
+ *      - `title`   : Set the terminal window title.
+ *      - `compile` : Compile gamemodes using pawncc.
+ *      - `running` : Run a SA-MP server.
+ *      - `debug`   : Run a server in debug mode.
+ *      - `stop`    : Stop all running servers.
+ *      - `restart` : Stop and then restart servers.
+ *      - `pawncc`  : Install or run pawn compiler for a specific platform.
+ *      - `gamemode`: Install or run gamemodes for a specific platform.
+ * 4. For server launching commands:
+ *      - Detect OS type (Windows, Linux, or Termux).
+ *      - Verify existence of server binaries (`samp-server` or `omp-server`).
+ *      - Adjust permissions to make binaries executable.
+ *      - Execute server binaries and optionally display logs.
+ * 5. For compilation commands:
+ *      - Read `watchdogs.toml` configuration.
+ *      - Determine include paths and compiler options.
+ *      - Build full compiler command and log output.
+ *      - Track compilation duration and report errors if any.
+ *
+ *
+ * Script Logic:
+ * ------------------------------------------------------------
+ * Key Functions:
+ *
+ * > `__init()`:
+ *    - Set up signal handlers.
+ *    - Call `__init_function()` to initialize state.
+ *    - Start the main loop with `__init_wd()`.
+ *
+ * > `__init_wd()`:
+ *    - Read user input using `readline`.
+ *    - Parse and execute commands (help, compile, running, debug, stop, restart, pawncc, gamemode, etc.).
+ *    - Handle OS-specific paths and binaries.
+ *    - Provide interactive prompts for gamemode or compiler selection.
+ *
+ * > `watchdogs_server_samp(const char *gamemode, const char *server_bin)`:
+ *    - Backup `server.cfg`.
+ *    - Update the gamemode file path in configuration.
+ *    - Set execute permissions.
+ *    - Run the SA-MP server and display `server_log.txt`.
+ *    - Restore configuration file after completion.
+ *
+ * > `watchdogs_server_openmp(const char *gamemode, const char *server_bin)`:
+ *    - Backup `config.json`.
+ *    - Update the `main_scripts` array with the selected gamemode.
+ *    - Set execute permissions.
+ *    - Run the Open.MP server and display `log.txt`.
+ *    - Restore configuration file after completion.
+ *
+ * > `watch_pawncc(platform)`:
+ *    - Install or run PawnCC compiler for the selected platform.
+ *
+ * > `watch_pawncc`, `watch_samp`:
+ *    - Install necessary server binaries or compilers for selected OS.
+ *
+ *
+ * How to Use?:
+ * ------------------------------------------------------------
+ * 1. Compile the program along with all dependencies (`watchdogs.h`, `color.h`, `utils.h`, `crypto.h`, `archive.h`, `curl.h`, etc.).
+ * 2. Run the binary: `./watchdogs` (Linux/Unix) or `watchdogs.exe` (Windows).
+ * 3. Use the interactive prompt to execute commands:
+ *      - `help` to see available commands.
+ *      - `compile` to build gamemodes.
+ *      - `running` or `debug` to run servers.
+ *      - `stop` or `restart` to manage server processes.
+ * 4. Ensure that gamemodes and binaries exist in the working directory.
+ * 5. In debug mode, processes are cleaned up automatically based on OS.
+ * 6. User interaction will guide through gamemode selection, platform selection, and log viewing.
+ *
+ *
+ * Notes:
+ * ------------------------------------------------------------
+ * - Fully compatible with Windows, Linux, and Termux environments.
+ * - Uses temporary backups to avoid overwriting configuration files.
+ * - Makes server binaries executable via `chmod` or `_chmod`.
+ * - Provides detailed logs for compilation and runtime errors.
+ * - Handles OS-specific differences automatically (paths, signals, file permissions).
+ */
 #ifndef _GNU_SOURCE
     #define _GNU_SOURCE
 #endif 

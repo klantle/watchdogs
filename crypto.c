@@ -1,3 +1,77 @@
+/*
+ * What is this?
+ * ------------------------------------------------------------
+ * This C script is a cryptography utility library built on OpenSSL.
+ * It provides functions for secure hashing (SHA-256), encoding/decoding (Base64),
+ * key derivation from passphrases (PBKDF2-HMAC-SHA256), and symmetric encryption
+ * and decryption using AES-256-CBC. It also includes a helper to convert binary data
+ * to hexadecimal strings. The library can be used to securely store, transmit, or
+ * verify sensitive data such as passwords, messages, or files.
+ *
+ *
+ * Script Algorithm:
+ * ------------------------------------------------------------
+ * 1. Hashing:
+ *    - Use `sha256_hash()` to compute the SHA-256 digest of a string.
+ * 2. Base64 Encoding/Decoding:
+ *    - Encode binary data into Base64 string using `base64_encode()`.
+ *    - Decode Base64 strings back to binary using `base64_decode()`.
+ * 3. Key Derivation:
+ *    - Generate a cryptographic key from a passphrase and salt using `derive_key_pbkdf2()`.
+ *    - Uses PBKDF2-HMAC-SHA256 with 100,000 iterations for security.
+ * 4. Encryption:
+ *    - `encrypt_with_password()` generates a random salt and IV.
+ *    - Derives a 256-bit AES key from the passphrase.
+ *    - Encrypts plaintext with AES-256-CBC.
+ *    - Produces a blob combining salt + IV + ciphertext for storage/transmission.
+ * 5. Decryption:
+ *    - `decrypt_with_password()` extracts salt and IV from the blob.
+ *    - Re-derives the AES key using the passphrase.
+ *    - Decrypts the ciphertext to recover the original plaintext.
+ * 6. Binary to Hex Conversion:
+ *    - `to_hex()` converts arbitrary binary data into a human-readable hexadecimal string.
+ *
+ *
+ * Script Logic:
+ * ------------------------------------------------------------
+ * - The library separates concerns: hashing, encoding, key derivation, encryption, decryption.
+ * - All functions perform rigorous error checking and memory allocation validation.
+ * - Sensitive data (keys, buffers) are cleansed from memory after use to reduce leakage risk.
+ * - Encryption combines salt, IV, and ciphertext in a single blob, simplifying secure storage and transport.
+ * - Base64 allows binary blobs to be stored or transmitted as text safely.
+ *
+ *
+ * How to Use:
+ * ------------------------------------------------------------
+ * 1. Hash a string with SHA-256:
+ *      unsigned char hash[32];
+ *      sha256_hash("message", hash);
+ *
+ * 2. Encode/Decode Base64:
+ *      char *b64 = base64_encode(data, data_len);
+ *      int decoded_len;
+ *      unsigned char *decoded = base64_decode(b64, &decoded_len);
+ *
+ * 3. Encrypt data with a passphrase:
+ *      unsigned char *encrypted_blob;
+ *      int blob_len;
+ *      encrypt_with_password(plaintext, plaintext_len, "password", &encrypted_blob, &blob_len);
+ *
+ * 4. Decrypt data with the same passphrase:
+ *      unsigned char *decrypted;
+ *      int decrypted_len;
+ *      decrypt_with_password(encrypted_blob, blob_len, "password", &decrypted, &decrypted_len);
+ *
+ * 5. Convert binary to hex string:
+ *      char *hexstr;
+ *      to_hex(binary_data, binary_len, &hexstr);
+ *
+ * 6. Always free allocated memory and cleanse sensitive buffers after use.
+ *
+ * Requirements:
+ * - OpenSSL library installed.
+ * - Include <openssl/evp.h>, <openssl/sha.h>, <openssl/rand.h>, <openssl/bio.h>, <openssl/buffer.h>, <openssl/err.h>.
+ */
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>

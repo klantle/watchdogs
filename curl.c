@@ -1,3 +1,72 @@
+/*
+ * What is this?:
+ * ------------------------------------------------------------
+ * This script provides a utility function for downloading files over HTTP/HTTPS 
+ * using libcurl and automatically extracting them if they are recognized archive 
+ * formats (.tar, .tar.gz, .zip). It is part of the "watchdogs" system, which 
+ * appears to manage file deployments, updates, or automated installations.
+ *
+ *
+ * Script Algorithm:
+ * ------------------------------------------------------------
+ * 1. Initialize download:
+ *      - Prepare the target output file.
+ *      - Initialize libcurl for the download.
+ * 2. Configure libcurl options:
+ *      - Set URL, write callback, timeouts, SSL verification, and user-agent.
+ *      - Enable follow-location and fail-on-error.
+ * 3. Perform download with retries:
+ *      - Retry up to a maximum number of attempts if download fails.
+ *      - Wait a few seconds between retries.
+ * 4. Verify download:
+ *      - Check HTTP response code and file size.
+ *      - If successful and file size > 1024 bytes, proceed to extraction.
+ * 5. Detect archive type:
+ *      - `.tar` or `.tar.gz` → call `watchdogs_extract_archive()`.
+ *      - `.zip` → call `watchdogs_extract_zip()` with destination path.
+ *      - Otherwise, skip extraction.
+ * 6. Optional post-download action:
+ *      - If `init_ipcc` flag is set, prompt the user to install pawncc.
+ *
+ *
+ * Script Logic:
+ * ------------------------------------------------------------
+ * Functions & Flow:
+ *
+ * > `write_file()`:
+ *    - Callback function used by libcurl to write downloaded data to a file.
+ *
+ * > `progress_callback()`:
+ *    - (Optional) Reports download progress; currently prints a simple "Downloading ..." message.
+ *
+ * > `watchdogs_download_file(const char *url, const char *fname)`:
+ *    - Main function to handle file download and optional extraction.
+ *    - Opens the output file for writing.
+ *    - Initializes libcurl, sets options, and performs the download.
+ *    - Verifies HTTP status and minimum file size.
+ *    - Detects archive type based on file extension and extracts accordingly.
+ *    - Handles retries and waits between attempts.
+ *    - Prompts for post-download installation if required by configuration.
+ *
+ *
+ * How to Use?:
+ * ------------------------------------------------------------
+ * 1. Include this source file in your project and link with libcurl, readline, and archive libraries.
+ * 2. Call the download function:
+ *      int res = watchdogs_download_file("https://example.com/file.tar.gz", "file.tar.gz");
+ * 3. The function will:
+ *      - Download the file to the specified path.
+ *      - Automatically extract if it is a recognized archive.
+ *      - Optionally prompt for post-download actions (e.g., install pawncc).
+ * 4. Check the return value:
+ *      - 0 → Success (download and extraction completed).
+ *      - -1 → Failure after retries.
+ *
+ * Notes:
+ * - Supports Windows and UNIX-like systems with proper path and sleep handling.
+ * - Retry logic handles transient network errors up to 5 attempts.
+ * - Extraction relies on the watchdogs archive utilities implemented elsewhere.
+ */
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>

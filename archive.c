@@ -1,3 +1,70 @@
+/*
+ * What is this?:
+ * ------------------------------------------------------------
+ * This script is a utility for extracting compressed archive files, 
+ * including `.tar`, `.tar.gz`, `.tar.xz`, and `.zip` formats. 
+ * It leverages the libarchive library to safely read archive contents 
+ * and extract them to a specified destination folder while preserving 
+ * file permissions, timestamps, and ensuring symbolic link security.
+ *
+ * It is part of the "watchdogs" system, which appears to manage or automate 
+ * file deployments or updates by extracting downloaded archive files.
+ *
+ *
+ * Script Algorithm:
+ * ------------------------------------------------------------
+ * 1. Determine the platform (Windows or UNIX) to select the correct path separator.
+ * 2. Open the archive file using libarchive APIs (`archive_read_*`).
+ * 3. Iterate through all entries (files/folders) in the archive:
+ *      - Read the entry header.
+ *      - Prepare the extraction path on disk.
+ *      - Write the entry header to the destination.
+ *      - Copy the entry's data in blocks from the archive to disk.
+ *      - Apply attributes such as permissions, timestamps, ACLs, etc.
+ * 4. Handle errors at each step and ensure resources (memory, archive handles) are freed.
+ *
+ *
+ * Script Logic:
+ * ------------------------------------------------------------
+ * Functions:
+ *
+ * > `arch_copy_data(struct archive *ar, struct archive *aw)`  
+ *    - Internal helper function to copy file data from a source archive to disk.
+ *    - Reads data blocks using `archive_read_data_block()` and writes them with `archive_write_data_block()`.
+ *    - Loops until the end of the entry is reached.
+ *
+ * > `watchdogs_extract_archive(const char *tar_files)`  
+ *    - Extracts tar-based archives (`.tar`, `.tar.gz`, `.tar.xz`, etc.).
+ *    - Opens the archive and prepares disk writing options (permissions, timestamps, security).
+ *    - Iterates over each entry, copying data via `arch_copy_data`.
+ *    - Closes and frees all archive resources.
+ *
+ * > `watchdogs_extract_zip(const char *zip_path, const char *__dest_path)`  
+ *    - Handles extraction of ZIP archives.
+ *    - Opens the ZIP archive and configures disk writing options.
+ *    - Iterates each entry:
+ *        - Builds the full extraction path.
+ *        - Writes the header to disk.
+ *        - Reads/writes data blocks in a loop.
+ *        - Handles and logs any read/write errors.
+ *    - Closes and frees all archive resources after extraction.
+ *
+ *
+ * How to Use?:
+ * ------------------------------------------------------------
+ * 1. Include this source file in your project build and link with libarchive (`-larchive`).
+ * 2. Call the extraction functions:
+ *      - `watchdogs_extract_archive("path/to/archive.tar.gz");`
+ *      - `watchdogs_extract_zip("path/to/archive.zip", "destination/folder");`
+ * 3. Ensure the destination folder exists and is writable.
+ * 4. On success, the files/folders will be extracted into the destination path.
+ * 5. On failure, errors will be printed via `printf_error()`.
+ *
+ * Notes:
+ * - Supports various archive formats automatically via libarchive.
+ * - Preserves file attributes and handles symbolic links securely.
+ * - Error handling ensures partial extractions do not leave resources open.
+ */
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>

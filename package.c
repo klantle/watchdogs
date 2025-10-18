@@ -1,3 +1,58 @@
+/*
+ * What is this?:
+ * ------------------------------------------------------------
+ * This script provides interactive download utilities for PawnCC and SA-MP 
+ * (San Andreas Multiplayer) software packages. It allows the user to select 
+ * a version and platform, constructs the appropriate download URLs, and 
+ * automatically downloads and optionally extracts the selected files.
+ *
+ *
+ * Script Algorithm:
+ * ------------------------------------------------------------
+ * 1. Prompt the user to confirm whether they want to continue downloading.
+ * 2. Present a list of available software versions based on platform:
+ *      - PawnCC: different versions for Termux, Linux, Windows.
+ *      - SA-MP: multiple releases and Open.MP versions for Linux/Windows.
+ * 3. Take user input to select the version (and architecture for Termux).
+ * 4. Construct the appropriate download URL and file name.
+ * 5. Call `watchdogs_download_file()` to download and extract the file.
+ *
+ *
+ * Script Logic:
+ * ------------------------------------------------------------
+ * Functions:
+ *
+ * > `watch_pawncc(const char *platform)`:
+ *    - Handles downloading PawnCC compiler for the specified platform.
+ *    - On Termux, allows selecting version and CPU architecture (arm32/arm64).
+ *    - For Linux/Windows, selects version and determines the archive type (.tar.gz or .zip).
+ *    - Sets a configuration flag (`init_ipcc`) to indicate PawnCC initialization.
+ *    - Calls `watchdogs_download_file()` to download and extract the file.
+ *
+ * > `watch_samp(const char *platform)`:
+ *    - Handles downloading SA-MP or Open.MP server packages.
+ *    - Presents a list of versions with corresponding Linux and Windows URLs.
+ *    - Reads user selection and chooses the correct URL and filename based on platform.
+ *    - Calls `watchdogs_download_file()` to download and extract the file.
+ *
+ *
+ * How to Use?:
+ * ------------------------------------------------------------
+ * 1. Include this source file in a project with the required dependencies:
+ *      - `watchdogs_download_file()` and other utility functions.
+ * 2. Call the functions with the target platform:
+ *      - `watch_pawncc("linux");` or `watch_pawncc("termux");` or `watch_pawncc("windows");`
+ *      - `watch_samp("linux");` or `watch_samp("windows");`
+ * 3. Follow the interactive prompts to select software versions and architectures.
+ * 4. The script automatically downloads the selected package and handles extraction.
+ * 5. On completion, the downloaded files are ready for further use or installation.
+ *
+ * Notes:
+ * - Input is case-insensitive ('A' or 'a').
+ * - For Termux, architecture selection is required.
+ * - URLs and filenames are pre-defined and may need updating for future releases.
+ * - Ensures minimal user error handling with validation on selections.
+ */
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>

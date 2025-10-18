@@ -33,6 +33,7 @@ void watchdogs_reset_var(void);
 int watchdogs_sys(const char *cmd);
 void handle_sigint(int sig);
 int watchdogs_title(const char *__title);
+void escape_quotes(char *dest, size_t size, const char *src);
 extern const char* __find_c_command(
     const char *ptr_command,
     const char *__commands[],

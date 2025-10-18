@@ -1,3 +1,76 @@
+/*
+ * What is this?:
+ * ------------------------------------------------------------
+ * This script manages the launching, stopping, and configuration of
+ * multiplayer game servers, specifically SA-MP (San Andreas Multiplayer)
+ * and Open.MP servers. It automates the process of updating server 
+ * configuration files, starting the server binaries, monitoring logs, 
+ * and safely stopping running server processes.
+ *
+ *
+ * Script Algorithm:
+ * ------------------------------------------------------------
+ * 1. Stop any currently running server tasks to prevent conflicts.
+ * 2. Backup and modify configuration files:
+ *      - For SA-MP: `server.cfg`
+ *      - For Open.MP: `config.json`
+ *    Update the main gamemode or scripts according to user input.
+ * 3. Adjust permissions on the server binary to ensure it is executable.
+ * 4. Launch the server binary and wait for it to initialize.
+ * 5. Offer the user the option to view server logs.
+ * 6. Restore original configuration files after execution.
+ * 7. In debug mode, handle OS-specific process cleanup after running.
+ *
+ *
+ * Script Logic:
+ * ------------------------------------------------------------
+ * Functions:
+ *
+ * > `watchdogs_server_stop_tasks()`:
+ *    - Kills any currently running SA-MP or Open.MP server processes 
+ *      to ensure a clean environment for restarting.
+ *
+ * > `watchdogs_server_samp(const char *gamemode_arg, const char *server_bin)`:
+ *    - Backs up `server.cfg`.
+ *    - Searches for the specified gamemode file.
+ *    - Updates the `gamemode0` line in the config or appends it if missing.
+ *    - Sets execute permissions on the server binary.
+ *    - Runs the server binary and optionally prints `server_log.txt`.
+ *    - Restores the original configuration file and cleans up processes if in debug mode.
+ *
+ * > `watchdogs_server_openmp(const char *gamemode_arg, const char *server_bin)`:
+ *    - Backs up `config.json`.
+ *    - Searches for the specified gamemode script.
+ *    - Updates the `main_scripts` array in the `pawn` section of the JSON config.
+ *    - Sets execute permissions on the server binary.
+ *    - Runs the server binary and optionally prints `log.txt`.
+ *    - Restores the original JSON config and handles OS-specific cleanup in debug mode.
+ *
+ *
+ * How to Use?:
+ * ------------------------------------------------------------
+ * 1. Include this source file in your build along with:
+ *      - `watchdogs.h` and its dependencies.
+ *      - `cJSON` library for JSON parsing.
+ * 2. To stop all running servers:
+ *      - `watchdogs_server_stop_tasks();`
+ * 3. To launch an SA-MP server:
+ *      - `watchdogs_server_samp("gamemode.amx", "samp03svr");`
+ * 4. To launch an Open.MP server:
+ *      - `watchdogs_server_openmp("gamemode.amx", "omp-server");`
+ * 5. Ensure the server binaries exist in the working directory.
+ * 6. User interaction:
+ *      - The script will prompt for gamemode verification and display logs 
+ *        after server start.
+ * 7. In debug mode, the script will automatically terminate processes 
+ *    according to OS type after execution.
+ *
+ * Notes:
+ * - Compatible with both Windows and Unix-like systems.
+ * - Makes temporary backups of configuration files to avoid permanent changes.
+ * - Uses `chmod` or `_chmod` to make server binaries executable.
+ * - Requires proper error handling if files are missing or parsing fails.
+ */
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -106,7 +179,6 @@ void watchdogs_server_samp(const char *gamemode_arg, const char *server_bin) {
         if (watchdogs_config.server_or_debug &&
             !strcmp(watchdogs_config.server_or_debug, "debug"))
         {
-
             static int __watchdogs_os__;
                 __watchdogs_os__ = signal_system_os();
             if (__watchdogs_os__ == 0x01) {

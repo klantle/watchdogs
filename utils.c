@@ -90,17 +90,17 @@ inline int watchdogs_title(const char *__title)
 }
 
 void escape_quotes(char *dest, size_t size, const char *src) {
-    size_t j = 0;
-    for (size_t i = 0; src[i] != '\0' && j + 1 < size; i++) {
-        if (src[i] == '"') {
-            if (j + 2 >= size) break;
-            dest[j++] = '\\';
-            dest[j++] = '"';
-        } else {
-            dest[j++] = src[i];
+        size_t j = 0;
+        for (size_t i = 0; src[i] != '\0' && j + 1 < size; i++) {
+            if (src[i] == '"') {
+                if (j + 2 >= size) break;
+                dest[j++] = '\\';
+                dest[j++] = '"';
+            } else {
+                dest[j++] = src[i];
+            }
         }
-    }
-    dest[j] = '\0';
+        dest[j] = '\0';
 }
 
 int __command_suggest(const char *s1, const char *s2) {

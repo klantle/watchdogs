@@ -8,3 +8,5 @@ watchdogs.toml
 pawnc*
 pawno
 samp*
+!image/
+!image/*.png

@@ -54,15 +54,15 @@ void __init_function(void) {
 
 int __init_wd(void)
 {
-	char *ptr_command = readline("watchdogs > ");
-	if (!ptr_command) return -1;
-	watchdogs_a_history(ptr_command);
+	    char *ptr_command = readline("watchdogs > ");
+	    if (!ptr_command) return -1;
+	    watchdogs_a_history(ptr_command);
 
-	int c_distance = INT_MAX;
-	const char *_dist_command = __find_c_command(ptr_command,
-                                                 __command,
-                                                 __command_len,
-                                                 &c_distance);
+	    int c_distance = INT_MAX;
+	    const char *_dist_command = __find_c_command(ptr_command,
+                                                     __command,
+                                                     __command_len,
+                                                     &c_distance);
 
         if (strncmp(ptr_command, "help", 4) == 0) {
             watchdogs_title("Watchdogs | @ help");
@@ -253,12 +253,44 @@ int __init_wd(void)
                                 struct timespec start, end;
                                 double compiler_dur;
 
-                                snprintf(_compiler_, format_size_compiler, "%s %s \"%s\" -o\"%s\" \"%s\" > .wd_compiler.log 2>&1",
-                                    watchdogs_config.watchdogs_sef_found[0], /// %s 1
-                                    all_paths,                              /// %s 2
-                                    watchdogs_config.wd_gamemode_input,    /// %s 3
-                                    watchdogs_c_output_f_container,       /// %s 4
-                                    watchdogs_config.wd_compiler_opt);   // %s 5
+                                static const char
+                                    *ptr_samp = NULL;
+                                static int
+                                    find_for_samp = 0x0;
+                                static const char
+                                    *ptr_openmp = NULL;
+                                static int
+                                    find_for_omp = 0x0;
+
+                                if (__watchdogs_os__ == 0x01) {
+                                    ptr_samp="samp-server.exe"; ptr_openmp="omp-server.exe";
+                                }
+                                else if (__watchdogs_os__ == 0x00) {
+                                    ptr_samp="samp03svr"; ptr_openmp="omp-server";
+                                }
+                                
+                                FILE *file_s = fopen(ptr_samp, "r");
+                                if (file_s)
+                                    find_for_samp=0x1;
+                                FILE *file_m = fopen(ptr_openmp, "r");
+                                if (file_m)
+                                    find_for_omp=0x1;
+
+                                char
+                                    *path_include = NULL;
+                                if (find_for_samp == 0x1) {
+                                    path_include="pawno/include";
+                                } else if (find_for_omp == 0x1) {
+                                    path_include="qawno/include";
+                                }
+
+                                snprintf(_compiler_, format_size_compiler, "%s %s \"%s\" -o\"%s\" -i\"%s\" \"%s\" > .wd_compiler.log 2>&1",
+                                    watchdogs_config.watchdogs_sef_found[0],    /// %s 1
+                                    all_paths,                                 /// %s 2
+                                    watchdogs_config.wd_gamemode_input,       /// %s 3
+                                    watchdogs_c_output_f_container,          /// %s 4
+                                    path_include,                           /// %s 5
+                                    watchdogs_config.wd_compiler_opt);     /// %s 6
 
                                 clock_gettime(CLOCK_MONOTONIC, &start);
                                 watchdogs_sys(_compiler_);
@@ -271,6 +303,7 @@ int __init_wd(void)
                                         putchar(ch);
                                     }
                                 }
+
                                 while (fscanf(procc_f, "%s", error_compiler_check) != EOF) {
                                     if (strcmp(error_compiler_check, "error") == 0) {
                                         FILE *c_output;
@@ -317,12 +350,44 @@ int __init_wd(void)
                                 struct timespec start, end;
                                 double compiler_dur;
 
-                                snprintf(_compiler_, format_size_compiler, "%s %s \"%s\" -o\"%s\" \"%s\" > .wd_compiler.log 2>&1",
-                                    watchdogs_config.watchdogs_sef_found[0], /// %s 1
-                                    all_paths,                              /// %s 2
-                                    compile_args,                          /// %s 3
-                                    watchdogs_c_output_f_container,       /// %s 4
-                                    watchdogs_config.wd_compiler_opt);   /// %s 5
+                                static const char
+                                    *ptr_samp = NULL;
+                                static int
+                                    find_for_samp = 0x0;
+                                static const char
+                                    *ptr_openmp = NULL;
+                                static int
+                                    find_for_omp = 0x0;
+
+                                if (__watchdogs_os__ == 0x01) {
+                                    ptr_samp="samp-server.exe"; ptr_openmp="omp-server.exe";
+                                }
+                                else if (__watchdogs_os__ == 0x00) {
+                                    ptr_samp="samp03svr"; ptr_openmp="omp-server";
+                                }
+                                
+                                FILE *file_s = fopen(ptr_samp, "r");
+                                if (file_s)
+                                    find_for_samp=0x1;
+                                FILE *file_m = fopen(ptr_openmp, "r");
+                                if (file_m)
+                                    find_for_omp=0x1;
+
+                                char
+                                    *path_include = NULL;
+                                if (find_for_samp == 0x1) {
+                                    path_include="pawno/include";
+                                } else if (find_for_omp == 0x1) {
+                                    path_include="qawno/include";
+                                }
+
+                                snprintf(_compiler_, format_size_compiler, "%s %s \"%s\" -o\"%s\" -i\"%s\" \"%s\" > .wd_compiler.log 2>&1",
+                                    watchdogs_config.watchdogs_sef_found[0],    /// %s 1
+                                    all_paths,                                 /// %s 2
+                                    compile_args,                             /// %s 3
+                                    watchdogs_c_output_f_container,          /// %s 4
+                                    path_include,                           /// %s 5
+                                    watchdogs_config.wd_compiler_opt);     /// %s 6
                                 
                                 clock_gettime(CLOCK_MONOTONIC, &start);
                                 watchdogs_sys(_compiler_);

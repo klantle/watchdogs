@@ -54,7 +54,7 @@ int watchdogs_toml_data(void);
 int watchdogs_sef_fdir(const char *sef_path, const char *sef_name);
 int watchdogs_sef_wcopy(const char *c_src, const char *c_dest);
 int watchdogs_sef_wmv(const char *c_src, const char *c_dest);
-int watchdogs_sef_wmwrm(const char *c_src, const char *c_dest);
 void install_pawncc_now(void);
+
 #endif
 

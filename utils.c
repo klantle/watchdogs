@@ -89,6 +89,20 @@ inline int watchdogs_title(const char *__title)
         return 0;
 }
 
+void escape_quotes(char *dest, size_t size, const char *src) {
+    size_t j = 0;
+    for (size_t i = 0; src[i] != '\0' && j + 1 < size; i++) {
+        if (src[i] == '"') {
+            if (j + 2 >= size) break;
+            dest[j++] = '\\';
+            dest[j++] = '"';
+        } else {
+            dest[j++] = src[i];
+        }
+    }
+    dest[j] = '\0';
+}
+
 int __command_suggest(const char *s1, const char *s2) {
         int len1 = strlen(s1);
         int len2 = strlen(s2);
@@ -404,17 +418,26 @@ int watchdogs_sef_wmv(const char *c_src, const char *c_dest)
             if (errno == EACCES) {
                 fclose(src_FILE);
 
-                printf("Permission denied. Attempting with sudo...\n");
+                printf_color(COL_RED, "[E] ");
+                println("Permission denied. try with sudo...");
 
-                char cmd[2048];
-                snprintf(cmd, sizeof(cmd), "sudo cp \"%s\" \"%s\"", c_src, c_dest);
+                char esc_src[128],
+                     esc_dest[128];
+                escape_quotes(esc_src, sizeof(esc_src), c_src);
+                escape_quotes(esc_dest, sizeof(esc_dest), c_dest);
+
+                char cmd[128];
+                snprintf(cmd, sizeof(cmd),
+                                           "sudo mv \"%s\" \"%s\"",
+                                            esc_src,
+                                            esc_dest);
 
                 int ret = system(cmd);
                 if (ret == 0) {
-                    printf("Copied with sudo successfully: %s -> %s\n", c_src, c_dest);
+                    printf(" Moving with sudo successfully: %s -> %s\n", c_src, c_dest);
                     return 0;
                 } else {
-                    fprintf(stderr, "sudo copy failed with code %d\n", ret);
+                    fprintf(stderr, " Moving with sudo failed with code %d\n", ret);
                     return 1;
                 }
             } else {
@@ -431,32 +454,15 @@ int watchdogs_sef_wmv(const char *c_src, const char *c_dest)
 
         fclose(src_FILE);
         fclose(dest_FILE);
-        return 0;
-}
 
-int watchdogs_sef_wmwrm(const char *c_src,
-                        const char *c_dest)
-{
-        FILE *src_FILE = fopen(c_src, "rb");
-        if (src_FILE == NULL)
-            return 1;
-        
-        FILE *dest_FILE = fopen(c_dest, "wb");
-        if (dest_FILE == NULL) {
-            fclose(src_FILE);
+        char chmod_cmd[128];
+        snprintf(chmod_cmd, sizeof(chmod_cmd), "chmod +x \"%s\"", c_dest);
+        int ret = system(chmod_cmd);
+        if (ret == 0) {
+            return 0;
+        } else {
             return 1;
         }
-    
-        char src_buff[520];
-        size_t bytes;
-        while ((bytes = fread(src_buff, 1, sizeof(src_buff), src_FILE)) > 0)
-            fwrite(src_buff, 1, bytes, dest_FILE);
-    
-        fclose(src_FILE);
-        fclose(dest_FILE);
-        
-        if (remove(c_src) != 0)
-                return 1; 
 
         return 0;
 }
@@ -479,6 +485,15 @@ int watchdogs_sef_wcopy(const char *c_src,
         fclose(src_FILE);
         fclose(dest_FILE);
 
+        char chmod_cmd[128];
+        snprintf(chmod_cmd, sizeof(chmod_cmd), "chmod +x \"%s\"", c_dest);
+        int ret = system(chmod_cmd);
+        if (ret == 0) {
+            return 0;
+        } else {
+            return 1;
+        }
+
         return 0;
 }
 
@@ -492,7 +507,7 @@ install_pawncc_now(void) {
 
         int dir_pawno=0, dir_qawno=0;
         char *dest_path = NULL;
-        char str_dest_path[256];
+        char str_dest_path[526];
 
         struct stat st;
         if (stat("pawno", &st) == 0 && S_ISDIR(st.st_mode)) {
@@ -513,75 +528,53 @@ install_pawncc_now(void) {
 
         sleep(2);
 
-        char pawncc_dest_path[1024], pawncc_exe_dest_path[1024],
-                pawndisasm_dest_path[1024], pawndisasm_exe_dest_path[1024];
+        char pawncc_dest_path[512] = {0}, pawncc_exe_dest_path[512] = {0},
+             pawndisasm_dest_path[512] = {0}, pawndisasm_exe_dest_path[512] = {0};
 
         for (int i = 0; i < watchdogs_config.watchdogs_sef_count; i++) {
-                if (strstr(watchdogs_config.watchdogs_sef_found[i], "pawncc") &&
-                    strstr(watchdogs_config.watchdogs_sef_found[i], "pawncc.exe") == NULL) {
-                        snprintf(pawncc_dest_path, sizeof(pawncc_dest_path), "%s",
-                                watchdogs_config.watchdogs_sef_found[i]);
-                }
-                if (strstr(watchdogs_config.watchdogs_sef_found[i], "pawncc.exe") &&
-                    strstr(watchdogs_config.watchdogs_sef_found[i], "pawncc") &&
-                    strstr(watchdogs_config.watchdogs_sef_found[i], "pawncc.exe") == strstr(watchdogs_config.watchdogs_sef_found[i], "pawncc")) {
-                        snprintf(pawncc_exe_dest_path, sizeof(pawncc_exe_dest_path), "%s",
-                                watchdogs_config.watchdogs_sef_found[i]);
-                }
-                if (strstr(watchdogs_config.watchdogs_sef_found[i], "pawndisasm") &&
-                    strstr(watchdogs_config.watchdogs_sef_found[i], "pawndisasm.exe") == NULL) {
-                        snprintf(pawndisasm_dest_path, sizeof(pawndisasm_dest_path), "%s",
-                                watchdogs_config.watchdogs_sef_found[i]);
-                }
-                if (strstr(watchdogs_config.watchdogs_sef_found[i], "pawndisasm.exe") &&
-                    strstr(watchdogs_config.watchdogs_sef_found[i], "pawndisasm") &&
-                    strstr(watchdogs_config.watchdogs_sef_found[i], "pawndisasm.exe") == strstr(watchdogs_config.watchdogs_sef_found[i], "pawndisasm")) {
-                        snprintf(pawndisasm_exe_dest_path, sizeof(pawndisasm_exe_dest_path), "%s",
-                                watchdogs_config.watchdogs_sef_found[i]);
-                }
+            const char *entry = watchdogs_config.watchdogs_sef_found[i];
+            if (!entry) continue;
+
+            if (strstr(entry, "pawncc.exe")) {
+                snprintf(pawncc_exe_dest_path, sizeof(pawncc_exe_dest_path), "%s", entry);
+                find_pawncc_exe = 1;
+            } else if (strstr(entry, "pawncc")) {
+                snprintf(pawncc_dest_path, sizeof(pawncc_dest_path), "%s", entry);
+                find_pawncc = 1;
+            }
+            else if (strstr(entry, "pawndisasm.exe")) {
+                snprintf(pawndisasm_exe_dest_path, sizeof(pawndisasm_exe_dest_path), "%s", entry);
+                find_pawndisasm_exe = 1;
+            } else if (strstr(entry, "pawndisasm")) {
+                snprintf(pawndisasm_dest_path, sizeof(pawndisasm_dest_path), "%s", entry);
+                find_pawndisasm = 1;
+            }
         }
 
-        if (find_pawncc_exe && find_pawncc) {
-                snprintf(str_dest_path, sizeof(str_dest_path), "%s%s%s",
-                        dest_path, PATH_SEP, "pawncc.exe");
-                watchdogs_sef_wmv(pawncc_exe_dest_path, str_dest_path);
-                snprintf(str_dest_path, sizeof(str_dest_path), "%s%s%s",
-                        dest_path, PATH_SEP, "pawncc");
-                watchdogs_sef_wmv(pawncc_dest_path, str_dest_path);
-        } else if (find_pawncc_exe) {
-                snprintf(str_dest_path, sizeof(str_dest_path), "%s%s%s",
-                        dest_path, PATH_SEP, "pawncc.exe");
-                watchdogs_sef_wmv(pawncc_exe_dest_path, str_dest_path);
-        } else if (find_pawncc) {
-                snprintf(str_dest_path, sizeof(str_dest_path), "%s%s%s",
-                        dest_path, PATH_SEP, "pawncc");
-                watchdogs_sef_wmv(pawncc_dest_path, str_dest_path);
+        if (find_pawncc_exe) {
+            snprintf(str_dest_path, sizeof(str_dest_path), "%s%s%s", dest_path, PATH_SEP, "pawncc.exe");
+            watchdogs_sef_wmv(pawncc_exe_dest_path, str_dest_path);
         }
-
-        if (find_pawndisasm_exe && find_pawndisasm) {
-                snprintf(str_dest_path, sizeof(str_dest_path), "%s%s%s",
-                        dest_path, PATH_SEP, "pawndisasm.exe");
-                watchdogs_sef_wmv(pawndisasm_exe_dest_path, str_dest_path);
-                snprintf(str_dest_path, sizeof(str_dest_path), "%s%s%s",
-                        dest_path, PATH_SEP, "pawndisasm");
-                watchdogs_sef_wmv(pawndisasm_dest_path, str_dest_path);
-        } else if (find_pawndisasm_exe) {
-                snprintf(str_dest_path, sizeof(str_dest_path), "%s%s%s",
-                        dest_path, PATH_SEP, "pawndisasm.exe");
-                watchdogs_sef_wmv(pawndisasm_exe_dest_path, str_dest_path);
-        } else if (find_pawndisasm) {
-                snprintf(str_dest_path, sizeof(str_dest_path), "%s%s%s",
-                        dest_path, PATH_SEP, "pawndisasm");
-                watchdogs_sef_wmv(pawndisasm_dest_path, str_dest_path);
+        if (find_pawncc) {
+            snprintf(str_dest_path, sizeof(str_dest_path), "%s%s%s", dest_path, PATH_SEP, "pawncc");
+            watchdogs_sef_wmv(pawncc_dest_path, str_dest_path);
+        }
+        if (find_pawndisasm_exe) {
+            snprintf(str_dest_path, sizeof(str_dest_path), "%s%s%s", dest_path, PATH_SEP, "pawndisasm.exe");
+            watchdogs_sef_wmv(pawndisasm_exe_dest_path, str_dest_path);
+        }
+        if (find_pawndisasm) {
+            snprintf(str_dest_path, sizeof(str_dest_path), "%s%s%s", dest_path, PATH_SEP, "pawndisasm");
+            watchdogs_sef_wmv(pawndisasm_dest_path, str_dest_path);
         }
 
 #ifndef _WIN32
         if (__watchdogs_os__ == 0x00) {
                 char *str_lib_path = NULL;
-                char str_full_dest_path[1502];
+                char str_full_dest_path[128];
 
                 int find_libpawnc = watchdogs_sef_fdir(".", "libpawnc.so");
-                char libpawnc_dest_path[1024];
+                char libpawnc_dest_path[128];
                 for (int i = 0; i < watchdogs_config.watchdogs_sef_count; i++) {
                         if (strstr(watchdogs_config.watchdogs_sef_found[i], "libpawnc.so")) {
                                 snprintf(libpawnc_dest_path, sizeof(libpawnc_dest_path), "%s",

@@ -64,6 +64,32 @@ int __init_wd(void)
                                                      __command_len,
                                                      &c_distance);
 
+        static const char
+            *ptr_samp = NULL;
+        static int
+            find_for_samp = 0x0;
+        static const char
+            *ptr_openmp = NULL;
+        static int
+            find_for_omp = 0x0;
+
+        static int __watchdogs_os__;
+            __watchdogs_os__ = signal_system_os();
+        
+        if (__watchdogs_os__ == 0x01) {
+            ptr_samp="samp-server.exe"; ptr_openmp="omp-server.exe";
+        }
+        else if (__watchdogs_os__ == 0x00) {
+            ptr_samp="samp03svr"; ptr_openmp="omp-server";
+        }
+        
+        FILE *file_s = fopen(ptr_samp, "r");
+        if (file_s)
+            find_for_samp=0x1;
+        FILE *file_m = fopen(ptr_openmp, "r");
+        if (file_m)
+            find_for_omp=0x1;
+
         if (strncmp(ptr_command, "help", 4) == 0) {
             watchdogs_title("Watchdogs | @ help");
 
@@ -168,7 +194,6 @@ int __init_wd(void)
             compile_args = strtok(arg, " ");
         
             const char *ptr_pawncc;
-            int __watchdogs_os__ = signal_system_os();
             if (__watchdogs_os__ == 0x01) 
                 ptr_pawncc = "pawncc.exe";
             else if (__watchdogs_os__ == 0x00)
@@ -253,29 +278,6 @@ int __init_wd(void)
                                 struct timespec start, end;
                                 double compiler_dur;
 
-                                static const char
-                                    *ptr_samp = NULL;
-                                static int
-                                    find_for_samp = 0x0;
-                                static const char
-                                    *ptr_openmp = NULL;
-                                static int
-                                    find_for_omp = 0x0;
-
-                                if (__watchdogs_os__ == 0x01) {
-                                    ptr_samp="samp-server.exe"; ptr_openmp="omp-server.exe";
-                                }
-                                else if (__watchdogs_os__ == 0x00) {
-                                    ptr_samp="samp03svr"; ptr_openmp="omp-server";
-                                }
-                                
-                                FILE *file_s = fopen(ptr_samp, "r");
-                                if (file_s)
-                                    find_for_samp=0x1;
-                                FILE *file_m = fopen(ptr_openmp, "r");
-                                if (file_m)
-                                    find_for_omp=0x1;
-
                                 char
                                     *path_include = NULL;
                                 if (find_for_samp == 0x1) {
@@ -349,29 +351,6 @@ int __init_wd(void)
 
                                 struct timespec start, end;
                                 double compiler_dur;
-
-                                static const char
-                                    *ptr_samp = NULL;
-                                static int
-                                    find_for_samp = 0x0;
-                                static const char
-                                    *ptr_openmp = NULL;
-                                static int
-                                    find_for_omp = 0x0;
-
-                                if (__watchdogs_os__ == 0x01) {
-                                    ptr_samp="samp-server.exe"; ptr_openmp="omp-server.exe";
-                                }
-                                else if (__watchdogs_os__ == 0x00) {
-                                    ptr_samp="samp03svr"; ptr_openmp="omp-server";
-                                }
-                                
-                                FILE *file_s = fopen(ptr_samp, "r");
-                                if (file_s)
-                                    find_for_samp=0x1;
-                                FILE *file_m = fopen(ptr_openmp, "r");
-                                if (file_m)
-                                    find_for_omp=0x1;
 
                                 char
                                     *path_include = NULL;
@@ -489,32 +468,6 @@ int __init_wd(void)
                 static size_t format_size = 126;
                 if (format_prompt == NULL) 
                     format_prompt = malloc(format_size);
-
-                static const char
-                    *ptr_samp = NULL;
-                static int
-                    find_for_samp = 0x0;
-                static const char
-                    *ptr_openmp = NULL;
-                static int
-                    find_for_omp = 0x0;
-
-                static int __watchdogs_os__;
-                    __watchdogs_os__ = signal_system_os();
-                
-                if (__watchdogs_os__ == 0x01) {
-                    ptr_samp="samp-server.exe"; ptr_openmp="omp-server.exe";
-                }
-                else if (__watchdogs_os__ == 0x00) {
-                    ptr_samp="samp03svr"; ptr_openmp="omp-server";
-                }
-                
-                FILE *file_s = fopen(ptr_samp, "r");
-                if (file_s)
-                    find_for_samp=0x1;
-                FILE *file_m = fopen(ptr_openmp, "r");
-                if (file_m)
-                    find_for_omp=0x1;
 
                 if (find_for_samp == 0x1) {
                     if (*arg == '\0' || arg == ".") {

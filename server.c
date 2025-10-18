@@ -79,11 +79,7 @@ void watchdogs_server_samp(const char *gamemode_arg, const char *server_bin) {
 #endif
 
         char snprintf_ptrS[256];
-#ifdef _WIN32
-        snprintf(snprintf_ptrS, sizeof(snprintf_ptrS), "%s", server_bin);
-#else
         snprintf(snprintf_ptrS, sizeof(snprintf_ptrS), "./%s", server_bin);
-#endif
 
         int running_FAIL = watchdogs_sys(snprintf_ptrS);
         if (running_FAIL == 0) {
@@ -110,13 +106,15 @@ void watchdogs_server_samp(const char *gamemode_arg, const char *server_bin) {
         if (watchdogs_config.server_or_debug &&
             !strcmp(watchdogs_config.server_or_debug, "debug"))
         {
-#ifdef _WIN32
-            kill_process("samp-server.exe");
-            kill_process("samp03svr.exe");
-#else
-            kill_process("samp-server");
-            kill_process("samp03svr");
-#endif
+
+            static int __watchdogs_os__;
+                __watchdogs_os__ = signal_system_os();
+            if (__watchdogs_os__ == 0x01) {
+                kill_process("samp-server.exe");
+            }
+            else if (__watchdogs_os__ == 0x00) {
+                kill_process("samp03svr");
+            }
         }
 
         __init(0);
@@ -190,11 +188,7 @@ void watchdogs_server_openmp(const char *gamemode_arg, const char *server_bin) {
 #endif
 
         char snprintf_ptrS[256];
-#ifdef _WIN32
-        snprintf(snprintf_ptrS, sizeof(snprintf_ptrS), "%s", server_bin);
-#else
         snprintf(snprintf_ptrS, sizeof(snprintf_ptrS), "./%s", server_bin);
-#endif
 
         int running_FAIL = watchdogs_sys(snprintf_ptrS);
         if (running_FAIL == 0) {
@@ -221,11 +215,14 @@ void watchdogs_server_openmp(const char *gamemode_arg, const char *server_bin) {
         if (watchdogs_config.server_or_debug &&
             !strcmp(watchdogs_config.server_or_debug, "debug"))
         {
-#ifdef _WIN32
-            kill_process("omp-server.exe");
-#else
-            kill_process("omp-server");
-#endif
+            static int __watchdogs_os__;
+                __watchdogs_os__ = signal_system_os();
+            if (__watchdogs_os__ == 0x01) {
+                kill_process("omp-server.exe");
+            }
+            else if (__watchdogs_os__ == 0x00) {
+                kill_process("omp-server");
+            }
         }
 
         cJSON_Delete(root);

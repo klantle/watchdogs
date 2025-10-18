@@ -70,7 +70,65 @@
  *
  * Requirements:
  * - OpenSSL library installed.
- * - Include <openssl/evp.h>, <openssl/sha.h>, <openssl/rand.h>, <openssl/bio.h>, <openssl/buffer.h>, <openssl/err.h>.
+ * - Include <openssl/evp.h>, <openssl/sha.h>, <openssl/rand.h>, <openssl/bio.h>, <openssl/buffer.h>, <openssl/err.h>
+ *
+ * Example:
+```c
+int main() {
+        const char *passphrase = "S3cureP@ss!";
+        const char *message = "Hello, secure world!";
+        unsigned char hash[32];
+        if (!sha256_hash(message, hash)) {
+                fprintf(stderr, "sha256 failed\n");
+                return 1;
+        }
+        char *hexhash = NULL;
+        if (to_hex(hash, 32, &hexhash)) {
+                printf("SHA256: %s\n", hexhash);
+                free(hexhash);
+        }
+        unsigned char *blob = NULL;
+        int blob_len = 0;
+        if (!encrypt_with_password((const unsigned char *)message, strlen(message), passphrase, &blob, &blob_len)) {
+                fprintf(stderr, "encryption failed\n");
+                return 1;
+        }
+        char *b64 = base64_encode(blob, blob_len);
+        if (b64) {
+                printf("Encrypted (base64): %s\n", b64);
+        } else {
+                fprintf(stderr, "base64 encode failed\n");
+                free(blob);
+                return 1;
+        }
+        int decoded_len = 0;
+        unsigned char *decoded = base64_decode(b64, &decoded_len);
+        if (!decoded) {
+                fprintf(stderr, "base64 decode failed\n");
+                free(b64);
+                free(blob);
+                return 1;
+        }
+        unsigned char *decrypted = NULL;
+        int decrypted_len = 0;
+        if (!decrypt_with_password(decoded, decoded_len, passphrase, &decrypted, &decrypted_len)) {
+                fprintf(stderr, "decryption failed\n");
+                free(decoded);
+                free(b64);
+                free(blob);
+                return 1;
+        }
+        printf("Decrypted: %.*s\n", decrypted_len, decrypted);
+        OPENSSL_cleanse(decrypted, decrypted_len);
+        free(decrypted);
+        OPENSSL_cleanse(decoded, decoded_len);
+        free(decoded);
+        free(blob);
+        free(b64);
+        return 0;
+}
+```
+ *
  */
 #include <stdio.h>
 #include <stdlib.h>
@@ -236,60 +294,3 @@ int to_hex(const unsigned char *in, int in_len, char **out) {
         *out = buf;
         return 1;
 }
-
-/*
-int main() {
-        const char *passphrase = "S3cureP@ss!";
-        const char *message = "Hello, secure world!";
-        unsigned char hash[32];
-        if (!sha256_hash(message, hash)) {
-                fprintf(stderr, "sha256 failed\n");
-                return 1;
-        }
-        char *hexhash = NULL;
-        if (to_hex(hash, 32, &hexhash)) {
-                printf("SHA256: %s\n", hexhash);
-                free(hexhash);
-        }
-        unsigned char *blob = NULL;
-        int blob_len = 0;
-        if (!encrypt_with_password((const unsigned char *)message, strlen(message), passphrase, &blob, &blob_len)) {
-                fprintf(stderr, "encryption failed\n");
-                return 1;
-        }
-        char *b64 = base64_encode(blob, blob_len);
-        if (b64) {
-                printf("Encrypted (base64): %s\n", b64);
-        } else {
-                fprintf(stderr, "base64 encode failed\n");
-                free(blob);
-                return 1;
-        }
-        int decoded_len = 0;
-        unsigned char *decoded = base64_decode(b64, &decoded_len);
-        if (!decoded) {
-                fprintf(stderr, "base64 decode failed\n");
-                free(b64);
-                free(blob);
-                return 1;
-        }
-        unsigned char *decrypted = NULL;
-        int decrypted_len = 0;
-        if (!decrypt_with_password(decoded, decoded_len, passphrase, &decrypted, &decrypted_len)) {
-                fprintf(stderr, "decryption failed\n");
-                free(decoded);
-                free(b64);
-                free(blob);
-                return 1;
-        }
-        printf("Decrypted: %.*s\n", decrypted_len, decrypted);
-        OPENSSL_cleanse(decrypted, decrypted_len);
-        free(decrypted);
-        OPENSSL_cleanse(decoded, decoded_len);
-        free(decoded);
-        free(blob);
-        free(b64);
-        return 0;
-}
-*/
-

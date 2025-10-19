@@ -201,12 +201,12 @@ void __init_function(void) {
 int __init_wd(void)
 {
         __init_function();
-	    char *ptr_command = readline("watchdogs > ");
-	    if (!ptr_command) return -1;
-	    watchdogs_a_history(ptr_command);
+        char *ptr_command = readline("watchdogs > ");
+        if (!ptr_command) return -1;
+        watchdogs_a_history(ptr_command);
 
-	    int c_distance = INT_MAX;
-	    const char *_dist_command = __find_c_command(ptr_command,
+        int c_distance = INT_MAX;
+        const char *_dist_command = __find_c_command(ptr_command,
                                                      __command,
                                                      __command_len,
                                                      &c_distance);
@@ -230,17 +230,17 @@ int __init_wd(void)
             ptr_samp="samp03svr"; ptr_openmp="omp-server";
         }
         
-		FILE *file_s = fopen(ptr_samp, "r");
-		if (file_s) {
-			find_for_samp = 0x1;
-			fclose(file_s);
-		}
+        FILE *file_s = fopen(ptr_samp, "r");
+        if (file_s) {
+            find_for_samp = 0x1;
+            fclose(file_s);
+        }
 
-		FILE *file_m = fopen(ptr_openmp, "r");
-		if (file_m) {
-			find_for_omp = 0x1;
-			fclose(file_m);
-		}
+        FILE *file_m = fopen(ptr_openmp, "r");
+        if (file_m) {
+            find_for_omp = 0x1;
+            fclose(file_m);
+        }
 
         if (strncmp(ptr_command, "help", 4) == 0) {
             watchdogs_title("Watchdogs | @ help");
@@ -351,29 +351,29 @@ int __init_wd(void)
             else if (__watchdogs_os__ == 0x00)
                 ptr_pawncc = "pawncc";
 
-			if (access(".wd_compiler.log", F_OK) == 0) {
-				remove(".wd_compiler.log");
-			}
-			
+            if (access(".wd_compiler.log", F_OK) == 0) {
+                remove(".wd_compiler.log");
+            }
+            
             FILE *procc_f = NULL;
             char error_compiler_check[100];
             char watchdogs_c_output_f_container[128];
             int format_size_c_f_container = sizeof(watchdogs_c_output_f_container);
             
-			procc_f = fopen(".wd_compiler.log", "r");
-			if (procc_f) {
-				int ch;
-				while ((ch = fgetc(procc_f)) != EOF) putchar(ch);
-				rewind(procc_f);
-				while (fscanf(procc_f, "%s", error_compiler_check) != EOF) {
-					if (strcmp(error_compiler_check, "error") == 0) {
-						if (access(watchdogs_c_output_f_container, F_OK) == 0)
-							remove(watchdogs_c_output_f_container);
-						break;
-					}
-				}
-				fclose(procc_f);
-			}
+            procc_f = fopen(".wd_compiler.log", "r");
+            if (procc_f) {
+                int ch;
+                while ((ch = fgetc(procc_f)) != EOF) putchar(ch);
+                rewind(procc_f);
+                while (fscanf(procc_f, "%s", error_compiler_check) != EOF) {
+                    if (strcmp(error_compiler_check, "error") == 0) {
+                        if (access(watchdogs_c_output_f_container, F_OK) == 0)
+                            remove(watchdogs_c_output_f_container);
+                        break;
+                    }
+                }
+                fclose(procc_f);
+            }
 
             int find_pawncc = watchdogs_sef_fdir(".", ptr_pawncc);
             if (find_pawncc) {
@@ -387,36 +387,36 @@ int __init_wd(void)
                 FILE *procc_f = fopen("watchdogs.toml", "r");
                 if (!procc_f) {
                     printf_error("Can't read file %s\n", "watchdogs.toml");
-					if (_compiler_) {
-						free(_compiler_);
-					}
-					return 0;
-				}
-				
+                    if (_compiler_) {
+                        free(_compiler_);
+                    }
+                    return 0;
+                }
+                
                 char errbuf[256];
                 toml_table_t *config = toml_parse_file(procc_f, errbuf, sizeof(errbuf));
                 fclose(procc_f);
         
                 if (!config) {
-                    printf_error("error parsing TOML: %s\n", errbuf);	
+                    printf_error("error parsing TOML: %s\n", errbuf);    
                     if (_compiler_) {
-						free(_compiler_);
-					}
-					return 0;
-				}
-				
+                        free(_compiler_);
+                    }
+                    return 0;
+                }
+                
                 toml_table_t *watchdogs_compiler = toml_table_in(config, "compiler");
                 if (watchdogs_compiler) {
                     toml_datum_t option_val = toml_string_in(watchdogs_compiler, "option");
-					if (option_val.ok) {
-						wcfg.wd_compiler_opt = strdup(option_val.u.s);
-						free(option_val.u.s);
-					}
+                    if (option_val.ok) {
+                        wcfg.wd_compiler_opt = strdup(option_val.u.s);
+                        free(option_val.u.s);
+                    }
         
                     toml_datum_t output_val = toml_string_in(watchdogs_compiler, "output");
                     if (output_val.ok) {
                         wcfg.wd_gamemode_output = output_val.u.s;
-						free(output_val.u.s);
+                        free(output_val.u.s);
                     }
         
                     toml_array_t *include_paths = toml_array_in(watchdogs_compiler, "include_path");
@@ -424,29 +424,29 @@ int __init_wd(void)
                         int array_size = toml_array_nelem(include_paths);
                         char include_aio_path[250] = {0};
         
-						for (int i = 0; i < array_size; i++) {
-							toml_datum_t path_val = toml_string_at(include_paths, i);
-							if (path_val.ok) {
-								char __procc[250];
-								__copy_strip_dotfns(__procc, sizeof(__procc), path_val.u.s);
-								if (__procc[0] == '\0') continue;
-								if (i > 0) {
-									size_t cur = strlen(include_aio_path);
-									if (cur < sizeof(include_aio_path) - 1) {
-										snprintf(include_aio_path + cur,
-												 sizeof(include_aio_path) - cur,
-												 " ");
-									}
-								}
-								size_t cur = strlen(include_aio_path);
-								if (cur < sizeof(include_aio_path) - 1) {
-									snprintf(include_aio_path + cur,
-											 sizeof(include_aio_path) - cur,
-											 "-i\"%s\"",
-											 __procc);
-								}
-							}
-						}
+                        for (int i = 0; i < array_size; i++) {
+                            toml_datum_t path_val = toml_string_at(include_paths, i);
+                            if (path_val.ok) {
+                                char __procc[250];
+                                __copy_strip_dotfns(__procc, sizeof(__procc), path_val.u.s);
+                                if (__procc[0] == '\0') continue;
+                                if (i > 0) {
+                                    size_t cur = strlen(include_aio_path);
+                                    if (cur < sizeof(include_aio_path) - 1) {
+                                        snprintf(include_aio_path + cur,
+                                                 sizeof(include_aio_path) - cur,
+                                                 " ");
+                                    }
+                                }
+                                size_t cur = strlen(include_aio_path);
+                                if (cur < sizeof(include_aio_path) - 1) {
+                                    snprintf(include_aio_path + cur,
+                                             sizeof(include_aio_path) - cur,
+                                             "-i\"%s\"",
+                                             __procc);
+                                }
+                            }
+                        }
         
                         static char wd_gamemode[56];
                         if (arg == NULL || *arg == '\0') {
@@ -455,76 +455,76 @@ int __init_wd(void)
                                 wcfg.wd_gamemode_input = watchdogs_gmodes.u.s;
                             }
                             
-							struct timespec start, end;
-							double compiler_dur;
+                            struct timespec start, end;
+                            double compiler_dur;
 
-							char
-								*path_include = NULL;
-							if (find_for_samp == 0x1) path_include="pawno/include";
-							else if (find_for_omp == 0x1) path_include="qawno/include";
-							
-							int ret = snprintf(
-								_compiler_,
-								format_size_compiler,
-								"%s \"%s\" -o\"%s\" %s -i\"%s\" \"%s\" > .wd_compiler.log 2>&1",
-								wcfg.watchdogs_sef_found[0],				// compiler binary
-								wcfg.wd_gamemode_input,						// input file
-								wcfg.wd_gamemode_output,					// output file
-								include_aio_path,							// include search path
-								path_include,								// include directory
-								wcfg.wd_compiler_opt						// additional options
-							);
+                            char
+                                *path_include = NULL;
+                            if (find_for_samp == 0x1) path_include="pawno/include";
+                            else if (find_for_omp == 0x1) path_include="qawno/include";
+                            
+                            int ret = snprintf(
+                                _compiler_,
+                                format_size_compiler,
+                                "%s \"%s\" -o\"%s\" %s -i\"%s\" \"%s\" > .wd_compiler.log 2>&1",
+                                wcfg.watchdogs_sef_found[0],                // compiler binary
+                                wcfg.wd_gamemode_input,                        // input file
+                                wcfg.wd_gamemode_output,                    // output file
+                                include_aio_path,                            // include search path
+                                path_include,                                // include directory
+                                wcfg.wd_compiler_opt                        // additional options
+                            );
 
-							clock_gettime(CLOCK_MONOTONIC, &start);
-								watchdogs_sys(_compiler_);
-							clock_gettime(CLOCK_MONOTONIC, &end);
+                            clock_gettime(CLOCK_MONOTONIC, &start);
+                                watchdogs_sys(_compiler_);
+                            clock_gettime(CLOCK_MONOTONIC, &end);
 
-							procc_f = fopen(".wd_compiler.log", "r");
-							if (procc_f) {
-								int ch;
-								while ((ch = fgetc(procc_f)) != EOF)
-									putchar(ch);
-								rewind(procc_f);
-								while (fscanf(procc_f, "%99s", error_compiler_check) != EOF) {
-									if (strcmp(error_compiler_check, "error") == 0) {
-										FILE *c_output;
-										c_output = fopen(watchdogs_c_output_f_container, "r");
-										if (c_output)
-											remove(watchdogs_c_output_f_container);
-										break;
-									}
-								}
-								fclose(procc_f);
-							} else {
-								printf_error("Failed to open .wd_compiler.log\n");
-							}
+                            procc_f = fopen(".wd_compiler.log", "r");
+                            if (procc_f) {
+                                int ch;
+                                while ((ch = fgetc(procc_f)) != EOF)
+                                    putchar(ch);
+                                rewind(procc_f);
+                                while (fscanf(procc_f, "%99s", error_compiler_check) != EOF) {
+                                    if (strcmp(error_compiler_check, "error") == 0) {
+                                        FILE *c_output;
+                                        c_output = fopen(watchdogs_c_output_f_container, "r");
+                                        if (c_output)
+                                            remove(watchdogs_c_output_f_container);
+                                        break;
+                                    }
+                                }
+                                fclose(procc_f);
+                            } else {
+                                printf_error("Failed to open .wd_compiler.log\n");
+                            }
 
-							compiler_dur = (end.tv_sec - start.tv_sec) + (end.tv_nsec - start.tv_nsec) / 1e9;
-							printf("[Finished in %.3fs]\n", compiler_dur);
+                            compiler_dur = (end.tv_sec - start.tv_sec) + (end.tv_nsec - start.tv_nsec) / 1e9;
+                            printf("[Finished in %.3fs]\n", compiler_dur);
 #ifdef DEBUGGING_COMPILER
-							printf("[COMPILER]:\n\t%s\n", _compiler_);
+                            printf("[COMPILER]:\n\t%s\n", _compiler_);
 #endif
                         } else {
                             int find_gamemodes_arg1 = watchdogs_sef_fdir("gamemodes", compile_args);
                             if (find_gamemodes_arg1) {
-								char* container_output;
-								if (wcfg.watchdogs_sef_count > 0 &&
-									wcfg.watchdogs_sef_found[1][0] != '\0') {
-									container_output = strdup(wcfg.watchdogs_sef_found[1]);
-								}
-								
-								char i_path_rm[PATH_MAX];
-								snprintf(i_path_rm, sizeof(i_path_rm), "%s", compile_args);
-								char *f_EXT = strrchr(i_path_rm, '.');
-								if (f_EXT && strcmp(f_EXT, ".pwn") == 0)
-									*f_EXT = '\0';
+                                char* container_output;
+                                if (wcfg.watchdogs_sef_count > 0 &&
+                                    wcfg.watchdogs_sef_found[1][0] != '\0') {
+                                    container_output = strdup(wcfg.watchdogs_sef_found[1]);
+                                }
+                                
+                                char i_path_rm[PATH_MAX];
+                                snprintf(i_path_rm, sizeof(i_path_rm), "%s", compile_args);
+                                char *f_EXT = strrchr(i_path_rm, '.');
+                                if (f_EXT && strcmp(f_EXT, ".pwn") == 0)
+                                    *f_EXT = '\0';
                                 char* f_last_slash_container = strrchr(container_output, '/');
                                 if (f_last_slash_container != NULL && *(f_last_slash_container + 1) != '\0')
                                     *(f_last_slash_container + 1) = '\0';
 
                                 snprintf(watchdogs_c_output_f_container, format_size_c_f_container, "%s%s",
                                     container_output, i_path_rm);
-								
+                                
                                 struct timespec start, end;
                                 double compiler_dur;
 
@@ -533,50 +533,50 @@ int __init_wd(void)
                                 if (find_for_samp == 0x1) path_include="pawno/include";
                                 else if (find_for_omp == 0x1) path_include="qawno/include";
                                 
-								int ret = snprintf(
-									_compiler_,
-									format_size_compiler,
-									"%s \"gamemodes/%s\" -o\"%s.amx\" %s -i\"%s\" \"%s\" > .wd_compiler.log 2>&1",
-									wcfg.watchdogs_sef_found[0],				// compiler binary
-									compile_args,								// input file
-									watchdogs_c_output_f_container,				// output file
-									include_aio_path,							// include search path
-									path_include,								// include directory
-									wcfg.wd_compiler_opt						// additional options
-								);
+                                int ret = snprintf(
+                                    _compiler_,
+                                    format_size_compiler,
+                                    "%s \"gamemodes/%s\" -o\"%s.amx\" %s -i\"%s\" \"%s\" > .wd_compiler.log 2>&1",
+                                    wcfg.watchdogs_sef_found[0],                // compiler binary
+                                    compile_args,                                // input file
+                                    watchdogs_c_output_f_container,                // output file
+                                    include_aio_path,                            // include search path
+                                    path_include,                                // include directory
+                                    wcfg.wd_compiler_opt                        // additional options
+                                );
 
-								if (ret < 0 || (size_t)ret >= (size_t)format_size_compiler) {
-									fprintf(stderr, "[Error] snprintf() failed or buffer too small (needed %d bytes)\n", ret);
-								}
+                                if (ret < 0 || (size_t)ret >= (size_t)format_size_compiler) {
+                                    fprintf(stderr, "[Error] snprintf() failed or buffer too small (needed %d bytes)\n", ret);
+                                }
                                 
                                 clock_gettime(CLOCK_MONOTONIC, &start);
-	                                watchdogs_sys(_compiler_);
+                                    watchdogs_sys(_compiler_);
                                 clock_gettime(CLOCK_MONOTONIC, &end);
                                 
-								procc_f = fopen(".wd_compiler.log", "r");
-								if (procc_f) {
-									int ch;
-									while ((ch = fgetc(procc_f)) != EOF)
-										putchar(ch);
-									rewind(procc_f);
-									while (fscanf(procc_f, "%99s", error_compiler_check) != EOF) {
-										if (strcmp(error_compiler_check, "error") == 0) {
-											FILE *c_output;
-											c_output = fopen(watchdogs_c_output_f_container, "r");
-											if (c_output)
-												remove(watchdogs_c_output_f_container);
-											break;
-										}
-									}
-									fclose(procc_f);
-								} else {
-									printf_error("Failed to open .wd_compiler.log\n");
-								}
+                                procc_f = fopen(".wd_compiler.log", "r");
+                                if (procc_f) {
+                                    int ch;
+                                    while ((ch = fgetc(procc_f)) != EOF)
+                                        putchar(ch);
+                                    rewind(procc_f);
+                                    while (fscanf(procc_f, "%99s", error_compiler_check) != EOF) {
+                                        if (strcmp(error_compiler_check, "error") == 0) {
+                                            FILE *c_output;
+                                            c_output = fopen(watchdogs_c_output_f_container, "r");
+                                            if (c_output)
+                                                remove(watchdogs_c_output_f_container);
+                                            break;
+                                        }
+                                    }
+                                    fclose(procc_f);
+                                } else {
+                                    printf_error("Failed to open .wd_compiler.log\n");
+                                }
 
                                 compiler_dur = (end.tv_sec - start.tv_sec) + (end.tv_nsec - start.tv_nsec) / 1e9;
                                 printf("[Finished in %.3fs]\n", compiler_dur);
 #ifdef DEBUGGING_COMPILER
-								printf("[COMPILER]:\n\t%s\n", _compiler_);
+                                printf("[COMPILER]:\n\t%s\n", _compiler_);
 #endif
                             } else {
                                 printf_color(COL_RED, "Can't locate: ");
@@ -587,9 +587,9 @@ int __init_wd(void)
                     }
                     toml_free(config);
                     if (_compiler_) {
-						free(_compiler_);
-					}
-					return 0;
+                        free(_compiler_);
+                    }
+                    return 0;
                 }
             } else {
                 printf_error("pawncc not found!");

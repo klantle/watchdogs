@@ -88,7 +88,7 @@ const char* __command[] = {
         "title"
 };
 const size_t
-	__command_len = sizeof(__command) / sizeof(__command[0]);
+    __command_len = sizeof(__command) / sizeof(__command[0]);
 
 inline void watchdogs_reset_var(void) {
         wd wcfg = {0};
@@ -114,8 +114,8 @@ void reset_watchdogs_sef_dir()
                              sizeof(wcfg.watchdogs_sef_found[0]);
 
         for (size_t i = 0;
-			 i < MAX_ENTRIES;
-			 ++i)
+             i < MAX_ENTRIES;
+             ++i)
              wcfg.watchdogs_sef_found[i][0] = '\0';
 
         memset(wcfg.watchdogs_sef_found, 0, sizeof(wcfg.watchdogs_sef_found));
@@ -174,10 +174,10 @@ void __escape_quotes(char *dest, size_t size, const char *src) {
 
 int __command_suggest(const char *s1, const char *s2) {
         int len1 = strlen(s1),
-			len2 = strlen(s2);
+            len2 = strlen(s2);
         if (len2 > 128) return INT_MAX;
         int prev[129],
-			curr[129];
+            curr[129];
         for (int j = 0; j <= len2; j++) prev[j] = j;
 
         for (int i = 1; i <= len1; i++) {
@@ -336,12 +336,12 @@ int watchdogs_toml_data(void)
 
         int find_gamemodes = watchdogs_sef_fdir("gamemodes/", "*.pwn");
 
-		char i_path_rm[PATH_MAX];
-		snprintf(i_path_rm, sizeof(i_path_rm), "%s", wcfg.watchdogs_sef_found[0]);
-		char *f_EXT = strrchr(i_path_rm, '.');
-		if (f_EXT && strcmp(f_EXT, ".pwn") == 0)
-			*f_EXT = '\0';
-			
+        char i_path_rm[PATH_MAX];
+        snprintf(i_path_rm, sizeof(i_path_rm), "%s", wcfg.watchdogs_sef_found[0]);
+        char *f_EXT = strrchr(i_path_rm, '.');
+        if (f_EXT && strcmp(f_EXT, ".pwn") == 0)
+            *f_EXT = '\0';
+            
         toml_files = fopen(fname, "r");
         if (toml_files != NULL)
                 fclose(toml_files);
@@ -400,7 +400,7 @@ static void __jph(char *out, size_t out_sz, const char *dir, const char *name) {
             if (name_has_lsp)
                 snprintf(out, out_sz, "%s%s", dir, name + 1);
             else
-				snprintf(out, out_sz, "%s%s", dir, name);
+                snprintf(out, out_sz, "%s%s", dir, name);
         } else {
 #ifdef _WIN32
             if (name_has_lsp)

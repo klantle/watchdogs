@@ -230,13 +230,17 @@ int __init_wd(void)
             ptr_samp="samp03svr"; ptr_openmp="omp-server";
         }
         
-        FILE *file_s = fopen(ptr_samp, "r");
-        if (file_s)
-            find_for_samp=0x1;
-        FILE *file_m = fopen(ptr_openmp, "r");
-        if (file_m)
-            find_for_omp=0x1;
-        fclose(file_s);
+		FILE *file_s = fopen(ptr_samp, "r");
+		if (file_s) {
+			find_for_samp = 0x1;
+			fclose(file_s);
+		}
+
+		FILE *file_m = fopen(ptr_openmp, "r");
+		if (file_m) {
+			find_for_omp = 0x1;
+			fclose(file_m);
+		}
 
         if (strncmp(ptr_command, "help", 4) == 0) {
             watchdogs_title("Watchdogs | @ help");

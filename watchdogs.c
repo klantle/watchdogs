@@ -467,12 +467,12 @@ int __init_wd(void)
                                 _compiler_,
                                 format_size_compiler,
                                 "%s \"%s\" -o\"%s\" %s -i\"%s\" \"%s\" > .wd_compiler.log 2>&1",
-                                wcfg.watchdogs_sef_found[0],                // compiler binary
+                                wcfg.watchdogs_sef_found[0],                   // compiler binary
                                 wcfg.wd_gamemode_input,                        // input file
-                                wcfg.wd_gamemode_output,                    // output file
-                                include_aio_path,                            // include search path
-                                path_include,                                // include directory
-                                wcfg.wd_compiler_opt                        // additional options
+                                wcfg.wd_gamemode_output,                       // output file
+                                include_aio_path,                              // include search path
+                                path_include,                                  // include directory
+                                wcfg.wd_compiler_opt                           // additional options
                             );
 
                             clock_gettime(CLOCK_MONOTONIC, &start);
@@ -537,12 +537,12 @@ int __init_wd(void)
                                     _compiler_,
                                     format_size_compiler,
                                     "%s \"gamemodes/%s\" -o\"%s.amx\" %s -i\"%s\" \"%s\" > .wd_compiler.log 2>&1",
-                                    wcfg.watchdogs_sef_found[0],                // compiler binary
-                                    compile_args,                                // input file
-                                    watchdogs_c_output_f_container,                // output file
-                                    include_aio_path,                            // include search path
-                                    path_include,                                // include directory
-                                    wcfg.wd_compiler_opt                        // additional options
+                                    wcfg.watchdogs_sef_found[0],                    // compiler binary
+                                    compile_args,                                   // input file
+                                    watchdogs_c_output_f_container,                 // output file
+                                    include_aio_path,                               // include search path
+                                    path_include,                                   // include directory
+                                    wcfg.wd_compiler_opt                            // additional options
                                 );
 
                                 if (ret < 0 || (size_t)ret >= (size_t)format_size_compiler) {

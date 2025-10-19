@@ -176,8 +176,8 @@ void watchdogs_server_samp(const char *gamemode_arg, const char *server_bin) {
         remove("server.cfg");
         rename(".server.cfg.bak", "server.cfg");
 
-        if (watchdogs_config.server_or_debug &&
-            !strcmp(watchdogs_config.server_or_debug, "debug"))
+        if (wcfg.server_or_debug &&
+            !strcmp(wcfg.server_or_debug, "debug"))
         {
             static int __watchdogs_os__;
                 __watchdogs_os__ = signal_system_os();
@@ -284,8 +284,8 @@ void watchdogs_server_openmp(const char *gamemode_arg, const char *server_bin) {
         remove("config.json");
         rename(".config.json.bak", "config.json");
 
-        if (watchdogs_config.server_or_debug &&
-            !strcmp(watchdogs_config.server_or_debug, "debug"))
+        if (wcfg.server_or_debug &&
+            !strcmp(wcfg.server_or_debug, "debug"))
         {
             static int __watchdogs_os__;
                 __watchdogs_os__ = signal_system_os();

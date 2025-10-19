@@ -85,16 +85,17 @@ const char* __command[] = {
         "stop",
         "title"
 };
-const size_t __command_len = sizeof(__command) / sizeof(__command[0]);
+const size_t
+	__command_len = sizeof(__command) / sizeof(__command[0]);
 
 inline void watchdogs_reset_var(void) {
-        wd watchdogs_config = {0};
+        wd wcfg = {0};
 }
 inline int watchdogs_sys(const char *cmd) {
         return system(cmd);
 }
 
-wd watchdogs_config = {
+wd wcfg = {
         .init_ipcc = 0,
         .watchdogs_sef_count = 0,
         .watchdogs_sef_found = { {0} },
@@ -107,15 +108,16 @@ wd watchdogs_config = {
 
 void reset_watchdogs_sef_dir()
 {
-    size_t MAX_ENTRIES = sizeof(watchdogs_config.watchdogs_sef_found) /
-                         sizeof(watchdogs_config.watchdogs_sef_found[0]);
+        size_t MAX_ENTRIES = sizeof(wcfg.watchdogs_sef_found) /
+                             sizeof(wcfg.watchdogs_sef_found[0]);
 
-    for (size_t i = 0; i < MAX_ENTRIES; ++i) {
-        watchdogs_config.watchdogs_sef_found[i][0] = '\0';
-    }
+        for (size_t i = 0;
+			 i < MAX_ENTRIES;
+			 ++i)
+            wcfg.watchdogs_sef_found[i][0] = '\0';
 
-    memset(watchdogs_config.watchdogs_sef_found, 0, sizeof(watchdogs_config.watchdogs_sef_found));
-    watchdogs_config.watchdogs_sef_count = 0;
+        memset(wcfg.watchdogs_sef_found, 0, sizeof(wcfg.watchdogs_sef_found));
+        wcfg.watchdogs_sef_count = 0;
 }
 
 inline void handle_sigint(int sig)
@@ -131,6 +133,28 @@ inline int watchdogs_title(const char *__title)
         printf("\033]0;%s\007", title);
         return 0;
 }
+
+void copy_strip_dot_if_no_slash(char *dst, size_t dst_sz, const char *src) {
+        if (!dst || dst_sz == 0 || !src) return;
+
+        const char *slash = strchr(src, '/');
+#ifdef _WIN32
+        if (!slash) slash = strchr(src, '\\');
+#endif
+
+        if (slash == NULL) {
+            const char *dot = strchr(src, '.');
+            if (dot) {
+                size_t len = (size_t)(dot - src);
+                if (len >= dst_sz) len = dst_sz - 1;
+                memcpy(dst, src, len);
+                dst[len] = '\0';
+                return;
+            }
+        }
+
+        snprintf(dst, dst_sz, "%s", src);
+    }
 
 void __escape_quotes(char *dest, size_t size, const char *src) {
         size_t j = 0;
@@ -282,9 +306,9 @@ const char* watchdogs_detect_os(void) {
 }
 
 int signal_system_os(void) {
-        if (strcmp(watchdogs_config.watchdogs_os, "windows") == 0)
+        if (strcmp(wcfg.watchdogs_os, "windows") == 0)
                 return 0x01;
-        else if (strcmp(watchdogs_config.watchdogs_os, "linux") == 0)
+        else if (strcmp(wcfg.watchdogs_os, "linux") == 0)
                 return 0x00;
         
         return 0;
@@ -315,7 +339,6 @@ int watchdogs_toml_data(void)
         else {
                 toml_files = fopen(fname, "w");
                 if (toml_files != NULL) {
-
                     if (find_gamemodes) {
                         const char *os_type = watchdogs_detect_os();
                         fprintf(toml_files, "[general]\n");
@@ -323,9 +346,13 @@ int watchdogs_toml_data(void)
                         fprintf(toml_files, "[compiler]\n");
                         fprintf(toml_files, "   option = \"-;+ -(+ -d3\"\n");
                         fprintf(toml_files, "   include_path = [\"sample1\", \"sample2\"]\n");
-                        fprintf(toml_files, "   input = \"%s.pwn\"\n", watchdogs_config.watchdogs_sef_found[0]);
-
-                        fprintf(toml_files, "   output = \"%s.amx\"\n", watchdogs_config.watchdogs_sef_found[0]);
+                        char i_path_rm[PATH_MAX];
+                        snprintf(i_path_rm, sizeof(i_path_rm), "%s", wcfg.watchdogs_sef_found[0]);
+                        char *f_EXT = strrchr(i_path_rm, '.');
+                        if (f_EXT && strcmp(f_EXT, ".pwn") == 0)
+                            *f_EXT = '\0';
+                        fprintf(toml_files, "   input = \"%s.pwn\"\n", i_path_rm);
+                        fprintf(toml_files, "   output = \"%s.amx\"\n", i_path_rm);
                         fclose(toml_files);
                     }
                     else {
@@ -353,7 +380,7 @@ int watchdogs_toml_data(void)
         toml_table_t *_watchdogs_general = toml_table_in(config, "general");
         if (_watchdogs_general) {
                 toml_datum_t os_val = toml_string_in(_watchdogs_general, "os");
-                if (os_val.ok) watchdogs_config.watchdogs_os = os_val.u.s;
+                if (os_val.ok) wcfg.watchdogs_os = os_val.u.s;
         }
 
         return 0;
@@ -362,8 +389,15 @@ int watchdogs_toml_data(void)
 static void join_path(char *out, size_t out_sz, const char *dir, const char *name) {
         if (!out || out_sz == 0) return;
         size_t dir_len = strlen(dir);
-        int dir_has_sep = (dir_len > 0 && (dir[dir_len - 1] == '/' || dir[dir_len - 1] == '\\')),
-            name_has_leading_sep = (name[0] == '/' || name[0] == '\\');
+
+#ifdef _WIN32
+        #define IS_PATH_SEP(c) ((c) == '/' || (c) == '\\')
+#else
+        #define IS_PATH_SEP(c) ((c) == '/')
+#endif
+
+        int dir_has_sep = (dir_len > 0 && IS_PATH_SEP(dir[dir_len - 1])),
+            name_has_leading_sep = IS_PATH_SEP(name[0]);
 
         if (dir_has_sep) {
             if (name_has_leading_sep) {
@@ -376,12 +410,12 @@ static void join_path(char *out, size_t out_sz, const char *dir, const char *nam
             if (name_has_leading_sep)
                 snprintf(out, out_sz, "%s%s", dir, name);
             else
-                snprintf(out, out_sz, "%s\\%s", dir, name);
+                snprintf(out, out_sz, "%s%s%s", dir, PATH_SEP, name);
 #else
             if (name_has_leading_sep)
                 snprintf(out, out_sz, "%s%s", dir, name);
             else
-                snprintf(out, out_sz, "%s/%s", dir, name);
+                snprintf(out, out_sz, "%s%s%s", dir, PATH_SEP, name);
 #endif
         }
         out[out_sz - 1] = '\0';
@@ -420,17 +454,17 @@ int watchdogs_sef_fdir(const char *sef_path, const char *sef_name) {
             } else {
                 if (strchr(sef_name, '*') || strchr(sef_name, '?')) {
                     if (PathMatchSpecA(name, sef_name)) {
-                        strncpy(watchdogs_config.watchdogs_sef_found[watchdogs_config.watchdogs_sef_count],
+                        strncpy(wcfg.watchdogs_sef_found[wcfg.watchdogs_sef_count],
                                 path_buff, SEF_PATH_SIZE);
-                        watchdogs_config.watchdogs_sef_count++;
+                        wcfg.watchdogs_sef_count++;
                         FindClose(hFind);
                         return 1;
                     }
                 } else {
                     if (strcmp(name, sef_name) == 0) {
-                        strncpy(watchdogs_config.watchdogs_sef_found[watchdogs_config.watchdogs_sef_count],
+                        strncpy(wcfg.watchdogs_sef_found[wcfg.watchdogs_sef_count],
                                 path_buff, SEF_PATH_SIZE);
-                        watchdogs_config.watchdogs_sef_count++;
+                        wcfg.watchdogs_sef_count++;
                         FindClose(hFind);
                         return 1;
                     }
@@ -452,9 +486,9 @@ int watchdogs_sef_fdir(const char *sef_path, const char *sef_name) {
 
         while ((entry = readdir(dir)) != NULL) {
             if (entry->d_name[0] == '.' &&
-                (entry->d_name[1] == '\0' ||
-                 (entry->d_name[1] == '.' && entry->d_name[2] == '\0')))
-                continue;
+               (entry->d_name[1] == '\0' ||
+               (entry->d_name[1] == '.' && entry->d_name[2] == '\0')))
+               continue;
 
             join_path(path_buff, sizeof(path_buff), sef_path, entry->d_name);
 
@@ -466,17 +500,17 @@ int watchdogs_sef_fdir(const char *sef_path, const char *sef_name) {
             } else if (entry->d_type == DT_REG) {
                 if (strchr(sef_name, '*') || strchr(sef_name, '?')) {
                     if (fnmatch(sef_name, entry->d_name, 0) == 0) {
-                        strncpy(watchdogs_config.watchdogs_sef_found[watchdogs_config.watchdogs_sef_count],
+                        strncpy(wcfg.watchdogs_sef_found[wcfg.watchdogs_sef_count],
                                 path_buff, SEF_PATH_SIZE);
-                        watchdogs_config.watchdogs_sef_count++;
+                        wcfg.watchdogs_sef_count++;
                         closedir(dir);
                         return 1;
                     }
                 } else {
                     if (strcmp(entry->d_name, sef_name) == 0) {
-                        strncpy(watchdogs_config.watchdogs_sef_found[watchdogs_config.watchdogs_sef_count],
+                        strncpy(wcfg.watchdogs_sef_found[wcfg.watchdogs_sef_count],
                                 path_buff, SEF_PATH_SIZE);
-                        watchdogs_config.watchdogs_sef_count++;
+                        wcfg.watchdogs_sef_count++;
                         closedir(dir);
                         return 1;
                     }
@@ -493,17 +527,17 @@ int watchdogs_sef_fdir(const char *sef_path, const char *sef_name) {
                 } else if (S_ISREG(statbuf.st_mode)) {
                     if (strchr(sef_name, '*') || strchr(sef_name, '?')) {
                         if (fnmatch(sef_name, entry->d_name, 0) == 0) {
-                            strncpy(watchdogs_config.watchdogs_sef_found[watchdogs_config.watchdogs_sef_count],
+                            strncpy(wcfg.watchdogs_sef_found[wcfg.watchdogs_sef_count],
                                     path_buff, SEF_PATH_SIZE);
-                            watchdogs_config.watchdogs_sef_count++;
+                            wcfg.watchdogs_sef_count++;
                             closedir(dir);
                             return 1;
                         }
                     } else {
                         if (strcmp(entry->d_name, sef_name) == 0) {
-                            strncpy(watchdogs_config.watchdogs_sef_found[watchdogs_config.watchdogs_sef_count],
+                            strncpy(wcfg.watchdogs_sef_found[wcfg.watchdogs_sef_count],
                                     path_buff, SEF_PATH_SIZE);
-                            watchdogs_config.watchdogs_sef_count++;
+                            wcfg.watchdogs_sef_count++;
                             closedir(dir);
                             return 1;
                         }
@@ -641,8 +675,8 @@ install_pawncc_now(void) {
         char pawncc_dest_path[512] = {0}, pawncc_exe_dest_path[512] = {0},
              pawndisasm_dest_path[512] = {0}, pawndisasm_exe_dest_path[512] = {0};
 
-        for (int i = 0; i < watchdogs_config.watchdogs_sef_count; i++) {
-            const char *entry = watchdogs_config.watchdogs_sef_found[i];
+        for (int i = 0; i < wcfg.watchdogs_sef_count; i++) {
+            const char *entry = wcfg.watchdogs_sef_found[i];
             if (!entry) continue;
 
             if (strstr(entry, "pawncc.exe")) {
@@ -685,10 +719,10 @@ install_pawncc_now(void) {
 
                 int find_libpawnc = watchdogs_sef_fdir(".", "libpawnc.so");
                 char libpawnc_dest_path[1024];
-                for (int i = 0; i < watchdogs_config.watchdogs_sef_count; i++) {
-                        if (strstr(watchdogs_config.watchdogs_sef_found[i], "libpawnc.so")) {
+                for (int i = 0; i < wcfg.watchdogs_sef_count; i++) {
+                        if (strstr(wcfg.watchdogs_sef_found[i], "libpawnc.so")) {
                                 snprintf(libpawnc_dest_path, sizeof(libpawnc_dest_path), "%s",
-                                                                                                watchdogs_config.watchdogs_sef_found[i]);
+                                                                                                wcfg.watchdogs_sef_found[i]);
                                 break;
                         }
                 }

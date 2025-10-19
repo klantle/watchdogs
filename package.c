@@ -124,7 +124,7 @@ watch_pawncc(const char *platform) {
                     termux_versions[pcc_sel_index], termux_versions[pcc_sel_index], arch);
             sprintf(fname_sel, "pawncc-%s-%s.zip", termux_versions[pcc_sel_index], arch);
 
-            watchdogs_config.init_ipcc = 1;
+            wcfg.init_ipcc = 1;
             watchdogs_download_file(url_sel, fname_sel);
             return;
         }
@@ -171,7 +171,7 @@ watch_pawncc(const char *platform) {
                 pcc_base_repo, list_versions[pcc_sel_index], list_versions[pcc_sel_index], platform, pcc_archive_ext);
         sprintf(fname_sel, "pawnc-%s-%s.%s", list_versions[pcc_sel_index], platform, pcc_archive_ext);
 
-        watchdogs_config.init_ipcc = 1;
+        wcfg.init_ipcc = 1;
         watchdogs_download_file(url_sel, fname_sel);
 }
 

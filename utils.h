@@ -24,7 +24,7 @@ typedef struct {
         const char *wd_gamemode_output;
 } wd;
 
-extern wd watchdogs_config;
+extern wd wcfg;
 
 void reset_watchdogs_sef_dir();
 struct struct_of { int (*title)(const char *); };
@@ -34,6 +34,7 @@ void watchdogs_reset_var(void);
 int watchdogs_sys(const char *cmd);
 void handle_sigint(int sig);
 int watchdogs_title(const char *__title);
+void copy_strip_dot_if_no_slash(char *dst, size_t dst_sz, const char *src);
 void escape_quotes(char *dest, size_t size, const char *src);
 extern const char* __find_c_command(
     const char *ptr_command,

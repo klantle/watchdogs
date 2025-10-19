@@ -26,6 +26,7 @@ typedef struct {
 
 extern wd watchdogs_config;
 
+void reset_watchdogs_sef_dir();
 struct struct_of { int (*title)(const char *); };
 extern const char* __command[];
 extern const size_t __command_len;

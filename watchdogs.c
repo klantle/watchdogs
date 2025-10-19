@@ -4,41 +4,51 @@
  * This program serves as a comprehensive management tool for running,
  * compiling, and controlling multiplayer game servers, specifically
  * SA-MP (San Andreas Multiplayer) and Open.MP servers, along with
- * Pawno/Pawncc-PawnCC compilation for gamemodes. It provides an interactive
- * command-line interface to execute various tasks such as starting,
- * stopping, compiling, and debugging server projects.
+ * Pawn / PawnCC compilation for gamemodes. It provides an interactive
+ * command-line interface to execute tasks such as starting,
+ * stopping, compiling, debugging, and installing server projects
+ * and compilers.
  *
  *
  * Script Algorithm:
  * ------------------------------------------------------------
  * 1. Initialize the program:
  *      - Load configuration from TOML files.
- *      - Set up user history for commands.
- *      - Reset internal state variables.
- * 2. Present the command prompt to the user (`watchdogs > `).
- * 3. Handle user commands:
- *      - `help`    : Show available commands and their usage.
+ *      - Set up user command history (via readline/history).
+ *      - Reset internal state variables and directories.
+ * 2. Enter main loop (`__init_wd()`):
+ *      - Display prompt (`watchdogs > `).
+ *      - Read user input, add to history, parse command.
+ *      - Detect OS type (Windows, Linux, Termux) to adapt binary names & permissions.
+ *      - Check presence of server binaries (samp-server / omp-server).
+ * 3. Command handling for built-in commands:
+ *      - `help`    : Show available commands and usage.
  *      - `exit`    : Quit the watchdogs program.
- *      - `clear`   : Clear the terminal display.
- *      - `kill`    : Restart the terminal session.
+ *      - `clear`   : Clear the terminal screen.
+ *      - `kill`    : Restart the session (clears screen, reinitialises).
  *      - `title`   : Set the terminal window title.
- *      - `compile` : Compile gamemodes using pawncc.
- *      - `running` : Run a SA-MP server.
- *      - `debug`   : Run a server in debug mode.
- *      - `stop`    : Stop all running servers.
- *      - `restart` : Stop and then restart servers.
- *      - `pawncc`  : Install or run pawn compiler for a specific platform.
- *      - `gamemode`: Install or run gamemodes for a specific platform.
- * 4. For server launching commands:
- *      - Detect OS type (Windows, Linux, or Termux).
- *      - Verify existence of server binaries (`samp-server` or `omp-server`).
- *      - Adjust permissions to make binaries executable.
- *      - Execute server binaries and optionally display logs.
- * 5. For compilation commands:
- *      - Read `watchdogs.toml` configuration.
- *      - Determine include paths and compiler options.
- *      - Build full compiler command and log output.
- *      - Track compilation duration and report errors if any.
+ *      - `compile` : Compile gamemodes using PawnCC with configured paths.
+ *      - `running` : Start a SA-MP or Open.MP server (standard mode).
+ *      - `debug`   : Start a server in debug mode.
+ *      - `stop`    : Stop all running servers/tasks.
+ *      - `restart` : Stop then restart servers/tasks.
+ *      - `pawncc`  : Install or run the Pawn compiler for a selected platform.
+ *      - `gamemode`: Install or run gamemodes for a selected platform.
+ * 4. For compilation (`compile` command):
+ *      - Read `watchdogs.toml` config to get compiler options, include paths,
+ *        gamemode input/output filenames.
+ *      - Build full compiler command (via `snprintf`), log output to
+ *        `.wd_compiler.log`.
+ *      - Measure compilation duration (using `clock_gettime(CLOCK_MONOTONIC,…)`).
+ *      - After compile, inspect log and delete output binary if errors found.
+ * 5. For server launch commands (`running` / `debug`):
+ *      - Use OS-specific binary names for server (e.g., `samp03svr` vs `samp-server.exe`).
+ *      - Backup config (e.g., `server.cfg` or `config.json`), adjust gamemode/script path,
+ *        set execute permissions (`chmod` / `_chmod`).
+ *      - Launch server (e.g., via `watchdogs_sys()` wrapper).
+ *      - In interactive mode, after start wait for user to press Enter to display logs
+ *        (e.g., `server_log.txt` or `log.txt`).
+ *      - On completion or stop, restore original config backup.
  *
  *
  * Script Logic:
@@ -46,58 +56,98 @@
  * Key Functions:
  *
  * > `__init()`:
- *    - Set up signal handlers.
- *    - Call `__init_function()` to initialize state.
- *    - Start the main loop with `__init_wd()`.
+ *    - Set up `SIGINT` handler to `handle_sigint`.
+ *    - Loop infinitely by calling `__init_wd()`.
  *
  * > `__init_wd()`:
- *    - Read user input using `readline`.
- *    - Parse and execute commands (help, compile, running, debug, stop, restart, pawncc, gamemode, etc.).
- *    - Handle OS-specific paths and binaries.
- *    - Provide interactive prompts for gamemode or compiler selection.
+ *    - Calls `__init_function()` which sets up title, loads config, user history,
+ *      resets variables and directories.
+ *    - Shows command prompt, reads input, adds to history.
+ *    - Detects OS, determines server binary names.
+ *    - Locates server binaries for SA-MP and Open.MP.
+ *    - Parses user command and maps to handler:
+ *         * `help`, `exit`, `clear`, `kill`, `title`
+ *         * `pawncc`, `gamemode`
+ *         * `compile` — invokes compilation logic
+ *         * `running` / `debug` — invokes server launch logic
+ *         * `stop`, `restart` — server control logic
+ *    - If unknown command but close match detected (via `__find_c_command()`),
+ *      suggests the closest command.
+ *
+ * > Compilation flow (`compile`):
+ *    - Determine Pawn compiler binary based on OS.
+ *    - Parse `watchdogs.toml`:
+ *         * Compiler `option`
+ *         * Compiler `output` filename
+ *         * Include paths array
+ *         * Input gamemode file
+ *    - Construct include path string (`-i"path"` segments) for all include entries.
+ *    - Determine path for gamemodes directory and find selected gamemode via `watchdogs_sef_fdir()`.
+ *    - Build output container path (`watchdogs_c_output_f_container`) based on detected container dir.
+ *    - Build command string via `snprintf(_compiler_, …, "%s %s \"%s\" -o \"%s\" -i \"%s\" \"%s\" …")`.
+ *    - Validate `snprintf()` result (check return value whether truncated).
+ *    - Start timer (`clock_gettime`) , execute compile via `watchdogs_sys()`, stop timer.
+ *    - Read `.wd_compiler.log`, print log to stdout, scan for “error” keywords: if found,
+ *      delete output binary.
+ *    - Print compilation duration `[Finished in X.XXXs]`.
+ *
+ * > Server run / debug flow (`running` / `debug`):
+ *    - If SA-MP binary available:
+ *         * If no gamemode argument or dot (.), reset logs, set permissions, run `./samp-server`.
+ *         * Else call `watchdogs_server_samp(gamemode, server_bin)`.
+ *    - If Open.MP binary available:
+ *         * Similar logic with `./omp-server` and `watchdogs_server_openmp()`.
+ *    - If neither binary found, prompt user to install via `watch_samp()` or `watch_samp("windows"/"linux")`.
+ *    - On debug mode, internal variable `server_or_debug` set to `"debug"`.
  *
  * > `watchdogs_server_samp(const char *gamemode, const char *server_bin)`:
  *    - Backup `server.cfg`.
- *    - Update the gamemode file path in configuration.
- *    - Set execute permissions.
- *    - Run the SA-MP server and display `server_log.txt`.
- *    - Restore configuration file after completion.
+ *    - Update gamemode line in `server.cfg` to selected gamemode file.
+ *    - Set executable permission for server binary.
+ *    - Launch SA-MP server, then wait for user interaction to view `server_log.txt`.
+ *    - On exit restore `server.cfg` backup.
  *
  * > `watchdogs_server_openmp(const char *gamemode, const char *server_bin)`:
  *    - Backup `config.json`.
- *    - Update the `main_scripts` array with the selected gamemode.
- *    - Set execute permissions.
- *    - Run the Open.MP server and display `log.txt`.
- *    - Restore configuration file after completion.
+ *    - Modify `main_scripts` array to include selected gamemode.
+ *    - Set executable permission for server binary.
+ *    - Launch Open.MP server, then let user view `log.txt` after run.
+ *    - Restore `config.json` backup.
  *
  * > `watch_pawncc(platform)`:
- *    - Install or run PawnCC compiler for the selected platform.
+ *    - Install or run PawnCC compiler for the selected platform (linux/windows/termux).
+ *    - Handles user prompt selection, calls `watch_pawncc("linux")`, etc.
  *
- * > `watch_pawncc`, `watch_samp`:
- *    - Install necessary server binaries or compilers for selected OS.
+ * > `watch_samp(platform)`:
+ *    - Install SA-MP server binaries for specified platform (linux/windows).
  *
  *
  * How to Use?:
  * ------------------------------------------------------------
- * 1. Compile the program along with all dependencies (`watchdogs.h`, `color.h`, `utils.h`, `crypto.h`, `archive.h`, `curl.h`, etc.).
- * 2. Run the binary: `./watchdogs` (Linux/Unix) or `watchdogs.exe` (Windows).
- * 3. Use the interactive prompt to execute commands:
- *      - `help` to see available commands.
- *      - `compile` to build gamemodes.
- *      - `running` or `debug` to run servers.
- *      - `stop` or `restart` to manage server processes.
- * 4. Ensure that gamemodes and binaries exist in the working directory.
- * 5. In debug mode, processes are cleaned up automatically based on OS.
- * 6. User interaction will guide through gamemode selection, platform selection, and log viewing.
- *
+ * 1. Compile the program along with dependencies (`watchdogs.h`, `color.h`, `utils.h`,
+ *    `crypto.h`, `archive.h`, `curl.h`, etc.).
+ * 2. Execute binary:
+ *      - On Linux/Unix: `./watchdogs`
+ *      - On Windows: `watchdogs.exe`
+ * 3. Use the interactive prompt at `watchdogs > `:
+ *      - `help` : list commands
+ *      - `compile` : build gamemodes
+ *      - `pawncc` / `gamemode` : install / select platform
+ *      - `running` / `debug` : run or debug a server
+ *      - `stop` / `restart` : manage servers
+ * 4. Ensure that gamemodes, server binaries and config files exist in working directory.
+ * 5. In debug or run mode, you will be prompted (e.g., “Press enter to print logs..”) to view the server log.
+ * 6. Program handles OS differences automatically (permissions, binary names, signals).
  *
  * Notes:
  * ------------------------------------------------------------
- * - Fully compatible with Windows, Linux, and Termux environments.
- * - Uses temporary backups to avoid overwriting configuration files.
- * - Makes server binaries executable via `chmod` or `_chmod`.
- * - Provides detailed logs for compilation and runtime errors.
- * - Handles OS-specific differences automatically (paths, signals, file permissions).
+ * - Compatible with Windows, Linux and Termux environments.
+ * - Uses backups for config files to prevent overwriting originals.
+ * - Sets executable permissions on server binaries when needed.
+ * - Provides detailed log outputs for compile & runtime errors.
+ * - Scanner searches for “error” keyword in compile log to detect failure.
+ * - On unknown command, suggests the closest known command if within distance threshold.
+ * - Uses `readline()` + `history` for better interactive user experience.
  */
 #ifndef _GNU_SOURCE
     #define _GNU_SOURCE
@@ -151,10 +201,13 @@ void __init_function(void) {
         watchdogs_toml_data();
         watchdogs_u_history();
         watchdogs_reset_var();
+        reset_watchdogs_sef_dir();
 }
 
 int __init_wd(void)
 {
+
+__init_function();
 	    char *ptr_command = readline("watchdogs > ");
 	    if (!ptr_command) return -1;
 	    watchdogs_a_history(ptr_command);
@@ -340,33 +393,37 @@ int __init_wd(void)
                     toml_array_t *include_paths = toml_array_in(watchdogs_compiler, "include_path");
                     if (include_paths) {
                         int array_size = toml_array_nelem(include_paths);
-                        char all_paths[250] = {0};
+                        char include_aio_path[250] = {0};
         
                         for (int i = 0; i < array_size; i++) {
                             toml_datum_t path_val = toml_string_at(include_paths, i);
                             if (path_val.ok) {
                                 if (i > 0)
-                                    strcat(all_paths, " ");
-                                snprintf(all_paths + strlen(all_paths), sizeof(all_paths) - strlen(all_paths), "-i\"%s\"", path_val.u.s);
+                                    strcat(include_aio_path, " ");
+                                snprintf(include_aio_path + strlen(include_aio_path), sizeof(include_aio_path) - strlen(include_aio_path), "-i\"%s\"", path_val.u.s);
                             }
                         }
         
                         static char wd_gamemode[56];
-                        if (*arg == '\0' || arg == ".") {
+                        if (*arg == '\0' || !strcmp(arg, ".")) {
                             toml_datum_t watchdogs_gmodes = toml_string_in(watchdogs_compiler, "input");
                             if (watchdogs_gmodes.ok) {
                                 watchdogs_config.wd_gamemode_input = watchdogs_gmodes.u.s;
                             }
                             
-                            // Search for the specified gamemode file inside the "gamemodes/" directory.
+                            // Search for the specified gamemode file inside the "gamemodes" directory.
                             // 'watchdogs_config.wd_gamemode_input' holds the name of the gamemode to find.
                             // The result is stored in 'find_gamemodes':
                             //     - If the file is found, 'find_gamemodes' will be set to 1.
                             //     - If the file is not found, 'find_gamemodes' will be set to 0.
                             // This is typically used to verify that the gamemode exists before proceeding.
-                            int find_gamemodes = watchdogs_sef_fdir("gamemodes/", watchdogs_config.wd_gamemode_input);
+                            int find_gamemodes = watchdogs_sef_fdir("gamemodes", watchdogs_config.wd_gamemode_input);
                             if (find_gamemodes) {
-                                char* container_output = strdup(watchdogs_config.watchdogs_sef_found[1]);
+								char* container_output;
+								if (watchdogs_config.watchdogs_sef_count > 1) {
+									container_output = strdup(watchdogs_config.watchdogs_sef_found[1]);
+								}	
+								
                                 char* f_last_slash_container = strrchr(container_output, '/');
                                 if (f_last_slash_container != NULL && *(f_last_slash_container + 1) != '\0')
                                     *(f_last_slash_container + 1) = '\0';
@@ -386,14 +443,81 @@ int __init_wd(void)
                                 } else if (find_for_omp == 0x1) {
                                     path_include="qawno/include";
                                 }
+                                
+								int ret = snprintf(
+									_compiler_,
+									format_size_compiler,
+									"%s %s \"%s\" -o \"%s\" -i \"%s\" \"%s\" > .wd_compiler.log 2>&1",
+									watchdogs_config.watchdogs_sef_found[0],  // compiler binary
+									include_aio_path,                         // include search path
+									watchdogs_config.wd_gamemode_input,       // input file
+									watchdogs_c_output_f_container,           // output file
+									path_include,                             // include directory
+									watchdogs_config.wd_compiler_opt          // additional options
+								);
 
-                                snprintf(_compiler_, format_size_compiler, "%s %s \"%s\" -o\"%s\" -i\"%s\" \"%s\" > .wd_compiler.log 2>&1",
-                                    watchdogs_config.watchdogs_sef_found[0],    /// %s 1
-                                    all_paths,                                 /// %s 2
-                                    watchdogs_config.wd_gamemode_input,       /// %s 3
-                                    watchdogs_c_output_f_container,          /// %s 4
-                                    path_include,                           /// %s 5
-                                    watchdogs_config.wd_compiler_opt);     /// %s 6
+								if (ret < 0 || (size_t)ret >= (size_t)format_size_compiler) {
+									fprintf(stderr, "[Error] snprintf() failed or buffer too small (needed %d bytes)\n", ret);
+								}
+
+                                clock_gettime(CLOCK_MONOTONIC, &start);
+                                watchdogs_sys(_compiler_);
+                                clock_gettime(CLOCK_MONOTONIC, &end);
+
+                                procc_f = fopen(".wd_compiler.log", "r");
+                                if (procc_f) {
+                                    int ch;
+                                    while ((ch = fgetc(procc_f)) != EOF) {
+                                        putchar(ch);
+                                    }
+                                }
+
+                                while (fscanf(procc_f, "%s", error_compiler_check) != EOF) {
+                                    if (strcmp(error_compiler_check, "error") == 0) {
+                                        FILE *c_output;
+                                        c_output = fopen(watchdogs_c_output_f_container, "r");
+                                        if (c_output)
+                                            remove(watchdogs_c_output_f_container);
+                                        break;
+                                    }
+                                }
+                            
+                                fclose(procc_f);
+
+                                compiler_dur = (end.tv_sec - start.tv_sec) + (end.tv_nsec - start.tv_nsec) / 1e9;
+                                printf("[Finished in %.3fs]\n", compiler_dur);
+
+                            } else {
+                                char* container_output = strdup(watchdogs_config.watchdogs_sef_found[1]);
+                                char* f_last_slash_container = strrchr(container_output, '/');
+                                if (f_last_slash_container != NULL && *(f_last_slash_container + 1) != '\0')
+                                    *(f_last_slash_container + 1) = '\0';
+
+                                snprintf(watchdogs_c_output_f_container, format_size_c_f_container, "%s%s",
+                                    container_output, watchdogs_config.wd_gamemode_output);
+
+                                struct timespec start, end;
+                                double compiler_dur;
+
+                                char
+                                    *path_include = NULL;
+                                if (find_for_samp == 0x1) {
+                                    path_include="pawno/include";
+                                } else if (find_for_omp == 0x1) {
+                                    path_include="qawno/include";
+                                }
+
+								int ret = snprintf(
+									_compiler_,
+									format_size_compiler,
+									"%s %s \"%s\" -o \"%s\" -i \"%s\" \"%s\" > .wd_compiler.log 2>&1",
+									watchdogs_config.watchdogs_sef_found[0],  // compiler binary
+									include_aio_path,                         // include search path
+									watchdogs_config.wd_gamemode_input,       // input file
+									watchdogs_c_output_f_container,           // output file
+									path_include,                             // include directory
+									watchdogs_config.wd_compiler_opt          // additional options
+								);
 
                                 clock_gettime(CLOCK_MONOTONIC, &start);
                                 watchdogs_sys(_compiler_);
@@ -426,21 +550,32 @@ int __init_wd(void)
                                     _compiler_ = NULL;
                                 }
 
-                            } else {
-                                printf_color(COL_RED, "Can't locate: ");
-                                printf("%s\n", watchdogs_config.wd_gamemode_input);
+								if (container_output) {
+									free(container_output);
+									container_output = NULL;
+								}
+
+								if (compile_args) {
+									free(compile_args);
+									compile_args = NULL;
+								}
                                 return 0;
                             }
                         } else {
-                            // Search for the specified gamemode file inside the "gamemodes/" directory.
+                            // Search for the specified gamemode file inside the "gamemodes" directory.
                             // 'watchdogs_config.wd_gamemode_input' holds the name of the gamemode to find.
                             // The result is stored in 'find_gamemodes_arg1':
                             //     - If the file is found, 'find_gamemodes_arg1' will be set to 1.
                             //     - If the file is not found, 'find_gamemodes_arg1' will be set to 0.
                             // This is typically used to verify that the gamemode exists before proceeding.
-                            int find_gamemodes_arg1 = watchdogs_sef_fdir("gamemodes/", compile_args);
+                            int find_gamemodes_arg1 = watchdogs_sef_fdir("gamemodes", compile_args);
                             if (find_gamemodes_arg1) {
-                                char* container_output = strdup(watchdogs_config.watchdogs_sef_found[1]);
+								char* container_output;
+								if (watchdogs_config.watchdogs_sef_count > 1) {
+
+									container_output = strdup(watchdogs_config.watchdogs_sef_found[1]);
+								}
+
                                 char* f_last_slash_container = strrchr(container_output, '/');
                                 if (f_last_slash_container != NULL && *(f_last_slash_container + 1) != '\0')
                                     *(f_last_slash_container + 1) = '\0';
@@ -460,14 +595,22 @@ int __init_wd(void)
                                 } else if (find_for_omp == 0x1) {
                                     path_include="qawno/include";
                                 }
+                                
+								int ret = snprintf(
+									_compiler_,
+									format_size_compiler,
+									"%s %s \"%s\" -o \"%s\" -i \"%s\" \"%s\" > .wd_compiler.log 2>&1",
+									watchdogs_config.watchdogs_sef_found[0],  // compiler binary
+									include_aio_path,                         // include search path
+									watchdogs_config.wd_gamemode_input,       // input file
+									watchdogs_c_output_f_container,           // output file
+									path_include,                             // include directory
+									watchdogs_config.wd_compiler_opt          // additional options
+								);
 
-                                snprintf(_compiler_, format_size_compiler, "%s %s \"%s\" -o\"%s\" -i\"%s\" \"%s\" > .wd_compiler.log 2>&1",
-                                    watchdogs_config.watchdogs_sef_found[0],    /// %s 1
-                                    all_paths,                                 /// %s 2
-                                    compile_args,                             /// %s 3
-                                    watchdogs_c_output_f_container,          /// %s 4
-                                    path_include,                           /// %s 5
-                                    watchdogs_config.wd_compiler_opt);     /// %s 6
+								if (ret < 0 || (size_t)ret >= (size_t)format_size_compiler) {
+									fprintf(stderr, "[Error] snprintf() failed or buffer too small (needed %d bytes)\n", ret);
+								}
                                 
                                 clock_gettime(CLOCK_MONOTONIC, &start);
                                 watchdogs_sys(_compiler_);
@@ -494,11 +637,21 @@ int __init_wd(void)
 
                                 compiler_dur = (end.tv_sec - start.tv_sec) + (end.tv_nsec - start.tv_nsec) / 1e9;
                                 printf("[Finished in %.3fs]\n", compiler_dur);
-                                
+
                                 if (_compiler_) {
                                     free(_compiler_);
                                     _compiler_ = NULL;
                                 }
+
+								if (container_output) {
+									free(container_output);
+									container_output = NULL;
+								}
+
+								if (compile_args) {
+									free(compile_args);
+									compile_args = NULL;
+								}
                             } else {
                                 printf_color(COL_RED, "Can't locate: ");
                                 printf("%s\n", compile_args);
@@ -697,7 +850,6 @@ int __init_wd(void)
 void __init(int sig_unused) {
         (void)sig_unused;
         signal(SIGINT, handle_sigint);
-        __init_function();
         while (1) {
             __init_wd();
         }

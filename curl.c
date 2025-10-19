@@ -94,9 +94,9 @@
 #include "watchdogs.h"
 
 static size_t write_file(void *ptr,
-                  size_t size,
-                  size_t nmemb,
-                  FILE *stream
+                         size_t size,
+                         size_t nmemb,
+                         FILE *stream
 ) {
         size_t written = fwrite(ptr, size, nmemb, stream);
         return written;
@@ -108,11 +108,11 @@ static int progress_callback(void *ptr,
                              curl_off_t ultotal,
                              curl_off_t ulnow)
 {
-    if (dltotal > 0 && dlnow <= 1000) {
-        printf("\rDownloading ...");
-        fflush(stdout);
-    }
-    return 0;
+        if (dltotal > 0 && dlnow <= 1000) {
+            printf("\rDownloading ...");
+            fflush(stdout);
+        }
+        return 0;
 }
 
 int watchdogs_download_file(const char *url, const char *fname) {

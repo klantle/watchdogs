@@ -144,6 +144,9 @@
     #define _GNU_SOURCE
 #endif 
 
+/* debugging */
+#define DEBUGGING_COMPILER
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -233,6 +236,7 @@ int __init_wd(void)
         FILE *file_m = fopen(ptr_openmp, "r");
         if (file_m)
             find_for_omp=0x1;
+        fclose(file_s);
 
         if (strncmp(ptr_command, "help", 4) == 0) {
             watchdogs_title("Watchdogs | @ help");
@@ -377,16 +381,26 @@ int __init_wd(void)
                 }
 
                 FILE *procc_f = fopen("watchdogs.toml", "r");
-                if (!procc_f)
+                if (!procc_f) {
                     printf_error("Can't read file %s\n", "watchdogs.toml");
-        
+					if (_compiler_) {
+						free(_compiler_);
+					}
+					return 0;
+				}
+				
                 char errbuf[256];
                 toml_table_t *config = toml_parse_file(procc_f, errbuf, sizeof(errbuf));
                 fclose(procc_f);
         
-                if (!config)
-                    printf_error("error parsing TOML: %s\n", errbuf);
-        
+                if (!config) {
+                    printf_error("error parsing TOML: %s\n", errbuf);	
+                    if (_compiler_) {
+						free(_compiler_);
+					}
+					return 0;
+				}
+				
                 toml_table_t *watchdogs_compiler = toml_table_in(config, "compiler");
                 if (watchdogs_compiler) {
                     toml_datum_t option_val = toml_string_in(watchdogs_compiler, "option");
@@ -406,36 +420,29 @@ int __init_wd(void)
                         int array_size = toml_array_nelem(include_paths);
                         char include_aio_path[250] = {0};
         
-                        for (int i = 0; i < array_size; i++) {
-                            for (int i = 0; i < array_size; i++) {
-								toml_datum_t path_val = toml_string_at(include_paths, i);
-								if (path_val.ok) {
-									char processed[250];
-									copy_strip_dot_if_no_slash(processed, sizeof(processed), path_val.u.s);
-
-									if (processed[0] == '\0') {
-										continue;
-									}
-
-									if (i > 0) {
-										size_t cur = strlen(include_aio_path);
-										if (cur < sizeof(include_aio_path) - 1) {
-											snprintf(include_aio_path + cur,
-													 sizeof(include_aio_path) - cur,
-													 " ");
-										}
-									}
-
+						for (int i = 0; i < array_size; i++) {
+							toml_datum_t path_val = toml_string_at(include_paths, i);
+							if (path_val.ok) {
+								char __procc[250];
+								__copy_strip_dotfns(__procc, sizeof(__procc), path_val.u.s);
+								if (__procc[0] == '\0') continue;
+								if (i > 0) {
 									size_t cur = strlen(include_aio_path);
 									if (cur < sizeof(include_aio_path) - 1) {
 										snprintf(include_aio_path + cur,
 												 sizeof(include_aio_path) - cur,
-												 "-i\"%s\"",
-												 processed);
+												 " ");
 									}
 								}
+								size_t cur = strlen(include_aio_path);
+								if (cur < sizeof(include_aio_path) - 1) {
+									snprintf(include_aio_path + cur,
+											 sizeof(include_aio_path) - cur,
+											 "-i\"%s\"",
+											 __procc);
+								}
 							}
-                        }
+						}
         
                         static char wd_gamemode[56];
                         if (arg == NULL || *arg == '\0') {
@@ -456,16 +463,16 @@ int __init_wd(void)
 								_compiler_,
 								format_size_compiler,
 								"%s \"%s\" -o\"%s\" %s -i\"%s\" \"%s\" > .wd_compiler.log 2>&1",
-								wcfg.watchdogs_sef_found[0],  // compiler binary
-								wcfg.wd_gamemode_input,       // input file
-								wcfg.wd_gamemode_output,      // output file
-								include_aio_path,                         // include search path
-								path_include,                             // include directory
-								wcfg.wd_compiler_opt          // additional options
+								wcfg.watchdogs_sef_found[0],				// compiler binary
+								wcfg.wd_gamemode_input,						// input file
+								wcfg.wd_gamemode_output,					// output file
+								include_aio_path,							// include search path
+								path_include,								// include directory
+								wcfg.wd_compiler_opt						// additional options
 							);
 
 							clock_gettime(CLOCK_MONOTONIC, &start);
-							watchdogs_sys(_compiler_);
+								watchdogs_sys(_compiler_);
 							clock_gettime(CLOCK_MONOTONIC, &end);
 
 							procc_f = fopen(".wd_compiler.log", "r");
@@ -490,6 +497,9 @@ int __init_wd(void)
 
 							compiler_dur = (end.tv_sec - start.tv_sec) + (end.tv_nsec - start.tv_nsec) / 1e9;
 							printf("[Finished in %.3fs]\n", compiler_dur);
+#ifdef DEBUGGING_COMPILER
+							printf("[COMPILER]:\n\t%s\n", _compiler_);
+#endif
                         } else {
                             int find_gamemodes_arg1 = watchdogs_sef_fdir("gamemodes", compile_args);
                             if (find_gamemodes_arg1) {
@@ -523,12 +533,12 @@ int __init_wd(void)
 									_compiler_,
 									format_size_compiler,
 									"%s \"gamemodes/%s\" -o\"%s.amx\" %s -i\"%s\" \"%s\" > .wd_compiler.log 2>&1",
-									wcfg.watchdogs_sef_found[0],  // compiler binary
-									compile_args,       					  // input file
-									watchdogs_c_output_f_container,           // output file
-									include_aio_path,                         // include search path
-									path_include,                             // include directory
-									wcfg.wd_compiler_opt          // additional options
+									wcfg.watchdogs_sef_found[0],				// compiler binary
+									compile_args,								// input file
+									watchdogs_c_output_f_container,				// output file
+									include_aio_path,							// include search path
+									path_include,								// include directory
+									wcfg.wd_compiler_opt						// additional options
 								);
 
 								if (ret < 0 || (size_t)ret >= (size_t)format_size_compiler) {
@@ -536,7 +546,7 @@ int __init_wd(void)
 								}
                                 
                                 clock_gettime(CLOCK_MONOTONIC, &start);
-                                watchdogs_sys(_compiler_);
+	                                watchdogs_sys(_compiler_);
                                 clock_gettime(CLOCK_MONOTONIC, &end);
                                 
 								procc_f = fopen(".wd_compiler.log", "r");
@@ -561,6 +571,9 @@ int __init_wd(void)
 
                                 compiler_dur = (end.tv_sec - start.tv_sec) + (end.tv_nsec - start.tv_nsec) / 1e9;
                                 printf("[Finished in %.3fs]\n", compiler_dur);
+#ifdef DEBUGGING_COMPILER
+								printf("[COMPILER]:\n\t%s\n", _compiler_);
+#endif
                             } else {
                                 printf_color(COL_RED, "Can't locate: ");
                                 printf("%s\n", compile_args);
@@ -670,6 +683,7 @@ int __init_wd(void)
                         } else {
                             printf_color(COL_RED, "running failed! ");
                         }
+                        if (format_prompt) { free(format_prompt); }
                         return 0;
                     } else {
                         printf_color(COL_YELLOW, "running..\n");
@@ -709,6 +723,7 @@ int __init_wd(void)
                         } else {
                             printf_color(COL_RED, "running failed! ");
                         }
+                        if (format_prompt) { free(format_prompt); }
                         return 0;
                     } else {
                         printf_color(COL_YELLOW, "running..\n");
@@ -773,3 +788,4 @@ int main(void) {
         __init(0);
         return 0;
 }
+

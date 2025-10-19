@@ -36,6 +36,7 @@
 #include <shlwapi.h>
 #include <strings.h>
 #define PATH_SEP "\\"
+#define IS_PATH_SEP(c) ((c) == '/' || (c) == '\\')
 #define mkdir(path) _mkdir(path) // override POSIX mkdir
 #define sleep(sec) Sleep((sec)*1000)
 #define setenv(name,val,overwrite) _putenv_s(name,val)
@@ -46,6 +47,7 @@
 #include <sys/stat.h>
 #include <fnmatch.h>
 #define PATH_SEP "/"
+#define IS_PATH_SEP(c) ((c) == '/')
 #endif
 
 #include <math.h>
@@ -114,7 +116,7 @@ void reset_watchdogs_sef_dir()
         for (size_t i = 0;
 			 i < MAX_ENTRIES;
 			 ++i)
-            wcfg.watchdogs_sef_found[i][0] = '\0';
+             wcfg.watchdogs_sef_found[i][0] = '\0';
 
         memset(wcfg.watchdogs_sef_found, 0, sizeof(wcfg.watchdogs_sef_found));
         wcfg.watchdogs_sef_count = 0;
@@ -134,7 +136,7 @@ inline int watchdogs_title(const char *__title)
         return 0;
 }
 
-void copy_strip_dot_if_no_slash(char *dst, size_t dst_sz, const char *src) {
+void __copy_strip_dotfns(char *dst, size_t dst_sz, const char *src) {
         if (!dst || dst_sz == 0 || !src) return;
 
         const char *slash = strchr(src, '/');
@@ -154,7 +156,7 @@ void copy_strip_dot_if_no_slash(char *dst, size_t dst_sz, const char *src) {
         }
 
         snprintf(dst, dst_sz, "%s", src);
-    }
+}
 
 void __escape_quotes(char *dest, size_t size, const char *src) {
         size_t j = 0;
@@ -171,10 +173,11 @@ void __escape_quotes(char *dest, size_t size, const char *src) {
 }
 
 int __command_suggest(const char *s1, const char *s2) {
-        int len1 = strlen(s1);
-        int len2 = strlen(s2);
+        int len1 = strlen(s1),
+			len2 = strlen(s2);
         if (len2 > 128) return INT_MAX;
-        int prev[129], curr[129];
+        int prev[129],
+			curr[129];
         for (int j = 0; j <= len2; j++) prev[j] = j;
 
         for (int i = 1; i <= len1; i++) {
@@ -333,6 +336,12 @@ int watchdogs_toml_data(void)
 
         int find_gamemodes = watchdogs_sef_fdir("gamemodes/", "*.pwn");
 
+		char i_path_rm[PATH_MAX];
+		snprintf(i_path_rm, sizeof(i_path_rm), "%s", wcfg.watchdogs_sef_found[0]);
+		char *f_EXT = strrchr(i_path_rm, '.');
+		if (f_EXT && strcmp(f_EXT, ".pwn") == 0)
+			*f_EXT = '\0';
+			
         toml_files = fopen(fname, "r");
         if (toml_files != NULL)
                 fclose(toml_files);
@@ -346,11 +355,6 @@ int watchdogs_toml_data(void)
                         fprintf(toml_files, "[compiler]\n");
                         fprintf(toml_files, "   option = \"-;+ -(+ -d3\"\n");
                         fprintf(toml_files, "   include_path = [\"sample1\", \"sample2\"]\n");
-                        char i_path_rm[PATH_MAX];
-                        snprintf(i_path_rm, sizeof(i_path_rm), "%s", wcfg.watchdogs_sef_found[0]);
-                        char *f_EXT = strrchr(i_path_rm, '.');
-                        if (f_EXT && strcmp(f_EXT, ".pwn") == 0)
-                            *f_EXT = '\0';
                         fprintf(toml_files, "   input = \"%s.pwn\"\n", i_path_rm);
                         fprintf(toml_files, "   output = \"%s.amx\"\n", i_path_rm);
                         fclose(toml_files);
@@ -386,33 +390,25 @@ int watchdogs_toml_data(void)
         return 0;
 }
 
-static void join_path(char *out, size_t out_sz, const char *dir, const char *name) {
+static void __jph(char *out, size_t out_sz, const char *dir, const char *name) {
         if (!out || out_sz == 0) return;
         size_t dir_len = strlen(dir);
-
-#ifdef _WIN32
-        #define IS_PATH_SEP(c) ((c) == '/' || (c) == '\\')
-#else
-        #define IS_PATH_SEP(c) ((c) == '/')
-#endif
-
         int dir_has_sep = (dir_len > 0 && IS_PATH_SEP(dir[dir_len - 1])),
-            name_has_leading_sep = IS_PATH_SEP(name[0]);
+            name_has_lsp = IS_PATH_SEP(name[0]);
 
         if (dir_has_sep) {
-            if (name_has_leading_sep) {
+            if (name_has_lsp)
                 snprintf(out, out_sz, "%s%s", dir, name + 1);
-            } else {
-                snprintf(out, out_sz, "%s%s", dir, name);
-            }
+            else
+				snprintf(out, out_sz, "%s%s", dir, name);
         } else {
 #ifdef _WIN32
-            if (name_has_leading_sep)
+            if (name_has_lsp)
                 snprintf(out, out_sz, "%s%s", dir, name);
             else
                 snprintf(out, out_sz, "%s%s%s", dir, PATH_SEP, name);
 #else
-            if (name_has_leading_sep)
+            if (name_has_lsp)
                 snprintf(out, out_sz, "%s%s", dir, name);
             else
                 snprintf(out, out_sz, "%s%s%s", dir, PATH_SEP, name);
@@ -429,10 +425,10 @@ int watchdogs_sef_fdir(const char *sef_path, const char *sef_name) {
         HANDLE hFind;
         char searchPath[MAX_PATH];
 
-        if (sef_path[strlen(sef_path)-1] == '\\') {
+        if (sef_path[strlen(sef_path)-1] == PATH_SEP) {
             snprintf(searchPath, sizeof(searchPath), "%s*", sef_path);
         } else {
-            snprintf(searchPath, sizeof(searchPath), "%s\\*", sef_path);
+            snprintf(searchPath, sizeof(searchPath), "%s%s*", sef_path, PATH_SEP);
         }
 
         hFind = FindFirstFile(searchPath, &findFileData);
@@ -444,7 +440,7 @@ int watchdogs_sef_fdir(const char *sef_path, const char *sef_name) {
             if (strcmp(name, ".") == 0 || strcmp(name, "..") == 0)
                 continue;
 
-            join_path(path_buff, sizeof(path_buff), sef_path, name);
+            __jph(path_buff, sizeof(path_buff), sef_path, name);
 
             if (findFileData.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY) {
                 if (watchdogs_sef_fdir(path_buff, sef_name)) {
@@ -490,7 +486,7 @@ int watchdogs_sef_fdir(const char *sef_path, const char *sef_name) {
                (entry->d_name[1] == '.' && entry->d_name[2] == '\0')))
                continue;
 
-            join_path(path_buff, sizeof(path_buff), sef_path, entry->d_name);
+            __jph(path_buff, sizeof(path_buff), sef_path, entry->d_name);
 
             if (entry->d_type == DT_DIR) {
                 if (watchdogs_sef_fdir(path_buff, sef_name)) {
@@ -599,9 +595,9 @@ int watchdogs_sef_wmv(const char *c_src, const char *c_dest)
         fclose(src_FILE);
         fclose(dest_FILE);
 
-        char chmod_cmd[128];
-        snprintf(chmod_cmd, sizeof(chmod_cmd), "chmod +x \"%s\"", c_dest);
-        int ret = system(chmod_cmd);
+        char cmd[128];
+        snprintf(cmd, sizeof(cmd), "chmod +x \"%s\"", c_dest);
+        int ret = system(cmd);
         if (ret == 0) {
             return 0;
         } else {
@@ -629,9 +625,9 @@ int watchdogs_sef_wcopy(const char *c_src,
         fclose(src_FILE);
         fclose(dest_FILE);
 
-        char chmod_cmd[128];
-        snprintf(chmod_cmd, sizeof(chmod_cmd), "chmod +x \"%s\"", c_dest);
-        int ret = system(chmod_cmd);
+        char cmd[128];
+        snprintf(cmd, sizeof(cmd), "chmod +x \"%s\"", c_dest);
+        int ret = system(cmd);
         if (ret == 0) {
             return 0;
         } else {

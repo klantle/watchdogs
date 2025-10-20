@@ -615,7 +615,7 @@ int watchdogs_sef_fdir(const char *sef_path, const char *sef_name) {
 #endif
 }
 
-int __try_mv_w_sudo(const char *src, const char *dest) {
+int __try_mv_wh_sudo(const char *src, const char *dest) {
         if (rename(src, dest) == 0) return 0;
 
         if (errno == EXDEV || errno == EACCES || errno == EPERM) {
@@ -730,7 +730,7 @@ int watchdogs_sef_wmv(const char *c_src, const char *c_dest) {
             }
         }
 
-        int mv_ret = __try_mv_w_sudo(c_src, c_dest);
+        int mv_ret = __try_mv_wh_sudo(c_src, c_dest);
         if (mv_ret == 0) {
             if (chmod(c_dest, 0755) != 0) {
                 fprintf(stderr, "[W] chmod failed: %s (errno=%d %s)\n", c_dest, errno, strerror(errno));

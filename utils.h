@@ -1,6 +1,8 @@
 #ifndef UTILS_H
 #define UTILS_H
 
+#include <stddef.h>
+
 #if __has_include(<readline/history.h>)
     #include <readline/history.h>
     #define watchdogs_u_history() using_history()
@@ -54,6 +56,12 @@ int signal_system_os(void);
 int kill_process(const char *name);
 void kill_process_safe(const char *name);
 int dir_exists(const char *path);
+int path_exists(const char *path);
+int dir_writable(const char *path);
+int __is_regular_file(const char *path);
+int __same_file(const char *a, const char *b);
+int ensure_parent_dir(char *out_parent, size_t n, const char *dest);
+int __cp_f_content(const char *src, const char *dst);
 int watchdogs_toml_data(void);
 int watchdogs_sef_fdir(const char *sef_path, const char *sef_name);
 int watchdogs_sef_wcopy(const char *c_src, const char *c_dest);

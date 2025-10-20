@@ -62,6 +62,9 @@
 #include <sys/stat.h>
 #include <stddef.h>
 #include <sys/types.h>
+#include <libgen.h>
+#include <sys/types.h>
+#include <sys/wait.h>
 #include <readline/readline.h>
 #include <readline/history.h>
 #include <archive.h>
@@ -322,6 +325,67 @@ int dir_exists(const char *path) {
         return (stat(path, &st) == 0 && S_ISDIR(st.st_mode));
 }
 
+int path_exists(const char *path) {
+        struct stat st;
+        return (stat(path, &st) == 0);
+}
+
+int dir_writable(const char *path) {
+        if (access(path, W_OK) == 0) return 1;
+        return 0;
+}
+
+int __is_regular_file(const char *path) {
+        struct stat st;
+        if (stat(path, &st) != 0) return 0;
+        return S_ISREG(st.st_mode);
+}
+
+int __same_file(const char *a, const char *b) {
+        struct stat sa, sb;
+        if (stat(a, &sa) != 0) return 0;
+        if (stat(b, &sb) != 0) return 0;
+        return (sa.st_ino == sb.st_ino && sa.st_dev == sb.st_dev);
+}
+
+int ensure_parent_dir(char *out_parent, size_t n, const char *dest) {
+        char tmp[PATH_MAX];
+        if (strlen(dest) >= sizeof(tmp)) return -1;
+        strncpy(tmp, dest, sizeof(tmp));
+        tmp[sizeof(tmp)-1] = '\0';
+        char *parent = dirname(tmp);
+        if (!parent) return -1;
+        strncpy(out_parent, parent, n);
+        out_parent[n-1] = '\0';
+        return 0;
+}
+
+int __cp_f_content(const char *src, const char *dst) {
+        int infd = -1, outfd = -1;
+        int ret = -1;
+        char buf[8192];
+        ssize_t r;
+        infd = open(src, O_RDONLY);
+        if (infd < 0) goto out;
+        outfd = open(dst, O_WRONLY | O_CREAT | O_TRUNC, 0600);
+        if (outfd < 0) goto out;
+        while ((r = read(infd, buf, sizeof(buf))) > 0) {
+            ssize_t w = 0;
+            char *p = buf;
+            while (r > 0) {
+                w = write(outfd, p, r);
+                if (w < 0) goto out;
+                r -= w;
+                p += w;
+            }
+        }
+        if (r == 0) ret = 0;
+out:
+        if (infd >= 0) close(infd);
+        if (outfd >= 0) close(outfd);
+        return ret;
+}
+
 int kill_process(const char *name) {
         char cmd[256];
         snprintf(cmd, sizeof(cmd),
@@ -551,64 +615,151 @@ int watchdogs_sef_fdir(const char *sef_path, const char *sef_name) {
 #endif
 }
 
-int watchdogs_sef_wmv(const char *c_src, const char *c_dest)
-{
-        FILE *src_FILE = fopen(c_src, "rb");
-        if (!src_FILE) {
-            perror("fopen src");
+int __try_mv_w_sudo(const char *src, const char *dest) {
+        if (rename(src, dest) == 0) return 0;
+
+        if (errno == EXDEV || errno == EACCES || errno == EPERM) {
+            if (!__is_regular_file(src)) {
+                return -1;
+            }
+            char parent[PATH_MAX];
+            if (ensure_parent_dir(parent, sizeof(parent), dest) != 0) return -1;
+            if (!dir_writable(parent)) {
+                return -2;
+            }
+            char tmp_path[PATH_MAX];
+            int rv = snprintf(tmp_path, sizeof(tmp_path), "%s/.tmp_watchdogs_move_XXXXXX", parent);
+            if (rv < 0 || (size_t)rv >= sizeof(tmp_path)) return -1;
+            int tmpfd = mkstemp(tmp_path);
+            if (tmpfd < 0) return -1;
+            close(tmpfd);
+            if (__cp_f_content(src, tmp_path) != 0) {
+                unlink(tmp_path);
+                return -1;
+            }
+            struct stat st;
+            if (stat(src, &st) == 0) {
+                chmod(tmp_path, st.st_mode & 07777);
+            }
+            if (rename(tmp_path, dest) != 0) {
+                unlink(tmp_path);
+                if (errno == EACCES || errno == EPERM) return -2;
+                return -1;
+            }
+            if (unlink(src) != 0) {
+                return -3;
+            }
+            return 0;
+        }
+
+        return -1;
+}
+
+static int __mv_w_sudo(const char *src, const char *dest) {
+        pid_t pid = fork();
+        if (pid < 0) {
+            perror("fork");
+            return -1;
+        } else if (pid == 0) {
+            char *argv[5];
+            argv[0] = "sudo";
+            argv[1] = "mv";
+            argv[2] = (char *)src;
+            argv[3] = (char *)dest;
+            argv[4] = NULL;
+            execvp("sudo", argv);
+            perror("execvp sudo");
+            _exit(127);
+        } else {
+            int status;
+            if (waitpid(pid, &status, 0) < 0) {
+                perror("waitpid");
+                return -1;
+            }
+            if (WIFEXITED(status)) {
+                return WEXITSTATUS(status);
+            } else if (WIFSIGNALED(status)) {
+                return 128 + WTERMSIG(status);
+            } else {
+                return -1;
+            }
+        }
+}
+
+int watchdogs_sef_wmv(const char *c_src, const char *c_dest) {
+        if (!c_src || !c_dest) {
+            fprintf(stderr, "[E] src or dest is null\n");
+            return 1;
+        }
+        if (strlen(c_src) == 0 || strlen(c_dest) == 0) {
+            fprintf(stderr, "[E] src or dest empty\n");
+            return 1;
+        }
+        if (strlen(c_src) >= PATH_MAX || strlen(c_dest) >= PATH_MAX) {
+            fprintf(stderr, "[E] path too long\n");
+            return 1;
+        }
+        if (!path_exists(c_src)) {
+            fprintf(stderr, "[E] source does not exist: %s\n", c_src);
+            return 1;
+        }
+        if (!__is_regular_file(c_src)) {
+            fprintf(stderr, "[E] source is not a regular file: %s\n", c_src);
             return 1;
         }
 
-        FILE *dest_FILE = fopen(c_dest, "wb");
-        if (!dest_FILE) {
-            if (errno == EACCES) {
-                fclose(src_FILE);
-
-                printf_color(COL_RED, "[E] ");
-                println("Permission denied. try with sudo...");
-
-                char esc_src[128],
-                     esc_dest[128];
-                __escape_quotes(esc_src, sizeof(esc_src), c_src);
-                __escape_quotes(esc_dest, sizeof(esc_dest), c_dest);
-
-                char cmd[526];
-                snprintf(cmd, sizeof(cmd), "sudo mv \"%s\" \"%s\"",
-                                            esc_src,
-                                            esc_dest);
-                int ret = system(cmd);
-                if (ret == 0) {
-                    printf(" Moving with sudo successfully: %s -> %s\n", c_src, c_dest);
-                    return 0;
-                } else {
-                    fprintf(stderr, " Moving with sudo failed with code %d\n", ret);
-                    return 1;
-                }
-            } else {
-                perror("fopen dest");
-                fclose(src_FILE);
+        if (path_exists(c_dest)) {
+            if (__same_file(c_src, c_dest)) {
+                fprintf(stderr, "[I] source and dest are the same file: %s\n", c_src);
+                return 0;
+            }
+        } else {
+            char parent[PATH_MAX];
+            if (ensure_parent_dir(parent, sizeof(parent), c_dest) != 0) {
+                fprintf(stderr, "[E] cannot determine parent directory of dest\n");
+                return 1;
+            }
+            struct stat st;
+            if (stat(parent, &st) != 0) {
+                fprintf(stderr, "[E] destination directory does not exist: %s\n", parent);
+                return 1;
+            }
+            if (!S_ISDIR(st.st_mode)) {
+                fprintf(stderr, "[E] destination parent is not a directory: %s\n", parent);
                 return 1;
             }
         }
 
-        char buf[520];
-        size_t bytes;
-        while ((bytes = fread(buf, 1, sizeof(buf), src_FILE)) > 0)
-            fwrite(buf, 1, bytes, dest_FILE);
-
-        fclose(src_FILE);
-        fclose(dest_FILE);
-
-        char cmd[128];
-        snprintf(cmd, sizeof(cmd), "chmod +x \"%s\"", c_dest);
-        int ret = system(cmd);
-        if (ret == 0) {
+        int mv_ret = __try_mv_w_sudo(c_src, c_dest);
+        if (mv_ret == 0) {
+            if (chmod(c_dest, 0755) != 0) {
+                fprintf(stderr, "[W] chmod failed: %s (errno=%d %s)\n", c_dest, errno, strerror(errno));
+            }
+            fprintf(stderr, "[I] moved without sudo: %s -> %s\n", c_src, c_dest);
             return 0;
         } else {
-            return 1;
+            if (mv_ret == -2 || errno == EACCES || errno == EPERM) {
+                fprintf(stderr, "[I] attempting sudo move due to permission issue\n");
+                int sudo_rc = __mv_w_sudo(c_src, c_dest);
+                if (sudo_rc == 0) {
+                    fprintf(stderr, "[I] moved with sudo: %s -> %s\n", c_src, c_dest);
+                    return 0;
+                } else {
+                    fprintf(stderr, "[E] sudo mv failed with code %d\n", sudo_rc);
+                    return 1;
+                }
+            } else if (mv_ret == -3) {
+                fprintf(stderr, "[W] move partially succeeded (copied but couldn't unlink source). dest=%s\n", c_dest);
+                return 0;
+            } else {
+                fprintf(stderr, "[E] move without sudo failed (errno=%d %s)\n", errno, strerror(errno));
+                fprintf(stderr, "[I] attempting sudo as last resort\n");
+                int sudo_rc = __mv_w_sudo(c_src, c_dest);
+                if (sudo_rc == 0) return 0;
+                fprintf(stderr, "[E] sudo mv failed with code %d\n", sudo_rc);
+                return 1;
+            }
         }
-
-        return 0;
 }
 
 int watchdogs_sef_wcopy(const char *c_src,

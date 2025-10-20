@@ -272,7 +272,7 @@ int __init_wd(void)
             watchdogs_title("Watchdogs | @ pawncc");
             static
                 char platform = 0;
-            ret_pcc:
+ret_pcc:
                 println("Select platform:");
                 println("[L/l] Linux");
                 println("[W/w] Windows");
@@ -298,7 +298,7 @@ int __init_wd(void)
             watchdogs_title("Watchdogs | @ gamemode");
             static
                 char platform = 0;
-            ret_gm:
+ret_gm:
                 println("Select platform:");
                 println("[L/l] Linux");
                 println("[W/w] Windows");
@@ -601,7 +601,7 @@ int __init_wd(void)
                     if (strcmp(ptr_sigA, "Y") == 0 || strcmp(ptr_sigA, "y") == 0) {
                         static
                             char platform = 0;
-                        ret_pcc_2:
+ret_pcc_2:
                             println("Select platform:");
                             println("[L/l] Linux");
                             println("[W/w] Windows");
@@ -636,7 +636,7 @@ int __init_wd(void)
                 if (ptr_sigA) { free(ptr_sigA); }
             }
         } else if (strncmp(ptr_command, "running", 7) == 0 || strncmp(ptr_command, "debug", 7) == 0) {
-            _runners_:
+_runners_:
                 if (strcmp(ptr_command, "debug") == 0) {
                     wcfg.server_or_debug="debug";
                     watchdogs_title("Watchdogs | @ debug");    

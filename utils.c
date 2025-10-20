@@ -422,7 +422,7 @@ int watchdogs_toml_data(void)
                         fprintf(toml_files, "   os = \"%s\"\n", os_type);
                         fprintf(toml_files, "[compiler]\n");
                         fprintf(toml_files, "   option = \"-;+ -(+ -d3\"\n");
-                        fprintf(toml_files, "   include_path = [\"gamemodes\", \"pawno/include\"]\n");
+                        fprintf(toml_files, "   include_path = [\"gamemodes\", \"pawno/include\", \"sample3\"]\n");
                         fprintf(toml_files, "   input = \"%s.pwn\"\n", i_path_rm);
                         fprintf(toml_files, "   output = \"%s.amx\"\n", i_path_rm);
                         fclose(toml_files);
@@ -433,7 +433,7 @@ int watchdogs_toml_data(void)
                         fprintf(toml_files, "   os = \"%s\"\n", os_type);
                         fprintf(toml_files, "[compiler]\n");
                         fprintf(toml_files, "   option = \"-;+ -(+ -d3\"\n");
-                        fprintf(toml_files, "   include_path = [\"gamemodes\", \"pawno/include\"]\n");
+                        fprintf(toml_files, "   include_path = [\"gamemodes\", \"pawno/include\", \"sample3\"]\n");
                         fprintf(toml_files, "   input = \"main.pwn\"\n");
                         fprintf(toml_files, "   output = \"main.amx\"\n");
                         fclose(toml_files);

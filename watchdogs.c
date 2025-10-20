@@ -413,12 +413,6 @@ ret_gm:
                         free(option_val.u.s);
                     }
         
-                    toml_datum_t output_val = toml_string_in(watchdogs_compiler, "output");
-                    if (output_val.ok) {
-                        wcfg.wd_gamemode_output = output_val.u.s;
-                        free(output_val.u.s);
-                    }
-        
                     toml_array_t *include_paths = toml_array_in(watchdogs_compiler, "include_path");
                     if (include_paths) {
                         int array_size = toml_array_nelem(include_paths);
@@ -452,7 +446,13 @@ ret_gm:
                         if (arg == NULL || *arg == '\0') {
                             toml_datum_t watchdogs_gmodes = toml_string_in(watchdogs_compiler, "input");
                             if (watchdogs_gmodes.ok) {
-                                wcfg.wd_gamemode_input = watchdogs_gmodes.u.s;
+                                wcfg.wd_gamemode_input = strdup(watchdogs_gmodes.u.s);
+                                free(watchdogs_gmodes.u.s);
+                            }
+                            toml_datum_t watchdogs_gmodes_o = toml_string_in(watchdogs_compiler, "output");
+                            if (watchdogs_gmodes_o.ok) {
+                                wcfg.wd_gamemode_output = strdup(watchdogs_gmodes_o.u.s);
+                                free(watchdogs_gmodes_o.u.s);
                             }
                             
                             struct timespec start, end;

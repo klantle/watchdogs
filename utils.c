@@ -329,6 +329,10 @@ int kill_process(const char *name) {
         return system(cmd);
 }
 
+void kill_process_safe(const char *name) {
+    if (name && strlen(name) > 0) kill_process(name);
+}
+
 int watchdogs_toml_data(void)
 {
         const char *fname = "watchdogs.toml";

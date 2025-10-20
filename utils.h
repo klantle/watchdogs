@@ -52,6 +52,7 @@ void printf_crit(const char *format, ...);
 const char* watchdogs_detect_os(void);
 int signal_system_os(void);
 int kill_process(const char *name);
+void kill_process_safe(const char *name);
 int dir_exists(const char *path);
 int watchdogs_toml_data(void);
 int watchdogs_sef_fdir(const char *sef_path, const char *sef_name);

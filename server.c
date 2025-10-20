@@ -99,20 +99,36 @@
 #include "utils.h"
 #include "server.h"
 
+static int __val_g_arg(const char *arg) {
+        if (!arg || strlen(arg) > 128) return 0;
+        for (size_t i = 0; i < strlen(arg); i++) {
+            if (arg[i] == '/' ||
+                arg[i] == '\\' ||
+                arg[i] == ';')
+                return 0;
+        }
+        return 1;
+}
+
 void watchdogs_server_stop_tasks(void) {
-        kill_process("samp-server.exe");
-        kill_process("samp03svr");
-        kill_process("omp-server.exe");
-        kill_process("omp-server");
+        kill_process_safe("samp-server.exe");
+        kill_process_safe("samp03svr");
+        kill_process_safe("omp-server.exe");
+        kill_process_safe("omp-server");
 }
 
 void watchdogs_server_samp(const char *gamemode_arg, const char *server_bin) {
-        FILE *serv_in = NULL, *serv_out = NULL;
-        int found_gamemode = 0;
+        if (!__val_g_arg(gamemode_arg)) {
+            printf_error("Invalid gamemode argument!");
+            return;
+        }
+
+        FILE *serv_in = NULL,
+             *serv_out = NULL;
+        int fo_gm = 0;
         char g_line[256];
 
         watchdogs_sef_wcopy("server.cfg", ".server.cfg.bak");
-
         serv_in = fopen(".server.cfg.bak", "r");
         if (!serv_in) {
             printf_error("failed to open backup config");
@@ -125,8 +141,8 @@ void watchdogs_server_samp(const char *gamemode_arg, const char *server_bin) {
             __init(0);
         }
 
-        int find_gamemodes = watchdogs_sef_fdir(".", gamemode_arg);
-        if (find_gamemodes != 1) {
+        int __fi_gm = watchdogs_sef_fdir(".", gamemode_arg);
+        if (__fi_gm != 1) {
             printf_color(COL_RED, "Can't locate: ");
             printf("%s\n", gamemode_arg);
             __init(0);
@@ -135,15 +151,17 @@ void watchdogs_server_samp(const char *gamemode_arg, const char *server_bin) {
         while (fgets(g_line, sizeof(g_line), serv_in)) {
             if (!strncmp(g_line, "gamemode0 ", 10)) {
                 fprintf(serv_out, "gamemode0 %s\n", gamemode_arg);
-                found_gamemode = 1;
+                fo_gm = 1;
             } else fputs(g_line, serv_out);
         }
 
-        if (!found_gamemode)
+        if (!fo_gm)
             fprintf(serv_out, "gamemode0 %s\n", gamemode_arg);
 
-        fclose(serv_in);
-        fclose(serv_out);
+        if (serv_in)
+            fclose(serv_in);
+        if (serv_out)
+            fclose(serv_out);
 
 #ifdef _WIN32
         _chmod(server_bin, _S_IREAD | _S_IWRITE);
@@ -177,8 +195,7 @@ void watchdogs_server_samp(const char *gamemode_arg, const char *server_bin) {
         rename(".server.cfg.bak", "server.cfg");
 
         if (wcfg.server_or_debug &&
-            !strcmp(wcfg.server_or_debug, "debug"))
-        {
+            !strcmp(wcfg.server_or_debug, "debug")) {
             static int __watchdogs_os__;
                 __watchdogs_os__ = signal_system_os();
             if (__watchdogs_os__ == 0x01) {
@@ -193,6 +210,11 @@ void watchdogs_server_samp(const char *gamemode_arg, const char *server_bin) {
 }
 
 void watchdogs_server_openmp(const char *gamemode_arg, const char *server_bin) {
+        if (!__val_g_arg(gamemode_arg)) {
+            printf_error("Invalid gamemode argument!");
+            return;
+        }
+
         cJSON
             *root = NULL,
             *pawn = NULL,
@@ -203,15 +225,14 @@ void watchdogs_server_openmp(const char *gamemode_arg, const char *server_bin) {
         char cmd_buf[256];
 
         watchdogs_sef_wcopy("config.json", ".config.json.bak");
-
         procc_f = fopen("config.json", "r");
         if (!procc_f) {
             printf_error("failed to open config.json");
             return;
         }
 
-        int find_gamemodes = watchdogs_sef_fdir(".", gamemode_arg);
-        if (find_gamemodes != 1) {
+        int __fi_gm = watchdogs_sef_fdir(".", gamemode_arg);
+        if (__fi_gm != 1) {
             printf_color(COL_RED, "Can't locate: ");
             printf("%s\n", gamemode_arg);
             __init(0);
@@ -230,7 +251,9 @@ void watchdogs_server_openmp(const char *gamemode_arg, const char *server_bin) {
         }
 
         json_data[file_len] = '\0';
-        fclose(procc_f);
+
+        if (procc_f)
+            fclose(procc_f);
 
         root = cJSON_Parse(json_data);
         if (!root) {
@@ -251,7 +274,9 @@ void watchdogs_server_openmp(const char *gamemode_arg, const char *server_bin) {
         char *main_njson = cJSON_Print(root);
         fputs(main_njson, procc_f);
         free(main_njson);
-        fclose(procc_f);
+
+        if (procc_f)
+            fclose(procc_f);
 
 #ifdef _WIN32
         _chmod(server_bin, _S_IREAD | _S_IWRITE);
@@ -285,8 +310,7 @@ void watchdogs_server_openmp(const char *gamemode_arg, const char *server_bin) {
         rename(".config.json.bak", "config.json");
 
         if (wcfg.server_or_debug &&
-            !strcmp(wcfg.server_or_debug, "debug"))
-        {
+            !strcmp(wcfg.server_or_debug, "debug")) {
             static int __watchdogs_os__;
                 __watchdogs_os__ = signal_system_os();
             if (__watchdogs_os__ == 0x01) {

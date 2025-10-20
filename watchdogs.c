@@ -655,7 +655,7 @@ int __init_wd(void)
                     format_prompt = malloc(format_size);
 
                 if (find_for_samp == 0x1) {
-                    if (*arg == '\0' || arg == ".") {
+                    if (*arg == '\0') {
                         FILE *server_log = fopen("server_log.txt", "r");
                         if (server_log)
                             remove("server_log.txt");
@@ -694,7 +694,7 @@ int __init_wd(void)
                         watchdogs_server_samp(arg1, ptr_samp);
                     }
                 } else if (find_for_omp == 0x1) {
-                    if (*arg == '\0' || arg == ".") {
+                    if (*arg == '\0') {
                         FILE *server_log = fopen("log.txt", "r");
 
                         if (server_log) 

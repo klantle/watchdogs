@@ -2,7 +2,7 @@
     #define _GNU_SOURCE
 #endif 
 
-/// #define WD_DEBUGGING
+#define WD_DEBUGGING
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -60,7 +60,6 @@ static int
     find_for_omp = 0x0;
     
 void __init_function(void) {
-        watchdogs_title(NULL);
         watchdogs_toml_data();
         watchdogs_u_history();
         watchdogs_reset_var();
@@ -328,7 +327,7 @@ ret_gm:
                         }
         
                         static char wd_gamemode[56];
-                        if (arg == NULL || *arg == '\0' || strchr(arg, '.')) {
+                        if (arg == NULL || *arg == '\0' || (arg[0] == '.' && arg[1] == '\0')) {
                             toml_datum_t watchdogs_gmodes = toml_string_in(watchdogs_compiler, "input");
                             if (watchdogs_gmodes.ok) {
                                 wcfg.wd_gamemode_input = strdup(watchdogs_gmodes.u.s);
@@ -360,6 +359,10 @@ ret_gm:
                                 wcfg.wd_compiler_opt                           // additional options
                             );
 
+                            char title_compiler_info[128];
+                            snprintf(title_compiler_info, sizeof(title_compiler_info), "Watchdogs | @ compile | %s | %s | %s", wcfg.watchdogs_sef_found[0], watchdogs_c_output_f_container, wcfg.wd_gamemode_output);
+                            watchdogs_title(title_compiler_info);
+                            
                             clock_gettime(CLOCK_MONOTONIC, &start);
                                 watchdogs_sys(_compiler_);
                             clock_gettime(CLOCK_MONOTONIC, &end);
@@ -391,8 +394,66 @@ ret_gm:
                             printf("[COMPILER]:\n\t%s\n", _compiler_);
 #endif
                         } else {
-                            int find_gamemodes_arg1 = watchdogs_sef_fdir("gamemodes", compile_args);
-                            if (find_gamemodes_arg1) {
+                                char __direct_path[PATH_MAX] = {0};
+                                char __file_name[PATH_MAX] = {0};
+                                char __input_path[PATH_MAX] = {0};
+                                char __tmp_arg[PATH_MAX] = {0};
+
+                                strncpy(__tmp_arg, compile_args, sizeof(__tmp_arg) - 1);
+                                __tmp_arg[sizeof(__tmp_arg) - 1] = '\0';
+
+                                char *last_slash = strrchr(__tmp_arg, '/');
+                                char *last_back = strrchr(__tmp_arg, '\\');
+                                if (last_back && (!last_slash || last_back > last_slash)) last_slash = last_back;
+
+                                if (last_slash) {
+                                    size_t dir_len = (size_t)(last_slash - __tmp_arg);
+                                    if (dir_len >= sizeof(__direct_path)) dir_len = sizeof(__direct_path) - 1;
+                                    memcpy(__direct_path, __tmp_arg, dir_len);
+                                    __direct_path[dir_len] = '\0';
+
+                                    strncpy(__file_name, last_slash + 1, sizeof(__file_name) - 1);
+                                    __file_name[sizeof(__file_name) - 1] = '\0';
+
+                                    size_t need = strlen(__direct_path) + 1 + strlen(__file_name) + 1;
+                                    if (need > sizeof(__input_path)) {
+                                        size_t max_fn = sizeof(__input_path) - strlen(__direct_path) - 2;
+                                        if (max_fn > 0) {
+                                            __file_name[max_fn] = '\0';
+                                        } else {
+                                            __direct_path[0] = '\0';
+                                            strncpy(__direct_path, "gamemodes", sizeof(__direct_path) - 1);
+                                            __direct_path[sizeof(__direct_path) - 1] = '\0';
+                                            strncpy(__file_name, __tmp_arg, sizeof(__file_name) - 1);
+                                            __file_name[sizeof(__file_name) - 1] = '\0';
+                                        }
+                                    }
+
+                                    snprintf(__input_path, sizeof(__input_path), "%s/%s", __direct_path, __file_name);
+                                    __input_path[sizeof(__input_path) - 1] = '\0';
+                                } else {
+                                    strncpy(__file_name, __tmp_arg, sizeof(__file_name) - 1);
+                                    __file_name[sizeof(__file_name) - 1] = '\0';
+
+                                    if (__direct_path[0] == '\0') {
+                                        strncpy(__direct_path, "gamemodes", sizeof(__direct_path) - 1);
+                                        __direct_path[sizeof(__direct_path) - 1] = '\0';
+                                    }
+
+                                    size_t need = strlen("gamemodes") + 1 + strlen(__file_name) + 1;
+                                    if (need > sizeof(__input_path)) {
+                                        size_t max_fn = sizeof(__input_path) - strlen("gamemodes") - 2;
+                                        if (max_fn > 0) __file_name[max_fn] = '\0';
+                                    }
+
+                                    snprintf(__input_path, sizeof(__input_path), "gamemodes/%s", __file_name);
+                                    __input_path[sizeof(__input_path) - 1] = '\0';
+                                    strncpy(__direct_path, "gamemodes", sizeof(__direct_path) - 1);
+                                    __direct_path[sizeof(__direct_path) - 1] = '\0';
+                                }
+
+                                int find_gamemodes_arg1 = watchdogs_sef_fdir(__direct_path, __file_name);
+                                if (find_gamemodes_arg1) {
                                 char* container_output;
                                 if (wcfg.watchdogs_sef_count > 0 &&
                                     wcfg.watchdogs_sef_found[1][0] != '\0') {
@@ -408,8 +469,13 @@ ret_gm:
                                 if (f_last_slash_container != NULL && *(f_last_slash_container + 1) != '\0')
                                     *(f_last_slash_container + 1) = '\0';
 
-                                snprintf(watchdogs_c_output_f_container, format_size_c_f_container, "%s%s",
-                                    container_output, i_path_rm);
+                                if (strncmp(i_path_rm, __direct_path, strlen(__direct_path)) == 0) {
+                                    snprintf(watchdogs_c_output_f_container, format_size_c_f_container,
+                                            "%s%s", "", i_path_rm);
+                                } else {
+                                    snprintf(watchdogs_c_output_f_container, format_size_c_f_container,
+                                            "%s/%s", __direct_path, i_path_rm);
+                                }
                                 
                                 struct timespec start, end;
                                 double compiler_dur;
@@ -422,7 +488,7 @@ ret_gm:
                                 int ret = snprintf(
                                     _compiler_,
                                     format_size_compiler,
-                                    "%s \"gamemodes/%s\" -o\"%s.amx\" %s -i\"%s\" \"%s\" > .wd_compiler.log 2>&1",
+                                    "%s \"%s\" -o\"%s.amx\" %s -i\"%s\" \"%s\" > .wd_compiler.log 2>&1",
                                     wcfg.watchdogs_sef_found[0],                    // compiler binary
                                     compile_args,                                   // input file
                                     watchdogs_c_output_f_container,                 // output file
@@ -434,6 +500,10 @@ ret_gm:
                                 if (ret < 0 || (size_t)ret >= (size_t)format_size_compiler) {
                                     fprintf(stderr, "[Error] snprintf() failed or buffer too small (needed %d bytes)\n", ret);
                                 }
+
+                                char title_compiler_info[128];
+                                snprintf(title_compiler_info, sizeof(title_compiler_info), "Watchdogs | @ compile | %s | %s | %s.amx", wcfg.watchdogs_sef_found[0], compile_args, watchdogs_c_output_f_container);
+                                watchdogs_title(title_compiler_info);
                                 
                                 clock_gettime(CLOCK_MONOTONIC, &start);
                                     watchdogs_sys(_compiler_);
@@ -667,6 +737,7 @@ _runners_:
 void __init(int sig_unused) {
         (void)sig_unused;
         signal(SIGINT, handle_sigint);
+        watchdogs_title(NULL);
         while (1) {
             __init_wd();
         }

@@ -387,6 +387,59 @@ void kill_process_safe(const char *name) {
     if (name && strlen(name) > 0) kill_process(name);
 }
 
+void __toml_base_subdirs(const char *base_path, FILE *toml_files)
+{
+#ifdef _WIN32
+        WIN32_FIND_DATAA ffd;
+        HANDLE hFind = INVALID_HANDLE_VALUE;
+        char search_path[MAX_PATH];
+
+        snprintf(search_path, sizeof(search_path), "%s\\*", base_path);
+        hFind = FindFirstFileA(search_path, &ffd);
+
+        if (hFind == INVALID_HANDLE_VALUE)
+            return;
+
+        do {
+            if (ffd.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY) {
+                if (strcmp(ffd.cFileName, ".") == 0 || strcmp(ffd.cFileName, "..") == 0)
+                    continue;
+
+                char path[MAX_PATH];
+                snprintf(path, sizeof(path), "%s/%s", base_path, ffd.cFileName);
+
+                fprintf(toml_files, ", \"%s\"", path);
+
+                __toml_base_subdirs(path, toml_files);
+            }
+        } while (FindNextFileA(hFind, &ffd) != 0);
+
+        FindClose(hFind);
+#else
+        DIR *dir;
+        struct dirent *entry;
+
+        if (!(dir = opendir(base_path)))
+            return;
+
+        while ((entry = readdir(dir)) != NULL) {
+            if (entry->d_type == DT_DIR) {
+                if (strcmp(entry->d_name, ".") == 0 || strcmp(entry->d_name, "..") == 0)
+                    continue;
+
+                char path[PATH_MAX];
+                snprintf(path, sizeof(path), "%s/%s", base_path, entry->d_name);
+
+                fprintf(toml_files, ", \"%s\"", path);
+
+                __toml_base_subdirs(path, toml_files);
+            }
+        }
+
+        closedir(dir);
+#endif
+}
+
 int watchdogs_toml_data(void)
 {
         const char *fname = "watchdogs.toml";
@@ -412,7 +465,9 @@ int watchdogs_toml_data(void)
                         fprintf(toml_files, "   os = \"%s\"\n", os_type);
                         fprintf(toml_files, "[compiler]\n");
                         fprintf(toml_files, "   option = \"-;+ -(+ -d3\"\n");
-                        fprintf(toml_files, "   include_path = [\"gamemodes\", \"pawno/include\", \"sample3\"]\n");
+                        fprintf(toml_files, "   include_path = [\"gamemodes\"");
+                        __toml_base_subdirs("gamemodes", toml_files);
+                        fprintf(toml_files, ", \"pawno/include\", \"sample3\"]\n");
                         fprintf(toml_files, "   input = \"%s.pwn\"\n", i_path_rm);
                         fprintf(toml_files, "   output = \"%s.amx\"\n", i_path_rm);
                         fclose(toml_files);
@@ -423,7 +478,9 @@ int watchdogs_toml_data(void)
                         fprintf(toml_files, "   os = \"%s\"\n", os_type);
                         fprintf(toml_files, "[compiler]\n");
                         fprintf(toml_files, "   option = \"-;+ -(+ -d3\"\n");
-                        fprintf(toml_files, "   include_path = [\"gamemodes\", \"pawno/include\", \"sample3\"]\n");
+                        fprintf(toml_files, "   include_path = [\"gamemodes\"");
+                        __toml_base_subdirs("gamemodes", toml_files);
+                        fprintf(toml_files, ", \"pawno/include\", \"sample3\"]\n");
                         fprintf(toml_files, "   input = \"main.pwn\"\n");
                         fprintf(toml_files, "   output = \"main.amx\"\n");
                         fclose(toml_files);

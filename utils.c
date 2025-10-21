@@ -47,7 +47,7 @@
 #include "tomlc99/toml.h"
 #include "color.h"
 #include "utils.h"
-#include "watchdogs.h"
+#include "chain.h"
 
 const char* __command[] = {
         "clear",
@@ -71,6 +71,23 @@ inline void watchdogs_reset_var(void) {
 }
 inline int watchdogs_sys(const char *cmd) {
         return system(cmd);
+}
+
+void __give_permissions(const char *src, const char *tmp_path) {
+        struct stat st;
+        if (stat(src, &st) == 0) {
+#ifdef _WIN32
+            DWORD attr = GetFileAttributesA(src);
+            if (attr != INVALID_FILE_ATTRIBUTES) {
+                if (attr & FILE_ATTRIBUTE_READONLY)
+                    SetFileAttributesA(tmp_path, attr & ~FILE_ATTRIBUTE_READONLY);
+                else
+                    SetFileAttributesA(tmp_path, attr);
+            }
+#else
+            chmod(tmp_path, st.st_mode & 07777);
+#endif
+        }
 }
 
 wd wcfg = {
@@ -605,8 +622,7 @@ int __try_mv_wh_sudo(const char *src, const char *dest) {
                         unlink(tmp_path);
                         return -1;
                 }
-                struct stat st;
-                if (stat(src, &st) == 0) chmod(tmp_path, st.st_mode & 07777);
+                __give_permissions(src, tmp_path);
                 if (rename(tmp_path, dest) != 0) {
                         unlink(tmp_path);
                         if (errno == EACCES || errno == EPERM) return -2;
@@ -633,8 +649,7 @@ int __try_cp_wh_sudo(const char *src, const char *dest) {
                 unlink(tmp_path);
                 return -1;
         }
-        struct stat st;
-        if (stat(src, &st) == 0) chmod(tmp_path, st.st_mode & 07777);
+        __give_permissions(src, tmp_path);
         if (rename(tmp_path, dest) != 0) {
                 unlink(tmp_path);
                 if (errno == EACCES || errno == EPERM) return -2;
@@ -751,9 +766,22 @@ int watchdogs_sef_wmv(const char *c_src, const char *c_dest) {
 
         int mv_ret = __try_mv_wh_sudo(c_src, c_dest);
         if (mv_ret == 0) {
+#ifdef _WIN32
+            DWORD attr = GetFileAttributesA(c_dest);
+            if (attr != INVALID_FILE_ATTRIBUTES) {
+                if (attr & FILE_ATTRIBUTE_READONLY) {
+                    if (!SetFileAttributesA(c_dest, attr & ~FILE_ATTRIBUTE_READONLY)) {
+                        printf_warning("SetFileAttributes failed: %s (error=%lu)\n", c_dest, GetLastError());
+                    }
+                }
+            } else {
+                printf_warning("GetFileAttributes failed: %s (error=%lu)\n", c_dest, GetLastError());
+            }
+#else
             if (chmod(c_dest, 0755) != 0) {
                 printf_warning("chmod failed: %s (errno=%d %s)\n", c_dest, errno, strerror(errno));
             }
+#endif
             printf_info("moved without sudo: %s -> %s\n", c_src, c_dest);
             return 0;
         } else {
@@ -811,49 +839,62 @@ int watchdogs_sef_wcopy(const char *c_src,
                 return 0;
             }
         } else {
-	    char parent[PATH_MAX];
-	    if (ensure_parent_dir(parent, sizeof(parent), c_dest) != 0) {
-	        printf_error("cannot determine parent directory of dest\n");
-	        return 1;
-	    }
-	    struct stat st;
-	    if (stat(parent, &st) != 0) {
-	        printf_error("destination directory does not exist: %s\n", parent);
-	        return 1;
-	    }
-	    if (!S_ISDIR(st.st_mode)) {
-	        printf_error("destination parent is not a directory: %s\n", parent);
-	        return 1;
-	    }
-	}
+            char parent[PATH_MAX];
+            if (ensure_parent_dir(parent, sizeof(parent), c_dest) != 0) {
+                printf_error("cannot determine parent directory of dest\n");
+                return 1;
+            }
+            struct stat st;
+            if (stat(parent, &st) != 0) {
+                printf_error("destination directory does not exist: %s\n", parent);
+                return 1;
+            }
+            if (!S_ISDIR(st.st_mode)) {
+                printf_error("destination parent is not a directory: %s\n", parent);
+                return 1;
+            }
+        }
 	
-	int cp_ret = __try_cp_wh_sudo(c_src, c_dest);
-	if (cp_ret == 0) {
-	    if (chmod(c_dest, 0755) != 0) {
-		printf_warning("chmod failed: %s (errno=%d %s)\n", c_dest, errno, strerror(errno));
-	    }
-	    printf_info("copied without sudo: %s -> %s\n", c_src, c_dest);
-	    return 0;
-	} else {
-	    if (cp_ret == -2 || errno == EACCES || errno == EPERM) {
-		printf_info("attempting sudo copy due to permission issue\n");
-		int sudo_rc = __cp_w_sudo(c_src, c_dest);
-		if (sudo_rc == 0) {
-		    printf_info("copied with sudo: %s -> %s\n", c_src, c_dest);
-		    return 0;
-		} else {
-		    printf_error("sudo cp failed with code %d\n", sudo_rc);
-		    return 1;
-		}
-	    } else {
-		printf_error("copy without sudo failed (errno=%d %s)\n", errno, strerror(errno));
-		printf_info("attempting sudo as last resort\n");
-		int sudo_rc = __cp_w_sudo(c_src, c_dest);
-		if (sudo_rc == 0) return 0;
-		printf_error("sudo cp failed with code %d\n", sudo_rc);
-		return 1;
-	    }
-	}
+        int cp_ret = __try_cp_wh_sudo(c_src, c_dest);
+        if (cp_ret == 0) {
+#ifdef _WIN32
+            DWORD attr = GetFileAttributesA(c_dest);
+            if (attr != INVALID_FILE_ATTRIBUTES) {
+                if (attr & FILE_ATTRIBUTE_READONLY) {
+                    if (!SetFileAttributesA(c_dest, attr & ~FILE_ATTRIBUTE_READONLY)) {
+                        printf_warning("SetFileAttributes failed: %s (error=%lu)\n", c_dest, GetLastError());
+                    }
+                }
+            } else {
+                printf_warning("GetFileAttributes failed: %s (error=%lu)\n", c_dest, GetLastError());
+            }
+#else
+            if (chmod(c_dest, 0755) != 0) {
+                printf_warning("chmod failed: %s (errno=%d %s)\n", c_dest, errno, strerror(errno));
+            }
+#endif
+            printf_info("copied without sudo: %s -> %s\n", c_src, c_dest);
+            return 0;
+        } else {
+            if (cp_ret == -2 || errno == EACCES || errno == EPERM) {
+                printf_info("attempting sudo copy due to permission issue\n");
+                int sudo_rc = __cp_w_sudo(c_src, c_dest);
+                if (sudo_rc == 0) {
+                    printf_info("copied with sudo: %s -> %s\n", c_src, c_dest);
+                    return 0;
+                } else {
+                    printf_error("sudo cp failed with code %d\n", sudo_rc);
+                    return 1;
+                }
+            } else {
+                printf_error("copy without sudo failed (errno=%d %s)\n", errno, strerror(errno));
+                printf_info("attempting sudo as last resort\n");
+                int sudo_rc = __cp_w_sudo(c_src, c_dest);
+                if (sudo_rc == 0) return 0;
+                printf_error("sudo cp failed with code %d\n", sudo_rc);
+                return 1;
+            }
+        }
 
         return 0;
 }

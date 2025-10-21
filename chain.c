@@ -44,7 +44,7 @@
 #include "package.h"
 #include "archive.h"
 #include "curl.h"
-#include "watchdogs.h"
+#include "chain.h"
 #include "server.h"
 
 void __init_function(void) {

@@ -22,7 +22,7 @@
 #include "utils.h"
 #include "curl.h"
 #include "archive.h"
-#include "watchdogs.h"
+#include "chain.h"
 
 static size_t write_file(void *ptr,
                          size_t size,
@@ -39,12 +39,12 @@ static int progress_callback(void *ptr,
                              curl_off_t ultotal,
                              curl_off_t ulnow)
 {
-	if (dltotal > 0) {
-		int percent = (int)((dlnow * 100) / dltotal);
-		printf("\rDownloading... %3d%%\n", percent);
-		fflush(stdout);
-	}
-	return 0;
+        if (dltotal > 0) {
+                int percent = (int)((dlnow * 100) / dltotal);
+                printf("\rDownloading... %3d%%\n", percent);
+                fflush(stdout);
+        }
+        return 0;
 }
 
 int watchdogs_download_file(const char *url, const char *fname) {
@@ -72,17 +72,17 @@ int watchdogs_download_file(const char *url, const char *fname) {
                         return -1;
                 }
 
-		curl_easy_setopt(__curl, CURLOPT_URL, url);
-		curl_easy_setopt(__curl, CURLOPT_WRITEDATA, __fp);
-		curl_easy_setopt(__curl, CURLOPT_FAILONERROR, 1L);
-		curl_easy_setopt(__curl, CURLOPT_FOLLOWLOCATION, 1L);
-		curl_easy_setopt(__curl, CURLOPT_USERAGENT, "watchdogs/1.0");
-		curl_easy_setopt(__curl, CURLOPT_CONNECTTIMEOUT, 15L);
-		curl_easy_setopt(__curl, CURLOPT_TIMEOUT, 300L);
-		curl_easy_setopt(__curl, CURLOPT_SSL_VERIFYPEER, 1L);
-		curl_easy_setopt(__curl, CURLOPT_NOPROGRESS, 0L);
-		curl_easy_setopt(__curl, CURLOPT_XFERINFOFUNCTION, progress_callback);
-		curl_easy_setopt(__curl, CURLOPT_XFERINFODATA, NULL);
+                curl_easy_setopt(__curl, CURLOPT_URL, url);
+                curl_easy_setopt(__curl, CURLOPT_WRITEDATA, __fp);
+                curl_easy_setopt(__curl, CURLOPT_FAILONERROR, 1L);
+                curl_easy_setopt(__curl, CURLOPT_FOLLOWLOCATION, 1L);
+                curl_easy_setopt(__curl, CURLOPT_USERAGENT, "watchdogs/1.0");
+                curl_easy_setopt(__curl, CURLOPT_CONNECTTIMEOUT, 15L);
+                curl_easy_setopt(__curl, CURLOPT_TIMEOUT, 300L);
+                curl_easy_setopt(__curl, CURLOPT_SSL_VERIFYPEER, 1L);
+                curl_easy_setopt(__curl, CURLOPT_NOPROGRESS, 0L);
+                curl_easy_setopt(__curl, CURLOPT_XFERINFOFUNCTION, progress_callback);
+                curl_easy_setopt(__curl, CURLOPT_XFERINFODATA, NULL);
 
                 __res = curl_easy_perform(__curl);
                 curl_easy_getinfo(__curl, CURLINFO_RESPONSE_CODE, &__response_code);

@@ -21,7 +21,7 @@
 #endif
 
 #include "cJSON/cJSON.h"
-#include "watchdogs.h"
+#include "chain.h"
 #include "color.h"
 #include "utils.h"
 #include "server.h"

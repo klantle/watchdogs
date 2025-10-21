@@ -5,7 +5,7 @@
 #include <sys/stat.h>
 #include <stddef.h>
 
-#include "watchdogs.h"
+#include "chain.h"
 #include "utils.h"
 #include "archive.h"
 #include "curl.h"

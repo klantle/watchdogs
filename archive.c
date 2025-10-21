@@ -14,10 +14,10 @@
 #include "utils.h"
 #include "archive.h"
 #include "curl.h"
-#include "watchdogs.h"
+#include "chain.h"
 
 static int arch_copy_data(struct archive *ar,
-			  struct archive *aw) {
+                          struct archive *aw) {
         int a_read;
         const void *a_buff;
         size_t size;
@@ -25,11 +25,11 @@ static int arch_copy_data(struct archive *ar,
     
         while (1) {
             a_read = archive_read_data_block(ar,
-            				     &a_buff,
-            				     &size,
-            				     &offset);
+                                             &a_buff,
+                                             &size,
+                                             &offset);
             if (a_read == ARCHIVE_EOF)
-            	return ARCHIVE_OK;
+                    return ARCHIVE_OK;
             if (a_read != ARCHIVE_OK) {
                 printf("Read error: %s\n", archive_error_string(ar));
                 return a_read;
@@ -43,9 +43,9 @@ static int arch_copy_data(struct archive *ar,
 }
 
 int watchdogs_extract_archive(const char *tar_files) {
-	struct archive *archive_write = archive_write_disk_new();
-	struct archive *archives = archive_read_new();
-	struct archive_entry *entry;
+        struct archive *archive_write = archive_write_disk_new();
+        struct archive *archives = archive_read_new();
+        struct archive_entry *entry;
 
         int a_read;
         
@@ -63,8 +63,8 @@ int watchdogs_extract_archive(const char *tar_files) {
         archive_read_support_filter_all(archives);
         
         a_read = archive_read_open_filename(archives,
-        				    tar_files,
-        				    1024 * 1024);
+                                            tar_files,
+                                            1024 * 1024);
         if (a_read != ARCHIVE_OK) {
                 printf_error("Can't open file: %s\n", archive_error_string(archives));
                 archive_read_free(archives);
@@ -75,7 +75,7 @@ int watchdogs_extract_archive(const char *tar_files) {
         while (1) {
             a_read = archive_read_next_header(archives, &entry);
             if (a_read == ARCHIVE_EOF)
-            	break;
+                    break;
             if (a_read != ARCHIVE_OK) {
                         printf_error("header: %s\n",
                                 archive_error_string(archives));
@@ -110,11 +110,11 @@ int watchdogs_extract_archive(const char *tar_files) {
 }
 
 void watchdogs_extract_zip(const char *zip_path,
-			   const char *dest_path)
+                           const char *dest_path)
 {
-	struct archive *archives;
-	struct archive *archive_write;
-	struct archive_entry *entry;
+        struct archive *archives;
+        struct archive *archive_write;
+        struct archive_entry *entry;
 
         int a_read;
 

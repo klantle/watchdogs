@@ -469,27 +469,31 @@ int watchdogs_toml_data(void)
                     if (find_gamemodes) {
                         const char *os_type = watchdogs_detect_os();
                         fprintf(toml_files, "[general]\n");
-                        fprintf(toml_files, "   os = \"%s\"\n", os_type);
+                        fprintf(toml_files, "\tos = \"%s\"\n", os_type);
                         fprintf(toml_files, "[compiler]\n");
-                        fprintf(toml_files, "   option = \"-;+ -(+ -d3\"\n");
-                        fprintf(toml_files, "   include_path = [\"gamemodes\"");
+                        fprintf(toml_files, "\toption = \"-;+ -(+ -d3\"\n");
+                        fprintf(toml_files, "\tinclude_path = [\"gamemodes\"");
                         __toml_base_subdirs("gamemodes", toml_files);
-                        fprintf(toml_files, ", \"pawno/include\", \"sample3\"]\n");
-                        fprintf(toml_files, "   input = \"%s.pwn\"\n", i_path_rm);
-                        fprintf(toml_files, "   output = \"%s.amx\"\n", i_path_rm);
+                        fprintf(toml_files, ", \"pawno/include\"");
+                        __toml_base_subdirs("pawno/include", toml_files);
+                        fprintf(toml_files, "]\n");
+                        fprintf(toml_files, "\tinput = \"%s.pwn\"\n", i_path_rm);
+                        fprintf(toml_files, "\toutput = \"%s.amx\"\n", i_path_rm);
                         fclose(toml_files);
                     }
                     else {
                         const char *os_type = watchdogs_detect_os();
                         fprintf(toml_files, "[general]\n");
-                        fprintf(toml_files, "   os = \"%s\"\n", os_type);
+                        fprintf(toml_files, "\tos = \"%s\"\n", os_type);
                         fprintf(toml_files, "[compiler]\n");
-                        fprintf(toml_files, "   option = \"-;+ -(+ -d3\"\n");
-                        fprintf(toml_files, "   include_path = [\"gamemodes\"");
+                        fprintf(toml_files, "\toption = \"-;+ -(+ -d3\"\n");
+                        fprintf(toml_files, "\tinclude_path = [\"gamemodes\"");
                         __toml_base_subdirs("gamemodes", toml_files);
-                        fprintf(toml_files, ", \"pawno/include\", \"sample3\"]\n");
-                        fprintf(toml_files, "   input = \"main.pwn\"\n");
-                        fprintf(toml_files, "   output = \"main.amx\"\n");
+                        fprintf(toml_files, ", \"pawno/include\"");
+                        __toml_base_subdirs("pawno/include", toml_files);
+                        fprintf(toml_files, "]\n");
+                        fprintf(toml_files, "\tinput = \"main.pwn\"\n");
+                        fprintf(toml_files, "\toutput = \"main.amx\"\n");
                         fclose(toml_files);
                     }
                 }
@@ -959,8 +963,10 @@ install_pawncc_now(void) {
 
         sleep(2);
 
-        char pawncc_dest_path[512] = {0}, pawncc_exe_dest_path[512] = {0},
-             pawndisasm_dest_path[512] = {0}, pawndisasm_exe_dest_path[512] = {0};
+        char pawncc_dest_path[512] = {0},
+             pawncc_exe_dest_path[512] = {0},
+             pawndisasm_dest_path[512] = {0},
+             pawndisasm_exe_dest_path[512] = {0};
 
         for (int i = 0; i < wcfg.sef_count; i++) {
             const char *entry = wcfg.sef_found[i];
@@ -1031,10 +1037,10 @@ install_pawncc_now(void) {
                 if (!stat("/usr/local/lib32", &st) && S_ISDIR(st.st_mode)) {
                         lib_or_lib32=2;
                         str_lib_path="/usr/local/lib32";
-                } else if (!stat("/data/data/com.termux/files/usr/local/lib/", &st) ||
-                           !stat("/data/data/com.termux/files/usr/lib/", &st) &&
-                           S_ISDIR(st.st_mode)) {
-                           str_lib_path="/data/data/com.termux/files/usr/local/lib/";
+                } else if (!stat("/data/data/com.termux/files/usr/local/lib/", &st) && S_ISDIR(st.st_mode)) {
+                        str_lib_path="/data/data/com.termux/files/usr/local/lib/";
+                } else if (!stat("/data/data/com.termux/files/usr/lib/", &st) && S_ISDIR(st.st_mode)) {
+                        str_lib_path="/data/data/com.termux/files/usr/lib/";
                 } else if (!stat("/usr/local/lib", &st) && S_ISDIR(st.st_mode)) {
                         lib_or_lib32=1;
                         str_lib_path="/usr/local/lib";
@@ -1069,14 +1075,15 @@ install_pawncc_now(void) {
                                 else snprintf(new_path_lib32, sizeof(new_path_lib32), "/usr/local/lib32");
                                 setenv("LD_LIBRARY_PATH", new_path_lib32, 1);
                         }
-                } else if (strcmp(str_lib_path, "/data/data/com.termux/files/usr/local/lib/") == 0) {
+                } else {
                         const char
                                 *old_path_lib_tr = getenv("LD_LIBRARY_PATH");
                         char
                                 new_path_lib_tr[256];
-                        if (old_path_lib_tr) snprintf(new_path_lib_tr, sizeof(new_path_lib_tr), "/data/data/com.termux/files/usr/local/lib:%s",
+                        if (old_path_lib_tr) snprintf(new_path_lib_tr, sizeof(new_path_lib_tr), "%s:%s",
+                                                                                                str_lib_path,
                                                                                                 old_path_lib_tr);
-                        else snprintf(new_path_lib_tr, sizeof(new_path_lib_tr), "/data/data/com.termux/files/usr/local/lib");
+                        else snprintf(new_path_lib_tr, sizeof(new_path_lib_tr), "%s", str_lib_path);
                         setenv("LD_LIBRARY_PATH", new_path_lib_tr, 1);
                 }
         }

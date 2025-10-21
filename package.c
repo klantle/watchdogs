@@ -1,8 +1,9 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <sys/types.h>
 #include <sys/stat.h>
+#include <unistd.h>
+#include <sys/utsname.h>
 #include <stddef.h>
 
 #include "chain.h"
@@ -66,25 +67,41 @@ watch_pawncc(const char *platform) {
                 return;
             }
 
-            char arch_selection;
-            printf("Select architecture for Termux:\n[A/a] arm32\n[B/b] arm64\n>> ");
-            if (scanf(" %c", &arch_selection) != 1) return;
+            struct utsname uname_data;
+            uname(&uname_data);
+            const char *arch = uname_data.machine;
 
-            const char *arch;
-            if (arch_selection == 'A' || arch_selection == 'a') arch = "arm32";
-            else if (arch_selection == 'B' || arch_selection == 'b') arch = "arm64";
-            else {
-                printf("Invalid architecture selection.\n");
+            const char *detected_arch;
+            if (strcmp(arch, "aarch64") == 0) {
+                detected_arch = "arm64";
+            } else if (strcmp(arch, "armv7l") == 0 || strcmp(arch, "armv8l") == 0) {
+                detected_arch = "arm32";
+            } else {
+                printf("Unknown or unsupported architecture: %s\n", arch);
+                char confirm_arch;
+                printf("Do you want to select architecture manually? [y/N] ");
+                if (scanf(" %c", &confirm_arch) != 1 || (confirm_arch != 'y' && confirm_arch != 'Y')) {
+                    return;
+                }
+                char arch_selection;
+                printf("Select architecture for Termux:\n[A/a] arm32\n[B/b] arm64\n>> ");
+                if (scanf(" %c", &arch_selection) != 1) return;
+
+                if (arch_selection == 'A' || arch_selection == 'a') detected_arch = "arm32";
+                else if (arch_selection == 'B' || arch_selection == 'b') detected_arch = "arm64";
+                else {
+                    printf("Invalid architecture selection.\n");
+                    return;
+                }
+
+                sprintf(url_sel, "https://github.com/mxp96/pawncc-termux/releases/download/v%s/pawncc-%s-%s.zip",
+                        termux_versions[pcc_sel_index], termux_versions[pcc_sel_index], detected_arch);
+                sprintf(fname_sel, "pawncc-%s-%s.zip", termux_versions[pcc_sel_index], detected_arch);
+
+                wcfg.ipcc = 1;
+                watchdogs_download_file(url_sel, fname_sel);
                 return;
             }
-
-            sprintf(url_sel, "https://github.com/mxp96/pawncc-termux/releases/download/v%s/pawncc-%s-%s.zip",
-                    termux_versions[pcc_sel_index], termux_versions[pcc_sel_index], arch);
-            sprintf(fname_sel, "pawncc-%s-%s.zip", termux_versions[pcc_sel_index], arch);
-
-            wcfg.ipcc = 1;
-            watchdogs_download_file(url_sel, fname_sel);
-            return;
         }
 
         const char *list_versions[] = {

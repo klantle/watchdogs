@@ -104,7 +104,8 @@ int __init_wd(void)
                                                     __command,
                                                     __command_len,
                                                     &c_distance);
-                                                    
+
+_reexecute_command:
         if (strncmp(ptr_command, "help", 4) == 0) {
             watchdogs_title("Watchdogs | @ help");
 
@@ -725,7 +726,18 @@ _runners_:
             goto _runners_;
         } else if (strcmp(ptr_command, _dist_command) != 0 && c_distance <= 2) {
             watchdogs_title("Watchdogs | @ undefined");
-            printf("did you mean: %s?\n", _dist_command);
+            printf("did you mean: '%s'?", _dist_command);
+            char *confirm = readline(" [Y/n]: ");
+            if (confirm) {
+                if (strcmp(confirm, "Y") == 0 || strcmp(confirm, "y") == 0) {
+                    ptr_command = strdup(_dist_command);
+                    if (confirm) { free(confirm); }
+                    goto _reexecute_command;
+                } else {
+                    printf("Canceled.\n");
+                }
+                if (confirm) { free(confirm); }
+            }
         } else {
             if (strlen(ptr_command) > 0) {
                 watchdogs_title("Watchdogs | @ not found");

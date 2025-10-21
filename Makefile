@@ -1,4 +1,4 @@
-VERSION  = WD-10.20
+VERSION  = WD-10.21
 TARGET   ?= watchdogs
 CC       ?= gcc
 

@@ -442,7 +442,7 @@ int watchdogs_toml_data(void)
         toml_table_t *_watchdogs_general = toml_table_in(config, "general");
         if (_watchdogs_general) {
                 toml_datum_t os_val = toml_string_in(_watchdogs_general, "os");
-                if (os_val.ok) wcfg.watchdogs_os = os_val.u.s;
+                if (os_val.ok) wcfg.watchdogs_os = strdup(os_val.u.s);
         }
 
         return 0;
@@ -690,34 +690,34 @@ static int __mv_w_sudo(const char *src, const char *dest) {
 }
 
 static int __cp_w_sudo(const char *src, const char *dest) {
-    pid_t pid = fork();
-    if (pid < 0) {
-        perror("fork");
-        return -1;
-    } else if (pid == 0) {
-        char *argv[5];
-        argv[0] = "sudo";
-        argv[1] = "cp";
-        argv[2] = (char *)src;
-        argv[3] = (char *)dest;
-        argv[4] = NULL;
-        execvp("sudo", argv);
-        perror("execvp sudo");
-        _exit(127);
-    } else {
-        int status;
-        if (waitpid(pid, &status, 0) < 0) {
-            perror("waitpid");
+        pid_t pid = fork();
+        if (pid < 0) {
+            perror("fork");
             return -1;
-        }
-        if (WIFEXITED(status)) {
-            return WEXITSTATUS(status);
-        } else if (WIFSIGNALED(status)) {
-            return 128 + WTERMSIG(status);
+        } else if (pid == 0) {
+            char *argv[5];
+            argv[0] = "sudo";
+            argv[1] = "cp";
+            argv[2] = (char *)src;
+            argv[3] = (char *)dest;
+            argv[4] = NULL;
+            execvp("sudo", argv);
+            perror("execvp sudo");
+            _exit(127);
         } else {
-            return -1;
+            int status;
+            if (waitpid(pid, &status, 0) < 0) {
+                perror("waitpid");
+                return -1;
+            }
+            if (WIFEXITED(status)) {
+                return WEXITSTATUS(status);
+            } else if (WIFSIGNALED(status)) {
+                return 128 + WTERMSIG(status);
+            } else {
+                return -1;
+            }
         }
-    }
 }
 
 int watchdogs_sef_wmv(const char *c_src, const char *c_dest) {

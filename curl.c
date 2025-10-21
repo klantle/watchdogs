@@ -39,11 +39,16 @@ static int progress_callback(void *ptr,
                              curl_off_t ultotal,
                              curl_off_t ulnow)
 {
+        static int lp = -1;
         if (dltotal > 0) {
                 int percent = (int)((dlnow * 100) / dltotal);
-                printf("\rDownloading... %3d%%\n", percent);
-                fflush(stdout);
+                if (percent != lp) {
+                        printf("\rDownloading... %3d%% - ", percent);
+                        fflush(stdout);
+                        lp = percent;
+                }
         }
+
         return 0;
 }
 

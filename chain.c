@@ -2,7 +2,7 @@
     #define _GNU_SOURCE
 #endif 
 
-#define DEBUGGING_COMPILER
+#define WD_DEBUGGING
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -47,12 +47,47 @@
 #include "chain.h"
 #include "server.h"
 
+static int
+    __watchdogs_os__;
+static const char
+    *ptr_samp = NULL;
+static int
+    find_for_samp = 0x0;
+static const char
+    *ptr_openmp = NULL;
+static int
+    find_for_omp = 0x0;
+    
 void __init_function(void) {
         watchdogs_title(NULL);
         watchdogs_toml_data();
         watchdogs_u_history();
         watchdogs_reset_var();
         reset_watchdogs_sef_dir();
+
+        __watchdogs_os__ = signal_system_os();
+        
+        if (__watchdogs_os__ == 0x01) {
+            ptr_samp="samp-server.exe"; ptr_openmp="omp-server.exe";
+        }
+        else if (__watchdogs_os__ == 0x00) {
+            ptr_samp="samp03svr"; ptr_openmp="omp-server";
+        }
+        
+        FILE *file_s = fopen(ptr_samp, "r");
+        if (file_s) {
+            find_for_samp = 0x1;
+            fclose(file_s);
+        }
+        FILE *file_m = fopen(ptr_openmp, "r");
+        if (file_m) {
+            find_for_omp = 0x1;
+            fclose(file_m);
+        }
+#ifdef WD_DEBUGGING
+        printf_color(COL_YELLOW, "-DEBUGGING\n");
+        printf("[__init_function]:\n\t__watchdogs_os__: 0x0%d\n\tptr_samp: %s\n\tptr_openmp: %s\n", __watchdogs_os__, ptr_samp, ptr_openmp);
+#endif
 }
 
 int __init_wd(void)
@@ -67,38 +102,7 @@ int __init_wd(void)
                                                     __command,
                                                     __command_len,
                                                     &c_distance);
-
-        static const char
-            *ptr_samp = NULL;
-        static int
-            find_for_samp = 0x0;
-        static const char
-            *ptr_openmp = NULL;
-        static int
-            find_for_omp = 0x0;
-
-        static int __watchdogs_os__;
-            __watchdogs_os__ = signal_system_os();
-        
-        if (__watchdogs_os__ == 0x01) {
-            ptr_samp="samp-server.exe"; ptr_openmp="omp-server.exe";
-        }
-        else if (__watchdogs_os__ == 0x00) {
-            ptr_samp="samp03svr"; ptr_openmp="omp-server";
-        }
-        
-        FILE *file_s = fopen(ptr_samp, "r");
-        if (file_s) {
-            find_for_samp = 0x1;
-            fclose(file_s);
-        }
-
-        FILE *file_m = fopen(ptr_openmp, "r");
-        if (file_m) {
-            find_for_omp = 0x1;
-            fclose(file_m);
-        }
-
+                                                    
         if (strncmp(ptr_command, "help", 4) == 0) {
             watchdogs_title("Watchdogs | @ help");
 
@@ -244,9 +248,7 @@ ret_gm:
                 FILE *procc_f = fopen("watchdogs.toml", "r");
                 if (!procc_f) {
                     printf_error("Can't read file %s\n", "watchdogs.toml");
-                    if (_compiler_) {
-                        free(_compiler_);
-                    }
+                    if (_compiler_) { free(_compiler_); }
                     return 0;
                 }
                 
@@ -256,9 +258,7 @@ ret_gm:
         
                 if (!config) {
                     printf_error("error parsing TOML: %s\n", errbuf);    
-                    if (_compiler_) {
-                        free(_compiler_);
-                    }
+                    if (_compiler_) { free(_compiler_); }
                     return 0;
                 }
                 
@@ -358,7 +358,8 @@ ret_gm:
 
                             compiler_dur = (end.tv_sec - start.tv_sec) + (end.tv_nsec - start.tv_nsec) / 1e9;
                             printf("[Finished in %.3fs]\n", compiler_dur);
-#ifdef DEBUGGING_COMPILER
+#ifdef WD_DEBUGGING
+                            printf_color(COL_YELLOW, "-DEBUGGING\n");
                             printf("[COMPILER]:\n\t%s\n", _compiler_);
 #endif
                         } else {
@@ -432,7 +433,8 @@ ret_gm:
 
                                 compiler_dur = (end.tv_sec - start.tv_sec) + (end.tv_nsec - start.tv_nsec) / 1e9;
                                 printf("[Finished in %.3fs]\n", compiler_dur);
-#ifdef DEBUGGING_COMPILER
+#ifdef WD_DEBUGGING
+                                printf_color(COL_YELLOW, "-DEBUGGING\n");
                                 printf("[COMPILER]:\n\t%s\n", _compiler_);
 #endif
                             } else {
@@ -443,9 +445,7 @@ ret_gm:
                         }
                     }
                     toml_free(config);
-                    if (_compiler_) {
-                        free(_compiler_);
-                    }
+                    if (_compiler_) { free(_compiler_); }
                     return 0;
                 }
             } else {
@@ -608,7 +608,6 @@ _runners_:
                             break;
                         } else {
                             printf("Invalid input. Please type Y/y to install or N/n to cancel.\n");
-                            if (ptr_sigA) { free(ptr_sigA); }
                             ptr_sigA = readline("install now? [Y/n]: ");
                         }
                     }

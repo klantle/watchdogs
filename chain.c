@@ -117,14 +117,17 @@ _reexecute_command:
                 println("Usage: help | help [<command>]");
                 println("command:");
                 println(" clear, exit, kill, title");
-                println(" gamemode, pawncc");
+                println(" gamemode, pawncc, toml");
                 println(" compile, running, debug");
                 println(" stop, restart, hardware");
             } else if (strcmp(arg, "exit") == 0) { println("exit: exit from watchdogs. | Usage: \"exit\"");
             } else if (strcmp(arg, "clear") == 0) { println("clear: clear screen watchdogs. | Usage: \"clear\"");
-            } else if (strcmp(arg, "kill") == 0) { println("kill: kill - restart terminal watchdogs. | Usage: \"kill\"");
+            } else if (strcmp(arg, "kill") == 0) { println("kill: kill - refresh terminal watchdogs. | Usage: \"kill\"");
             } else if (strcmp(arg, "hardware") == 0) { println("hardware: hardware information. | Usage: \"hardware\"");
-            } else if (strcmp(arg, "title") == 0) { println("title: set-title Terminal watchdogs. | Usage: \"title\" | [<args>]");
+            } else if (strcmp(arg, "title") == 0) { println("title: set-title terminal watchdogs. | Usage: \"title\" | [<args>]");
+            } else if (strcmp(arg, "gamemode") == 0) { println("gamemode: gamemode - download sa-mp gamemode. | Usage: \"gamemode\"");
+            } else if (strcmp(arg, "pawncc") == 0) { println("pawncc: pawncc - download sa-mp pawncc. | Usage: \"pawncc\"");
+            } else if (strcmp(arg, "toml") == 0) { println("toml: re-create toml - re-create & re-write watchdogs.toml\" | Usage: \"toml\"");
             } else if (strcmp(arg, "compile") == 0) { println("compile: compile your project. | Usage: \"compile\" | [<args>]");
             } else if (strcmp(arg, "running") == 0) { println("running: running your project. | Usage: \"running\" | [<args>]");
             } else if (strcmp(arg, "debug") == 0) { println("debug: debugging your project. | Usage: \"debug\" | [<args>]");
@@ -159,6 +162,11 @@ ret_pcc:
                 printf("Invalid platform selection. use C^ to exit.\n");
                 goto ret_pcc;
             }
+        } else if (strcmp(ptr_command, "toml") == 0) {
+            if (access("watchdogs.toml", F_OK) == 0) {
+                remove("watchdogs.toml");
+            }
+            watchdogs_toml_data();
         } else if (strcmp(ptr_command, "gamemode") == 0) {
             watchdogs_title("Watchdogs | @ gamemode");
             static
@@ -366,7 +374,7 @@ ret_gm:
                                 wcfg.ci_options                                 // additional options
                             );
 
-                            char title_compiler_info[128];
+                            char title_compiler_info[1024 * 128];
                             snprintf(title_compiler_info, sizeof(title_compiler_info), "Watchdogs | @ compile | %s | %s | %s", wcfg.sef_found[0], watchdogs_c_output_f_container, wcfg.g_output);
                             watchdogs_title(title_compiler_info);
                             
@@ -403,66 +411,62 @@ ret_gm:
                             printf("[COMPILER]:\n\t%s\n", _compiler_);
 #endif
                         } else {
-                                char __direct_path[PATH_MAX] = {0},
-                                     __file_name[PATH_MAX] = {0},
-                                     __input_path[PATH_MAX] = {0},
-                                     __tmp_arg[PATH_MAX] = {0};
+                            char __direct_path[PATH_MAX] = {0},
+                                 __file_name[PATH_MAX] = {0},
+                                 __input_path[PATH_MAX] = {0},
+                                 __tmp_arg[PATH_MAX] = {0};
 
-                                strncpy(__tmp_arg, compile_args, sizeof(__tmp_arg) - 1);
-                                __tmp_arg[sizeof(__tmp_arg) - 1] = '\0';
+                            strncpy(__tmp_arg, compile_args, sizeof(__tmp_arg) - 1);
+                            __tmp_arg[sizeof(__tmp_arg) - 1] = '\0';
 
-                                char *last_slash = strrchr(__tmp_arg, '/'),
-                                     *last_back = strrchr(__tmp_arg, '\\');
-                                if (last_back && (!last_slash || last_back > last_slash))
-                                    last_slash = last_back;
+                            char *last_slash = strrchr(__tmp_arg, '/');
+                            char *last_back = strrchr(__tmp_arg, '\\');
+                            if (last_back && (!last_slash || last_back > last_slash))
+                                last_slash = last_back;
 
-                                if (last_slash) {
-                                    size_t dir_len = (size_t)(last_slash - __tmp_arg);
-                                    if (dir_len >= sizeof(__direct_path)) dir_len = sizeof(__direct_path) - 1;
-                                    memcpy(__direct_path, __tmp_arg, dir_len);
-                                    __direct_path[dir_len] = '\0';
+                            if (last_slash) {
+                                size_t dir_len = (size_t)(last_slash - __tmp_arg);
+                                if (dir_len >= sizeof(__direct_path)) 
+                                    dir_len = sizeof(__direct_path) - 1;
+                                memcpy(__direct_path, __tmp_arg, dir_len);
+                                __direct_path[dir_len] = '\0';
 
-                                    strncpy(__file_name, last_slash + 1, sizeof(__file_name) - 1);
-                                    __file_name[sizeof(__file_name) - 1] = '\0';
+                                const char *filename_start = last_slash + 1;
+                                size_t filename_len = strlen(filename_start);
+                                if (filename_len >= sizeof(__file_name))
+                                    filename_len = sizeof(__file_name) - 1;
+                                memcpy(__file_name, filename_start, filename_len);
+                                __file_name[filename_len] = '\0';
 
-                                    size_t need = strlen(__direct_path) + 1 + strlen(__file_name) + 1;
-                                    if (need > sizeof(__input_path)) {
-                                        size_t max_fn = sizeof(__input_path) - strlen(__direct_path) - 2;
-                                        if (max_fn > 0)
-                                            __file_name[max_fn] = '\0';
-                                        else {
-                                            __direct_path[0] = '\0';
-                                            strncpy(__direct_path, "gamemodes", sizeof(__direct_path) - 1);
-                                            __direct_path[sizeof(__direct_path) - 1] = '\0';
-                                            strncpy(__file_name, __tmp_arg, sizeof(__file_name) - 1);
-                                            __file_name[sizeof(__file_name) - 1] = '\0';
-                                        }
-                                    }
-
-                                    snprintf(__input_path, sizeof(__input_path), "%s/%s", __direct_path, __file_name);
-                                    __input_path[sizeof(__input_path) - 1] = '\0';
-                                } else {
-                                    strncpy(__file_name, __tmp_arg, sizeof(__file_name) - 1);
-                                    __file_name[sizeof(__file_name) - 1] = '\0';
-
-                                    if (__direct_path[0] == '\0') {
-                                        strncpy(__direct_path, "gamemodes", sizeof(__direct_path) - 1);
-                                        __direct_path[sizeof(__direct_path) - 1] = '\0';
-                                    }
-                                    size_t need = strlen("gamemodes") + 1 + strlen(__file_name) + 1;
-                                    if (need > sizeof(__input_path)) {
-                                        size_t max_fn = sizeof(__input_path) - strlen("gamemodes") - 2;
-                                        if (max_fn > 0) __file_name[max_fn] = '\0';
-                                    }
-
-                                    snprintf(__input_path, sizeof(__input_path), "gamemodes/%s", __file_name);
-                                    __input_path[sizeof(__input_path) - 1] = '\0';
+                                size_t total_needed = strlen(__direct_path) + 1 + strlen(__file_name) + 1;
+                                if (total_needed > sizeof(__input_path)) {
                                     strncpy(__direct_path, "gamemodes", sizeof(__direct_path) - 1);
                                     __direct_path[sizeof(__direct_path) - 1] = '\0';
+                                    
+                                    size_t max_filename = sizeof(__file_name) - 1;
+                                    if (filename_len > max_filename) {
+                                        memcpy(__file_name, filename_start, max_filename);
+                                        __file_name[max_filename] = '\0';
+                                    }
                                 }
+                                
+                                if (snprintf(__input_path, sizeof(__input_path), "%s/%s", __direct_path, __file_name) >= (int)sizeof(__input_path)) {
+                                    __input_path[sizeof(__input_path) - 1] = '\0';
+                                }
+                            } else {
+                                strncpy(__file_name, __tmp_arg, sizeof(__file_name) - 1);
+                                __file_name[sizeof(__file_name) - 1] = '\0';
 
-                                int find_gamemodes_arg1 = watchdogs_sef_fdir(__direct_path, __file_name);
-                                if (find_gamemodes_arg1) {
+                                strncpy(__direct_path, "gamemodes", sizeof(__direct_path) - 1);
+                                __direct_path[sizeof(__direct_path) - 1] = '\0';
+
+                                if (snprintf(__input_path, sizeof(__input_path), "gamemodes/%s", __file_name) >= (int)sizeof(__input_path)) {
+                                    __input_path[sizeof(__input_path) - 1] = '\0';
+                                }
+                            }
+
+                            int find_gamemodes_arg1 = watchdogs_sef_fdir(__direct_path, __file_name);
+                            if (find_gamemodes_arg1) {
                                 char* container_output;
                                 if (wcfg.sef_count > 0 &&
                                     wcfg.sef_found[1][0] != '\0') {
@@ -510,7 +514,7 @@ ret_gm:
                                     fprintf(stderr, "[Error] snprintf() failed or buffer too small (needed %d bytes)\n", ret);
                                 }
 
-                                char title_compiler_info[128];
+                                char title_compiler_info[1024 * 128];
                                 snprintf(title_compiler_info, sizeof(title_compiler_info), "Watchdogs | @ compile | %s | %s | %s.amx", wcfg.sef_found[0], compile_args, watchdogs_c_output_f_container);
                                 watchdogs_title(title_compiler_info);
                                 
@@ -535,9 +539,7 @@ ret_gm:
                                     }
                                     fclose(procc_f);
                                 } else {
-#ifdef WD_DEBUGGING
                                     printf_error("failed to open .wd_compiler.log\n");
-#endif
                                 }
 
                                 compiler_dur = (end.tv_sec - start.tv_sec) + (end.tv_nsec - start.tv_nsec) / 1e9;

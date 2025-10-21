@@ -14,7 +14,7 @@ detect_platform() {
     echo "termux" && return
   fi
   case "$uname_s" in
-    MINGW*|MSYS*|CYGWIN*|Windows_NT) echo "windows" && return ;;
+    MINGW*|MSYS*|Windows_NT) echo "windows" && return ;;
   esac
   echo "linux"
 }
@@ -42,14 +42,8 @@ if ! command -v make >/dev/null 2>&1; then
   exit 2
 fi
 
-if [[ "$target" == "windows" ]] && ! make -v >/dev/null 2>&1; then
-  if command -v mingw32-make >/dev/null 2>&1; then
-    echo "Using mingw32-make for windows target"
-    mingw32-make windows
-  else
-    echo "ERROR: mingw32-make not found." >&2
-    exit 2
-  fi
+if [ "$target" = "windows" ]; then
+  make mingw64
 else
   make "$target"
 fi

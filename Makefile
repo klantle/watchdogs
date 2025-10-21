@@ -72,7 +72,7 @@ mingw64:
 	@echo "$(YELLOW)==>$(RESET) Build complete: $(TARGET) version $(VERSION)"
 	@$(MAKE) TARGET=watchdogs.exe CC=x86_64-w64-mingw32-gcc \
 	CFLAGS="$(CFLAGS) -DWIN32 -D_WIN32 -fno-pie" \
-	LDFLAGS="-lws2_32 -lwinmm -static -Wl,-O1,--gc-sections"
+	LDFLAGS="-static -static-libgcc -static-libstdc++ -Wl,-O1,--gc-sections -lws2_32 -lwinmm"
 
 debug:
 	@echo "$(YELLOW)==>$(RESET) Building $(TARGET) version $(VERSION)"

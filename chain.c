@@ -2,7 +2,9 @@
     #define _GNU_SOURCE
 #endif 
 
+#if defined(_DBG_PRINT)
 #define WD_DEBUGGING
+#endif
 
 #include <stdio.h>
 #include <stdlib.h>

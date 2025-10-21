@@ -507,7 +507,10 @@ int watchdogs_toml_data(void)
         if (_watchdogs_general) {
                 toml_datum_t os_val = toml_string_in(_watchdogs_general, "os");
                 if (os_val.ok) wcfg.os = strdup(os_val.u.s);
+                free(os_val.u.s);
         }
+
+        toml_free(config);
 
         return 0;
 }
@@ -814,7 +817,7 @@ int __aio_sef_safety(const char *c_src, const char *c_dest)
 }
 
 int watchdogs_sef_wmv(const char *c_src, const char *c_dest) {
-        int ret = __aio_safety(c_src, c_dest);
+        int ret = __aio_sef_safety(c_src, c_dest);
         if (ret == 1) { return 1; }
 
         int mv_ret = __try_mv_wout_sudo(c_src, c_dest);
@@ -860,7 +863,7 @@ int watchdogs_sef_wmv(const char *c_src, const char *c_dest) {
 int watchdogs_sef_wcopy(const char *c_src,
                         const char *c_dest)
 {
-        int ret = __aio_safety(c_src, c_dest);
+        int ret = __aio_sef_safety(c_src, c_dest);
         if (ret == 1) { return 1; }
 
         if (path_exists(c_dest)) {
@@ -1025,12 +1028,14 @@ install_pawncc_now(void) {
 
                 struct stat st;
                 int lib_or_lib32 = 0;
-                if (stat("/usr/local/lib32", &st) == 0 && S_ISDIR(st.st_mode)) {
+                if (!stat("/usr/local/lib32", &st) && S_ISDIR(st.st_mode)) {
                         lib_or_lib32=2;
                         str_lib_path="/usr/local/lib32";
-                } else if (stat("/data/data/com.termux/files/usr/local/lib/", &st) == 0 && S_ISDIR(st.st_mode)) {
-                        str_lib_path="/data/data/com.termux/files/usr/local/lib/";
-                } else if (stat("/usr/local/lib", &st) == 0 && S_ISDIR(st.st_mode)) {
+                } else if (!stat("/data/data/com.termux/files/usr/local/lib/", &st) ||
+                           !stat("/data/data/com.termux/files/usr/lib/", &st) &&
+                           S_ISDIR(st.st_mode)) {
+                           str_lib_path="/data/data/com.termux/files/usr/local/lib/";
+                } else if (!stat("/usr/local/lib", &st) && S_ISDIR(st.st_mode)) {
                         lib_or_lib32=1;
                         str_lib_path="/usr/local/lib";
                 } else printf_error("Can't found ../usr/local/lib!");

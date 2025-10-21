@@ -43,7 +43,11 @@ static int progress_callback(void *ptr,
         if (dltotal > 0) {
                 int percent = (int)((dlnow * 100) / dltotal);
                 if (percent != lp) {
-                        printf("\rDownloading... %3d%% - ", percent);
+                        if (percent < 100)
+                                printf("\rDownloading... %3d%% ?-", percent);
+                        else
+                                printf("\rDownloading... %3d%% - ", percent);
+
                         fflush(stdout);
                         lp = percent;
                 }

@@ -27,14 +27,25 @@ watch_pawncc(const char *platform) {
              url_sel[300],
              fname_sel[256];
 
-        printf(":: Do you want to continue downloading PawnCC? (Yy/Nn)\n>> ");
-        if (scanf(" %c", &selection) != 1) return;
-        if (selection != 'Y' && selection != 'y') {
-            __init(0);
-            return;
-        }
-
         if (strcmp(platform, "termux") == 0) {
+            struct stat st;
+            int is_termux = 0;
+            if (!stat("/data/data/com.termux/files/usr/local/lib/", &st) ||
+                !stat("/data/data/com.termux/files/usr/lib/", &st) &&
+                S_ISDIR(st.st_mode)) {
+                    is_termux=1;
+                }
+            if (is_termux == 0)
+            {
+                char verify_first;
+                printf(":: You are no longer in Termux!. do you continue? [y/N] ");
+                if (scanf(" %c", &verify_first) != 1) return;
+                if (verify_first == 'N' || verify_first == 'n') {
+                    __init(0);
+                    return;
+                }
+            }
+
             const char *termux_versions[] = { "3.10.11", "3.10.10" };
             int version_count = 2;
             printf("Select the PawnCC version to download (Termux build by mxp96):\n");
@@ -124,16 +135,6 @@ watch_pawncc(const char *platform) {
 
 void
 watch_samp(const char *platform) {
-        char sel_c;
-        printf(":: Do you want to continue downloading SA-MP? (Yy/Nn): ");
-        if (scanf(" %c", &sel_c) != 1) {
-            return;
-        }
-        if (sel_c != 'Y' && sel_c != 'y') {
-            __init(0);
-            return;
-        }
-        
         VersionInfo list_versions[] = {
             { 'A', "SA-MP 0.3.DL R1", 
                 "https://github.com/KrustyKoyle/files.sa-mp.com-Archive/raw/refs/heads/master/samp03DLsvr_R1.tar.gz",

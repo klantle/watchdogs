@@ -335,15 +335,15 @@ ret_gm:
         
                         static char wd_gamemode[56];
                         if (arg == NULL || *arg == '\0' || (arg[0] == '.' && arg[1] == '\0')) {
-                            toml_datum_t watchdogs_gmodes = toml_string_in(watchdogs_compiler, "input");
-                            if (watchdogs_gmodes.ok) {
-                                wcfg.gm_input = strdup(watchdogs_gmodes.u.s);
-                                free(watchdogs_gmodes.u.s);
+                            toml_datum_t toml_g_i = toml_string_in(watchdogs_compiler, "input");
+                            if (toml_g_i.ok) {
+                                wcfg.gm_input = strdup(toml_g_i.u.s);
+                                free(toml_g_i.u.s);
                             }
-                            toml_datum_t watchdogs_gmodes_o = toml_string_in(watchdogs_compiler, "output");
-                            if (watchdogs_gmodes_o.ok) {
-                                wcfg.g_output = strdup(watchdogs_gmodes_o.u.s);
-                                free(watchdogs_gmodes_o.u.s);
+                            toml_datum_t toml_gm_o = toml_string_in(watchdogs_compiler, "output");
+                            if (toml_gm_o.ok) {
+                                wcfg.g_output = strdup(toml_gm_o.u.s);
+                                free(toml_gm_o.u.s);
                             }
                             
                             struct timespec start, end;

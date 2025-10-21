@@ -117,7 +117,7 @@ int __init_wd(void)
                 println(" clear, exit, kill, title");
                 println(" gamemode, pawncc");
                 println(" compile, running, debug");
-                println(" stop, restart");
+                println(" stop, restart, hardware");
             } else if (strcmp(arg, "exit") == 0) { println("exit: exit from watchdogs. | Usage: \"exit\"");
             } else if (strcmp(arg, "clear") == 0) { println("clear: clear screen watchdogs. | Usage: \"clear\"");
             } else if (strcmp(arg, "kill") == 0) { println("kill: kill - restart terminal watchdogs. | Usage: \"kill\"");

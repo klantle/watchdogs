@@ -782,7 +782,7 @@ static int __cp_with_sudo(const char *src, const char *dest) {
         }
 }
 
-int __aio_safety(const char *c_src, const char *c_dest)
+int __aio_sef_safety(const char *c_src, const char *c_dest)
 {
         if (!c_src || !c_dest)
             printf_error("src or dest is null\n");

@@ -122,8 +122,8 @@ int watchdogs_download_file(const char *url, const char *fname) {
                                         printf("Unknown archive type, skipping extraction\n");
                                 }
 
-                                if (wcfg.init_ipcc == 1) {
-                                        wcfg.init_ipcc = 0;
+                                if (wcfg.ipcc == 1) {
+                                        wcfg.ipcc = 0;
                                         char *__ptr_sigA = readline("apply pawncc now? [Y/n]: ");
                                         if (__ptr_sigA == NULL ||
                                             strlen(__ptr_sigA) == 0 ||

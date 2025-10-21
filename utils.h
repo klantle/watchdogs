@@ -16,14 +16,14 @@
 #define SEF_PATH_SIZE 1024
 
 typedef struct {
-        int init_ipcc;
-        int watchdogs_sef_count;
-        char watchdogs_sef_found[SEF_PATH_COUNT][SEF_PATH_SIZE];
-        const char *watchdogs_os;
-        const char *server_or_debug;
-        const char *wd_compiler_opt;
-        const char *wd_gamemode_input;
-        const char *wd_gamemode_output;
+        int ipcc;
+        int sef_count;
+        char sef_found[SEF_PATH_COUNT][SEF_PATH_SIZE];
+        const char *os;
+        const char *serv_dbg;
+        const char *ci_options;
+        const char *gm_input;
+        const char *g_output;
 } wd;
 
 extern wd wcfg;

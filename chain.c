@@ -51,7 +51,7 @@
 #include "server.h"
 
 static int
-    __watchdogs_os__;
+    __os__;
 static const char
     *ptr_samp = NULL;
 static int
@@ -67,12 +67,12 @@ void __init_function(void) {
         watchdogs_reset_var();
         reset_watchdogs_sef_dir();
 
-        __watchdogs_os__ = signal_system_os();
+        __os__ = signal_system_os();
         
-        if (__watchdogs_os__ == 0x01) {
+        if (__os__ == 0x01) {
             ptr_samp="samp-server.exe"; ptr_openmp="omp-server.exe";
         }
-        else if (__watchdogs_os__ == 0x00) {
+        else if (__os__ == 0x00) {
             ptr_samp="samp03svr"; ptr_openmp="omp-server";
         }
         
@@ -88,7 +88,7 @@ void __init_function(void) {
         }
 #ifdef WD_DEBUGGING
         printf_color(COL_YELLOW, "-DEBUGGING\n");
-        printf("[__init_function]:\n\t__watchdogs_os__: 0x0%d\n\tptr_samp: %s\n\tptr_openmp: %s\n", __watchdogs_os__, ptr_samp, ptr_openmp);
+        printf("[__init_function]:\n\t__os__: 0x0%d\n\tptr_samp: %s\n\tptr_openmp: %s\n", __os__, ptr_samp, ptr_openmp);
 #endif
 }
 
@@ -239,9 +239,9 @@ ret_gm:
             compile_args = strtok(arg, " ");
         
             const char *ptr_pawncc;
-            if (__watchdogs_os__ == 0x01) 
+            if (__os__ == 0x01) 
                 ptr_pawncc = "pawncc.exe";
-            else if (__watchdogs_os__ == 0x00)
+            else if (__os__ == 0x00)
                 ptr_pawncc = "pawncc";
 
             if (access(".wd_compiler.log", F_OK) == 0) {
@@ -300,7 +300,7 @@ ret_gm:
                 if (watchdogs_compiler) {
                     toml_datum_t option_val = toml_string_in(watchdogs_compiler, "option");
                     if (option_val.ok) {
-                        wcfg.wd_compiler_opt = strdup(option_val.u.s);
+                        wcfg.ci_options = strdup(option_val.u.s);
                         free(option_val.u.s);
                     }
         
@@ -337,12 +337,12 @@ ret_gm:
                         if (arg == NULL || *arg == '\0' || (arg[0] == '.' && arg[1] == '\0')) {
                             toml_datum_t watchdogs_gmodes = toml_string_in(watchdogs_compiler, "input");
                             if (watchdogs_gmodes.ok) {
-                                wcfg.wd_gamemode_input = strdup(watchdogs_gmodes.u.s);
+                                wcfg.gm_input = strdup(watchdogs_gmodes.u.s);
                                 free(watchdogs_gmodes.u.s);
                             }
                             toml_datum_t watchdogs_gmodes_o = toml_string_in(watchdogs_compiler, "output");
                             if (watchdogs_gmodes_o.ok) {
-                                wcfg.wd_gamemode_output = strdup(watchdogs_gmodes_o.u.s);
+                                wcfg.g_output = strdup(watchdogs_gmodes_o.u.s);
                                 free(watchdogs_gmodes_o.u.s);
                             }
                             
@@ -358,16 +358,16 @@ ret_gm:
                                 _compiler_,
                                 format_size_compiler,
                                 "%s \"%s\" -o\"%s\" %s -i\"%s\" \"%s\" > .wd_compiler.log 2>&1",
-                                wcfg.watchdogs_sef_found[0],                   // compiler binary
-                                wcfg.wd_gamemode_input,                        // input file
-                                wcfg.wd_gamemode_output,                       // output file
+                                wcfg.sef_found[0],                   // compiler binary
+                                wcfg.gm_input,                        // input file
+                                wcfg.g_output,                       // output file
                                 include_aio_path,                              // include search path
                                 path_include,                                  // include directory
-                                wcfg.wd_compiler_opt                           // additional options
+                                wcfg.ci_options                           // additional options
                             );
 
                             char title_compiler_info[128];
-                            snprintf(title_compiler_info, sizeof(title_compiler_info), "Watchdogs | @ compile | %s | %s | %s", wcfg.watchdogs_sef_found[0], watchdogs_c_output_f_container, wcfg.wd_gamemode_output);
+                            snprintf(title_compiler_info, sizeof(title_compiler_info), "Watchdogs | @ compile | %s | %s | %s", wcfg.sef_found[0], watchdogs_c_output_f_container, wcfg.g_output);
                             watchdogs_title(title_compiler_info);
                             
                             clock_gettime(CLOCK_MONOTONIC, &start);
@@ -464,9 +464,9 @@ ret_gm:
                                 int find_gamemodes_arg1 = watchdogs_sef_fdir(__direct_path, __file_name);
                                 if (find_gamemodes_arg1) {
                                 char* container_output;
-                                if (wcfg.watchdogs_sef_count > 0 &&
-                                    wcfg.watchdogs_sef_found[1][0] != '\0') {
-                                    container_output = strdup(wcfg.watchdogs_sef_found[1]);
+                                if (wcfg.sef_count > 0 &&
+                                    wcfg.sef_found[1][0] != '\0') {
+                                    container_output = strdup(wcfg.sef_found[1]);
                                 }
                                 
                                 char i_path_rm[PATH_MAX];
@@ -498,12 +498,12 @@ ret_gm:
                                     _compiler_,
                                     format_size_compiler,
                                     "%s \"%s\" -o\"%s.amx\" %s -i\"%s\" \"%s\" > .wd_compiler.log 2>&1",
-                                    wcfg.watchdogs_sef_found[0],                    // compiler binary
+                                    wcfg.sef_found[0],                    // compiler binary
                                     compile_args,                                   // input file
                                     watchdogs_c_output_f_container,                 // output file
                                     include_aio_path,                               // include search path
                                     path_include,                                   // include directory
-                                    wcfg.wd_compiler_opt                            // additional options
+                                    wcfg.ci_options                            // additional options
                                 );
 
                                 if (ret < 0 || (size_t)ret >= (size_t)format_size_compiler) {
@@ -511,7 +511,7 @@ ret_gm:
                                 }
 
                                 char title_compiler_info[128];
-                                snprintf(title_compiler_info, sizeof(title_compiler_info), "Watchdogs | @ compile | %s | %s | %s.amx", wcfg.watchdogs_sef_found[0], compile_args, watchdogs_c_output_f_container);
+                                snprintf(title_compiler_info, sizeof(title_compiler_info), "Watchdogs | @ compile | %s | %s | %s.amx", wcfg.sef_found[0], compile_args, watchdogs_c_output_f_container);
                                 watchdogs_title(title_compiler_info);
                                 
                                 clock_gettime(CLOCK_MONOTONIC, &start);
@@ -604,7 +604,7 @@ ret_pcc_2:
         } else if (strncmp(ptr_command, "running", 7) == 0 || strncmp(ptr_command, "debug", 7) == 0) {
 _runners_:
                 if (strcmp(ptr_command, "debug") == 0) {
-                    wcfg.server_or_debug="debug";
+                    wcfg.serv_dbg="debug";
                     watchdogs_title("Watchdogs | @ debug");    
                 } else {
                     watchdogs_title("Watchdogs | @ running");
@@ -707,9 +707,9 @@ _runners_:
 
                     while (1) {
                         if (strcmp(ptr_sigA, "Y") == 0 || strcmp(ptr_sigA, "y") == 0) {
-                            if (__watchdogs_os__ == 0x01) {
+                            if (__os__ == 0x01) {
                                 watch_samp("windows");
-                            } else if (__watchdogs_os__ == 0x00) {
+                            } else if (__os__ == 0x00) {
                                 watch_samp("linux");
                             }
                             break;

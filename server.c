@@ -121,14 +121,14 @@ void watchdogs_server_samp(const char *gamemode_arg, const char *server_bin) {
         remove("server.cfg");
         rename(".server.cfg.bak", "server.cfg");
 
-        if (wcfg.server_or_debug &&
-            !strcmp(wcfg.server_or_debug, "debug")) {
-            static int __watchdogs_os__;
-                __watchdogs_os__ = signal_system_os();
-            if (__watchdogs_os__ == 0x01) {
+        if (wcfg.serv_dbg &&
+            !strcmp(wcfg.serv_dbg, "debug")) {
+            static int __os__;
+                __os__ = signal_system_os();
+            if (__os__ == 0x01) {
                 kill_process("samp-server.exe");
             }
-            else if (__watchdogs_os__ == 0x00) {
+            else if (__os__ == 0x00) {
                 kill_process("samp03svr");
             }
         }
@@ -171,7 +171,9 @@ void watchdogs_server_openmp(const char *gamemode_arg, const char *server_bin) {
         json_data = malloc(file_len + 1);
         size_t bytes_read = fread(json_data, 1, file_len, procc_f);
         if (bytes_read != file_len) {
+#ifdef WD_DEBUGGING
             printf_error("failed to read file completely (%zu of %zu bytes)\n", bytes_read, file_len);
+#endif
             fclose(procc_f);
             free(json_data);
             return;
@@ -236,14 +238,14 @@ void watchdogs_server_openmp(const char *gamemode_arg, const char *server_bin) {
         remove("config.json");
         rename(".config.json.bak", "config.json");
 
-        if (wcfg.server_or_debug &&
-            !strcmp(wcfg.server_or_debug, "debug")) {
-            static int __watchdogs_os__;
-                __watchdogs_os__ = signal_system_os();
-            if (__watchdogs_os__ == 0x01) {
+        if (wcfg.serv_dbg &&
+            !strcmp(wcfg.serv_dbg, "debug")) {
+            static int __os__;
+                __os__ = signal_system_os();
+            if (__os__ == 0x01) {
                 kill_process("omp-server.exe");
             }
-            else if (__watchdogs_os__ == 0x00) {
+            else if (__os__ == 0x00) {
                 kill_process("omp-server");
             }
         }

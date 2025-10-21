@@ -1,150 +1,7 @@
-/*
- * What is this?:
- * ------------------------------------------------------------
- * This program serves as a comprehensive management tool for running,
- * compiling, and controlling multiplayer game servers, specifically
- * SA-MP (San Andreas Multiplayer) and Open.MP servers, along with
- * Pawn / PawnCC compilation for gamemodes. It provides an interactive
- * command-line interface to execute tasks such as starting,
- * stopping, compiling, debugging, and installing server projects
- * and compilers.
- *
- *
- * Script Algorithm:
- * ------------------------------------------------------------
- * 1. Initialize the program:
- *      - Load configuration from TOML files.
- *      - Set up user command history (via readline/history).
- *      - Reset internal state variables and directories.
- * 2. Enter main loop (`__init_wd()`):
- *      - Display prompt (`watchdogs > `).
- *      - Read user input, add to history, parse command.
- *      - Detect OS type (Windows, Linux, Termux) to adapt binary names & permissions.
- *      - Check presence of server binaries (samp-server / omp-server).
- * 3. Command handling for built-in commands:
- *      - `help`    : Show available commands and usage.
- *      - `exit`    : Quit the watchdogs program.
- *      - `clear`   : Clear the terminal screen.
- *      - `kill`    : Restart the session (clears screen, reinitialises).
- *      - `title`   : Set the terminal window title.
- *      - `compile` : Compile gamemodes using PawnCC with configured paths.
- *      - `running` : Start a SA-MP or Open.MP server (standard mode).
- *      - `debug`   : Start a server in debug mode.
- *      - `stop`    : Stop all running servers/tasks.
- *      - `restart` : Stop then restart servers/tasks.
- *      - `pawncc`  : Install or run the Pawn compiler for a selected platform.
- *      - `gamemode`: Install or run gamemodes for a selected platform.
- * 4. For compilation (`compile` command):
- *      - Read `watchdogs.toml` config to get compiler options, include paths,
- *        gamemode input/output filenames.
- *      - Build full compiler command (via `snprintf`), log output to
- *        `.wd_compiler.log`.
- *      - Measure compilation duration (using `clock_gettime(CLOCK_MONOTONIC,…)`).
- *      - After compile, inspect log and delete output binary if errors found.
- * 5. For server launch commands (`running` / `debug`):
- *      - Use OS-specific binary names for server (e.g., `samp03svr` vs `samp-server.exe`).
- *      - Backup config (e.g., `server.cfg` or `config.json`), adjust gamemode/script path,
- *        set execute permissions (`chmod` / `_chmod`).
- *      - Launch server (e.g., via `watchdogs_sys()` wrapper).
- *      - In interactive mode, after start wait for user to press Enter to display logs
- *        (e.g., `server_log.txt` or `log.txt`).
- *      - On completion or stop, restore original config backup.
- *
- *
- * Script Logic:
- * ------------------------------------------------------------
- * Key Functions:
- *
- * > `__init()`:
- *    - Set up `SIGINT` handler to `handle_sigint`.
- *    - Loop infinitely by calling `__init_wd()`.
- *
- * > `__init_wd()`:
- *    - Calls `__init_function()` which sets up title, loads config, user history,
- *      resets variables and directories.
- *    - Shows command prompt, reads input, adds to history.
- *    - Detects OS, determines server binary names.
- *    - Locates server binaries for SA-MP and Open.MP.
- *    - Parses user command and maps to handler:
- *         * `help`, `exit`, `clear`, `kill`, `title`
- *         * `pawncc`, `gamemode`
- *         * `compile` — invokes compilation logic
- *         * `running` / `debug` — invokes server launch logic
- *         * `stop`, `restart` — server control logic
- *    - If unknown command but close match detected (via `__find_c_command()`),
- *      suggests the closest command.
- *
- * > Compilation flow (`compile`):
- *    - Determine Pawn compiler binary based on OS.
- *    - Parse `watchdogs.toml`:
- *         * Compiler `option`
- *         * Compiler `output` filename
- *         * Include paths array
- *         * Input gamemode file
- *
- * > Server run / debug flow (`running` / `debug`):
- *    - If SA-MP binary available:
- *         * If no gamemode argument or dot (.), reset logs, set permissions, run `./samp-server`.
- *         * Else call `watchdogs_server_samp(gamemode, server_bin)`.
- *    - If Open.MP binary available:
- *         * Similar logic with `./omp-server` and `watchdogs_server_openmp()`.
- *    - If neither binary found, prompt user to install via `watch_samp()` or `watch_samp("windows"/"linux")`.
- *    - On debug mode, internal variable `server_or_debug` set to `"debug"`.
- *
- * > `watchdogs_server_samp(const char *gamemode, const char *server_bin)`:
- *    - Backup `server.cfg`.
- *    - Update gamemode line in `server.cfg` to selected gamemode file.
- *    - Set executable permission for server binary.
- *    - Launch SA-MP server, then wait for user interaction to view `server_log.txt`.
- *    - On exit restore `server.cfg` backup.
- *
- * > `watchdogs_server_openmp(const char *gamemode, const char *server_bin)`:
- *    - Backup `config.json`.
- *    - Modify `main_scripts` array to include selected gamemode.
- *    - Set executable permission for server binary.
- *    - Launch Open.MP server, then let user view `log.txt` after run.
- *    - Restore `config.json` backup.
- *
- * > `watch_pawncc(platform)`:
- *    - Install or run PawnCC compiler for the selected platform (linux/windows/termux).
- *    - Handles user prompt selection, calls `watch_pawncc("linux")`, etc.
- *
- * > `watch_samp(platform)`:
- *    - Install SA-MP server binaries for specified platform (linux/windows).
- *
- *
- * How to Use?:
- * ------------------------------------------------------------
- * 1. Compile the program along with dependencies (`watchdogs.h`, `color.h`, `utils.h`,
- *    `crypto.h`, `archive.h`, `curl.h`, etc.).
- * 2. Execute binary:
- *      - On Linux/Unix: `./watchdogs`
- *      - On Windows: `watchdogs.exe`
- * 3. Use the interactive prompt at `watchdogs > `:
- *      - `help` : list commands
- *      - `compile` : build gamemodes
- *      - `pawncc` / `gamemode` : install / select platform
- *      - `running` / `debug` : run or debug a server
- *      - `stop` / `restart` : manage servers
- * 4. Ensure that gamemodes, server binaries and config files exist in working directory.
- * 5. In debug or run mode, you will be prompted (e.g., “Press enter to print logs..”) to view the server log.
- * 6. Program handles OS differences automatically (permissions, binary names, signals).
- *
- * Notes:
- * ------------------------------------------------------------
- * - Compatible with Windows, Linux and Termux environments.
- * - Uses backups for config files to prevent overwriting originals.
- * - Sets executable permissions on server binaries when needed.
- * - Provides detailed log outputs for compile & runtime errors.
- * - Scanner searches for “error” keyword in compile log to detect failure.
- * - On unknown command, suggests the closest known command if within distance threshold.
- * - Uses `readline()` + `history` for better interactive user experience.
- */
 #ifndef _GNU_SOURCE
     #define _GNU_SOURCE
 #endif 
 
-/* debugging */
 #define DEBUGGING_COMPILER
 
 #include <stdio.h>
@@ -156,7 +13,7 @@
 #include <direct.h>
 #include <windows.h>
 #define PATH_SEP "\\"
-#define mkdir(path) _mkdir(path) // override POSIX mkdir
+#define mkdir(path) _mkdir(path)
 #define sleep(sec) Sleep((sec)*1000)
 #define setenv(name,val,overwrite) _putenv_s(name,val)
 #else
@@ -206,10 +63,10 @@ int __init_wd(void)
         watchdogs_a_history(ptr_command);
 
         int c_distance = INT_MAX;
-        const char *_dist_command = __find_c_command(ptr_command,
-                                                     __command,
-                                                     __command_len,
-                                                     &c_distance);
+        const char *_dist_command = find_cl_command(ptr_command,
+                                                    __command,
+                                                    __command_len,
+                                                    &c_distance);
 
         static const char
             *ptr_samp = NULL;
@@ -422,7 +279,7 @@ ret_gm:
                             toml_datum_t path_val = toml_string_at(include_paths, i);
                             if (path_val.ok) {
                                 char __procc[250];
-                                __copy_strip_dotfns(__procc, sizeof(__procc), path_val.u.s);
+                                copy_strip_dotfns(__procc, sizeof(__procc), path_val.u.s);
                                 if (__procc[0] == '\0') continue;
                                 if (i > 0) {
                                     size_t cur = strlen(include_aio_path);

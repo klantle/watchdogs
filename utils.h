@@ -36,9 +36,9 @@ void watchdogs_reset_var(void);
 int watchdogs_sys(const char *cmd);
 void handle_sigint(int sig);
 int watchdogs_title(const char *__title);
-void __copy_strip_dotfns(char *dst, size_t dst_sz, const char *src);
+void copy_strip_dotfns(char *dst, size_t dst_sz, const char *src);
 void escape_quotes(char *dest, size_t size, const char *src);
-extern const char* __find_c_command(
+extern const char* find_cl_command(
     const char *ptr_command,
     const char *__commands[],
     size_t num_cmds,
@@ -58,10 +58,10 @@ void kill_process_safe(const char *name);
 int dir_exists(const char *path);
 int path_exists(const char *path);
 int dir_writable(const char *path);
-int __is_regular_file(const char *path);
-int __same_file(const char *a, const char *b);
+int is_regular_file(const char *path);
+int is_same_file(const char *a, const char *b);
 int ensure_parent_dir(char *out_parent, size_t n, const char *dest);
-int __cp_f_content(const char *src, const char *dst);
+int cp_f_content(const char *src, const char *dst);
 int watchdogs_toml_data(void);
 int watchdogs_sef_fdir(const char *sef_path, const char *sef_name);
 int watchdogs_sef_wcopy(const char *c_src, const char *c_dest);

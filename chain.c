@@ -2,7 +2,7 @@
     #define _GNU_SOURCE
 #endif 
 
-#define WD_DEBUGGING
+/// #define WD_DEBUGGING
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -40,6 +40,7 @@
 #include "tomlc99/toml.h"
 #include "color.h"
 #include "utils.h"
+#include "hardware.h"
 #include "crypto.h"
 #include "package.h"
 #include "archive.h"
@@ -120,6 +121,7 @@ int __init_wd(void)
             } else if (strcmp(arg, "exit") == 0) { println("exit: exit from watchdogs. | Usage: \"exit\"");
             } else if (strcmp(arg, "clear") == 0) { println("clear: clear screen watchdogs. | Usage: \"clear\"");
             } else if (strcmp(arg, "kill") == 0) { println("kill: kill - restart terminal watchdogs. | Usage: \"kill\"");
+            } else if (strcmp(arg, "hardware") == 0) { println("hardware: hardware information. | Usage: \"hardware\"");
             } else if (strcmp(arg, "title") == 0) { println("title: set-title Terminal watchdogs. | Usage: \"title\" | [<args>]");
             } else if (strcmp(arg, "compile") == 0) { println("compile: compile your project. | Usage: \"compile\" | [<args>]");
             } else if (strcmp(arg, "running") == 0) { println("running: running your project. | Usage: \"running\" | [<args>]");
@@ -187,6 +189,32 @@ ret_gm:
         } else if (strcmp(ptr_command, "kill") == 0) {
             watchdogs_title("Watchdogs | @ kill");
             watchdogs_sys("clear");
+            __init(0);
+        } else if (strcmp(ptr_command, "hardware") == 0) {
+            printf("=== System Hardware Information ===\n\n");
+            get_system_info();
+            printf("\n");
+
+            get_cpu_info();
+            printf("\n");
+
+            get_memory_info();
+            printf("\n");
+
+            get_disk_info();
+            printf("\n");
+
+            get_network_info();
+            printf("\n");
+
+#ifdef _WIN32
+            printf("Note: GPU/BIOS info not implemented for Windows version.\n");
+#else
+            get_bios_info();
+            get_gpu_info();
+#endif
+
+            printf("\n===================================\n");
             __init(0);
         } else if (strncmp(ptr_command, "title", 5) == 0) {
             char *arg = ptr_command + 6;
@@ -300,7 +328,7 @@ ret_gm:
                         }
         
                         static char wd_gamemode[56];
-                        if (arg == NULL || *arg == '\0') {
+                        if (arg == NULL || *arg == '\0' || strchr(arg, '.')) {
                             toml_datum_t watchdogs_gmodes = toml_string_in(watchdogs_compiler, "input");
                             if (watchdogs_gmodes.ok) {
                                 wcfg.wd_gamemode_input = strdup(watchdogs_gmodes.u.s);

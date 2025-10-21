@@ -10,7 +10,7 @@
 #include <intrin.h>
 #pragma comment(lib, "iphlpapi.lib")
 
-void get_cpu_info() {
+void hardware_cpu_info() {
         int cpuInfo[4] = {0};
         char brand[64];
         __cpuid(cpuInfo, 0x80000000);
@@ -29,14 +29,14 @@ void get_cpu_info() {
         printf("Cores: %lu\n", si.dwNumberOfProcessors);
 }
 
-void get_memory_info() {
+void hardware_memory_info() {
         MEMORYSTATUSEX memInfo;
         memInfo.dwLength = sizeof(memInfo);
         GlobalMemoryStatusEx(&memInfo);
         printf("Total RAM: %.2f GB\n", memInfo.ullTotalPhys / (1024.0 * 1024 * 1024));
 }
 
-void get_disk_info() {
+void hardware_disk_info() {
         ULARGE_INTEGER freeBytes, totalBytes, totalFree;
         if (GetDiskFreeSpaceEx("C:\\", &freeBytes, &totalBytes, &totalFree))
             printf("Disk C: %.2f GB total, %.2f GB free\n",
@@ -44,7 +44,7 @@ void get_disk_info() {
                 freeBytes.QuadPart  / (1024.0 * 1024 * 1024));
 }
 
-void get_network_info() {
+void hardware_network_info() {
         DWORD dwSize = 0;
         GetAdaptersInfo(NULL, &dwSize);
         PIP_ADAPTER_INFO pAdapterInfo = (IP_ADAPTER_INFO *)malloc(dwSize);
@@ -62,7 +62,7 @@ void get_network_info() {
         free(pAdapterInfo);
 }
 
-void get_system_info() {
+void hardware_system_info() {
         OSVERSIONINFOEX osvi = {0};
         osvi.dwOSVersionInfoSize = sizeof(osvi);
         GetVersionEx((OSVERSIONINFO *)&osvi);
@@ -79,7 +79,7 @@ void get_system_info() {
 #include <unistd.h>
 #include <sys/utsname.h>
 
-void get_cpu_info() {
+void hardware_cpu_info() {
         FILE *f = fopen("/proc/cpuinfo", "r");
         if (!f) return;
         char line[256];
@@ -92,7 +92,7 @@ void get_cpu_info() {
         fclose(f);
 }
 
-void get_memory_info() {
+void hardware_memory_info() {
         FILE *f = fopen("/proc/meminfo", "r");
         if (!f) return;
         char key[64], unit[64];
@@ -106,7 +106,7 @@ void get_memory_info() {
         fclose(f);
 }
 
-void get_disk_info() {
+void hardware_disk_info() {
         struct statvfs stat;
         if (statvfs("/", &stat) == 0) {
             double total = (double)stat.f_blocks * stat.f_frsize / (1024 * 1024 * 1024);
@@ -115,7 +115,7 @@ void get_disk_info() {
         }
 }
 
-void get_network_info() {
+void hardware_network_info() {
         struct ifaddrs *ifaddr;
         getifaddrs(&ifaddr);
         for (struct ifaddrs *ifa = ifaddr; ifa; ifa = ifa->ifa_next) {
@@ -125,13 +125,13 @@ void get_network_info() {
         freeifaddrs(ifaddr);
 }
 
-void get_system_info() {
+void hardware_system_info() {
         struct utsname uts;
         uname(&uts);
         printf("OS: %s %s %s\n", uts.sysname, uts.release, uts.machine);
 }
 
-void get_bios_info() {
+void hardware_bios_info() {
         FILE *f = fopen("/sys/class/dmi/id/board_vendor", "r");
         if (f) {
             char buf[128];
@@ -141,7 +141,7 @@ void get_bios_info() {
         }
 }
 
-void get_gpu_info() {
+void hardware_gpu_info() {
         FILE *f = popen("lspci | grep VGA", "r");
         if (f) {
             char buf[256];

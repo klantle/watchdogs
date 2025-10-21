@@ -662,7 +662,7 @@ int watchdogs_sef_fdir(const char *sef_path, const char *sef_name) {
 #endif
 }
 
-int __try_mv_wh_sudo(const char *src, const char *dest) {
+int __try_mv_wout_sudo(const char *src, const char *dest) {
         if (rename(src, dest) == 0) return 0;
         if (errno == EXDEV || errno == EACCES || errno == EPERM) {
                 if (!is_regular_file(src)) return -1;
@@ -691,7 +691,7 @@ int __try_mv_wh_sudo(const char *src, const char *dest) {
         return -1;
 }
 
-int __try_cp_wh_sudo(const char *src, const char *dest) {
+int __try_cp_wout_sudo(const char *src, const char *dest) {
         if (!is_regular_file(src)) return -1;
         char parent[PATH_MAX];
         if (ensure_parent_dir(parent, sizeof(parent), dest) != 0) return -1;
@@ -715,7 +715,7 @@ int __try_cp_wh_sudo(const char *src, const char *dest) {
         return 0;
 }
 
-static int __mv_w_sudo(const char *src, const char *dest) {
+static int __mv_with_sudo(const char *src, const char *dest) {
         pid_t pid = fork();
         if (pid < 0) {
             perror("fork");
@@ -746,7 +746,7 @@ static int __mv_w_sudo(const char *src, const char *dest) {
         }
 }
 
-static int __cp_w_sudo(const char *src, const char *dest) {
+static int __cp_with_sudo(const char *src, const char *dest) {
         pid_t pid = fork();
         if (pid < 0) {
             perror("fork");
@@ -821,7 +821,7 @@ int watchdogs_sef_wmv(const char *c_src, const char *c_dest) {
             }
         }
 
-        int mv_ret = __try_mv_wh_sudo(c_src, c_dest);
+        int mv_ret = __try_mv_wout_sudo(c_src, c_dest);
         if (mv_ret == 0) {
 #ifdef _WIN32
             DWORD attr = GetFileAttributesA(c_dest);
@@ -844,7 +844,7 @@ int watchdogs_sef_wmv(const char *c_src, const char *c_dest) {
         } else {
             if (mv_ret == -2 || errno == EACCES || errno == EPERM) {
                 printf_info("attempting sudo move due to permission issue\n");
-                int sudo_rc = __mv_w_sudo(c_src, c_dest);
+                int sudo_rc = __mv_with_sudo(c_src, c_dest);
                 if (sudo_rc == 0) {
                     printf_info("moved with sudo: %s -> %s\n", c_src, c_dest);
                     return 0;
@@ -858,7 +858,7 @@ int watchdogs_sef_wmv(const char *c_src, const char *c_dest) {
             } else {
                 printf_error("move without sudo failed (errno=%d %s)\n", errno, strerror(errno));
                 printf_info("attempting sudo as last resort\n");
-                int sudo_rc = __mv_w_sudo(c_src, c_dest);
+                int sudo_rc = __mv_with_sudo(c_src, c_dest);
                 if (sudo_rc == 0) return 0;
                 printf_error("sudo mv failed with code %d\n", sudo_rc);
                 return 1;
@@ -912,7 +912,7 @@ int watchdogs_sef_wcopy(const char *c_src,
             }
         }
 	
-        int cp_ret = __try_cp_wh_sudo(c_src, c_dest);
+        int cp_ret = __try_cp_wout_sudo(c_src, c_dest);
         if (cp_ret == 0) {
 #ifdef _WIN32
             DWORD attr = GetFileAttributesA(c_dest);
@@ -935,7 +935,7 @@ int watchdogs_sef_wcopy(const char *c_src,
         } else {
             if (cp_ret == -2 || errno == EACCES || errno == EPERM) {
                 printf_info("attempting sudo copy due to permission issue\n");
-                int sudo_rc = __cp_w_sudo(c_src, c_dest);
+                int sudo_rc = __cp_with_sudo(c_src, c_dest);
                 if (sudo_rc == 0) {
                     printf_info("copied with sudo: %s -> %s\n", c_src, c_dest);
                     return 0;
@@ -946,7 +946,7 @@ int watchdogs_sef_wcopy(const char *c_src,
             } else {
                 printf_error("copy without sudo failed (errno=%d %s)\n", errno, strerror(errno));
                 printf_info("attempting sudo as last resort\n");
-                int sudo_rc = __cp_w_sudo(c_src, c_dest);
+                int sudo_rc = __cp_with_sudo(c_src, c_dest);
                 if (sudo_rc == 0) return 0;
                 printf_error("sudo cp failed with code %d\n", sudo_rc);
                 return 1;

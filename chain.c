@@ -194,26 +194,26 @@ ret_gm:
             __init(0);
         } else if (strcmp(ptr_command, "hardware") == 0) {
             printf("=== System Hardware Information ===\n\n");
-            get_system_info();
+            hardware_system_info();
             printf("\n");
 
-            get_cpu_info();
+            hardware_cpu_info();
             printf("\n");
 
-            get_memory_info();
+            hardware_memory_info();
             printf("\n");
 
-            get_disk_info();
+            hardware_disk_info();
             printf("\n");
 
-            get_network_info();
+            hardware_network_info();
             printf("\n");
 
 #ifdef _WIN32
             printf("Note: GPU/BIOS info not implemented for Windows version.\n");
 #else
-            get_bios_info();
-            get_gpu_info();
+            hardware_bios_info();
+            hardware_gpu_info();
 #endif
 
             printf("\n===================================\n");

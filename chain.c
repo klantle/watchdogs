@@ -358,12 +358,12 @@ ret_gm:
                                 _compiler_,
                                 format_size_compiler,
                                 "%s \"%s\" -o\"%s\" %s -i\"%s\" \"%s\" > .wd_compiler.log 2>&1",
-                                wcfg.sef_found[0],                   // compiler binary
-                                wcfg.gm_input,                        // input file
-                                wcfg.g_output,                       // output file
-                                include_aio_path,                              // include search path
-                                path_include,                                  // include directory
-                                wcfg.ci_options                           // additional options
+                                wcfg.sef_found[0],                              // compiler binary
+                                wcfg.gm_input,                                  // input file
+                                wcfg.g_output,                                  // output file
+                                include_aio_path,                               // include search path
+                                path_include,                                   // include directory
+                                wcfg.ci_options                                 // additional options
                             );
 
                             char title_compiler_info[128];
@@ -498,12 +498,12 @@ ret_gm:
                                     _compiler_,
                                     format_size_compiler,
                                     "%s \"%s\" -o\"%s.amx\" %s -i\"%s\" \"%s\" > .wd_compiler.log 2>&1",
-                                    wcfg.sef_found[0],                    // compiler binary
+                                    wcfg.sef_found[0],                              // compiler binary
                                     compile_args,                                   // input file
                                     watchdogs_c_output_f_container,                 // output file
                                     include_aio_path,                               // include search path
                                     path_include,                                   // include directory
-                                    wcfg.ci_options                            // additional options
+                                    wcfg.ci_options                                 // additional options
                                 );
 
                                 if (ret < 0 || (size_t)ret >= (size_t)format_size_compiler) {

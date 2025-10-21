@@ -2,7 +2,7 @@ VERSION  = WD-10.21
 TARGET   ?= watchdogs
 CC       ?= gcc
 
-CFLAGS   = -Os -pipe -s -flto -fdata-sections -ffunction-sections -fPIE -D_GNU_SOURCE -D_DBG_PRINT -I/usr/include/openssl
+CFLAGS   = -Os -pipe -s -flto -fdata-sections -ffunction-sections -fPIE -D_GNU_SOURCE -I/usr/include/openssl
 LDFLAGS  = -Wl,-O1,--gc-sections -lm -lcurl -ltinfo -lreadline -lncurses -larchive -lssl -lcrypto
 
 SRCS = chain.c hardware.c utils.c archive.c curl.c package.c server.c crypto.c \
@@ -64,7 +64,7 @@ mingw64:
 debug:
 	@echo "==> Building DEBUG version with sanitizers"
 	$(CC) -g -O0 -fno-omit-frame-pointer -fsanitize=address,undefined \
-	-D_GNU_SOURCE -I/usr/include/openssl \
+	-D_GNU_SOURCE -D_DBG_PRINT -I/usr/include/openssl \
 	$(SRCS) -o watchdogs.debug \
 	-lm -lcurl -ltinfo -lreadline -lncurses -larchive -lssl -lcrypto -pthread
 	@echo "==> Debug build complete: ./watchdogs.debug"

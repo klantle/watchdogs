@@ -488,13 +488,13 @@ int watchdogs_toml_data(void)
                 }
         }
         FILE *procc_f = fopen(fname, "r");
-        if (!procc_f) printf_error("Can't a_read file %ss\n", fname);
+        if (!procc_f) printf_error("can't a_read file %ss\n", fname);
 
         char errbuf[256];
         toml_table_t *config = toml_parse_file(procc_f, errbuf, sizeof(errbuf));
         fclose(procc_f);
 
-        if (!config) printf_error("error parsing TOML: %s\n", errbuf);
+        if (!config) printf_error("parsing TOML: %s\n", errbuf);
 
         toml_table_t *_watchdogs_general = toml_table_in(config, "general");
         if (_watchdogs_general) {

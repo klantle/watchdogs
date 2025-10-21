@@ -114,8 +114,8 @@ _reexecute_command:
             while (*arg == ' ') arg++;
 
             if (strlen(arg) == 0) {
-                println("usage: help | help [<cmds>]");
-                println("cmds:");
+                println("Usage: help | help [<command>]");
+                println("command:");
                 println(" clear, exit, kill, title");
                 println(" gamemode, pawncc");
                 println(" compile, running, debug");
@@ -222,9 +222,11 @@ ret_gm:
             char *arg = ptr_command + 6;
             while (*arg == ' ') arg++;
             if (*arg == '\0') {
-                println("usage: title [<title>]");
+                println("Usage: title [<title>]");
             } else {
-                printf("\033]0;%s\007", arg);
+                char title_set[128];
+                snprintf(title_set, sizeof(title_set), arg);
+                watchdogs_title(title_set);
             }
             return 0;
         } else if (strncmp(ptr_command, "compile", 7) == 0) {
@@ -271,13 +273,15 @@ ret_gm:
                 size_t format_size_compiler = 2048;
                 char *_compiler_ = malloc(format_size_compiler);
                 if (!_compiler_) {
-                    printf_error("Memory allocation failed for _compiler_!\n");
+#ifdef WD_DEBUGGING
+                    printf_error("memory allocation failed for _compiler_!\n");
+#endif
                     return 0;
                 }
 
                 FILE *procc_f = fopen("watchdogs.toml", "r");
                 if (!procc_f) {
-                    printf_error("Can't read file %s\n", "watchdogs.toml");
+                    printf_error("can't read file %s\n", "watchdogs.toml");
                     if (_compiler_) { free(_compiler_); }
                     return 0;
                 }
@@ -287,7 +291,7 @@ ret_gm:
                 fclose(procc_f);
         
                 if (!config) {
-                    printf_error("error parsing TOML: %s\n", errbuf);    
+                    printf_error("parsing TOML: %s\n", errbuf);    
                     if (_compiler_) { free(_compiler_); }
                     return 0;
                 }
@@ -387,7 +391,9 @@ ret_gm:
                                 }
                                 fclose(procc_f);
                             } else {
-                                printf_error("Failed to open .wd_compiler.log\n");
+#ifdef WD_DEBUGGING
+                                printf_error("failed to open .wd_compiler.log\n");
+#endif
                             }
 
                             compiler_dur = (end.tv_sec - start.tv_sec) + (end.tv_nsec - start.tv_nsec) / 1e9;
@@ -397,17 +403,18 @@ ret_gm:
                             printf("[COMPILER]:\n\t%s\n", _compiler_);
 #endif
                         } else {
-                                char __direct_path[PATH_MAX] = {0};
-                                char __file_name[PATH_MAX] = {0};
-                                char __input_path[PATH_MAX] = {0};
-                                char __tmp_arg[PATH_MAX] = {0};
+                                char __direct_path[PATH_MAX] = {0},
+                                     __file_name[PATH_MAX] = {0},
+                                     __input_path[PATH_MAX] = {0},
+                                     __tmp_arg[PATH_MAX] = {0};
 
                                 strncpy(__tmp_arg, compile_args, sizeof(__tmp_arg) - 1);
                                 __tmp_arg[sizeof(__tmp_arg) - 1] = '\0';
 
-                                char *last_slash = strrchr(__tmp_arg, '/');
-                                char *last_back = strrchr(__tmp_arg, '\\');
-                                if (last_back && (!last_slash || last_back > last_slash)) last_slash = last_back;
+                                char *last_slash = strrchr(__tmp_arg, '/'),
+                                     *last_back = strrchr(__tmp_arg, '\\');
+                                if (last_back && (!last_slash || last_back > last_slash))
+                                    last_slash = last_back;
 
                                 if (last_slash) {
                                     size_t dir_len = (size_t)(last_slash - __tmp_arg);
@@ -421,9 +428,9 @@ ret_gm:
                                     size_t need = strlen(__direct_path) + 1 + strlen(__file_name) + 1;
                                     if (need > sizeof(__input_path)) {
                                         size_t max_fn = sizeof(__input_path) - strlen(__direct_path) - 2;
-                                        if (max_fn > 0) {
+                                        if (max_fn > 0)
                                             __file_name[max_fn] = '\0';
-                                        } else {
+                                        else {
                                             __direct_path[0] = '\0';
                                             strncpy(__direct_path, "gamemodes", sizeof(__direct_path) - 1);
                                             __direct_path[sizeof(__direct_path) - 1] = '\0';
@@ -442,7 +449,6 @@ ret_gm:
                                         strncpy(__direct_path, "gamemodes", sizeof(__direct_path) - 1);
                                         __direct_path[sizeof(__direct_path) - 1] = '\0';
                                     }
-
                                     size_t need = strlen("gamemodes") + 1 + strlen(__file_name) + 1;
                                     if (need > sizeof(__input_path)) {
                                         size_t max_fn = sizeof(__input_path) - strlen("gamemodes") - 2;
@@ -529,7 +535,9 @@ ret_gm:
                                     }
                                     fclose(procc_f);
                                 } else {
-                                    printf_error("Failed to open .wd_compiler.log\n");
+#ifdef WD_DEBUGGING
+                                    printf_error("failed to open .wd_compiler.log\n");
+#endif
                                 }
 
                                 compiler_dur = (end.tv_sec - start.tv_sec) + (end.tv_nsec - start.tv_nsec) / 1e9;
@@ -727,7 +735,7 @@ _runners_:
         } else if (strcmp(ptr_command, _dist_command) != 0 && c_distance <= 2) {
             watchdogs_title("Watchdogs | @ undefined");
             printf("did you mean: '%s'?", _dist_command);
-            char *confirm = readline(" [Y/n]: ");
+            char *confirm = readline(" [y/n]: ");
             if (confirm) {
                 if (strcmp(confirm, "Y") == 0 || strcmp(confirm, "y") == 0) {
                     ptr_command = strdup(_dist_command);

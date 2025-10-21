@@ -225,7 +225,7 @@ ret_gm:
                 println("Usage: title [<title>]");
             } else {
                 char title_set[128];
-                snprintf(title_set, sizeof(title_set), arg);
+                snprintf(title_set, sizeof(title_set), "%s", arg);
                 watchdogs_title(title_set);
             }
             return 0;

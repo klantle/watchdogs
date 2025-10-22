@@ -9,7 +9,7 @@ LDFLAGS  = -Wl,-O1,--gc-sections -lm -lcurl -ltinfo -lreadline -lncurses -larchi
 YELLOW := \033[1;33m
 RESET  := \033[0m
 
-SRCS = chain.c hardware.c utils.c archive.c curl.c package.c server.c crypto.c \
+SRCS = chain.c hardware.c utils.c compiler.c archive.c curl.c package.c server.c crypto.c \
        tomlc99/toml.c cJSON/cJSON.c
 
 OBJS = $(SRCS:.c=.o)

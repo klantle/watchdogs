@@ -8,3 +8,4 @@ watchdogs.toml
 pawnc*
 pawno
 samp*
+.wd_compiler.log

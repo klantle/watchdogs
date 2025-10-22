@@ -471,7 +471,7 @@ int watchdogs_toml_data(void)
                         fprintf(toml_files, "[general]\n");
                         fprintf(toml_files, "\tos = \"%s\"\n", os_type);
                         fprintf(toml_files, "[compiler]\n");
-                        fprintf(toml_files, "\toption = \"-;+ -(+ -d3\"\n");
+                        fprintf(toml_files, "\toption = [\"-d3\", \"-Z+\"]\n");
                         fprintf(toml_files, "\tinclude_path = [\"gamemodes\"");
                         __toml_base_subdirs("gamemodes", toml_files);
                         fprintf(toml_files, ", \"pawno/include\"");
@@ -486,7 +486,7 @@ int watchdogs_toml_data(void)
                         fprintf(toml_files, "[general]\n");
                         fprintf(toml_files, "\tos = \"%s\"\n", os_type);
                         fprintf(toml_files, "[compiler]\n");
-                        fprintf(toml_files, "\toption = \"-;+ -(+ -d3\"\n");
+                        fprintf(toml_files, "\toption = [\"-d3\", \"-Z+\"]\n");
                         fprintf(toml_files, "\tinclude_path = [\"gamemodes\"");
                         __toml_base_subdirs("gamemodes", toml_files);
                         fprintf(toml_files, ", \"pawno/include\"");

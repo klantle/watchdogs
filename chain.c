@@ -258,8 +258,8 @@ ret_gm:
             
             FILE *procc_f = NULL;
             char error_compiler_check[100];
-            char watchdogs_c_output_f_container[128];
-            int format_size_c_f_container = sizeof(watchdogs_c_output_f_container);
+            char container_output[128];
+            int format_size_c_f_container = sizeof(container_output);
             
             procc_f = fopen(".wd_compiler.log", "r");
             if (procc_f) {
@@ -268,8 +268,8 @@ ret_gm:
                 rewind(procc_f);
                 while (fscanf(procc_f, "%s", error_compiler_check) != EOF) {
                     if (strcmp(error_compiler_check, "error") == 0) {
-                        if (access(watchdogs_c_output_f_container, F_OK) == 0)
-                            remove(watchdogs_c_output_f_container);
+                        if (access(container_output, F_OK) == 0)
+                            remove(container_output);
                         break;
                     }
                 }
@@ -278,7 +278,7 @@ ret_gm:
 
             int find_pawncc = watchdogs_sef_fdir(".", ptr_pawncc);
             if (find_pawncc) {
-                size_t format_size_compiler = 2048;
+                size_t format_size_compiler = PATH_MAX;
                 char *_compiler_ = malloc(format_size_compiler);
                 if (!_compiler_) {
 #ifdef WD_DEBUGGING
@@ -306,12 +306,43 @@ ret_gm:
                 
                 toml_table_t *watchdogs_compiler = toml_table_in(config, "compiler");
                 if (watchdogs_compiler) {
-                    toml_datum_t option_val = toml_string_in(watchdogs_compiler, "option");
-                    if (option_val.ok) {
-                        wcfg.ci_options = strdup(option_val.u.s);
-                        free(option_val.u.s);
+                    toml_array_t *option_arr = toml_array_in(watchdogs_compiler, "option");
+                    if (option_arr) {
+                        size_t arr_sz = toml_array_nelem(option_arr);
+                        size_t total_len = 0;
+                        char *merged = NULL;
+
+                        for (size_t i = 0; i < arr_sz; i++) {
+                            toml_datum_t val = toml_string_at(option_arr, i);
+                            if (!val.ok) continue;
+
+                            size_t old_len = merged ? strlen(merged) : 0;
+                            size_t new_len = old_len + strlen(val.u.s) + 2;
+
+                            char *tmp = realloc(merged, new_len);
+                            if (!tmp) {
+                                free(merged);
+                                free(val.u.s);
+                                merged = NULL;
+                                break;
+                            }
+                            merged = tmp;
+
+                            if (old_len == 0)
+                                snprintf(merged, new_len, "%s", val.u.s);
+                            else
+                                snprintf(merged + old_len, new_len - old_len, " %s", val.u.s);
+
+                            free(val.u.s);
+                        }
+
+                        if (merged) {
+                            wcfg.ci_options = merged;
+                        } else {
+                            wcfg.ci_options = strdup("");
+                        }
                     }
-        
+                
                     toml_array_t *include_paths = toml_array_in(watchdogs_compiler, "include_path");
                     if (include_paths) {
                         int array_size = toml_array_nelem(include_paths);
@@ -338,6 +369,7 @@ ret_gm:
                                              "-i\"%s\"",
                                              __procc);
                                 }
+                                free(path_val.u.s);
                             }
                         }
         
@@ -365,17 +397,20 @@ ret_gm:
                             int ret = snprintf(
                                 _compiler_,
                                 format_size_compiler,
-                                "%s \"%s\" -o\"%s\" %s -i\"%s\" \"%s\" > .wd_compiler.log 2>&1",
+                                "\"%s\" \"%s\" -o\"%s\" \"%s\" %s -i\"%s\" > .wd_compiler.log 2>&1",
                                 wcfg.sef_found[0],                              // compiler binary
                                 wcfg.gm_input,                                  // input file
                                 wcfg.g_output,                                  // output file
+                                wcfg.ci_options,                                // additional options
                                 include_aio_path,                               // include search path
-                                path_include,                                   // include directory
-                                wcfg.ci_options                                 // additional options
+                                path_include                                    // include directory
                             );
 
                             char title_compiler_info[1024 * 128];
-                            snprintf(title_compiler_info, sizeof(title_compiler_info), "Watchdogs | @ compile | %s | %s | %s", wcfg.sef_found[0], watchdogs_c_output_f_container, wcfg.g_output);
+                            snprintf(title_compiler_info, sizeof(title_compiler_info),
+                                "Watchdogs | @ compile | %s | %s | %s",
+                                wcfg.sef_found[0],
+                                container_output, wcfg.g_output);
                             watchdogs_title(title_compiler_info);
                             
                             clock_gettime(CLOCK_MONOTONIC, &start);
@@ -391,9 +426,9 @@ ret_gm:
                                 while (fscanf(procc_f, "%99s", error_compiler_check) != EOF) {
                                     if (strcmp(error_compiler_check, "error") == 0) {
                                         FILE *c_output;
-                                        c_output = fopen(watchdogs_c_output_f_container, "r");
+                                        c_output = fopen(container_output, "r");
                                         if (c_output)
-                                            remove(watchdogs_c_output_f_container);
+                                            remove(container_output);
                                         break;
                                     }
                                 }
@@ -457,57 +492,78 @@ ret_gm:
                                 strncpy(__file_name, __tmp_arg, sizeof(__file_name) - 1);
                                 __file_name[sizeof(__file_name) - 1] = '\0';
 
-                                strncpy(__direct_path, "gamemodes", sizeof(__direct_path) - 1);
+                                strncpy(__direct_path, ".", sizeof(__direct_path) - 1);
                                 __direct_path[sizeof(__direct_path) - 1] = '\0';
 
-                                if (snprintf(__input_path, sizeof(__input_path), "gamemodes/%s", __file_name) >= (int)sizeof(__input_path)) {
+                                if (snprintf(__input_path, sizeof(__input_path), "./%s", __file_name) >= (int)sizeof(__input_path)) {
                                     __input_path[sizeof(__input_path) - 1] = '\0';
                                 }
                             }
 
-                            int find_gamemodes_arg1 = watchdogs_sef_fdir(__direct_path, __file_name);
-                            if (find_gamemodes_arg1) {
-                                char* container_output;
-                                if (wcfg.sef_count > 0 &&
-                                    wcfg.sef_found[1][0] != '\0') {
-                                    container_output = strdup(wcfg.sef_found[1]);
+                            int find_gamemodes_arg1 = 0;
+                            find_gamemodes_arg1 = watchdogs_sef_fdir(__direct_path, __file_name);
+
+                            if (!find_gamemodes_arg1 && strcmp(__direct_path, "gamemodes") != 0) {
+                                find_gamemodes_arg1 = watchdogs_sef_fdir("gamemodes", __file_name);
+                                if (find_gamemodes_arg1) {
+                                    strncpy(__direct_path, "gamemodes", sizeof(__direct_path) - 1);
+                                    __direct_path[sizeof(__direct_path) - 1] = '\0';
+                                    
+                                    if (snprintf(__input_path, sizeof(__input_path), "gamemodes/%s", __file_name) >= (int)sizeof(__input_path)) {
+                                        __input_path[sizeof(__input_path) - 1] = '\0';
+                                    }
+                                    
+                                    if (wcfg.sef_count > 0) {
+                                        strncpy(wcfg.sef_found[wcfg.sef_count-1], __input_path, SEF_PATH_SIZE);
+                                    }
                                 }
+                            }
+
+                            if (!find_gamemodes_arg1 && strcmp(__direct_path, ".") == 0) {
+                                find_gamemodes_arg1 = watchdogs_sef_fdir("gamemodes", __file_name);
+                                if (find_gamemodes_arg1) {
+                                    strncpy(__direct_path, "gamemodes", sizeof(__direct_path) - 1);
+                                    __direct_path[sizeof(__direct_path) - 1] = '\0';
+                                    
+                                    if (snprintf(__input_path, sizeof(__input_path), "gamemodes/%s", __file_name) >= (int)sizeof(__input_path)) {
+                                        __input_path[sizeof(__input_path) - 1] = '\0';
+                                    }
+                                    
+                                    if (wcfg.sef_count > 0) {
+                                        strncpy(wcfg.sef_found[wcfg.sef_count-1], __input_path, SEF_PATH_SIZE);
+                                    }
+                                }
+                            }
+
+                            if (find_gamemodes_arg1) {
+                                char container_output[PATH_MAX];
                                 
                                 char i_path_rm[PATH_MAX];
-                                snprintf(i_path_rm, sizeof(i_path_rm), "%s", compile_args);
+                                snprintf(i_path_rm, sizeof(i_path_rm), "%s", wcfg.sef_found[1]);
+                                
                                 char *f_EXT = strrchr(i_path_rm, '.');
                                 if (f_EXT && strcmp(f_EXT, ".pwn") == 0)
                                     *f_EXT = '\0';
-                                char* f_last_slash_container = strrchr(container_output, '/');
-                                if (f_last_slash_container != NULL && *(f_last_slash_container + 1) != '\0')
-                                    *(f_last_slash_container + 1) = '\0';
 
-                                if (strncmp(i_path_rm, __direct_path, strlen(__direct_path)) == 0) {
-                                    snprintf(watchdogs_c_output_f_container, format_size_c_f_container,
-                                            "%s%s", "", i_path_rm);
-                                } else {
-                                    snprintf(watchdogs_c_output_f_container, format_size_c_f_container,
-                                            "%s/%s", __direct_path, i_path_rm);
-                                }
-                                
+                                snprintf(container_output, sizeof(container_output), "%s", i_path_rm);
+    
                                 struct timespec start, end;
                                 double compiler_dur;
 
-                                char
-                                    *path_include = NULL;
+                                char *path_include = NULL;
                                 if (find_for_samp == 0x1) path_include="pawno/include";
                                 else if (find_for_omp == 0x1) path_include="qawno/include";
                                 
                                 int ret = snprintf(
                                     _compiler_,
                                     format_size_compiler,
-                                    "%s \"%s\" -o\"%s.amx\" %s -i\"%s\" \"%s\" > .wd_compiler.log 2>&1",
+                                    "\"%s\" \"%s\" -o\"%s.amx\" \"%s\" %s -i\"%s\" > .wd_compiler.log 2>&1",
                                     wcfg.sef_found[0],                              // compiler binary
-                                    compile_args,                                   // input file
-                                    watchdogs_c_output_f_container,                 // output file
+                                    wcfg.sef_found[1],                              // input file
+                                    container_output,                               // output file
+                                    wcfg.ci_options,                                // additional options
                                     include_aio_path,                               // include search path
-                                    path_include,                                   // include directory
-                                    wcfg.ci_options                                 // additional options
+                                    path_include                                    // include directory
                                 );
 
                                 if (ret < 0 || (size_t)ret >= (size_t)format_size_compiler) {
@@ -515,7 +571,11 @@ ret_gm:
                                 }
 
                                 char title_compiler_info[1024 * 128];
-                                snprintf(title_compiler_info, sizeof(title_compiler_info), "Watchdogs | @ compile | %s | %s | %s.amx", wcfg.sef_found[0], compile_args, watchdogs_c_output_f_container);
+                                snprintf(title_compiler_info, sizeof(title_compiler_info), 
+                                        "Watchdogs | @ compile | %s | %s | %s.amx", 
+                                        wcfg.sef_found[0],
+                                        wcfg.sef_found[1],
+                                        container_output);
                                 watchdogs_title(title_compiler_info);
                                 
                                 clock_gettime(CLOCK_MONOTONIC, &start);
@@ -531,9 +591,9 @@ ret_gm:
                                     while (fscanf(procc_f, "%99s", error_compiler_check) != EOF) {
                                         if (strcmp(error_compiler_check, "error") == 0) {
                                             FILE *c_output;
-                                            c_output = fopen(watchdogs_c_output_f_container, "r");
+                                            c_output = fopen(container_output, "r");
                                             if (c_output)
-                                                remove(watchdogs_c_output_f_container);
+                                                remove(container_output);
                                             break;
                                         }
                                     }

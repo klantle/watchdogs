@@ -56,7 +56,7 @@ static int progress_callback(void *ptr,
         return 0;
 }
 
-int watchdogs_download_file(const char *url, const char *fname) {
+int watch_download_file(const char *url, const char *fname) {
         CURL *__curl;
         FILE *__fp;
         CURLcode __res;
@@ -106,7 +106,7 @@ int watchdogs_download_file(const char *url, const char *fname) {
 
                                 if (strstr(fname, ".tar") || strstr(fname, ".tar.gz")) {
                                         printf(" Extracting TAR archive %s\n", fname);
-                                        watchdogs_extract_archive(fname);
+                                        watch_extract_archive(fname);
                                 } else if (strstr(fname, ".zip")) {
                                         printf(" Extracting ZIP archive %s\n", fname);
                                         char
@@ -121,7 +121,7 @@ int watchdogs_download_file(const char *url, const char *fname) {
                                                         len_fname - 4);
                                                 __zip_ops[len_fname - 4] = '\0';
                                         } else { strcpy(__zip_ops, fname); }
-                                        watchdogs_extract_zip(fname, __zip_ops);
+                                        watch_extract_zip(fname, __zip_ops);
                                 } else {
                                         printf("Unknown archive type, skipping extraction\n");
                                 }

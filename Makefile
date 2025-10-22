@@ -50,7 +50,7 @@ compress:
 	fi
 
 clean:
-	rm -f $(OBJS) watchdogs watchdogs_termux watchdogs.exe watchdogs.debug
+	rm -f $(OBJS) watchdogs watch_termux watchdogs.exe watchdogs.debug
 	@echo "$(YELLOW)==>$(RESET) Clean done."
 
 linux:
@@ -63,7 +63,7 @@ linux:
 termux:
 	@echo "$(YELLOW)==>$(RESET) Building $(TARGET) version $(VERSION)"
 	@echo "$(YELLOW)==>$(RESET) Build complete: $(TARGET) version $(VERSION)"
-	@$(MAKE) TARGET=watchdogs_termux CC=clang \
+	@$(MAKE) TARGET=watch_termux CC=clang \
 	CFLAGS="$(CFLAGS) -D__ANDROID__ -fPIE" \
 	LDFLAGS="$(LDFLAGS) -pie"
 

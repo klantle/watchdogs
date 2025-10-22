@@ -1,5 +1,5 @@
-#ifndef WATCHDOGS_H
-#define WATCHDOGS_H
+#ifndef watch_H
+#define watch_H
 
 extern int __os__;
 extern const char *ptr_samp;

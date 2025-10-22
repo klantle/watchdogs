@@ -37,14 +37,14 @@ static int __val_g_arg(const char *arg) {
         return 1;
 }
 
-void watchdogs_server_stop_tasks(void) {
+void watch_server_stop_tasks(void) {
         kill_process_safe("samp-server.exe");
         kill_process_safe("samp03svr");
         kill_process_safe("omp-server.exe");
         kill_process_safe("omp-server");
 }
 
-void watchdogs_server_samp(const char *gamemode_arg, const char *server_bin) {
+void watch_server_samp(const char *gamemode_arg, const char *server_bin) {
         if (!__val_g_arg(gamemode_arg)) {
             printf_error("Invalid gamemode argument!");
             return;
@@ -55,7 +55,7 @@ void watchdogs_server_samp(const char *gamemode_arg, const char *server_bin) {
         int fo_gm = 0;
         char g_line[256];
 
-        watchdogs_sef_wcopy("server.cfg", ".server.cfg.bak");
+        watch_sef_wcopy("server.cfg", ".server.cfg.bak");
         serv_in = fopen(".server.cfg.bak", "r");
         if (!serv_in) {
             printf_error("failed to open backup config");
@@ -68,7 +68,7 @@ void watchdogs_server_samp(const char *gamemode_arg, const char *server_bin) {
             __init(0);
         }
 
-        int __fi_gm = watchdogs_sef_fdir(".", gamemode_arg);
+        int __fi_gm = watch_sef_fdir(".", gamemode_arg);
         if (__fi_gm != 1) {
             printf_color(COL_RED, "Can't locate: ");
             printf("%s\n", gamemode_arg);
@@ -99,7 +99,7 @@ void watchdogs_server_samp(const char *gamemode_arg, const char *server_bin) {
         char snprintf_ptrS[256];
         snprintf(snprintf_ptrS, sizeof(snprintf_ptrS), "./%s", server_bin);
 
-        int running_FAIL = watchdogs_sys(snprintf_ptrS);
+        int running_FAIL = watch_sys(snprintf_ptrS);
         if (running_FAIL == 0) {
             sleep(2);
             printf_color(COL_YELLOW, "Press enter to print logs..");
@@ -136,7 +136,7 @@ void watchdogs_server_samp(const char *gamemode_arg, const char *server_bin) {
         __init(0);
 }
 
-void watchdogs_server_openmp(const char *gamemode_arg, const char *server_bin) {
+void watch_server_openmp(const char *gamemode_arg, const char *server_bin) {
         if (!__val_g_arg(gamemode_arg)) {
             printf_error("Invalid gamemode argument!");
             return;
@@ -151,14 +151,14 @@ void watchdogs_server_openmp(const char *gamemode_arg, const char *server_bin) {
         char *json_data = NULL;
         char cmd_buf[256];
 
-        watchdogs_sef_wcopy("config.json", ".config.json.bak");
+        watch_sef_wcopy("config.json", ".config.json.bak");
         procc_f = fopen("config.json", "r");
         if (!procc_f) {
             printf_error("failed to open config.json");
             return;
         }
 
-        int __fi_gm = watchdogs_sef_fdir(".", gamemode_arg);
+        int __fi_gm = watch_sef_fdir(".", gamemode_arg);
         if (__fi_gm != 1) {
             printf_color(COL_RED, "Can't locate: ");
             printf("%s\n", gamemode_arg);
@@ -216,7 +216,7 @@ void watchdogs_server_openmp(const char *gamemode_arg, const char *server_bin) {
         char snprintf_ptrS[256];
         snprintf(snprintf_ptrS, sizeof(snprintf_ptrS), "./%s", server_bin);
 
-        int running_FAIL = watchdogs_sys(snprintf_ptrS);
+        int running_FAIL = watch_sys(snprintf_ptrS);
         if (running_FAIL == 0) {
             sleep(2);
             printf_color(COL_YELLOW, "Press enter to print logs..");

@@ -99,7 +99,7 @@ watch_pawncc(const char *platform) {
                 sprintf(fname_sel, "pawncc-%s-%s.zip", termux_versions[pcc_sel_index], detected_arch);
 
                 wcfg.ipcc = 1;
-                watchdogs_download_file(url_sel, fname_sel);
+                watch_download_file(url_sel, fname_sel);
                 return;
             }
         }
@@ -147,7 +147,7 @@ watch_pawncc(const char *platform) {
         sprintf(fname_sel, "pawnc-%s-%s.%s", list_versions[pcc_sel_index], platform, pcc_archive_ext);
 
         wcfg.ipcc = 1;
-        watchdogs_download_file(url_sel, fname_sel);
+        watch_download_file(url_sel, fname_sel);
 }
 
 void
@@ -229,6 +229,6 @@ watch_samp(const char *platform) {
             	*url_sel = strcmp(platform, "linux") == 0 ? chosen_selection->linux_url : chosen_selection->windows_url;
             const char
             	*fname_sel = strcmp(platform, "linux") == 0 ? chosen_selection->linux_file : chosen_selection->windows_file;
-            watchdogs_download_file(url_sel, fname_sel);
+            watch_download_file(url_sel, fname_sel);
         }
 }

@@ -42,7 +42,7 @@ static int arch_copy_data(struct archive *ar,
         }
 }
 
-int watchdogs_extract_archive(const char *tar_files) {
+int watch_extract_archive(const char *tar_files) {
         struct archive *archive_write = archive_write_disk_new();
         struct archive *archives = archive_read_new();
         struct archive_entry *entry;
@@ -109,7 +109,7 @@ int watchdogs_extract_archive(const char *tar_files) {
         return (a_read == ARCHIVE_EOF) ? 0 : -1;
 }
 
-void watchdogs_extract_zip(const char *zip_path,
+void watch_extract_zip(const char *zip_path,
                            const char *dest_path)
 {
         struct archive *archives;

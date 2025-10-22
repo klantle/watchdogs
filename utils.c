@@ -61,6 +61,7 @@ const char* __command[] = {
         "pawncc",
         "compile",
         "running",
+        "crunn",
         "debug",
         "stop",
         "restart"
@@ -68,11 +69,11 @@ const char* __command[] = {
 const size_t
     __command_len = sizeof(__command) / sizeof(__command[0]);
 
-inline void watchdogs_reset_var(void) {
+inline void watch_reset_var(void) {
         wd wcfg = {0};
 }
 
-inline int watchdogs_sys(const char *cmd) {
+inline int watch_sys(const char *cmd) {
         return system(cmd);
 }
 
@@ -104,7 +105,7 @@ wd wcfg = {
         .g_output = NULL
 };
 
-void reset_watchdogs_sef_dir()
+void reset_watch_sef_dir()
 {
         size_t MAX_ENTRIES = sizeof(wcfg.sef_found) /
                              sizeof(wcfg.sef_found[0]);
@@ -124,7 +125,7 @@ inline void handle_sigint(int sig)
         __init(0);
 }
 
-inline int watchdogs_title(const char *__title)
+inline int watch_title(const char *__title)
 {
         const char
                 *title = __title ? __title : "Watchdogs";
@@ -278,7 +279,7 @@ void printf_crit(const char *format, ...) {
         va_end(args);
 }
 
-const char* watchdogs_detect_os(void) {
+const char* watch_detect_os(void) {
         static char os[64] = "Unknown's";
 
         if ((getenv("OS") &&
@@ -449,12 +450,12 @@ void __toml_base_subdirs(const char *base_path, FILE *toml_files)
 #endif
 }
 
-int watchdogs_toml_data(void)
+int watch_toml_data(void)
 {
         const char *fname = "watchdogs.toml";
         FILE *toml_files;
 
-        int find_gamemodes = watchdogs_sef_fdir("gamemodes/", "*.pwn");
+        int find_gamemodes = watch_sef_fdir("gamemodes/", "*.pwn");
 
         char i_path_rm[PATH_MAX];
         snprintf(i_path_rm, sizeof(i_path_rm), "%s", wcfg.sef_found[0]);
@@ -469,7 +470,7 @@ int watchdogs_toml_data(void)
                 toml_files = fopen(fname, "w");
                 if (toml_files != NULL) {
                     if (find_gamemodes) {
-                        const char *os_type = watchdogs_detect_os();
+                        const char *os_type = watch_detect_os();
                         fprintf(toml_files, "[general]\n");
                         fprintf(toml_files, "\tos = \"%s\"\n", os_type);
                         fprintf(toml_files, "[compiler]\n");
@@ -484,7 +485,7 @@ int watchdogs_toml_data(void)
                         fclose(toml_files);
                     }
                     else {
-                        const char *os_type = watchdogs_detect_os();
+                        const char *os_type = watch_detect_os();
                         fprintf(toml_files, "[general]\n");
                         fprintf(toml_files, "\tos = \"%s\"\n", os_type);
                         fprintf(toml_files, "[compiler]\n");
@@ -509,9 +510,9 @@ int watchdogs_toml_data(void)
 
         if (!config) printf_error("parsing TOML: %s\n", errbuf);
 
-        toml_table_t *_watchdogs_general = toml_table_in(config, "general");
-        if (_watchdogs_general) {
-                toml_datum_t os_val = toml_string_in(_watchdogs_general, "os");
+        toml_table_t *_watch_general = toml_table_in(config, "general");
+        if (_watch_general) {
+                toml_datum_t os_val = toml_string_in(_watch_general, "os");
                 if (os_val.ok) wcfg.os = strdup(os_val.u.s);
                 free(os_val.u.s);
         }
@@ -546,7 +547,7 @@ static void __join_path(char *out,
         out[out_sz - 1] = '\0';
 }
 
-int watchdogs_sef_fdir(const char *sef_path, const char *sef_name) {
+int watch_sef_fdir(const char *sef_path, const char *sef_name) {
         char path_buff[SEF_PATH_SIZE];
 
 #ifdef _WIN32
@@ -572,7 +573,7 @@ int watchdogs_sef_fdir(const char *sef_path, const char *sef_name) {
             __join_path(path_buff, sizeof(path_buff), sef_path, name);
 
             if (findFileData.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY) {
-                if (watchdogs_sef_fdir(path_buff, sef_name)) {
+                if (watch_sef_fdir(path_buff, sef_name)) {
                     FindClose(hFind);
                     return 1;
                 }
@@ -618,7 +619,7 @@ int watchdogs_sef_fdir(const char *sef_path, const char *sef_name) {
             __join_path(path_buff, sizeof(path_buff), sef_path, entry->d_name);
 
             if (entry->d_type == DT_DIR) {
-                if (watchdogs_sef_fdir(path_buff, sef_name)) {
+                if (watch_sef_fdir(path_buff, sef_name)) {
                     closedir(dir);
                     return 1;
                 }
@@ -645,7 +646,7 @@ int watchdogs_sef_fdir(const char *sef_path, const char *sef_name) {
                     continue;
 
                 if (S_ISDIR(statbuf.st_mode)) {
-                    if (watchdogs_sef_fdir(path_buff, sef_name)) {
+                    if (watch_sef_fdir(path_buff, sef_name)) {
                         closedir(dir);
                         return 1;
                     }
@@ -684,7 +685,7 @@ int __try_mv_wout_sudo(const char *src, const char *dest) {
                 if (ensure_parent_dir(parent, sizeof(parent), dest) != 0) return -1;
                 if (!dir_writable(parent)) return -2;
                 char tmp_path[PATH_MAX];
-                int rv = snprintf(tmp_path, sizeof(tmp_path), "%s/.tmp_watchdogs_move_XXXXXX", parent);
+                int rv = snprintf(tmp_path, sizeof(tmp_path), "%s/.tmp_watch_move_XXXXXX", parent);
                 if (rv < 0 || (size_t)rv >= sizeof(tmp_path)) return -1;
                 int tmpfd = mkstemp(tmp_path);
                 if (tmpfd < 0) return -1;
@@ -711,7 +712,7 @@ int __try_cp_wout_sudo(const char *src, const char *dest) {
         if (ensure_parent_dir(parent, sizeof(parent), dest) != 0) return -1;
         if (!dir_writable(parent)) return -2;
         char tmp_path[PATH_MAX];
-        int rv = snprintf(tmp_path, sizeof(tmp_path), "%s/.tmp_watchdogs_copy_XXXXXX", parent);
+        int rv = snprintf(tmp_path, sizeof(tmp_path), "%s/.tmp_watch_copy_XXXXXX", parent);
         if (rv < 0 || (size_t)rv >= sizeof(tmp_path)) return -1;
         int tmpfd = mkstemp(tmp_path);
         if (tmpfd < 0) return -1;
@@ -822,7 +823,7 @@ int __aio_sef_safety(const char *c_src, const char *c_dest)
         return 1;
 }
 
-int watchdogs_sef_wmv(const char *c_src, const char *c_dest) {
+int watch_sef_wmv(const char *c_src, const char *c_dest) {
         int ret = __aio_sef_safety(c_src, c_dest);
         if (ret == 1) { return 1; }
 
@@ -866,7 +867,7 @@ int watchdogs_sef_wmv(const char *c_src, const char *c_dest) {
         }
 }
 
-int watchdogs_sef_wcopy(const char *c_src,
+int watch_sef_wcopy(const char *c_src,
                         const char *c_dest)
 {
         int ret = __aio_sef_safety(c_src, c_dest);
@@ -936,10 +937,10 @@ int watchdogs_sef_wcopy(const char *c_src,
 void
 install_pawncc_now(void) {
         int __os__ = signal_system_os();
-        int find_pawncc_exe = watchdogs_sef_fdir(".", "pawncc.exe"),
-            find_pawncc = watchdogs_sef_fdir(".", "pawncc"),
-            find_pawndisasm_exe = watchdogs_sef_fdir(".", "pawndisasm.exe"),
-            find_pawndisasm = watchdogs_sef_fdir(".", "pawndisasm");
+        int find_pawncc_exe = watch_sef_fdir(".", "pawncc.exe"),
+            find_pawncc = watch_sef_fdir(".", "pawncc"),
+            find_pawndisasm_exe = watch_sef_fdir(".", "pawndisasm.exe"),
+            find_pawndisasm = watch_sef_fdir(".", "pawndisasm");
 
         int dir_pawno=0,
             dir_qawno=0;
@@ -995,28 +996,28 @@ install_pawncc_now(void) {
             						   dest_path,
             						   PATH_SEP,
             						   "pawncc.exe");
-            watchdogs_sef_wmv(pawncc_exe_dest_path, str_dest_path);
+            watch_sef_wmv(pawncc_exe_dest_path, str_dest_path);
         }
         if (find_pawncc) {
             snprintf(str_dest_path, sizeof(str_dest_path), "%s%s%s",
             						   dest_path,
             						   PATH_SEP,
             						   "pawncc");
-            watchdogs_sef_wmv(pawncc_dest_path, str_dest_path);
+            watch_sef_wmv(pawncc_dest_path, str_dest_path);
         }
         if (find_pawndisasm_exe) {
             snprintf(str_dest_path, sizeof(str_dest_path), "%s%s%s",
             						   dest_path,
             						   PATH_SEP,
             						   "pawndisasm.exe");
-            watchdogs_sef_wmv(pawndisasm_exe_dest_path, str_dest_path);
+            watch_sef_wmv(pawndisasm_exe_dest_path, str_dest_path);
         }
         if (find_pawndisasm) {
             snprintf(str_dest_path, sizeof(str_dest_path), "%s%s%s",
             						   dest_path,
             						   PATH_SEP,
             						   "pawndisasm");
-            watchdogs_sef_wmv(pawndisasm_dest_path, str_dest_path);
+            watch_sef_wmv(pawndisasm_dest_path, str_dest_path);
         }
 
 #ifndef _WIN32
@@ -1024,7 +1025,7 @@ install_pawncc_now(void) {
                 char *str_lib_path = NULL,
                      str_full_dest_path[128];
 
-                int find_libpawnc = watchdogs_sef_fdir(".", "libpawnc.so");
+                int find_libpawnc = watch_sef_fdir(".", "libpawnc.so");
                 char libpawnc_dest_path[1024];
                 for (int i = 0; i < wcfg.sef_count; i++) {
                         if (strstr(wcfg.sef_found[i], "libpawnc.so")) {
@@ -1050,13 +1051,13 @@ install_pawncc_now(void) {
 
                 if (find_libpawnc == 1) {
                         snprintf(str_full_dest_path, sizeof(str_full_dest_path), "%s/libpawnc.so", str_lib_path);
-                        watchdogs_sef_wmv(libpawnc_dest_path, str_full_dest_path);
+                        watch_sef_wmv(libpawnc_dest_path, str_full_dest_path);
                 }
 
                 if (strcmp(str_lib_path, "/usr/local/lib") == 0) {
                         int sys_sudo = system("which sudo > /dev/null 2>&1");
-                        if (sys_sudo == 0) watchdogs_sys("sudo ldconfig");
-                        else watchdogs_sys("ldconfig");
+                        if (sys_sudo == 0) watch_sys("sudo ldconfig");
+                        else watch_sys("ldconfig");
 
                         if (lib_or_lib32 == 1) {
                                 const char

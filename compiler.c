@@ -14,7 +14,10 @@
 #include "package.h"
 #include "compiler.h"
 
-int watchdogs_compiler_sys(const char *arg, const char *compile_args)
+int
+    watch_compiler_error_level = 0;
+
+int watch_compilers(const char *arg, const char *compile_args)
 {
         const char *ptr_pawncc;
         if (__os__ == 0x01) 
@@ -46,7 +49,7 @@ int watchdogs_compiler_sys(const char *arg, const char *compile_args)
             fclose(procc_f);
         }
 
-        int find_pawncc = watchdogs_sef_fdir(".", ptr_pawncc);
+        int find_pawncc = watch_sef_fdir(".", ptr_pawncc);
         if (find_pawncc) {
             size_t format_size_compiler = PATH_MAX;
             char *_compiler_ = malloc(format_size_compiler);
@@ -74,9 +77,9 @@ int watchdogs_compiler_sys(const char *arg, const char *compile_args)
                 return 0;
             }
             
-            toml_table_t *watchdogs_compiler = toml_table_in(config, "compiler");
-            if (watchdogs_compiler) {
-                toml_array_t *option_arr = toml_array_in(watchdogs_compiler, "option");
+            toml_table_t *watch_compiler = toml_table_in(config, "compiler");
+            if (watch_compiler) {
+                toml_array_t *option_arr = toml_array_in(watch_compiler, "option");
                 if (option_arr) {
                     size_t arr_sz = toml_array_nelem(option_arr);
                     size_t total_len = 0;
@@ -113,7 +116,7 @@ int watchdogs_compiler_sys(const char *arg, const char *compile_args)
                     }
                 }
             
-                toml_array_t *include_paths = toml_array_in(watchdogs_compiler, "include_path");
+                toml_array_t *include_paths = toml_array_in(watch_compiler, "include_path");
                 if (include_paths) {
                     int array_size = toml_array_nelem(include_paths);
                     char include_aio_path[250] = {0};
@@ -145,12 +148,12 @@ int watchdogs_compiler_sys(const char *arg, const char *compile_args)
     
                     static char wd_gamemode[56];
                     if (arg == NULL || *arg == '\0' || (arg[0] == '.' && arg[1] == '\0')) {
-                        toml_datum_t toml_g_i = toml_string_in(watchdogs_compiler, "input");
+                        toml_datum_t toml_g_i = toml_string_in(watch_compiler, "input");
                         if (toml_g_i.ok) {
                             wcfg.gm_input = strdup(toml_g_i.u.s);
                             free(toml_g_i.u.s);
                         }
-                        toml_datum_t toml_gm_o = toml_string_in(watchdogs_compiler, "output");
+                        toml_datum_t toml_gm_o = toml_string_in(watch_compiler, "output");
                         if (toml_gm_o.ok) {
                             wcfg.g_output = strdup(toml_gm_o.u.s);
                             free(toml_gm_o.u.s);
@@ -181,11 +184,19 @@ int watchdogs_compiler_sys(const char *arg, const char *compile_args)
                             "Watchdogs | @ compile | %s | %s | %s",
                             wcfg.sef_found[0],
                             container_output, wcfg.g_output);
-                        watchdogs_title(title_compiler_info);
+                        watch_title(title_compiler_info);
                         
                         clock_gettime(CLOCK_MONOTONIC, &start);
-                            watchdogs_sys(_compiler_);
+                            watch_sys(_compiler_);
                         clock_gettime(CLOCK_MONOTONIC, &end);
+
+                        char size_err_check[128];
+                        snprintf(size_err_check, sizeof(size_err_check), "%s", wcfg.g_output);
+                        if (access(size_err_check, F_OK) == 0) {
+                            watch_compiler_error_level = 0;
+                        } else {
+                            watch_compiler_error_level = 1;
+                        }
 
                         procc_f = fopen(".wd_compiler.log", "r");
                         if (procc_f) {
@@ -216,91 +227,92 @@ int watchdogs_compiler_sys(const char *arg, const char *compile_args)
                         printf("[COMPILER]:\n\t%s\n", _compiler_);
 #endif
                     } else {
-                        char __direct_path[PATH_MAX] = {0},
-                                __file_name[PATH_MAX] = {0},
-                                __input_path[PATH_MAX] = {0},
-                                __tmp_arg[PATH_MAX] = {0};
+                        char
+                             __direct_p[PATH_MAX] = {0},
+                             __file_n[PATH_MAX] = {0},
+                             __input_p[PATH_MAX] = {0},
+                             __tmp_a[PATH_MAX] = {0};
+                        
+                        strncpy(__tmp_a, compile_args, sizeof(__tmp_a) - 1);
+                        __tmp_a[sizeof(__tmp_a) - 1] = '\0';
 
-                        strncpy(__tmp_arg, compile_args, sizeof(__tmp_arg) - 1);
-                        __tmp_arg[sizeof(__tmp_arg) - 1] = '\0';
+                        char *__l_slash = strrchr(__tmp_a, '/'),
+                             *__l_back = strrchr(__tmp_a, '\\');
+                        if (__l_back && (!__l_slash || __l_back > __l_slash))
+                            __l_slash = __l_back;
 
-                        char *last_slash = strrchr(__tmp_arg, '/');
-                        char *last_back = strrchr(__tmp_arg, '\\');
-                        if (last_back && (!last_slash || last_back > last_slash))
-                            last_slash = last_back;
+                        if (__l_slash) {
+                            size_t dir_len = (size_t)(__l_slash - __tmp_a);
+                            if (dir_len >= sizeof(__direct_p)) 
+                                dir_len = sizeof(__direct_p) - 1;
+                            memcpy(__direct_p, __tmp_a, dir_len);
+                            __direct_p[dir_len] = '\0';
 
-                        if (last_slash) {
-                            size_t dir_len = (size_t)(last_slash - __tmp_arg);
-                            if (dir_len >= sizeof(__direct_path)) 
-                                dir_len = sizeof(__direct_path) - 1;
-                            memcpy(__direct_path, __tmp_arg, dir_len);
-                            __direct_path[dir_len] = '\0';
-
-                            const char *filename_start = last_slash + 1;
+                            const char *filename_start = __l_slash + 1;
                             size_t filename_len = strlen(filename_start);
-                            if (filename_len >= sizeof(__file_name))
-                                filename_len = sizeof(__file_name) - 1;
-                            memcpy(__file_name, filename_start, filename_len);
-                            __file_name[filename_len] = '\0';
+                            if (filename_len >= sizeof(__file_n))
+                                filename_len = sizeof(__file_n) - 1;
+                            memcpy(__file_n, filename_start, filename_len);
+                            __file_n[filename_len] = '\0';
 
-                            size_t total_needed = strlen(__direct_path) + 1 + strlen(__file_name) + 1;
-                            if (total_needed > sizeof(__input_path)) {
-                                strncpy(__direct_path, "gamemodes", sizeof(__direct_path) - 1);
-                                __direct_path[sizeof(__direct_path) - 1] = '\0';
+                            size_t total_needed = strlen(__direct_p) + 1 + strlen(__file_n) + 1;
+                            if (total_needed > sizeof(__input_p)) {
+                                strncpy(__direct_p, "gamemodes", sizeof(__direct_p) - 1);
+                                __direct_p[sizeof(__direct_p) - 1] = '\0';
                                 
-                                size_t max_filename = sizeof(__file_name) - 1;
+                                size_t max_filename = sizeof(__file_n) - 1;
                                 if (filename_len > max_filename) {
-                                    memcpy(__file_name, filename_start, max_filename);
-                                    __file_name[max_filename] = '\0';
+                                    memcpy(__file_n, filename_start, max_filename);
+                                    __file_n[max_filename] = '\0';
                                 }
                             }
                             
-                            if (snprintf(__input_path, sizeof(__input_path), "%s/%s", __direct_path, __file_name) >= (int)sizeof(__input_path)) {
-                                __input_path[sizeof(__input_path) - 1] = '\0';
+                            if (snprintf(__input_p, sizeof(__input_p), "%s/%s", __direct_p, __file_n) >= (int)sizeof(__input_p)) {
+                                __input_p[sizeof(__input_p) - 1] = '\0';
                             }
                         } else {
-                            strncpy(__file_name, __tmp_arg, sizeof(__file_name) - 1);
-                            __file_name[sizeof(__file_name) - 1] = '\0';
+                            strncpy(__file_n, __tmp_a, sizeof(__file_n) - 1);
+                            __file_n[sizeof(__file_n) - 1] = '\0';
 
-                            strncpy(__direct_path, ".", sizeof(__direct_path) - 1);
-                            __direct_path[sizeof(__direct_path) - 1] = '\0';
+                            strncpy(__direct_p, ".", sizeof(__direct_p) - 1);
+                            __direct_p[sizeof(__direct_p) - 1] = '\0';
 
-                            if (snprintf(__input_path, sizeof(__input_path), "./%s", __file_name) >= (int)sizeof(__input_path)) {
-                                __input_path[sizeof(__input_path) - 1] = '\0';
+                            if (snprintf(__input_p, sizeof(__input_p), "./%s", __file_n) >= (int)sizeof(__input_p)) {
+                                __input_p[sizeof(__input_p) - 1] = '\0';
                             }
                         }
 
                         int find_gamemodes_arg1 = 0;
-                        find_gamemodes_arg1 = watchdogs_sef_fdir(__direct_path, __file_name);
+                        find_gamemodes_arg1 = watch_sef_fdir(__direct_p, __file_n);
 
-                        if (!find_gamemodes_arg1 && strcmp(__direct_path, "gamemodes") != 0) {
-                            find_gamemodes_arg1 = watchdogs_sef_fdir("gamemodes", __file_name);
+                        if (!find_gamemodes_arg1 && strcmp(__direct_p, "gamemodes") != 0) {
+                            find_gamemodes_arg1 = watch_sef_fdir("gamemodes", __file_n);
                             if (find_gamemodes_arg1) {
-                                strncpy(__direct_path, "gamemodes", sizeof(__direct_path) - 1);
-                                __direct_path[sizeof(__direct_path) - 1] = '\0';
+                                strncpy(__direct_p, "gamemodes", sizeof(__direct_p) - 1);
+                                __direct_p[sizeof(__direct_p) - 1] = '\0';
                                 
-                                if (snprintf(__input_path, sizeof(__input_path), "gamemodes/%s", __file_name) >= (int)sizeof(__input_path)) {
-                                    __input_path[sizeof(__input_path) - 1] = '\0';
+                                if (snprintf(__input_p, sizeof(__input_p), "gamemodes/%s", __file_n) >= (int)sizeof(__input_p)) {
+                                    __input_p[sizeof(__input_p) - 1] = '\0';
                                 }
                                 
                                 if (wcfg.sef_count > 0) {
-                                    strncpy(wcfg.sef_found[wcfg.sef_count-1], __input_path, SEF_PATH_SIZE);
+                                    strncpy(wcfg.sef_found[wcfg.sef_count-1], __input_p, SEF_PATH_SIZE);
                                 }
                             }
                         }
 
-                        if (!find_gamemodes_arg1 && strcmp(__direct_path, ".") == 0) {
-                            find_gamemodes_arg1 = watchdogs_sef_fdir("gamemodes", __file_name);
+                        if (!find_gamemodes_arg1 && strcmp(__direct_p, ".") == 0) {
+                            find_gamemodes_arg1 = watch_sef_fdir("gamemodes", __file_n);
                             if (find_gamemodes_arg1) {
-                                strncpy(__direct_path, "gamemodes", sizeof(__direct_path) - 1);
-                                __direct_path[sizeof(__direct_path) - 1] = '\0';
+                                strncpy(__direct_p, "gamemodes", sizeof(__direct_p) - 1);
+                                __direct_p[sizeof(__direct_p) - 1] = '\0';
                                 
-                                if (snprintf(__input_path, sizeof(__input_path), "gamemodes/%s", __file_name) >= (int)sizeof(__input_path)) {
-                                    __input_path[sizeof(__input_path) - 1] = '\0';
+                                if (snprintf(__input_p, sizeof(__input_p), "gamemodes/%s", __file_n) >= (int)sizeof(__input_p)) {
+                                    __input_p[sizeof(__input_p) - 1] = '\0';
                                 }
                                 
                                 if (wcfg.sef_count > 0) {
-                                    strncpy(wcfg.sef_found[wcfg.sef_count-1], __input_path, SEF_PATH_SIZE);
+                                    strncpy(wcfg.sef_found[wcfg.sef_count-1], __input_p, SEF_PATH_SIZE);
                                 }
                             }
                         }
@@ -346,11 +358,19 @@ int watchdogs_compiler_sys(const char *arg, const char *compile_args)
                                     wcfg.sef_found[0],
                                     wcfg.sef_found[1],
                                     container_output);
-                            watchdogs_title(title_compiler_info);
+                            watch_title(title_compiler_info);
                             
                             clock_gettime(CLOCK_MONOTONIC, &start);
-                                watchdogs_sys(_compiler_);
+                                watch_sys(_compiler_);
                             clock_gettime(CLOCK_MONOTONIC, &end);
+                            
+                            char size_err_check[128];
+                            snprintf(size_err_check, sizeof(size_err_check), "%s.amx", container_output);
+                            if (access(size_err_check, F_OK) == 0) {
+                                watch_compiler_error_level = 0;
+                            } else {
+                                watch_compiler_error_level = 1;
+                            }
                             
                             procc_f = fopen(".wd_compiler.log", "r");
                             if (procc_f) {

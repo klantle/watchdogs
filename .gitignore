@@ -1,7 +1,8 @@
 *.o
+.vscode
 watchdogs
 watchdogs.exe
-watchdogs_termux
+watch_termux
 watchdogs.exe
 watchdogs.debug
 watchdogs.toml

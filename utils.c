@@ -397,7 +397,7 @@ void kill_process_safe(const char *name) {
     if (name && strlen(name) > 0) kill_process(name);
 }
 
-void __toml_base_subdirs(const char *base_path, FILE *toml_files)
+void __toml_base_subdirs(const char *base_path, FILE *toml_files, int *is_first)
 {
 #ifdef _WIN32
         WIN32_FIND_DATAA ffd;
@@ -418,9 +418,15 @@ void __toml_base_subdirs(const char *base_path, FILE *toml_files)
                 char path[MAX_PATH];
                 snprintf(path, sizeof(path), "%s/%s", base_path, ffd.cFileName);
 
-                fprintf(toml_files, ", \"%s\"", path);
+                if (!*is_first)
+                    fprintf(toml_files, ",\n        ");
+                else {
+                    fprintf(toml_files, "\n        ");
+                    *is_first = 0;
+                }
 
-                __toml_base_subdirs(path, toml_files);
+                fprintf(toml_files, "\"%s\"", path);
+                __toml_base_subdirs(path, toml_files, is_first);
             }
         } while (FindNextFileA(hFind, &ffd) != 0);
 
@@ -440,9 +446,15 @@ void __toml_base_subdirs(const char *base_path, FILE *toml_files)
                 char path[PATH_MAX];
                 snprintf(path, sizeof(path), "%s/%s", base_path, entry->d_name);
 
-                fprintf(toml_files, ", \"%s\"", path);
+                if (!*is_first)
+                    fprintf(toml_files, ",\n        ");
+                else {
+                    fprintf(toml_files, "\n        ");
+                    *is_first = 0;
+                }
 
-                __toml_base_subdirs(path, toml_files);
+                fprintf(toml_files, "\"%s\"", path);
+                __toml_base_subdirs(path, toml_files, is_first);
             }
         }
 
@@ -475,11 +487,43 @@ int watch_toml_data(void)
                         fprintf(toml_files, "\tos = \"%s\"\n", os_type);
                         fprintf(toml_files, "[compiler]\n");
                         fprintf(toml_files, "\toption = [\"-d3\", \"-Z+\"]\n");
-                        fprintf(toml_files, "\tinclude_path = [\"gamemodes\"");
-                        __toml_base_subdirs("gamemodes", toml_files);
-                        fprintf(toml_files, ", \"pawno/include\"");
-                        __toml_base_subdirs("pawno/include", toml_files);
-                        fprintf(toml_files, "]\n");
+                        fprintf(toml_files, "\tinclude_path = [");
+                        int __fm = 1;
+                        if (access("gamemodes", F_OK) == 0) {
+                            if (!__fm)
+                                fprintf(toml_files, ",");
+                            fprintf(toml_files, "\n        \"gamemodes\"");
+                            __fm = 0;
+                            __toml_base_subdirs("gamemodes", toml_files, &__fm);
+                        }
+                        if (find_for_samp == 0x01) {
+                            if (access("pawno/include", F_OK) == 0) {
+                                if (!__fm)
+                                    fprintf(toml_files, ",");
+                                fprintf(toml_files, "\n        \"pawno/include\"");
+                                __fm = 0;
+                                __toml_base_subdirs("pawno/include", toml_files, &__fm);
+                            }
+                        }
+                        else if (find_for_omp == 0x01) {
+                            if (access("qawno/include", F_OK) == 0) {
+                                if (!__fm)
+                                    fprintf(toml_files, ",");
+                                fprintf(toml_files, "\n        \"qawno/include\"");
+                                __fm = 0;
+                                __toml_base_subdirs("qawno/include", toml_files, &__fm);
+                            }
+                        }
+                        else {
+                            if (access("pawno/include", F_OK) == 0) {
+                                if (!__fm)
+                                    fprintf(toml_files, ",");
+                                fprintf(toml_files, "\n        \"pawno/include\"");
+                                __fm = 0;
+                                __toml_base_subdirs("pawno/include", toml_files, &__fm);
+                            }
+                        }
+                        fprintf(toml_files, "\n    ]\n");
                         fprintf(toml_files, "\tinput = \"%s.pwn\"\n", i_path_rm);
                         fprintf(toml_files, "\toutput = \"%s.amx\"\n", i_path_rm);
                         fclose(toml_files);
@@ -490,10 +534,43 @@ int watch_toml_data(void)
                         fprintf(toml_files, "\tos = \"%s\"\n", os_type);
                         fprintf(toml_files, "[compiler]\n");
                         fprintf(toml_files, "\toption = [\"-d3\", \"-Z+\"]\n");
-                        fprintf(toml_files, "\tinclude_path = [\"gamemodes\"");
-                        __toml_base_subdirs("gamemodes", toml_files);
-                        fprintf(toml_files, ", \"pawno/include\"");
-                        __toml_base_subdirs("pawno/include", toml_files);
+                        fprintf(toml_files, "\tinclude_path = [");
+                        int __fm = 1;
+                        if (access("gamemodes", F_OK) == 0) {
+                            if (!__fm)
+                                fprintf(toml_files, ",");
+                            fprintf(toml_files, "\n        \"gamemodes\"");
+                            __fm = 0;
+                            __toml_base_subdirs("gamemodes", toml_files, &__fm);
+                        }
+                        if (find_for_samp == 0x01) {
+                            if (access("pawno/include", F_OK) == 0) {
+                                if (!__fm)
+                                    fprintf(toml_files, ",");
+                                fprintf(toml_files, "\n        \"pawno/include\"");
+                                __fm = 0;
+                                __toml_base_subdirs("pawno/include", toml_files, &__fm);
+                            }
+                        }
+                        else if (find_for_omp == 0x01) {
+                            if (access("qawno/include", F_OK) == 0) {
+                                if (!__fm)
+                                    fprintf(toml_files, ",");
+                                fprintf(toml_files, "\n        \"qawno/include\"");
+                                __fm = 0;
+                                __toml_base_subdirs("qawno/include", toml_files, &__fm);
+                            }
+                        }
+                        else {
+                            if (access("pawno/include", F_OK) == 0) {
+                                if (!__fm)
+                                    fprintf(toml_files, ",");
+                                fprintf(toml_files, "\n        \"pawno/include\"");
+                                __fm = 0;
+                                __toml_base_subdirs("pawno/include", toml_files, &__fm);
+                            }
+                        }
+                        fprintf(toml_files, "\n    ]\n");
                         fprintf(toml_files, "]\n");
                         fprintf(toml_files, "\tinput = \"main.pwn\"\n");
                         fprintf(toml_files, "\toutput = \"main.amx\"\n");

@@ -29,7 +29,7 @@ If you are interested in using the Docker environment.
 Run this inside the Docker/dockerfile directory.
 
 - For Linux setup:
-```
+```sh
 sudo usermod -aG docker $USER
 newgrp docker
 sudo systemctl enable docker
@@ -37,18 +37,18 @@ sudo systemctl start docker
 ```
 
 - Build and run:
-```
+```sh
 docker build -t docker_usage .
 docker run --rm -it docker_usage
 ```
 
 - Additional Docker Commands
-```toml
-docker ps -a # check a container
-docker start <container-name> # start a container
+```sh
+docker ps -a                               # check a container
+docker start <container-name>              # start a container
 docker exec -it <container-name> /bin/bash # enter a container
-docker stop <container-name> # stop a container
-docker rm -f <container-name> # remove a container
+docker stop <container-name>               # stop a container
+docker rm -f <container-name>              # remove a container
 ```
 
 ---
@@ -63,12 +63,23 @@ Usage: help | help [<command>]
 ### `watchdogs.toml` Struct
 ```toml
 [general]
-	os = "linux"  # os
+os = "linux"  # os
+
 [compiler]
-	option = ["-d3", "-Z+"] # compiler options
-	include_path = ["gamemodes", "gamemodes/z", "pawno/include", "pawno/include/z"] # include path
-	input = "gamemodes/timertest.pwn"  # input compiler
-	output = "gamemodes/timertest.amx" # output compiler
+option = [ # options https://github.com/klantle/watchdogs?tab=readme-ov-file#pawncc-options
+    "-d3",
+    "-Z+"
+]
+
+include_path = [ # include path
+    "gamemodes",
+    "gamemodes/z",
+    "pawno/include",
+    "pawno/include/z"
+]
+
+input = "gamemodes/timertest.pwn"   # input compiler
+output = "gamemodes/timertest.amx"  # output compiler
 ```
 
 ### [VSCODE Usage](https://code.visualstudio.com/docs/debugtest/tasks)
@@ -134,15 +145,17 @@ run: `~$: watch`
 ### INSTALL & BUILD `watchdogs` SCRIPT
 
 - Introduction. please run command from
-MSYS2:         https://github.com/klantle/watchdogs/blob/main/__msys2-depends.sh
-Debian/Ubuntu: https://github.com/klantle/watchdogs/blob/main/__debian-depends.sh
-Termux:        https://github.com/klantle/watchdogs/blob/main/__termux-depends.sh
+- [x] MSYS2:         https://github.com/klantle/watchdogs/blob/main/__msys2-depends.sh
+- [x] Debian/Ubuntu: https://github.com/klantle/watchdogs/blob/main/__debian-depends.sh
+- [x] Termux:        https://github.com/klantle/watchdogs/blob/main/__termux-depends.sh
 
 - Build
 ```yaml
 git clone https://github.com/klantle/watchdogs.git watch
 cd watch
-make
+make linux   # Linux
+make windows # Windows
+make termux  # Termux
 ```
 
 - Run

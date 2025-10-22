@@ -173,7 +173,6 @@ _reexecute_command:
             if (access("watchdogs.toml", F_OK) == 0) {
                 remove("watchdogs.toml");
             }
-            watch_toml_data();
         } else if (strcmp(ptr_command, "hardware") == 0) {
             printf("=== System Hardware Information ===\n\n");
             hardware_system_info();

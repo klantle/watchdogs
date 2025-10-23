@@ -51,7 +51,7 @@ docker stop <container-name>               # stop a container
 docker rm -f <container-name>              # remove a container
 ```
 
-### [TERMUX] USAGE
+### [TERMUX](https://github.com/termux/termux-app/releases) USAGE
 - note: Please use termux from https://github.com/termux/termux-app/releases
 ```sh
 # @@@ 1

@@ -635,37 +635,6 @@ int watch_toml_data(void)
         int find_pawncc = watch_sef_fdir(".", ptr_pawncc, NULL);
         int find_gamemodes = watch_sef_fdir("gamemodes/", "*.pwn", NULL);
 
-        if (find_pawncc)
-        {
-            char run_pcc[1024 + 50];
-            snprintf(run_pcc, sizeof(run_pcc), "%s > ._pcc_cache.txt", wcfg.sef_found[0]);
-        }
-
-        int pawncc_compatible_opt = 0;
-
-        FILE *fp = fopen("._pcc_cache.txt", "r");
-        int has_Z_flag = 0;
-        char found_line[512] = {0};
-        if (fp) {
-            char line[512];
-            while (fgets(line, sizeof(line), fp)) {
-                if (strstr(line, "-Z[")) {
-                    has_Z_flag = 1;
-                    strncpy(found_line, line, sizeof(found_line) - 1);
-                    break;
-                }
-            }
-            fclose(fp);
-        } else {}
-        if (has_Z_flag) {
-            pawncc_compatible_opt=1;
-        } else {
-            pawncc_compatible_opt=0;
-        }
-        if (access("._pcc_cache.txt", F_OK) == 0) {
-            remove("._pcc_cache.txt");
-        }
-
         char i_path_rm[1024];
         snprintf(i_path_rm, sizeof(i_path_rm), "%s", wcfg.sef_found[1]);
         char *f_EXT = strrchr(i_path_rm, '.');
@@ -683,11 +652,7 @@ int watch_toml_data(void)
                         fprintf(toml_files, "[general]\n");
                         fprintf(toml_files, "\tos = \"%s\"\n", os_type);
                         fprintf(toml_files, "[compiler]\n");
-                        if (pawncc_compatible_opt == 1) {
-                            fprintf(toml_files, "\toption = [\"-d3\", \"-;+\", \"-(+\", \"-Z+\"]\n");
-                        } else {
-                            fprintf(toml_files, "\toption = [\"-d3\", \"-;+\", \"-(+\"]\n");
-                        }
+                        fprintf(toml_files, "\toption = [\"-d3\", \"-;+\", \"-(+\"]\n");
                         fprintf(toml_files, "\tinclude_path = [");
                         int __fm = 1;
                         if (access("gamemodes", F_OK) == 0) {
@@ -734,11 +699,7 @@ int watch_toml_data(void)
                         fprintf(toml_files, "[general]\n");
                         fprintf(toml_files, "\tos = \"%s\"\n", os_type);
                         fprintf(toml_files, "[compiler]\n");
-                        if (pawncc_compatible_opt == 1) {
-                            fprintf(toml_files, "\toption = [\"-d3\", \"-;+\", \"-(+\", \"-Z+\"]\n");
-                        } else {
-                            fprintf(toml_files, "\toption = [\"-d3\", \"-;+\", \"-(+\"]\n");
-                        }
+                        fprintf(toml_files, "\toption = [\"-d3\", \"-;+\", \"-(+\"]\n");
                         fprintf(toml_files, "\tinclude_path = [");
                         int __fm = 1;
                         if (access("gamemodes", F_OK) == 0) {

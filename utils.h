@@ -35,6 +35,7 @@ extern const size_t __command_len;
 int watch_sys(const char *cmd);
 void handle_sigint(int sig);
 int watch_title(const char *__title);
+char* readline_colored(const char* prompt);
 void cp_strip_dotfns(char *dst, size_t dst_sz, const char *src);
 void escape_quotes(char *dest, size_t size, const char *src);
 extern const char* find_cl_command(

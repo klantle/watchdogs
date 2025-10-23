@@ -14,6 +14,7 @@
 #ifdef _WIN32
 #include <direct.h>
 #include <windows.h>
+#define READ_CHAR _getch
 #define getcwd _getcwd
 #ifndef PATH_MAX
 #define PATH_MAX _MAX_PATH
@@ -116,10 +117,8 @@ _command:
         }
 
         char prompt[PATH_MAX + 100];
-        snprintf(prompt, sizeof(prompt),
-            "[" COL_YELLOW "watchdogs:%s" COL_DEFAULT "] > ",
-            cwd);
-        char *ptr_command = readline(prompt);
+        snprintf(prompt, sizeof(prompt), "[" COL_YELLOW "watchdogs:%s" COL_DEFAULT "] > ", cwd);
+        char* ptr_command = readline_colored(prompt);
 
         if (ptr_command == NULL || ptr_command[0] == '\0') goto _command;
 
@@ -444,10 +443,11 @@ _runners_:
                     ptr_command = strdup(_dist_command);
                     if (confirm) { free(confirm); }
                     goto _reexecute_command;
+                } else {
+                    if (confirm) { free(confirm); }
+                    goto _command;
                 }
-                if (confirm) { free(confirm); }
             }
-            goto _command;
         } else {
             if (strlen(ptr_command) > 0) {
                 watch_title("Watchdogs | @ not found");

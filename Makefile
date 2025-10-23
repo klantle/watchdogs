@@ -101,10 +101,3 @@ $(RES_OBJ): $(RES_SRC)
 %.res: %.rc
 	@printf "$(YELLOW)==>$(RESET) Compiling resource $<\n"
 	windres $< -O coff -o $@
-
-windows-debug: $(OBJS)
-	@printf "$(YELLOW)==>$(RESET) Building DEBUG version $(TARGET) for Windows\n"
-	$(CC) -g -O0 -D_DBG_PRINT -D_GNU_SOURCE -Wall \
-	$(SRCS) -o watchdogs.debug.exe \
-	$(LDFLAGS) -liphlpapi -lshlwapi
-	@printf "$(YELLOW)==>$(RESET) Debug build complete: ./watchdogs.debug.exe\n"

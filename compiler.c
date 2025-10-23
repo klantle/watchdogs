@@ -48,7 +48,7 @@ int watch_compilers(const char *arg, const char *compile_args)
             fclose(procc_f);
         }
 
-        int find_pawncc = watch_sef_fdir(".", ptr_pawncc);
+        int find_pawncc = watch_sef_fdir(".", ptr_pawncc, NULL);
         if (find_pawncc) {
             size_t format_size_compiler = PATH_MAX;
             char *_compiler_ = malloc(format_size_compiler);
@@ -297,10 +297,10 @@ int watch_compilers(const char *arg, const char *compile_args)
                         }
 
                         int find_gamemodes_arg1 = 0;
-                        find_gamemodes_arg1 = watch_sef_fdir(__cp_direct_path, __cp_file_name);
+                        find_gamemodes_arg1 = watch_sef_fdir(__cp_direct_path, __cp_file_name, NULL);
 
                         if (!find_gamemodes_arg1 && strcmp(__cp_direct_path, "gamemodes") != 0) {
-                            find_gamemodes_arg1 = watch_sef_fdir("gamemodes", __cp_file_name);
+                            find_gamemodes_arg1 = watch_sef_fdir("gamemodes", __cp_file_name, NULL);
                             if (find_gamemodes_arg1) {
                                 strncpy(__cp_direct_path, "gamemodes", sizeof(__cp_direct_path) - 1);
                                 __cp_direct_path[sizeof(__cp_direct_path) - 1] = '\0';
@@ -316,7 +316,7 @@ int watch_compilers(const char *arg, const char *compile_args)
                         }
 
                         if (!find_gamemodes_arg1 && strcmp(__cp_direct_path, ".") == 0) {
-                            find_gamemodes_arg1 = watch_sef_fdir("gamemodes", __cp_file_name);
+                            find_gamemodes_arg1 = watch_sef_fdir("gamemodes", __cp_file_name, NULL);
                             if (find_gamemodes_arg1) {
                                 strncpy(__cp_direct_path, "gamemodes", sizeof(__cp_direct_path) - 1);
                                 __cp_direct_path[sizeof(__cp_direct_path) - 1] = '\0';

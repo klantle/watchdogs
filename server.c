@@ -68,7 +68,7 @@ void watch_server_samp(const char *gamemode_arg, const char *server_bin) {
             ___main___(0);
         }
 
-        int __fi_gm = watch_sef_fdir(".", gamemode_arg);
+        int __fi_gm = watch_sef_fdir(".", gamemode_arg, NULL);
         if (__fi_gm != 1) {
             printf_color(COL_RED, "Can't locate: ");
             printf("%s\n", gamemode_arg);
@@ -164,7 +164,7 @@ void watch_server_openmp(const char *gamemode_arg, const char *server_bin) {
             return;
         }
 
-        int __fi_gm = watch_sef_fdir(".", gamemode_arg);
+        int __fi_gm = watch_sef_fdir(".", gamemode_arg, NULL);
         if (__fi_gm != 1) {
             printf_color(COL_RED, "Can't locate: ");
             printf("%s\n", gamemode_arg);

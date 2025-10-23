@@ -103,7 +103,7 @@ void reset_watch_sef_dir()
 int watch_sys(const char *cmd) {
         char size_cmd[1024];
         snprintf(size_cmd, sizeof(size_cmd), "%s", cmd);
-        return watch_sys(cmd);
+        return system(size_cmd);
 }
 
 void __give_permissions(const char *src, const char *tmp_path) {
@@ -427,7 +427,7 @@ void kill_process_safe(const char *name) {
             kill_process(name);
 }
 
-int watch_sef_fdir(const char *sef_path, const char *sef_name) {
+int watch_sef_fdir(const char *sef_path, const char *sef_name, const char *ignore_dir) {
         char path_buff[SEF_PATH_SIZE];
 
 #ifdef _WIN32
@@ -435,41 +435,40 @@ int watch_sef_fdir(const char *sef_path, const char *sef_name) {
         HANDLE hFind;
         char searchPath[MAX_PATH];
 
-        if (sef_path[strlen(sef_path)-1] == '\\') {
+        if (sef_path[strlen(sef_path) - 1] == '\\')
             snprintf(searchPath, sizeof(searchPath), "%s*", sef_path);
-        } else {
-            snprintf(searchPath, sizeof(searchPath), "%s%s*", sef_path, PATH_SEP);
-        }
+        else
+            snprintf(searchPath, sizeof(searchPath), "%s\\*", sef_path);
 
         hFind = FindFirstFile(searchPath, &findFileData);
-        if (hFind == INVALID_HANDLE_VALUE) {
+        if (hFind == INVALID_HANDLE_VALUE)
             return 0;
-        }
+
         do {
             const char *name = findFileData.cFileName;
             if (strcmp(name, ".") == 0 || strcmp(name, "..") == 0)
                 continue;
 
             __join_path(path_buff, sizeof(path_buff), sef_path, name);
-            
+
             if (findFileData.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY) {
-                if (watch_sef_fdir(path_buff, sef_name)) {
+                if (ignore_dir && _stricmp(name, ignore_dir) == 0)
+                    continue;
+                if (watch_sef_fdir(path_buff, sef_name, ignore_dir)) {
                     FindClose(hFind);
                     return 1;
                 }
             } else {
                 if (strchr(sef_name, '*') || strchr(sef_name, '?')) {
                     if (PathMatchSpecA(name, sef_name)) {
-                        strncpy(wcfg.sef_found[wcfg.sef_count],
-                                path_buff, SEF_PATH_SIZE);
+                        strncpy(wcfg.sef_found[wcfg.sef_count], path_buff, SEF_PATH_SIZE);
                         wcfg.sef_count++;
                         FindClose(hFind);
                         return 1;
                     }
                 } else {
                     if (strcmp(name, sef_name) == 0) {
-                        strncpy(wcfg.sef_found[wcfg.sef_count],
-                                path_buff, SEF_PATH_SIZE);
+                        strncpy(wcfg.sef_found[wcfg.sef_count], path_buff, SEF_PATH_SIZE);
                         wcfg.sef_count++;
                         FindClose(hFind);
                         return 1;
@@ -481,41 +480,40 @@ int watch_sef_fdir(const char *sef_path, const char *sef_name) {
         FindClose(hFind);
         return 0;
 #else
-        DIR *dir;
+        DIR *dir = opendir(sef_path);
+        if (!dir)
+            return 0;
+
         struct dirent *entry;
         struct stat statbuf;
 
-        dir = opendir(sef_path);
-        if (!dir) {
-            return 0;
-        }
-
         while ((entry = readdir(dir)) != NULL) {
-            if (entry->d_name[0] == '.' &&
-               (entry->d_name[1] == '\0' ||
-               (entry->d_name[1] == '.' && entry->d_name[2] == '\0')))
-               continue;
+            const char *name = entry->d_name;
 
-            __join_path(path_buff, sizeof(path_buff), sef_path, entry->d_name);
+            if (name[0] == '.' && (name[1] == '\0' || (name[1] == '.' && name[2] == '\0')))
+                continue;
+
+            __join_path(path_buff, sizeof(path_buff), sef_path, name);
 
             if (entry->d_type == DT_DIR) {
-                if (watch_sef_fdir(path_buff, sef_name)) {
+                if (ignore_dir && strcmp(name, ignore_dir) == 0)
+                    continue;
+
+                if (watch_sef_fdir(path_buff, sef_name, ignore_dir)) {
                     closedir(dir);
                     return 1;
                 }
             } else if (entry->d_type == DT_REG) {
                 if (strchr(sef_name, '*') || strchr(sef_name, '?')) {
-                    if (fnmatch(sef_name, entry->d_name, 0) == 0) {
-                        strncpy(wcfg.sef_found[wcfg.sef_count],
-                                path_buff, SEF_PATH_SIZE);
+                    if (fnmatch(sef_name, name, 0) == 0) {
+                        strncpy(wcfg.sef_found[wcfg.sef_count], path_buff, SEF_PATH_SIZE);
                         wcfg.sef_count++;
                         closedir(dir);
                         return 1;
                     }
                 } else {
-                    if (strcmp(entry->d_name, sef_name) == 0) {
-                        strncpy(wcfg.sef_found[wcfg.sef_count],
-                                path_buff, SEF_PATH_SIZE);
+                    if (strcmp(name, sef_name) == 0) {
+                        strncpy(wcfg.sef_found[wcfg.sef_count], path_buff, SEF_PATH_SIZE);
                         wcfg.sef_count++;
                         closedir(dir);
                         return 1;
@@ -526,23 +524,24 @@ int watch_sef_fdir(const char *sef_path, const char *sef_name) {
                     continue;
 
                 if (S_ISDIR(statbuf.st_mode)) {
-                    if (watch_sef_fdir(path_buff, sef_name)) {
+                    if (ignore_dir && strcmp(name, ignore_dir) == 0)
+                        continue;
+
+                    if (watch_sef_fdir(path_buff, sef_name, ignore_dir)) {
                         closedir(dir);
                         return 1;
                     }
                 } else if (S_ISREG(statbuf.st_mode)) {
                     if (strchr(sef_name, '*') || strchr(sef_name, '?')) {
-                        if (fnmatch(sef_name, entry->d_name, 0) == 0) {
-                            strncpy(wcfg.sef_found[wcfg.sef_count],
-                                    path_buff, SEF_PATH_SIZE);
+                        if (fnmatch(sef_name, name, 0) == 0) {
+                            strncpy(wcfg.sef_found[wcfg.sef_count], path_buff, SEF_PATH_SIZE);
                             wcfg.sef_count++;
                             closedir(dir);
                             return 1;
                         }
                     } else {
-                        if (strcmp(entry->d_name, sef_name) == 0) {
-                            strncpy(wcfg.sef_found[wcfg.sef_count],
-                                    path_buff, SEF_PATH_SIZE);
+                        if (strcmp(name, sef_name) == 0) {
+                            strncpy(wcfg.sef_found[wcfg.sef_count], path_buff, SEF_PATH_SIZE);
                             wcfg.sef_count++;
                             closedir(dir);
                             return 1;
@@ -627,10 +626,48 @@ int watch_toml_data(void)
         const char *fname = "watchdogs.toml";
         FILE *toml_files;
 
-        int find_gamemodes = watch_sef_fdir("gamemodes/", "*.pwn");
+        const char *ptr_pawncc;
+        if (__os__ == 0x01) 
+            ptr_pawncc = "pawncc.exe";
+        else if (__os__ == 0x00)
+            ptr_pawncc = "pawncc";
+
+        int find_pawncc = watch_sef_fdir(".", ptr_pawncc, NULL);
+        int find_gamemodes = watch_sef_fdir("gamemodes/", "*.pwn", NULL);
+
+        if (find_pawncc)
+        {
+            char run_pcc[1024 + 50];
+            snprintf(run_pcc, sizeof(run_pcc), "%s > ._pcc_cache.txt", wcfg.sef_found[0]);
+        }
+
+        int pawncc_compatible_opt = 0;
+
+        FILE *fp = fopen("._pcc_cache.txt", "r");
+        int has_Z_flag = 0;
+        char found_line[512] = {0};
+        if (fp) {
+            char line[512];
+            while (fgets(line, sizeof(line), fp)) {
+                if (strstr(line, "-Z[")) {
+                    has_Z_flag = 1;
+                    strncpy(found_line, line, sizeof(found_line) - 1);
+                    break;
+                }
+            }
+            fclose(fp);
+        } else {}
+        if (has_Z_flag) {
+            pawncc_compatible_opt=1;
+        } else {
+            pawncc_compatible_opt=0;
+        }
+        if (access("._pcc_cache.txt", F_OK) == 0) {
+            remove("._pcc_cache.txt");
+        }
 
         char i_path_rm[1024];
-        snprintf(i_path_rm, sizeof(i_path_rm), "%s", wcfg.sef_found[0]);
+        snprintf(i_path_rm, sizeof(i_path_rm), "%s", wcfg.sef_found[1]);
         char *f_EXT = strrchr(i_path_rm, '.');
         if (f_EXT && strcmp(f_EXT, ".pwn") == 0)
             *f_EXT = '\0';
@@ -646,7 +683,11 @@ int watch_toml_data(void)
                         fprintf(toml_files, "[general]\n");
                         fprintf(toml_files, "\tos = \"%s\"\n", os_type);
                         fprintf(toml_files, "[compiler]\n");
-                        fprintf(toml_files, "\toption = [\"-d3\", \"-Z+\"]\n");
+                        if (pawncc_compatible_opt == 1) {
+                            fprintf(toml_files, "\toption = [\"-d3\", \"-;+\", \"-(+\", \"-Z+\"]\n");
+                        } else {
+                            fprintf(toml_files, "\toption = [\"-d3\", \"-;+\", \"-(+\"]\n");
+                        }
                         fprintf(toml_files, "\tinclude_path = [");
                         int __fm = 1;
                         if (access("gamemodes", F_OK) == 0) {
@@ -693,7 +734,11 @@ int watch_toml_data(void)
                         fprintf(toml_files, "[general]\n");
                         fprintf(toml_files, "\tos = \"%s\"\n", os_type);
                         fprintf(toml_files, "[compiler]\n");
-                        fprintf(toml_files, "\toption = [\"-d3\", \"-Z+\"]\n");
+                        if (pawncc_compatible_opt == 1) {
+                            fprintf(toml_files, "\toption = [\"-d3\", \"-;+\", \"-(+\", \"-Z+\"]\n");
+                        } else {
+                            fprintf(toml_files, "\toption = [\"-d3\", \"-;+\", \"-(+\"]\n");
+                        }
                         fprintf(toml_files, "\tinclude_path = [");
                         int __fm = 1;
                         if (access("gamemodes", F_OK) == 0) {
@@ -731,7 +776,6 @@ int watch_toml_data(void)
                             }
                         }
                         fprintf(toml_files, "\n    ]\n");
-                        fprintf(toml_files, "]\n");
                         fprintf(toml_files, "\tinput = \"main.pwn\"\n");
                         fprintf(toml_files, "\toutput = \"main.amx\"\n");
                         fclose(toml_files);
@@ -816,6 +860,9 @@ int __try_cp_wout_sudo(const char *src, const char *dest) {
 
 static int __mv_with_sudo(const char *src, const char *dest) {
         if (!MoveFileExA(src, dest, MOVEFILE_COPY_ALLOWED | MOVEFILE_REPLACE_EXISTING)) {
+#ifdef DEBUGGING
+            print_error("in __mv_with_sudo");
+#endif
             return -1;
         }
         return 0;
@@ -823,6 +870,9 @@ static int __mv_with_sudo(const char *src, const char *dest) {
 
 static int __cp_with_sudo(const char *src, const char *dest) {
         if (!CopyFileA(src, dest, FALSE)) {
+#ifdef DEBUGGING
+            print_error("in __cp_with_sudo");
+#endif
             return -1;
         }
         return 0;
@@ -927,7 +977,7 @@ int __aio_sef_safety(const char *c_src, const char *c_dest)
 
 int watch_sef_wmv(const char *c_src, const char *c_dest) {
         int ret = __aio_sef_safety(c_src, c_dest);
-        if (ret == 1) { return 1; }
+        if (ret != 1) { return 1; }
 
         int mv_ret = __try_mv_wout_sudo(c_src, c_dest);
         if (mv_ret == 0) {
@@ -959,7 +1009,7 @@ int watch_sef_wmv(const char *c_src, const char *c_dest) {
                 printf_warning("move partially succeeded (copied but couldn't unlink source). dest=%s\n", c_dest);
                 return 0;
             } else {
-                printf_error("move without sudo failed (errno=%d %s)\n", errno, strerror(errno));
+                printf_warning("move without sudo failed (errno=%d %s)\n", errno, strerror(errno));
                 printf_info("attempting sudo as last resort\n");
                 int sudo_rc = __mv_with_sudo(c_src, c_dest);
                 if (sudo_rc == 0) return 0;
@@ -967,13 +1017,14 @@ int watch_sef_wmv(const char *c_src, const char *c_dest) {
                 return 1;
             }
         }
+        return 0;
 }
 
 int watch_sef_wcopy(const char *c_src,
                         const char *c_dest)
 {
         int ret = __aio_sef_safety(c_src, c_dest);
-        if (ret == 1) { return 1; }
+        if (ret != 1) { return 1; }
 
         if (path_exists(c_dest)) {
             if (is_same_file(c_src, c_dest)) {
@@ -1024,7 +1075,7 @@ int watch_sef_wcopy(const char *c_src,
                     return 1;
                 }
             } else {
-                printf_error("copy without sudo failed (errno=%d %s)\n", errno, strerror(errno));
+                printf_warning("copy without sudo failed (errno=%d %s)\n", errno, strerror(errno));
                 printf_info("attempting sudo as last resort\n");
                 int sudo_rc = __cp_with_sudo(c_src, c_dest);
                 if (sudo_rc == 0) return 0;
@@ -1037,11 +1088,25 @@ int watch_sef_wcopy(const char *c_src,
 }
 
 void
-install_pawncc_now(void) {
-        int find_pawncc_exe = watch_sef_fdir(".", "pawncc.exe"),
-            find_pawncc = watch_sef_fdir(".", "pawncc"),
-            find_pawndisasm_exe = watch_sef_fdir(".", "pawndisasm.exe"),
-            find_pawndisasm = watch_sef_fdir(".", "pawndisasm");
+install_pawncc_now(void) {        
+        int find_pawncc_exe = 0,
+            find_pawncc = 0,
+            find_pawndisasm_exe = 0,
+            find_pawndisasm = 0;
+
+        if (find_for_samp == 0x01)
+        {
+        find_pawncc_samp:
+            find_pawncc_exe = watch_sef_fdir(".", "pawncc.exe", "pawno"),
+            find_pawncc = watch_sef_fdir(".", "pawncc", "pawno"),
+            find_pawndisasm_exe = watch_sef_fdir(".", "pawndisasm.exe", "pawno"),
+            find_pawndisasm = watch_sef_fdir(".", "pawndisasm", "pawno");
+        } else if (find_for_omp == 0x01) {
+            find_pawncc_exe = watch_sef_fdir(".", "pawncc.exe", "qawno"),
+            find_pawncc = watch_sef_fdir(".", "pawncc", "qawno"),
+            find_pawndisasm_exe = watch_sef_fdir(".", "pawndisasm.exe", "qawno"),
+            find_pawndisasm = watch_sef_fdir(".", "pawndisasm", "qawno");
+        } else { goto find_pawncc_samp; }
 
         int dir_pawno=0,
             dir_qawno=0;
@@ -1095,30 +1160,30 @@ install_pawncc_now(void) {
         if (find_pawncc_exe) {
             snprintf(str_dest_path, sizeof(str_dest_path), "%s%s%s",
             						   dest_path,
-            						   PATH_SEP,
+            						   "/",
             						   "pawncc.exe");
-            watch_sef_wmv(pawncc_exe_dest_path, str_dest_path);
+            watch_sef_wcopy(pawncc_exe_dest_path, str_dest_path);
         }
         if (find_pawncc) {
             snprintf(str_dest_path, sizeof(str_dest_path), "%s%s%s",
             						   dest_path,
-            						   PATH_SEP,
+            						   "/",
             						   "pawncc");
-            watch_sef_wmv(pawncc_dest_path, str_dest_path);
+            watch_sef_wcopy(pawncc_dest_path, str_dest_path);
         }
         if (find_pawndisasm_exe) {
             snprintf(str_dest_path, sizeof(str_dest_path), "%s%s%s",
             						   dest_path,
-            						   PATH_SEP,
+            						   "/",
             						   "pawndisasm.exe");
-            watch_sef_wmv(pawndisasm_exe_dest_path, str_dest_path);
+            watch_sef_wcopy(pawndisasm_exe_dest_path, str_dest_path);
         }
         if (find_pawndisasm) {
             snprintf(str_dest_path, sizeof(str_dest_path), "%s%s%s",
             						   dest_path,
-            						   PATH_SEP,
+            						   "/",
             						   "pawndisasm");
-            watch_sef_wmv(pawndisasm_dest_path, str_dest_path);
+            watch_sef_wcopy(pawndisasm_dest_path, str_dest_path);
         }
 
 #ifndef _WIN32
@@ -1193,9 +1258,6 @@ install_pawncc_now(void) {
         }
 #endif
 
-#ifdef _WIN32
-        printf("\n");
-#endif
         printf_color(COL_YELLOW, "apply finished!\n");
         ___main___(0);
 }

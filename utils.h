@@ -61,7 +61,7 @@ int is_regular_file(const char *path);
 int is_same_file(const char *a, const char *b);
 int ensure_parent_dir(char *out_parent, size_t n, const char *dest);
 int cp_f_content(const char *src, const char *dst);
-int watch_sef_fdir(const char *sef_path, const char *sef_name);
+int watch_sef_fdir(const char *sef_path, const char *sef_name, const char *ignore_dir);
 int watch_toml_data(void);
 int watch_sef_wcopy(const char *c_src, const char *c_dest);
 int watch_sef_wmv(const char *c_src, const char *c_dest);

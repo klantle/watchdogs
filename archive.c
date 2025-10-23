@@ -2,12 +2,6 @@
 #include <stdlib.h>
 #include <string.h>
 
-#ifdef _WIN32
-#define PATH_SEP "\\"
-#else
-#define PATH_SEP "/"
-#endif
-
 #include <archive.h>
 #include <archive_entry.h>
 
@@ -137,8 +131,17 @@ void watch_extract_zip(const char *zip_path,
                 const char *__cur_file = archive_entry_pathname(entry);
 
                 char ext_full_path[1024 * 1024];
-                snprintf(ext_full_path, sizeof(ext_full_path), "%s/%s",
-                        dest_path, __cur_file);
+
+                if (dest_path == NULL || strcmp(dest_path, ".") == 0 || *dest_path == '\0') {
+                        snprintf(ext_full_path, sizeof(ext_full_path), "%s", __cur_file);
+                } else {
+                        if (strncmp(__cur_file, dest_path, strlen(dest_path)) == 0) {
+                                snprintf(ext_full_path, sizeof(ext_full_path), "%s", __cur_file);
+                        } else {
+                                snprintf(ext_full_path, sizeof(ext_full_path), "%s/%s", dest_path, __cur_file);
+                        }
+                }
+
                 archive_entry_set_pathname(entry, ext_full_path);
 
                 a_read = archive_write_header(archive_write, entry);

@@ -119,14 +119,16 @@ int watch_download_file(const char *url, const char *fname) {
 
                                 if (wcfg.ipcc == 1) {
                                         wcfg.ipcc = 0;
-                                        char *__ptr_sigA = readline("apply pawncc now? [Y/n]: ");
-                                        if (__ptr_sigA == NULL ||
-                                            strlen(__ptr_sigA) == 0 ||
-                                            strcmp(__ptr_sigA, "Y") == 0 ||
-                                            strcmp(__ptr_sigA, "y") == 0) {
-                                            install_pawncc_now();
+                                        char __ptr_sigA[26];
+                                        printf("apply pawncc now? [Y/n]: ");
+                                        fflush(stdout);
+                                        int c;
+                                        while ((c = getchar()) != '\n' && c != EOF);
+                                        if (fgets(__ptr_sigA, sizeof(__ptr_sigA), stdin) != NULL) {
+                                        __ptr_sigA[strcspn(__ptr_sigA, "\n")] = 0;
+                                        if (strcmp(__ptr_sigA, "Y") == 0 || strcmp(__ptr_sigA, "y") == 0)
+                                                install_pawncc_now();
                                         }
-                                        if (__ptr_sigA) free(__ptr_sigA);
                                 }
 
                                 return 0;

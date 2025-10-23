@@ -6,7 +6,7 @@ watchdogs.exe
 watchdogs.debug.exe
 watch_termux
 watchdogs.debug
-watchdogs.res
+chain.res
 watchdogs.toml
 pawnc*
 pawno

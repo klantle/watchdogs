@@ -67,10 +67,10 @@ char *readline(const char *prompt) {
 int
         __os__;
 const char
-        *pointer_samp = NULL;
+        *pointer_samp = NULL,
         *pointer_openmp = NULL;
 int
-        find_for_samp = 0x0;
+        find_for_samp = 0x0,
         find_for_omp = 0x0;
     
 void __function__(void) {
@@ -101,6 +101,7 @@ void __function__(void) {
         printf_color(COL_YELLOW, "-DEBUGGING\n");
         printf("[__function__]:\n\t__os__: 0x0%d\n\tpointer_samp: %s\n\tpointer_openmp: %s\n", __os__, pointer_samp, pointer_openmp);
 #endif
+        return;
 }
 
 int __command__(void)
@@ -111,7 +112,7 @@ _command:
         char cwd[PATH_MAX];
         if (!getcwd(cwd, sizeof(cwd))) {
             perror("getcwd");
-            return 1;
+            return 2;
         }
 
         char prompt[PATH_MAX + 100];
@@ -198,6 +199,7 @@ _reexecute_command:
                 remove("watchdogs.toml");
             }
             __function__();
+            goto _command;
         } else if (strcmp(ptr_command, "hardware") == 0) {
             printf("=== System Hardware Information ===\n\n");
             hardware_system_info();
@@ -284,11 +286,8 @@ ret_pcc:
             static char *compile_args;
             compile_args = strtok(arg, " ");
 
-            int __watch_compiler__ = watch_compilers(arg, compile_args);
-            if (__watch_compiler__ == 1)
-                goto _command;
-            else
-                ___main___(0);
+            watch_compilers(arg, compile_args);
+            goto _command;
         } else if (strncmp(ptr_command, "running", 7) == 0 || strncmp(ptr_command, "debug", 7) == 0) {
 _runners_:
                 if (strcmp(ptr_command, "debug") == 0) {
@@ -445,11 +444,10 @@ _runners_:
                     ptr_command = strdup(_dist_command);
                     if (confirm) { free(confirm); }
                     goto _reexecute_command;
-                } else {
-                    printf("Canceled.\n");
                 }
                 if (confirm) { free(confirm); }
             }
+            goto _command;
         } else {
             if (strlen(ptr_command) > 0) {
                 watch_title("Watchdogs | @ not found");
@@ -460,14 +458,15 @@ _runners_:
 
         if (ptr_command) { free(ptr_command); }
 
-        return 1;
+        return 2;
 }
 
 void ___main___(int sig_unused) {
         (void)sig_unused;
         signal(SIGINT, handle_sigint);
         watch_title(NULL);
-        while (1) {
+        
+        while(true) {
             __command__();
         }
 }

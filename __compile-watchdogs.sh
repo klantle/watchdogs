@@ -42,11 +42,7 @@ if ! command -v make >/dev/null 2>&1; then
   exit 2
 fi
 
-if [ "$target" = "windows" ]; then
-  make mingw64
-else
-  make "$target"
-fi
+make "$target"
 
 if [[ "$target" == "debug" && -x "./watchdogs.debug" ]]; then
   echo "Build succeeded. Running ./watchdogs.debug"

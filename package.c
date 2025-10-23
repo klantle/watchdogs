@@ -3,7 +3,57 @@
 #include <string.h>
 #include <sys/stat.h>
 #include <unistd.h>
+#ifdef _WIN32
+#include <windows.h>
+#include <stdio.h>
+
+struct utsname {
+    char sysname[256];
+    char nodename[256];
+    char release[256];
+    char version[256];
+    char machine[256];
+};
+
+int uname(struct utsname *name) {
+    OSVERSIONINFOEX osvi;
+    SYSTEM_INFO si;
+    ZeroMemory(&osvi, sizeof(OSVERSIONINFOEX));
+    osvi.dwOSVersionInfoSize = sizeof(OSVERSIONINFOEX);
+
+    if (!GetVersionEx((OSVERSIONINFO*)&osvi))
+        return -1;
+
+    GetSystemInfo(&si);
+
+    snprintf(name->sysname, sizeof(name->sysname), "Windows");
+    snprintf(name->release, sizeof(name->release), "%lu.%lu", osvi.dwMajorVersion, osvi.dwMinorVersion);
+    snprintf(name->version, sizeof(name->version), "Build %lu", osvi.dwBuildNumber);
+
+    switch (si.wProcessorArchitecture) {
+        case PROCESSOR_ARCHITECTURE_AMD64:
+            snprintf(name->machine, sizeof(name->machine), "x86_64");
+            break;
+        case PROCESSOR_ARCHITECTURE_INTEL:
+            snprintf(name->machine, sizeof(name->machine), "x86");
+            break;
+        case PROCESSOR_ARCHITECTURE_ARM:
+            snprintf(name->machine, sizeof(name->machine), "ARM");
+            break;
+        case PROCESSOR_ARCHITECTURE_ARM64:
+            snprintf(name->machine, sizeof(name->machine), "ARM64");
+            break;
+        default:
+            snprintf(name->machine, sizeof(name->machine), "Unknown");
+            break;
+    }
+
+    return 0;
+}
+#else
 #include <sys/utsname.h>
+#endif
+
 #include <stddef.h>
 
 #include "chain.h"

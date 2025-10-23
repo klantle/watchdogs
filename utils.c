@@ -2,30 +2,37 @@
 #include <stdlib.h>
 #include <string.h>
 #include <stdarg.h>
+#include <sys/stat.h>
 
 #ifdef _WIN32
-#include <direct.h>
 #include <windows.h>
+#include <direct.h>
 #include <shlwapi.h>
 #include <strings.h>
+#include <io.h>
 #define PATH_SEP "\\"
 #define IS_PATH_SEP(c) ((c) == '/' || (c) == '\\')
 #define mkdir(path) _mkdir(path)
 #define sleep(sec) Sleep((sec)*1000)
 #define setenv(name,val,overwrite) _putenv_s(name,val)
+static int w_chmo(const char *path) {
+    int mode = _S_IREAD | _S_IWRITE;
+    return chmod(path, mode);
+}
 #else
 #include <sys/utsname.h>
 #include <unistd.h>
 #include <dirent.h>
-#include <sys/stat.h>
+#include <sys/wait.h>
 #include <fnmatch.h>
 #define PATH_SEP "/"
 #define IS_PATH_SEP(c) ((c) == '/')
+chmod(c_dest);
 #endif
 
+#include <ncursesw/curses.h>
 #include <math.h>
 #include <limits.h>
-#include <ncursesw/curses.h>
 #include <time.h>
 #include <ftw.h>
 #include <sys/file.h>
@@ -37,7 +44,6 @@
 #include <sys/types.h>
 #include <libgen.h>
 #include <sys/types.h>
-#include <sys/wait.h>
 #include <readline/readline.h>
 #include <readline/history.h>
 #include <archive.h>
@@ -632,7 +638,7 @@ int watch_sef_fdir(const char *sef_path, const char *sef_name) {
         HANDLE hFind;
         char searchPath[MAX_PATH];
 
-        if (sef_path[strlen(sef_path)-1] == PATH_SEP) {
+        if (sef_path[strlen(sef_path)-1] == '\\') {
             snprintf(searchPath, sizeof(searchPath), "%s*", sef_path);
         } else {
             snprintf(searchPath, sizeof(searchPath), "%s%s*", sef_path, PATH_SEP);
@@ -807,6 +813,28 @@ int __try_cp_wout_sudo(const char *src, const char *dest) {
         return 0;
 }
 
+#ifdef _WIN32
+
+static int __mv_with_sudo(const char *src, const char *dest) {
+        if (!MoveFileExA(src, dest, MOVEFILE_COPY_ALLOWED | MOVEFILE_REPLACE_EXISTING)) {
+            DWORD err = GetLastError();
+            fprintf(stderr, "MoveFileEx failed with error %lu\n", err);
+            return -1;
+        }
+        return 0;
+}
+
+static int __cp_with_sudo(const char *src, const char *dest) {
+        if (!CopyFileA(src, dest, FALSE /*overwrite*/)) {
+            DWORD err = GetLastError();
+            fprintf(stderr, "CopyFile failed with error %lu\n", err);
+            return -1;
+        }
+        return 0;
+}
+
+#else
+
 static int __mv_with_sudo(const char *src, const char *dest) {
         pid_t pid = fork();
         if (pid < 0) {
@@ -869,6 +897,8 @@ static int __cp_with_sudo(const char *src, const char *dest) {
         }
 }
 
+#endif
+
 int __aio_sef_safety(const char *c_src, const char *c_dest)
 {
         if (!c_src || !c_dest)
@@ -907,7 +937,7 @@ int watch_sef_wmv(const char *c_src, const char *c_dest) {
         int mv_ret = __try_mv_wout_sudo(c_src, c_dest);
         if (mv_ret == 0) {
 #ifdef _WIN32
-            if (chmod(c_dest) != 0)
+            if (w_chmo(c_dest) != 0)
 #ifdef WD_DEBUGGING
                 printf_warning("chmod failed: %s (errno=%d %s)\n", c_dest, errno, strerror(errno));
 #endif
@@ -975,7 +1005,7 @@ int watch_sef_wcopy(const char *c_src,
         int cp_ret = __try_cp_wout_sudo(c_src, c_dest);
         if (cp_ret == 0) {
 #ifdef _WIN32
-            if (chmod(c_dest) != 0)
+            if (w_chmo(c_dest) != 0)
 #ifdef WD_DEBUGGING
                 printf_warning("chmod failed: %s (errno=%d %s)\n", c_dest, errno, strerror(errno));
 #endif

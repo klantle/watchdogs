@@ -1,5 +1,5 @@
 #ifndef _GNU_SOURCE
-    #define _GNU_SOURCE
+#define _GNU_SOURCE
 #endif 
 
 #if defined(_DBG_PRINT)
@@ -14,6 +14,19 @@
 #ifdef _WIN32
 #include <direct.h>
 #include <windows.h>
+#define getcwd _getcwd
+#ifndef PATH_MAX
+#define PATH_MAX _MAX_PATH
+#endif
+char *readline(const char *prompt) {
+    static char
+        buffer[1024];
+    printf("%s", prompt);
+    if (!fgets(buffer, sizeof(buffer), stdin))
+        return NULL;
+    buffer[strcspn(buffer, "\r\n")] = 0;
+    return buffer;
+}
 #define PATH_SEP "\\"
 #define mkdir(path) _mkdir(path)
 #define sleep(sec) Sleep((sec)*1000)
@@ -23,8 +36,8 @@
 #define PATH_SEP "/"
 #endif
 
-#include <limits.h>
 #include <ncursesw/curses.h>
+#include <limits.h>
 #include <dirent.h>
 #include <time.h>
 #include <signal.h>
@@ -96,8 +109,20 @@ void __init_function(void) {
 int __init_wd(void)
 {
         __init_function();
-        char *ptr_command = readline("watchdogs > ");
-        if (!ptr_command) return -1;
+
+        char cwd[PATH_MAX];
+        if (!getcwd(cwd, sizeof(cwd))) {
+            perror("getcwd");
+            return 1;
+        }
+
+__ret:
+        char prompt[PATH_MAX + 50];
+        snprintf(prompt, sizeof(prompt), "[watchdogs:%s] > ", cwd);
+        char *ptr_command = readline(prompt);
+        
+        if (ptr_command == NULL || ptr_command[0] == '\0') goto __ret;
+
         watch_a_history(ptr_command);
 
         int c_distance = INT_MAX;
@@ -146,18 +171,17 @@ _reexecute_command:
             } else if (strcmp(arg, "stop") == 0) { println("stop: stopped server task. | Usage: \"stop\"");
             } else if (strcmp(arg, "restart") == 0) { println("restart: restart server task. | Usage: \"restart\"");
             } else println("help not found for: '%s'", arg);
-            
-            return 0;
+            goto __ret;
         } else if (strcmp(ptr_command, "clear") == 0) {
             watch_title("Watchdogs | @ clear");
             watch_sys("clear");
-            return 0;
+            goto __ret;
         } else if (strcmp(ptr_command, "exit") == 0) {
             exit(1);
         } else if (strcmp(ptr_command, "kill") == 0) {
             watch_title("Watchdogs | @ kill");
             watch_sys("clear");
-            __init(0);
+            goto __ret;
         } else if (strncmp(ptr_command, "title", 5) == 0) {
             char *arg = ptr_command + 6;
             while (*arg == ' ') arg++;
@@ -168,11 +192,12 @@ _reexecute_command:
                 snprintf(title_set, sizeof(title_set), "%s", arg);
                 watch_title(title_set);
             }
-            return 0;
+            goto __ret;
         } else if (strcmp(ptr_command, "toml") == 0) {
             if (access("watchdogs.toml", F_OK) == 0) {
                 remove("watchdogs.toml");
             }
+            goto __ret;
         } else if (strcmp(ptr_command, "hardware") == 0) {
             printf("=== System Hardware Information ===\n\n");
             hardware_system_info();
@@ -198,7 +223,7 @@ _reexecute_command:
 #endif
 
             printf("\n===================================\n");
-            __init(0);
+            goto __ret;
         } else if (strcmp(ptr_command, "gamemode") == 0) {
             watch_title("Watchdogs | @ gamemode");
             static
@@ -210,7 +235,7 @@ ret_gm:
                 printf(">> ");
 
             if (scanf(" %c", &platform) != 1)
-                return 0;
+                goto __ret;
 
             signal(SIGINT, __init);
 
@@ -222,6 +247,7 @@ ret_gm:
                 printf("Invalid platform selection. use C^ to exit.\n");
                 goto ret_gm;
             }
+            goto __ret;
         } else if (strcmp(ptr_command, "pawncc") == 0) {
             watch_title("Watchdogs | @ pawncc");
             static
@@ -234,7 +260,7 @@ ret_pcc:
                 printf(">> ");
 
             if (scanf(" %c", &platform) != 1)
-                return 0;
+                goto __ret;
 
             signal(SIGINT, __init);
 
@@ -248,6 +274,7 @@ ret_pcc:
                 printf("Invalid platform selection. use C^ to exit.\n");
                 goto ret_pcc;
             }
+            goto __ret;
         } else if (strncmp(ptr_command, "compile", 7) == 0) {
             watch_title("Watchdogs | @ compile");
             static char *arg;
@@ -311,7 +338,7 @@ _runners_:
                             printf_color(COL_RED, "running failed! ");
                         }
                         if (format_prompt) { free(format_prompt); }
-                        return 0;
+                        goto __ret;
                     } else {
                         printf_color(COL_YELLOW, "running..\n");
                         watch_server_samp(arg1, ptr_samp);
@@ -351,7 +378,7 @@ _runners_:
                             printf_color(COL_RED, "running failed! ");
                         }
                         if (format_prompt) { free(format_prompt); }
-                        return 0;
+                        goto __ret;
                     } else {
                         printf_color(COL_YELLOW, "running..\n");
                         watch_server_openmp(arg1, ptr_openmp);
@@ -391,7 +418,7 @@ _runners_:
         } else if (strcmp(ptr_command, "stop") == 0) {
             watch_title("Watchdogs | @ stop");
             watch_server_stop_tasks();
-            return 0;
+            goto __ret;
         } else if (strcmp(ptr_command, "restart") == 0) {
             watch_server_stop_tasks();
             sleep(2);
@@ -415,6 +442,7 @@ _runners_:
                 watch_title("Watchdogs | @ not found");
                 println("%s not found!", ptr_command);
             }
+            goto __ret;
         }
 
         if (ptr_command) { free(ptr_command); }

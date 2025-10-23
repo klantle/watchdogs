@@ -1,6 +1,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <sys/stat.h>
 
 #ifdef _WIN32
 #include <windows.h>
@@ -11,7 +12,6 @@
 #define setenv(name,val,overwrite) _putenv_s(name,val)
 #else
 #include <unistd.h>
-#include <sys/stat.h>
 #define PATH_SEP "/"
 #endif
 

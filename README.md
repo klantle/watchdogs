@@ -20,7 +20,7 @@
 
 ---
 
-### DOCKER USAGE
+### [DOCKER](https://www.docker.com/) USAGE
 
 > NOTE
 If you are interested in using the Docker environment.
@@ -51,6 +51,90 @@ docker stop <container-name>               # stop a container
 docker rm -f <container-name>              # remove a container
 ```
 
+### [TERMUX] USAGE
+- note: Please use termux from https://github.com/termux/termux-app/releases
+```sh
+# @@@ 1
+termux-setup-storage       # setup your storage
+# @@@ 2
+termux-change-repo         # change repo
+# @@@ 3
+apt update                 # sync repo
+# @@@ 4
+apt upgrade                # upgrade - optional
+# @@@ 5
+pkg install clang openssl curl libarchive ncurses readline make git
+# @@@ 6
+git clone https://github.com/klantle/watchdogs watch
+# @@@ 7
+cd watch
+# @@@ 8
+make termux                # build first
+# @@@ 9
+chmod +x watchdogs_termux  # give permissions
+# @@@ 10
+./watchdogs_termux         # run
+```
+
+### [MSYS2](https://www.msys2.org) USAGE
+- note: Please see https://www.msys2.org for introduction of MSYS2
+```sh
+# @@@ 1
+pacman -Sy                 # sync repo
+# @@@ 2 - add more mirror (if failed in install packages)
+nano /etc/pacman.d/mirrorlist.mingw64
+nano /etc/pacman.d/mirrorlist.msys
+nano /etc/pacman.d/mirrorlist.ucrt64
+# --- nano; CTRL + X & ENTER
+Server = https://repo.msys2.org/msys/$arch
+Server = https://mirror.msys2.org/msys/$arch
+Server = https://mirror.selfnet.de/msys2/msys/$arch
+Server = https://mirrors.rit.edu/msys2/msys/$arch
+Server = https://ftp.osuosl.org/pub/msys2/msys/$arch
+# sync mirror
+pacman -Sy
+# @@@ 3 - 1+/GB
+pacman -S --needed \
+    base-devel \
+    mingw-w64-ucrt-x86_64-toolchain \
+    mingw-w64-ucrt-x86_64-curl \
+    mingw-w64-ucrt-x86_64-readline \
+    mingw-w64-ucrt-x86_64-ncurses \
+    mingw-w64-ucrt-x86_64-libarchive \
+    mingw-w64-ucrt-x86_64-openssl \
+    make \
+    git
+# @@@ 4
+git clone https://github.com/klantle/watchdogs watch
+# @@@ 5
+cd watch
+# @@@ 6
+make windows              # build first
+# @@@ 7
+chmod +x watchdogs.exe    # give permissions
+# @@@ 8
+./watchdogs.exe           # run
+```
+
+### [BASH - LINUX](https://en.wikipedia.org/wiki/Bash_(Unix_shell)) USAGE
+- note: this only in debian/ubuntu based
+```sh
+# @@@ 1
+apt update                # sync repo
+# @@@ 2
+apt install build-essential libssl-dev libcurl4-openssl-dev libncurses5-dev libreadline-dev libarchive-dev make libc6:i386 libstdc++6:i386 libgcc1:i386 zlib1g:i386 git
+# @@@ 3
+git clone https://github.com/klantle/watchdogs watch
+# @@@ 5
+cd watch
+# @@@ 6
+make linux                # build first
+# @@@ 7
+chmod +x watchdogs        # give permissions
+# @@@ 8
+./watchdogs               # run
+```
+
 ---
 
 ### BASIC OPERATION
@@ -63,23 +147,19 @@ Usage: help | help [<command>]
 ### `watchdogs.toml` Struct
 ```toml
 [general]
-os = "linux"  # os
-
+   os = "linux" # OS
 [compiler]
-option = [ # options https://github.com/klantle/watchdogs?tab=readme-ov-file#pawncc-options
-    "-d3",
-    "-Z+"
-]
-
-include_path = [ # include path
-    "gamemodes",
-    "gamemodes/z",
-    "pawno/include",
-    "pawno/include/z"
-]
-
-input = "gamemodes/timertest.pwn"   # input compiler
-output = "gamemodes/timertest.amx"  # output compiler
+  option = [ # options; https://github.com/klantle/watchdogs?tab=readme-ov-file#pawncc-options
+      "-d3",
+      "-Z+"
+  ]
+  include_path = [ # include path
+      "gamemodes",
+      "gamemodes/z",
+      "pawno/include",
+      "pawno/include/z"
+  input = "gamemodes/timertest.pwn"   # input compiler
+  output = "gamemodes/timertest.amx"  # output compiler
 ```
 
 ### [VSCODE Usage](https://code.visualstudio.com/docs/debugtest/tasks)
@@ -123,6 +203,7 @@ WSL
 Supported Platforms: Linux, Windows, or macOS via:
 - [Docker Container](https://www.docker.com/)
 - [WSL or WSL2](https://learn.microsoft.com/en-us/windows/wsl/install)
+- [MSYS2](https://www.msys2.org/)
 - [Desktop environment](https://en.m.wikipedia.org/wiki/Desktop_environment)
 - [VPS (Virtual Private Server)](https://en.m.wikipedia.org/wiki/Virtual_private_server)
 - [Termux (Android)](https://github.com/termux/termux-app)
@@ -139,34 +220,6 @@ Default (on root):
 alias watch='./watchdogs'
 ```
 run: `~$: watch`
-
----
-
-### INSTALL & BUILD `watchdogs` SCRIPT
-
-- Introduction. please run command from
-- [x] MSYS2:         https://github.com/klantle/watchdogs/blob/main/__msys2-depends.sh
-- [x] Debian/Ubuntu: https://github.com/klantle/watchdogs/blob/main/__debian-depends.sh
-- [x] Termux:        https://github.com/klantle/watchdogs/blob/main/__termux-depends.sh
-
-- Build
-```yaml
-git clone https://github.com/klantle/watchdogs.git watch
-cd watch
-make linux   # Linux
-make windows # Windows
-make termux  # Termux
-```
-
-- Run
-```yaml
-# Linux
-./watchdogs
-# Windows
-./watchdogs.exe
-# Termux
-./watchdogs_termux
-```
 
 ---
 

@@ -158,6 +158,7 @@ Usage: help | help [<command>]
       "gamemodes/z",
       "pawno/include",
       "pawno/include/z"
+  ]
   input = "gamemodes/timertest.pwn"   # input compiler
   output = "gamemodes/timertest.amx"  # output compiler
 ```

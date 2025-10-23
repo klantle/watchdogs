@@ -109,14 +109,13 @@ void __function__(void) {
 int __command__(void)
 {
         __function__();
-
+        
+_command:
         char cwd[PATH_MAX];
         if (!getcwd(cwd, sizeof(cwd))) {
             perror("getcwd");
             return 1;
         }
-
-_command:
 
         char prompt[PATH_MAX + 100];
         snprintf(prompt, sizeof(prompt),

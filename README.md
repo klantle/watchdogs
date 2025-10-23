@@ -16,7 +16,7 @@
 </div>
 <!-- markdownlint-enable MD033 -->
 
-![image](https://gitlab.com/mywatchdogs/watchdogs/-/raw/main/img/watchdogs.png)
+![image](https://gitlab.com/mywatchdogs/watchdogs/-/raw/main/img/watch.png)
 
 ---
 

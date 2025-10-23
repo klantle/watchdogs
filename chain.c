@@ -117,7 +117,7 @@ _command:
         }
 
         char prompt[PATH_MAX + 100];
-        snprintf(prompt, sizeof(prompt), "[" COL_YELLOW "watchdogs:%s" COL_DEFAULT "] > ", cwd);
+        snprintf(prompt, sizeof(prompt), "[" COL_YELLOW "watchdogs:%s" COL_DEFAULT "] > $", cwd);
         char* ptr_command = readline_colored(prompt);
 
         if (ptr_command == NULL || ptr_command[0] == '\0') goto _command;
@@ -436,18 +436,16 @@ _runners_:
             goto _runners_;
         } else if (strcmp(ptr_command, _dist_command) != 0 && c_distance <= 2) {
             watch_title("Watchdogs | @ undefined");
-            printf("did you mean: '%s'?", _dist_command);
+            printf("did you mean '" COL_YELLOW "%s" COL_DEFAULT "'", _dist_command);
             char *confirm = readline(" [y/n]: ");
             if (confirm) {
                 if (strcmp(confirm, "Y") == 0 || strcmp(confirm, "y") == 0) {
                     ptr_command = strdup(_dist_command);
                     if (confirm) { free(confirm); }
                     goto _reexecute_command;
-                } else {
-                    if (confirm) { free(confirm); }
+                } else if (strcmp(confirm, "N") == 0 || strcmp(confirm, "n") == 0)
                     goto _command;
-                }
-            }
+            } else { goto _command; }
         } else {
             if (strlen(ptr_command) > 0) {
                 watch_title("Watchdogs | @ not found");

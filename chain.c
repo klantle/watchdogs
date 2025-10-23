@@ -14,7 +14,6 @@
 #ifdef _WIN32
 #include <direct.h>
 #include <windows.h>
-#define READ_CHAR _getch
 #define getcwd _getcwd
 #ifndef PATH_MAX
 #define PATH_MAX _MAX_PATH
@@ -118,10 +117,10 @@ _command:
 
         char prompt[PATH_MAX + 100];
         snprintf(prompt, sizeof(prompt), "[" COL_YELLOW "watchdogs:%s" COL_DEFAULT "] > $", cwd);
-        char* ptr_command = readline_colored(prompt);
+        char* ptr_command = readline(prompt);
 
         if (ptr_command == NULL || ptr_command[0] == '\0') goto _command;
-
+        
         watch_a_history(ptr_command);
 
         int c_distance = INT_MAX;
@@ -443,8 +442,9 @@ _runners_:
                     ptr_command = strdup(_dist_command);
                     if (confirm) { free(confirm); }
                     goto _reexecute_command;
-                } else if (strcmp(confirm, "N") == 0 || strcmp(confirm, "n") == 0)
+                } else if (strcmp(confirm, "N") == 0 || strcmp(confirm, "n") == 0) {
                     goto _command;
+                } else { goto _command; }
             } else { goto _command; }
         } else {
             if (strlen(ptr_command) > 0) {
@@ -465,12 +465,13 @@ void ___main___(int sig_unused) {
         watch_title(NULL);
         
         while(true) {
-            __command__();
+            int ret = __command__();
+            if (ret) {}
         }
 }
 
 int main(void) {
-        ___main___(0);
-        return 0;
+    ___main___(0);
+    return 0;
 }
 

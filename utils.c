@@ -6,7 +6,6 @@
 
 #ifdef _WIN32
 #include <windows.h>
-#include <conio.h>
 #include <direct.h>
 #include <shlwapi.h>
 #include <strings.h>
@@ -21,7 +20,6 @@ static int w_chmo(const char *path) {
         return chmod(path, mode);
 }
 #else
-#include <termios.h>
 #include <sys/utsname.h>
 #include <unistd.h>
 #include <dirent.h>
@@ -138,80 +136,6 @@ int watch_title(const char *__title)
         printf("\033]0;%s\007", title);
         return 0;
 }
-
-#ifndef _WIN32
-char* readline_colored(const char* prompt) {
-        static char buffer[1024];
-        int pos = 0;
-
-        struct termios oldt, newt;
-        tcgetattr(STDIN_FILENO, &oldt);
-        newt = oldt;
-        newt.c_lflag &= ~(ICANON | ECHO);
-        tcsetattr(STDIN_FILENO, TCSANOW, &newt);
-
-        printf("%s", prompt);
-        fflush(stdout);
-
-        char c;
-        while (1) {
-            c = getchar();
-            if (c == '\n') break;
-            else if (c == 127 || c == 8) {
-                if (pos > 0) {
-                    pos--;
-                    printf("\b \b");
-                    fflush(stdout);
-                }
-            } else {
-                buffer[pos++] = c;
-                printf(COL_YELLOW "%c" COL_DEFAULT, c);
-                fflush(stdout);
-            }
-        }
-        buffer[pos] = '\0';
-        printf("\n");
-
-        tcsetattr(STDIN_FILENO, TCSANOW, &oldt);
-        return buffer;
-}
-#else
-#define WIN_COL_YELLOW 14
-#define WIN_COL_DEFAULT 7
-
-void setTextColor(int color) {
-        HANDLE hConsole = GetStdHandle(STD_OUTPUT_HANDLE);
-        SetConsoleTextAttribute(hConsole, color);
-}
-
-char* readline_colored(const char* prompt) {
-        static char buffer[1024];
-        int pos = 0;
-        char c;
-
-        printf("%s", prompt);
-        fflush(stdout);
-
-        while ((c = _getch()) != '\r') {
-            if (c == 8) {
-                if (pos > 0) {
-                    pos--;
-                    printf("\b \b");
-                    fflush(stdout);
-                }
-            } else {
-                buffer[pos++] = c;
-                setTextColor(WIN_COL_YELLOW);
-                putchar(c);
-                setTextColor(WIN_COL_DEFAULT);
-                fflush(stdout);
-            }
-        }
-        buffer[pos] = '\0';
-        printf("\n");
-        return buffer;
-}
-#endif
 
 void cp_strip_dotfns(char *dst, size_t dst_sz, const char *src) {
         if (!dst || dst_sz == 0 || !src) return;

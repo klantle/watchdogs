@@ -27,13 +27,13 @@ char *readline(const char *prompt) {
         buffer[strcspn(buffer, "\r\n")] = 0;
         return buffer;
 }
-#define PATH_SEP "\\"
+#define __PATH_SYM "\\"
 #define mkdir(path) _mkdir(path)
 #define sleep(sec) Sleep((sec)*1000)
 #define setenv(name,val,overwrite) _putenv_s(name,val)
 #else
 #include <unistd.h>
-#define PATH_SEP "/"
+#define __PATH_SYM "/"
 #endif
 
 #include <ncursesw/curses.h>

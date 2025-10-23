@@ -6,13 +6,13 @@
 #ifdef _WIN32
 #include <windows.h>
 #include <direct.h>
-#define PATH_SEP "\\"
+#define __PATH_SYM "\\"
 #define mkdir(path) _mkdir(path)
 #define sleep(sec) Sleep((sec)*1000)
 #define setenv(name,val,overwrite) _putenv_s(name,val)
 #else
 #include <unistd.h>
-#define PATH_SEP "/"
+#define __PATH_SYM "/"
 #endif
 
 #include <curl/curl.h>

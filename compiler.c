@@ -123,7 +123,7 @@ int watch_compilers(const char *arg, const char *compile_args)
                         toml_datum_t path_val = toml_string_at(include_paths, i);
                         if (path_val.ok) {
                             char __procc[250];
-                            copy_strip_dotfns(__procc, sizeof(__procc), path_val.u.s);
+                            cp_strip_dotfns(__procc, sizeof(__procc), path_val.u.s);
                             if (__procc[0] == '\0') continue;
                             if (i > 0) {
                                 size_t cur = strlen(include_aio_path);

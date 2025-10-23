@@ -9,7 +9,7 @@
 #include <direct.h>
 #include <windows.h>
 #include <io.h>
-#define PATH_SEP "\\"
+#define __PATH_SYM "\\"
 #define mkdir(path) _mkdir(path)
 #define sleep(sec) Sleep((sec)*1000)
 #define setenv(name,val,overwrite) _putenv_s(name,val)
@@ -17,7 +17,7 @@
 #else
 #include <unistd.h>
 #include <dirent.h>
-#define PATH_SEP "/"
+#define __PATH_SYM "/"
 #endif
 
 #include "cJSON/cJSON.h"

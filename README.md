@@ -250,7 +250,7 @@ Run ".amx" by server.cfg param; `gamemode0` [¶](https://sampwiki.blast.hk/wiki/
 running .
 ```
 
-Run ".amx" by [<args>]
+Run ".amx" by `[<args>]`
 ```
 running mymodes
 ```

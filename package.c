@@ -92,7 +92,7 @@ watch_pawncc(const char *platform) {
                 printf(":: You are no longer in Termux!. do you continue? [y/N] ");
                 if (scanf(" %c", &verify_first) != 1) return;
                 if (verify_first == 'N' || verify_first == 'n') {
-                    __init(0);
+                    ___main___(0);
                     return;
                 }
             }

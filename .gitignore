@@ -1,5 +1,6 @@
 *.o
 .vscode
+!img
 watchdogs
 watchdogs.exe
 watch_termux

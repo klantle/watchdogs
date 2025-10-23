@@ -128,10 +128,10 @@ void reset_watch_sef_dir()
 inline void handle_sigint(int sig)
 {
         println("Exit?, You only exit with use a \"exit\"");
-        __init(0);
+        ___main___(0);
 }
 
-inline int watch_title(const char *__title)
+int watch_title(const char *__title)
 {
         const char
                 *title = __title ? __title : "Watchdogs";
@@ -1200,6 +1200,6 @@ install_pawncc_now(void) {
 #endif
 
         printf_color(COL_YELLOW, "apply finished!\n");
-        __init(0);
+        ___main___(0);
 }
 

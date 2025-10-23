@@ -429,7 +429,7 @@ ret_pcc_2:
                     if (scanf(" %c", &platform) != 1)
                         return 0;
 
-                    signal(SIGINT, __init);
+                    signal(SIGINT, ___main___);
 
                     if (platform == 'L' || platform == 'l')
                         watch_pawncc("linux");

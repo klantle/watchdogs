@@ -13,6 +13,9 @@ else
   RESET :=
 endif
 
+export LC_ALL := C.UTF-8
+export LANG := C.UTF-8
+
 VERSION  = WD-10.21
 TARGET   ?= watchdogs
 CC       ?= gcc

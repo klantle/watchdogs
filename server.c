@@ -59,20 +59,20 @@ void watch_server_samp(const char *gamemode_arg, const char *server_bin) {
         serv_in = fopen(".server.cfg.bak", "r");
         if (!serv_in) {
             printf_error("failed to open backup config");
-            __init(0);
+            ___main___(0);
         }
         serv_out = fopen("server.cfg", "w");
         if (!serv_out) {
             printf_error("failed to write new config");
             fclose(serv_in);
-            __init(0);
+            ___main___(0);
         }
 
         int __fi_gm = watch_sef_fdir(".", gamemode_arg);
         if (__fi_gm != 1) {
             printf_color(COL_RED, "Can't locate: ");
             printf("%s\n", gamemode_arg);
-            __init(0);
+            ___main___(0);
         }
 
         while (fgets(g_line, sizeof(g_line), serv_in)) {
@@ -133,7 +133,7 @@ void watch_server_samp(const char *gamemode_arg, const char *server_bin) {
             }
         }
 
-        __init(0);
+        ___main___(0);
 }
 
 void watch_server_openmp(const char *gamemode_arg, const char *server_bin) {
@@ -162,7 +162,7 @@ void watch_server_openmp(const char *gamemode_arg, const char *server_bin) {
         if (__fi_gm != 1) {
             printf_color(COL_RED, "Can't locate: ");
             printf("%s\n", gamemode_arg);
-            __init(0);
+            ___main___(0);
         }
 
         fseek(procc_f, 0, SEEK_END);

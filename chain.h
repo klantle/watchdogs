@@ -7,6 +7,6 @@ extern int find_for_samp;
 extern const char *ptr_openmp;
 extern int find_for_omp;
 
-void __init(int sig_unused);
+void ___main___(int sig_unused);
 
 #endif

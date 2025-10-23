@@ -124,7 +124,7 @@ void watch_extract_zip(const char *zip_path,
 
         if ((a_read = archive_read_open_filename(archives, zip_path, 1024 * 1024))) {
                 printf("Can't resume. sys can't write/open file %s\n", archive_error_string(archives));
-                __init(0);
+                ___main___(0);
         }
 
         archive_write = archive_write_disk_new();

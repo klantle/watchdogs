@@ -16,7 +16,7 @@
 </div>
 <!-- markdownlint-enable MD033 -->
 
-![image](https://gitlab.com/mywatchdogs/watchdogs/-/raw/main/watchdogs.png)
+![image](https://gitlab.com/mywatchdogs/watchdogs/-/raw/main/img/watchdogs.png)
 
 ---
 
@@ -75,6 +75,7 @@ chmod +x watchdogs_termux  # give permissions
 # @@@ 10
 ./watchdogs_termux         # run
 ```
+![image](https://gitlab.com/mywatchdogs/watchdogs/-/raw/main/img/path.png)
 
 ### [MSYS2](https://www.msys2.org) USAGE
 - note: Please see https://www.msys2.org for introduction of MSYS2
@@ -93,7 +94,7 @@ Server = https://mirrors.rit.edu/msys2/msys/$arch
 Server = https://ftp.osuosl.org/pub/msys2/msys/$arch
 # sync mirror
 pacman -Sy
-# @@@ 3 - 1+/GB
+# @@@ 3 - 1/GB
 pacman -S --needed \
     base-devel \
     mingw-w64-ucrt-x86_64-toolchain \
@@ -115,6 +116,7 @@ chmod +x watchdogs.exe    # give permissions
 # @@@ 8
 ./watchdogs.exe           # run
 ```
+![image](https://gitlab.com/mywatchdogs/watchdogs/-/raw/main/img/path.png)
 
 ### [BASH - LINUX](https://en.wikipedia.org/wiki/Bash_(Unix_shell)) USAGE
 - note: this only in debian/ubuntu based
@@ -134,6 +136,7 @@ chmod +x watchdogs        # give permissions
 # @@@ 8
 ./watchdogs               # run
 ```
+![image](https://gitlab.com/mywatchdogs/watchdogs/-/raw/main/img/path.png)
 
 ---
 

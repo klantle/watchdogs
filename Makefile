@@ -20,8 +20,8 @@ VERSION  = WD-10.21
 TARGET   ?= watchdogs
 CC       ?= gcc
 	
-RES_SRC = watchdogs.rc
-RES_OBJ = watchdogs.res
+RES_SRC = chain.rc
+RES_OBJ = chain.res
 
 CFLAGS   = -Os -pipe -s -flto -fdata-sections -ffunction-sections -fPIE -D_GNU_SOURCE -I/usr/include/openssl
 LDFLAGS  = -Wl,-O1,--gc-sections -lm -lcurl -lreadline -lncurses -larchive -lssl -lcrypto

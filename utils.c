@@ -16,8 +16,8 @@
 #define sleep(sec) Sleep((sec)*1000)
 #define setenv(name,val,overwrite) _putenv_s(name,val)
 static int w_chmo(const char *path) {
-    int mode = _S_IREAD | _S_IWRITE;
-    return chmod(path, mode);
+        int mode = _S_IREAD | _S_IWRITE;
+        return chmod(path, mode);
 }
 #else
 #include <sys/utsname.h>

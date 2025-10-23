@@ -26,12 +26,12 @@
 #include "utils.h"
 #include "server.h"
 
-static int __val_g_arg(const char *arg) {
-        if (!arg || strlen(arg) > 128) return 0;
-        for (size_t i = 0; i < strlen(arg); i++) {
-            if (arg[i] == '/' ||
-                arg[i] == '\\' ||
-                arg[i] == ';')
+static int __val_g_arg(const char *__arg) {
+        if (!__arg || strlen(__arg) > 128) return 0;
+        for (size_t i = 0; i < strlen(__arg); i++) {
+            if (__arg[i] == '/' ||
+                __arg[i] == '\\' ||
+                __arg[i] == ';')
                 return 0;
         }
         return 1;

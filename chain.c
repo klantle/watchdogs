@@ -19,13 +19,13 @@
 #define PATH_MAX _MAX_PATH
 #endif
 char *readline(const char *prompt) {
-    static char
-        buffer[1024];
-    printf("%s", prompt);
-    if (!fgets(buffer, sizeof(buffer), stdin))
-        return NULL;
-    buffer[strcspn(buffer, "\r\n")] = 0;
-    return buffer;
+        static char
+            buffer[1024];
+        printf("%s", prompt);
+        if (!fgets(buffer, sizeof(buffer), stdin))
+            return NULL;
+        buffer[strcspn(buffer, "\r\n")] = 0;
+        return buffer;
 }
 #define PATH_SEP "\\"
 #define mkdir(path) _mkdir(path)
@@ -65,15 +65,13 @@ char *readline(const char *prompt) {
 #include "compiler.h"
 
 int
-    __os__;
+        __os__;
 const char
-    *ptr_samp = NULL;
+        *pointer_samp = NULL;
+        *pointer_openmp = NULL;
 int
-    find_for_samp = 0x0;
-const char
-    *ptr_openmp = NULL;
-int
-    find_for_omp = 0x0;
+        find_for_samp = 0x0;
+        find_for_omp = 0x0;
     
 void __function__(void) {
         watch_toml_data();
@@ -83,25 +81,25 @@ void __function__(void) {
         __os__ = signal_system_os();
         
         if (__os__ == 0x01) {
-            ptr_samp="samp-server.exe"; ptr_openmp="omp-server.exe";
+            pointer_samp="samp-server.exe"; pointer_openmp="omp-server.exe";
         }
         else if (__os__ == 0x00) {
-            ptr_samp="samp03svr"; ptr_openmp="omp-server";
+            pointer_samp="samp03svr"; pointer_openmp="omp-server";
         }
         
-        FILE *file_s = fopen(ptr_samp, "r");
+        FILE *file_s = fopen(pointer_samp, "r");
         if (file_s) {
             find_for_samp = 0x1;
             fclose(file_s);
         }
-        FILE *file_m = fopen(ptr_openmp, "r");
+        FILE *file_m = fopen(pointer_openmp, "r");
         if (file_m) {
             find_for_omp = 0x1;
             fclose(file_m);
         }
 #ifdef WD_DEBUGGING
         printf_color(COL_YELLOW, "-DEBUGGING\n");
-        printf("[__function__]:\n\t__os__: 0x0%d\n\tptr_samp: %s\n\tptr_openmp: %s\n", __os__, ptr_samp, ptr_openmp);
+        printf("[__function__]:\n\t__os__: 0x0%d\n\tpointer_samp: %s\n\tpointer_openmp: %s\n", __os__, pointer_samp, pointer_openmp);
 #endif
 }
 
@@ -320,10 +318,10 @@ _runners_:
 
                         char snprintf_ptrS[128];
 #ifndef _WIN32
-                        chmod(ptr_samp, 0777);
-                        snprintf(snprintf_ptrS, sizeof(snprintf_ptrS), "./%s", ptr_samp);
+                        chmod(pointer_samp, 0777);
+                        snprintf(snprintf_ptrS, sizeof(snprintf_ptrS), "./%s", pointer_samp);
 #else
-                        snprintf(snprintf_ptrS, sizeof(snprintf_ptrS), "%s", ptr_samp);
+                        snprintf(snprintf_ptrS, sizeof(snprintf_ptrS), "%s", pointer_samp);
 #endif
                         int running_FAIL = watch_sys(snprintf_ptrS);
                         if (running_FAIL == 0) {
@@ -349,7 +347,7 @@ _runners_:
                         goto _command;
                     } else {
                         printf_color(COL_YELLOW, "running..\n");
-                        watch_server_samp(arg1, ptr_samp);
+                        watch_server_samp(arg1, pointer_samp);
                     }
                 } else if (find_for_omp == 0x1) {
                     if (*arg == '\0') {
@@ -362,10 +360,10 @@ _runners_:
 
                         char snprintf_ptrS[128];
 #ifndef _WIN32
-                        chmod(ptr_openmp, 0777);
-                        snprintf(snprintf_ptrS, sizeof(snprintf_ptrS), "./%s", ptr_openmp);
+                        chmod(pointer_openmp, 0777);
+                        snprintf(snprintf_ptrS, sizeof(snprintf_ptrS), "./%s", pointer_openmp);
 #else
-                        snprintf(snprintf_ptrS, sizeof(snprintf_ptrS), "%s", ptr_openmp);
+                        snprintf(snprintf_ptrS, sizeof(snprintf_ptrS), "%s", pointer_openmp);
 #endif
                         int running_FAIL = watch_sys(snprintf_ptrS);
                         if (running_FAIL == 0) {
@@ -391,7 +389,7 @@ _runners_:
                         goto _command;
                     } else {
                         printf_color(COL_YELLOW, "running..\n");
-                        watch_server_openmp(arg1, ptr_openmp);
+                        watch_server_openmp(arg1, pointer_openmp);
                     }
                 } else if (!find_for_omp || !find_for_samp) {
                     printf_error("samp-server/open.mp server not found!");

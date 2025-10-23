@@ -20,6 +20,12 @@
 
 ---
 
+### Arch Support
+- [x] [Qualcomm Snapdragon](https://en.wikipedia.org/wiki/Qualcomm_Snapdragon)
+- [x] [MediaTek](https://en.wikipedia.org/wiki/MediaTek)
+- [x] [Intel](https://en.wikipedia.org/wiki/Intel)
+- [x] [AMD](https://en.wikipedia.org/wiki/AMD)
+
 ### [DOCKER](https://www.docker.com/) USAGE
 
 > NOTE

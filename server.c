@@ -97,11 +97,16 @@ void watch_server_samp(const char *gamemode_arg, const char *server_bin) {
 #endif
 
         char snprintf_ptrS[256];
+#ifdef _WIN32
         snprintf(snprintf_ptrS, sizeof(snprintf_ptrS), "./%s", server_bin);
+#else
+        snprintf(snprintf_ptrS, sizeof(snprintf_ptrS), "%s", server_bin);
+#endif
 
         int running_FAIL = watch_sys(snprintf_ptrS);
         if (running_FAIL == 0) {
             sleep(2);
+#ifndef _WIN32
             printf_color(COL_YELLOW, "Press enter to print logs..");
             getchar();
 
@@ -114,8 +119,9 @@ void watch_server_samp(const char *gamemode_arg, const char *server_bin) {
                     putchar(ch);
                 fclose(server_log);
             }
+#endif
         } else {
-            printf_color(COL_RED, "running failed! ");
+            printf_color(COL_RED, "running failed!\n");
         }
 
         remove("server.cfg");
@@ -214,25 +220,31 @@ void watch_server_openmp(const char *gamemode_arg, const char *server_bin) {
 #endif
 
         char snprintf_ptrS[256];
+#ifdef _WIN32
         snprintf(snprintf_ptrS, sizeof(snprintf_ptrS), "./%s", server_bin);
+#else
+        snprintf(snprintf_ptrS, sizeof(snprintf_ptrS), "%s", server_bin);
+#endif
 
         int running_FAIL = watch_sys(snprintf_ptrS);
         if (running_FAIL == 0) {
             sleep(2);
+#ifndef _WIN32
             printf_color(COL_YELLOW, "Press enter to print logs..");
             getchar();
 
-            FILE *server_log = fopen("log.txt", "r");
+            FILE *server_log = fopen("server_log.txt", "r");
             if (!server_log)
-                printf_error("Can't found log.txt!");
+                printf_error("Can't found server_log.txt!");
             else {
                 int ch;
                 while ((ch = fgetc(server_log)) != EOF)
                     putchar(ch);
                 fclose(server_log);
             }
+#endif
         } else {
-            printf_color(COL_RED, "running failed! ");
+            printf_color(COL_RED, "running failed!\n");
         }
 
         remove("config.json");

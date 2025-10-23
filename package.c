@@ -73,19 +73,18 @@ typedef struct {
 
 void
 watch_pawncc(const char *platform) {
-        char selection,
-             version_selection,
+        char version_selection,
              url_sel[300],
              fname_sel[256];
 
         if (strcmp(platform, "termux") == 0) {
             struct stat st;
             int is_termux = 0;
-            if (!stat("/data/data/com.termux/files/usr/local/lib/", &st) ||
-                !stat("/data/data/com.termux/files/usr/lib/", &st) &&
+            if (( !stat("/data/data/com.termux/files/usr/local/lib/", &st) ||
+                !stat("/data/data/com.termux/files/usr/lib/", &st) ) &&
                 S_ISDIR(st.st_mode)) {
-                    is_termux=1;
-                }
+                is_termux = 1;
+            }
             if (is_termux == 0)
             {
                 char verify_first;

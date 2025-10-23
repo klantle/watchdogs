@@ -23,7 +23,7 @@ target="$(detect_platform)"
 
 if [[ -z "${1:-}" ]]; then
   echo "Detected target: $target"
-  read -r -p "Press ENTER to continue or type (linux|termux|windows|debug|clean) to override: " reply
+  read -r -p "Press ENTER to continue or type (linux|termux|windows|debug|windows-debug|clean) to override: " reply
   if [[ -n "$reply" ]]; then
     target="$reply"
   fi

@@ -19,6 +19,9 @@ export LANG := C.UTF-8
 VERSION  = WD-10.21
 TARGET   ?= watchdogs
 CC       ?= gcc
+	
+RES_SRC = watchdogs.rc
+RES_OBJ = watchdogs.res
 
 CFLAGS   = -Os -pipe -s -flto -fdata-sections -ffunction-sections -fPIE -D_GNU_SOURCE -I/usr/include/openssl
 LDFLAGS  = -Wl,-O1,--gc-sections -lm -lcurl -lreadline -lncurses -larchive -lssl -lcrypto
@@ -28,7 +31,7 @@ SRCS = chain.c hardware.c utils.c compiler.c archive.c curl.c package.c server.c
 
 OBJS = $(SRCS:.c=.o)
 
-.PHONY: all clean linux termux windows compress strip debug
+.PHONY: all clean linux termux windows compress strip debug windows-debug
 
 all: $(TARGET)
 	@printf "$(YELLOW)==>$(RESET) Building $(TARGET) version $(VERSION)\n"
@@ -61,7 +64,7 @@ compress:
 	fi
 
 clean:
-	rm -f $(OBJS) watchdogs watch_termux watchdogs.exe watchdogs.debug
+	rm -f $(OBJS) watchdogs watch_termux watchdogs.exe watchdogs.debug watchdogs.debug.exe
 	@printf "$(YELLOW)==>$(RESET) Clean done.\n"
 
 linux:
@@ -78,18 +81,30 @@ termux:
 	CFLAGS="$(CFLAGS) -D__ANDROID__ -fPIE" \
 	LDFLAGS="$(LDFLAGS) -pie"
 
-windows: $(OBJS)
+windows: $(OBJS) $(RES_OBJ)
 	@printf "$(YELLOW)==>$(RESET) Building $(TARGET) version $(VERSION)\n"
-	$(CC) $(CFLAGS) $(OBJS) -o watchdogs.exe \
+	$(CC) $(CFLAGS) $(OBJS) $(RES_OBJ) -o watchdogs.exe \
 		$(LDFLAGS) -liphlpapi -lshlwapi
 	@printf "$(YELLOW)==>$(RESET) Build complete: $(TARGET) version $(VERSION)\n"
 
-debug:
-	@printf "$(YELLOW)==>$(RESET) Building $(TARGET) version $(VERSION)\n"
-	@printf "$(YELLOW)==>$(RESET) Build complete: $(TARGET) version $(VERSION)\n"
-	@printf "$(YELLOW)==>$(RESET) Building DEBUG version with sanitizers\n"
-	$(CC) -g -O0 -fno-omit-frame-pointer -fsanitize=address,undefined \
-	-D_GNU_SOURCE -D_DBG_PRINT -I/usr/include/openssl \
-	$(SRCS) -o watchdogs.debug \
-	-lm -lcurl -ltinfo -lreadline -lncurses -larchive -lssl -lcrypto -pthread
-	@printf "$(YELLOW)==>$(RESET) Debug build complete: ./watchdogs.debug\n"
+windows-debug: $(OBJS) $(RES_OBJ)
+	@printf "$(YELLOW)==>$(RESET) Building DEBUG version $(TARGET) for Windows\n"
+	$(CC) -g -O0 -D_DBG_PRINT -D_GNU_SOURCE -Wall \
+	$(OBJS) $(RES_OBJ) -o watchdogs.debug.exe \
+	$(LDFLAGS) -liphlpapi -lshlwapi
+	@printf "$(YELLOW)==>$(RESET) Debug build complete: ./watchdogs.debug.exe\n"
+
+$(RES_OBJ): $(RES_SRC)
+	@printf "$(YELLOW)==>$(RESET) Compiling resource $<\n"
+	windres $< -O coff -o $@
+
+%.res: %.rc
+	@printf "$(YELLOW)==>$(RESET) Compiling resource $<\n"
+	windres $< -O coff -o $@
+
+windows-debug: $(OBJS)
+	@printf "$(YELLOW)==>$(RESET) Building DEBUG version $(TARGET) for Windows\n"
+	$(CC) -g -O0 -D_DBG_PRINT -D_GNU_SOURCE -Wall \
+	$(SRCS) -o watchdogs.debug.exe \
+	$(LDFLAGS) -liphlpapi -lshlwapi
+	@printf "$(YELLOW)==>$(RESET) Debug build complete: ./watchdogs.debug.exe\n"

@@ -24,15 +24,6 @@
 #include "archive.h"
 #include "chain.h"
 
-static size_t write_file(void *ptr,
-                         size_t size,
-                         size_t nmemb,
-                         FILE *stream
-) {
-        size_t written = fwrite(ptr, size, nmemb, stream);
-        return written;
-}
-
 static int progress_callback(void *ptr,
                              curl_off_t dltotal,
                              curl_off_t dlnow,

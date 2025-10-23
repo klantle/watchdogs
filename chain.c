@@ -78,7 +78,6 @@ int
 void __function__(void) {
         watch_toml_data();
         watch_u_history();
-        watch_reset_var();
         reset_watch_sef_dir();
 
         __os__ = signal_system_os();
@@ -200,7 +199,7 @@ _reexecute_command:
             if (access("watchdogs.toml", F_OK) == 0) {
                 remove("watchdogs.toml");
             }
-            goto _command;
+            __function__();
         } else if (strcmp(ptr_command, "hardware") == 0) {
             printf("=== System Hardware Information ===\n\n");
             hardware_system_info();
@@ -287,7 +286,11 @@ ret_pcc:
             static char *compile_args;
             compile_args = strtok(arg, " ");
 
-            watch_compilers(arg, compile_args);
+            int __watch_compiler__ = watch_compilers(arg, compile_args);
+            if (__watch_compiler__ == 1)
+                goto _command;
+            else
+                ___main___(0);
         } else if (strncmp(ptr_command, "running", 7) == 0 || strncmp(ptr_command, "debug", 7) == 0) {
 _runners_:
                 if (strcmp(ptr_command, "debug") == 0) {
@@ -318,8 +321,10 @@ _runners_:
                         char snprintf_ptrS[128];
 #ifndef _WIN32
                         chmod(ptr_samp, 0777);
-#endif
                         snprintf(snprintf_ptrS, sizeof(snprintf_ptrS), "./%s", ptr_samp);
+#else
+                        snprintf(snprintf_ptrS, sizeof(snprintf_ptrS), "%s", ptr_samp);
+#endif
                         int running_FAIL = watch_sys(snprintf_ptrS);
                         if (running_FAIL == 0) {
                             sleep(2);
@@ -338,7 +343,7 @@ _runners_:
                                 fclose(server_log);
                             }
                         } else {
-                            printf_color(COL_RED, "running failed! ");
+                            printf_color(COL_RED, "running failed!\n");
                         }
                         if (format_prompt) { free(format_prompt); }
                         goto _command;
@@ -358,8 +363,10 @@ _runners_:
                         char snprintf_ptrS[128];
 #ifndef _WIN32
                         chmod(ptr_openmp, 0777);
-#endif
                         snprintf(snprintf_ptrS, sizeof(snprintf_ptrS), "./%s", ptr_openmp);
+#else
+                        snprintf(snprintf_ptrS, sizeof(snprintf_ptrS), "%s", ptr_openmp);
+#endif
                         int running_FAIL = watch_sys(snprintf_ptrS);
                         if (running_FAIL == 0) {
                             sleep(2);
@@ -378,7 +385,7 @@ _runners_:
                                 fclose(server_log);
                             }
                         } else {
-                            printf_color(COL_RED, "running failed! ");
+                            printf_color(COL_RED, "running failed!\n");
                         }
                         if (format_prompt) { free(format_prompt); }
                         goto _command;
@@ -411,11 +418,16 @@ _runners_:
                     if (ptr_sigA) { free(ptr_sigA); }
                 }
                 if (format_prompt) { free(format_prompt); }
+                goto _command;
         } else if (strncmp(ptr_command, "crunn", 7) == 0) {
             watch_title("Watchdogs | @ crunn");
             const char *arg = NULL;
             const char *compile_args = NULL;
-            watch_compilers(arg, compile_args);
+            int __watch_compiler__ = watch_compilers(arg, compile_args);
+            if (__watch_compiler__ == 1)
+                goto _command;
+            else
+                ___main___(0);
             if (watch_compiler_error_level == 0)
                 goto _runners_;
         } else if (strcmp(ptr_command, "stop") == 0) {
@@ -449,6 +461,8 @@ _runners_:
         }
 
         if (ptr_command) { free(ptr_command); }
+
+        return 1;
 }
 
 void ___main___(int sig_unused) {

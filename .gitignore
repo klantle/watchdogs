@@ -3,9 +3,10 @@
 !img
 watchdogs
 watchdogs.exe
+watchdogs.debug.exe
 watch_termux
-watchdogs.exe
 watchdogs.debug
+watchdogs.res
 watchdogs.toml
 pawnc*
 pawno

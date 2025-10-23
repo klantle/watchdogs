@@ -5,7 +5,6 @@
 #include <windows.h>
 #include <iphlpapi.h>
 #include <intrin.h>
-#pragma comment(lib, "iphlpapi.lib")
 #else
 #include <sys/statvfs.h>
 #include <ifaddrs.h>

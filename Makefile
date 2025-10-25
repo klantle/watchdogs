@@ -97,7 +97,7 @@ compress:
 	fi
 
 clean:
-	rm -f $(OBJS) watchdogs watchdogs_termux watchdogs.win watchdogs.debug atchdogs.debug.win
+	rm -f $(OBJS) watchdogs watchdogs_termux watchdogs.win watchdogs.debug watchdogs.debug.win
 	@printf "$(YELLOW)==>$(RESET) Clean done.\n"
 
 linux:

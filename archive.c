@@ -1,7 +1,6 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-
 #include <archive.h>
 #include <archive_entry.h>
 
@@ -12,181 +11,255 @@
 #include "curl.h"
 #include "chain.h"
 
-static int arch_copy_data(struct archive *ar,
-                          struct archive *aw) {
-        int a_read;
-        const void *a_buff;
-        size_t size;
-        la_int64_t offset;
-    
-        while (1) {
-            a_read = archive_read_data_block(ar,
-                                             &a_buff,
-                                             &size,
-                                             &offset);
-            if (a_read == ARCHIVE_EOF)
-                    return ARCHIVE_OK;
-            if (a_read != ARCHIVE_OK) {
-                printf_error("Read error: %s", archive_error_string(ar));
-                return a_read;
-            }
-            a_read = archive_write_data_block(aw, a_buff, size, offset);
-            if (a_read != ARCHIVE_OK) {
-                printf_error("Write error: %s", archive_error_string(aw));
-                return a_read;
-            }
-        }
-}
-
-int wd_Extract_TAR(const char *tar_files) {
-        struct archive *archive_write = archive_write_disk_new();
-        struct archive *archives = archive_read_new();
-        struct archive_entry *entry;
-
-        int a_read;
-        
-        archive_write_disk_set_options(archive_write,
-                ARCHIVE_EXTRACT_TIME |
-                ARCHIVE_EXTRACT_PERM |
-                ARCHIVE_EXTRACT_ACL |
-                ARCHIVE_EXTRACT_FFLAGS |
-                ARCHIVE_EXTRACT_UNLINK |
-                ARCHIVE_EXTRACT_SECURE_SYMLINKS |
-                ARCHIVE_EXTRACT_SECURE_NODOTDOT |
-                ARCHIVE_EXTRACT_NO_OVERWRITE_NEWER);
-            
-        archive_read_support_format_all(archives);
-        archive_read_support_filter_all(archives);
-        
-        a_read = archive_read_open_filename(archives,
-                                            tar_files,
-                                            1024 * 1024);
-        if (a_read != ARCHIVE_OK) {
-                printf_error("Can't open file: %s", archive_error_string(archives));
-                archive_read_free(archives);
-                archive_write_free(archive_write);
-                return -RETN;
-        }
-    
-        while (1) {
-            a_read = archive_read_next_header(archives, &entry);
-            if (a_read == ARCHIVE_EOF)
-                    break;
-            if (a_read != ARCHIVE_OK) {
-                        printf_error("header: %s",
-                                archive_error_string(archives));
-                        break;
-            }
-    
-            a_read = archive_write_header(archive_write, entry);
-            if (a_read != ARCHIVE_OK) {
-                        printf_error("header: %s",
-                                archive_error_string(archive_write));
-                        break;
-            }
-    
-            if (archive_entry_size(entry) > 0) {
-                a_read = arch_copy_data(archives, archive_write);
-                if (a_read != ARCHIVE_OK) {
-                        printf_error("data: %s",
-                                archive_error_string(archives));
-                        break;
-                }
-            }
-    
-            archive_write_finish_entry(archive_write);
-        }
-    
-        archive_read_close(archives);
-        archive_read_free(archives);
-        archive_write_close(archive_write);
-        archive_write_free(archive_write);
-    
-        return (a_read == ARCHIVE_EOF) ? 0 : -1;
-}
-
-void wd_Extract_ZIP(const char *zip_path,
-                           const char *dest_path)
+/**
+ * arch_copy_data - Copy data between archive handles
+ * @ar: Source archive
+ * @aw: Destination archive
+ *
+ * Return: ARCHIVE_OK on success, archive error code on failure
+ */
+static int arch_copy_data(struct archive *ar, struct archive *aw)
 {
-        struct archive *archives;
-        struct archive *archive_write;
-        struct archive_entry *entry;
+	int ret;
+	const void *buffer;
+	size_t size;
+	la_int64_t offset;
 
-        int a_read;
+	while (1) {
+		ret = archive_read_data_block(ar, &buffer, &size, &offset);
+		if (ret == ARCHIVE_EOF)
+			return ARCHIVE_OK;
+		if (ret != ARCHIVE_OK) {
+			printf_error("Read error: %s", archive_error_string(ar));
+			return ret;
+		}
 
-        archives = archive_read_new();
-        archive_read_support_format_zip(archives);
-        archive_read_support_filter_all(archives);
-
-        if ((a_read = archive_read_open_filename(archives, zip_path, 1024 * 1024))) {
-                printf_error("Can't write/open file %s", archive_error_string(archives));
-                __main(0);
-        }
-
-        archive_write = archive_write_disk_new();
-        archive_write_disk_set_options(archive_write, ARCHIVE_EXTRACT_TIME);
-        archive_write_disk_set_standard_lookup(archive_write);
-
-        int __has_error = 0x00;
-
-        while (archive_read_next_header(archives, &entry) == ARCHIVE_OK) {
-                const char *__cur_file = archive_entry_pathname(entry);
-
-                char ext_full_path[1024 * 1024];
-
-                if (dest_path == NULL || strcmp(dest_path, ".") == 0 || *dest_path == '\0') {
-                        snprintf(ext_full_path, sizeof(ext_full_path), "%s", __cur_file);
-                } else {
-                        if (strncmp(__cur_file, dest_path, strlen(dest_path)) == 0) {
-                                snprintf(ext_full_path, sizeof(ext_full_path), "%s", __cur_file);
-                        } else {
-                                snprintf(ext_full_path, sizeof(ext_full_path), "%s/%s", dest_path, __cur_file);
-                        }
-                }
-
-                archive_entry_set_pathname(entry, ext_full_path);
-
-                a_read = archive_write_header(archive_write, entry);
-                if (a_read != ARCHIVE_OK) {
-                        if (!__has_error) {
-                                printf_error("during extraction: %s",
-                                        archive_error_string(archive_write));
-                                __has_error = 0x01;
-                                break;
-                        }
-                } else {
-                    const void *a_buff;
-                    size_t size;
-                    la_int64_t offset;
-
-                    while (1) {
-                        a_read = archive_read_data_block(archives, &a_buff, &size, &offset);
-                        if (a_read == ARCHIVE_EOF)
-                                break;
-                        if (a_read < ARCHIVE_OK) {
-                                if (!__has_error) {
-                                        printf_error("reading block from archive: %s",
-                                                archive_error_string(archives));
-                                        __has_error = 0x02;
-                                        break;
-                                }
-                        }
-                        a_read = archive_write_data_block(archive_write, a_buff, size, offset);
-                        if (a_read < ARCHIVE_OK) {
-                                if (!__has_error) {
-                                        printf_error("writing block to destination: %s",
-                                                archive_error_string(archive_write));
-                                        __has_error = 0x03;
-                                        break;
-                                }
-                        }
-                    }
-                }
-        }
-
-        archive_read_close(archives);
-        archive_read_free(archives);
-        archive_write_close(archive_write);
-        archive_write_free(archive_write);
+		ret = archive_write_data_block(aw, buffer, size, offset);
+		if (ret != ARCHIVE_OK) {
+			printf_error("Write error: %s", archive_error_string(aw));
+			return ret;
+		}
+	}
 }
 
+/**
+ * wd_extract_tar - Extract TAR archive
+ * @tar_file: Path to TAR file
+ *
+ * Return: 0 on success, -RETN on failure
+ */
+int wd_extract_tar(const char *tar_file)
+{
+	struct archive *archive_read;
+	struct archive *archive_write;
+	struct archive_entry *entry;
+	int ret;
+
+	archive_read = archive_read_new();
+	archive_write = archive_write_disk_new();
+
+	if (!archive_read || !archive_write) {
+		printf_error("Failed to create archive handles");
+		goto error;
+	}
+
+	/* Configure archive readers */
+	archive_read_support_format_all(archive_read);
+	archive_read_support_filter_all(archive_read);
+
+	/* Configure disk writer options */
+	archive_write_disk_set_options(archive_write,
+				       ARCHIVE_EXTRACT_TIME |
+				       ARCHIVE_EXTRACT_PERM |
+				       ARCHIVE_EXTRACT_ACL |
+				       ARCHIVE_EXTRACT_FFLAGS |
+				       ARCHIVE_EXTRACT_UNLINK |
+				       ARCHIVE_EXTRACT_SECURE_SYMLINKS |
+				       ARCHIVE_EXTRACT_SECURE_NODOTDOT |
+				       ARCHIVE_EXTRACT_NO_OVERWRITE_NEWER);
+
+	/* Open archive file */
+	ret = archive_read_open_filename(archive_read, tar_file, 1024 * 1024);
+	if (ret != ARCHIVE_OK) {
+		printf_error("Cannot open file: %s", archive_error_string(archive_read));
+		goto error;
+	}
+
+	/* Extract entries */
+	while (1) {
+		ret = archive_read_next_header(archive_read, &entry);
+		if (ret == ARCHIVE_EOF)
+			break;
+		if (ret != ARCHIVE_OK) {
+			printf_error("Header error: %s", archive_error_string(archive_read));
+			break;
+		}
+
+		ret = archive_write_header(archive_write, entry);
+		if (ret != ARCHIVE_OK) {
+			printf_error("Write header error: %s", archive_error_string(archive_write));
+			break;
+		}
+
+		/* Copy file data if entry has content */
+		if (archive_entry_size(entry) > 0) {
+			ret = arch_copy_data(archive_read, archive_write);
+			if (ret != ARCHIVE_OK)
+				break;
+		}
+
+		archive_write_finish_entry(archive_write);
+	}
+
+	/* Cleanup */
+	archive_read_close(archive_read);
+	archive_write_close(archive_write);
+
+	archive_read_free(archive_read);
+	archive_write_free(archive_write);
+
+	return (ret == ARCHIVE_EOF) ? 0 : -RETN;
+
+error:
+	if (archive_read)
+		archive_read_free(archive_read);
+	if (archive_write)
+		archive_write_free(archive_write);
+	return -RETN;
+}
+
+/**
+ * build_extraction_path - Build full path for extracted file
+ * @dest_path: Destination directory
+ * @entry_path: Archive entry path
+ * @out_path: Output buffer for full path
+ * @out_size: Size of output buffer
+ */
+static void build_extraction_path(const char *dest_path, const char *entry_path,
+				  char *out_path, size_t out_size)
+{
+	if (!dest_path || strcmp(dest_path, ".") == 0 || *dest_path == '\0') {
+		snprintf(out_path, out_size, "%s", entry_path);
+	} else {
+		/* Check if entry path already starts with destination path */
+		if (strncmp(entry_path, dest_path, strlen(dest_path)) == 0) {
+			snprintf(out_path, out_size, "%s", entry_path);
+		} else {
+			snprintf(out_path, out_size, "%s/%s", dest_path, entry_path);
+		}
+	}
+}
+
+/**
+ * extract_zip_entry - Extract single ZIP entry
+ * @archive_read: Source archive
+ * @archive_write: Destination archive
+ * @entry: Archive entry
+ *
+ * Return: 0 on success, error code on failure
+ */
+static int extract_zip_entry(struct archive *archive_read,
+			     struct archive *archive_write,
+			     struct archive_entry *entry)
+{
+	int ret;
+	const void *buffer;
+	size_t size;
+	la_int64_t offset;
+
+	ret = archive_write_header(archive_write, entry);
+	if (ret != ARCHIVE_OK) {
+		printf_error("Write header error: %s", archive_error_string(archive_write));
+		return -RETN;
+	}
+
+	/* Copy entry data */
+	while (1) {
+		ret = archive_read_data_block(archive_read, &buffer, &size, &offset);
+		if (ret == ARCHIVE_EOF)
+			break;
+		if (ret < ARCHIVE_OK) {
+			printf_error("Read data error: %s", archive_error_string(archive_read));
+			return -2;
+		}
+
+		ret = archive_write_data_block(archive_write, buffer, size, offset);
+		if (ret < ARCHIVE_OK) {
+			printf_error("Write data error: %s", archive_error_string(archive_write));
+			return -3;
+		}
+	}
+
+	return RETZ;
+}
+
+/**
+ * wd_extract_zip - Extract ZIP archive
+ * @zip_file: Path to ZIP file
+ * @dest_path: Destination directory (NULL for current directory)
+ *
+ * Return: 0 on success, -RETN on failure
+ */
+int wd_extract_zip(const char *zip_file, const char *dest_path)
+{
+	struct archive *archive_read;
+	struct archive *archive_write;
+	struct archive_entry *entry;
+	char full_path[1024 * 1024];
+	int ret;
+	int error_occurred = 0;
+
+	archive_read = archive_read_new();
+	archive_write = archive_write_disk_new();
+
+	if (!archive_read || !archive_write) {
+		printf_error("Failed to create archive handles");
+		goto error;
+	}
+
+	/* Configure ZIP reader */
+	archive_read_support_format_zip(archive_read);
+	archive_read_support_filter_all(archive_read);
+
+	/* Configure disk writer */
+	archive_write_disk_set_options(archive_write, ARCHIVE_EXTRACT_TIME);
+	archive_write_disk_set_standard_lookup(archive_write);
+
+	/* Open ZIP file */
+	ret = archive_read_open_filename(archive_read, zip_file, 1024 * 1024);
+	if (ret != ARCHIVE_OK) {
+		printf_error("Cannot open file: %s", archive_error_string(archive_read));
+		goto error;
+	}
+
+	/* Extract all entries */
+	while (archive_read_next_header(archive_read, &entry) == ARCHIVE_OK) {
+		const char *entry_path = archive_entry_pathname(entry);
+
+		/* Build full extraction path */
+		build_extraction_path(dest_path, entry_path, full_path, sizeof(full_path));
+		archive_entry_set_pathname(entry, full_path);
+
+		/* Extract current entry */
+		if (extract_zip_entry(archive_read, archive_write, entry) != 0) {
+			error_occurred = 1;
+			break;
+		}
+	}
+
+	/* Cleanup */
+	archive_read_close(archive_read);
+	archive_write_close(archive_write);
+
+	archive_read_free(archive_read);
+	archive_write_free(archive_write);
+
+	return error_occurred ? -RETN : 0;
+
+error:
+	if (archive_read)
+		archive_read_free(archive_read);
+	if (archive_write)
+		archive_write_free(archive_write);
+	return -RETN;
+}

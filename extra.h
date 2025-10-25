@@ -9,6 +9,6 @@ void printf_warning(const char *format, ...);
 void printf_error(const char *format, ...);
 void printf_crit(const char *format, ...);
 
-void wd_ApplyPawncc(void);
+void wd_apply_pawncc(void);
 
 #endif

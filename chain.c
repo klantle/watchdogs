@@ -50,21 +50,22 @@
 #include "chain.h"
 #include "server.h"
 #include "compiler.h"
+#include "depends.h"
 
 struct timespec cmd_start, cmd_end;
 double command_dur;
 
 void __function__(void) {
         wd_sef_fdir_reset();
-        wd_SetToml();
+        wd_set_toml();
         wd_u_history();
         
-        wcfg.__os__ = wd_SignalOS();
+        wcfg.os_type = wd_signal_os();
         
-        if (wcfg.__os__ == 0x01) {
+        if (wcfg.os_type == OS_SIGNAL_WINDOWS) {
             wcfg.pointer_samp="samp-server.exe";
             wcfg.pointer_openmp="omp-server.exe";
-        } else if (wcfg.__os__ == 0x00) {
+        } else if (wcfg.os_type == OS_SIGNAL_LINUX) {
             wcfg.pointer_samp="samp03svr";
             wcfg.pointer_openmp="omp-server";
         }
@@ -81,8 +82,8 @@ void __function__(void) {
         }
 #if defined(_DBG_PRINT)
         printf_color(COL_YELLOW, "-DEBUGGING\n");
-        printf("[__function__]:\n\t__os__: 0x0%d\n\tpointer_samp: %s\n\tpointer_openmp: %s\n",
-                wcfg.__os__,
+        printf("[__function__]:\n\tos_type: 0x0%d\n\tpointer_samp: %s\n\tpointer_openmp: %s\n",
+                wcfg.os_type,
                 wcfg.pointer_samp,
                 wcfg.pointer_openmp);
 #endif
@@ -113,7 +114,7 @@ _ptr_command:
         wd_a_history(ptr_command);
 
         int c_distance = INT_MAX;
-        const char *_dist_command = wd_FindNearCommand(ptr_command,
+        const char *_dist_command = wd_find_near_command(ptr_command,
                                                        __command,
                                                        __command_len,
                                                        &c_distance);
@@ -121,7 +122,7 @@ _ptr_command:
 _reexecute_command:
         clock_gettime(CLOCK_MONOTONIC, &cmd_start);
         if (strncmp(ptr_command, "help", 4) == 0) {
-            wd_SetTitle("Watchdogs | @ help");
+            wd_set_title("Watchdogs | @ help");
 
             char *arg;
                 arg = ptr_command + 4;
@@ -135,6 +136,7 @@ _reexecute_command:
                 println(" -> kill");
                 println(" -> title");
                 println(" -> toml");
+                println(" -> install");
                 println(" -> gamemode");
                 println(" -> pawncc");
                 println(" -> compile");
@@ -149,6 +151,7 @@ _reexecute_command:
             } else if (strcmp(arg, "kill") == 0) { println("kill: kill - refresh terminal watchdogs. | Usage: \"kill\"");
             } else if (strcmp(arg, "title") == 0) { println("title: set-title terminal watchdogs. | Usage: \"title\" | [<args>]");
             } else if (strcmp(arg, "toml") == 0) { println("toml: re-create toml - re-create & re-write watchdogs.toml\" | Usage: \"toml\"");
+            } else if (strcmp(arg, "install") == 0) { println("install: download & install depends\" | Usage: \"install\" | [<args>] - install github.com/github.com/gitea.com:user/repo:vtags");
             } else if (strcmp(arg, "hardware") == 0) { println("hardware: hardware information. | Usage: \"hardware\"");
             } else if (strcmp(arg, "gamemode") == 0) { println("gamemode: gamemode - download sa-mp gamemode. | Usage: \"gamemode\"");
             } else if (strcmp(arg, "pawncc") == 0) { println("pawncc: pawncc - download sa-mp pawncc. | Usage: \"pawncc\"");
@@ -161,14 +164,14 @@ _reexecute_command:
             } else println("help not found for: '%s'", arg);
             return RETN;
         } else if (strcmp(ptr_command, "clear") == 0) {
-            wd_SetTitle("Watchdogs | @ clear");
-            wd_RunCommand("clear");
+            wd_set_title("Watchdogs | @ clear");
+            wd_run_command("clear");
             goto _ptr_command;
         } else if (strcmp(ptr_command, "exit") == 0) {
             exit(1);
         } else if (strcmp(ptr_command, "kill") == 0) {
-            wd_SetTitle("Watchdogs | @ kill");
-            wd_RunCommand("clear");
+            wd_set_title("Watchdogs | @ kill");
+            wd_run_command("clear");
             sleep(1);
             __main(0);
         } else if (strncmp(ptr_command, "title", 5) == 0) {
@@ -179,7 +182,7 @@ _reexecute_command:
             } else {
                 char title_set[128];
                 snprintf(title_set, sizeof(title_set), "%s", arg);
-                wd_SetTitle(title_set);
+                wd_set_title(title_set);
             }
             return RETN;
         } else if (strcmp(ptr_command, "toml") == 0) {
@@ -249,8 +252,24 @@ _reexecute_command:
             printf("\n===================================\n");
             
             return RETN;
+        } else if (strncmp(ptr_command, "install", 7) == 0) {
+            wd_set_title("Watchdogs | @ install depends");
+
+            char *arg = ptr_command + 7;
+            while (*arg == ' ') arg++;
+
+            char *pkg_one = strtok(arg, " ");
+            char *pkg_two = strtok(NULL, " ");
+
+            if (!pkg_one && !pkg_two) {
+                printf_info("install [repo] [repo]");
+            } else {
+                wd_install_packages(pkg_one, pkg_two);
+            }
+
+            return RETN;
         } else if (strcmp(ptr_command, "gamemode") == 0) {
-            wd_SetTitle("Watchdogs | @ gamemode");
+            wd_set_title("Watchdogs | @ gamemode");
             char platform = 0;
 ret_ptr1:
                 println("Select platform:");
@@ -262,9 +281,9 @@ ret_ptr1:
                 return RETN;
 
             if (platform == 'L' || platform == 'l')
-                wd_InsServer("linux");
+                wd_install_server("linux");
             else if (platform == 'W' || platform == 'w')
-                wd_InsServer("windows");
+                wd_install_server("windows");
             else {
                 printf_error("Invalid platform selection. use C^ to exit.");
                 goto ret_ptr1;
@@ -272,7 +291,7 @@ ret_ptr1:
 
             __main(0);
         } else if (strcmp(ptr_command, "pawncc") == 0) {
-            wd_SetTitle("Watchdogs | @ pawncc");
+            wd_set_title("Watchdogs | @ pawncc");
             char platform = 0;
 ret_ptr2:
                 println("Select platform:");
@@ -285,11 +304,11 @@ ret_ptr2:
                 return RETN;
 
             if (platform == 'L' || platform == 'l')
-                wd_InsPawncc("linux");
+                wd_install_pawncc("linux");
             else if (platform == 'W' || platform == 'w')
-                wd_InsPawncc("windows");
+                wd_install_pawncc("windows");
             else if (platform == 'T' || platform == 't')
-                wd_InsPawncc("termux");
+                wd_install_pawncc("termux");
             else {
                 printf_error("Invalid platform selection. use C^ to exit.");
                 goto ret_ptr2;
@@ -297,7 +316,7 @@ ret_ptr2:
             
             __main(0);
         } else if (strncmp(ptr_command, "compile", 7) == 0) {
-            wd_SetTitle("Watchdogs | @ compile");
+            wd_set_title("Watchdogs | @ compile");
             char *arg;
             arg = ptr_command + 7;
             while (*arg == ' ') arg++;
@@ -310,9 +329,9 @@ ret_ptr2:
 _runners_:
                 if (strcmp(ptr_command, "debug") == 0) {
                     wcfg.serv_dbg="debug";
-                    wd_SetTitle("Watchdogs | @ debug");    
+                    wd_set_title("Watchdogs | @ debug");    
                 } else {
-                    wd_SetTitle("Watchdogs | @ running");
+                    wd_set_title("Watchdogs | @ running");
                 }
 
                 char *arg;
@@ -335,7 +354,7 @@ _runners_:
 #else
                         snprintf(snprintf_ptrS, sizeof(snprintf_ptrS), "%s", wcfg.pointer_samp);
 #endif
-                        int running_FAIL = wd_RunCommand(snprintf_ptrS);
+                        int running_FAIL = wd_run_command(snprintf_ptrS);
                         if (running_FAIL == 0) {
                             sleep(2);
 
@@ -358,7 +377,7 @@ _runners_:
                         return RETN;
                     } else {
                         printf_color(COL_YELLOW, "running..\n");
-                        wd_RunSAMPServer(arg1, wcfg.pointer_samp);
+                        wd_run_samp_server(arg1, wcfg.pointer_samp);
                     }
                 } else if (wcfg.f_openmp == 0x01) {
                     if (*arg == '\0') {
@@ -376,7 +395,7 @@ _runners_:
 #else
                         snprintf(snprintf_ptrS, sizeof(snprintf_ptrS), "%s", wcfg.pointer_openmp);
 #endif
-                        int running_FAIL = wd_RunCommand(snprintf_ptrS);
+                        int running_FAIL = wd_run_command(snprintf_ptrS);
                         if (running_FAIL == 0) {
                             sleep(2);
 
@@ -399,7 +418,7 @@ _runners_:
                         return RETN;
                     } else {
                         printf_color(COL_YELLOW, "running..\n");
-                        wd_RunOMPServer(arg1, wcfg.pointer_openmp);
+                        wd_run_omp_server(arg1, wcfg.pointer_openmp);
                     }
                 } else if (wcfg.f_samp == 0x00 || wcfg.f_openmp == 0x00) {
                     printf_error("samp-server/open.mp server not found!");
@@ -410,10 +429,10 @@ ret_ptr3:
 
                     while (1) {
                         if (strcmp(ptr_sigA, "Y") == 0 || strcmp(ptr_sigA, "y") == 0) {
-                            if (wcfg.__os__ == 0x01) {
-                                wd_InsServer("windows");
-                            } else if (wcfg.__os__ == 0x00) {
-                                wd_InsServer("linux");
+                            if (wcfg.os_type == OS_SIGNAL_WINDOWS) {
+                                wd_install_server("windows");
+                            } else if (wcfg.os_type == OS_SIGNAL_LINUX) {
+                                wd_install_server("linux");
                             }
                             break;
                         } else if (strcmp(ptr_sigA, "N") == 0 || strcmp(ptr_sigA, "n") == 0) {
@@ -427,22 +446,22 @@ ret_ptr3:
                 
                 return RETN;
         } else if (strncmp(ptr_command, "crunn", 7) == 0) {
-            wd_SetTitle("Watchdogs | @ crunn");
+            wd_set_title("Watchdogs | @ crunn");
             const char *arg = NULL;
             const char *compile_args = NULL;
             wd_RunCompiler(arg, compile_args);
             if (wcfg.compiler_error < 1)
                 goto _runners_;
         } else if (strcmp(ptr_command, "stop") == 0) {
-            wd_SetTitle("Watchdogs | @ stop");
-            wd_StopServerTasks();
+            wd_set_title("Watchdogs | @ stop");
+            wd_stop_server_tasks();
             return RETN;
         } else if (strcmp(ptr_command, "restart") == 0) {
-            wd_StopServerTasks();
+            wd_stop_server_tasks();
             sleep(2);
             goto _runners_;
         } else if (strcmp(ptr_command, _dist_command) != 0 && c_distance <= 2) {
-            wd_SetTitle("Watchdogs | @ undefined");
+            wd_set_title("Watchdogs | @ undefined");
             printf("did you mean '" COL_YELLOW "%s" COL_DEFAULT "'", _dist_command);
             char *confirm = readline(" [y/n]: ");
             if (confirm) {
@@ -461,10 +480,10 @@ ret_ptr3:
                     goto _ptr_command;
             char _p_command[256];
             snprintf(_p_command, 256, "%s", ptr_command);
-            int __T_ptr_command = wd_RunCommand(_p_command);
+            int __T_ptr_command = wd_run_command(_p_command);
             if (__T_ptr_command == 0) {}
             else {
-                wd_SetTitle("Watchdogs | @ command not found");
+                wd_set_title("Watchdogs | @ command not found");
             }
             return RETN;
         }
@@ -479,7 +498,7 @@ ret_ptr3:
 
 void __main(int sig_unused) {
         (void)sig_unused;
-        wd_SetTitle(NULL);
+        wd_set_title(NULL);
         __function__();
 loop_main:
         int ret = -RETW;

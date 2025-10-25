@@ -1,8 +1,8 @@
 #ifndef SERVER_H
 #define SERVER_H
 
-void wd_StopServerTasks(void);
-void wd_RunSAMPServer(const char *gamemode_arg, const char *server_bin);
-void wd_RunOMPServer(const char *gamemode_arg, const char *server_bin);
+void wd_stop_server_tasks(void);
+void wd_run_samp_server(const char *gamemode_arg, const char *server_bin);
+void wd_run_omp_server(const char *gamemode_arg, const char *server_bin);
 
 #endif

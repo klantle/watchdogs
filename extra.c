@@ -10,14 +10,16 @@
 #include <shlwapi.h>
 #include <strings.h>
 #include <io.h>
-#define __PATH_SYM "\\"
+#define PATH_SYM "\\"
 #define IS_PATH_SYM(c) ((c) == '/' || (c) == '\\')
-#define mkdir(path) _mkdir(path)
-#define sleep(sec) Sleep((sec)*1000)
-#define setenv(name,val,overwrite) _putenv_s(name,val)
-static int _w_chmod(const char *path) {
-        int mode = _S_IREAD | _S_IWRITE;
-        return chmod(path, mode);
+#define MKDIR(path) _mkdir(path)
+#define SLEEP(sec) Sleep((sec) * 1000)
+#define SETENV(name, val, overwrite) _putenv_s(name, val)
+
+static int wd_chmod(const char *path)
+{
+	int mode = _S_IREAD | _S_IWRITE;
+	return _chmod(path, mode);
 }
 #else
 #include <sys/utsname.h>
@@ -25,8 +27,11 @@ static int _w_chmod(const char *path) {
 #include <unistd.h>
 #include <dirent.h>
 #include <fnmatch.h>
-#define __PATH_SYM "/"
+#define PATH_SYM "/"
 #define IS_PATH_SYM(c) ((c) == '/')
+#define MKDIR(path) mkdir(path, 0755)
+#define SLEEP(sec) sleep(sec)
+#define SETENV(name, val, overwrite) setenv(name, val, overwrite)
 #endif
 
 #include "color.h"
@@ -34,277 +39,333 @@ static int _w_chmod(const char *path) {
 #include "utils.h"
 #include "extra.h"
 
-void println(const char* fmt, ...) {
-        va_list args;
-        va_start(args, fmt);
-        vprintf(fmt, args);
-        printf("\n");
-        va_end(args);
-}
-
-void printf_color(const char *color,
-                  const char *format, ...)
+/**
+ * println - Print formatted string with newline
+ * @fmt: Format string
+ * @...: Format arguments
+ */
+void println(const char *fmt, ...)
 {
-        va_list args;
-        va_start(args, format);
+	va_list args;
 
-        printf("%s", color);
-        vprintf(format, args);
-        printf("%s", COL_DEFAULT);
-
-        va_end(args);
+	va_start(args, fmt);
+	vprintf(fmt, args);
+	printf("\n");
+	va_end(args);
 }
 
-void printf_succes(const char *format, ...) {
-        va_list args;
-        va_start(args, format);
-        printf_color(COL_YELLOW, "succes: ");
-        vprintf(format, args);
-        printf("\n");
-        va_end(args);
+/**
+ * printf_color - Print colored formatted text
+ * @color: ANSI color code
+ * @format: Format string
+ * @...: Format arguments
+ */
+void printf_color(const char *color, const char *format, ...)
+{
+	va_list args;
+
+	va_start(args, format);
+	printf("%s", color);
+	vprintf(format, args);
+	printf("%s", COL_DEFAULT);
+	va_end(args);
 }
 
-void printf_info(const char *format, ...) {
-        va_list args;
-        va_start(args, format);
-        printf_color(COL_YELLOW, "info: ");
-        vprintf(format, args);
-        printf("\n");
-        va_end(args);
+/**
+ * printf_success - Print success message
+ * @format: Format string
+ * @...: Format arguments
+ */
+void printf_success(const char *format, ...)
+{
+	va_list args;
+
+	va_start(args, format);
+	printf_color(COL_YELLOW, "success: ");
+	vprintf(format, args);
+	printf("\n");
+	va_end(args);
 }
 
-void printf_warning(const char *format, ...) {
-        va_list args;
-        va_start(args, format);
-        printf_color(COL_GREEN, "warning: ");
-        vprintf(format, args);
-        printf("\n");
-        va_end(args);
+/**
+ * printf_info - Print info message
+ * @format: Format string
+ * @...: Format arguments
+ */
+void printf_info(const char *format, ...)
+{
+	va_list args;
+
+	va_start(args, format);
+	printf_color(COL_YELLOW, "info: ");
+	vprintf(format, args);
+	printf("\n");
+	va_end(args);
 }
 
-void printf_error(const char *format, ...) {
-        va_list args;
-        va_start(args, format);
-        printf_color(COL_RED, "error: ");
-        vprintf(format, args);
-        printf("\n");
-        va_end(args);
+/**
+ * printf_warning - Print warning message
+ * @format: Format string
+ * @...: Format arguments
+ */
+void printf_warning(const char *format, ...)
+{
+	va_list args;
+
+	va_start(args, format);
+	printf_color(COL_GREEN, "warning: ");
+	vprintf(format, args);
+	printf("\n");
+	va_end(args);
 }
 
-void printf_crit(const char *format, ...) {
-        va_list args;
-        va_start(args, format);
-        printf_color(COL_RED, "crit: ");
-        vprintf(format, args);
-        printf("\n");
-        va_end(args);
+/**
+ * printf_error - Print error message
+ * @format: Format string
+ * @...: Format arguments
+ */
+void printf_error(const char *format, ...)
+{
+	va_list args;
+
+	va_start(args, format);
+	printf_color(COL_RED, "error: ");
+	vprintf(format, args);
+	printf("\n");
+	va_end(args);
 }
 
-void
-wd_ApplyPawncc(void) {        
-        int __find_pawncc_exe = 0,
-            __find_pawncc = 0,
-            __find_pawndisasm_exe = 0,
-            __find_pawndisasm = 0;
+/**
+ * printf_crit - Print critical error message
+ * @format: Format string
+ * @...: Format arguments
+ */
+void printf_crit(const char *format, ...)
+{
+	va_list args;
 
-        int dir_pawno=0, dir_qawno=0;
-        char *dest_path = NULL, str_dest_path[128];
+	va_start(args, format);
+	printf_color(COL_RED, "crit: ");
+	vprintf(format, args);
+	printf("\n");
+	va_end(args);
+}
 
-        char pawncc_dest_path[PATH_MAX] = {0},
-             pawncc_exe_dest_path[PATH_MAX] = {0},
-             pawndisasm_dest_path[PATH_MAX] = {0},
-             pawndisasm_exe_dest_path[PATH_MAX] = {0};
+/**
+ * find_compiler_tools - Search for compiler tools in current directory
+ * @compiler_type: Compiler type (SAMP or OPENMP)
+ * @found_pawncc_exe: Output for pawncc.exe found status
+ * @found_pawncc: Output for pawncc found status
+ * @found_pawndisasm_exe: Output for pawndisasm.exe found status
+ * @found_pawndisasm: Output for pawndisasm found status
+ */
+static void find_compiler_tools(int compiler_type,
+				int *found_pawncc_exe, int *found_pawncc,
+				int *found_pawndisasm_exe, int *found_pawndisasm)
+{
+	const char *ignore_dir = (compiler_type == COMPILER_SAMP) ? "pawno" : "qawno";
 
-        wd_sef_fdir_reset();
-        
-        if (wcfg.f_samp == 0x01)
-        {
-__def:
-            __find_pawncc_exe = wd_sef_fdir(".", "pawncc.exe", "pawno"),
-            __find_pawncc = wd_sef_fdir(".", "pawncc", "pawno"),
-            __find_pawndisasm_exe = wd_sef_fdir(".", "pawndisasm.exe", "pawno"),
-            __find_pawndisasm = wd_sef_fdir(".", "pawndisasm", "pawno");
-        } else if (wcfg.f_openmp == 0x01) {
-            __find_pawncc_exe = wd_sef_fdir(".", "pawncc.exe", "qawno"),
-            __find_pawncc = wd_sef_fdir(".", "pawncc", "qawno"),
-            __find_pawndisasm_exe = wd_sef_fdir(".", "pawndisasm.exe", "qawno"),
-            __find_pawndisasm = wd_sef_fdir(".", "pawndisasm", "qawno");
-        } else { goto __def; }
+	*found_pawncc_exe = wd_sef_fdir(".", "pawncc.exe", ignore_dir);
+	*found_pawncc = wd_sef_fdir(".", "pawncc", ignore_dir);
+	*found_pawndisasm_exe = wd_sef_fdir(".", "pawndisasm.exe", ignore_dir);
+	*found_pawndisasm = wd_sef_fdir(".", "pawndisasm", ignore_dir);
+}
 
-        struct stat st;
-        if (stat("pawno", &st) == 0 && S_ISDIR(st.st_mode)) {
-                dir_pawno=1;
-                dest_path="pawno";
-        }
-        if (stat("qawno", &st) == 0 && S_ISDIR(st.st_mode)) {
-                dir_qawno=1;
-                dest_path="qawno";
-        }
-        if (!dir_pawno && !dir_qawno) {
+/**
+ * get_compiler_directory - Get or create compiler directory
+ *
+ * Return: Directory path, NULL on failure
+ */
+static const char *get_compiler_directory(void)
+{
+	struct stat st;
+	const char *dir_path = NULL;
+
+	if (stat("pawno", &st) == 0 && S_ISDIR(st.st_mode)) {
+		dir_path = "pawno";
+	} else if (stat("qawno", &st) == 0 && S_ISDIR(st.st_mode)) {
+		dir_path = "qawno";
+	} else {
+		/* Create default directory */
+		if (MKDIR("pawno") == 0)
+			dir_path = "pawno";
+	}
+
+	return dir_path;
+}
+
+/**
+ * copy_compiler_tool - Copy compiler tool to destination
+ * @src_path: Source file path
+ * @tool_name: Tool filename
+ * @dest_dir: Destination directory
+ */
+static void copy_compiler_tool(const char *src_path, const char *tool_name,
+			       const char *dest_dir)
+{
+	char dest_path[PATH_MAX];
+
+	snprintf(dest_path, sizeof(dest_path), "%s/%s", dest_dir, tool_name);
+	wd_sef_wcopy(src_path, dest_path);
+}
+
+/**
+ * setup_linux_library - Setup library on Linux systems
+ *
+ * Return: 0 on success, -1 on failure
+ */
+static int setup_linux_library(void)
+{
 #ifdef _WIN32
-            if (mkdir("pawno") == 0) dest_path = "pawno";
+	return RETZ; /* Not applicable on Windows */
 #else
-            if (mkdir("pawno", 0755) == 0) dest_path = "pawno";
+	char libpawnc_src[PATH_MAX];
+	char dest_path[PATH_MAX];
+	const char *lib_paths[] = {
+		"/data/data/com.termux/files/usr/lib/",
+		"/data/data/com.termux/files/usr/local/lib/",
+		"/usr/local/lib",
+		"/usr/local/lib32"
+	};
+	const char *selected_path = NULL;
+	struct stat st;
+	int i, found_lib;
+
+	if (wcfg.os_type != OS_SIGNAL_LINUX)
+		return RETZ;
+
+	/* Find libpawnc.so */
+	found_lib = wd_sef_fdir(".", "libpawnc.so", NULL);
+	if (!found_lib)
+		return RETZ;
+
+	/* Get source path */
+	for (i = 0; i < wcfg.sef_count; i++) {
+		if (strstr(wcfg.sef_found[i], "libpawnc.so")) {
+			strncpy(libpawnc_src, wcfg.sef_found[i], sizeof(libpawnc_src));
+			break;
+		}
+	}
+
+	/* Find suitable library directory */
+	for (i = 0; i < sizeof(lib_paths) / sizeof(lib_paths[0]); i++) {
+		if (stat(lib_paths[i], &st) == 0 && S_ISDIR(st.st_mode)) {
+			selected_path = lib_paths[i];
+			break;
+		}
+	}
+
+	if (!selected_path) {
+		fprintf(stderr, "No valid library path found!\n");
+		return -RETN;
+	}
+
+	/* Copy library */
+	snprintf(dest_path, sizeof(dest_path), "%s/libpawnc.so", selected_path);
+	wd_sef_wmv(libpawnc_src, dest_path);
+
+	/* Update library cache and environment */
+	update_library_environment(selected_path);
+
+	return RETZ;
 #endif
-        }
-
-        for (int i = 0; i < wcfg.sef_count; i++) {
-            const char *__sef_entry = wcfg.sef_found[i];
-            if (!__sef_entry) continue;
-
-            if (strstr(__sef_entry, "pawncc.exe")) {
-                snprintf(pawncc_exe_dest_path, sizeof(pawncc_exe_dest_path), "%s", __sef_entry);
-                __find_pawncc_exe = 1;
-            } else if (strstr(__sef_entry, "pawncc")) {
-                snprintf(pawncc_dest_path, sizeof(pawncc_dest_path), "%s", __sef_entry);
-                __find_pawncc = 1;
-            }
-            else if (strstr(__sef_entry, "pawndisasm.exe")) {
-                snprintf(pawndisasm_exe_dest_path, sizeof(pawndisasm_exe_dest_path), "%s", __sef_entry);
-                __find_pawndisasm_exe = 1;
-            } else if (strstr(__sef_entry, "pawndisasm")) {
-                snprintf(pawndisasm_dest_path, sizeof(pawndisasm_dest_path), "%s", __sef_entry);
-                __find_pawndisasm = 1;
-            }
-        }
-
-        if (__find_pawncc_exe) {
-            snprintf(str_dest_path, sizeof(str_dest_path),
-                                    "%s%s%s",
-            					    dest_path,
-            						"/",
-            					    "pawncc.exe");
-            wd_sef_wcopy(pawncc_exe_dest_path, str_dest_path);
-        }
-        if (__find_pawncc) {
-            snprintf(str_dest_path, sizeof(str_dest_path),
-                                    "%s%s%s",
-            						dest_path,
-            						"/",
-            						"pawncc");
-            wd_sef_wcopy(pawncc_dest_path, str_dest_path);
-        }
-        if (__find_pawndisasm_exe) {
-            snprintf(str_dest_path, sizeof(str_dest_path),
-                                    "%s%s%s",
-            						dest_path,
-            						"/",
-            						"pawndisasm.exe");
-            wd_sef_wcopy(pawndisasm_exe_dest_path, str_dest_path);
-        }
-        if (__find_pawndisasm) {
-            snprintf(str_dest_path, sizeof(str_dest_path),
-                                    "%s%s%s",
-            						dest_path,
-            						"/",
-            						"pawndisasm");
-            wd_sef_wcopy(pawndisasm_dest_path, str_dest_path);
-        }
-
-#ifndef _WIN32
-        if (wcfg.__os__ == 0x00) {
-                int __find_libpawnc = wd_sef_fdir(".", "libpawnc.so", NULL);
-                char libpawnc_dest[PATH_MAX];
-                for (int i = 0; i < wcfg.sef_count; i++) {
-                        if (strstr(wcfg.sef_found[i], "libpawnc.so")) {
-                                snprintf(libpawnc_dest, sizeof(libpawnc_dest),
-                                                        "%s",
-                                                        wcfg.sef_found[i]);
-                                break;
-                        }
-                }
-
-                struct stat st;
-                int lib_or_lib32 = 0;
-                char *lib_32_dest = "/usr/local/lib32",
-                     *lib_path_dest = "/usr/local/lib",
-                     *tx_local_lib_dest = "/data/data/com.termux/files/usr/local/lib/",
-                     *tx_lib_path_dest = "/data/data/com.termux/files/usr/lib/";
-
-                char *str_lib_path = NULL;
-                char str_full_dest_path[PATH_MAX];
-
-                if (!stat(tx_lib_path_dest, &st) && S_ISDIR(st.st_mode)) {
-                    str_lib_path = tx_lib_path_dest;
-                } else if (!stat(tx_local_lib_dest, &st) && S_ISDIR(st.st_mode)) {
-                    str_lib_path = tx_local_lib_dest;
-                } else if (!stat(lib_path_dest, &st) && S_ISDIR(st.st_mode)) {
-                    str_lib_path = lib_path_dest;
-                    lib_or_lib32 = 0;
-                } else if (!stat(lib_32_dest, &st) && S_ISDIR(st.st_mode)) {
-                    str_lib_path = lib_32_dest;
-                    lib_or_lib32 = 1;
-                } else {
-                    fprintf(stderr, "No valid library path found!\n");
-                    goto __error;
-                }
-
-                if (__find_libpawnc == 1) {
-                        snprintf(str_full_dest_path, sizeof(str_full_dest_path), "%s/libpawnc.so", str_lib_path);
-                        wd_sef_wmv(libpawnc_dest, str_full_dest_path);
-                }
-
-                if (strcmp(str_lib_path, lib_path_dest) == 0) {
-                        int sys_sudo = wd_RunCommand("which sudo > /dev/null 2>&1");
-                        if (sys_sudo == 0)
-                            wd_RunCommand("sudo ldconfig");
-                        else
-                            wd_RunCommand("ldconfig");
-
-                        if (lib_or_lib32 == 1) {
-                                const char
-                                        *old_path_lib = getenv("LD_LIBRARY_PATH");
-                                char
-                                        new_path_lib[256];
-                                if (old_path_lib)
-                                    snprintf(new_path_lib, sizeof(new_path_lib),
-                                            "%s:%s",
-                                            lib_path_dest,
-                                            old_path_lib);
-                                else snprintf(new_path_lib, sizeof(new_path_lib), "%s", lib_path_dest);
-                                setenv("LD_LIBRARY_PATH", new_path_lib, 1);
-                        } else if (lib_or_lib32 == 2) {
-                                const char
-                                        *old_path_lib32 = getenv("LD_LIBRARY_PATH");
-                                char
-                                        new_path_lib32[256];
-                                if (old_path_lib32)
-                                    snprintf(new_path_lib32, sizeof(new_path_lib32),
-                                            "%s:%s",
-                                            lib_32_dest,
-                                            old_path_lib32);
-                                else snprintf(new_path_lib32, sizeof(new_path_lib32), "%s", lib_32_dest);
-                                setenv("LD_LIBRARY_PATH", new_path_lib32, 1);
-                        }
-                } else if (strcmp(str_lib_path, tx_local_lib_dest) == 0) {
-                        const char
-                                *old_path_lib_tr = getenv("LD_LIBRARY_PATH");
-                        char
-                                new_path_lib_tx[256];
-                        if (old_path_lib_tr)
-                            snprintf(new_path_lib_tx, sizeof(new_path_lib_tx),
-                                    "%s:%s",
-                                    tx_local_lib_dest,
-                                    old_path_lib_tr);
-                        else snprintf(new_path_lib_tx, sizeof(new_path_lib_tx), "%s", tx_local_lib_dest);
-                        setenv("LD_LIBRARY_PATH", new_path_lib_tx, 1);
-                } else if (strcmp(str_lib_path, tx_lib_path_dest) == 0) {
-                        const char
-                                *old_path_lib_tr = getenv("LD_LIBRARY_PATH");
-                        char
-                                new_path_lib_tx[256];
-                        if (old_path_lib_tr)
-                            snprintf(new_path_lib_tx, sizeof(new_path_lib_tx),
-                                    "%s:%s",
-                                    tx_lib_path_dest,
-                                    old_path_lib_tr);
-                        else snprintf(new_path_lib_tx, sizeof(new_path_lib_tx), "%s", tx_lib_path_dest);
-                        setenv("LD_LIBRARY_PATH", new_path_lib_tx, 1);
-                } else {}
-        }
-#endif
-__error:
-        printf_color(COL_YELLOW, "apply finished!\n");
-        __main(0);
 }
 
+/**
+ * update_library_environment - Update library path environment
+ * @lib_path: Library path that was used
+ */
+static void update_library_environment(const char *lib_path)
+{
+#ifndef _WIN32
+	const char *old_path;
+	char new_path[256];
+
+	/* Run ldconfig if in system directory */
+	if (strstr(lib_path, "/usr/local")) {
+		int has_sudo = wd_run_command("which sudo > /dev/null 2>&1");
+		if (has_sudo == 0)
+			wd_run_command("sudo ldconfig");
+		else
+			wd_run_command("ldconfig");
+	}
+
+	/* Update LD_LIBRARY_PATH */
+	old_path = getenv("LD_LIBRARY_PATH");
+	if (old_path) {
+		snprintf(new_path, sizeof(new_path), "%s:%s", lib_path, old_path);
+	} else {
+		snprintf(new_path, sizeof(new_path), "%s", lib_path);
+	}
+
+	SETENV("LD_LIBRARY_PATH", new_path, 1);
+#endif
+}
+
+/**
+ * wd_apply_pawncc - Install and setup pawn compiler tools
+ */
+void wd_apply_pawncc(void)
+{
+	int found_pawncc_exe, found_pawncc;
+	int found_pawndisasm_exe, found_pawndisasm;
+	const char *dest_dir;
+	char pawncc_src[PATH_MAX] = {0};
+	char pawncc_exe_src[PATH_MAX] = {0};
+	char pawndisasm_src[PATH_MAX] = {0};
+	char pawndisasm_exe_src[PATH_MAX] = {0};
+	int i;
+
+	wd_sef_fdir_reset();
+
+	/* Find compiler tools */
+	find_compiler_tools(wcfg.f_samp ? COMPILER_SAMP : COMPILER_OPENMP,
+			    &found_pawncc_exe, &found_pawncc,
+			    &found_pawndisasm_exe, &found_pawndisasm);
+
+	/* Get or create destination directory */
+	dest_dir = get_compiler_directory();
+	if (!dest_dir) {
+		printf_error("Failed to create compiler directory");
+		goto error;
+	}
+
+	/* Collect source paths */
+	for (i = 0; i < wcfg.sef_count; i++) {
+		const char *entry = wcfg.sef_found[i];
+		if (!entry)
+			continue;
+
+		if (strstr(entry, "pawncc.exe")) {
+			strncpy(pawncc_exe_src, entry, sizeof(pawncc_exe_src));
+		} else if (strstr(entry, "pawncc") && !strstr(entry, ".exe")) {
+			strncpy(pawncc_src, entry, sizeof(pawncc_src));
+		} else if (strstr(entry, "pawndisasm.exe")) {
+			strncpy(pawndisasm_exe_src, entry, sizeof(pawndisasm_exe_src));
+		} else if (strstr(entry, "pawndisasm") && !strstr(entry, ".exe")) {
+			strncpy(pawndisasm_src, entry, sizeof(pawndisasm_src));
+		}
+	}
+
+	/* Copy tools to destination */
+	if (found_pawncc_exe && pawncc_exe_src[0])
+		copy_compiler_tool(pawncc_exe_src, "pawncc.exe", dest_dir);
+
+	if (found_pawncc && pawncc_src[0])
+		copy_compiler_tool(pawncc_src, "pawncc", dest_dir);
+
+	if (found_pawndisasm_exe && pawndisasm_exe_src[0])
+		copy_compiler_tool(pawndisasm_exe_src, "pawndisasm.exe", dest_dir);
+
+	if (found_pawndisasm && pawndisasm_src[0])
+		copy_compiler_tool(pawndisasm_src, "pawndisasm", dest_dir);
+
+	/* Setup library on Linux */
+	setup_linux_library();
+
+	printf_success("Compiler tools installed successfully");
+
+error:
+	printf_color(COL_YELLOW, "apply finished!\n");
+	__main(0);
+}

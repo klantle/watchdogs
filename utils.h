@@ -3,7 +3,14 @@
 
 #include <stddef.h>
 #include <stdbool.h>
+#include <stdint.h>
 #include <limits.h>
+
+#define min3(a, b, c) \
+    ((a) < (b) ? \
+    ((a) < (c) ? \
+    (a) : (c)) : ((b) < (c) ? \
+    (b) : (c)))
 
 #if __has_include(<readline/history.h>)
     #include <readline/history.h>
@@ -18,46 +25,71 @@
 #define RETN 1
 #define RETW 2
 
-#define MAX_SEF_PATH_COUNT 28
+#define COMPILER_SAMP    0x01
+#define COMPILER_OPENMP  0x02
+#define COMPILER_DEFAULT 0x00
+
+#define OS_SIGNAL_WINDOWS	0x01
+#define OS_SIGNAL_LINUX		0x00  
+#define OS_SIGNAL_UNKNOWN	0x02
+
+#define MAX_SEF_ENTRIES 28
 #define MAX_SEF_PATH_SIZE PATH_MAX
 
 typedef struct {
-        int ipcc;
-        char *os;
-        int __os__;
-        int f_samp;
-        int f_openmp;
-        char *pointer_samp;
-        char *pointer_openmp;
-        int compiler_error;
-        int sef_count;
-        char sef_found[MAX_SEF_PATH_COUNT][MAX_SEF_PATH_SIZE];
-        char *serv_dbg;
-        char *ci_options;
-        char *gm_input;
-        char *gm_output;
-} __wd;
-extern __wd wcfg;
+    int ipcc;
+    const char* os;
+    int os_type;
+    int f_samp;
+    int f_openmp;
+    char* pointer_samp;
+    char* pointer_openmp;
+    int compiler_error;
+    size_t sef_count;
+    char sef_found[MAX_SEF_ENTRIES][MAX_SEF_PATH_SIZE];
+    char* serv_dbg;
+    char* ci_options;
+    char* gm_input;
+    char* gm_output;
+} WatchdogConfig;
+
+extern WatchdogConfig wcfg;
+static int wd_is_special_dir(const char *name);
+static int wd_should_ignore_dir(const char *name, const char *ignore_dir);
+static int wd_match_filename(const char *name, const char *pattern);
+static void wd_add_found_path(const char *path);
+static void __set_path_syms(char *dst, size_t dst_sz, const char *dir, const char *name);
+static void __toml_add_directory_path(FILE *toml_file, int *first, const char *path);
+
+/* Untuk fungsi di wd_set_toml */
+static int wd_find_compiler(const char *os_type);
+static int wd_check_compiler_compatibility(void);
+static void wd_generate_toml_content(FILE *file, const char *os_type, 
+                                    int has_gamemodes, int compatible,
+                                    char *sef_path);
+static void wd_add_include_paths(FILE *file, int *first_item);
+static void wd_add_compiler_path(FILE *file, const char *path, int *first_item);
+static int wd_parse_toml_config(void);
 
 void wd_sef_fdir_reset();
 struct struct_of { int (*title)(const char *); };
 extern const char* __command[];
 extern const size_t __command_len;
-int wd_SignalOS(void);
-int wd_RunCommand(const char *cmd);
-void wd_SetPermission(const char *src, const char *tmp);
-int wd_SetTitle(const char *__title);
+int wd_signal_os(void);
+int wd_run_command(const char *cmd);
+int wd_set_permission(const char *src, const char *dst);
+int wd_set_title(const char *__title);
 char* readline_colored(const char* prompt);
-void wd_StripDotFns(char *dst, size_t dst_sz, const char *src);
+void wd_strip_dot_fns(char *dst, size_t dst_sz, const char *src);
 bool strfind(const char *text, const char *pattern);
-void wd_EscapeQuotes(char *dest, size_t size, const char *src);
-extern const char* wd_FindNearCommand(
+void wd_escape_quotes(char *dest, size_t size, const char *src);
+extern const char* wd_find_near_command(
         const char *ptr_command,
         const char *__commands[],
         size_t num_cmds,
         int *out_distance
 );
-const char* wd_DetectOS(void);
+const char* wd_detect_os(void);
 int kill_process(const char *name);
 void kill_process_safe(const char *name);
 int dir_exists(const char *path);
@@ -69,7 +101,7 @@ int file_same_file(const char *a, const char *b);
 int ensure_parent_dir(char *out_parent, size_t n, const char *dest);
 int cp_f_content(const char *src, const char *dst);
 int wd_sef_fdir(const char *sef_path, const char *sef_name, const char *ignore_dir);
-int wd_SetToml(void);
+int wd_set_toml(void);
 int wd_sef_wcopy(const char *c_src, const char *c_dest);
 int wd_sef_wmv(const char *c_src, const char *c_dest);
 

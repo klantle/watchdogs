@@ -17,9 +17,9 @@
 int wd_RunCompiler(const char *arg, const char *compile_args)
 {
         const char *ptr_pawncc = NULL;
-        if (wcfg.__os__ == 0x01) 
+        if (wcfg.os_type == OS_SIGNAL_WINDOWS) 
             ptr_pawncc = "pawncc.exe";
-        else if (wcfg.__os__ == 0x00)
+        else if (wcfg.os_type == OS_SIGNAL_LINUX)
             ptr_pawncc = "pawncc";
         char *path_include = NULL;
         if (wcfg.f_openmp == 0x01)
@@ -115,7 +115,7 @@ int wd_RunCompiler(const char *arg, const char *compile_args)
                         toml_datum_t path_val = toml_string_at(include_paths, i);
                         if (path_val.ok) {
                             char __procc[250];
-                            wd_StripDotFns(__procc, sizeof(__procc), path_val.u.s);
+                            wd_strip_dot_fns(__procc, sizeof(__procc), path_val.u.s);
                             if (__procc[0] == '\0') continue;
                             if (i > 0) {
                                 size_t cur = strlen(include_aio_path);
@@ -193,13 +193,13 @@ int wd_RunCompiler(const char *arg, const char *compile_args)
                                                             wcfg.gm_input,
                                                             wcfg.gm_output);
                     if (title_compiler_info) {
-                        wd_SetTitle(title_compiler_info);
+                        wd_set_title(title_compiler_info);
                         free(title_compiler_info);
                         title_compiler_info = NULL;
                     }
 
                     clock_gettime(CLOCK_MONOTONIC, &start);
-                        wd_RunCommand(_compiler_);
+                        wd_run_command(_compiler_);
                     clock_gettime(CLOCK_MONOTONIC, &end);
 
                     char _container_output[PATH_MAX + 128];
@@ -389,13 +389,13 @@ int wd_RunCompiler(const char *arg, const char *compile_args)
                                                                 wcfg.sef_found[1],
                                                                 container_output);
                         if (title_compiler_info) {
-                            wd_SetTitle(title_compiler_info);
+                            wd_set_title(title_compiler_info);
                             free(title_compiler_info);
                             title_compiler_info = NULL;
                         }
 
                         clock_gettime(CLOCK_MONOTONIC, &start);
-                            wd_RunCommand(_compiler_);
+                            wd_run_command(_compiler_);
                         clock_gettime(CLOCK_MONOTONIC, &end);
 
                         char _container_output[PATH_MAX + 128];
@@ -465,11 +465,11 @@ ret_ptr:
                         return RETZ;
 
                     if (platform == 'L' || platform == 'l')
-                        wd_InsPawncc("linux");
+                        wd_install_pawncc("linux");
                     else if (platform == 'W' || platform == 'w')
-                        wd_InsPawncc("windows");
+                        wd_install_pawncc("windows");
                     else if (platform == 'T' || platform == 't')
-                        wd_InsPawncc("termux");
+                        wd_install_pawncc("termux");
                     else {
                         printf_error("Invalid platform selection. use C^ to exit.");
                         goto ret_ptr;

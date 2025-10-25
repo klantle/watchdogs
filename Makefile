@@ -24,7 +24,7 @@ CC       	 ?= gcc
 CFLAGS   = -Os -pipe -s -flto -fdata-sections -ffunction-sections -fPIE -I/usr/include/openssl
 LDFLAGS  = -Wl,-O1,--gc-sections -lm -lcurl -lreadline -lncurses -larchive -lssl -lcrypto
 
-SRCS = extra.c chain.c utils.c hardware.c compiler.c archive.c curl.c package.c server.c crypto.c \
+SRCS = extra.c chain.c utils.c depends.c hardware.c compiler.c archive.c curl.c package.c server.c crypto.c \
        tomlc99/toml.c cJSON/cJSON.c
 
 OBJS = $(SRCS:.c=.o)

@@ -1159,148 +1159,148 @@ int __cp_with_sudo(const char *src, const char *dest) {
 
 int __wd_sef_safety(const char *c_src, const char *c_dest)
 {
-	char parent[PATH_MAX];
-	struct stat st;
+        char parent[PATH_MAX];
+        struct stat st;
 
-	if (!c_src || !c_dest)
-		printf_error("src or dest is null");
+        if (!c_src || !c_dest)
+            printf_error("src or dest is null");
 
-	if (!*c_src || !*c_dest)
-		printf_error("src or dest empty");
+        if (!*c_src || !*c_dest)
+            printf_error("src or dest empty");
 
-	if (strlen(c_src) >= PATH_MAX || strlen(c_dest) >= PATH_MAX)
-		printf_error("path too long");
+        if (strlen(c_src) >= PATH_MAX || strlen(c_dest) >= PATH_MAX)
+            printf_error("path too long");
 
-	if (!path_exists(c_src))
-		printf_error("source does not exist: %s", c_src);
+        if (!path_exists(c_src))
+            printf_error("source does not exist: %s", c_src);
 
-	if (!file_regular(c_src))
-		printf_error("source is not a regular file: %s", c_src);
+        if (!file_regular(c_src))
+            printf_error("source is not a regular file: %s", c_src);
 
-	if (path_exists(c_dest) && file_same_file(c_src, c_dest)) {
-		printf_info("source and dest are the same file: %s", c_src);
-		return RETZ;
-	}
+        if (path_exists(c_dest) && file_same_file(c_src, c_dest)) {
+            printf_info("source and dest are the same file: %s", c_src);
+            return RETZ;
+        }
 
-	if (ensure_parent_dir(parent, sizeof(parent), c_dest))
-		printf_error("cannot determine parent dir of dest");
+        if (ensure_parent_dir(parent, sizeof(parent), c_dest))
+            printf_error("cannot determine parent dir of dest");
 
-	if (stat(parent, &st))
-		printf_error("destination dir does not exist: %s", parent);
+        if (stat(parent, &st))
+            printf_error("destination dir does not exist: %s", parent);
 
-	if (!S_ISDIR(st.st_mode))
-		printf_error("destination parent is not a dir: %s", parent);
+        if (!S_ISDIR(st.st_mode))
+            printf_error("destination parent is not a dir: %s", parent);
 
-	return RETN;
+        return RETN;
 }
 
 int wd_sef_wmv(const char *c_src, const char *c_dest)
 {
-	int ret, mv_ret, _mv_with_sudo;
+        int ret, mv_ret, _mv_with_sudo;
 
-	ret = __wd_sef_safety(c_src, c_dest);
-	if (ret != 1)
-		return RETN;
+        ret = __wd_sef_safety(c_src, c_dest);
+        if (ret != 1)
+            return RETN;
 
-	mv_ret = __T_mv_with_o_sudo(c_src, c_dest);
-	if (!mv_ret) {
+        mv_ret = __T_mv_with_o_sudo(c_src, c_dest);
+        if (!mv_ret) {
 #ifdef _WIN32
-		if (_w_chmod(c_dest)) {
+		    if (_w_chmod(c_dest)) {
 #if defined(_DBG_PRINT)
-			printf_warning("chmod failed: %s (errno=%d %s)",
-				       c_dest, errno, strerror(errno));
+                printf_warning("chmod failed: %s (errno=%d %s)",
+                        c_dest, errno, strerror(errno));
 #endif
-		}
+		    }
 #else
-		if (chmod(c_dest, 0755)) {
+		    if (chmod(c_dest, 0755)) {
 #if defined(_DBG_PRINT)
-			printf_warning("chmod failed: %s (errno=%d %s)",
-				       c_dest, errno, strerror(errno));
+                printf_warning("chmod failed: %s (errno=%d %s)",
+                        c_dest, errno, strerror(errno));
 #endif
-		}
+		    }
 #endif
-		printf_info("moved without sudo: %s -> %s", c_src, c_dest);
-		return RETZ;
-	}
+            printf_info("moved without sudo: %s -> %s", c_src, c_dest);
+            return RETZ;
+        }
 
-	if (mv_ret == -2 || errno == EACCES || errno == EPERM) {
-		printf_info("attempting sudo move due to permission issue");
+        if (mv_ret == -2 || errno == EACCES || errno == EPERM) {
+            printf_info("attempting sudo move due to permission issue");
 
-		_mv_with_sudo = __mv_with_sudo(c_src, c_dest);
-		if (!_mv_with_sudo) {
-			printf_info("moved with sudo: %s -> %s", c_src, c_dest);
-			return RETZ;
-		}
+            _mv_with_sudo = __mv_with_sudo(c_src, c_dest);
+            if (!_mv_with_sudo) {
+                printf_info("moved with sudo: %s -> %s", c_src, c_dest);
+                return RETZ;
+            }
 
-		printf_error("sudo mv failed with code %d", _mv_with_sudo);
-		return RETN;
-	}
+            printf_error("sudo mv failed with code %d", _mv_with_sudo);
+            return RETN;
+        }
 
-	if (mv_ret == -3) {
-		printf_warning("move partially succeeded (copied but couldn't unlink source): %s", c_dest);
-		return RETZ;
-	}
+        if (mv_ret == -3) {
+            printf_warning("move partially succeeded (copied but couldn't unlink source): %s", c_dest);
+            return RETZ;
+        }
 
-	printf_error("move without sudo failed (errno=%d %s)", errno, strerror(errno));
-	printf_info("attempting sudo as last resort");
+        printf_error("move without sudo failed (errno=%d %s)", errno, strerror(errno));
+        printf_info("attempting sudo as last resort");
 
-	_mv_with_sudo = __mv_with_sudo(c_src, c_dest);
-	if (!_mv_with_sudo)
-		return RETZ;
+        _mv_with_sudo = __mv_with_sudo(c_src, c_dest);
+        if (!_mv_with_sudo)
+            return RETZ;
 
-	printf_error("sudo mv failed with code %d", _mv_with_sudo);
-	return RETN;
+        printf_error("sudo mv failed with code %d", _mv_with_sudo);
+        return RETN;
 }
 
 int wd_sef_wcopy(const char *c_src, const char *c_dest)
 {
-	int ret, cp_ret, _cp_with_sudo;
+        int ret, cp_ret, _cp_with_sudo;
 
-	ret = __wd_sef_safety(c_src, c_dest);
-	if (ret != 1)
-		return RETN;
+        ret = __wd_sef_safety(c_src, c_dest);
+        if (ret != 1)
+            return RETN;
 
-	cp_ret = __T_cp_with_o_sudo(c_src, c_dest);
-	if (!cp_ret) {
+        cp_ret = __T_cp_with_o_sudo(c_src, c_dest);
+        if (!cp_ret) {
 #ifdef _WIN32
-		if (_w_chmod(c_dest)) {
+		    if (_w_chmod(c_dest)) {
 #if defined(_DBG_PRINT)
-			printf_warning("chmod failed: %s (errno=%d %s)",
-				       c_dest, errno, strerror(errno));
+                printf_warning("chmod failed: %s (errno=%d %s)",
+                        c_dest, errno, strerror(errno));
 #endif
-		}
+		    }
 #else
-		if (chmod(c_dest, 0755)) {
+		    if (chmod(c_dest, 0755)) {
 #if defined(_DBG_PRINT)
-			printf_warning("chmod failed: %s (errno=%d %s)",
-				       c_dest, errno, strerror(errno));
+                printf_warning("chmod failed: %s (errno=%d %s)",
+                        c_dest, errno, strerror(errno));
 #endif
-		}
+		    }
 #endif
-		printf_info("copied without sudo: %s -> %s", c_src, c_dest);
-		return RETZ;
-	}
+            printf_info("copied without sudo: %s -> %s", c_src, c_dest);
+            return RETZ;
+        }
 
-	if (cp_ret == -2 || errno == EACCES || errno == EPERM) {
-		printf_info("attempting sudo copy due to permission issue");
+        if (cp_ret == -2 || errno == EACCES || errno == EPERM) {
+            printf_info("attempting sudo copy due to permission issue");
 
-		_cp_with_sudo = __cp_with_sudo(c_src, c_dest);
-		if (!_cp_with_sudo) {
-			printf_info("copied with sudo: %s -> %s", c_src, c_dest);
-			return RETZ;
-		}
+            _cp_with_sudo = __cp_with_sudo(c_src, c_dest);
+            if (!_cp_with_sudo) {
+                printf_info("copied with sudo: %s -> %s", c_src, c_dest);
+                return RETZ;
+            }
 
-		printf_error("sudo cp failed with code %d", _cp_with_sudo);
-		return RETN;
-	}
+            printf_error("sudo cp failed with code %d", _cp_with_sudo);
+            return RETN;
+        }
 
-	printf_error("copy without sudo failed (errno=%d %s)", errno, strerror(errno));
-	printf_info("attempting sudo as last resort");
+        printf_error("copy without sudo failed (errno=%d %s)", errno, strerror(errno));
+        printf_info("attempting sudo as last resort");
 
-	_cp_with_sudo = __cp_with_sudo(c_src, c_dest);
-	if (!_cp_with_sudo)
-		return RETZ;
+        _cp_with_sudo = __cp_with_sudo(c_src, c_dest);
+        if (!_cp_with_sudo)
+            return RETZ;
 
-	printf_error("sudo cp failed with code %d", _cp_with_sudo);
-	return RETN;
+        printf_error("sudo cp failed with code %d", _cp_with_sudo);
+        return RETN;
 }

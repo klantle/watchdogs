@@ -118,9 +118,9 @@ cd watch
 # @@@ 6
 make windows              # build first
 # @@@ 7
-chmod +x watchdogs.exe    # give permissions
+chmod +x watchdogs.win    # give permissions
 # @@@ 8
-./watchdogs.exe           # run
+./watchdogs.win           # run
 ```
 ![image](https://gitlab.com/mywatchdogs/watchdogs/-/raw/main/img/path.png)
 
@@ -158,7 +158,7 @@ Usage: help | help [<command>]
 [general]
    os = "linux" # OS
 [compiler]
-  option = [ # options; https://github.com/klantle/watchdogs?tab=readme-ov-file#pawncc-options
+  option = [ # options
       "-d3",
       "-Z+"
   ]
@@ -168,8 +168,8 @@ Usage: help | help [<command>]
       "pawno/include",
       "pawno/include/z"
   ]
-  input = "gamemodes/timertest.pwn"   # input compiler
-  output = "gamemodes/timertest.amx"  # output compiler
+  input = "gamemodes/bare.pwn"   # input compiler
+  output = "gamemodes/bare.amx"  # output compiler
 ```
 
 ### [VSCODE Usage](https://code.visualstudio.com/docs/debugtest/tasks)
@@ -283,7 +283,7 @@ Debug ".amx" by args
 debug mymodes
 ```
 
-### PAWNCC OPTIONS
+### INTRO 1.6 (COMPILER OPTIONS)
 
 | Option          | Description                                                        |
 |-----------------|--------------------------------------------------------------------|

@@ -1,7 +1,7 @@
 #ifndef ARCHIVE_H
 #define ARCHIVE_H
 
-int watch_extract_archive(const char *tar_files);
-void watch_extract_zip(const char *zip_path, const char *dest_path);
+int wd_Extract_TAR(const char *tar_files);
+void wd_Extract_ZIP(const char *zip_path, const char *dest_path);
 
 #endif

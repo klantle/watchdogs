@@ -3,58 +3,59 @@
 #include <string.h>
 #include <sys/stat.h>
 #include <unistd.h>
+#include <stddef.h>
+
+#include "utils.h"
+
 #ifdef _WIN32
 #include <windows.h>
-#include <stdio.h>
 
 struct utsname {
-    char sysname[256];
-    char nodename[256];
-    char release[256];
-    char version[256];
-    char machine[256];
+        char sysname[256];
+        char nodename[256];
+        char release[256];
+        char version[256];
+        char machine[256];
 };
 
 int uname(struct utsname *name) {
-    OSVERSIONINFOEX osvi;
-    SYSTEM_INFO si;
-    ZeroMemory(&osvi, sizeof(OSVERSIONINFOEX));
-    osvi.dwOSVersionInfoSize = sizeof(OSVERSIONINFOEX);
+        OSVERSIONINFOEX osvi;
+        SYSTEM_INFO si;
+        ZeroMemory(&osvi, sizeof(OSVERSIONINFOEX));
+        osvi.dwOSVersionInfoSize = sizeof(OSVERSIONINFOEX);
 
-    if (!GetVersionEx((OSVERSIONINFO*)&osvi))
-        return -1;
+        if (!GetVersionEx((OSVERSIONINFO*)&osvi))
+            return -RETN;
 
-    GetSystemInfo(&si);
+        GetSystemInfo(&si);
 
-    snprintf(name->sysname, sizeof(name->sysname), "Windows");
-    snprintf(name->release, sizeof(name->release), "%lu.%lu", osvi.dwMajorVersion, osvi.dwMinorVersion);
-    snprintf(name->version, sizeof(name->version), "Build %lu", osvi.dwBuildNumber);
+        snprintf(name->sysname, sizeof(name->sysname), "Windows");
+        snprintf(name->release, sizeof(name->release), "%lu.%lu", osvi.dwMajorVersion, osvi.dwMinorVersion);
+        snprintf(name->version, sizeof(name->version), "Build %lu", osvi.dwBuildNumber);
 
-    switch (si.wProcessorArchitecture) {
-        case PROCESSOR_ARCHITECTURE_AMD64:
-            snprintf(name->machine, sizeof(name->machine), "x86_64");
-            break;
-        case PROCESSOR_ARCHITECTURE_INTEL:
-            snprintf(name->machine, sizeof(name->machine), "x86");
-            break;
-        case PROCESSOR_ARCHITECTURE_ARM:
-            snprintf(name->machine, sizeof(name->machine), "ARM");
-            break;
-        case PROCESSOR_ARCHITECTURE_ARM64:
-            snprintf(name->machine, sizeof(name->machine), "ARM64");
-            break;
-        default:
-            snprintf(name->machine, sizeof(name->machine), "Unknown");
-            break;
-    }
+        switch (si.wProcessorArchitecture) {
+            case PROCESSOR_ARCHITECTURE_AMD64:
+                snprintf(name->machine, sizeof(name->machine), "x86_64");
+                break;
+            case PROCESSOR_ARCHITECTURE_INTEL:
+                snprintf(name->machine, sizeof(name->machine), "x86");
+                break;
+            case PROCESSOR_ARCHITECTURE_ARM:
+                snprintf(name->machine, sizeof(name->machine), "ARM");
+                break;
+            case PROCESSOR_ARCHITECTURE_ARM64:
+                snprintf(name->machine, sizeof(name->machine), "ARM64");
+                break;
+            default:
+                snprintf(name->machine, sizeof(name->machine), "Unknown");
+                break;
+        }
 
-    return 0;
+        return RETZ;
 }
 #else
 #include <sys/utsname.h>
 #endif
-
-#include <stddef.h>
 
 #include "chain.h"
 #include "utils.h"
@@ -72,10 +73,10 @@ typedef struct {
 } VersionInfo;
 
 void
-watch_pawncc(const char *platform) {
+wd_InsPawncc(const char *platform) {
         char version_selection,
-             url_sel[300],
-             fname_sel[256];
+             url_sel[526],
+             fname_sel[128];
 
         if (strcmp(platform, "termux") == 0) {
             struct stat st;
@@ -91,7 +92,7 @@ watch_pawncc(const char *platform) {
                 printf(":: You are no longer in Termux!. do you continue? [y/N] ");
                 if (scanf(" %c", &verify_first) != 1) return;
                 if (verify_first == 'N' || verify_first == 'n') {
-                    ___main___(0);
+                    __main(0);
                     return;
                 }
             }
@@ -148,7 +149,7 @@ watch_pawncc(const char *platform) {
                 sprintf(fname_sel, "pawncc-%s-%s.zip", termux_versions[pcc_sel_index], detected_arch);
 
                 wcfg.ipcc = 1;
-                watch_download_file(url_sel, fname_sel);
+                wd_DownloadFile(url_sel, fname_sel);
                 return;
             }
         }
@@ -196,11 +197,11 @@ watch_pawncc(const char *platform) {
         sprintf(fname_sel, "pawnc-%s-%s.%s", list_versions[pcc_sel_index], platform, pcc_archive_ext);
 
         wcfg.ipcc = 1;
-        watch_download_file(url_sel, fname_sel);
+        wd_DownloadFile(url_sel, fname_sel);
 }
 
 void
-watch_samp(const char *platform) {
+wd_InsServer(const char *platform) {
         VersionInfo list_versions[] = {
             { 'A', "SA-MP 0.3.DL R1", 
                 "https://github.com/KrustyKoyle/files.sa-mp.com-Archive/raw/refs/heads/master/samp03DLsvr_R1.tar.gz",
@@ -253,8 +254,11 @@ watch_samp(const char *platform) {
         };
 
         printf("Select the SA-MP version to download:\n");
-        for (int i = 0; i < sizeof(list_versions)/sizeof(list_versions[0]); i++) {
-            printf("[%c/%c] %s\n", list_versions[i].key, list_versions[i].key + 32, list_versions[i].name);
+        for (int i = 0; i < sizeof(list_versions) / sizeof(list_versions[0]); i++) {
+            printf("[%c/%c] %s\n",
+                  list_versions[i].key,
+                  list_versions[i].key + 32,
+                  list_versions[i].name);
         }
 
         printf(">> ");
@@ -278,6 +282,6 @@ watch_samp(const char *platform) {
             	*url_sel = strcmp(platform, "linux") == 0 ? chosen_selection->linux_url : chosen_selection->windows_url;
             const char
             	*fname_sel = strcmp(platform, "linux") == 0 ? chosen_selection->linux_file : chosen_selection->windows_file;
-            watch_download_file(url_sel, fname_sel);
+            wd_DownloadFile(url_sel, fname_sel);
         }
 }

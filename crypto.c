@@ -2,6 +2,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <stdint.h>
+
 #include <openssl/evp.h>
 #include <openssl/sha.h>
 #include <openssl/rand.h>
@@ -9,32 +10,34 @@
 #include <openssl/buffer.h>
 #include <openssl/err.h>
 
+#include "utils.h"
+
 int sha256_hash(const char *input, unsigned char output[32]) {
         if (!input || !output)
-                return 0;
+                return RETZ;
 
         EVP_MD_CTX *ctx = EVP_MD_CTX_new();
         if (!ctx)
-                return 0;
+                return RETZ;
 
         if (EVP_DigestInit_ex(ctx, EVP_sha256(), NULL) != 1) {
                 EVP_MD_CTX_free(ctx);
-                return 0;
+                return RETZ;
         }
 
         if (EVP_DigestUpdate(ctx, input, strlen(input)) != 1) {
                 EVP_MD_CTX_free(ctx);
-                return 0;
+                return RETZ;
         }
 
         unsigned int outlen = 0;
         if (EVP_DigestFinal_ex(ctx, output, &outlen) != 1 || outlen != 32) {
                 EVP_MD_CTX_free(ctx);
-                return 0;
+                return RETZ;
         }
 
         EVP_MD_CTX_free(ctx);
-        return 1;
+        return RETN;
 }
 
 char *base64_encode(const unsigned char *input, int len) {
@@ -130,15 +133,15 @@ int derive_key_pbkdf2(const char *passphrase,
                                           unsigned char *key,
                                           int key_len) {
         if (!passphrase || !salt || !key)
-                return 0;
+                return RETZ;
 
         const int iterations = 100000;
 
         if (PKCS5_PBKDF2_HMAC(passphrase, strlen(passphrase), salt, salt_len,
                                                   iterations, EVP_sha256(), key_len, key) != 1)
-                return 0;
+                return RETZ;
 
-        return 1;
+        return RETN;
 }
 
 int encrypt_with_password(const unsigned char *plaintext,
@@ -147,7 +150,7 @@ int encrypt_with_password(const unsigned char *plaintext,
                                                   unsigned char **out_blob,
                                                   int *out_blob_len) {
         if (!plaintext || plaintext_len <= 0 || !passphrase || !out_blob || !out_blob_len)
-                return 0;
+                return RETZ;
 
         const int salt_len = 16;
         const int iv_len = 16;
@@ -158,22 +161,22 @@ int encrypt_with_password(const unsigned char *plaintext,
         unsigned char key[key_len];
 
         if (RAND_bytes(salt, salt_len) != 1)
-                return 0;
+                return RETZ;
         if (RAND_bytes(iv, iv_len) != 1)
-                return 0;
+                return RETZ;
         if (!derive_key_pbkdf2(passphrase, salt, salt_len, key, key_len))
-                return 0;
+                return RETZ;
 
         EVP_CIPHER_CTX *ctx = EVP_CIPHER_CTX_new();
         if (!ctx) {
                 OPENSSL_cleanse(key, key_len);
-                return 0;
+                return RETZ;
         }
 
         if (EVP_EncryptInit_ex(ctx, EVP_aes_256_cbc(), NULL, key, iv) != 1) {
                 EVP_CIPHER_CTX_free(ctx);
                 OPENSSL_cleanse(key, key_len);
-                return 0;
+                return RETZ;
         }
 
         int block_size = EVP_CIPHER_block_size(EVP_aes_256_cbc());
@@ -183,7 +186,7 @@ int encrypt_with_password(const unsigned char *plaintext,
         if (!ciphertext) {
                 EVP_CIPHER_CTX_free(ctx);
                 OPENSSL_cleanse(key, key_len);
-                return 0;
+                return RETZ;
         }
 
         int len = 0;
@@ -193,7 +196,7 @@ int encrypt_with_password(const unsigned char *plaintext,
                 free(ciphertext);
                 EVP_CIPHER_CTX_free(ctx);
                 OPENSSL_cleanse(key, key_len);
-                return 0;
+                return RETZ;
         }
 
         ciphertext_len = len;
@@ -202,7 +205,7 @@ int encrypt_with_password(const unsigned char *plaintext,
                 free(ciphertext);
                 EVP_CIPHER_CTX_free(ctx);
                 OPENSSL_cleanse(key, key_len);
-                return 0;
+                return RETZ;
         }
 
         ciphertext_len += len;
@@ -214,7 +217,7 @@ int encrypt_with_password(const unsigned char *plaintext,
         if (!blob) {
                 free(ciphertext);
                 OPENSSL_cleanse(key, key_len);
-                return 0;
+                return RETZ;
         }
 
         memcpy(blob, salt, salt_len);
@@ -227,7 +230,7 @@ int encrypt_with_password(const unsigned char *plaintext,
         *out_blob = blob;
         *out_blob_len = total_len;
 
-        return 1;
+        return RETN;
 }
 
 int decrypt_with_password(const unsigned char *in_blob,
@@ -236,14 +239,14 @@ int decrypt_with_password(const unsigned char *in_blob,
                                                   unsigned char **out_plain,
                                                   int *out_plain_len) {
         if (!in_blob || in_blob_len <= 0 || !passphrase || !out_plain || !out_plain_len)
-                return 0;
+                return RETZ;
 
         const int salt_len = 16;
         const int iv_len = 16;
         const int key_len = 32;
 
         if (in_blob_len <= salt_len + iv_len)
-                return 0;
+                return RETZ;
 
         const unsigned char *salt = in_blob;
         const unsigned char *iv = in_blob + salt_len;
@@ -253,25 +256,25 @@ int decrypt_with_password(const unsigned char *in_blob,
         unsigned char key[key_len];
 
         if (!derive_key_pbkdf2(passphrase, salt, salt_len, key, key_len))
-                return 0;
+                return RETZ;
 
         EVP_CIPHER_CTX *ctx = EVP_CIPHER_CTX_new();
         if (!ctx) {
                 OPENSSL_cleanse(key, key_len);
-                return 0;
+                return RETZ;
         }
 
         if (EVP_DecryptInit_ex(ctx, EVP_aes_256_cbc(), NULL, key, iv) != 1) {
                 EVP_CIPHER_CTX_free(ctx);
                 OPENSSL_cleanse(key, key_len);
-                return 0;
+                return RETZ;
         }
 
         unsigned char *plaintext = malloc(ciphertext_len + EVP_CIPHER_block_size(EVP_aes_256_cbc()));
         if (!plaintext) {
                 EVP_CIPHER_CTX_free(ctx);
                 OPENSSL_cleanse(key, key_len);
-                return 0;
+                return RETZ;
         }
 
         int len = 0;
@@ -281,7 +284,7 @@ int decrypt_with_password(const unsigned char *in_blob,
                 free(plaintext);
                 EVP_CIPHER_CTX_free(ctx);
                 OPENSSL_cleanse(key, key_len);
-                return 0;
+                return RETZ;
         }
 
         plaintext_len = len;
@@ -290,7 +293,7 @@ int decrypt_with_password(const unsigned char *in_blob,
                 free(plaintext);
                 EVP_CIPHER_CTX_free(ctx);
                 OPENSSL_cleanse(key, key_len);
-                return 0;
+                return RETZ;
         }
 
         plaintext_len += len;
@@ -301,16 +304,16 @@ int decrypt_with_password(const unsigned char *in_blob,
         *out_plain = plaintext;
         *out_plain_len = plaintext_len;
 
-        return 1;
+        return RETN;
 }
 
 int to_hex(const unsigned char *in, int in_len, char **out) {
         if (!in || in_len < 0 || !out)
-                return 0;
+                return RETZ;
 
         char *buf = malloc(in_len * 2 + 1);
         if (!buf)
-                return 0;
+                return RETZ;
 
         for (int i = 0; i < in_len; ++i)
                 sprintf(buf + i * 2, "%02x", in[i]);
@@ -318,6 +321,6 @@ int to_hex(const unsigned char *in, int in_len, char **out) {
         buf[in_len * 2] = '\0';
         *out = buf;
 
-        return 1;
+        return RETN;
 }
 

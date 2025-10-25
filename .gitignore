@@ -2,9 +2,9 @@
 .vscode
 !img
 watchdogs
-watchdogs.exe
-watchdogs.debug.exe
-watch_termux
+watchdogs.win
+atchdogs.debug.win
+watchdogs_termux
 watchdogs.debug
 chain.res
 watchdogs.toml

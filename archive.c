@@ -5,6 +5,8 @@
 #include <archive.h>
 #include <archive_entry.h>
 
+#include "color.h"
+#include "extra.h"
 #include "utils.h"
 #include "archive.h"
 #include "curl.h"
@@ -25,18 +27,18 @@ static int arch_copy_data(struct archive *ar,
             if (a_read == ARCHIVE_EOF)
                     return ARCHIVE_OK;
             if (a_read != ARCHIVE_OK) {
-                printf("Read error: %s\n", archive_error_string(ar));
+                printf_error("Read error: %s", archive_error_string(ar));
                 return a_read;
             }
             a_read = archive_write_data_block(aw, a_buff, size, offset);
             if (a_read != ARCHIVE_OK) {
-                printf("Write error: %s\n", archive_error_string(aw));
+                printf_error("Write error: %s", archive_error_string(aw));
                 return a_read;
             }
         }
 }
 
-int watch_extract_archive(const char *tar_files) {
+int wd_Extract_TAR(const char *tar_files) {
         struct archive *archive_write = archive_write_disk_new();
         struct archive *archives = archive_read_new();
         struct archive_entry *entry;
@@ -60,10 +62,10 @@ int watch_extract_archive(const char *tar_files) {
                                             tar_files,
                                             1024 * 1024);
         if (a_read != ARCHIVE_OK) {
-                printf_error("Can't open file: %s\n", archive_error_string(archives));
+                printf_error("Can't open file: %s", archive_error_string(archives));
                 archive_read_free(archives);
                 archive_write_free(archive_write);
-                return -1;
+                return -RETN;
         }
     
         while (1) {
@@ -71,14 +73,14 @@ int watch_extract_archive(const char *tar_files) {
             if (a_read == ARCHIVE_EOF)
                     break;
             if (a_read != ARCHIVE_OK) {
-                        printf_error("header: %s\n",
+                        printf_error("header: %s",
                                 archive_error_string(archives));
                         break;
             }
     
             a_read = archive_write_header(archive_write, entry);
             if (a_read != ARCHIVE_OK) {
-                        printf_error("header: %s\n",
+                        printf_error("header: %s",
                                 archive_error_string(archive_write));
                         break;
             }
@@ -86,7 +88,7 @@ int watch_extract_archive(const char *tar_files) {
             if (archive_entry_size(entry) > 0) {
                 a_read = arch_copy_data(archives, archive_write);
                 if (a_read != ARCHIVE_OK) {
-                        printf_error("data: %s\n",
+                        printf_error("data: %s",
                                 archive_error_string(archives));
                         break;
                 }
@@ -103,7 +105,7 @@ int watch_extract_archive(const char *tar_files) {
         return (a_read == ARCHIVE_EOF) ? 0 : -1;
 }
 
-void watch_extract_zip(const char *zip_path,
+void wd_Extract_ZIP(const char *zip_path,
                            const char *dest_path)
 {
         struct archive *archives;
@@ -117,15 +119,15 @@ void watch_extract_zip(const char *zip_path,
         archive_read_support_filter_all(archives);
 
         if ((a_read = archive_read_open_filename(archives, zip_path, 1024 * 1024))) {
-                printf("Can't resume. sys can't write/open file %s\n", archive_error_string(archives));
-                ___main___(0);
+                printf_error("Can't write/open file %s", archive_error_string(archives));
+                __main(0);
         }
 
         archive_write = archive_write_disk_new();
         archive_write_disk_set_options(archive_write, ARCHIVE_EXTRACT_TIME);
         archive_write_disk_set_standard_lookup(archive_write);
 
-        int has_error = 0x0;
+        int __has_error = 0x00;
 
         while (archive_read_next_header(archives, &entry) == ARCHIVE_OK) {
                 const char *__cur_file = archive_entry_pathname(entry);
@@ -146,10 +148,10 @@ void watch_extract_zip(const char *zip_path,
 
                 a_read = archive_write_header(archive_write, entry);
                 if (a_read != ARCHIVE_OK) {
-                        if (!has_error) {
-                                printf_error("during extraction: %s\n",
+                        if (!__has_error) {
+                                printf_error("during extraction: %s",
                                         archive_error_string(archive_write));
-                                has_error = 0x1;
+                                __has_error = 0x01;
                                 break;
                         }
                 } else {
@@ -162,19 +164,19 @@ void watch_extract_zip(const char *zip_path,
                         if (a_read == ARCHIVE_EOF)
                                 break;
                         if (a_read < ARCHIVE_OK) {
-                                if (!has_error) {
-                                        printf_error("reading block from archive: %s\n",
+                                if (!__has_error) {
+                                        printf_error("reading block from archive: %s",
                                                 archive_error_string(archives));
-                                        has_error = 0x2;
+                                        __has_error = 0x02;
                                         break;
                                 }
                         }
                         a_read = archive_write_data_block(archive_write, a_buff, size, offset);
                         if (a_read < ARCHIVE_OK) {
-                                if (!has_error) {
-                                        printf_error("writing block to destination: %s\n",
+                                if (!__has_error) {
+                                        printf_error("writing block to destination: %s",
                                                 archive_error_string(archive_write));
-                                        has_error = 0x3;
+                                        __has_error = 0x03;
                                         break;
                                 }
                         }

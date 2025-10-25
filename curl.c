@@ -16,9 +16,12 @@
 #endif
 
 #include <curl/curl.h>
+
 #include <readline/readline.h>
 #include <readline/history.h>
 
+#include "color.h"
+#include "extra.h"
 #include "utils.h"
 #include "curl.h"
 #include "archive.h"
@@ -47,7 +50,7 @@ static int progress_callback(void *ptr,
         return 0;
 }
 
-int watch_download_file(const char *url, const char *fname) {
+int wd_DownloadFile(const char *url, const char *fname) {
         CURL *__curl;
         FILE *__fp;
         CURLcode __res;
@@ -61,15 +64,19 @@ int watch_download_file(const char *url, const char *fname) {
         do {
                 __fp = fopen(fname, "wb");
                 if (!__fp) {
-                        printf_error("fopen failed for %s\n", fname);
-                        return -1;
+#ifdef _debugger_
+                        printf_error("fopen failed for %s", fname);
+#endif
+                        return -RETN;
                 }
 
                 __curl = curl_easy_init();
                 if (!__curl) {
-                        printf_error("failed to init curl\n");
+#ifdef _debugger_
+                        printf_error("failed to init curl");
+#endif
                         fclose(__fp);
-                        return -1;
+                        return -RETN;
                 }
 
                 curl_easy_setopt(__curl, CURLOPT_URL, url);
@@ -95,24 +102,29 @@ int watch_download_file(const char *url, const char *fname) {
                                 printf("Download success %ld bytes\n", __st.st_size);
                                 printf(" Checking file type for extraction...\n");
 
-                                if (strstr(fname, ".tar") || strstr(fname, ".tar.gz")) {
+                                if (strstr(fname, ".tar") ||
+                                   strstr(fname, ".tar.gz")) {
                                         printf(" Extracting TAR archive %s\n", fname);
-                                        watch_extract_archive(fname);
+                                        wd_Extract_TAR(fname);
                                 } else if (strstr(fname, ".zip")) {
                                         printf(" Extracting ZIP archive %s\n", fname);
                                         char
-                                            __zip_ops[256]
+                                            __zip_o_pos[256]
                                         ;
                                         size_t
                                             len_fname = strlen(fname)
                                         ;
-                                        if (len_fname > 4 && !strncmp(fname + len_fname - 4, ".zip", 4)) {
-                                                strncpy(__zip_ops,
+                                        if (len_fname > 4 &&
+                                           !strncmp(fname + len_fname - 4, ".zip", 4))
+                                           {
+                                                strncpy(__zip_o_pos,
                                                         fname,
                                                         len_fname - 4);
-                                                __zip_ops[len_fname - 4] = '\0';
-                                        } else { strcpy(__zip_ops, fname); }
-                                        watch_extract_zip(fname, __zip_ops);
+                                                __zip_o_pos[len_fname - 4] = '\0';
+                                           }
+                                           else
+                                                strcpy(__zip_o_pos, fname);
+                                        wd_Extract_ZIP(fname, __zip_o_pos);
                                 } else {
                                         printf("Unknown archive type, skipping extraction\n");
                                 }
@@ -125,22 +137,22 @@ int watch_download_file(const char *url, const char *fname) {
                                         int c;
                                         while ((c = getchar()) != '\n' && c != EOF);
                                         if (fgets(__ptr_sigA, sizeof(__ptr_sigA), stdin) != NULL) {
-                                        __ptr_sigA[strcspn(__ptr_sigA, "\n")] = 0;
-                                        if (strcmp(__ptr_sigA, "Y") == 0 || strcmp(__ptr_sigA, "y") == 0)
-                                                install_pawncc_now();
+                                                __ptr_sigA[strcspn(__ptr_sigA, "\n")] = 0;
+                                                if (strcmp(__ptr_sigA, "Y") == 0 || strcmp(__ptr_sigA, "y") == 0)
+                                                        wd_ApplyPawncc();
                                         }
                                 }
 
                                 return 0;
-                        } else printf_error("downloaded file too small %ld bytes\n", __st.st_size);
-                } else printf_error("download failed HTTP %ld CURLcode %d retrying...\n", __response_code, __res);
+                        } else printf_error("Downloaded file too small %ld bytes", __st.st_size);
+                } else printf_error("Download failed HTTP %ld CURLcode %d retrying...", __response_code, __res);
 
                 __retry++;
                 sleep(3);
-
         } while (__retry < __max_retry);
 
-        printf_error("Download failed after %d retries\n", __max_retry);
-        return -1;
+        printf_error("Download failed after %d retries", __max_retry);
+
+        return -RETN;
 }
 

@@ -23,56 +23,43 @@
 #include "cJSON/cJSON.h"
 #include "chain.h"
 #include "color.h"
+#include "extra.h"
 #include "utils.h"
 #include "server.h"
 
-static int __val_g_arg(const char *__arg) {
-        if (!__arg || strlen(__arg) > 128) return 0;
-        for (size_t i = 0; i < strlen(__arg); i++) {
-            if (__arg[i] == '/' ||
-                __arg[i] == '\\' ||
-                __arg[i] == ';')
-                return 0;
-        }
-        return 1;
-}
-
-void watch_server_stop_tasks(void) {
+void wd_StopServerTasks(void) {
         kill_process_safe("samp-server.exe");
         kill_process_safe("samp03svr");
         kill_process_safe("omp-server.exe");
         kill_process_safe("omp-server");
 }
 
-void watch_server_samp(const char *gamemode_arg, const char *server_bin) {
-        if (!__val_g_arg(gamemode_arg)) {
-            printf_error("Invalid gamemode argument!");
-            return;
-        }
-
+void wd_RunSAMPServer(const char *gamemode_arg, const char *server_bin) {
         FILE *serv_in = NULL,
              *serv_out = NULL;
         int fo_gm = 0;
         char g_line[256];
 
-        watch_sef_wcopy("server.cfg", ".server.cfg.bak");
+        wd_sef_wcopy("server.cfg", ".server.cfg.bak");
         serv_in = fopen(".server.cfg.bak", "r");
         if (!serv_in) {
             printf_error("failed to open backup config");
-            ___main___(0);
+            __main(0);
         }
         serv_out = fopen("server.cfg", "w");
         if (!serv_out) {
             printf_error("failed to write new config");
             fclose(serv_in);
-            ___main___(0);
+            __main(0);
         }
 
-        int __fi_gm = watch_sef_fdir(".", gamemode_arg, NULL);
+        wd_sef_fdir_reset();
+        
+        int __fi_gm = wd_sef_fdir(".", gamemode_arg, NULL);
         if (__fi_gm != 1) {
-            printf_color(COL_RED, "Can't locate: ");
-            printf("%s\n", gamemode_arg);
-            ___main___(0);
+            printf_error("Can't locate:");
+            printf("\t%s\n", gamemode_arg);
+            __main(0);
         }
 
         while (fgets(g_line, sizeof(g_line), serv_in)) {
@@ -103,7 +90,7 @@ void watch_server_samp(const char *gamemode_arg, const char *server_bin) {
         snprintf(snprintf_ptrS, sizeof(snprintf_ptrS), "%s", server_bin);
 #endif
 
-        int running_FAIL = watch_sys(snprintf_ptrS);
+        int running_FAIL = wd_RunCommand(snprintf_ptrS);
         if (running_FAIL == 0) {
             sleep(2);
 #ifndef _WIN32
@@ -127,48 +114,43 @@ void watch_server_samp(const char *gamemode_arg, const char *server_bin) {
         remove("server.cfg");
         rename(".server.cfg.bak", "server.cfg");
 
-        if (wcfg.serv_dbg &&
+        if (wcfg.serv_dbg != NULL &&
             !strcmp(wcfg.serv_dbg, "debug")) {
-            static int __os__;
-                __os__ = signal_system_os();
-            if (__os__ == 0x01) {
+            if (wcfg.__os__ == 0x01) {
                 kill_process("samp-server.exe");
             }
-            else if (__os__ == 0x00) {
+            else if (wcfg.__os__ == 0x00) {
                 kill_process("samp03svr");
             }
         }
 
-        ___main___(0);
+        __main(0);
 }
 
-void watch_server_openmp(const char *gamemode_arg, const char *server_bin) {
-        if (!__val_g_arg(gamemode_arg)) {
-            printf_error("Invalid gamemode argument!");
-            return;
-        }
-
+void wd_RunOMPServer(const char *gamemode_arg, const char *server_bin) {
         cJSON
-            *root = NULL,
-            *pawn = NULL,
-            *main_scripts = NULL
+            *__main_scripts = NULL,
+            *__root = NULL,
+            *__pawn = NULL
         ;
         FILE *procc_f = NULL;
-        char *json_data = NULL;
-        char cmd_buf[256];
+        char *json_data = NULL,
+             cmd_buf[256];
 
-        watch_sef_wcopy("config.json", ".config.json.bak");
+        wd_sef_wcopy("config.json", ".config.json.bak");
         procc_f = fopen("config.json", "r");
         if (!procc_f) {
             printf_error("failed to open config.json");
             return;
         }
 
-        int __fi_gm = watch_sef_fdir(".", gamemode_arg, NULL);
+        wd_sef_fdir_reset();
+
+        int __fi_gm = wd_sef_fdir(".", gamemode_arg, NULL);
         if (__fi_gm != 1) {
             printf_color(COL_RED, "Can't locate: ");
             printf("%s\n", gamemode_arg);
-            ___main___(0);
+            __main(0);
         }
 
         fseek(procc_f, 0, SEEK_END);
@@ -177,8 +159,8 @@ void watch_server_openmp(const char *gamemode_arg, const char *server_bin) {
         json_data = malloc(file_len + 1);
         size_t bytes_read = fread(json_data, 1, file_len, procc_f);
         if (bytes_read != file_len) {
-#ifdef WD_DEBUGGING
-            printf_error("failed to read file completely (%zu of %zu bytes)\n", bytes_read, file_len);
+#ifdef _debugger_
+            printf_error("failed to read file completely (%zu of %zu bytes)", bytes_read, file_len);
 #endif
             fclose(procc_f);
             free(json_data);
@@ -190,23 +172,23 @@ void watch_server_openmp(const char *gamemode_arg, const char *server_bin) {
         if (procc_f)
             fclose(procc_f);
 
-        root = cJSON_Parse(json_data);
-        if (!root) {
+        __root = cJSON_Parse(json_data);
+        if (!__root) {
             printf_error("JSON parse error: [%s]", cJSON_GetErrorPtr());
             free(json_data);
             return;
         }
 
-        pawn = cJSON_GetObjectItem(root, "pawn");
-        cJSON_DeleteItemFromObject(pawn, "main_scripts");
+        __pawn = cJSON_GetObjectItem(__root, "__pawn");
+        cJSON_DeleteItemFromObject(__pawn, "main_scripts");
 
-        main_scripts = cJSON_CreateArray();
+        __main_scripts = cJSON_CreateArray();
         snprintf(cmd_buf, sizeof(cmd_buf), "%s", gamemode_arg);
-        cJSON_AddItemToArray(main_scripts, cJSON_CreateString(cmd_buf));
-        cJSON_AddItemToObject(pawn, "main_scripts", main_scripts);
+        cJSON_AddItemToArray(__main_scripts, cJSON_CreateString(cmd_buf));
+        cJSON_AddItemToObject(__pawn, "main_scripts", __main_scripts);
 
         procc_f = fopen("config.json", "w");
-        char *main_njson = cJSON_Print(root);
+        char *main_njson = cJSON_Print(__root);
         fputs(main_njson, procc_f);
         free(main_njson);
 
@@ -226,7 +208,7 @@ void watch_server_openmp(const char *gamemode_arg, const char *server_bin) {
         snprintf(snprintf_ptrS, sizeof(snprintf_ptrS), "%s", server_bin);
 #endif
 
-        int running_FAIL = watch_sys(snprintf_ptrS);
+        int running_FAIL = wd_RunCommand(snprintf_ptrS);
         if (running_FAIL == 0) {
             sleep(2);
 #ifndef _WIN32
@@ -250,18 +232,16 @@ void watch_server_openmp(const char *gamemode_arg, const char *server_bin) {
         remove("config.json");
         rename(".config.json.bak", "config.json");
 
-        if (wcfg.serv_dbg &&
+        if (wcfg.serv_dbg != NULL &&
             !strcmp(wcfg.serv_dbg, "debug")) {
-            static int __os__;
-                __os__ = signal_system_os();
-            if (__os__ == 0x01) {
+            if (wcfg.__os__ == 0x01) {
                 kill_process("omp-server.exe");
             }
-            else if (__os__ == 0x00) {
+            else if (wcfg.__os__ == 0x00) {
                 kill_process("omp-server");
             }
         }
 
-        cJSON_Delete(root);
+        cJSON_Delete(__root);
         free(json_data);
 }

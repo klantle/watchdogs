@@ -2,6 +2,8 @@
 #include <stdlib.h>
 #include <string.h>
 #include <stdarg.h>
+#include <ctype.h>
+#include <stdbool.h>
 #include <sys/stat.h>
 
 #ifdef _WIN32
@@ -15,35 +17,33 @@
 #define mkdir(path) _mkdir(path)
 #define sleep(sec) Sleep((sec)*1000)
 #define setenv(name,val,overwrite) _putenv_s(name,val)
-static int w_chmo(const char *path) {
+static int _w_chmod(const char *path) {
         int mode = _S_IREAD | _S_IWRITE;
         return chmod(path, mode);
 }
 #else
 #include <sys/utsname.h>
+#include <sys/wait.h>
 #include <unistd.h>
 #include <dirent.h>
-#include <sys/wait.h>
 #include <fnmatch.h>
 #define __PATH_SYM "/"
 #define IS_PATH_SYM(c) ((c) == '/')
 chmod(c_dest);
 #endif
 
+#include <sys/file.h>
+#include <sys/types.h>
 #include <ncursesw/curses.h>
 #include <math.h>
 #include <limits.h>
 #include <time.h>
 #include <ftw.h>
-#include <sys/file.h>
 #include <curl/curl.h>
 #include <fcntl.h>
 #include <inttypes.h>
-#include <sys/stat.h>
 #include <stddef.h>
-#include <sys/types.h>
 #include <libgen.h>
-#include <sys/types.h>
 #include <readline/readline.h>
 #include <readline/history.h>
 #include <archive.h>
@@ -52,6 +52,7 @@ chmod(c_dest);
 
 #include "tomlc99/toml.h"
 #include "color.h"
+#include "extra.h"
 #include "utils.h"
 #include "chain.h"
 
@@ -73,20 +74,28 @@ const char* __command[] = {
         "restart"
 };
 const size_t
-    __command_len = sizeof(__command) / sizeof(__command[0]);
+        __command_len =
+            sizeof(__command) /
+            sizeof(__command[0]);
 
-wd wcfg = {
+__wd wcfg = {
         .ipcc = 0,
         .os = NULL,
+        .__os__ = 0x00,
+        .f_samp = 0x00,
+        .f_openmp = 0x00,
+        .pointer_samp = NULL,
+        .pointer_openmp = NULL,
+        .compiler_error = 0,
         .sef_count = 0,
         .sef_found = { {0} },
         .serv_dbg = NULL,
         .ci_options = NULL,
         .gm_input = NULL,
-        .g_output = NULL
+        .gm_output = NULL
 };
 
-void reset_watch_sef_dir()
+void wd_sef_fdir_reset()
 {
         size_t MAX_ENTRIES = sizeof(wcfg.sef_found) /
                              sizeof(wcfg.sef_found[0]);
@@ -96,60 +105,62 @@ void reset_watch_sef_dir()
              ++i)
              wcfg.sef_found[i][0] = '\0';
 
-        memset(wcfg.sef_found, 0, sizeof(wcfg.sef_found));
+        memset(wcfg.sef_found,
+               0,
+               sizeof(wcfg.sef_found));
         wcfg.sef_count = 0;
 }
 
-int watch_sys(const char *cmd) {
-        char size_cmd[1024 + 56];
+int wd_RunCommand(const char *cmd) {
+        char
+            size_cmd[1024];
         snprintf(size_cmd, sizeof(size_cmd), "%s", cmd);
         return system(size_cmd);
 }
 
-void __give_permissions(const char *src, const char *tmp_path) {
+void wd_SetPermission(const char *src, const char *tmp) {
         struct stat st;
         if (stat(src, &st) == 0) {
 #ifdef _WIN32
-            DWORD attr = GetFileAttributesA(src);
-            if (attr != INVALID_FILE_ATTRIBUTES) {
-                if (attr & FILE_ATTRIBUTE_READONLY)
-                    SetFileAttributesA(tmp_path, attr & ~FILE_ATTRIBUTE_READONLY);
-                else
-                    SetFileAttributesA(tmp_path, attr);
-            }
+            _w_chmod(tmp);
 #else
-            chmod(tmp_path, st.st_mode & 07777);
+            chmod(tmp, st.st_mode & 07777);
 #endif
         }
 }
 
-inline void handle_sigint(int sig)
+inline void HANDLE_SIGINT(int sig)
 {
-        println("Exit?, You only exit with use a \"exit\"");
-        ___main___(0);
+        printf_color(COL_RED, "\n\tExit?, You only exit with use a \"exit\"\n");
+        __main(0);
 }
 
-int watch_title(const char *__title)
-{
+int wd_SetTitle(const char *__title) {
         const char
                 *title = __title ? __title : "Watchdogs";
         printf("\033]0;%s\007", title);
-        return 0;
+        return RETZ;
 }
 
-void cp_strip_dotfns(char *dst, size_t dst_sz, const char *src) {
-        if (!dst || dst_sz == 0 || !src) return;
+void
+wd_StripDotFns(char *dst, size_t dst_sz, const char *src) {
+        if (!dst ||
+            dst_sz == 0 ||
+            !src) return;
 
-        const char *slash = strchr(src, '/');
+        char *slash;
+        slash = strchr(src, '/');
 #ifdef _WIN32
-        if (!slash) slash = strchr(src, '\\');
+        if (!slash)
+            slash = strchr(src, '\\');
 #endif
-
         if (slash == NULL) {
-            const char *dot = strchr(src, '.');
+            char *dot;
+            dot = strchr(src, '.');
             if (dot) {
                 size_t len = (size_t)(dot - src);
-                if (len >= dst_sz) len = dst_sz - 1;
+                if (len >= dst_sz)
+                    len = dst_sz - 1;
                 memcpy(dst, src, len);
                 dst[len] = '\0';
                 return;
@@ -159,70 +170,93 @@ void cp_strip_dotfns(char *dst, size_t dst_sz, const char *src) {
         snprintf(dst, dst_sz, "%s", src);
 }
 
-void escape_quotes(char *dest, size_t size, const char *src) {
+bool strfind(const char *text, const char *pattern) {
+        size_t pat_len = strlen(pattern);
+        for (size_t i = 0; text[i]; i++) {
+            size_t j = 0;
+            while (text[i + j] &&
+                tolower((unsigned char)text[i + j]) ==
+                    tolower((unsigned char)pattern[j]))
+                j++;
+            if (j == pat_len) {
+                bool left_ok = (i == 0 ||
+                    !isalnum((unsigned char)text[i - 1]));
+                bool right_ok = !isalnum((unsigned char)text[i + j]);
+                if (left_ok && right_ok)
+                    return true;
+            }
+        }
+        return false;
+}
+
+void
+wd_EscapeQuotes(char *dest, size_t size, const char *src) {
         size_t j = 0;
-        for (size_t i = 0; src[i] != '\0' && j + 1 < size; i++) {
+        for (size_t i = 0;
+            src[i] != '\0' &&
+            j + 1 < size;
+            i++) {
             if (src[i] == '"') {
-                if (j + 2 >= size) break;
+                if (j + 2 >=
+                    size)
+                    break;
                 dest[j++] = '\\';
                 dest[j++] = '"';
-            } else {
+            } else
                 dest[j++] = src[i];
-            }
         }
         dest[j] = '\0';
 }
 
-static void __path_sym_set(char *out,
-                        size_t out_sz,
-                        const char *dir,
-                        const char *name) {
+static
+void __SetPathSymS(char *out,
+                   size_t out_sz,
+                   const char *dir,
+                   const char *name) {
         if (!out || out_sz == 0)
             return;
         size_t dir_len = strlen(dir);
-        int __dir_hsp = (dir_len > 0 && IS_PATH_SYM(dir[dir_len - 1])),
+        int __dir_hsp = (dir_len > 0 &&
+                         IS_PATH_SYM(dir[dir_len - 1])),
             __name_hlsp = IS_PATH_SYM(name[0]);
 
         if (__dir_hsp) {
-            if (__name_hlsp) snprintf(out, out_sz, "%s%s", dir, name + 1);
-            else snprintf(out, out_sz, "%s%s", dir, name);
+            if (__name_hlsp)
+                snprintf(out, out_sz, "%s%s", dir, name + 1);
+            else
+                snprintf(out, out_sz, "%s%s", dir, name);
         } else {
 #ifdef _WIN32
             if (__name_hlsp)
-                snprintf(out, out_sz,
-                        "%s%s",
-                        dir,
-                        name);
-            else snprintf(out, out_sz,
-                        "%s%s%s",
-                        dir,
-                        __PATH_SYM,
-                        name);
+                snprintf(out, out_sz, "%s%s",
+                    dir,
+                    name);
+            else snprintf(out, out_sz, "%s%s%s",
+                    dir,
+                    __PATH_SYM,
+                    name);
 #else
             if (__name_hlsp)
-                snprintf(out, out_sz,
-                        "%s%s",
-                        dir,
-                        name);
-            else snprintf(out, out_sz,
-                        "%s%s%s",
-                        dir,
-                        __PATH_SYM,
-                        name);
+                snprintf(out, out_sz, "%s%s",
+                    dir,
+                    name);
+            else snprintf(out, out_sz, "%s%s%s",
+                    dir,
+                    __PATH_SYM,
+                    name);
 #endif
         }
         out[out_sz - 1] = '\0';
 }
 
 
-int __command_suggest(const char *s1, const char *s2) {
+int __CommandSuggest(const char *s1, const char *s2) {
         int len1 = strlen(s1),
             len2 = strlen(s2);
         if (len2 > 128) return INT_MAX;
         int prev[129],
             curr[129];
         for (int j = 0; j <= len2; j++) prev[j] = j;
-
         for (int i = 1; i <= len1; i++) {
                 curr[0] = i;
                 for (int j = 1; j <= len2; j++) {
@@ -230,107 +264,45 @@ int __command_suggest(const char *s1, const char *s2) {
                             del = prev[j] + 1,
                             ins = curr[j-1] + 1,
                             sub = prev[j-1] + cost;
-                        curr[j] = (del < ins ? (del < sub ? del : sub)
-                                             : (ins < sub ? ins : sub));
+                        curr[j] = (del < ins ? (del < sub ?
+                                                del : sub)
+                                             : (ins < sub ?
+                                                ins : sub));
                 }
                 memcpy(prev, curr, (len2 + 1) * sizeof(int));
         }
         return prev[len2];
 }
 
-const char* find_cl_command(
-    const char *ptr_command,
-    const char *__commands[],
-    size_t num_cmds,
+const char*
+wd_FindNearCommand(
+                    const char *ptr_command,
+                    const char *__commands[],
+                    size_t num_cmds,
     int *out_distance
 ) {
-        int best_distance = INT_MAX;
-        const char *best_cmd = NULL;
+        int __b_distance = INT_MAX;
+        const char *__b_cmd = NULL;
 
         for (size_t i = 0; i < num_cmds; i++) {
                 int
-                    dist = __command_suggest(ptr_command, __commands[i]);
-                if (dist < best_distance) {
-                        best_distance = dist;
-                        best_cmd = __commands[i];
+                    dist = __CommandSuggest(ptr_command, __commands[i]);
+                if (dist < __b_distance) {
+                        __b_distance = dist;
+                        __b_cmd = __commands[i];
                 }
         }
 
-        if (out_distance) *out_distance = best_distance;
-        return best_cmd;
+        if (out_distance) *out_distance = __b_distance;
+        return __b_cmd;
 }
 
-void printf_color(const char *color,
-                  const char *format, ...)
-{
-        va_list args;
-        va_start(args, format);
-
-        printf("%s", color);
-        vprintf(format, args);
-        printf("%s", COL_DEFAULT);
-
-        va_end(args);
-}
-
-void println(const char* fmt, ...) {
-        va_list args;
-        va_start(args, fmt);
-        vprintf(fmt, args);
-        printf("\n");
-        va_end(args);
-}
-
-void printf_succes(const char *format, ...) {
-        va_list args;
-        va_start(args, format);
-        printf_color(COL_YELLOW, "succes: ");
-        vprintf(format, args);
-        printf("\n");
-        va_end(args);
-}
-
-void printf_info(const char *format, ...) {
-        va_list args;
-        va_start(args, format);
-        printf_color(COL_YELLOW, "info: ");
-        vprintf(format, args);
-        printf("\n");
-        va_end(args);
-}
-
-void printf_warning(const char *format, ...) {
-        va_list args;
-        va_start(args, format);
-        printf_color(COL_GREEN, "warning: ");
-        vprintf(format, args);
-        printf("\n");
-        va_end(args);
-}
-
-void printf_error(const char *format, ...) {
-        va_list args;
-        va_start(args, format);
-        printf_color(COL_RED, "error: ");
-        vprintf(format, args);
-        printf("\n");
-        va_end(args);
-}
-
-void printf_crit(const char *format, ...) {
-        va_list args;
-        va_start(args, format);
-        printf_color(COL_RED, "crit: ");
-        vprintf(format, args);
-        printf("\n");
-        va_end(args);
-}
-
-const char* watch_detect_os(void) {
-        static char os[64] = "Unknown's";
+const char* wd_DetectOS(void) {
+        static
+            char os[64] = "Unknown's";
 
         if ((getenv("OS") &&
-             strstr(getenv("OS"), "Windows_NT")) ||
+            strstr(getenv("OS"), "Windows_NT")) ||
             getenv("WSL_INTEROP") ||
             getenv("WSL_DISTRO_NAME"))
             return "windows";
@@ -353,18 +325,19 @@ const char* watch_detect_os(void) {
         return os;
 }
 
-int signal_system_os(void) {
+int wd_SignalOS(void) {
         if (strcmp(wcfg.os, "windows") == 0)
                 return 0x01;
         else if (strcmp(wcfg.os, "linux") == 0)
-                return 0x00;
+                return 0x02;
         
-        return 0;
+        return RETZ;
 }
 
 int dir_exists(const char *path) {
         struct stat st;
-        return (stat(path, &st) == 0 && S_ISDIR(st.st_mode));
+        return (stat(path, &st) == 0 &&
+                S_ISDIR(st.st_mode));
 }
 
 int path_exists(const char *path) {
@@ -374,47 +347,61 @@ int path_exists(const char *path) {
 
 int dir_writable(const char *path) {
         if (access(path, W_OK) == 0)
-            return 1;
-        return 0;
+            return RETN;
+        return RETZ;
 }
 
-int is_regular_file(const char *path) {
+int path_acces(const char *path) {
+        if (access(path, F_OK) == 0) {
+            return RETN;
+        }
+        return RETZ;
+}
+
+int file_regular(const char *path) {
         struct stat st;
-        if (stat(path, &st) != 0) return 0;
+        if (stat(path, &st) != 0) return RETZ;
         return S_ISREG(st.st_mode);
 }
 
-int is_same_file(const char *a, const char *b) {
+int file_same_file(const char *a, const char *b) {
         struct stat sa, sb;
-        if (stat(a, &sa) != 0) return 0;
-        if (stat(b, &sb) != 0) return 0;
+        if (stat(a, &sa) != 0) return RETZ;
+        if (stat(b, &sb) != 0) return RETZ;
         return (sa.st_ino == sb.st_ino &&
                 sa.st_dev == sb.st_dev);
 }
 
-int ensure_parent_dir(char *out_parent, size_t n, const char *dest) {
+int
+ensure_parent_dir(char *out_parent,
+                  size_t n,
+                  const char *dest) {
         char tmp[PATH_MAX];
         if (strlen(dest) >= sizeof(tmp))
-            return -1;
+            return -RETN;
         strncpy(tmp, dest, sizeof(tmp));
         tmp[sizeof(tmp)-1] = '\0';
-        char *parent = dirname(tmp);
+        char
+            *parent = dirname(tmp);
         if (!parent)
-            return -1;
+            return -RETN;
         strncpy(out_parent, parent, n);
         out_parent[n-1] = '\0';
 
-        return 0;
+        return RETZ;
 }
 
 int cp_f_content(const char *src, const char *dst) {
         int infd = -1, outfd = -1;
         int ret = -1;
-        char buf[8192];
+        char buf[PATH_MAX];
         ssize_t r;
         infd = open(src, O_RDONLY);
         if (infd < 0) goto out;
-        outfd = open(dst, O_WRONLY | O_CREAT | O_TRUNC, 0600);
+        outfd = open(dst, O_WRONLY |
+                     O_CREAT |
+                     O_TRUNC,
+                     0600);
         if (outfd < 0) goto out;
         while ((r = read(infd, buf, sizeof(buf))) > 0) {
             ssize_t w = 0;
@@ -426,10 +413,14 @@ int cp_f_content(const char *src, const char *dst) {
                 p += w;
             }
         }
-        if (r == 0) ret = 0;
+        if (r == 0)
+            ret = 0;
 out:
-        if (infd >= 0) close(infd);
-        if (outfd >= 0) close(outfd);
+        if (infd >= 0)
+            close(infd);
+        if (outfd >= 0)
+            close(outfd);
+
         return ret;
 }
 
@@ -437,7 +428,7 @@ int kill_process(const char *name) {
         char cmd[256];
         snprintf(cmd, sizeof(cmd),
             "pkill -9 -f \"%s\" > /dev/null 2>&1", name);
-        return watch_sys(cmd);
+        return wd_RunCommand(cmd);
 }
 
 void kill_process_safe(const char *name) {
@@ -445,124 +436,150 @@ void kill_process_safe(const char *name) {
             kill_process(name);
 }
 
-int watch_sef_fdir(const char *sef_path, const char *sef_name, const char *ignore_dir) {
-        char __path_Buffer[SEF_PATH_SIZE];
+int
+wd_sef_fdir(const char *sef_path,
+            const char *sef_name,
+            const char *ignore_dir) {
+        char _sef_path_buff[MAX_SEF_PATH_SIZE];
 
 #ifdef _WIN32
         WIN32_FIND_DATA findFileData;
         HANDLE hFind;
-        char __search_path[MAX_PATH];
+        char _sef_search_path[MAX_PATH];
 
         if (sef_path[strlen(sef_path) - 1] == '\\')
-            snprintf(__search_path, sizeof(__search_path), "%s*", sef_path);
+            snprintf(_sef_search_path, sizeof(_sef_search_path), "%s*", sef_path);
         else
-            snprintf(__search_path, sizeof(__search_path), "%s\\*", sef_path);
+            snprintf(_sef_search_path, sizeof(_sef_search_path), "%s\\*", sef_path);
 
-        hFind = FindFirstFile(__search_path, &findFileData);
+        hFind = FindFirstFile(_sef_search_path, &findFileData);
         if (hFind == INVALID_HANDLE_VALUE)
-            return 0;
+            return RETZ;
 
         do {
             const char *name = findFileData.cFileName;
-            if (strcmp(name, ".") == 0 || strcmp(name, "..") == 0)
-                continue;
+            if (name[0] == '.' &&
+               (name[1] == '\0' ||
+               (name[1] == '.' && 
+               name[2] == '\0')))
+               continue;
 
-            __path_sym_set(__path_Buffer, sizeof(__path_Buffer), sef_path, name);
+            __SetPathSymS(_sef_path_buff,
+                         sizeof(_sef_path_buff),
+                         sef_path,
+                         name);
 
             if (findFileData.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY) {
                 if (ignore_dir && _stricmp(name, ignore_dir) == 0)
                     continue;
-                if (watch_sef_fdir(__path_Buffer, sef_name, ignore_dir)) {
+                if (wd_sef_fdir(_sef_path_buff, sef_name, ignore_dir)) {
                     FindClose(hFind);
-                    return 1;
+                    return RETN;
                 }
             } else {
                 if (strchr(sef_name, '*') || strchr(sef_name, '?')) {
                     if (PathMatchSpecA(name, sef_name)) {
-                        strncpy(wcfg.sef_found[wcfg.sef_count], __path_Buffer, SEF_PATH_SIZE);
+                        strncpy(wcfg.sef_found[wcfg.sef_count],
+                                _sef_path_buff,
+                                MAX_SEF_PATH_SIZE);
                         wcfg.sef_count++;
                         FindClose(hFind);
-                        return 1;
+                        return RETN;
                     }
                 } else {
                     if (strcmp(name, sef_name) == 0) {
-                        strncpy(wcfg.sef_found[wcfg.sef_count], __path_Buffer, SEF_PATH_SIZE);
+                        strncpy(wcfg.sef_found[wcfg.sef_count],
+                                _sef_path_buff,
+                                MAX_SEF_PATH_SIZE);
                         wcfg.sef_count++;
                         FindClose(hFind);
-                        return 1;
+                        return RETN;
                     }
                 }
             }
         } while (FindNextFile(hFind, &findFileData));
 
         FindClose(hFind);
-        return 0;
+        return RETZ;
 #else
         DIR *dir = opendir(sef_path);
         if (!dir)
-            return 0;
+            return RETZ;
 
-        struct dirent *entry;
+        struct dirent *_entry;
         struct stat statbuf;
 
-        while ((entry = readdir(dir)) != NULL) {
-            const char *name = entry->d_name;
+        while ((_entry = readdir(dir)) != NULL) {
+            const char *name = _entry->d_name;
+            if (name[0] == '.' &&
+               (name[1] == '\0' ||
+               (name[1] == '.' && 
+               name[2] == '\0')))
+               continue;
 
-            if (name[0] == '.' && (name[1] == '\0' || (name[1] == '.' && name[2] == '\0')))
-                continue;
+            __SetPathSymS(_sef_path_buff,
+                         sizeof(_sef_path_buff),
+                         sef_path,
+                         name);
 
-            __path_sym_set(__path_Buffer, sizeof(__path_Buffer), sef_path, name);
-
-            if (entry->d_type == DT_DIR) {
+            if (_entry->d_type == DT_DIR) {
                 if (ignore_dir && strcmp(name, ignore_dir) == 0)
                     continue;
 
-                if (watch_sef_fdir(__path_Buffer, sef_name, ignore_dir)) {
+                if (wd_sef_fdir(_sef_path_buff, sef_name, ignore_dir)) {
                     closedir(dir);
-                    return 1;
+                    return RETN;
                 }
-            } else if (entry->d_type == DT_REG) {
+            } else if (_entry->d_type == DT_REG) {
                 if (strchr(sef_name, '*') || strchr(sef_name, '?')) {
                     if (fnmatch(sef_name, name, 0) == 0) {
-                        strncpy(wcfg.sef_found[wcfg.sef_count], __path_Buffer, SEF_PATH_SIZE);
+                        strncpy(wcfg.sef_found[wcfg.sef_count],
+                                _sef_path_buff,
+                                MAX_SEF_PATH_SIZE);
                         wcfg.sef_count++;
                         closedir(dir);
-                        return 1;
+                        return RETN;
                     }
                 } else {
                     if (strcmp(name, sef_name) == 0) {
-                        strncpy(wcfg.sef_found[wcfg.sef_count], __path_Buffer, SEF_PATH_SIZE);
+                        strncpy(wcfg.sef_found[wcfg.sef_count],
+                                _sef_path_buff,
+                                MAX_SEF_PATH_SIZE);
                         wcfg.sef_count++;
                         closedir(dir);
-                        return 1;
+                        return RETN;
                     }
                 }
             } else {
-                if (stat(__path_Buffer, &statbuf) == -1)
+                if (stat(_sef_path_buff, &statbuf) == -1)
                     continue;
 
                 if (S_ISDIR(statbuf.st_mode)) {
                     if (ignore_dir && strcmp(name, ignore_dir) == 0)
                         continue;
 
-                    if (watch_sef_fdir(__path_Buffer, sef_name, ignore_dir)) {
+                    if (wd_sef_fdir(_sef_path_buff, sef_name, ignore_dir)) {
                         closedir(dir);
-                        return 1;
+                        return RETN;
                     }
                 } else if (S_ISREG(statbuf.st_mode)) {
                     if (strchr(sef_name, '*') || strchr(sef_name, '?')) {
                         if (fnmatch(sef_name, name, 0) == 0) {
-                            strncpy(wcfg.sef_found[wcfg.sef_count], __path_Buffer, SEF_PATH_SIZE);
+                            strncpy(wcfg.sef_found[wcfg.sef_count],
+                                    _sef_path_buff,
+                                    MAX_SEF_PATH_SIZE);
                             wcfg.sef_count++;
                             closedir(dir);
-                            return 1;
+                            return RETN;
                         }
                     } else {
                         if (strcmp(name, sef_name) == 0) {
-                            strncpy(wcfg.sef_found[wcfg.sef_count], __path_Buffer, SEF_PATH_SIZE);
+                            strncpy(wcfg.sef_found[wcfg.sef_count],
+                                    _sef_path_buff,
+                                    MAX_SEF_PATH_SIZE);
                             wcfg.sef_count++;
                             closedir(dir);
-                            return 1;
+                            return RETN;
                         }
                     }
                 }
@@ -570,68 +587,70 @@ int watch_sef_fdir(const char *sef_path, const char *sef_name, const char *ignor
         }
 
         closedir(dir);
-        return 0;
+        return RETZ;
 #endif
 }
 
-void __toml_base_subdirs(const char *base_path, FILE *toml_files, int *is_first)
+void __toml_base_subdirs(const char *base_path, FILE *toml_files, int *first)
 {
 #ifdef _WIN32
         WIN32_FIND_DATAA ffd;
         HANDLE hFind = INVALID_HANDLE_VALUE;
-        char search_path[MAX_PATH];
+        char __bs_search_path[MAX_PATH];
 
-        snprintf(search_path, sizeof(search_path), "%s\\*", base_path);
-        hFind = FindFirstFileA(search_path, &ffd);
+        snprintf(__bs_search_path, sizeof(__bs_search_path), "%s\\*", base_path);
+        hFind = FindFirstFileA(__bs_search_path, &ffd);
 
         if (hFind == INVALID_HANDLE_VALUE)
             return;
 
         do {
             if (ffd.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY) {
-                if (strcmp(ffd.cFileName, ".") == 0 || strcmp(ffd.cFileName, "..") == 0)
+                if (strcmp(ffd.cFileName, ".") == 0 ||
+                    strcmp(ffd.cFileName, "..") == 0)
                     continue;
 
                 char path[MAX_PATH + 50];
                 snprintf(path, sizeof(path), "%s/%s", base_path, ffd.cFileName);
 
-                if (!*is_first)
+                if (!*first)
                     fprintf(toml_files, ",\n        ");
                 else {
                     fprintf(toml_files, "\n        ");
-                    *is_first = 0;
+                    *first = 0;
                 }
 
                 fprintf(toml_files, "\"%s\"", path);
-                __toml_base_subdirs(path, toml_files, is_first);
+                __toml_base_subdirs(path, toml_files, first);
             }
         } while (FindNextFileA(hFind, &ffd) != 0);
 
         FindClose(hFind);
 #else
         DIR *dir;
-        struct dirent *entry;
+        struct dirent *_entry;
 
         if (!(dir = opendir(base_path)))
             return;
 
-        while ((entry = readdir(dir)) != NULL) {
-            if (entry->d_type == DT_DIR) {
-                if (strcmp(entry->d_name, ".") == 0 || strcmp(entry->d_name, "..") == 0)
+        while ((_entry = readdir(dir)) != NULL) {
+            if (_entry->d_type == DT_DIR) {
+                if (strcmp(_entry->d_name, ".") == 0 ||
+                    strcmp(_entry->d_name, "..") == 0)
                     continue;
 
                 char path[PATH_MAX + 50];
-                snprintf(path, sizeof(path), "%s/%s", base_path, entry->d_name);
+                snprintf(path, sizeof(path), "%s/%s", base_path, _entry->d_name);
 
-                if (!*is_first)
+                if (!*first)
                     fprintf(toml_files, ",\n        ");
                 else {
                     fprintf(toml_files, "\n        ");
-                    *is_first = 0;
+                    *first = 0;
                 }
 
                 fprintf(toml_files, "\"%s\"", path);
-                __toml_base_subdirs(path, toml_files, is_first);
+                __toml_base_subdirs(path, toml_files, first);
             }
         }
 
@@ -639,42 +658,92 @@ void __toml_base_subdirs(const char *base_path, FILE *toml_files, int *is_first)
 #endif
 }
 
-int watch_toml_data(void)
+int wd_SetToml(void)
 {
-        const char *fname = "watchdogs.toml";
-        FILE *toml_files;
+        wd_sef_fdir_reset();
 
-        int find_gamemodes = watch_sef_fdir("gamemodes/", "*.pwn", NULL);
+        int __find_pawncc = 0;
+        int __find_gamemodes = 0;
+        int __pcc_is_compatible_opt = 0;
+        if (wcfg.f_samp == 0x01)
+__def:
+            __find_pawncc = wd_sef_fdir("pawno", "pawncc", NULL);
+        else if (wcfg.f_openmp == 0x01)
+            __find_pawncc = wd_sef_fdir("qawno", "pawncc", NULL);
+        if (!__find_pawncc) {
+            wd_sef_fdir_reset();
+            __find_pawncc = wd_sef_fdir(".", "pawncc", NULL);
+        }
 
-        char i_path_rm[1024];
-        snprintf(i_path_rm, sizeof(i_path_rm), "%s", wcfg.sef_found[0]);
-        char *f_EXT = strrchr(i_path_rm, '.');
-        if (f_EXT && strcmp(f_EXT, ".pwn") == 0)
-            *f_EXT = '\0';
+        __find_gamemodes = wd_sef_fdir("gamemodes/", "*.pwn", NULL);
+
+        if (__find_pawncc)
+        {
+            char __run_pcc_sz[PATH_MAX];
+            snprintf(__run_pcc_sz, PATH_MAX, "%s -___DDDDDDDDDDDDDDDDD" \
+                                                "-___DDDDDDDDDDDDDDDDD" \
+                                                "-___DDDDDDDDDDDDDDDDD" \
+                                                "-___DDDDDDDDDDDDDDDDD > .wd_compiler.log 2>&1", wcfg.sef_found[0]);
+            wd_RunCommand(__run_pcc_sz);
+
+            FILE *procc_f;
+            procc_f = fopen(".wd_compiler.log", "r");
+            if (procc_f) {
+                char __cp_log_line[PATH_MAX];
+                while (fgets(__cp_log_line, sizeof(__cp_log_line), procc_f) != NULL) {
+                    if (strstr(__cp_log_line,
+                        "         -Z[+/-]") || 
+                        strfind(__cp_log_line,
+                        "-Z[+/-]"))
+                    {
+                        __pcc_is_compatible_opt=1;
+                        break;
+                    } else {}
+                }
+                fclose(procc_f);
+            } else {
+                printf_error("failed to open .wd_compiler.log");
+            }
+        }
+
+        int _wd_log_acces = path_acces(".wd_compiler.log");
+        if (_wd_log_acces == 1)
+            remove(".wd_compiler.log");
+
+        char __sef_path_sz[PATH_MAX];
+        if (__find_pawncc)
+            snprintf(__sef_path_sz, sizeof(__sef_path_sz), "%s", wcfg.sef_found[1]);
+        else
+            snprintf(__sef_path_sz, sizeof(__sef_path_sz), "%s", wcfg.sef_found[0]);
+        char *f_EXT = strrchr(__sef_path_sz, '.');
+        if (f_EXT) *f_EXT = '\0';
             
-        toml_files = fopen(fname, "r");
+        FILE *toml_files = fopen("watchdogs.toml", "r");
         if (toml_files != NULL)
                 fclose(toml_files);
         else {
-                toml_files = fopen(fname, "w");
+                toml_files = fopen("watchdogs.toml", "w");
                 if (toml_files != NULL) {
-                    if (find_gamemodes) {
-                        const char *os_type = watch_detect_os();
+                    if (__find_gamemodes) {
+                        const char *os_type = wd_DetectOS();
                         fprintf(toml_files, "[general]\n");
                         fprintf(toml_files, "\tos = \"%s\"\n", os_type);
                         fprintf(toml_files, "[compiler]\n");
-                        fprintf(toml_files, "\toption = [\"-d3\", \"-;+\", \"-(+\"]\n");
+                        if (__pcc_is_compatible_opt == 1)
+                            fprintf(toml_files, "\toption = [\"-Z+\", \"-d3\", \"-;+\", \"-(+\"]\n");
+                        else
+                            fprintf(toml_files, "\toption = [\"-d3\", \"-;+\", \"-(+\"]\n");
                         fprintf(toml_files, "\tinclude_path = [");
                         int __fm = 1;
-                        if (access("gamemodes", F_OK) == 0) {
+                        if (path_acces("gamemodes")) {
                             if (!__fm)
                                 fprintf(toml_files, ",");
                             fprintf(toml_files, "\n        \"gamemodes\"");
                             __fm = 0;
                             __toml_base_subdirs("gamemodes", toml_files, &__fm);
                         }
-                        if (find_for_samp == 0x01) {
-                            if (access("pawno/include", F_OK) == 0) {
+                        if (wcfg.f_samp == 0x01) {
+                            if (path_acces("pawno/include")) {
                                 if (!__fm)
                                     fprintf(toml_files, ",");
                                 fprintf(toml_files, "\n        \"pawno/include\"");
@@ -682,8 +751,8 @@ int watch_toml_data(void)
                                 __toml_base_subdirs("pawno/include", toml_files, &__fm);
                             }
                         }
-                        else if (find_for_omp == 0x01) {
-                            if (access("qawno/include", F_OK) == 0) {
+                        else if (wcfg.f_openmp == 0x01) {
+                            if (path_acces("qawno/include")) {
                                 if (!__fm)
                                     fprintf(toml_files, ",");
                                 fprintf(toml_files, "\n        \"qawno/include\"");
@@ -692,7 +761,7 @@ int watch_toml_data(void)
                             }
                         }
                         else {
-                            if (access("pawno/include", F_OK) == 0) {
+                            if (path_acces("pawno/include")) {
                                 if (!__fm)
                                     fprintf(toml_files, ",");
                                 fprintf(toml_files, "\n        \"pawno/include\"");
@@ -701,27 +770,30 @@ int watch_toml_data(void)
                             }
                         }
                         fprintf(toml_files, "\n    ]\n");
-                        fprintf(toml_files, "\tinput = \"%s.pwn\"\n", i_path_rm);
-                        fprintf(toml_files, "\toutput = \"%s.amx\"\n", i_path_rm);
+                        fprintf(toml_files, "\tinput = \"%s.pwn\"\n", __sef_path_sz);
+                        fprintf(toml_files, "\toutput = \"%s.amx\"\n", __sef_path_sz);
                         fclose(toml_files);
                     }
                     else {
-                        const char *os_type = watch_detect_os();
+                        const char *os_type = wd_DetectOS();
                         fprintf(toml_files, "[general]\n");
                         fprintf(toml_files, "\tos = \"%s\"\n", os_type);
                         fprintf(toml_files, "[compiler]\n");
-                        fprintf(toml_files, "\toption = [\"-d3\", \"-;+\", \"-(+\"]\n");
+                        if (__pcc_is_compatible_opt == 1)
+                            fprintf(toml_files, "\toption = [\"-Z+\", \"-d3\", \"-;+\", \"-(+\"]\n");
+                        else
+                            fprintf(toml_files, "\toption = [\"-d3\", \"-;+\", \"-(+\"]\n");
                         fprintf(toml_files, "\tinclude_path = [");
                         int __fm = 1;
-                        if (access("gamemodes", F_OK) == 0) {
+                        if (path_acces("gamemodes")) {
                             if (!__fm)
                                 fprintf(toml_files, ",");
                             fprintf(toml_files, "\n        \"gamemodes\"");
                             __fm = 0;
                             __toml_base_subdirs("gamemodes", toml_files, &__fm);
                         }
-                        if (find_for_samp == 0x01) {
-                            if (access("pawno/include", F_OK) == 0) {
+                        if (wcfg.f_samp == 0x01) {
+                            if (path_acces("pawno/include")) {
                                 if (!__fm)
                                     fprintf(toml_files, ",");
                                 fprintf(toml_files, "\n        \"pawno/include\"");
@@ -729,8 +801,8 @@ int watch_toml_data(void)
                                 __toml_base_subdirs("pawno/include", toml_files, &__fm);
                             }
                         }
-                        else if (find_for_omp == 0x01) {
-                            if (access("qawno/include", F_OK) == 0) {
+                        else if (wcfg.f_openmp == 0x01) {
+                            if (path_acces("qawno/include")) {
                                 if (!__fm)
                                     fprintf(toml_files, ",");
                                 fprintf(toml_files, "\n        \"qawno/include\"");
@@ -739,7 +811,7 @@ int watch_toml_data(void)
                             }
                         }
                         else {
-                            if (access("pawno/include", F_OK) == 0) {
+                            if (path_acces("pawno/include")) {
                                 if (!__fm)
                                     fprintf(toml_files, ",");
                                 fprintf(toml_files, "\n        \"pawno/include\"");
@@ -748,115 +820,161 @@ int watch_toml_data(void)
                             }
                         }
                         fprintf(toml_files, "\n    ]\n");
-                        fprintf(toml_files, "\tinput = \"main.pwn\"\n");
-                        fprintf(toml_files, "\toutput = \"main.amx\"\n");
+                        fprintf(toml_files, "\tinput = \"gamemodes/bare.pwn\"\n");
+                        fprintf(toml_files, "\toutput = \"gamemodes/bare.amx\"\n");
                         fclose(toml_files);
                     }
                 }
         }
-        FILE *procc_f = fopen(fname, "r");
-        if (!procc_f) printf_error("can't a_read file %ss\n", fname);
+        
+        FILE *procc_f = fopen("watchdogs.toml", "r");
+        if (!procc_f) printf_error("Can't a_read file %ss", "watchdogs.toml");
 
         char errbuf[256];
-        toml_table_t *config = toml_parse_file(procc_f, errbuf, sizeof(errbuf));
-        fclose(procc_f);
+        toml_table_t *_toml_config;
+        _toml_config = toml_parse_file(procc_f, errbuf, sizeof(errbuf));
+        
+        if (procc_f)
+            fclose(procc_f);
 
-        if (!config) printf_error("parsing TOML: %s\n", errbuf);
+        if (!_toml_config)
+            printf_error("parsing TOML: %s", errbuf);
 
-        toml_table_t *_watch_general = toml_table_in(config, "general");
-        if (_watch_general) {
-                toml_datum_t os_val = toml_string_in(_watch_general, "os");
+        toml_table_t *_wd_general = toml_table_in(_toml_config, "general");
+        if (_wd_general) {
+                toml_datum_t os_val = toml_string_in(_wd_general, "os");
                 if (os_val.ok) wcfg.os = strdup(os_val.u.s);
                 free(os_val.u.s);
+                os_val.u.s = NULL;
         }
 
-        toml_free(config);
+        toml_free(_toml_config);
 
-        return 0;
+        return RETZ;
 }
 
-int __T_mv_wout_sudo(const char *src, const char *dest) {
-        if (rename(src, dest) == 0) return 0;
-        if (errno == EXDEV || errno == EACCES || errno == EPERM) {
-            if (!is_regular_file(src)) return -1;
+int
+__T_mv_with_o_sudo(const char *src, const char *dest) {
+        if (rename(src, dest) == 0)
+            return RETZ;
+        
+        if (errno == EXDEV ||
+            errno == EACCES ||
+            errno == EPERM)
+        {
+            if (!file_regular(src))
+                return -RETN;
+
             char parent[PATH_MAX];
-            if (ensure_parent_dir(parent, sizeof(parent), dest) != 0) return -1;
-            if (!dir_writable(parent)) return -2;
+            if (ensure_parent_dir(parent, sizeof(parent), dest) != 0)
+                return -RETN;
+            if (!dir_writable(parent))
+                return -2;
+
             char tmp_path[PATH_MAX];
-            int rv = snprintf(tmp_path, sizeof(tmp_path), "%s/.tmp_watch_move_XXXXXX", parent);
-            if (rv < 0 || (size_t)rv >= sizeof(tmp_path)) return -1;
+            int rv = snprintf(tmp_path, sizeof(tmp_path),
+                "%s/.tmp_wd_move_XXXXXX",
+                parent);
+            if (rv < 0 || (size_t)rv >= sizeof(tmp_path))
+                return -RETN;
             int tmpfd = mkstemp(tmp_path);
-            if (tmpfd < 0) return -1;
+            if (tmpfd < 0)
+                return -RETN;
+            
             close(tmpfd);
+            
             if (cp_f_content(src, tmp_path) != 0) {
                     unlink(tmp_path);
-                    return -1;
+                    return -RETN;
             }
-            __give_permissions(src, tmp_path);
+
+            wd_SetPermission(src, tmp_path);
+            
             if (rename(tmp_path, dest) != 0) {
                     unlink(tmp_path);
-                    if (errno == EACCES || errno == EPERM) return -2;
-                    return -1;
+                    if (errno == EACCES || errno == EPERM)
+                        return -2;
+                    return -RETN;
             }
-            if (unlink(src) != 0) return -3;
-            return 0;
+            if (unlink(src) != 0)
+                return -3;
+            
+            return RETZ;
         }
-        return -1;
+
+        return -RETN;
 }
 
-int __T_cp_wout_sudo(const char *src, const char *dest) {
-        if (!is_regular_file(src)) return -1;
+int __T_cp_with_o_sudo(const char *src, const char *dest) {
+        if (!file_regular(src))
+            return -RETN;
+        
         char parent[PATH_MAX];
-        if (ensure_parent_dir(parent, sizeof(parent), dest) != 0) return -1;
-        if (!dir_writable(parent)) return -2;
+        if (ensure_parent_dir(parent, sizeof(parent), dest) != 0)
+            return -RETN;
+        if (!dir_writable(parent))
+            return -2;
+
         char tmp_path[PATH_MAX];
-        int rv = snprintf(tmp_path, sizeof(tmp_path), "%s/.tmp_watch_copy_XXXXXX", parent);
-        if (rv < 0 || (size_t)rv >= sizeof(tmp_path)) return -1;
+        int rv = snprintf(tmp_path, sizeof(tmp_path),
+            "%s/.tmp_wd_copy_XXXXXX",
+            parent);
+        if (rv < 0 || (size_t)rv >= sizeof(tmp_path))
+            return -RETN;
         int tmpfd = mkstemp(tmp_path);
-        if (tmpfd < 0) return -1;
+        if (tmpfd < 0)
+            return -RETN;
+        
         close(tmpfd);
+        
         if (cp_f_content(src, tmp_path) != 0) {
                 unlink(tmp_path);
-                return -1;
+                return -RETN;
         }
-        __give_permissions(src, tmp_path);
+
+        wd_SetPermission(src, tmp_path);
+        
         if (rename(tmp_path, dest) != 0) {
                 unlink(tmp_path);
-                if (errno == EACCES || errno == EPERM) return -2;
-                return -1;
+                if (errno == EACCES || errno == EPERM)
+                    return -2;
+                return -RETN;
         }
-        return 0;
+
+        return RETZ;
 }
 
 #ifdef _WIN32
 
 static int __mv_with_sudo(const char *src, const char *dest) {
         if (!MoveFileExA(src, dest, MOVEFILE_COPY_ALLOWED | MOVEFILE_REPLACE_EXISTING)) {
-#ifdef DEBUGGING
+#ifdef _debugger_
             print_error("in __mv_with_sudo");
 #endif
-            return -1;
+            return -RETN;
         }
-        return 0;
+
+        return RETZ;
 }
 
 static int __cp_with_sudo(const char *src, const char *dest) {
         if (!CopyFileA(src, dest, FALSE)) {
-#ifdef DEBUGGING
+#ifdef _debugger_
             print_error("in __cp_with_sudo");
 #endif
-            return -1;
+            return -RETN;
         }
-        return 0;
+
+        return RETZ;
 }
 
 #else
 
-static int __mv_with_sudo(const char *src, const char *dest) {
+int __mv_with_sudo(const char *src, const char *dest) {
         pid_t pid = fork();
         if (pid < 0) {
             perror("fork");
-            return -1;
+            return -RETN;
         } else if (pid == 0) {
             char *argv[5];
             argv[0] = "sudo";
@@ -871,23 +989,22 @@ static int __mv_with_sudo(const char *src, const char *dest) {
             int status;
             if (waitpid(pid, &status, 0) < 0) {
                 perror("waitpid");
-                return -1;
+                return -RETN;
             }
-            if (WIFEXITED(status)) {
+            if (WIFEXITED(status))
                 return WEXITSTATUS(status);
-            } else if (WIFSIGNALED(status)) {
-                return 128 + WTERMSIG(status);
-            } else {
-                return -1;
-            }
+            else if (WIFSIGNALED(status))
+                return RETN28 + WTERMSIG(status);
+            else
+                return -RETN;
         }
 }
 
-static int __cp_with_sudo(const char *src, const char *dest) {
+int __cp_with_sudo(const char *src, const char *dest) {
         pid_t pid = fork();
         if (pid < 0) {
             perror("fork");
-            return -1;
+            return -RETN;
         } else if (pid == 0) {
             char *argv[5];
             argv[0] = "sudo";
@@ -902,335 +1019,170 @@ static int __cp_with_sudo(const char *src, const char *dest) {
             int status;
             if (waitpid(pid, &status, 0) < 0) {
                 perror("waitpid");
-                return -1;
+                return -RETN;
             }
-            if (WIFEXITED(status)) {
+            if (WIFEXITED(status))
                 return WEXITSTATUS(status);
-            } else if (WIFSIGNALED(status)) {
-                return 128 + WTERMSIG(status);
-            } else {
-                return -1;
-            }
+            else if (WIFSIGNALED(status))
+                return RETN28 + WTERMSIG(status);
+            else
+                return -RETN;
         }
 }
 
 #endif
 
-int __watch_sef_safety(const char *c_src, const char *c_dest)
+int
+__wd_sef_safety(const char *c_src, const char *c_dest)
 {
         if (!c_src || !c_dest)
-            printf_error("src or dest is null\n");
+            printf_error("src or dest is null");
+
         if (strlen(c_src) == 0 || strlen(c_dest) == 0)
-            printf_error("src or dest empty\n");
-        if (strlen(c_src) >= PATH_MAX || strlen(c_dest) >= PATH_MAX)
-            printf_error("path too long\n");
+            printf_error("src or dest empty");
+        
+        if (strlen(c_src) >= PATH_MAX ||
+            strlen(c_dest) >= PATH_MAX)
+            printf_error("path too long");
+
         if (!path_exists(c_src))
-            printf_error("source does not exist: %s\n", c_src);
-        if (!is_regular_file(c_src))
-            printf_error("source is not a regular file: %s\n", c_src);
-        if (path_exists(c_dest)) {
-            if (is_same_file(c_src, c_dest)) {
-                printf_info("source and dest are the same file: %s\n", c_src);
-                return 0;
-            }
+            printf_error("source does not exist: %s", c_src);
+
+        if (!file_regular(c_src))
+            printf_error("source is not a regular file: %s", c_src);
+
+        if (path_exists(c_dest) &&
+            file_same_file(c_src, c_dest)) {
+            printf_info("source and dest are the same file: %s", c_src);
+            return RETZ;
         } else {
             char parent[PATH_MAX];
             if (ensure_parent_dir(parent, sizeof(parent), c_dest) != 0)
-                printf_error("cannot determine parent directory of dest\n");
+                printf_error("cannot determine parent dir of dest");
+
             struct stat st;
             if (stat(parent, &st) != 0)
-                printf_error("destination directory does not exist: %s\n", parent);
+                printf_error("destination dir does not exist: %s", parent);
+
             if (!S_ISDIR(st.st_mode))
-                printf_error("destination parent is not a directory: %s\n", parent);
+                printf_error("destination parent is not a dir: %s", parent);
         }
 
-        return 1;
+        return RETN;
 }
 
-int watch_sef_wmv(const char *c_src, const char *c_dest) {
-        int ret = __watch_sef_safety(c_src, c_dest);
-        if (ret != 1) { return 1; }
-
-        int mv_ret = __T_mv_wout_sudo(c_src, c_dest);
+int wd_sef_wmv(const char *c_src,
+               const char *c_dest)
+{
+        int ret = __wd_sef_safety(c_src, c_dest);
+        if (ret != 1) { return RETN; }
+        int mv_ret = __T_mv_with_o_sudo(c_src, c_dest);
         if (mv_ret == 0) {
 #ifdef _WIN32
-            if (w_chmo(c_dest) != 0)
-#ifdef WD_DEBUGGING
-                printf_warning("chmod failed: %s (errno=%d %s)\n", c_dest, errno, strerror(errno));
+            if (_w_chmod(c_dest) != 0)
+#ifdef _debugger_
+                printf_warning("chmod failed: %s (errno=%d %s)",
+                        c_dest,
+                        errno,
+                        strerror(errno));
 #endif
 #else
             if (chmod(c_dest, 0755) != 0)
-#ifdef WD_DEBUGGING
-                printf_warning("chmod failed: %s (errno=%d %s)\n", c_dest, errno, strerror(errno));
+#ifdef _debugger_
+                printf_warning("chmod failed: %s (errno=%d %s)",
+                        c_dest,
+                        errno,
+                        strerror(errno));
 #endif
 #endif
-            printf_info("moved without sudo: %s -> %s\n", c_src, c_dest);
-            return 0;
+            printf_info("moved without sudo: %s -> %s", c_src, c_dest);
+            return RETZ;
         } else {
-            if (mv_ret == -2 || errno == EACCES || errno == EPERM) {
-                printf_info("attempting sudo move due to permission issue\n");
-                int sudo_rc = __mv_with_sudo(c_src, c_dest);
-                if (sudo_rc == 0) {
-                    printf_info("moved with sudo: %s -> %s\n", c_src, c_dest);
-                    return 0;
+            if (mv_ret == -2 ||
+                errno == EACCES ||
+                errno == EPERM)
+            {
+                printf_info("attempting sudo move due to permission issue");
+
+                int _mv_with_sudo = __mv_with_sudo(c_src, c_dest);
+                if (_mv_with_sudo == 0) {
+                    printf_info("moved with sudo: %s -> %s", c_src, c_dest);
+                    return RETZ;
                 } else {
-                    printf_error("sudo mv failed with code %d\n", sudo_rc);
-                    return 1;
+                    printf_error("sudo mv failed with code %d", _mv_with_sudo);
+                    return RETN;
                 }
             } else if (mv_ret == -3) {
-                printf_warning("move partially succeeded (copied but couldn't unlink source). dest=%s\n", c_dest);
-                return 0;
+                printf_warning("move partially succeeded (copied but couldn't unlink source). dest=%s", c_dest);
+                return RETZ;
             } else {
-                printf_warning("move without sudo failed (errno=%d %s)\n", errno, strerror(errno));
-                printf_info("attempting sudo as last resort\n");
-                int sudo_rc = __mv_with_sudo(c_src, c_dest);
-                if (sudo_rc == 0) return 0;
-                printf_error("sudo mv failed with code %d\n", sudo_rc);
-                return 1;
+                printf_error("move without sudo failed (errno=%d %s)", errno, strerror(errno));
+                printf_info("attempting sudo as last resort");
+
+                int _mv_with_sudo = __mv_with_sudo(c_src, c_dest);
+                if (_mv_with_sudo == 0)
+                    return RETZ;
+                printf_error("sudo mv failed with code %d", _mv_with_sudo);
+
+                return RETN;
             }
         }
-        return 0;
+        return RETZ;
 }
 
-int watch_sef_wcopy(const char *c_src,
-                        const char *c_dest)
+int wd_sef_wcopy(const char *c_src,
+                 const char *c_dest)
 {
-        int ret = __watch_sef_safety(c_src, c_dest);
-        if (ret != 1) { return 1; }
-
-        if (path_exists(c_dest)) {
-            if (is_same_file(c_src, c_dest)) {
-                printf_info("source and dest are the same file: %s\n", c_src);
-                return 0;
-            }
-        } else {
-            char parent[PATH_MAX];
-            if (ensure_parent_dir(parent, sizeof(parent), c_dest) != 0) {
-                printf_error("cannot determine parent directory of dest\n");
-                return 1;
-            }
-            struct stat st;
-            if (stat(parent, &st) != 0) {
-                printf_error("destination directory does not exist: %s\n", parent);
-                return 1;
-            }
-            if (!S_ISDIR(st.st_mode)) {
-                printf_error("destination parent is not a directory: %s\n", parent);
-                return 1;
-            }
-        }
-	
-        int cp_ret = __T_cp_wout_sudo(c_src, c_dest);
+        int ret = __wd_sef_safety(c_src, c_dest);
+        if (ret != 1) { return RETN; }
+        int cp_ret = __T_cp_with_o_sudo(c_src, c_dest);
         if (cp_ret == 0) {
 #ifdef _WIN32
-            if (w_chmo(c_dest) != 0)
-#ifdef WD_DEBUGGING
-                printf_warning("chmod failed: %s (errno=%d %s)\n", c_dest, errno, strerror(errno));
+            if (_w_chmod(c_dest) != 0)
+#ifdef _debugger_
+                printf_warning("chmod failed: %s (errno=%d %s)",
+                        c_dest,
+                        errno,
+                        strerror(errno));
 #endif
 #else
             if (chmod(c_dest, 0755) != 0)
-#ifdef WD_DEBUGGING
-                printf_warning("chmod failed: %s (errno=%d %s)\n", c_dest, errno, strerror(errno));
+#ifdef _debugger_
+                printf_warning("chmod failed: %s (errno=%d %s)",
+                        c_dest,
+                        errno,
+                        strerror(errno));
 #endif
 #endif
-            printf_info("copied without sudo: %s -> %s\n", c_src, c_dest);
-            return 0;
+            printf_info("copied without sudo: %s -> %s", c_src, c_dest);
+            return RETZ;
         } else {
-            if (cp_ret == -2 || errno == EACCES || errno == EPERM) {
-                printf_info("attempting sudo copy due to permission issue\n");
-                int sudo_rc = __cp_with_sudo(c_src, c_dest);
-                if (sudo_rc == 0) {
-                    printf_info("copied with sudo: %s -> %s\n", c_src, c_dest);
-                    return 0;
+            if (cp_ret == -2 ||
+                errno == EACCES ||
+                errno == EPERM)
+            {
+                printf_info("attempting sudo copy due to permission issue");
+
+                int _cp_with_sudo = __cp_with_sudo(c_src, c_dest);
+                if (_cp_with_sudo == 0) {
+                    printf_info("copied with sudo: %s -> %s", c_src, c_dest);
+                    return RETZ;
                 } else {
-                    printf_error("sudo cp failed with code %d\n", sudo_rc);
-                    return 1;
+                    printf_error("sudo cp failed with code %d", _cp_with_sudo);
+                    return RETN;
                 }
             } else {
-                printf_warning("copy without sudo failed (errno=%d %s)\n", errno, strerror(errno));
-                printf_info("attempting sudo as last resort\n");
-                int sudo_rc = __cp_with_sudo(c_src, c_dest);
-                if (sudo_rc == 0) return 0;
-                printf_error("sudo cp failed with code %d\n", sudo_rc);
-                return 1;
+                printf_error("copy without sudo failed (errno=%d %s)", errno, strerror(errno));
+                printf_info("attempting sudo as last resort");
+
+                int _cp_with_sudo = __cp_with_sudo(c_src, c_dest);
+                if (_cp_with_sudo == 0)
+                    return RETZ;
+                printf_error("sudo cp failed with code %d", _cp_with_sudo);
+
+                return RETN;
             }
         }
 
-        return 0;
+        return RETZ;
 }
-
-void
-install_pawncc_now(void) {        
-        int find_pawncc_exe = 0,
-            find_pawncc = 0,
-            find_pawndisasm_exe = 0,
-            find_pawndisasm = 0;
-
-        if (find_for_samp == 0x01)
-        {
-        find_pawncc_samp:
-            find_pawncc_exe = watch_sef_fdir(".", "pawncc.exe", "pawno"),
-            find_pawncc = watch_sef_fdir(".", "pawncc", "pawno"),
-            find_pawndisasm_exe = watch_sef_fdir(".", "pawndisasm.exe", "pawno"),
-            find_pawndisasm = watch_sef_fdir(".", "pawndisasm", "pawno");
-        } else if (find_for_omp == 0x01) {
-            find_pawncc_exe = watch_sef_fdir(".", "pawncc.exe", "qawno"),
-            find_pawncc = watch_sef_fdir(".", "pawncc", "qawno"),
-            find_pawndisasm_exe = watch_sef_fdir(".", "pawndisasm.exe", "qawno"),
-            find_pawndisasm = watch_sef_fdir(".", "pawndisasm", "qawno");
-        } else { goto find_pawncc_samp; }
-
-        int dir_pawno=0,
-            dir_qawno=0;
-        char *dest_path = NULL,
-             str_dest_path[526];
-
-        struct stat st;
-        if (stat("pawno", &st) == 0 && S_ISDIR(st.st_mode)) {
-                dir_pawno=1;
-                dest_path="pawno";
-        }
-        if (stat("qawno", &st) == 0 && S_ISDIR(st.st_mode)) {
-                dir_qawno=1;
-                dest_path="qawno";
-        }
-        if (!dir_pawno && !dir_qawno) {
-#ifdef _WIN32
-            if (mkdir("pawno") == 0) dest_path = "pawno";
-#else
-            if (mkdir("pawno", 0755) == 0) dest_path = "pawno";
-#endif
-        }
-
-        sleep(2);
-
-        char pawncc_dest_path[1024] = {0},
-             pawncc_exe_dest_path[1024] = {0},
-             pawndisasm_dest_path[1024] = {0},
-             pawndisasm_exe_dest_path[1024] = {0};
-
-        for (int i = 0; i < wcfg.sef_count; i++) {
-            const char *entry = wcfg.sef_found[i];
-            if (!entry) continue;
-
-            if (strstr(entry, "pawncc.exe")) {
-                snprintf(pawncc_exe_dest_path, sizeof(pawncc_exe_dest_path), "%s", entry);
-                find_pawncc_exe = 1;
-            } else if (strstr(entry, "pawncc")) {
-                snprintf(pawncc_dest_path, sizeof(pawncc_dest_path), "%s", entry);
-                find_pawncc = 1;
-            }
-            else if (strstr(entry, "pawndisasm.exe")) {
-                snprintf(pawndisasm_exe_dest_path, sizeof(pawndisasm_exe_dest_path), "%s", entry);
-                find_pawndisasm_exe = 1;
-            } else if (strstr(entry, "pawndisasm")) {
-                snprintf(pawndisasm_dest_path, sizeof(pawndisasm_dest_path), "%s", entry);
-                find_pawndisasm = 1;
-            }
-        }
-
-        if (find_pawncc_exe) {
-            snprintf(str_dest_path, sizeof(str_dest_path), "%s%s%s",
-            						   dest_path,
-            						   "/",
-            						   "pawncc.exe");
-            watch_sef_wcopy(pawncc_exe_dest_path, str_dest_path);
-        }
-        if (find_pawncc) {
-            snprintf(str_dest_path, sizeof(str_dest_path), "%s%s%s",
-            						   dest_path,
-            						   "/",
-            						   "pawncc");
-            watch_sef_wcopy(pawncc_dest_path, str_dest_path);
-        }
-        if (find_pawndisasm_exe) {
-            snprintf(str_dest_path, sizeof(str_dest_path), "%s%s%s",
-            						   dest_path,
-            						   "/",
-            						   "pawndisasm.exe");
-            watch_sef_wcopy(pawndisasm_exe_dest_path, str_dest_path);
-        }
-        if (find_pawndisasm) {
-            snprintf(str_dest_path, sizeof(str_dest_path), "%s%s%s",
-            						   dest_path,
-            						   "/",
-            						   "pawndisasm");
-            watch_sef_wcopy(pawndisasm_dest_path, str_dest_path);
-        }
-
-#ifndef _WIN32
-        if (__os__ == 0x00) {
-                char *str_lib_path = NULL,
-                     str_full_dest_path[128];
-
-                int find_libpawnc = watch_sef_fdir(".", "libpawnc.so");
-                char libpawnc_dest_path[1024];
-                for (int i = 0; i < wcfg.sef_count; i++) {
-                        if (strstr(wcfg.sef_found[i], "libpawnc.so")) {
-                                snprintf(libpawnc_dest_path, sizeof(libpawnc_dest_path), "%s",
-                                                                                                wcfg.sef_found[i]);
-                                break;
-                        }
-                }
-
-                struct stat st;
-                int lib_or_lib32 = 0;
-                if (!stat("/usr/local/lib32", &st) && S_ISDIR(st.st_mode)) {
-                        lib_or_lib32=2;
-                        str_lib_path="/usr/local/lib32";
-                } else if (!stat("/data/data/com.termux/files/usr/local/lib/", &st) && S_ISDIR(st.st_mode)) {
-                        str_lib_path="/data/data/com.termux/files/usr/local/lib/";
-                } else if (!stat("/data/data/com.termux/files/usr/lib/", &st) && S_ISDIR(st.st_mode)) {
-                        str_lib_path="/data/data/com.termux/files/usr/lib/";
-                } else if (!stat("/usr/local/lib", &st) && S_ISDIR(st.st_mode)) {
-                        lib_or_lib32=1;
-                        str_lib_path="/usr/local/lib";
-                } else printf_error("Can't found ../usr/local/lib!");
-
-                if (find_libpawnc == 1) {
-                        snprintf(str_full_dest_path, sizeof(str_full_dest_path), "%s/libpawnc.so", str_lib_path);
-                        watch_sef_wmv(libpawnc_dest_path, str_full_dest_path);
-                }
-
-                if (strcmp(str_lib_path, "/usr/local/lib") == 0) {
-                        int sys_sudo = watch_sys("which sudo > /dev/null 2>&1");
-                        if (sys_sudo == 0) watch_sys("sudo ldconfig");
-                        else watch_sys("ldconfig");
-
-                        if (lib_or_lib32 == 1) {
-                                const char
-                                        *old_path_lib = getenv("LD_LIBRARY_PATH");
-                                char
-                                        new_path_lib[256];
-                                if (old_path_lib) snprintf(new_path_lib, sizeof(new_path_lib), "/usr/local/lib:%s",
-                                                                                                old_path_lib);
-                                else snprintf(new_path_lib, sizeof(new_path_lib), "/usr/local/lib");
-                                setenv("LD_LIBRARY_PATH", new_path_lib, 1);
-                        } else if (lib_or_lib32 == 2) {
-                                const char
-                                        *old_path_lib32 = getenv("LD_LIBRARY_PATH");
-                                char
-                                        new_path_lib32[256];
-                                if (old_path_lib32) snprintf(new_path_lib32, sizeof(new_path_lib32), "/usr/local/lib32:%s",
-                                                                                                     old_path_lib32);
-                                else snprintf(new_path_lib32, sizeof(new_path_lib32), "/usr/local/lib32");
-                                setenv("LD_LIBRARY_PATH", new_path_lib32, 1);
-                        }
-                } else {
-                        const char
-                                *old_path_lib_tr = getenv("LD_LIBRARY_PATH");
-                        char
-                                new_path_lib_tr[256];
-                        if (old_path_lib_tr) snprintf(new_path_lib_tr, sizeof(new_path_lib_tr), "%s:%s",
-                                                                                                str_lib_path,
-                                                                                                old_path_lib_tr);
-                        else snprintf(new_path_lib_tr, sizeof(new_path_lib_tr), "%s", str_lib_path);
-                        setenv("LD_LIBRARY_PATH", new_path_lib_tr, 1);
-                }
-        }
-#endif
-
-        printf_color(COL_YELLOW, "apply finished!\n");
-        ___main___(0);
-}
-

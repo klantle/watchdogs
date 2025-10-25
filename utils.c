@@ -183,9 +183,9 @@ static int __regex_v_win(const char *s, char *badch, size_t *pos) {
 
 static int __regex_check__(const char *cmd, char *badch, size_t *pos) {
 #ifdef _WIN32
-    return __regex_v_win(cmd, badch, pos);
+        return __regex_v_win(cmd, badch, pos);
 #else
-    return __regex_v_unix(cmd, badch, pos);
+        return __regex_v_unix(cmd, badch, pos);
 #endif
 }
 

@@ -57,9 +57,11 @@ install:
 		$(MAKE) windows; \
 	elif echo "$$UNAME_S" | grep -qi "Linux"; then \
 		echo "$(YELLOW)==>$(RESET) Detected: Native Linux environment"; \
+		sudo dpkg --add-architecture i386; \
 		sudo apt update -y && \
 		sudo apt install -y build-essential libssl-dev libcurl4-openssl-dev \
-			libncurses5-dev libreadline-dev libarchive-dev; \
+			libncurses5-dev libreadline-dev libarchive-dev \
+			libc6:i386 libncurses5:i386 libstdc++6:i386 zlib1g:i386; \
 		$(MAKE) linux; \
 	else \
 		echo "$(YELLOW)==>$(RESET) Unknown or unsupported environment."; \

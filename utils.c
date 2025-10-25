@@ -111,11 +111,105 @@ void wd_sef_fdir_reset()
         wcfg.sef_count = 0;
 }
 
+int wd_SignalOS(void) {
+        if (strcmp(wcfg.os, "windows") == 0)
+                return 0x01;
+        else if (strcmp(wcfg.os, "linux") == 0)
+                return 0x00;
+        return 0x02;
+}
+
+static int __regex_v_unix(const char *s, char *badch, size_t *pos) {
+        const char *forbidden = "&;|$`\\\"'<>";
+        size_t i = 0;
+        for (; *s; ++s, ++i) {
+            unsigned char c = (unsigned char)*s;
+            if (iscntrl(c)) {
+                if (badch) *badch = c;
+                if (pos) *pos = i;
+                return 1;
+            }
+            if (c == ' ' || c == '\t' || c == '\n' || c == '\r') {
+                if (badch) *badch = c;
+                if (pos) *pos = i;
+                return 1;
+            }
+            if (strchr(forbidden, c)) {
+                if (badch) *badch = c;
+                if (pos) *pos = i;
+                return 1;
+            }
+            if (c == '(' || c == ')' || c == '{' || c == '}' ||
+                c == '[' || c == ']' || c == '*' || c == '?' || c == '~' ||
+                c == '#'
+            ) {
+                if (badch) *badch = c;
+                if (pos) *pos = i;
+                return 1;
+            }
+        }
+        return 0;
+}
+
+static int __regex_v_win(const char *s, char *badch, size_t *pos) {
+        const char *forbidden = "&|<>^\"'`\\";
+        size_t i = 0;
+        for (; *s; ++s, ++i) {
+            unsigned char c = (unsigned char)*s;
+            if (iscntrl(c)) {
+                if (badch) *badch = c;
+                if (pos) *pos = i;
+                return 1;
+            }
+            if (c == ' ' || c == '\t' || c == '\n' || c == '\r') {
+                if (badch) *badch = c;
+                if (pos) *pos = i;
+                return 1;
+            }
+            if (strchr(forbidden, c)) {
+                if (badch) *badch = c;
+                if (pos) *pos = i;
+                return 1;
+            }
+            if (c == '%' || c == '!' || c == ',' || c == ';' || c == '*'
+                || c == '?' || c == '/') {
+                if (badch) *badch = c;
+                if (pos) *pos = i;
+                return 1;
+            }
+        }
+        return 0;
+}
+
+static int __regex_check__(const char *cmd, char *badch, size_t *pos) {
+#ifdef _WIN32
+    return __regex_v_win(cmd, badch, pos);
+#else
+    return __regex_v_unix(cmd, badch, pos);
+#endif
+}
+
 int wd_RunCommand(const char *cmd) {
-        char
-            size_cmd[1024];
-        snprintf(size_cmd, sizeof(size_cmd), "%s", cmd);
-        return system(size_cmd);
+        if (!cmd || !*cmd)
+            return -RETN;
+
+        char badch = 0;
+        size_t pos = (size_t)-1;
+
+        if (__regex_check__(cmd, &badch, &pos)) {
+#if defined(_DBG_PRINT)
+            if (isprint((unsigned char)badch)) {
+                printf_warning("symbol detected in wd_RunCommand - char='%c' (0x%02X) at pos=%zu; cmd=\"%s\"",
+                            badch, (unsigned char)badch, pos, cmd);
+            } else {
+                printf_warning("control symbol detected in wd_RunCommand - char=0x%02X at pos=%zu; cmd=\"%s\"",
+                            (unsigned char)badch, pos, cmd);
+            }
+#endif
+        }
+
+        int ret = system(cmd);
+        return ret;
 }
 
 void wd_SetPermission(const char *src, const char *tmp) {
@@ -312,8 +406,6 @@ const char* wd_DetectOS(void) {
         if (uname(&sys_info) == 0) {
             if (strstr(sys_info.sysname, "Linux"))
                 strncpy(os, "linux", sizeof(os));
-            else if (strstr(sys_info.sysname, "Darwin"))
-                strncpy(os, "macos", sizeof(os));
             else
                 strncpy(os, sys_info.sysname, sizeof(os));
         }
@@ -323,15 +415,6 @@ const char* wd_DetectOS(void) {
 
         os[sizeof(os)-1] = '\0';
         return os;
-}
-
-int wd_SignalOS(void) {
-        if (strcmp(wcfg.os, "windows") == 0)
-                return 0x01;
-        else if (strcmp(wcfg.os, "linux") == 0)
-                return 0x02;
-        
-        return RETZ;
 }
 
 int dir_exists(const char *path) {
@@ -660,34 +743,55 @@ void __toml_base_subdirs(const char *base_path, FILE *toml_files, int *first)
 
 int wd_SetToml(void)
 {
-        wd_sef_fdir_reset();
-
         int __find_pawncc = 0;
         int __find_gamemodes = 0;
         int __pcc_is_compatible_opt = 0;
-        if (wcfg.f_samp == 0x01)
+
+        const char *os_type = wd_DetectOS();
+        int __os = 0x00;
+        if (strcmp(os_type, "windows") == 0)
+            __os = 0x01;
+        else
+            __os = 0x00;
+        if (wcfg.f_samp == 0x01) {
 __def:
-            __find_pawncc = wd_sef_fdir("pawno", "pawncc", NULL);
-        else if (wcfg.f_openmp == 0x01)
-            __find_pawncc = wd_sef_fdir("qawno", "pawncc", NULL);
+            if (__os == 0x01)
+                __find_pawncc = wd_sef_fdir("pawno", "pawncc.exe", NULL);
+            else
+                __find_pawncc = wd_sef_fdir("pawno", "pawncc", NULL);
+        } else if (wcfg.f_openmp == 0x01) {
+            if (__os == 0x01)
+                __find_pawncc = wd_sef_fdir("qawno", "pawncc.exe", NULL);
+            else
+                __find_pawncc = wd_sef_fdir("qawno", "pawncc", NULL);
+        } else {
+            goto __def;
+        }
+
         if (!__find_pawncc) {
-            wd_sef_fdir_reset();
-            __find_pawncc = wd_sef_fdir(".", "pawncc", NULL);
+__def2:
+            if (__os == 0x01)
+                __find_pawncc = wd_sef_fdir(".", "pawncc.exe", NULL);
+            else
+                __find_pawncc = wd_sef_fdir(".", "pawncc", NULL);
+
+            if (!__find_pawncc)
+                goto __def2;
         }
 
         __find_gamemodes = wd_sef_fdir("gamemodes/", "*.pwn", NULL);
 
         if (__find_pawncc)
         {
-            char __run_pcc_sz[PATH_MAX];
-            snprintf(__run_pcc_sz, PATH_MAX, "%s -___DDDDDDDDDDDDDDDDD" \
-                                                "-___DDDDDDDDDDDDDDDDD" \
-                                                "-___DDDDDDDDDDDDDDDDD" \
-                                                "-___DDDDDDDDDDDDDDDDD > .wd_compiler.log 2>&1", wcfg.sef_found[0]);
+            char __run_pcc_sz[PATH_MAX + 258];
+            snprintf(__run_pcc_sz, sizeof(__run_pcc_sz), "%s -___DDDDDDDDDDDDDDDDD" \
+                                                            "-___DDDDDDDDDDDDDDDDD" \
+                                                            "-___DDDDDDDDDDDDDDDDD" \
+                                                            "-___DDDDDDDDDDDDDDDDD > .__CP.log 2>&1", wcfg.sef_found[0]);
             wd_RunCommand(__run_pcc_sz);
 
             FILE *procc_f;
-            procc_f = fopen(".wd_compiler.log", "r");
+            procc_f = fopen(".__CP.log", "r");
             if (procc_f) {
                 char __cp_log_line[PATH_MAX];
                 while (fgets(__cp_log_line, sizeof(__cp_log_line), procc_f) != NULL) {
@@ -702,13 +806,13 @@ __def:
                 }
                 fclose(procc_f);
             } else {
-                printf_error("failed to open .wd_compiler.log");
+                printf_error("failed to open .__CP.log");
             }
         }
 
-        int _wd_log_acces = path_acces(".wd_compiler.log");
+        int _wd_log_acces = path_acces(".__CP.log");
         if (_wd_log_acces == 1)
-            remove(".wd_compiler.log");
+            remove(".__CP.log");
 
         char __sef_path_sz[PATH_MAX];
         if (__find_pawncc)
@@ -725,7 +829,6 @@ __def:
                 toml_files = fopen("watchdogs.toml", "w");
                 if (toml_files != NULL) {
                     if (__find_gamemodes) {
-                        const char *os_type = wd_DetectOS();
                         fprintf(toml_files, "[general]\n");
                         fprintf(toml_files, "\tos = \"%s\"\n", os_type);
                         fprintf(toml_files, "[compiler]\n");
@@ -948,8 +1051,8 @@ int __T_cp_with_o_sudo(const char *src, const char *dest) {
 
 static int __mv_with_sudo(const char *src, const char *dest) {
         if (!MoveFileExA(src, dest, MOVEFILE_COPY_ALLOWED | MOVEFILE_REPLACE_EXISTING)) {
-#ifdef _debugger_
-            print_error("in __mv_with_sudo");
+#if defined(_DBG_PRINT)
+            printf_error("in __mv_with_sudo");
 #endif
             return -RETN;
         }
@@ -959,8 +1062,8 @@ static int __mv_with_sudo(const char *src, const char *dest) {
 
 static int __cp_with_sudo(const char *src, const char *dest) {
         if (!CopyFileA(src, dest, FALSE)) {
-#ifdef _debugger_
-            print_error("in __cp_with_sudo");
+#if defined(_DBG_PRINT)
+            printf_error("in __cp_with_sudo");
 #endif
             return -RETN;
         }
@@ -1032,157 +1135,150 @@ int __cp_with_sudo(const char *src, const char *dest) {
 
 #endif
 
-int
-__wd_sef_safety(const char *c_src, const char *c_dest)
+int __wd_sef_safety(const char *c_src, const char *c_dest)
 {
-        if (!c_src || !c_dest)
-            printf_error("src or dest is null");
+	char parent[PATH_MAX];
+	struct stat st;
 
-        if (strlen(c_src) == 0 || strlen(c_dest) == 0)
-            printf_error("src or dest empty");
-        
-        if (strlen(c_src) >= PATH_MAX ||
-            strlen(c_dest) >= PATH_MAX)
-            printf_error("path too long");
+	if (!c_src || !c_dest)
+		printf_error("src or dest is null");
 
-        if (!path_exists(c_src))
-            printf_error("source does not exist: %s", c_src);
+	if (!*c_src || !*c_dest)
+		printf_error("src or dest empty");
 
-        if (!file_regular(c_src))
-            printf_error("source is not a regular file: %s", c_src);
+	if (strlen(c_src) >= PATH_MAX || strlen(c_dest) >= PATH_MAX)
+		printf_error("path too long");
 
-        if (path_exists(c_dest) &&
-            file_same_file(c_src, c_dest)) {
-            printf_info("source and dest are the same file: %s", c_src);
-            return RETZ;
-        } else {
-            char parent[PATH_MAX];
-            if (ensure_parent_dir(parent, sizeof(parent), c_dest) != 0)
-                printf_error("cannot determine parent dir of dest");
+	if (!path_exists(c_src))
+		printf_error("source does not exist: %s", c_src);
 
-            struct stat st;
-            if (stat(parent, &st) != 0)
-                printf_error("destination dir does not exist: %s", parent);
+	if (!file_regular(c_src))
+		printf_error("source is not a regular file: %s", c_src);
 
-            if (!S_ISDIR(st.st_mode))
-                printf_error("destination parent is not a dir: %s", parent);
-        }
+	if (path_exists(c_dest) && file_same_file(c_src, c_dest)) {
+		printf_info("source and dest are the same file: %s", c_src);
+		return RETZ;
+	}
 
-        return RETN;
+	if (ensure_parent_dir(parent, sizeof(parent), c_dest))
+		printf_error("cannot determine parent dir of dest");
+
+	if (stat(parent, &st))
+		printf_error("destination dir does not exist: %s", parent);
+
+	if (!S_ISDIR(st.st_mode))
+		printf_error("destination parent is not a dir: %s", parent);
+
+	return RETN;
 }
 
-int wd_sef_wmv(const char *c_src,
-               const char *c_dest)
+int wd_sef_wmv(const char *c_src, const char *c_dest)
 {
-        int ret = __wd_sef_safety(c_src, c_dest);
-        if (ret != 1) { return RETN; }
-        int mv_ret = __T_mv_with_o_sudo(c_src, c_dest);
-        if (mv_ret == 0) {
+	int ret, mv_ret, _mv_with_sudo;
+
+	ret = __wd_sef_safety(c_src, c_dest);
+	if (ret != 1)
+		return RETN;
+
+	mv_ret = __T_mv_with_o_sudo(c_src, c_dest);
+	if (!mv_ret) {
 #ifdef _WIN32
-            if (_w_chmod(c_dest) != 0)
-#ifdef _debugger_
-                printf_warning("chmod failed: %s (errno=%d %s)",
-                        c_dest,
-                        errno,
-                        strerror(errno));
+		if (_w_chmod(c_dest)) {
+#if defined(_DBG_PRINT)
+			printf_warning("chmod failed: %s (errno=%d %s)",
+				       c_dest, errno, strerror(errno));
 #endif
+		}
 #else
-            if (chmod(c_dest, 0755) != 0)
-#ifdef _debugger_
-                printf_warning("chmod failed: %s (errno=%d %s)",
-                        c_dest,
-                        errno,
-                        strerror(errno));
+		if (chmod(c_dest, 0755)) {
+#if defined(_DBG_PRINT)
+			printf_warning("chmod failed: %s (errno=%d %s)",
+				       c_dest, errno, strerror(errno));
 #endif
+		}
 #endif
-            printf_info("moved without sudo: %s -> %s", c_src, c_dest);
-            return RETZ;
-        } else {
-            if (mv_ret == -2 ||
-                errno == EACCES ||
-                errno == EPERM)
-            {
-                printf_info("attempting sudo move due to permission issue");
+		printf_info("moved without sudo: %s -> %s", c_src, c_dest);
+		return RETZ;
+	}
 
-                int _mv_with_sudo = __mv_with_sudo(c_src, c_dest);
-                if (_mv_with_sudo == 0) {
-                    printf_info("moved with sudo: %s -> %s", c_src, c_dest);
-                    return RETZ;
-                } else {
-                    printf_error("sudo mv failed with code %d", _mv_with_sudo);
-                    return RETN;
-                }
-            } else if (mv_ret == -3) {
-                printf_warning("move partially succeeded (copied but couldn't unlink source). dest=%s", c_dest);
-                return RETZ;
-            } else {
-                printf_error("move without sudo failed (errno=%d %s)", errno, strerror(errno));
-                printf_info("attempting sudo as last resort");
+	if (mv_ret == -2 || errno == EACCES || errno == EPERM) {
+		printf_info("attempting sudo move due to permission issue");
 
-                int _mv_with_sudo = __mv_with_sudo(c_src, c_dest);
-                if (_mv_with_sudo == 0)
-                    return RETZ;
-                printf_error("sudo mv failed with code %d", _mv_with_sudo);
+		_mv_with_sudo = __mv_with_sudo(c_src, c_dest);
+		if (!_mv_with_sudo) {
+			printf_info("moved with sudo: %s -> %s", c_src, c_dest);
+			return RETZ;
+		}
 
-                return RETN;
-            }
-        }
-        return RETZ;
+		printf_error("sudo mv failed with code %d", _mv_with_sudo);
+		return RETN;
+	}
+
+	if (mv_ret == -3) {
+		printf_warning("move partially succeeded (copied but couldn't unlink source): %s", c_dest);
+		return RETZ;
+	}
+
+	printf_error("move without sudo failed (errno=%d %s)", errno, strerror(errno));
+	printf_info("attempting sudo as last resort");
+
+	_mv_with_sudo = __mv_with_sudo(c_src, c_dest);
+	if (!_mv_with_sudo)
+		return RETZ;
+
+	printf_error("sudo mv failed with code %d", _mv_with_sudo);
+	return RETN;
 }
 
-int wd_sef_wcopy(const char *c_src,
-                 const char *c_dest)
+int wd_sef_wcopy(const char *c_src, const char *c_dest)
 {
-        int ret = __wd_sef_safety(c_src, c_dest);
-        if (ret != 1) { return RETN; }
-        int cp_ret = __T_cp_with_o_sudo(c_src, c_dest);
-        if (cp_ret == 0) {
+	int ret, cp_ret, _cp_with_sudo;
+
+	ret = __wd_sef_safety(c_src, c_dest);
+	if (ret != 1)
+		return RETN;
+
+	cp_ret = __T_cp_with_o_sudo(c_src, c_dest);
+	if (!cp_ret) {
 #ifdef _WIN32
-            if (_w_chmod(c_dest) != 0)
-#ifdef _debugger_
-                printf_warning("chmod failed: %s (errno=%d %s)",
-                        c_dest,
-                        errno,
-                        strerror(errno));
+		if (_w_chmod(c_dest)) {
+#if defined(_DBG_PRINT)
+			printf_warning("chmod failed: %s (errno=%d %s)",
+				       c_dest, errno, strerror(errno));
 #endif
+		}
 #else
-            if (chmod(c_dest, 0755) != 0)
-#ifdef _debugger_
-                printf_warning("chmod failed: %s (errno=%d %s)",
-                        c_dest,
-                        errno,
-                        strerror(errno));
+		if (chmod(c_dest, 0755)) {
+#if defined(_DBG_PRINT)
+			printf_warning("chmod failed: %s (errno=%d %s)",
+				       c_dest, errno, strerror(errno));
 #endif
+		}
 #endif
-            printf_info("copied without sudo: %s -> %s", c_src, c_dest);
-            return RETZ;
-        } else {
-            if (cp_ret == -2 ||
-                errno == EACCES ||
-                errno == EPERM)
-            {
-                printf_info("attempting sudo copy due to permission issue");
+		printf_info("copied without sudo: %s -> %s", c_src, c_dest);
+		return RETZ;
+	}
 
-                int _cp_with_sudo = __cp_with_sudo(c_src, c_dest);
-                if (_cp_with_sudo == 0) {
-                    printf_info("copied with sudo: %s -> %s", c_src, c_dest);
-                    return RETZ;
-                } else {
-                    printf_error("sudo cp failed with code %d", _cp_with_sudo);
-                    return RETN;
-                }
-            } else {
-                printf_error("copy without sudo failed (errno=%d %s)", errno, strerror(errno));
-                printf_info("attempting sudo as last resort");
+	if (cp_ret == -2 || errno == EACCES || errno == EPERM) {
+		printf_info("attempting sudo copy due to permission issue");
 
-                int _cp_with_sudo = __cp_with_sudo(c_src, c_dest);
-                if (_cp_with_sudo == 0)
-                    return RETZ;
-                printf_error("sudo cp failed with code %d", _cp_with_sudo);
+		_cp_with_sudo = __cp_with_sudo(c_src, c_dest);
+		if (!_cp_with_sudo) {
+			printf_info("copied with sudo: %s -> %s", c_src, c_dest);
+			return RETZ;
+		}
 
-                return RETN;
-            }
-        }
+		printf_error("sudo cp failed with code %d", _cp_with_sudo);
+		return RETN;
+	}
 
-        return RETZ;
+	printf_error("copy without sudo failed (errno=%d %s)", errno, strerror(errno));
+	printf_info("attempting sudo as last resort");
+
+	_cp_with_sudo = __cp_with_sudo(c_src, c_dest);
+	if (!_cp_with_sudo)
+		return RETZ;
+
+	printf_error("sudo cp failed with code %d", _cp_with_sudo);
+	return RETN;
 }

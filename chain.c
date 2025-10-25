@@ -1,9 +1,5 @@
 #ifndef _GNU_SOURCE
 #define _GNU_SOURCE
-#endif 
-
-#if defined(_DBG_PRINT)
-#define _debugger_
 #endif
 
 #include <stdio.h>
@@ -60,10 +56,10 @@ struct timespec cmd_start, cmd_end;
 double command_dur;
 
 void __function__(void) {
+        wd_sef_fdir_reset();
         wd_SetToml();
         wd_u_history();
-        wd_sef_fdir_reset();
-
+        
         wcfg.__os__ = wd_SignalOS();
         
         if (wcfg.__os__ == 0x01) {
@@ -84,7 +80,7 @@ void __function__(void) {
             wcfg.f_openmp = 0x01;
             fclose(file_m);
         }
-#ifdef _debugger_
+#if defined(_DBG_PRINT)
         printf_color(COL_YELLOW, "-DEBUGGING\n");
         printf("[__function__]:\n\t__os__: 0x0%d\n\tpointer_samp: %s\n\tpointer_openmp: %s\n",
                 wcfg.__os__,
@@ -192,7 +188,41 @@ _reexecute_command:
                 remove("watchdogs.toml");
             }
             __function__();
+            FILE *procc_f = fopen("watchdogs.toml", "r");
+            if (procc_f) {
+#ifdef _WIN32
+                HANDLE hOut = GetStdHandle(STD_OUTPUT_HANDLE);
+                if (hOut != INVALID_HANDLE_VALUE) {
+                    DWORD dwMode = 0;
+                    if (GetConsoleMode(hOut, &dwMode))
+                        SetConsoleMode(hOut,
+                                       dwMode |
+                                       ENABLE_VIRTUAL_TERMINAL_PROCESSING);
+                }
+#endif
+
+                const char *BG  = "\x1b[48;5;235m";
+                const char *FG  = "\x1b[97m";
+                const char *BORD= "\x1b[33m";
+                const char *RST = "\x1b[0m";
+
+                printf("%s%s+------------------------------------------+%s\n", BORD, FG, RST);
+
+                char line[256];
+                while (fgets(line, sizeof(line), procc_f)) {
+                    size_t len = strlen(line);
+                    if (len && (line[len-1] == '\n' ||
+                        line[len-1] == '\r'))
+                        line[--len] = '\0';
+
+                    printf("%s%s|%s %-40s %s|%s\n", BORD, FG, BG, line, BORD, RST);
+                }
+
+                printf("%s%s+------------------------------------------+%s\n", BORD, FG, RST);
+                fclose(procc_f);
+            }
             return RETN;
+
         } else if (strcmp(ptr_command, "hardware") == 0) {
             printf("=== System Hardware Information ===\n\n");
             hardware_system_info();

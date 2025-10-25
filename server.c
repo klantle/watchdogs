@@ -159,7 +159,7 @@ void wd_RunOMPServer(const char *gamemode_arg, const char *server_bin) {
         json_data = malloc(file_len + 1);
         size_t bytes_read = fread(json_data, 1, file_len, procc_f);
         if (bytes_read != file_len) {
-#ifdef _debugger_
+#if defined(_DBG_PRINT)
             printf_error("failed to read file completely (%zu of %zu bytes)", bytes_read, file_len);
 #endif
             fclose(procc_f);

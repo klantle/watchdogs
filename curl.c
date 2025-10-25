@@ -64,7 +64,7 @@ int wd_DownloadFile(const char *url, const char *fname) {
         do {
                 __fp = fopen(fname, "wb");
                 if (!__fp) {
-#ifdef _debugger_
+#if defined(_DBG_PRINT)
                         printf_error("fopen failed for %s", fname);
 #endif
                         return -RETN;
@@ -72,7 +72,7 @@ int wd_DownloadFile(const char *url, const char *fname) {
 
                 __curl = curl_easy_init();
                 if (!__curl) {
-#ifdef _debugger_
+#if defined(_DBG_PRINT)
                         printf_error("failed to init curl");
 #endif
                         fclose(__fp);

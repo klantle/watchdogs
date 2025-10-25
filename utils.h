@@ -41,6 +41,7 @@ void wd_sef_fdir_reset();
 struct struct_of { int (*title)(const char *); };
 extern const char* __command[];
 extern const size_t __command_len;
+int wd_SignalOS(void);
 int wd_RunCommand(const char *cmd);
 void wd_SetPermission(const char *src, const char *tmp);
 void HANDLE_SIGINT(int sig);
@@ -56,7 +57,6 @@ extern const char* wd_FindNearCommand(
         int *out_distance
 );
 const char* wd_DetectOS(void);
-int wd_SignalOS(void);
 int kill_process(const char *name);
 void kill_process_safe(const char *name);
 int dir_exists(const char *path);

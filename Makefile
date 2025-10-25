@@ -34,19 +34,17 @@ OBJS = $(SRCS:.c=.o)
 install:
 	@echo "$(YELLOW)==>$(RESET) Detecting system environment..."
 	@UNAME_S=$$(uname -s); \
-	if echo "$$UNAME_S" | grep -qi "Linux" && [ -d "/data/data/com.termux" ]; then \
+	if echo "$$UNAME_S" | grep -qi "microsoft"; then \
+		echo "$(YELLOW)==>$(RESET) Detected: WSL environment (Linux kernel under Windows)"; \
+		echo "$(YELLOW)==>$(RESET) Treating as Windows build..."; \
+		$(MAKE) windows; \
+	elif echo "$$UNAME_S" | grep -qi "Linux" && [ -d "/data/data/com.termux" ]; then \
 		echo "$(YELLOW)==>$(RESET) Detected: Termux environment"; \
-		echo "$(YELLOW)==>$(RESET) Installing required packages..."; \
-		pkg update -y && \
-		pkg install -y clang openssl curl libarchive ncurses readline; \
-		echo "$(YELLOW)==>$(RESET) Building project..."; \
+		pkg update -y && pkg install -y clang openssl curl libarchive ncurses readline; \
 		$(MAKE) termux; \
-		chmod +x watchdogs_termux; \
-		echo "$(YELLOW)==>$(RESET) Installation complete. Run with ./watchdogs_termux"; \
 	elif echo "$$UNAME_S" | grep -qi "MINGW64_NT"; then \
 		echo "$(YELLOW)==>$(RESET) Detected: MSYS2 MinGW UCRT64 environment"; \
-		echo "$(YELLOW)==>$(RESET) Installing required packages via pacman..."; \
-		pacman -Sy --noconfirm; \
+		pacman -Sy --noconfirm && \
 		pacman -S --needed --noconfirm \
 			base-devel \
 			mingw-w64-ucrt-x86_64-toolchain \
@@ -56,23 +54,15 @@ install:
 			mingw-w64-ucrt-x86_64-libarchive \
 			mingw-w64-ucrt-x86_64-openssl \
 			mingw-w64-ucrt-x86_64-upx; \
-		echo "$(YELLOW)==>$(RESET) Building project..."; \
 		$(MAKE) windows; \
-		chmod +x watchdogs.win; \
-		echo "$(YELLOW)==>$(RESET) Installation complete. Run with ./watchdogs.win"; \
 	elif echo "$$UNAME_S" | grep -qi "Linux"; then \
-		echo "$(YELLOW)==>$(RESET) Detected: Linux environment"; \
-		echo "$(YELLOW)==>$(RESET) Installing required packages via apt..."; \
+		echo "$(YELLOW)==>$(RESET) Detected: Native Linux environment"; \
 		sudo apt update -y && \
 		sudo apt install -y build-essential libssl-dev libcurl4-openssl-dev \
 			libncurses5-dev libreadline-dev libarchive-dev; \
-		echo "$(YELLOW)==>$(RESET) Building project..."; \
 		$(MAKE) linux; \
-		chmod +x watchdogs; \
-		echo "$(YELLOW)==>$(RESET) Installation complete. Run with ./watchdogs"; \
 	else \
 		echo "$(YELLOW)==>$(RESET) Unknown or unsupported environment."; \
-		echo "Please install dependencies manually."; \
 		exit 1; \
 	fi
 
@@ -117,6 +107,13 @@ linux:
 	CFLAGS="$(CFLAGS)" \
 	LDFLAGS="$(LDFLAGS)"
 
+debug:
+	@printf "$(YELLOW)==>$(RESET) Building DEBUG Version $(VERSION) Full Version $(FULL_VERSION)\n"
+	@$(MAKE) TARGET=watchdogs.debug \
+	CC=gcc \
+	CFLAGS="$(CFLAGS) -g -O0 -D_DBG_PRINT -Wall" \
+	LDFLAGS="$(LDFLAGS)"
+
 termux:
 	@printf "$(YELLOW)==>$(RESET) Building $(TARGET) Version $(VERSION) Full Version $(FULL_VERSION)\n"
 	@printf "$(YELLOW)==>$(RESET) Build complete: $(TARGET) Version $(VERSION) Full Version $(FULL_VERSION)\n"
@@ -130,9 +127,11 @@ windows: $(OBJS)
 		$(LDFLAGS) -liphlpapi -lshlwapi
 	@printf "$(YELLOW)==>$(RESET) Build complete: $(TARGET) Version $(VERSION) Full Version $(FULL_VERSION)\n"
 
-windows-debug: $(OBJS)
+windows-debug:
 	@printf "$(YELLOW)==>$(RESET) Building DEBUG Version $(VERSION) Full Version $(FULL_VERSION)\n"
-	$(CC) -g -O0 -D_DBG_PRINT -Wall \
-	$(OBJS) -o atchdogs.debug.win \
-	$(LDFLAGS) -liphlpapi -lshlwapi
-	@printf "$(YELLOW)==>$(RESET) Debug build complete: ./atchdogs.debug.win\n"
+	@$(MAKE) $(OBJS) \
+	CC=$(CC) \
+	CFLAGS="$(CFLAGS) -g -O0 -Wall -D_DBG_PRINT" \
+	LDFLAGS="$(LDFLAGS) -liphlpapi -lshlwapi"
+	$(CC) $(CFLAGS) -g -O0 -Wall -D_DBG_PRINT $(OBJS) -o watchdogs.debug.win $(LDFLAGS) -liphlpapi -lshlwapi
+	@printf "$(YELLOW)==>$(RESET) Debug build complete: ./watchdogs.debug.win\n"

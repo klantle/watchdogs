@@ -29,7 +29,52 @@ SRCS = extra.c chain.c utils.c hardware.c compiler.c archive.c curl.c package.c 
 
 OBJS = $(SRCS:.c=.o)
 
-.PHONY: all clean linux termux windows compress strip debug windows-debug
+.PHONY: install all clean linux termux windows compress strip debug windows-debug
+
+install:
+	@echo "$(YELLOW)==>$(RESET) Detecting system environment..."
+	@UNAME_S=$$(uname -s); \
+	if echo "$$UNAME_S" | grep -qi "Linux" && [ -d "/data/data/com.termux" ]; then \
+		echo "$(YELLOW)==>$(RESET) Detected: Termux environment"; \
+		echo "$(YELLOW)==>$(RESET) Installing required packages..."; \
+		pkg update -y && \
+		pkg install -y clang openssl curl libarchive ncurses readline; \
+		echo "$(YELLOW)==>$(RESET) Building project..."; \
+		$(MAKE) termux; \
+		chmod +x watchdogs_termux; \
+		echo "$(YELLOW)==>$(RESET) Installation complete. Run with ./watchdogs_termux"; \
+	elif echo "$$UNAME_S" | grep -qi "MINGW64_NT"; then \
+		echo "$(YELLOW)==>$(RESET) Detected: MSYS2 MinGW UCRT64 environment"; \
+		echo "$(YELLOW)==>$(RESET) Installing required packages via pacman..."; \
+		pacman -Sy --noconfirm; \
+		pacman -S --needed --noconfirm \
+			base-devel \
+			mingw-w64-ucrt-x86_64-toolchain \
+			mingw-w64-ucrt-x86_64-curl \
+			mingw-w64-ucrt-x86_64-readline \
+			mingw-w64-ucrt-x86_64-ncurses \
+			mingw-w64-ucrt-x86_64-libarchive \
+			mingw-w64-ucrt-x86_64-openssl \
+			mingw-w64-ucrt-x86_64-upx; \
+		echo "$(YELLOW)==>$(RESET) Building project..."; \
+		$(MAKE) windows; \
+		chmod +x watchdogs.win; \
+		echo "$(YELLOW)==>$(RESET) Installation complete. Run with ./watchdogs.win"; \
+	elif echo "$$UNAME_S" | grep -qi "Linux"; then \
+		echo "$(YELLOW)==>$(RESET) Detected: Linux environment"; \
+		echo "$(YELLOW)==>$(RESET) Installing required packages via apt..."; \
+		sudo apt update -y && \
+		sudo apt install -y build-essential libssl-dev libcurl4-openssl-dev \
+			libncurses5-dev libreadline-dev libarchive-dev; \
+		echo "$(YELLOW)==>$(RESET) Building project..."; \
+		$(MAKE) linux; \
+		chmod +x watchdogs; \
+		echo "$(YELLOW)==>$(RESET) Installation complete. Run with ./watchdogs"; \
+	else \
+		echo "$(YELLOW)==>$(RESET) Unknown or unsupported environment."; \
+		echo "Please install dependencies manually."; \
+		exit 1; \
+	fi
 
 all: $(TARGET)
 	@printf "$(YELLOW)==>$(RESET) Building $(TARGET) Version $(VERSION) Full Version $(FULL_VERSION)\n"

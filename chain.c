@@ -462,7 +462,8 @@ loop_main:
             ret = __command__();
         if (ret == -RETN || ret == RETZ || ret == RETN) {
             clock_gettime(CLOCK_MONOTONIC, &cmd_end);
-            command_dur = (cmd_end.tv_sec - cmd_start.tv_sec) + (cmd_end.tv_nsec - cmd_start.tv_nsec) / 1e9;
+            command_dur = (cmd_end.tv_sec - cmd_start.tv_sec) +
+                          (cmd_end.tv_nsec - cmd_start.tv_nsec) / 1e9;
             printf_color(COL_YELLOW, " ==> [C]Finished in %.3fs\n", command_dur);
             goto loop_main;
         } else if (ret == RETW) {

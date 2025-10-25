@@ -16,7 +16,7 @@
 </div>
 <!-- markdownlint-enable MD033 -->
 
-![image](https://gitlab.com/mywatchdogs/watchdogs/-/raw/main/img/watch.png)
+![image](https://gitlab.com/mywatchdogs/watchdogs/-/raw/main/IMG/__CONTAINER.png)
 
 ---
 
@@ -29,9 +29,6 @@
 ### [DOCKER](https://www.docker.com/) USAGE
 
 > NOTE
-If you are interested in using the Docker environment.
-
-- Simple Usage
 Run this inside the Docker/dockerfile directory.
 
 - For Linux setup:
@@ -56,6 +53,7 @@ docker exec -it <container-name> /bin/bash # enter a container
 docker stop <container-name>               # stop a container
 docker rm -f <container-name>              # remove a container
 ```
+- build & install Watchdogs - [click here](https://github.com/klantle/watchdogs?tab=readme-ov-file#bash---linux-usage)
 
 ### [TERMUX](https://github.com/termux/termux-app/releases) USAGE
 - note: Please use termux from https://github.com/termux/termux-app/releases
@@ -69,19 +67,18 @@ apt update                 # sync repo
 # @@@ 4
 apt upgrade                # upgrade - optional
 # @@@ 5
-pkg install clang openssl curl libarchive ncurses readline make git
+pkg install make git
 # @@@ 6
 git clone https://github.com/klantle/watchdogs watch
 # @@@ 7
 cd watch
 # @@@ 8
-make termux                # build first
+make install               # install library first
+make termux                # build from source
 # @@@ 9
-chmod +x watchdogs_termux  # give permissions
-# @@@ 10
 ./watchdogs_termux         # run
 ```
-![image](https://gitlab.com/mywatchdogs/watchdogs/-/raw/main/img/path.png)
+![image](https://gitlab.com/mywatchdogs/watchdogs/-/raw/main/IMG/__PATH.png)
 
 ### [MSYS2](https://www.msys2.org) USAGE
 - note: Please see https://www.msys2.org for introduction of MSYS2
@@ -92,7 +89,7 @@ pacman -Sy                 # sync repo
 nano /etc/pacman.d/mirrorlist.mingw64
 nano /etc/pacman.d/mirrorlist.msys
 nano /etc/pacman.d/mirrorlist.ucrt64
-# --- nano; CTRL + X & ENTER
+# -- nano; CTRL + X & ENTER
 Server = https://repo.msys2.org/msys/$arch
 Server = https://mirror.msys2.org/msys/$arch
 Server = https://mirror.selfnet.de/msys2/msys/$arch
@@ -100,29 +97,19 @@ Server = https://mirrors.rit.edu/msys2/msys/$arch
 Server = https://ftp.osuosl.org/pub/msys2/msys/$arch
 # sync mirror
 pacman -Sy
-# @@@ 3 - 1/GB
-pacman -S --needed \
-    base-devel \
-    mingw-w64-ucrt-x86_64-toolchain \
-    mingw-w64-ucrt-x86_64-curl \
-    mingw-w64-ucrt-x86_64-readline \
-    mingw-w64-ucrt-x86_64-ncurses \
-    mingw-w64-ucrt-x86_64-libarchive \
-    mingw-w64-ucrt-x86_64-openssl \
-    make \
-    git
+# @@@ 3
+pacman -S make git
 # @@@ 4
 git clone https://github.com/klantle/watchdogs watch
 # @@@ 5
 cd watch
 # @@@ 6
-make windows              # build first
+make install              # install library first
+make windows              # build from source
 # @@@ 7
-chmod +x watchdogs.win    # give permissions
-# @@@ 8
-./watchdogs.win           # run
+./watcdogs.win            # run
 ```
-![image](https://gitlab.com/mywatchdogs/watchdogs/-/raw/main/img/path.png)
+![image](https://gitlab.com/mywatchdogs/watchdogs/-/raw/main/IMG/__PATH.png)
 
 ### [BASH - LINUX](https://en.wikipedia.org/wiki/Bash_(Unix_shell)) USAGE
 - note: this only in debian/ubuntu based
@@ -130,19 +117,18 @@ chmod +x watchdogs.win    # give permissions
 # @@@ 1
 apt update                # sync repo
 # @@@ 2
-apt install build-essential libssl-dev libcurl4-openssl-dev libncurses5-dev libreadline-dev libarchive-dev make libc6:i386 libstdc++6:i386 libgcc1:i386 zlib1g:i386 git
+apt install make git
 # @@@ 3
 git clone https://github.com/klantle/watchdogs watch
 # @@@ 5
 cd watch
 # @@@ 6
-make linux                # build first
+make install              # install library first
+make linux                # build from source
 # @@@ 7
-chmod +x watchdogs        # give permissions
-# @@@ 8
 ./watchdogs               # run
 ```
-![image](https://gitlab.com/mywatchdogs/watchdogs/-/raw/main/img/path.png)
+![image](https://gitlab.com/mywatchdogs/watchdogs/-/raw/main/IMG/__PATH.png)
 
 ---
 
@@ -178,12 +164,10 @@ Usage: help | help [<command>]
   "version": "2.0.0",
   "tasks": [
     {
-      "label": "watchdogs",
-      "type": "shell",
+      "label": "watchdogs", "type": "shell",
       "command": "${workspaceRoot}/watchdogs",
       "group": {
-        "kind": "build",
-        "isDefault": true
+        "kind": "build", "isDefault": true
       }
     }
   ]
@@ -195,12 +179,10 @@ WSL
   "version": "2.0.0",
   "tasks": [
     {
-      "label": "watchdogs",
-      "type": "shell",
+      "label": "watchdogs", "type": "shell",
       "command": "wsl ${workspaceRoot}/watchdogs",
       "group": {
-        "kind": "build",
-        "isDefault": true
+        "kind": "build", "isDefault": true
       }
     }
   ]

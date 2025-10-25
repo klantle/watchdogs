@@ -46,7 +46,6 @@ extern const size_t __command_len;
 int wd_SignalOS(void);
 int wd_RunCommand(const char *cmd);
 void wd_SetPermission(const char *src, const char *tmp);
-void HANDLE_SIGINT(int sig);
 int wd_SetTitle(const char *__title);
 char* readline_colored(const char* prompt);
 void wd_StripDotFns(char *dst, size_t dst_sz, const char *src);

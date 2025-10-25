@@ -27,7 +27,6 @@
 #include <limits.h>
 #include <dirent.h>
 #include <time.h>
-#include <signal.h>
 #include <ftw.h>
 #include <sys/file.h>
 #include <fcntl.h>
@@ -262,8 +261,6 @@ ret_ptr1:
             if (scanf(" %c", &platform) != 1)
                 return RETN;
 
-            signal(SIGINT, __main);
-
             if (platform == 'L' || platform == 'l')
                 wd_InsServer("linux");
             else if (platform == 'W' || platform == 'w')
@@ -286,8 +283,6 @@ ret_ptr2:
 
             if (scanf(" %c", &platform) != 1)
                 return RETN;
-
-            signal(SIGINT, __main);
 
             if (platform == 'L' || platform == 'l')
                 wd_InsPawncc("linux");
@@ -484,7 +479,6 @@ ret_ptr3:
 
 void __main(int sig_unused) {
         (void)sig_unused;
-        signal(SIGINT, HANDLE_SIGINT);
         wd_SetTitle(NULL);
         __function__();
 loop_main:

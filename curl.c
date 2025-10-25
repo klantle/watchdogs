@@ -138,14 +138,15 @@ int wd_DownloadFile(const char *url, const char *fname) {
                                         while ((c = getchar()) != '\n' && c != EOF);
                                         if (fgets(__ptr_sigA, sizeof(__ptr_sigA), stdin) != NULL) {
                                                 __ptr_sigA[strcspn(__ptr_sigA, "\n")] = 0;
-                                                if (strcmp(__ptr_sigA, "Y") == 0 || strcmp(__ptr_sigA, "y") == 0)
+                                                if (strcmp(__ptr_sigA, "Y") == 0 ||
+                                                    strcmp(__ptr_sigA, "y") == 0)
                                                         wd_ApplyPawncc();
                                         }
                                 }
 
                                 return 0;
                         } else printf_error("Downloaded file too small %ld bytes", __st.st_size);
-                } else printf_error("Download failed HTTP %ld CURLcode %d retrying...", __response_code, __res);
+                } else printf_error("Download failed HTTP %ld CURL code %d retrying...", __response_code, __res);
 
                 __retry++;
                 sleep(3);

@@ -244,12 +244,6 @@ void wd_SetPermission(const char *src, const char *tmp) {
         }
 }
 
-inline void HANDLE_SIGINT(int sig)
-{
-        printf_color(COL_RED, "\n\tExit?, You only exit with use a \"exit\"\n");
-        __main(0);
-}
-
 int wd_SetTitle(const char *__title) {
         const char
                 *title = __title ? __title : "Watchdogs";

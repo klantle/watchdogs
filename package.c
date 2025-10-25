@@ -91,7 +91,7 @@ wd_InsPawncc(const char *platform) {
                 char verify_first;
                 printf(":: You are no longer in Termux!. do you continue? [y/N] ");
                 if (scanf(" %c", &verify_first) != 1) return;
-                if (verify_first == 'N' || verify_first == 'n') {
+                if (verify_first == 'N' || verify_first == 'n' || !verify_first) {
                     __main(0);
                     return;
                 }
@@ -99,7 +99,7 @@ wd_InsPawncc(const char *platform) {
 
             const char *termux_versions[] = { "3.10.11", "3.10.10" };
             int version_count = 2;
-            printf("Select the PawnCC version to download (Termux build by mxp96):\n");
+            printf("Select the PawnCC version to download:\n");
             for (int i = 0; i < version_count; i++)
                 printf("[%c/%c] PawnCC %s\n", 'A'+i, 'a'+i, termux_versions[i]);
 
@@ -133,6 +133,9 @@ wd_InsPawncc(const char *platform) {
                 if (scanf(" %c", &confirm_arch) != 1 || (confirm_arch != 'y' && confirm_arch != 'Y')) {
                     return;
                 }
+                if (!confirm_arch)
+                    __main(0);
+ret_arch:
                 char arch_selection;
                 printf("Select architecture for Termux:\n[A/a] arm32\n[B/b] arm64\n==> ");
                 if (scanf(" %c", &arch_selection) != 1) return;
@@ -141,10 +144,10 @@ wd_InsPawncc(const char *platform) {
                 else if (arch_selection == 'B' || arch_selection == 'b') detected_arch = "arm64";
                 else {
                     printf("Invalid architecture selection.\n");
-                    return;
+                    goto ret_arch;
                 }
 
-                sprintf(url_sel, "https://github.com/mxp96/pawncc-termux/releases/download/v%s/pawncc-%s-%s.zip",
+                sprintf(url_sel, "https://github.com/mxp96/compiler/releases/download/%s/pawnc-%s-%s.zip",
                         termux_versions[pcc_sel_index], termux_versions[pcc_sel_index], detected_arch);
                 sprintf(fname_sel, "pawncc-%s-%s.zip", termux_versions[pcc_sel_index], detected_arch);
 

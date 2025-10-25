@@ -3,7 +3,6 @@
 #include <string.h>
 #include <unistd.h>
 #include <limits.h>
-#include <signal.h>
 #include <time.h>
 #include <readline/readline.h>
 
@@ -464,8 +463,6 @@ ret_ptr:
 
                     if (scanf(" %c", &platform) != 1)
                         return RETZ;
-
-                    signal(SIGINT, __main);
 
                     if (platform == 'L' || platform == 'l')
                         wd_InsPawncc("linux");

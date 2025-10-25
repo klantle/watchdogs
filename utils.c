@@ -29,7 +29,6 @@ static int _w_chmod(const char *path) {
 #include <fnmatch.h>
 #define __PATH_SYM "/"
 #define IS_PATH_SYM(c) ((c) == '/')
-chmod(c_dest);
 #endif
 
 #include <sys/file.h>
@@ -1119,7 +1118,7 @@ int __mv_with_sudo(const char *src, const char *dest) {
             if (WIFEXITED(status))
                 return WEXITSTATUS(status);
             else if (WIFSIGNALED(status))
-                return RETN28 + WTERMSIG(status);
+                return 128 + WTERMSIG(status);
             else
                 return -RETN;
         }
@@ -1149,7 +1148,7 @@ int __cp_with_sudo(const char *src, const char *dest) {
             if (WIFEXITED(status))
                 return WEXITSTATUS(status);
             else if (WIFSIGNALED(status))
-                return RETN28 + WTERMSIG(status);
+                return 128 + WTERMSIG(status);
             else
                 return -RETN;
         }

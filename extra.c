@@ -27,7 +27,6 @@ static int _w_chmod(const char *path) {
 #include <fnmatch.h>
 #define __PATH_SYM "/"
 #define IS_PATH_SYM(c) ((c) == '/')
-chmod(c_dest);
 #endif
 
 #include "color.h"
@@ -203,11 +202,8 @@ __def:
         }
 
 #ifndef _WIN32
-        if (__os__ == 0x00) {
-                char *str_lib_path = NULL,
-                     str_full_dest_path[128];
-
-                int __find_libpawnc = wd_sef_fdir(".", "libpawnc.so");
+        if (wcfg.__os__ == 0x00) {
+                int __find_libpawnc = wd_sef_fdir(".", "libpawnc.so", NULL);
                 char libpawnc_dest[PATH_MAX];
                 for (int i = 0; i < wcfg.sef_count; i++) {
                         if (strstr(wcfg.sef_found[i], "libpawnc.so")) {
@@ -224,19 +220,22 @@ __def:
                      *lib_path_dest = "/usr/local/lib",
                      *tx_local_lib_dest = "/data/data/com.termux/files/usr/local/lib/",
                      *tx_lib_path_dest = "/data/data/com.termux/files/usr/lib/";
-                     
-                if (!stat(lib_32_dest, &st) && S_ISDIR(st.st_mode)) {
-                        lib_or_lib32=2;
-                        str_lib_path=lib_32_dest;
-                } else if (!stattx_local_lib_dest, &st) && S_ISDIR(st.st_mode)) {
-                        str_lib_path=tx_local_lib_dest;
-                } else if (!stat(tx_lib_path_dest, &st) && S_ISDIR(st.st_mode)) {
-                        str_lib_path=tx_lib_path_dest;
+
+                char *str_lib_path = NULL;
+                char str_full_dest_path[PATH_MAX];
+
+                if (!stat(tx_lib_path_dest, &st) && S_ISDIR(st.st_mode)) {
+                    str_lib_path = tx_lib_path_dest;
+                } else if (!stat(tx_local_lib_dest, &st) && S_ISDIR(st.st_mode)) {
+                    str_lib_path = tx_local_lib_dest;
                 } else if (!stat(lib_path_dest, &st) && S_ISDIR(st.st_mode)) {
-                        lib_or_lib32=1;
-                        str_lib_path=lib_path_dest;
+                    str_lib_path = lib_path_dest;
+                    lib_or_lib32 = 0;
+                } else if (!stat(lib_32_dest, &st) && S_ISDIR(st.st_mode)) {
+                    str_lib_path = lib_32_dest;
+                    lib_or_lib32 = 1;
                 } else {
-                    printf_error("Can't found lib path!");
+                    fprintf(stderr, "No valid library path found!\n");
                     goto __error;
                 }
 

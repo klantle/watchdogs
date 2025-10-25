@@ -74,7 +74,6 @@ git clone https://github.com/klantle/watchdogs watch
 cd watch
 # @@@ 8
 make install               # install library first
-make termux                # build from source
 # @@@ 9
 ./watchdogs_termux         # run
 ```
@@ -104,7 +103,6 @@ git clone https://github.com/klantle/watchdogs watch
 cd watch
 # @@@ 6
 make install              # install library first
-make windows              # build from source
 # @@@ 7
 ./watcdogs.win            # run
 ```
@@ -121,8 +119,6 @@ git clone https://github.com/klantle/watchdogs watch
 # @@@ 4
 cd watch
 # @@@ 5
-make install              # install library first
-make linux                # build from source
 # @@@ 6
 ./watchdogs               # run
 ```
@@ -265,7 +261,7 @@ Debug ".amx" by args
 debug mymodes
 ```
 
-### INTRO 1.6 (COMPILER OPTIONS)
+### INTRO 1.6 (COMPILER OPTIONS) [3.10.10](https://github.com/pawn-lang/compiler/releases/tag/v3.10.10) (^/v)
 
 | Option          | Description                                                        |
 |-----------------|--------------------------------------------------------------------|

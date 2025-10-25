@@ -2,6 +2,8 @@
 #define UTILS_H
 
 #include <stddef.h>
+#include <stdbool.h>
+#include <limits.h>
 
 #if __has_include(<readline/history.h>)
     #include <readline/history.h>

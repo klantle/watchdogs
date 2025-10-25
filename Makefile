@@ -102,10 +102,18 @@ clean:
 
 linux:
 	@printf "$(YELLOW)==>$(RESET) Building $(TARGET) Version $(VERSION) Full Version $(FULL_VERSION)\n"
+	$(CC) $(CFLAGS) $(SRCS) -o $(TARGET) $(LDFLAGS)
 	@printf "$(YELLOW)==>$(RESET) Build complete: $(TARGET) Version $(VERSION) Full Version $(FULL_VERSION)\n"
-	@$(MAKE) TARGET=watchdogs CC=gcc \
-	CFLAGS="$(CFLAGS)" \
-	LDFLAGS="$(LDFLAGS)"
+
+termux:
+	@printf "$(YELLOW)==>$(RESET) Building Termux target (clang)...\n"
+	$(CC) $(CFLAGS) -D__ANDROID__ -fPIE $(SRCS) -o watchdogs_termux $(LDFLAGS) -pie
+	@printf "$(YELLOW)==>$(RESET) Build complete: watchdogs_termux Version $(VERSION) Full Version $(FULL_VERSION)\n"
+
+windows:
+	@printf "$(YELLOW)==>$(RESET) Building Windows target (MinGW)...\n"
+	$(CC) $(CFLAGS) $(SRCS) -o watchdogs.win $(LDFLAGS) -liphlpapi -lshlwapi
+	@printf "$(YELLOW)==>$(RESET) Build complete: watchdogs.win Version $(VERSION) Full Version $(FULL_VERSION)\n"
 
 debug:
 	@printf "$(YELLOW)==>$(RESET) Building DEBUG Version $(VERSION) Full Version $(FULL_VERSION)\n"
@@ -113,19 +121,6 @@ debug:
 	CC=gcc \
 	CFLAGS="$(CFLAGS) -g -O0 -D_DBG_PRINT -Wall" \
 	LDFLAGS="$(LDFLAGS)"
-
-termux:
-	@printf "$(YELLOW)==>$(RESET) Building $(TARGET) Version $(VERSION) Full Version $(FULL_VERSION)\n"
-	@printf "$(YELLOW)==>$(RESET) Build complete: $(TARGET) Version $(VERSION) Full Version $(FULL_VERSION)\n"
-	@$(MAKE) TARGET=watchdogs_termux CC=clang \
-	CFLAGS="$(CFLAGS) -D__ANDROID__ -fPIE" \
-	LDFLAGS="$(LDFLAGS) -pie"
-
-windows: $(OBJS)
-	@printf "$(YELLOW)==>$(RESET) Building $(TARGET) Version $(VERSION) Full Version $(FULL_VERSION)\n"
-	$(CC) $(CFLAGS) $(OBJS) -o watchdogs.win \
-		$(LDFLAGS) -liphlpapi -lshlwapi
-	@printf "$(YELLOW)==>$(RESET) Build complete: $(TARGET) Version $(VERSION) Full Version $(FULL_VERSION)\n"
 
 windows-debug:
 	@printf "$(YELLOW)==>$(RESET) Building DEBUG Version $(VERSION) Full Version $(FULL_VERSION)\n"

@@ -127,17 +127,17 @@ static int __regex_v_unix(const char *s, char *badch, size_t *pos) {
             if (iscntrl(c)) {
                 if (badch) *badch = c;
                 if (pos) *pos = i;
-                return 1;
+                return RETN;
             }
             if (c == ' ' || c == '\t' || c == '\n' || c == '\r') {
                 if (badch) *badch = c;
                 if (pos) *pos = i;
-                return 1;
+                return RETN;
             }
             if (strchr(forbidden, c)) {
                 if (badch) *badch = c;
                 if (pos) *pos = i;
-                return 1;
+                return RETN;
             }
             if (c == '(' || c == ')' || c == '{' || c == '}' ||
                 c == '[' || c == ']' || c == '*' || c == '?' || c == '~' ||
@@ -145,10 +145,10 @@ static int __regex_v_unix(const char *s, char *badch, size_t *pos) {
             ) {
                 if (badch) *badch = c;
                 if (pos) *pos = i;
-                return 1;
+                return RETN;
             }
         }
-        return 0;
+        return RETZ;
 }
 
 static int __regex_v_win(const char *s, char *badch, size_t *pos) {
@@ -159,26 +159,26 @@ static int __regex_v_win(const char *s, char *badch, size_t *pos) {
             if (iscntrl(c)) {
                 if (badch) *badch = c;
                 if (pos) *pos = i;
-                return 1;
+                return RETN;
             }
             if (c == ' ' || c == '\t' || c == '\n' || c == '\r') {
                 if (badch) *badch = c;
                 if (pos) *pos = i;
-                return 1;
+                return RETN;
             }
             if (strchr(forbidden, c)) {
                 if (badch) *badch = c;
                 if (pos) *pos = i;
-                return 1;
+                return RETN;
             }
             if (c == '%' || c == '!' || c == ',' || c == ';' || c == '*'
                 || c == '?' || c == '/') {
                 if (badch) *badch = c;
                 if (pos) *pos = i;
-                return 1;
+                return RETN;
             }
         }
-        return 0;
+        return RETZ;
 }
 
 static int __regex_check__(const char *cmd, char *badch, size_t *pos) {
@@ -201,9 +201,31 @@ int wd_RunCommand(const char *cmd) {
             if (isprint((unsigned char)badch)) {
                 printf_warning("symbol detected in wd_RunCommand - char='%c' (0x%02X) at pos=%zu; cmd=\"%s\"",
                             badch, (unsigned char)badch, pos, cmd);
+                char *continue_cmd;
+                continue_cmd = readline("continue [y/n]: ");
+                while (1) {
+                    if (strcmp(continue_cmd, "Y") == 0 || strcmp(continue_cmd, "y") == 0) {
+                        break;
+                    } else if (strcmp(continue_cmd, "N") == 0 || strcmp(continue_cmd, "n") == 0) {
+                        return -RETN;
+                    } else {
+                        return -RETN;
+                    }
+                }
             } else {
                 printf_warning("control symbol detected in wd_RunCommand - char=0x%02X at pos=%zu; cmd=\"%s\"",
                             (unsigned char)badch, pos, cmd);
+                char *continue_cmd;
+                continue_cmd = readline("continue [y/n]: ");
+                while (1) {
+                    if (strcmp(continue_cmd, "Y") == 0 || strcmp(continue_cmd, "y") == 0) {
+                        break;
+                    } else if (strcmp(continue_cmd, "N") == 0 || strcmp(continue_cmd, "n") == 0) {
+                        return -RETN;
+                    } else {
+                        return -RETN;
+                    }
+                }
             }
 #endif
         }
@@ -972,7 +994,7 @@ __T_mv_with_o_sudo(const char *src, const char *dest) {
             if (ensure_parent_dir(parent, sizeof(parent), dest) != 0)
                 return -RETN;
             if (!dir_writable(parent))
-                return -2;
+                return -RETW;
 
             char tmp_path[PATH_MAX];
             int rv = snprintf(tmp_path, sizeof(tmp_path),
@@ -996,7 +1018,7 @@ __T_mv_with_o_sudo(const char *src, const char *dest) {
             if (rename(tmp_path, dest) != 0) {
                     unlink(tmp_path);
                     if (errno == EACCES || errno == EPERM)
-                        return -2;
+                        return -RETW;
                     return -RETN;
             }
             if (unlink(src) != 0)
@@ -1016,7 +1038,7 @@ int __T_cp_with_o_sudo(const char *src, const char *dest) {
         if (ensure_parent_dir(parent, sizeof(parent), dest) != 0)
             return -RETN;
         if (!dir_writable(parent))
-            return -2;
+            return -RETW;
 
         char tmp_path[PATH_MAX];
         int rv = snprintf(tmp_path, sizeof(tmp_path),
@@ -1040,7 +1062,7 @@ int __T_cp_with_o_sudo(const char *src, const char *dest) {
         if (rename(tmp_path, dest) != 0) {
                 unlink(tmp_path);
                 if (errno == EACCES || errno == EPERM)
-                    return -2;
+                    return -RETW;
                 return -RETN;
         }
 

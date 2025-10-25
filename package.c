@@ -103,7 +103,7 @@ wd_InsPawncc(const char *platform) {
             for (int i = 0; i < version_count; i++)
                 printf("[%c/%c] PawnCC %s\n", 'A'+i, 'a'+i, termux_versions[i]);
 
-            printf("==>");
+            printf("==> ");
             if (scanf(" %c", &version_selection) != 1) return;
 
             int pcc_sel_index = (version_selection >= 'A' && version_selection < 'A' + version_count)
@@ -134,7 +134,7 @@ wd_InsPawncc(const char *platform) {
                     return;
                 }
                 char arch_selection;
-                printf("Select architecture for Termux:\n[A/a] arm32\n[B/b] arm64\n==>");
+                printf("Select architecture for Termux:\n[A/a] arm32\n[B/b] arm64\n==> ");
                 if (scanf(" %c", &arch_selection) != 1) return;
 
                 if (arch_selection == 'A' || arch_selection == 'a') detected_arch = "arm32";
@@ -163,7 +163,7 @@ wd_InsPawncc(const char *platform) {
         for (int i = 0; i < 10; i++)
             printf("[%c/%c] PawnCC %s\n", 'A'+i, 'a'+i, list_versions[i]);
 
-        printf("==>");
+        printf("==> ");
         if (scanf(" %c", &version_selection) != 1) return;
 
         int pcc_sel_index = (version_selection >= 'A' && version_selection <= 'J')
@@ -261,7 +261,7 @@ wd_InsServer(const char *platform) {
                   list_versions[i].name);
         }
 
-        printf("==>");
+        printf("==> ");
         char version_choice;
         if (scanf(" %c", &version_choice) != 1) { return; }
 

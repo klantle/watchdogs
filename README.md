@@ -78,7 +78,6 @@ make termux                # build from source
 # @@@ 9
 ./watchdogs_termux         # run
 ```
-![image](https://gitlab.com/mywatchdogs/watchdogs/-/raw/main/IMG/__PATH.png)
 
 ### [MSYS2](https://www.msys2.org) USAGE
 - note: Please see https://www.msys2.org for introduction of MSYS2
@@ -109,7 +108,6 @@ make windows              # build from source
 # @@@ 7
 ./watcdogs.win            # run
 ```
-![image](https://gitlab.com/mywatchdogs/watchdogs/-/raw/main/IMG/__PATH.png)
 
 ### [BASH - LINUX](https://en.wikipedia.org/wiki/Bash_(Unix_shell)) USAGE
 - note: this only in debian/ubuntu based
@@ -120,14 +118,16 @@ apt update                # sync repo
 apt install make git
 # @@@ 3
 git clone https://github.com/klantle/watchdogs watch
-# @@@ 5
+# @@@ 4
 cd watch
-# @@@ 6
+# @@@ 5
 make install              # install library first
 make linux                # build from source
-# @@@ 7
+# @@@ 6
 ./watchdogs               # run
 ```
+
+---
 ![image](https://gitlab.com/mywatchdogs/watchdogs/-/raw/main/IMG/__PATH.png)
 
 ---

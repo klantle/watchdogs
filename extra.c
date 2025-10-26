@@ -15,11 +15,6 @@
 #define MKDIR(path) _mkdir(path)
 #define SLEEP(sec) Sleep((sec) * 1000)
 #define SETENV(name, val, overwrite) _putenv_s(name, val)
-static int w_chmod(const char *path)
-{
-		int mode = _S_IREAD | _S_IWRITE;
-		return _chmod(path, mode);
-}
 #else
 #include <sys/utsname.h>
 #include <sys/wait.h>
@@ -217,6 +212,37 @@ static void copy_compiler_tool(const char *src_path, const char *tool_name,
 }
 
 /**
+ * update_library_environment - Update library path environment
+ * @lib_path: Library path that was used
+ */
+static void update_library_environment(const char *lib_path)
+{
+#ifndef _WIN32
+		const char *old_path;
+		char new_path[256];
+
+		/* Run ldconfig if in system directory */
+		if (strstr(lib_path, "/usr/local")) {
+				int has_sudo = wd_run_command("which sudo > /dev/null 2>&1");
+				if (has_sudo == 0)
+						wd_run_command("sudo ldconfig");
+				else
+						wd_run_command("ldconfig");
+		}
+
+		/* Update LD_LIBRARY_PATH */
+		old_path = getenv("LD_LIBRARY_PATH");
+		if (old_path) {
+				snprintf(new_path, sizeof(new_path), "%s:%s", lib_path, old_path);
+		} else {
+				snprintf(new_path, sizeof(new_path), "%s", lib_path);
+		}
+
+		SETENV("LD_LIBRARY_PATH", new_path, 1);
+#endif
+}
+
+/**
  * setup_linux_library - Setup library on Linux systems
  *
  * Return: 0 on success, -1 on failure
@@ -275,37 +301,6 @@ static int setup_linux_library(void)
 		update_library_environment(selected_path);
 
 		return RETZ;
-#endif
-}
-
-/**
- * update_library_environment - Update library path environment
- * @lib_path: Library path that was used
- */
-static void update_library_environment(const char *lib_path)
-{
-#ifndef _WIN32
-		const char *old_path;
-		char new_path[256];
-
-		/* Run ldconfig if in system directory */
-		if (strstr(lib_path, "/usr/local")) {
-				int has_sudo = wd_run_command("which sudo > /dev/null 2>&1");
-				if (has_sudo == 0)
-						wd_run_command("sudo ldconfig");
-				else
-						wd_run_command("ldconfig");
-		}
-
-		/* Update LD_LIBRARY_PATH */
-		old_path = getenv("LD_LIBRARY_PATH");
-		if (old_path) {
-				snprintf(new_path, sizeof(new_path), "%s:%s", lib_path, old_path);
-		} else {
-				snprintf(new_path, sizeof(new_path), "%s", lib_path);
-		}
-
-		SETENV("LD_LIBRARY_PATH", new_path, 1);
 #endif
 }
 

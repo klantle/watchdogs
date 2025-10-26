@@ -54,23 +54,9 @@ typedef struct {
 } WatchdogConfig;
 
 extern WatchdogConfig wcfg;
-static int wd_is_special_dir(const char *name);
-static int wd_should_ignore_dir(const char *name, const char *ignore_dir);
-static int wd_match_filename(const char *name, const char *pattern);
-static void wd_add_found_path(const char *path);
-static void __set_path_syms(char *dst, size_t dst_sz, const char *dir, const char *name);
-static void __toml_add_directory_path(FILE *toml_file, int *first, const char *path);
 
-/* Untuk fungsi di wd_set_toml */
-static int wd_find_compiler(const char *os_type);
-static int wd_check_compiler_compatibility(void);
-static void wd_generate_toml_content(FILE *file, const char *os_type, 
-                                    int has_gamemodes, int compatible,
-                                    int optimized_lt, char *sef_path);
-static void wd_add_include_paths(FILE *file, int *first_item);
-static void wd_add_compiler_path(FILE *file, const char *path, int *first_item);
-static int wd_parse_toml_config(void);
-
+int wd_is_special_dir(const char *name);
+int wd_should_ignore_dir(const char *name, const char *ignore_dir);
 void wd_sef_fdir_reset();
 struct struct_of { int (*title)(const char *); };
 extern const char* __command[];

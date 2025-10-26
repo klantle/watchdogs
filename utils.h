@@ -126,4 +126,3 @@ int wd_sef_wcopy(const char *c_src, const char *c_dest);
 int wd_sef_wmv(const char *c_src, const char *c_dest);
 
 #endif
-

@@ -1,3 +1,4 @@
+
 #define _POSIX_C_SOURCE 200809L
 #include <stdio.h>
 #include <stdlib.h>
@@ -815,6 +816,118 @@ static int wd_match_filename(const char *name, const char *pattern)
 				return (strcmp(name, pattern) == 0);
 		}
 }
+
+/**
+ * wd_is_special_dir - Check if directory name represents special entries
+ * @name: Directory name to check
+ * 
+ * Identifies special directory entries like "." and ".." that should
+ * typically be ignored during directory traversal.
+ * 
+ * Return: 1 if special directory, 0 otherwise
+ */
+static int wd_is_special_dir(const char *name);
+
+/**
+ * wd_should_ignore_dir - Determine if directory should be excluded from processing
+ * @name: Directory name to check
+ * @ignore_dir: Specific directory name to ignore (NULL for none)
+ * 
+ * Compares directory name against ignore pattern. Used to skip
+ * specific directories during recursive file operations.
+ * 
+ * Return: 1 if directory should be ignored, 0 otherwise
+ */
+static int wd_should_ignore_dir(const char *name, const char *ignore_dir);
+
+/**
+ * wd_match_filename - Match filename against pattern with wildcard support
+ * @name: Filename to check
+ * @pattern: Pattern to match (supports * and ? wildcards)
+ * 
+ * Provides platform-specific pattern matching. On Windows uses
+ * PathMatchSpecA, on Unix uses fnmatch().
+ * 
+ * Return: 1 if pattern matches, 0 otherwise
+ */
+static int wd_match_filename(const char *name, const char *pattern);
+
+/**
+ * wd_add_found_path - Add discovered path to configuration storage
+ * @path: Full path to add to found paths list
+ * 
+ * Stores successfully found file paths in the global configuration
+ * structure for later reference. Maintains count of found items.
+ */
+static void wd_add_found_path(const char *path);
+
+/**
+ * __toml_add_directory_path - Format and write directory path to TOML output
+ * @toml_file: FILE handle for TOML configuration output
+ * @first: Pointer to flag indicating first item in list
+ * @path: Directory path to add to include_path array
+ * 
+ * Handles proper comma separation and formatting when adding
+ * directory paths to TOML include_path arrays.
+ */
+static void __toml_add_directory_path(FILE *toml_file, int *first, const char *path);
+
+/**
+ * wd_find_compiler - Locate PAWN compiler executable based on environment
+ * @os_type: Operating system type ("windows" or "linux")
+ * 
+ * Searches for pawncc compiler in platform-specific locations.
+ * Consults configuration flags to determine search directory.
+ * 
+ * Return: 1 if compiler found, 0 if not found
+ */
+static int wd_find_compiler(const char *os_type);
+
+/**
+ * wd_generate_toml_content - Generate complete TOML configuration content
+ * @file: FILE handle for output
+ * @os_type: Target operating system
+ * @find_gamemodes: Flag indicating if gamemodes were found
+ * @find_pawncc: Flag indicating if compiler was found  
+ * @find_plugins: Flag indicating if plugins should be included
+ * @base_dir: Base directory path for file operations
+ * 
+ * Constructs complete watchdogs.toml configuration including
+ * compiler options, include paths, and input/output file settings.
+ */
+static void wd_generate_toml_content(FILE *file, const char *os_type,
+    int find_gamemodes, int find_pawncc, int find_plugins, char *base_dir);
+
+/**
+ * wd_add_include_paths - Populate TOML include_paths with discovered directories
+ * @file: FILE handle for TOML output
+ * @first_item: Pointer to flag tracking first list item for formatting
+ * 
+ * Recursively scans project directories and adds them to TOML
+ * include_paths array. Handles gamemodes and compiler include directories.
+ */
+static void wd_add_include_paths(FILE *file, int *first_item);
+
+/**
+ * wd_add_compiler_path - Add compiler-specific include directory to TOML
+ * @file: FILE handle for TOML output  
+ * @path: Compiler include path to add
+ * @first_item: Pointer to flag for comma formatting control
+ * 
+ * Adds pawno/include or qawno/include paths based on configuration
+ * and recursively includes all subdirectories.
+ */
+static void wd_add_compiler_path(FILE *file, const char *path, int *first_item);
+
+/**
+ * wd_parse_toml_config - Parse and load TOML configuration file
+ * 
+ * Reads and parses watchdogs.toml configuration file using tomlc99 library.
+ * Extracts general settings and OS configuration into global structure.
+ * 
+ * Return: 1 on successful parse, 0 on failure
+ */
+static int wd_parse_toml_config(void);
 
 /**
  * wd_is_special_dir - Check if directory item is special (. or ..)

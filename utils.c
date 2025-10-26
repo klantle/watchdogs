@@ -1,3 +1,4 @@
+#define _POSIX_C_SOURCE 200809L
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -259,36 +260,6 @@ static int __regex_check__(const char *cmd, char *badch, size_t *pos) {
 }
 
 /**
- * wd_run_command - Execute shell command with safety checks
- * @cmd: Command string to execute
- *
- * Validates command for dangerous characters and executes via system().
- * Includes debug mode with user confirmation for suspicious commands.
- *
- * Return: System call return value, or -RETN on error
- */
-int wd_run_command(const char *cmd)
-{
-		char badch = 0;
-		size_t pos = (size_t)-1;
-		int ret;
-
-		if (!cmd || !*cmd)
-				return -RETN;
-
-		/* Validate command for safety */
-		if (__regex_check__(cmd, &badch, &pos)) {
-#if defined(_DBG_PRINT)
-				if (!wd_confirm_dangerous_command(cmd, badch, pos))
-						return -RETN;
-#endif
-		}
-
-		ret = system(cmd);
-		return ret;
-}
-
-/**
  * wd_confirm_dangerous_command - Get user confirmation for suspicious command
  * @cmd: Command string
  * @badch: Dangerous character found
@@ -319,6 +290,36 @@ static int wd_confirm_dangerous_command(const char *cmd, char badch, size_t pos)
 
 		free(response);
 		return RETZ;
+}
+
+/**
+ * wd_run_command - Execute shell command with safety checks
+ * @cmd: Command string to execute
+ *
+ * Validates command for dangerous characters and executes via system().
+ * Includes debug mode with user confirmation for suspicious commands.
+ *
+ * Return: System call return value, or -RETN on error
+ */
+int wd_run_command(const char *cmd)
+{
+		char badch = 0;
+		size_t pos = (size_t)-1;
+		int ret;
+
+		if (!cmd || !*cmd)
+				return -RETN;
+
+		/* Validate command for safety */
+		if (__regex_check__(cmd, &badch, &pos)) {
+#if defined(_DBG_PRINT)
+				if (!wd_confirm_dangerous_command(cmd, badch, pos))
+						return -RETN;
+#endif
+		}
+
+		ret = system(cmd);
+		return ret;
 }
 
 /**
@@ -733,53 +734,6 @@ int ensure_parent_dir(char *out_parent, size_t n, const char *dest)
 }
 
 /**
- * cp_f_content - Copy file contents
- * @src: Source file path
- * @dst: Destination file path
- *
- * Return: 0 on success, -1 on error
- */
-int cp_f_content(const char *src, const char *dst)
-{
-		int infd = -1, outfd = -1;
-		int ret = -1;
-		char buf[BUFSIZ];
-		ssize_t bytes_read, bytes_written;
-
-		infd = open(src, O_RDONLY);
-		if (infd < 0)
-				goto out;
-
-		outfd = open(dst, O_WRONLY | O_CREAT | O_TRUNC, 0600);
-		if (outfd < 0)
-				goto out;
-
-		while ((bytes_read = read(infd, buf, sizeof(buf))) > 0) {
-				char *ptr = buf;
-				ssize_t remaining = bytes_read;
-
-				while (remaining > 0) {
-						bytes_written = write(outfd, ptr, remaining);
-						if (bytes_written < 0)
-								goto out;
-						remaining -= bytes_written;
-						ptr += bytes_written;
-				}
-		}
-
-		if (bytes_read == 0)
-				ret = 0;
-
-out:
-		if (infd >= 0)
-				close(infd);
-		if (outfd >= 0)
-				close(outfd);
-
-		return ret;
-}
-
-/**
  * kill_process - Kill process by name
  * @name: Process name
  *
@@ -1081,7 +1035,6 @@ int wd_set_toml(void)
 		int pcc_compatible_opt = 0;
 		int first_item = 1;
 		const char *os_type;
-		char sef_path[PATH_MAX];
 		char run_cmd[PATH_MAX + 258];
 		FILE *toml_file, *proc_file;
 		toml_table_t *toml_config;
@@ -1118,8 +1071,12 @@ int wd_set_toml(void)
 						return RETN;
 				}
 
-				wd_generate_toml_content(toml_file, os_type, find_gamemodes, 
-										pcc_compatible_opt, sef_path);
+                if (find_pawncc)
+				    wd_generate_toml_content(toml_file, os_type, find_gamemodes, 
+										    pcc_compatible_opt, wcfg.sef_found[1]);
+                else
+				    wd_generate_toml_content(toml_file, os_type, find_gamemodes, 
+										    pcc_compatible_opt, wcfg.sef_found[0]);
 				fclose(toml_file);
 		}
 
@@ -1176,8 +1133,7 @@ static int wd_check_compiler_compatibility(void)
 		proc_file = fopen(".__CP.log", "r");
 		if (proc_file) {
 				while (fgets(log_line, sizeof(log_line), proc_file) != NULL) {
-						if (strstr(log_line, "         -Z[+/-]") || 
-						    strfind(log_line, "-Z[+/-]")) {
+						if (strfind(log_line, "-Z")) {
 								compatible = 1;
 								break;
 						}
@@ -1324,7 +1280,7 @@ static int wd_parse_toml_config(void)
 }
 
 /**
- * _try_mv_with_o_sudo - Move file without sudo using copy-fallback
+ * _try_mv_without_sudo - Move file without sudo using copy-fallback
  * @src: Source file path
  * @dest: Destination file path
  *
@@ -1333,63 +1289,12 @@ static int wd_parse_toml_config(void)
  *
  * Return: RETZ on success, -RETN on error, -RETW on permission error
  */
-static int _try_mv_with_o_sudo(const char *src, const char *dest)
-{
-		char parent[PATH_MAX];
-		char tmp_path[PATH_MAX];
-		int tmpfd, rv;
-
-		/* Try direct rename first */
-		if (rename(src, dest) == 0)
-				return RETZ;
-
-		/* Only handle specific errors with copy-fallback */
-		if (errno != EXDEV && errno != EACCES && errno != EPERM)
-				return -RETN;
-
-		/* Validate source file */
-		if (!file_regular(src))
-				return -RETN;
-
-		/* Ensure destination directory exists and is writable */
-		if (ensure_parent_dir(parent, sizeof(parent), dest) != 0)
-				return -RETN;
-		if (!dir_writable(parent))
-				return -RETW;
-
-		/* Create temporary file in destination directory */
-		rv = snprintf(tmp_path, sizeof(tmp_path), "%s/.tmp_wd_move_XXXXXX", parent);
-		if (rv < 0 || (size_t)rv >= sizeof(tmp_path))
-				return -RETN;
-
-		tmpfd = mkstemp(tmp_path);
-		if (tmpfd < 0)
-				return -RETN;
-		close(tmpfd);
-
-		/* Copy source to temporary location */
-		if (cp_f_content(src, tmp_path) != 0) {
-				unlink(tmp_path);
-				return -RETN;
-		}
-
-		/* Preserve permissions and move to final destination */
-		wd_set_permission(src, tmp_path);
-
-		if (rename(tmp_path, dest) != 0) {
-				unlink(tmp_path);
-				if (errno == EACCES || errno == EPERM)
-						return -RETW;
-				return -RETN;
-		}
-
-		/* Remove original source file */
-		if (unlink(src) != 0)
-				return -RETN;
-
-		return RETZ;
-}
-
+ static int _try_mv_without_sudo(const char *src, const char *dest) {
+		char __sz_cp[PATH_MAX + 50];
+		snprintf(__sz_cp, sizeof(__sz_cp), "mv -i %s %s", src, dest);
+		int ret = wd_run_command(__sz_cp);
+		return ret;
+ }
 /**
  * _try_cp_with_o_sudo - Copy file without sudo using temporary file
  * @src: Source file path
@@ -1399,50 +1304,12 @@ static int _try_mv_with_o_sudo(const char *src, const char *dest)
  *
  * Return: RETZ on success, -RETN on error, -RETW on permission error
  */
-static int _try_cp_with_o_sudo(const char *src, const char *dest)
-{
-		char parent[PATH_MAX];
-		char tmp_path[PATH_MAX];
-		int tmpfd, rv;
-
-		/* Validate source file */
-		if (!file_regular(src))
-				return -RETN;
-
-		/* Ensure destination directory exists and is writable */
-		if (ensure_parent_dir(parent, sizeof(parent), dest) != 0)
-				return -RETN;
-		if (!dir_writable(parent))
-				return -RETW;
-
-		/* Create temporary file in destination directory */
-		rv = snprintf(tmp_path, sizeof(tmp_path), "%s/.tmp_wd_copy_XXXXXX", parent);
-		if (rv < 0 || (size_t)rv >= sizeof(tmp_path))
-				return -RETN;
-
-		tmpfd = mkstemp(tmp_path);
-		if (tmpfd < 0)
-				return -RETN;
-		close(tmpfd);
-
-		/* Copy source to temporary location */
-		if (cp_f_content(src, tmp_path) != 0) {
-				unlink(tmp_path);
-				return -RETN;
-		}
-
-		/* Preserve permissions and move to final destination */
-		wd_set_permission(src, tmp_path);
-
-		if (rename(tmp_path, dest) != 0) {
-				unlink(tmp_path);
-				if (errno == EACCES || errno == EPERM)
-						return -RETW;
-				return -RETN;
-		}
-
-		return RETZ;
-}
+ static int _try_cp_with_o_sudo(const char *src, const char *dest) {
+		char __sz_cp[PATH_MAX + 50];
+		snprintf(__sz_cp, sizeof(__sz_cp), "cp -i %s %s", src, dest);
+		int ret = wd_run_command(__sz_cp);
+		return ret;
+ }
 
 #ifdef _WIN32
 /**
@@ -1487,53 +1354,6 @@ static int __cp_with_sudo(const char *src, const char *dest)
 #else
 
 /**
- * __execute_with_sudo - Execute command with sudo privileges
- * @cmd: Command to execute ("mv" or "cp")
- * @src: Source file path
- * @dest: Destination file path
- *
- * Return: Exit status of command, or negative error code
- */
-static int __execute_with_sudo(const char *cmd, const char *src, const char *dest)
-{
-		pid_t pid;
-		int status;
-		char *argv[5];
-
-		pid = fork();
-		if (pid < 0) {
-				perror("fork");
-				return -RETN;
-		}
-
-		if (pid == 0) {
-				/* Child process */
-				argv[0] = "sudo";
-				argv[1] = (char *)cmd;
-				argv[2] = (char *)src;
-				argv[3] = (char *)dest;
-				argv[4] = NULL;
-
-				execvp("sudo", argv);
-				perror("execvp sudo");
-				_exit(127);
-		}
-
-		/* Parent process */
-		if (waitpid(pid, &status, 0) < 0) {
-				perror("waitpid");
-				return -RETN;
-		}
-
-		if (WIFEXITED(status))
-				return WEXITSTATUS(status);
-		else if (WIFSIGNALED(status))
-				return RETN28 + WTERMSIG(status);
-
-		return -RETN;
-}
-
-/**
  * __mv_with_sudo - Move file with sudo privileges
  * @src: Source file path
  * @dest: Destination file path
@@ -1542,7 +1362,10 @@ static int __execute_with_sudo(const char *cmd, const char *src, const char *des
  */
 static int __mv_with_sudo(const char *src, const char *dest)
 {
-		return __execute_with_sudo("mv", src, dest);
+    char __sz_cp[PATH_MAX + 50];
+	snprintf(__sz_cp, sizeof(__sz_cp), "sudo mv -i %s %s", src, dest);
+	int ret = wd_run_command(__sz_cp);
+	return ret;
 }
 
 /**
@@ -1554,7 +1377,10 @@ static int __mv_with_sudo(const char *src, const char *dest)
  */
 static int __cp_with_sudo(const char *src, const char *dest)
 {
-		return __execute_with_sudo("cp", src, dest);
+    char __sz_cp[PATH_MAX + 50];
+	snprintf(__sz_cp, sizeof(__sz_cp), "sudo cp -i %s %s", src, dest);
+	int ret = wd_run_command(__sz_cp);
+	return ret;
 }
 
 #endif
@@ -1587,7 +1413,6 @@ static int __wd_sef_safety(const char *c_src, const char *c_dest)
 
 		if (path_exists(c_dest) && file_same_file(c_src, c_dest)) {
 				printf_info("source and dest are the same file: %s", c_src);
-				return RETZ;
 		}
 
 		if (ensure_parent_dir(parent, sizeof(parent), c_dest))
@@ -1667,23 +1492,29 @@ int wd_sef_wmv(const char *c_src, const char *c_dest)
 		if (ret != RETN)
 				return RETN;
 
-		mv_ret = _try_mv_with_o_sudo(c_src, c_dest);
+		mv_ret = _try_mv_without_sudo(c_src, c_dest);
 		if (!mv_ret) {
 				__wd_sef_set_permissions(c_dest);
 				printf_info("moved without sudo: %s -> %s", c_src, c_dest);
 				return RETZ;
 		}
 
-		if (mv_ret == -2 || errno == EACCES || errno == EPERM) {
+		int has_sudo = wd_run_command("which sudo > /dev/null 2>&1");
+		if (has_sudo == 1) {
+			printf_error("sudo not found!");
+		}
+
+		if (mv_ret == RETN || errno == EACCES || errno == EPERM) {
+				printf_info("permission denied!, try moving with sudo..");	
+				int has_sudo = wd_run_command("which sudo > /dev/null 2>&1");
+				if (has_sudo == 1) {
+					printf_error("sudo not found!");
+					return RETZ;
+				}
+				
 				if (!__wd_sef_try_sudo(__mv_with_sudo, c_src, c_dest, "move"))
 						return RETZ;
 				return RETN;
-		}
-
-		if (mv_ret == -3) {
-				printf_warning("move partially succeeded (copied but couldn't unlink source): %s", 
-						       c_dest);
-				return RETZ;
 		}
 
 		printf_error("move without sudo failed (errno=%d %s)", 
@@ -1718,7 +1549,14 @@ int wd_sef_wcopy(const char *c_src, const char *c_dest)
 				return RETZ;
 		}
 
-		if (cp_ret == -2 || errno == EACCES || errno == EPERM) {
+		if (cp_ret == RETN || errno == EACCES || errno == EPERM) {
+				printf_info("permission denied!, try copying with sudo..");	
+				int has_sudo = wd_run_command("which sudo > /dev/null 2>&1");
+				if (has_sudo == 1) {
+					printf_error("sudo not found!");
+					return RETZ;
+				}
+
 				if (!__wd_sef_try_sudo(__cp_with_sudo, c_src, c_dest, "copy"))
 						return RETZ;
 				return RETN;

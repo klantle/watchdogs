@@ -129,7 +129,7 @@ static int prompt_apply_depends(void)
 		char response[26];
 
 		wcfg.idepends = 0;
-		printf("Apply pawncc now? [Y/n]: ");
+		printf("Apply depends now? [Y/n]: ");
 		fflush(stdout);
 
 		/* Clear input buffer */

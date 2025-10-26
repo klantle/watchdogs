@@ -8,6 +8,14 @@ watchdogs_termux
 watchdogs.debug
 watchdogs.toml
 pawnc*
+pawno/*
 pawno
 samp*
+open.mp*
+omp*
+openmp*
+Server/*
 .wd_compiler.log
+gitignore
+_S
+ssamp

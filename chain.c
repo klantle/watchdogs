@@ -6,24 +6,22 @@
 #include <stdlib.h>
 #include <string.h>
 #include <stdarg.h>
-
 #ifdef _WIN32
 #include <direct.h>
 #include <windows.h>
+#include <ncursesw/curses.h>
 #define getcwd _getcwd
 #ifndef PATH_MAX
 #define PATH_MAX _MAX_PATH
 #endif
 #define __PATH_SYM "\\"
 #define mkdir(path) _mkdir(path)
-#define sleep(sec) Sleep((sec)*1000)
 #define setenv(name,val,overwrite) _putenv_s(name,val)
 #else
 #include <unistd.h>
 #define __PATH_SYM "/"
 #endif
 
-#include <ncursesw/curses.h>
 #include <limits.h>
 #include <dirent.h>
 #include <time.h>
@@ -71,21 +69,53 @@ void __function__(void) {
         }
         
         FILE *file_s = fopen(wcfg.pointer_samp, "r");
-        if (file_s) {
+        FILE *file_m = fopen(wcfg.pointer_openmp, "r");
+
+        if (file_s && file_m) {
+__default:
+            wcfg.f_openmp = 0x00;
             wcfg.f_samp = 0x01;
             fclose(file_s);
-        }
-        FILE *file_m = fopen(wcfg.pointer_openmp, "r");
-        if (file_m) {
+        } else if (file_s) {
+            goto __default;
+        } else if (file_m) {
+            wcfg.f_samp = 0x00;
             wcfg.f_openmp = 0x01;
             fclose(file_m);
+        } else {
+            goto __default;
         }
+
 #if defined(_DBG_PRINT)
         printf_color(COL_YELLOW, "-DEBUGGING\n");
-        printf("[__function__]:\n\tos_type: 0x0%d\n\tpointer_samp: %s\n\tpointer_openmp: %s\n",
-                wcfg.os_type,
-                wcfg.pointer_samp,
-                wcfg.pointer_openmp);
+        const char *os_name;
+
+        switch (wcfg.os_type) {
+            case OS_SIGNAL_WINDOWS:
+                os_name = "OS_SIGNAL_WINDOWS";
+                break;
+            case OS_SIGNAL_LINUX:
+                os_name = "OS_SIGNAL_LINUX";
+                break;
+            case OS_SIGNAL_UNKNOWN:
+                os_name = "OS_SIGNAL_UNKNOWN";
+                break;
+            default:
+                os_name = "OS_SIGNAL_INVALID";
+                break;
+        }
+
+        printf("[__function__]:\n"
+               "\tos_type: 0x0%x (%s)\n"
+               "\tpointer_samp: %s\n"
+               "\tpointer_openmp: %s\n"
+               "\tf_samp: 0x0%x\n"
+               "\tf_openmp: 0x0%x\n",
+               wcfg.os_type, os_name,
+               wcfg.pointer_samp,
+               wcfg.pointer_openmp,
+               wcfg.f_samp,
+               wcfg.f_openmp);
 #endif
         return;
 }
@@ -172,8 +202,13 @@ _reexecute_command:
         } else if (strcmp(ptr_command, "kill") == 0) {
             wd_set_title("Watchdogs | @ kill");
             wd_run_command("clear");
+#ifdef _WIN32
+            Sleep(1000);
+#else
             sleep(1);
-            __main(0);
+#endif
+            __function__();
+            return RETN;
         } else if (strncmp(ptr_command, "title", 5) == 0) {
             char *arg = ptr_command + 6;
             while (*arg == ' ') arg++;
@@ -258,13 +293,13 @@ _reexecute_command:
             char *arg = ptr_command + 7;
             while (*arg == ' ') arg++;
 
-            char *pkg_one = strtok(arg, " ");
-            char *pkg_two = strtok(NULL, " ");
+            char *dep_one = strtok(arg, " ");
+            char *dep_two = strtok(NULL, " ");
 
-            if (!pkg_one && !pkg_two) {
+            if (!dep_one && !dep_two) {
                 printf_info("install [repo] [repo]");
             } else {
-                wd_install_packages(pkg_one, pkg_two);
+                wd_install_depends(dep_one, dep_two);
             }
 
             return RETN;
@@ -275,6 +310,7 @@ ret_ptr1:
                 println("Select platform:");
                 println("-> [L/l] Linux");
                 println("-> [W/w] Windows");
+                printf(" ^ work's in WSL/MSYS2\n");
                 printf("==> ");
 
             if (scanf(" %c", &platform) != 1)
@@ -297,6 +333,7 @@ ret_ptr2:
                 println("Select platform:");
                 println("-> [L/l] Linux");
                 println("-> [W/w] Windows");
+                printf(" ^ work's in WSL/MSYS2\n");
                 println("-> [T/t] Termux");
                 printf("==> ");
 
@@ -334,88 +371,92 @@ _runners_:
                     wd_set_title("Watchdogs | @ running");
                 }
 
+                wd_stop_server_tasks();
+
+                int _wd_log_acces = path_acces("server_log.txt");
+                if (_wd_log_acces)
+                    remove("server_log.txt");
+                _wd_log_acces = path_acces("log.txt");
+                if (_wd_log_acces)
+                    remove("log.txt");
+
                 char *arg;
                     arg = ptr_command + 7;
                 while (*arg == ' ') arg++;
                 char *arg1 = strtok(arg, " ");
 
-                if (wcfg.f_samp == 0x01) {
-                    if (arg == NULL || *arg == '\0' || (arg[0] == '.' && arg[1] == '\0')) {
-                        FILE *server_log = fopen("server_log.txt", "r");
-                        if (server_log)
-                            remove("server_log.txt");
+		        size_t needed = snprintf(NULL, 0, "Watchdogs | @ running | args: %s | %s",
+									              arg1,
+									              "config.json") + 1;
+		        char *title_running_info = wdmalloc(needed);
+		        if (!title_running_info) { return RETN; }
+		        snprintf(title_running_info, needed, "Watchdogs | @ running | args: %s | %s",
+									                  arg1,
+									                  "config.json");
+		        if (title_running_info) {
+			        wd_set_title(title_running_info);
+			        wdfree(title_running_info);
+			        title_running_info = NULL;
+		        }
 
-                        printf_color(COL_YELLOW, "running..\n");
+                printf_color(COL_YELLOW, "running..\n");
+#ifdef _WIN32
 
-                        char snprintf_ptrS[128];
-#ifndef _WIN32
-                        chmod(wcfg.pointer_samp, 0777);
-                        snprintf(snprintf_ptrS, sizeof(snprintf_ptrS), "./%s", wcfg.pointer_samp);
+                system("C:\\msys64\\usr\\bin\\mintty.exe /bin/bash -c \"./watchdogs.win; pwd; exec bash\"");
 #else
-                        snprintf(snprintf_ptrS, sizeof(snprintf_ptrS), "%s", wcfg.pointer_samp);
+                struct stat st;
+                if (stat("/data/data/com.termux/files/usr/local/lib/", &st) == 0 ||
+                        stat("/data/data/com.termux/files/usr/lib/", &st) == 0)
+                    system("xterm -hold -e bash -c 'echo \"here is your watchdogs!..\"; ./watchdogs_termux' &");
+                else
+                    system("xterm -hold -e bash -c 'echo \"here is your watchdogs!..\"; ./watchdogs' &");
 #endif
-                        int running_FAIL = wd_run_command(snprintf_ptrS);
+                if (wcfg.f_samp == 0x01) {
+                if (arg == NULL || *arg == '\0' || (arg[0] == '.' && arg[1] == '\0')) {
+                        char __sz_run[128];
+#ifdef _WIN32
+                        snprintf(__sz_run, sizeof(__sz_run), "%s", wcfg.pointer_samp);
+#else
+                        chmod(wcfg.pointer_samp, 0777);
+                        snprintf(__sz_run, sizeof(__sz_run), "./%s", wcfg.pointer_samp);
+#endif
+                        int running_FAIL = system(__sz_run);
                         if (running_FAIL == 0) {
-                            sleep(2);
-
-                            printf_color(COL_YELLOW, "Press enter to print logs..");
-                            getchar();
-
-                            FILE *server_log = fopen("server_log.txt", "r");
-                            if (!server_log)
-                                printf_error("Can't found server_log.txt!");
-                            else {
-                                int ch;
-                                while ((ch = fgetc(server_log)) != EOF) {
-                                    putchar(ch);
-                                }
-                                fclose(server_log);
+                            if (wcfg.os_type == OS_SIGNAL_LINUX) {
+#ifdef _WIN32
+		                        Sleep(2000);
+#else
+                                sleep(2);
+#endif
+                                display_server_logs(0);
                             }
                         } else {
                             printf_color(COL_RED, "running failed!\n");
                         }
-                        return RETN;
                     } else {
                         printf_color(COL_YELLOW, "running..\n");
                         wd_run_samp_server(arg1, wcfg.pointer_samp);
                     }
                 } else if (wcfg.f_openmp == 0x01) {
-                    if (*arg == '\0') {
-                        FILE *server_log = fopen("log.txt", "r");
-
-                        if (server_log) 
-                            remove("log.txt");
-
-                        printf_color(COL_YELLOW, "running..\n");
-
-                        char snprintf_ptrS[128];
-#ifndef _WIN32
-                        chmod(wcfg.pointer_openmp, 0777);
-                        snprintf(snprintf_ptrS, sizeof(snprintf_ptrS), "./%s", wcfg.pointer_openmp);
+                    if (arg == NULL || *arg == '\0' || (arg[0] == '.' && arg[1] == '\0')) {
+                        char __sz_run[128];
+#ifdef _WIN32
+                        snprintf(__sz_run, sizeof(__sz_run), "%s", wcfg.pointer_openmp);
 #else
-                        snprintf(snprintf_ptrS, sizeof(snprintf_ptrS), "%s", wcfg.pointer_openmp);
+                        chmod(wcfg.pointer_samp, 0777);
+                        snprintf(__sz_run, sizeof(__sz_run), "./%s", wcfg.pointer_openmp);
 #endif
-                        int running_FAIL = wd_run_command(snprintf_ptrS);
+                        int running_FAIL = system(__sz_run);
                         if (running_FAIL == 0) {
+#ifdef _WIN32
+		                    Sleep(2000);
+#else
                             sleep(2);
-
-                            printf_color(COL_YELLOW, "Press enter to print logs..");
-                            getchar();
-
-                            FILE *server_log = fopen("log.txt", "r");
-                            if (!server_log)
-                                printf_error("Can't found log.txt!");
-                            else {
-                                int ch;
-                                while ((ch = fgetc(server_log)) != EOF) {
-                                    putchar(ch);
-                                }
-                                fclose(server_log);
-                            }
+#endif
+                            display_server_logs(1);
                         } else {
                             printf_color(COL_RED, "running failed!\n");
                         }
-                        return RETN;
                     } else {
                         printf_color(COL_YELLOW, "running..\n");
                         wd_run_omp_server(arg1, wcfg.pointer_openmp);
@@ -458,7 +499,11 @@ ret_ptr3:
             return RETN;
         } else if (strcmp(ptr_command, "restart") == 0) {
             wd_stop_server_tasks();
+#ifdef _WIN32
+            Sleep(2000);
+#else
             sleep(2);
+#endif
             goto _runners_;
         } else if (strcmp(ptr_command, _dist_command) != 0 && c_distance <= 2) {
             wd_set_title("Watchdogs | @ undefined");
@@ -476,20 +521,21 @@ ret_ptr3:
             if (strfind(ptr_command, "bash") ||
                 strfind(ptr_command, "sh") ||
                 strfind(ptr_command, "zsh") ||
-                strfind(ptr_command, "make"))
+                strfind(ptr_command, "make") ||
+                strfind(ptr_command, "cd")) {
+                    printf_error("you can't run it!");
                     goto _ptr_command;
+                }
             char _p_command[256];
             snprintf(_p_command, 256, "%s", ptr_command);
-            int __T_ptr_command = wd_run_command(_p_command);
-            if (__T_ptr_command == 0) {}
-            else {
+            int ret = wd_run_command(_p_command);
+            if (ret)
                 wd_set_title("Watchdogs | @ command not found");
-            }
             return RETN;
         }
 
         if (ptr_command) {
-            free(ptr_command);
+            wdfree(ptr_command);
             ptr_command = NULL;
         }
 

@@ -3,6 +3,7 @@
 #include <string.h>
 #include <stdarg.h>
 #include <sys/stat.h>
+#include <errno.h>
 
 #ifdef _WIN32
 #include <windows.h>
@@ -13,7 +14,6 @@
 #define PATH_SYM "\\"
 #define IS_PATH_SYM(c) ((c) == '/' || (c) == '\\')
 #define MKDIR(path) _mkdir(path)
-#define SLEEP(sec) Sleep((sec) * 1000)
 #define SETENV(name, val, overwrite) _putenv_s(name, val)
 #else
 #include <sys/utsname.h>
@@ -24,7 +24,6 @@
 #define PATH_SYM "/"
 #define IS_PATH_SYM(c) ((c) == '/')
 #define MKDIR(path) mkdir(path, 0755)
-#define SLEEP(sec) sleep(sec)
 #define SETENV(name, val, overwrite) setenv(name, val, overwrite)
 #endif
 
@@ -46,6 +45,7 @@ void println(const char *fmt, ...)
 		vprintf(fmt, args);
 		printf("\n");
 		va_end(args);
+		fflush(stdout);
 }
 
 /**
@@ -63,6 +63,7 @@ void printf_color(const char *color, const char *format, ...)
 		vprintf(format, args);
 		printf("%s", COL_DEFAULT);
 		va_end(args);
+		fflush(stdout);
 }
 
 /**
@@ -79,6 +80,7 @@ void printf_success(const char *format, ...)
 		vprintf(format, args);
 		printf("\n");
 		va_end(args);
+		fflush(stdout);
 }
 
 /**
@@ -95,6 +97,7 @@ void printf_info(const char *format, ...)
 		vprintf(format, args);
 		printf("\n");
 		va_end(args);
+		fflush(stdout);
 }
 
 /**
@@ -111,6 +114,7 @@ void printf_warning(const char *format, ...)
 		vprintf(format, args);
 		printf("\n");
 		va_end(args);
+		fflush(stdout);
 }
 
 /**
@@ -127,6 +131,7 @@ void printf_error(const char *format, ...)
 		vprintf(format, args);
 		printf("\n");
 		va_end(args);
+		fflush(stdout);
 }
 
 /**
@@ -143,6 +148,7 @@ void printf_crit(const char *format, ...)
 		vprintf(format, args);
 		printf("\n");
 		va_end(args);
+		fflush(stdout);
 }
 
 /**
@@ -223,8 +229,8 @@ static void update_library_environment(const char *lib_path)
 
 		/* Run ldconfig if in system directory */
 		if (strstr(lib_path, "/usr/local")) {
-				int has_sudo = wd_run_command("which sudo > /dev/null 2>&1");
-				if (has_sudo == 0)
+				int is_not_sudo = wd_run_command("which sudo > /dev/null 2>&1");
+				if (is_not_sudo == 0)
 						wd_run_command("sudo ldconfig");
 				else
 						wd_run_command("ldconfig");
@@ -339,22 +345,22 @@ void wd_apply_pawncc(void)
 
 		/* Collect source paths */
 		for (i = 0; i < wcfg.sef_count; i++) {
-				const char *entry = wcfg.sef_found[i];
-				if (!entry)
+				const char *item = wcfg.sef_found[i];
+				if (!item)
 						continue;
 
-				if (strstr(entry, "pawncc.exe")) {
-						strncpy(pawncc_exe_src, entry, sizeof(pawncc_exe_src));
-				} else if (strstr(entry, "pawncc") && !strstr(entry, ".exe")) {
-						strncpy(pawncc_src, entry, sizeof(pawncc_src));
-				} else if (strstr(entry, "pawndisasm.exe")) {
-						strncpy(pawndisasm_exe_src, entry, sizeof(pawndisasm_exe_src));
-				} else if (strstr(entry, "pawndisasm") && !strstr(entry, ".exe")) {
-						strncpy(pawndisasm_src, entry, sizeof(pawndisasm_src));
-				} else if (strstr(entry, "pawnc.dll"))  {
-						strncpy(pawnc_dll_src, entry, sizeof(pawnc_dll_src));
-				} else if (strstr(entry, "PAWNC.dll")) {
-						strncpy(PAWNC_DLL_src, entry, sizeof(PAWNC_DLL_src));
+				if (strstr(item, "pawncc.exe")) {
+						strncpy(pawncc_exe_src, item, sizeof(pawncc_exe_src));
+				} else if (strstr(item, "pawncc") && !strstr(item, ".exe")) {
+						strncpy(pawncc_src, item, sizeof(pawncc_src));
+				} else if (strstr(item, "pawndisasm.exe")) {
+						strncpy(pawndisasm_exe_src, item, sizeof(pawndisasm_exe_src));
+				} else if (strstr(item, "pawndisasm") && !strstr(item, ".exe")) {
+						strncpy(pawndisasm_src, item, sizeof(pawndisasm_src));
+				} else if (strstr(item, "pawnc.dll"))  {
+						strncpy(pawnc_dll_src, item, sizeof(pawnc_dll_src));
+				} else if (strstr(item, "PAWNC.dll")) {
+						strncpy(PAWNC_DLL_src, item, sizeof(PAWNC_DLL_src));
 				}
 		}
 

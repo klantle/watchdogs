@@ -13,6 +13,8 @@
 #include <unistd.h>
 #endif
 
+#include "utils.h"
+
 #ifdef _WIN32
 
 void hardware_cpu_info() {
@@ -49,7 +51,7 @@ void hardware_memory_info() {
 void hardware_disk_info() {
         ULARGE_INTEGER freeBytes, totalBytes, totalFree;
         if (GetDiskFreeSpaceEx("C:\\", &freeBytes, &totalBytes, &totalFree)) {
-                printf("%-15s: %.2f GB total, %.2f GB free\n",
+                printf("%-15s: %.2f GB total, %.2f GB wdfree\n",
                        "Disk C",
                        totalBytes.QuadPart / (1024.0 * 1024 * 1024),
                        freeBytes.QuadPart / (1024.0 * 1024 * 1024));
@@ -59,7 +61,7 @@ void hardware_disk_info() {
 void hardware_network_info() {
         DWORD dwSize = 0;
         GetAdaptersInfo(NULL, &dwSize);
-        PIP_ADAPTER_INFO pAdapterInfo = (IP_ADAPTER_INFO *)malloc(dwSize);
+        PIP_ADAPTER_INFO pAdapterInfo = (IP_ADAPTER_INFO *)wdmalloc(dwSize);
         if (GetAdaptersInfo(pAdapterInfo, &dwSize) == NO_ERROR) {
                 PIP_ADAPTER_INFO pAdapter = pAdapterInfo;
                 while (pAdapter) {
@@ -72,7 +74,7 @@ void hardware_network_info() {
                         pAdapter = pAdapter->Next;
                 }
         }
-        free(pAdapterInfo);
+        wdfree(pAdapterInfo);
 }
 
 void hardware_system_info() {
@@ -126,12 +128,12 @@ void hardware_disk_info() {
         if (statvfs("/", &stat) == 0) {
                 double total = (double)stat.f_blocks *
                        stat.f_frsize / (1024 * 1024 * 1024),
-                       free  = (double)stat.f_bfree  *
+                       wdfree  = (double)stat.f_bfree  *
                        stat.f_frsize / (1024 * 1024 * 1024);
-                printf("%-15s: %.2f GB total, %.2f GB free\n",
+                printf("%-15s: %.2f GB total, %.2f GB wdfree\n",
                        "Disk",
                        total,
-                       free);
+                       wdfree);
         }
 }
 

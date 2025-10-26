@@ -26,7 +26,7 @@
 - [x] [Intel](https://en.wikipedia.org/wiki/Intel)
 - [x] [AMD](https://en.wikipedia.org/wiki/AMD)
 
-### [DOCKER](https://www.docker.com/) USAGE
+### [DOCKER](https://www.docker.com/) USAGE - for Mac/ALT Platform
 
 > NOTE
 Run this inside the Docker/dockerfile directory.
@@ -73,7 +73,7 @@ git clone https://github.com/klantle/watchdogs watch
 # @@@ 7
 cd watch
 # @@@ 8
-make install               # install library first
+make                       # install library & build from source
 # @@@ 9
 ./watchdogs_termux         # run
 ```
@@ -102,7 +102,7 @@ git clone https://github.com/klantle/watchdogs watch
 # @@@ 5
 cd watch
 # @@@ 6
-make install              # install library first
+make                      # install library & build from source
 # @@@ 7
 ./watcdogs.win            # run
 ```
@@ -119,8 +119,23 @@ git clone https://github.com/klantle/watchdogs watch
 # @@@ 4
 cd watch
 # @@@ 5
+make                      # install library & build from source
 # @@@ 6
 ./watchdogs               # run
+```
+
+### Base Make command
+```sh
+make                # install library (apt/pkg/msys2)
+make linux          # build from source for linux
+make windows        # build from source for windows (msys2)
+make termux         # build from source for termux
+make clean          # clean make
+make debug          # build from source with debug mode (linux)
+make windows-debug  # build from source with debug mode (windows)
+# for more: `./__make.sh`
+```
+
 ```
 
 ---
@@ -232,14 +247,14 @@ compile path/path/yourmode.pwn
 
 ### INTRO 1.3 (STARTING [¶](https://en.m.wikipedia.org/wiki/Run_command))
 
-Run ".amx" by server.cfg param; `gamemode0` [¶](https://sampwiki.blast.hk/wiki/Server.cfg)
+Run yourmode of server.cfg/config.json from parameter `gamemode0` or `main_scripts`
 ```
 running .
 ```
 
-Run ".amx" by `[<args>]`
+Running specific `".amx"` with `[<args>]`
 ```
-running mymodes
+running yourmode
 ```
 
 ### INTRO 1.4 (COMPILE & STARTING)
@@ -251,14 +266,14 @@ crunn
 
 ### INTRO 1.5 (DEBUGGING [¶](https://en.m.wikipedia.org/wiki/Debugging))
 
-Debug ".amx" by server.cfg param; `gamemode0` [¶](https://sampwiki.blast.hk/wiki/Server.cfg)
+Debug yourmode of server.cfg/config.json from parameter `gamemode0` or `main_scripts`
 ```
 debug .
 ```
 
-Debug ".amx" by args
+Debug specific `".amx"` with `[<args>]`
 ```
-debug mymodes
+debug yourmode
 ```
 
 ### INTRO 1.6 (COMPILER OPTIONS) [3.10.10](https://github.com/pawn-lang/compiler/releases/tag/v3.10.10) (^/v)

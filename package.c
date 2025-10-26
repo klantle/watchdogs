@@ -200,9 +200,12 @@ static int handle_termux_installation(void)
 		/* Display version selection */
 		printf("Select the PawnCC version to download:\n");
 		for (size_t i = 0; i < version_count; i++) {
-				printf("[%c/%c] PawnCC %s\n", 
-				       'A' + i, 'a' + i, termux_versions[i]);
+			printf("[%c/%c] PawnCC %s\n",
+				(int)('A' + i),
+				(int)('a' + i),
+				termux_versions[i]);
 		}
+
 		printf("==> ");
 
 		if (scanf(" %c", &version_selection) != 1)
@@ -231,7 +234,7 @@ static int handle_termux_installation(void)
 				 termux_versions[version_index], architecture);
 
 		/* Trigger download */
-		wcfg.ipcc = 1;
+		wcfg.ipackage = 1;
 		wd_download_file(url, filename);
 
 		return RETZ;
@@ -266,8 +269,12 @@ static int handle_standard_installation(const char *platform)
 		/* Display version selection */
 		printf("Select the PawnCC version to download:\n");
 		for (size_t i = 0; i < version_count; i++) {
-				printf("[%c/%c] PawnCC %s\n", 'A' + i, 'a' + i, versions[i]);
+			printf("[%c/%c] PawnCC %s\n",
+				(int)('A' + i),
+				(int)('a' + i),
+				versions[i]);
 		}
+
 		printf("==> ");
 
 		if (scanf(" %c", &version_selection) != 1)
@@ -302,7 +309,7 @@ static int handle_standard_installation(const char *platform)
 				 versions[version_index], platform, archive_ext);
 
 		/* Trigger download */
-		wcfg.ipcc = 1;
+		wcfg.ipackage = 1;
 		wd_download_file(url, filename);
 
 		return RETZ;

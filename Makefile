@@ -40,7 +40,7 @@ install:
 		$(MAKE) windows; \
 	elif echo "$$UNAME_S" | grep -qi "Linux" && [ -d "/data/data/com.termux" ]; then \
 		echo "$(YELLOW)==>$(RESET) Detected: Termux environment"; \
-		pkg update -y && pkg install -y clang openssl curl libarchive ncurses readline; \
+		pkg update -y && pkg install -y clang openssl curl libarchive ncurses readline xterm; \
 		$(MAKE) termux; \
 	elif echo "$$UNAME_S" | grep -qi "MINGW64_NT"; then \
 		echo "$(YELLOW)==>$(RESET) Detected: MSYS2 MinGW UCRT64 environment"; \
@@ -59,9 +59,17 @@ install:
 		echo "$(YELLOW)==>$(RESET) Detected: Native Linux environment"; \
 		sudo dpkg --add-architecture i386; \
 		sudo apt update -y && \
-		sudo apt install -y build-essential libssl-dev libcurl4-openssl-dev \
-			libncurses5-dev libreadline-dev libarchive-dev \
-			libc6:i386 libncurses5:i386 libstdc++6:i386 zlib1g:i386; \
+        sudo apt install -y build-essential \
+            libssl-dev \
+            libncurses5-dev \
+            libc6:i386 \
+            libstdc++6:i386 \
+            libncursesw5-dev \
+            libcurl4-openssl-dev \
+            libreadline-dev \
+            libarchive-dev \
+            zlib1g-dev \
+            xterm; \
 		$(MAKE) linux; \
 	else \
 		echo "$(YELLOW)==>$(RESET) Unknown or unsupported environment."; \
@@ -119,10 +127,8 @@ windows:
 
 debug:
 	@printf "$(YELLOW)==>$(RESET) Building DEBUG Version $(VERSION) Full Version $(FULL_VERSION)\n"
-	@$(MAKE) TARGET=watchdogs.debug \
-	CC=gcc \
-	CFLAGS="$(CFLAGS) -g -O0 -D_DBG_PRINT -Wall" \
-	LDFLAGS="$(LDFLAGS)"
+	$(CC) $(CFLAGS) $(SRCS) -g -O0 -D_DBG_PRINT -Wall -o watchdogs.debug $(LDFLAGS)
+	@printf "$(YELLOW)==>$(RESET) Build complete: watchdogs.debug Version $(VERSION) Full Version $(FULL_VERSION)\n"
 
 windows-debug:
 	@printf "$(YELLOW)==>$(RESET) Building DEBUG Version $(VERSION) Full Version $(FULL_VERSION)\n"

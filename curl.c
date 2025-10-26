@@ -8,13 +8,11 @@
 #include <direct.h>
 #define PATH_SYM "\\"
 #define MKDIR(path) _mkdir(path)
-#define SLEEP(sec) Sleep((sec) * 1000)
 #define SETENV(name, val, overwrite) _putenv_s(name, val)
 #else
 #include <unistd.h>
 #define PATH_SYM "/"
 #define MKDIR(path) mkdir(path, 0755)
-#define SLEEP(sec) sleep(sec)
 #define SETENV(name, val, overwrite) setenv(name, val, overwrite)
 #endif
 
@@ -28,6 +26,7 @@
 #include "curl.h"
 #include "archive.h"
 #include "chain.h"
+#include "depends.h"
 
 /**
  * progress_callback - CURL progress callback function
@@ -40,26 +39,26 @@
  * Return: 0 to continue, non-zero to abort
  */
 static int progress_callback(void *ptr, curl_off_t dltotal,
-			     curl_off_t dlnow, curl_off_t ultotal,
-			     curl_off_t ulnow)
+						     curl_off_t dlnow, curl_off_t ultotal,
+						     curl_off_t ulnow)
 {
-	static int last_percent = -1;
-	int percent;
+		static int last_percent = -1;
+		int percent;
 
-	if (dltotal > 0) {
-		percent = (int)((dlnow * 100) / dltotal);
-		if (percent != last_percent) {
-			if (percent < 100)
-				printf("\rDownloading... %3d%% ?-", percent);
-			else
-				printf("\rDownloading... %3d%% - ", percent);
+		if (dltotal > 0) {
+				percent = (int)((dlnow * 100) / dltotal);
+				if (percent != last_percent) {
+						if (percent < 100)
+								printf("\rDownloading... %3d%% ?-", percent);
+						else
+								printf("\rDownloading... %3d%% - ", percent);
 
-			fflush(stdout);
-			last_percent = percent;
+						fflush(stdout);
+						last_percent = percent;
+				}
 		}
-	}
 
-	return RETZ;
+		return RETZ;
 }
 
 /**
@@ -70,28 +69,28 @@ static int progress_callback(void *ptr, curl_off_t dltotal,
  */
 static int extract_archive(const char *filename)
 {
-	char output_path[256];
-	size_t name_len;
+		char output_path[256];
+		size_t name_len;
 
-	if (strstr(filename, ".tar") || strstr(filename, ".tar.gz")) {
-		printf("Extracting TAR archive: %s\n", filename);
-		return wd_extract_tar(filename);
-	} else if (strstr(filename, ".zip")) {
-		printf("Extracting ZIP archive: %s\n", filename);
-		
-		name_len = strlen(filename);
-		if (name_len > 4 && !strncmp(filename + name_len - 4, ".zip", 4)) {
-			strncpy(output_path, filename, name_len - 4);
-			output_path[name_len - 4] = '\0';
+		if (strstr(filename, ".tar") || strstr(filename, ".tar.gz")) {
+				printf("Extracting TAR archive: %s\n", filename);
+				return wd_extract_tar(filename);
+		} else if (strstr(filename, ".zip")) {
+				printf("Extracting ZIP archive: %s\n", filename);
+				
+				name_len = strlen(filename);
+				if (name_len > 4 && !strncmp(filename + name_len - 4, ".zip", 4)) {
+						strncpy(output_path, filename, name_len - 4);
+						output_path[name_len - 4] = '\0';
+				} else {
+						strcpy(output_path, filename);
+				}
+				
+				return wd_extract_zip(filename, output_path);
 		} else {
-			strcpy(output_path, filename);
+				printf("Unknown archive type, skipping extraction: %s\n", filename);
+				return -RETN;
 		}
-		
-		return wd_extract_zip(filename, output_path);
-	} else {
-		printf("Unknown archive type, skipping extraction: %s\n", filename);
-		return -RETN;
-	}
 }
 
 /**
@@ -101,26 +100,49 @@ static int extract_archive(const char *filename)
  */
 static int prompt_apply_pawncc(void)
 {
-	char response[26];
+		char response[26];
 
-	if (wcfg.ipcc != 1)
+		wcfg.ipackage = 0;
+		printf("Apply pawncc now? [Y/n]: ");
+		fflush(stdout);
+
+		/* Clear input buffer */
+		int c;
+		while ((c = getchar()) != '\n' && c != EOF);
+
+		if (fgets(response, sizeof(response), stdin) != NULL) {
+				response[strcspn(response, "\n")] = 0;
+				if (strcmp(response, "Y") == 0 || strcmp(response, "y") == 0)
+						return RETN;
+		}
+
 		return RETZ;
+}
 
-	wcfg.ipcc = 0;
-	printf("Apply pawncc now? [Y/n]: ");
-	fflush(stdout);
+/**
+ * prompt_apply_depends - Prompt user to apply depends after download
+ *
+ * Return: 1 if user wants to apply, 0 if not
+ */
+static int prompt_apply_depends(void)
+{
+		char response[26];
 
-	/* Clear input buffer */
-	int c;
-	while ((c = getchar()) != '\n' && c != EOF);
+		wcfg.idepends = 0;
+		printf("Apply pawncc now? [Y/n]: ");
+		fflush(stdout);
 
-	if (fgets(response, sizeof(response), stdin) != NULL) {
-		response[strcspn(response, "\n")] = 0;
-		if (strcmp(response, "Y") == 0 || strcmp(response, "y") == 0)
-			return RETN;
-	}
+		/* Clear input buffer */
+		int c;
+		while ((c = getchar()) != '\n' && c != EOF);
 
-	return RETZ;
+		if (fgets(response, sizeof(response), stdin) != NULL) {
+				response[strcspn(response, "\n")] = 0;
+				if (strcmp(response, "Y") == 0 || strcmp(response, "y") == 0)
+						return RETN;
+		}
+
+		return RETZ;
 }
 
 /**
@@ -132,80 +154,90 @@ static int prompt_apply_pawncc(void)
  */
 int wd_download_file(const char *url, const char *filename)
 {
-	CURL *curl;
-	FILE *file;
-	CURLcode res;
-	long response_code = 0;
-	int retry_count = 0;
-	const int max_retries = 5;
-	struct stat file_stat;
+		CURL *curl;
+		FILE *file;
+		CURLcode res;
+		long response_code = 0;
+		int retry_count = 0;
+		const int max_retries = 5;
+		struct stat file_stat;
 
-	printf("Downloading: %s\n", url);
-	printf("Output file: %s\n", filename);
+		printf("Downloading: %s\n", url);
+		printf("Output file: %s\n", filename);
 
-	do {
-		file = fopen(filename, "wb");
-		if (!file) {
+		do {
+				file = fopen(filename, "wb");
+				if (!file) {
 #if defined(_DBG_PRINT)
-			printf_error("Failed to open file: %s", filename);
+						printf_error("Failed to open file: %s", filename);
 #endif
-			return -RETN;
-		}
+						return -RETN;
+				}
 
-		curl = curl_easy_init();
-		if (!curl) {
+				curl = curl_easy_init();
+				if (!curl) {
 #if defined(_DBG_PRINT)
-			printf_error("Failed to initialize CURL");
+						printf_error("Failed to initialize CURL");
 #endif
-			fclose(file);
-			return -RETN;
-		}
+						fclose(file);
+						return -RETN;
+				}
 
-		/* Configure CURL options */
-		curl_easy_setopt(curl, CURLOPT_URL, url);
-		curl_easy_setopt(curl, CURLOPT_WRITEDATA, file);
-		curl_easy_setopt(curl, CURLOPT_FAILONERROR, 1L);
-		curl_easy_setopt(curl, CURLOPT_FOLLOWLOCATION, 1L);
-		curl_easy_setopt(curl, CURLOPT_USERAGENT, "watchdogs/1.0");
-		curl_easy_setopt(curl, CURLOPT_CONNECTTIMEOUT, 15L);
-		curl_easy_setopt(curl, CURLOPT_TIMEOUT, 300L);
-		curl_easy_setopt(curl, CURLOPT_SSL_VERIFYPEER, 1L);
-		curl_easy_setopt(curl, CURLOPT_NOPROGRESS, 0L);
-		curl_easy_setopt(curl, CURLOPT_XFERINFOFUNCTION, progress_callback);
-		curl_easy_setopt(curl, CURLOPT_XFERINFODATA, NULL);
+				/* Configure CURL options */
+				curl_easy_setopt(curl, CURLOPT_URL, url);
+				curl_easy_setopt(curl, CURLOPT_WRITEDATA, file);
+				curl_easy_setopt(curl, CURLOPT_FAILONERROR, 1L);
+				curl_easy_setopt(curl, CURLOPT_FOLLOWLOCATION, 1L);
+				curl_easy_setopt(curl, CURLOPT_USERAGENT, "watchdogs/1.0");
+				curl_easy_setopt(curl, CURLOPT_CONNECTTIMEOUT, 15L);
+				curl_easy_setopt(curl, CURLOPT_TIMEOUT, 300L);
+				curl_easy_setopt(curl, CURLOPT_SSL_VERIFYPEER, 1L);
+				curl_easy_setopt(curl, CURLOPT_NOPROGRESS, 0L);
+				curl_easy_setopt(curl, CURLOPT_XFERINFOFUNCTION, progress_callback);
+				curl_easy_setopt(curl, CURLOPT_XFERINFODATA, NULL);
 
-		res = curl_easy_perform(curl);
-		curl_easy_getinfo(curl, CURLINFO_RESPONSE_CODE, &response_code);
-		
-		curl_easy_cleanup(curl);
-		fclose(file);
+				res = curl_easy_perform(curl);
+				curl_easy_getinfo(curl, CURLINFO_RESPONSE_CODE, &response_code);
+				
+				curl_easy_cleanup(curl);
+				fclose(file);
 
-		if (res == CURLE_OK && response_code == 200) {
-			if (stat(filename, &file_stat) == 0 && file_stat.st_size > 1024) {
-				printf("Download successful: %ld bytes\n", file_stat.st_size);
-				printf("Checking file type for extraction...\n");
+				if (res == CURLE_OK && response_code == 200) {
+						if (stat(filename, &file_stat) == 0 && file_stat.st_size > 1024) {
+								printf("Download successful: %ld bytes\n", file_stat.st_size);
+								printf("Checking file type for extraction...\n");
 
-				/* Extract archive if applicable */
-				extract_archive(filename);
+								/* Extract archive if applicable */
+								extract_archive(filename);
 
-				/* Prompt for pawncc if needed */
-				if (prompt_apply_pawncc())
-					wd_apply_pawncc();
+								/* Prompt for pawncc if needed */
+								if (wcfg.ipackage) {
+									if (prompt_apply_pawncc())
+											wd_apply_pawncc();
+								}
+								if (wcfg.idepends) {
+									if (prompt_apply_depends())
+											wd_apply_depends();
+								}
 
-				return RETZ;
-			} else {
-				printf_error("Downloaded file too small: %ld bytes", 
-					     file_stat.st_size);
-			}
-		} else {
-			printf_error("Download failed - HTTP: %ld, CURL: %d, retrying...",
-				     response_code, res);
-		}
+								return RETZ;
+						} else {
+								printf_error("Downloaded file too small: %ld bytes", 
+										     file_stat.st_size);
+						}
+				} else {
+						printf_error("Download failed - HTTP: %ld, CURL: %d, retrying...",
+								     response_code, res);
+				}
 
-		retry_count++;
-		SLEEP(3);
-	} while (retry_count < max_retries);
+				retry_count++;
+#ifdef _WIN32
+				Sleep(3000);
+#else
+				sleep(3);
+#endif
+		} while (retry_count < max_retries);
 
-	printf_error("Download failed after %d retries", max_retries);
-	return -RETN;
+		printf_error("Download failed after %d retries", max_retries);
+		return -RETN;
 }

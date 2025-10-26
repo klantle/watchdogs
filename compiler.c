@@ -28,7 +28,7 @@ int wd_RunCompiler(const char *arg, const char *compile_args)
             path_include="qawno/include";
 
         int _wd_log_acces = path_acces(".wd_compiler.log");
-        if (_wd_log_acces == 1)
+        if (_wd_log_acces)
             remove(".wd_compiler.log");
 
         char container_output[PATH_MAX] = {0};
@@ -38,7 +38,7 @@ int wd_RunCompiler(const char *arg, const char *compile_args)
         int __find_pawncc = wd_sef_fdir(".", ptr_pawncc, NULL);
         if (__find_pawncc) {
             size_t format_size_compiler = 1024;
-            char *_compiler_ = malloc(format_size_compiler);
+            char *_compiler_ = wdmalloc(format_size_compiler);
             if (!_compiler_) {
 #if defined(_DBG_PRINT)
                 printf_error("memory allocation failed for _compiler_!");
@@ -50,7 +50,7 @@ int wd_RunCompiler(const char *arg, const char *compile_args)
             if (!procc_f) {
                 printf_error("Can't read file %s", "watchdogs.toml");
                 if (_compiler_) {
-                    free(_compiler_);
+                    wdfree(_compiler_);
                     _compiler_ = NULL;
                 }
                 return RETZ;
@@ -66,7 +66,7 @@ int wd_RunCompiler(const char *arg, const char *compile_args)
             if (!_toml_config) {
                 printf_error("parsing TOML: %s", errbuf);    
                 if (_compiler_) {
-                    free(_compiler_);
+                    wdfree(_compiler_);
                     _compiler_ = NULL;
                 }
                 return RETZ;
@@ -86,19 +86,19 @@ int wd_RunCompiler(const char *arg, const char *compile_args)
                         size_t old_len = merged ? strlen(merged) : 0,
                                new_len = old_len + strlen(val.u.s) + 2;
 
-                        char *tmp = realloc(merged, new_len);
+                        char *tmp = wdrealloc(merged, new_len);
                         if (!tmp) {
-                            free(merged);
-                            free(val.u.s);
+                            wdfree(merged);
+                            wdfree(val.u.s);
                             merged = NULL;
                             break;
                         }
                         merged = tmp;
 
-                        if (old_len == 0) snprintf(merged, new_len, "%s", val.u.s);
+                        if (!old_len) snprintf(merged, new_len, "%s", val.u.s);
                         else snprintf(merged + old_len, new_len - old_len, " %s", val.u.s);
 
-                        free(val.u.s);
+                        wdfree(val.u.s);
                         val.u.s = NULL;
                     }
 
@@ -132,7 +132,7 @@ int wd_RunCompiler(const char *arg, const char *compile_args)
                                             "-i\"%s\"",
                                             __procc);
                             }
-                            free(path_val.u.s);
+                            wdfree(path_val.u.s);
                         }
                     }
                 }
@@ -141,18 +141,15 @@ int wd_RunCompiler(const char *arg, const char *compile_args)
                     toml_datum_t toml_gm_i = toml_string_in(wd_compiler, "input");
                     if (toml_gm_i.ok) {
                         wcfg.gm_input = strdup(toml_gm_i.u.s);
-                        free(toml_gm_i.u.s);
+                        wdfree(toml_gm_i.u.s);
                         toml_gm_i.u.s = NULL;
                     }
                     toml_datum_t toml_gm_o = toml_string_in(wd_compiler, "output");
                     if (toml_gm_o.ok) {
                         wcfg.gm_output = strdup(toml_gm_o.u.s);
-                        free(toml_gm_o.u.s);
+                        wdfree(toml_gm_o.u.s);
                         toml_gm_o.u.s = NULL;
                     }
-                    
-                    struct timespec start, end;
-                    double compiler_dur;
 #ifdef _WIN32
                     int ret_compiler = snprintf(
                         _compiler_,
@@ -183,24 +180,31 @@ int wd_RunCompiler(const char *arg, const char *compile_args)
                         printf_error("snprintf() failed or buffer too small (needed %d bytes)", ret_compiler);
                     
                     size_t needed = snprintf(NULL, 0, "Watchdogs | @ compile | %s | %s | %s",
-                                                        wcfg.sef_found[0],
-                                                        wcfg.gm_input,
-                                                        wcfg.gm_output) + 1;
-                    char *title_compiler_info = malloc(needed);
+                                                      wcfg.sef_found[0],
+                                                      wcfg.gm_input,
+                                                      wcfg.gm_output) + 1;
+                    char *title_compiler_info = wdmalloc(needed);
                     if (!title_compiler_info) { return RETN; }
                     snprintf(title_compiler_info, needed, "Watchdogs | @ compile | %s | %s | %s",
-                                                            wcfg.sef_found[0],
-                                                            wcfg.gm_input,
-                                                            wcfg.gm_output);
+                                                          wcfg.sef_found[0],
+                                                          wcfg.gm_input,
+                                                          wcfg.gm_output);
                     if (title_compiler_info) {
                         wd_set_title(title_compiler_info);
-                        free(title_compiler_info);
+                        wdfree(title_compiler_info);
                         title_compiler_info = NULL;
                     }
+
+                    struct timespec start, end;
+                    double compiler_dur;
 
                     clock_gettime(CLOCK_MONOTONIC, &start);
                         wd_run_command(_compiler_);
                     clock_gettime(CLOCK_MONOTONIC, &end);
+                        
+                    if (procc_f) {
+                        print_file_to_terminal(".wd_compiler.log");
+                    }
 
                     char _container_output[PATH_MAX + 128];
                     snprintf(_container_output, sizeof(_container_output), "%s.amx", container_output);
@@ -210,7 +214,6 @@ int wd_RunCompiler(const char *arg, const char *compile_args)
                         char line_buf[1024 + 1024];
                         int __has_error = 0;
                         while (fgets(line_buf, sizeof(line_buf), procc_f)) {
-                            fputs(line_buf, stdout);
                             if (strstr(line_buf, "error") || strstr(line_buf, "Error")) {
                                 __has_error = 1;
                             }
@@ -224,118 +227,132 @@ int wd_RunCompiler(const char *arg, const char *compile_args)
                         } else {
                             if (wcfg.compiler_error) wcfg.compiler_error--;
                         }
-                    } else {
-                        printf_error("failed to open .wd_compiler.log");
-                    }
+                    } else printf_error("Failed to open .wd_compiler.log");
 
-                    compiler_dur = (end.tv_sec - start.tv_sec) + (end.tv_nsec - start.tv_nsec) / 1e9;
-                    printf_color(COL_YELLOW, " ==> [P]Finished in %.3fs\n", compiler_dur);
+                    compiler_dur = (end.tv_sec - start.tv_sec)
+                                        + (end.tv_nsec - start.tv_nsec) / 1e9;
+
+                    printf_color(COL_YELLOW,
+                        " ==> [P]Finished in %.3fs (%.0f ms)\n",
+                        compiler_dur, compiler_dur * 1000.0);
 #if defined(_DBG_PRINT)
                     printf_color(COL_YELLOW, "-DEBUGGING\n");
                     printf("[COMPILER]:\n\t%s\n", _compiler_);
 #endif
                 } else {
-                    char
-                        __cp_direct_path[PATH_MAX] = {0}, __cp_file_name[PATH_MAX] = {0},
-                        __cp_input_path[PATH_MAX] = {0}, __cp_any_tmp[PATH_MAX] = {0};
+                    char __cp_direct_path[PATH_MAX] = {0};
+                    char __cp_file_name[PATH_MAX] = {0};
+                    char __cp_input_path[PATH_MAX] = {0};
+                    char __cp_any_tmp[PATH_MAX] = {0};
+
                     strncpy(__cp_any_tmp, compile_args, sizeof(__cp_any_tmp) - 1);
                     __cp_any_tmp[sizeof(__cp_any_tmp) - 1] = '\0';
 
                     char *compiler_last_slash = NULL;
                     compiler_last_slash = strrchr(__cp_any_tmp, '/');
+
                     char *compiler_back_slash = NULL;
                     compiler_back_slash = strrchr(__cp_any_tmp, '\\');
+
                     if (compiler_back_slash &&
-                        (!compiler_last_slash ||
-                        compiler_back_slash > compiler_last_slash))
+                        (!compiler_last_slash || compiler_back_slash > compiler_last_slash))
                         compiler_last_slash = compiler_back_slash;
 
-                    if (compiler_last_slash != NULL) {
-                        size_t
-                            __dir_len = (size_t)(compiler_last_slash - __cp_any_tmp);
-                        if (__dir_len >= sizeof(__cp_direct_path)) 
+                    if (compiler_last_slash) {
+                        size_t __dir_len = (size_t)(compiler_last_slash - __cp_any_tmp);
+
+                        if (__dir_len >= sizeof(__cp_direct_path))
                             __dir_len = sizeof(__cp_direct_path) - 1;
 
-                        memcpy(__cp_direct_path,
-                                __cp_any_tmp,
-                                __dir_len);
+                        memcpy(__cp_direct_path, __cp_any_tmp, __dir_len);
                         __cp_direct_path[__dir_len] = '\0';
 
                         const char *__cp_filename_start = compiler_last_slash + 1;
                         size_t __cp_filename_len = strlen(__cp_filename_start);
+
                         if (__cp_filename_len >= sizeof(__cp_file_name))
                             __cp_filename_len = sizeof(__cp_file_name) - 1;
 
-                        memcpy(__cp_file_name,
-                                __cp_filename_start,
-                                __cp_filename_len);
+                        memcpy(__cp_file_name, __cp_filename_start, __cp_filename_len);
                         __cp_file_name[__cp_filename_len] = '\0';
 
-                        size_t total_needed = strlen(__cp_direct_path) + 1 + strlen(__cp_file_name) + 1;
+                        size_t total_needed = strlen(__cp_direct_path) + 1 +
+                                    strlen(__cp_file_name) + 1;
+
                         if (total_needed > sizeof(__cp_input_path)) {
-                            strncpy(__cp_direct_path, "gamemodes", sizeof(__cp_direct_path) - 1);
+                            strncpy(__cp_direct_path, "gamemodes",
+                                sizeof(__cp_direct_path) - 1);
                             __cp_direct_path[sizeof(__cp_direct_path) - 1] = '\0';
-                            
+
                             size_t __cp_max_file_name = sizeof(__cp_file_name) - 1;
+
                             if (__cp_filename_len > __cp_max_file_name) {
-                                memcpy(__cp_file_name,
-                                        __cp_filename_start,
-                                        __cp_max_file_name);
+                                memcpy(__cp_file_name, __cp_filename_start,
+                                    __cp_max_file_name);
                                 __cp_file_name[__cp_max_file_name] = '\0';
                             }
                         }
-                        
+
                         if (snprintf(__cp_input_path, sizeof(__cp_input_path),
-                            "%s/%s", 
-                            __cp_direct_path,
-                            __cp_file_name) >= (int)sizeof(__cp_input_path)) {
+                                "%s/%s", __cp_direct_path, __cp_file_name) >=
+                            (int)sizeof(__cp_input_path))
                             __cp_input_path[sizeof(__cp_input_path) - 1] = '\0';
-                        }
+
                     } else {
-                        strncpy(__cp_file_name, __cp_any_tmp, sizeof(__cp_file_name) - 1);
+                        strncpy(__cp_file_name, __cp_any_tmp,
+                            sizeof(__cp_file_name) - 1);
                         __cp_file_name[sizeof(__cp_file_name) - 1] = '\0';
 
                         strncpy(__cp_direct_path, ".", sizeof(__cp_direct_path) - 1);
                         __cp_direct_path[sizeof(__cp_direct_path) - 1] = '\0';
 
                         if (snprintf(__cp_input_path, sizeof(__cp_input_path),
-                            "./%s",
-                            __cp_file_name) >= (int)sizeof(__cp_input_path))
+                                "./%s", __cp_file_name) >=
+                            (int)sizeof(__cp_input_path))
                             __cp_input_path[sizeof(__cp_input_path) - 1] = '\0';
                     }
 
                     int __find_gamemodes_args = 0;
-                    __find_gamemodes_args = wd_sef_fdir(__cp_direct_path, __cp_file_name, NULL);
+                    __find_gamemodes_args = wd_sef_fdir(__cp_direct_path,
+                                        __cp_file_name, NULL);
 
-                    if (!__find_gamemodes_args && strcmp(__cp_direct_path, "gamemodes") != 0) {
-                        __find_gamemodes_args = wd_sef_fdir("gamemodes", __cp_file_name, NULL);
+                    if (!__find_gamemodes_args &&
+                        strcmp(__cp_direct_path, "gamemodes") != 0) {
+                        __find_gamemodes_args = wd_sef_fdir("gamemodes",
+                                            __cp_file_name, NULL);
                         if (__find_gamemodes_args) {
-                            strncpy(__cp_direct_path, "gamemodes", sizeof(__cp_direct_path) - 1);
+                            strncpy(__cp_direct_path, "gamemodes",
+                                sizeof(__cp_direct_path) - 1);
                             __cp_direct_path[sizeof(__cp_direct_path) - 1] = '\0';
-                            
+
                             if (snprintf(__cp_input_path, sizeof(__cp_input_path),
-                                "gamemodes/%s",
-                                __cp_file_name) >= (int)sizeof(__cp_input_path))
+                                    "gamemodes/%s", __cp_file_name) >=
+                                (int)sizeof(__cp_input_path))
                                 __cp_input_path[sizeof(__cp_input_path) - 1] = '\0';
-                            
+
                             if (wcfg.sef_count > 0)
-                                strncpy(wcfg.sef_found[wcfg.sef_count-1], __cp_input_path, MAX_SEF_PATH_SIZE);
+                                strncpy(wcfg.sef_found[wcfg.sef_count - 1],
+                                    __cp_input_path, MAX_SEF_PATH_SIZE);
                         }
                     }
 
-                    if (!__find_gamemodes_args && strcmp(__cp_direct_path, ".") == 0) {
-                        __find_gamemodes_args = wd_sef_fdir("gamemodes", __cp_file_name, NULL);
+                    if (!__find_gamemodes_args &&
+                        strcmp(__cp_direct_path, ".") == 0) {
+                        __find_gamemodes_args = wd_sef_fdir("gamemodes",
+                                            __cp_file_name, NULL);
                         if (__find_gamemodes_args) {
-                            strncpy(__cp_direct_path, "gamemodes", sizeof(__cp_direct_path) - 1);
+                            strncpy(__cp_direct_path, "gamemodes",
+                                sizeof(__cp_direct_path) - 1);
                             __cp_direct_path[sizeof(__cp_direct_path) - 1] = '\0';
-                            
+
                             if (snprintf(__cp_input_path, sizeof(__cp_input_path),
-                                "gamemodes/%s",
-                                __cp_file_name) >= (int)sizeof(__cp_input_path))
+                                    "gamemodes/%s", __cp_file_name) >=
+                                (int)sizeof(__cp_input_path))
                                 __cp_input_path[sizeof(__cp_input_path) - 1] = '\0';
-                            
+
                             if (wcfg.sef_count > 0)
-                                strncpy(wcfg.sef_found[wcfg.sef_count-1], __cp_input_path, MAX_SEF_PATH_SIZE);
+                                strncpy(wcfg.sef_found[wcfg.sef_count - 1],
+                                    __cp_input_path, MAX_SEF_PATH_SIZE);
                         }
                     }
 
@@ -347,8 +364,6 @@ int wd_RunCompiler(const char *arg, const char *compile_args)
 
                         snprintf(container_output, sizeof(container_output), "%s", __sef_path_sz);
 
-                        struct timespec start, end;
-                        double compiler_dur;
 #ifdef _WIN32
                         int ret_compiler = snprintf(
                             _compiler_,
@@ -379,24 +394,31 @@ int wd_RunCompiler(const char *arg, const char *compile_args)
                             printf_error("snprintf() failed or buffer too small (needed %d bytes)", ret_compiler);
 
                         size_t needed = snprintf(NULL, 0, "Watchdogs | @ compile | %s | %s | %s.amx",
-                                                            wcfg.sef_found[0],
-                                                            wcfg.sef_found[1],
-                                                            container_output) + 1;
-                        char *title_compiler_info = malloc(needed);
+                                                          wcfg.sef_found[0],
+                                                          wcfg.sef_found[1],
+                                                          container_output) + 1;
+                        char *title_compiler_info = wdmalloc(needed);
                         if (!title_compiler_info) { return RETN; }
                         snprintf(title_compiler_info, needed, "Watchdogs | @ compile | %s | %s | %s.amx",
-                                                                wcfg.sef_found[0],
-                                                                wcfg.sef_found[1],
-                                                                container_output);
+                                                              wcfg.sef_found[0],
+                                                              wcfg.sef_found[1],
+                                                              container_output);
                         if (title_compiler_info) {
                             wd_set_title(title_compiler_info);
-                            free(title_compiler_info);
+                            wdfree(title_compiler_info);
                             title_compiler_info = NULL;
                         }
 
+                        struct timespec start, end;
+                        double compiler_dur;
+                        
                         clock_gettime(CLOCK_MONOTONIC, &start);
                             wd_run_command(_compiler_);
                         clock_gettime(CLOCK_MONOTONIC, &end);
+                        
+                        if (procc_f) {
+                            print_file_to_terminal(".wd_compiler.log");
+                        }
 
                         char _container_output[PATH_MAX + 128];
                         snprintf(_container_output, sizeof(_container_output), "%s.amx", container_output);
@@ -406,7 +428,6 @@ int wd_RunCompiler(const char *arg, const char *compile_args)
                             char line_buf[1024 + 1024];
                             int __has_error = 0;
                             while (fgets(line_buf, sizeof(line_buf), procc_f)) {
-                                fputs(line_buf, stdout);
                                 if (strstr(line_buf, "error") || strstr(line_buf, "Error")) {
                                     __has_error = 1;
                                 }
@@ -420,16 +441,19 @@ int wd_RunCompiler(const char *arg, const char *compile_args)
                             } else {
                                 if (wcfg.compiler_error) wcfg.compiler_error--;
                             }
-                        } else {
-                            printf_error("failed to open .wd_compiler.log");
-                        }
+                        } else printf_error("Failed to open .wd_compiler.log");
 
-                        compiler_dur = (end.tv_sec - start.tv_sec) + (end.tv_nsec - start.tv_nsec) / 1e9;
-                        printf_color(COL_YELLOW, " ==> [P]Finished in %.3fs\n", compiler_dur);
+                        compiler_dur = (end.tv_sec - start.tv_sec)
+                                            + (end.tv_nsec - start.tv_nsec) / 1e9;
+
+                        printf_color(COL_YELLOW,
+                            " ==> [P]Finished in %.3fs (%.0f ms)\n",
+                            compiler_dur, compiler_dur * 1000.0);
 #if defined(_DBG_PRINT)
                         printf_color(COL_YELLOW, "-DEBUGGING\n");
                         printf("[COMPILER]:\n\t%s\n", _compiler_);
 #endif
+
                     } else {
                         printf_error("Can't locate:");
                         printf("\t%s\n", compile_args);
@@ -439,7 +463,7 @@ int wd_RunCompiler(const char *arg, const char *compile_args)
 
                 toml_free(_toml_config);
                 if (_compiler_) {
-                    free(_compiler_);
+                    wdfree(_compiler_);
                     _compiler_ = NULL;
                 }
                 
@@ -458,6 +482,7 @@ ret_ptr:
                         println("Select platform:");
                         println("-> [L/l] Linux");
                         println("-> [W/w] Windows");
+                        printf(" ^ work's in WSL/MSYS2\n");
                         println("-> [T/t] Termux");
                         printf("==> ");
 

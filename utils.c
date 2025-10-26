@@ -6,6 +6,8 @@
 #include <ctype.h>
 #include <stdbool.h>
 #include <sys/stat.h>
+#include <fcntl.h>
+#include <dirent.h>
 
 #ifdef _WIN32
 #include <windows.h>
@@ -16,7 +18,7 @@
 #define __PATH_SYM "\\"
 #define IS_PATH_SYM(c) ((c) == '/' || (c) == '\\')
 #define mkdir(path) _mkdir(path)
-#define sleep(sec) Sleep((sec)*1000)
+#define Sleep(sec) Sleep((sec)*1000)
 #define setenv(name,val,overwrite) _putenv_s(name,val)
 static int _w_chmod(const char *path) {
         int mode = _S_IREAD | _S_IWRITE;
@@ -37,6 +39,9 @@ static int _w_chmod(const char *path) {
 #include <ncursesw/curses.h>
 #include <math.h>
 #include <limits.h>
+#ifndef _WIN32
+#define MAX_PATH PATH_MAX + 764
+#endif
 #include <time.h>
 #include <ftw.h>
 #include <curl/curl.h>
@@ -80,7 +85,8 @@ const size_t
             sizeof(__command[0]);
 
 WatchdogConfig wcfg = {
-        .ipcc = 0,
+        .ipackage = 0,
+		.idepends = 0,
         .os = NULL,
         .os_type = 0x00,
         .f_samp = 0x00,
@@ -284,11 +290,11 @@ static int wd_confirm_dangerous_command(const char *cmd, char badch, size_t pos)
 				return RETZ;
 
 		if (strcmp(response, "Y") == 0 || strcmp(response, "y") == 0) {
-				free(response);
+				wdfree(response);
 				return RETN;
 		}
 
-		free(response);
+		wdfree(response);
 		return RETZ;
 }
 
@@ -320,6 +326,36 @@ int wd_run_command(const char *cmd)
 
 		ret = system(cmd);
 		return ret;
+}
+
+/**
+ * print_file_to_terminal - Print file to Terminal
+ * @path: path file}
+ *
+ * Return: void
+ */
+void print_file_to_terminal(const char *path) {
+		int fd = open(path, O_RDONLY);
+		if (fd < 0) {
+			perror("open");
+			return;
+		}
+
+		char buf[65536];
+		ssize_t n;
+
+		while ((n = read(fd, buf, sizeof buf)) > 0) {
+			if (write(STDOUT_FILENO, buf, n) != n) {
+				perror("write");
+				close(fd);
+				return;
+			}
+		}
+
+		if (n < 0)
+			perror("read");
+
+		close(fd);
 }
 
 /**
@@ -747,7 +783,7 @@ int kill_process(const char *name)
 				return -RETN;
 
 		snprintf(cmd, sizeof(cmd), "pkill -9 -f \"%s\" > /dev/null 2>&1", name);
-		return wd_run_command(cmd);
+		return system(cmd);
 }
 
 /**
@@ -758,6 +794,70 @@ void kill_process_safe(const char *name)
 {
 		if (name && strlen(name) > 0)
 				kill_process(name);
+}
+
+/**
+ * wd_match_filename - Check if filename matches pattern
+ * @name: Filename to check
+ * @pattern: Pattern to match (may contain wildcards)
+ *
+ * Return: 1 if matches, 0 otherwise
+ */
+static int wd_match_filename(const char *name, const char *pattern)
+{
+		if (strchr(pattern, '*') || strchr(pattern, '?')) {
+#ifdef _WIN32
+				return PathMatchSpecA(name, pattern);
+#else
+				return (fnmatch(pattern, name, 0) == 0);
+#endif
+		} else {
+				return (strcmp(name, pattern) == 0);
+		}
+}
+
+/**
+ * wd_is_special_dir - Check if directory item is special (. or ..)
+ * @name: Directory item name
+ *
+ * Return: 1 if special directory, 0 otherwise
+ */
+static int wd_is_special_dir(const char *name)
+{
+		return (name[0] == '.' && 
+		       (name[1] == '\0' || (name[1] == '.' && name[2] == '\0')));
+}
+
+/**
+ * wd_should_ignore_dir - Check if directory should be ignored
+ * @name: Directory name
+ * @ignore_dir: Directory to ignore (NULL for none)
+ *
+ * Return: 1 if should ignore, 0 otherwise
+ */
+static int wd_should_ignore_dir(const char *name, const char *ignore_dir)
+{
+		if (!ignore_dir)
+				return RETZ;
+
+#ifdef _WIN32
+		return (_stricmp(name, ignore_dir) == 0);
+#else
+		return (strcmp(name, ignore_dir) == 0);
+#endif
+}
+
+/**
+ * wd_add_found_path - Add found path to configuration
+ * @path: Path to add
+ */
+static void wd_add_found_path(const char *path)
+{
+		if (wcfg.sef_count < (sizeof(wcfg.sef_found) / sizeof(wcfg.sef_found[0]))) {
+				strncpy(wcfg.sef_found[wcfg.sef_count], path, MAX_SEF_PATH_SIZE);
+				wcfg.sef_found[wcfg.sef_count][MAX_SEF_PATH_SIZE - 1] = '\0';
+				wcfg.sef_count++;
+		}
 }
 
 /**
@@ -817,7 +917,7 @@ int wd_sef_fdir(const char *sef_path, const char *sef_name, const char *ignore_d
 		FindClose(find_handle);
 #else
 		DIR *dir;
-		struct dirent *entry;
+		struct dirent *item;
 		struct stat statbuf;
 		const char *name;
 
@@ -825,21 +925,21 @@ int wd_sef_fdir(const char *sef_path, const char *sef_name, const char *ignore_d
 		if (!dir)
 				return RETZ;
 
-		while ((entry = readdir(dir)) != NULL) {
-				name = entry->d_name;
+		while ((item = readdir(dir)) != NULL) {
+				name = item->d_name;
 				if (wd_is_special_dir(name))
 						continue;
 
 				__set_path_syms(path_buff, sizeof(path_buff), sef_path, name);
 
-				if (entry->d_type == DT_DIR) {
+				if (item->d_type == DT_DIR) {
 						if (wd_should_ignore_dir(name, ignore_dir))
 								continue;
 						if (wd_sef_fdir(path_buff, sef_name, ignore_dir)) {
 								closedir(dir);
 								return RETN;
 						}
-				} else if (entry->d_type == DT_REG) {
+				} else if (item->d_type == DT_REG) {
 						if (wd_match_filename(name, sef_name)) {
 								wd_add_found_path(path_buff);
 								closedir(dir);
@@ -874,66 +974,121 @@ int wd_sef_fdir(const char *sef_path, const char *sef_name, const char *ignore_d
 }
 
 /**
- * wd_is_special_dir - Check if directory entry is special (. or ..)
- * @name: Directory entry name
- *
- * Return: 1 if special directory, 0 otherwise
+ * __toml_add_directory_path - Add directory path to TOML with proper formatting
+ * @toml_file: TOML file handle for output
+ * @first: Pointer to first item flag
+ * @path: Directory path to add
  */
-static int wd_is_special_dir(const char *name)
+static void __toml_add_directory_path(FILE *toml_file, int *first, const char *path)
 {
-		return (name[0] == '.' && 
-		       (name[1] == '\0' || (name[1] == '.' && name[2] == '\0')));
-}
-
-/**
- * wd_should_ignore_dir - Check if directory should be ignored
- * @name: Directory name
- * @ignore_dir: Directory to ignore (NULL for none)
- *
- * Return: 1 if should ignore, 0 otherwise
- */
-static int wd_should_ignore_dir(const char *name, const char *ignore_dir)
-{
-		if (!ignore_dir)
-				return RETZ;
-
-#ifdef _WIN32
-		return (_stricmp(name, ignore_dir) == 0);
-#else
-		return (strcmp(name, ignore_dir) == 0);
-#endif
-}
-
-/**
- * wd_match_filename - Check if filename matches pattern
- * @name: Filename to check
- * @pattern: Pattern to match (may contain wildcards)
- *
- * Return: 1 if matches, 0 otherwise
- */
-static int wd_match_filename(const char *name, const char *pattern)
-{
-		if (strchr(pattern, '*') || strchr(pattern, '?')) {
-#ifdef _WIN32
-				return PathMatchSpecA(name, pattern);
-#else
-				return (fnmatch(pattern, name, 0) == 0);
-#endif
-		} else {
-				return (strcmp(name, pattern) == 0);
+		if (!*first)
+				fprintf(toml_file, ",\n        ");
+		else {
+				fprintf(toml_file, "\n        ");
+				*first = 0;
 		}
+
+		fprintf(toml_file, "\"%s\"", path);
 }
 
 /**
- * wd_add_found_path - Add found path to configuration
- * @path: Path to add
+ * wd_check_compiler_options - Test compiler for specific options
  */
-static void wd_add_found_path(const char *path)
+static void wd_check_compiler_options(int *compatibility, int *optimized_lt)
 {
-		if (wcfg.sef_count < (sizeof(wcfg.sef_found) / sizeof(wcfg.sef_found[0]))) {
-				strncpy(wcfg.sef_found[wcfg.sef_count], path, MAX_SEF_PATH_SIZE);
-				wcfg.sef_found[wcfg.sef_count][MAX_SEF_PATH_SIZE - 1] = '\0';
-				wcfg.sef_count++;
+		char run_cmd[PATH_MAX + 258];
+		FILE *proc_file;
+		char log_line[1024];
+
+		/* Run compiler with test command */
+		snprintf(run_cmd, sizeof(run_cmd), 
+				 "%s -___DDDDDDDDDDDDDDDDD-___DDDDDDDDDDDDDDDDD"
+				 "-___DDDDDDDDDDDDDDDDD-___DDDDDDDDDDDDDDDDD > .__CP.log 2>&1", 
+				 wcfg.sef_found[0]);
+		
+		system(run_cmd);
+
+		int found_Z = 0, found_ver = 0;
+		proc_file = fopen(".__CP.log", "r");
+		if (proc_file) {
+			while (fgets(log_line, sizeof(log_line), proc_file) != NULL) {
+				if (!found_Z && strstr(log_line, "-Z"))
+					found_Z = 1;
+				if (!found_ver && strstr(log_line, "3.10.11"))
+					found_ver = 1;
+			}
+			fclose(proc_file);
+			if (found_Z)
+				*compatibility = 1;
+			if (found_ver)
+				*optimized_lt = 1;
+		} else {
+			printf_error("Failed to open .__CP.log");
+		}
+
+		/* Cleanup temporary log file */
+		if (path_acces(".__CP.log"))
+				remove(".__CP.log");
+}
+
+
+/**
+ * wd_parse_toml_config - Parse and load TOML configuration
+ *
+ * Return: 1 on success, 0 on failure
+ */
+static int wd_parse_toml_config(void)
+{
+		FILE *proc_file;
+		char errbuf[256];
+		toml_table_t *toml_config;
+		toml_table_t *general_table;
+
+		proc_file = fopen("watchdogs.toml", "r");
+		if (!proc_file) {
+				printf_error("Cannot read file %s", "watchdogs.toml");
+				return RETZ;
+		}
+
+		toml_config = toml_parse_file(proc_file, errbuf, sizeof(errbuf));
+		fclose(proc_file);
+
+		if (!toml_config) {
+				printf_error("Parsing TOML: %s", errbuf);
+				return RETZ;
+		}
+
+		/* Extract OS configuration */
+		general_table = toml_table_in(toml_config, "general");
+		if (general_table) {
+				toml_datum_t os_val = toml_string_in(general_table, "os");
+				if (os_val.ok) {
+						wcfg.os = strdup(os_val.u.s);
+						wdfree(os_val.u.s);
+				}
+		}
+
+		toml_free(toml_config);
+		return RETN;
+}
+
+/**
+ * wd_find_compiler - Locate pawn compiler based on OS and config
+ * @os_type: Operating system type
+ *
+ * Return: 1 if found, 0 if not found
+ */
+static int wd_find_compiler(const char *os_type)
+{
+		int is_windows = (strcmp(os_type, "windows") == 0);
+		const char *compiler_name = is_windows ? "pawncc.exe" : "pawncc";
+
+		if (wcfg.f_samp == 0x01) {
+				return wd_sef_fdir("pawno", compiler_name, NULL);
+		} else if (wcfg.f_openmp == 0x01) {
+				return wd_sef_fdir("qawno", compiler_name, NULL);
+		} else {
+				return wd_sef_fdir("pawno", compiler_name, NULL);
 		}
 }
 
@@ -977,21 +1132,21 @@ static void __toml_base_subdirs(const char *base_path, FILE *toml_file, int *fir
 		FindClose(find_handle);
 #else
 		DIR *dir;
-		struct dirent *entry;
+		struct dirent *item;
 		char full_path[PATH_MAX + 50];
 
 		dir = opendir(base_path);
 		if (!dir)
 				return;
 
-		while ((entry = readdir(dir)) != NULL) {
-				if (entry->d_type == DT_DIR) {
-						if (strcmp(entry->d_name, ".") == 0 ||
-						    strcmp(entry->d_name, "..") == 0)
+		while ((item = readdir(dir)) != NULL) {
+				if (item->d_type == DT_DIR) {
+						if (strcmp(item->d_name, ".") == 0 ||
+						    strcmp(item->d_name, "..") == 0)
 								continue;
 
 						snprintf(full_path, sizeof(full_path), "%s/%s", 
-								 base_path, entry->d_name);
+								 base_path, item->d_name);
 
 						__toml_add_directory_path(toml_file, first, full_path);
 						__toml_base_subdirs(full_path, toml_file, first);
@@ -1003,152 +1158,44 @@ static void __toml_base_subdirs(const char *base_path, FILE *toml_file, int *fir
 }
 
 /**
- * __toml_add_directory_path - Add directory path to TOML with proper formatting
- * @toml_file: TOML file handle for output
- * @first: Pointer to first item flag
- * @path: Directory path to add
+ * wd_add_compiler_path - Add compiler-specific include path
+ * @file: File handle to write to
+ * @path: Path to add
+ * @first_item: Pointer to first item flag
  */
-static void __toml_add_directory_path(FILE *toml_file, int *first, const char *path)
+static void wd_add_compiler_path(FILE *file, const char *path, int *first_item)
 {
-		if (!*first)
-				fprintf(toml_file, ",\n        ");
-		else {
-				fprintf(toml_file, "\n        ");
-				*first = 0;
+		if (path_acces(path)) {
+				if (!*first_item)
+						fprintf(file, ",");
+				fprintf(file, "\n        \"%s\"", path);
+				*first_item = 0;
+				__toml_base_subdirs(path, file, first_item);
 		}
-
-		fprintf(toml_file, "\"%s\"", path);
 }
 
 /**
- * wd_check_compiler_options - Test compiler for specific options
+ * wd_add_include_paths - Add include paths to TOML configuration
+ * @file: File handle to write to
+ * @first_item: Pointer to first item flag
  */
-static void wd_check_compiler_options(int *compatibility, int *optimized_lt)
+static void wd_add_include_paths(FILE *file, int *first_item)
 {
-		char run_cmd[PATH_MAX + 258];
-		FILE *proc_file;
-		char log_line[1024];
-
-		/* Run compiler with test command */
-		snprintf(run_cmd, sizeof(run_cmd), 
-				 "%s -___DDDDDDDDDDDDDDDDD-___DDDDDDDDDDDDDDDDD"
-				 "-___DDDDDDDDDDDDDDDDD-___DDDDDDDDDDDDDDDDD > .__CP.log 2>&1", 
-				 wcfg.sef_found[0]);
-		
-		wd_run_command(run_cmd);
-
-		int found_Z = 0, found_ver = 0;
-		proc_file = fopen(".__CP.log", "r");
-		if (proc_file) {
-			while (fgets(log_line, sizeof(log_line), proc_file) != NULL) {
-				if (!found_Z && strstr(log_line, "-Z"))
-					found_Z = 1;
-				if (!found_ver && strstr(log_line, "3.10.11"))
-					found_ver = 1;
-			}
-			fclose(proc_file);
-			if (found_Z) {
-				*compatibility = 1;
-			}
-			if (found_ver) {
-				*optimized_lt = 1;
-			}
-		} else {
-			printf_error("failed to open .__CP.log");
+		if (path_acces("gamemodes")) {
+				if (!*first_item)
+						fprintf(file, ",");
+				fprintf(file, "\n        \"gamemodes\"");
+				*first_item = 0;
+				__toml_base_subdirs("gamemodes", file, first_item);
 		}
 
-		/* Cleanup temporary log file */
-		if (path_acces(".__CP.log"))
-				remove(".__CP.log");
-}
-
-/**
- * wd_set_toml - Initialize and configure TOML settings
- *
- * Detects environment, finds compiler and gamemodes, generates
- * appropriate TOML configuration file.
- *
- * Return: RETZ on success, RETN on error
- */
-int wd_set_toml(void)
-{
-		int find_pawncc = 0;
-		int find_gamemodes = 0;
-		int compatibility = 0;
-		int optimized_lt = 0;
-		int first_item = 1;
-		const char *os_type;
-		char run_cmd[PATH_MAX + 258];
-		FILE *toml_file, *proc_file;
-		toml_table_t *toml_config;
-		toml_table_t *general_table;
-
-		os_type = wd_detect_os();
-
-		/* Find compiler based on platform and configuration */
-		find_pawncc = wd_find_compiler(os_type);
-		if (!find_pawncc) {
-				/* Fallback: search in current directory */
-				if (strcmp(os_type, "windows") == 0)
-						find_pawncc = wd_sef_fdir(".", "pawncc.exe", NULL);
-				else
-						find_pawncc = wd_sef_fdir(".", "pawncc", NULL);
-		}
-
-		/* Find gamemodes */
-		find_gamemodes = wd_sef_fdir("gamemodes/", "*.pwn", NULL);
-
-		/* Check compiler Options */
-		if (find_pawncc) {
-				wd_check_compiler_options(&compatibility, &optimized_lt);
-		}
-
-		/* Generate TOML configuration */
-		toml_file = fopen("watchdogs.toml", "r");
-		if (toml_file) {
-				fclose(toml_file);
-		} else {
-				toml_file = fopen("watchdogs.toml", "w");
-				if (!toml_file) {
-						printf_error("Failed to create watchdogs.toml");
-						return RETN;
-				}
-
-                if (find_pawncc)
-				    wd_generate_toml_content(toml_file, os_type, find_gamemodes, 
-										    compatibility, optimized_lt, wcfg.sef_found[1]);
-                else
-				    wd_generate_toml_content(toml_file, os_type, find_gamemodes, 
-										    compatibility, optimized_lt, wcfg.sef_found[0]);
-				fclose(toml_file);
-		}
-
-		/* Parse and load TOML configuration */
-		if (!wd_parse_toml_config()) {
-				printf_error("Failed to parse TOML configuration");
-				return RETN;
-		}
-
-		return RETZ;
-}
-
-/**
- * wd_find_compiler - Locate pawn compiler based on OS and config
- * @os_type: Operating system type
- *
- * Return: 1 if found, 0 if not found
- */
-static int wd_find_compiler(const char *os_type)
-{
-		int is_windows = (strcmp(os_type, "windows") == 0);
-		const char *compiler_name = is_windows ? "pawncc.exe" : "pawncc";
-
+		/* Add compiler-specific include paths */
 		if (wcfg.f_samp == 0x01) {
-				return wd_sef_fdir("pawno", compiler_name, NULL);
+				wd_add_compiler_path(file, "pawno/include", first_item);
 		} else if (wcfg.f_openmp == 0x01) {
-				return wd_sef_fdir("qawno", compiler_name, NULL);
+				wd_add_compiler_path(file, "qawno/include", first_item);
 		} else {
-				return wd_sef_fdir("pawno", compiler_name, NULL);
+				wd_add_compiler_path(file, "pawno/include", first_item);
 		}
 }
 
@@ -1202,192 +1249,117 @@ static void wd_generate_toml_content(FILE *file, const char *os_type,
 }
 
 /**
- * wd_add_include_paths - Add include paths to TOML configuration
- * @file: File handle to write to
- * @first_item: Pointer to first item flag
- */
-static void wd_add_include_paths(FILE *file, int *first_item)
-{
-		if (path_acces("gamemodes")) {
-				if (!*first_item)
-						fprintf(file, ",");
-				fprintf(file, "\n        \"gamemodes\"");
-				*first_item = 0;
-				__toml_base_subdirs("gamemodes", file, first_item);
-		}
-
-		/* Add compiler-specific include paths */
-		if (wcfg.f_samp == 0x01) {
-				wd_add_compiler_path(file, "pawno/include", first_item);
-		} else if (wcfg.f_openmp == 0x01) {
-				wd_add_compiler_path(file, "qawno/include", first_item);
-		} else {
-				wd_add_compiler_path(file, "pawno/include", first_item);
-		}
-}
-
-/**
- * wd_add_compiler_path - Add compiler-specific include path
- * @file: File handle to write to
- * @path: Path to add
- * @first_item: Pointer to first item flag
- */
-static void wd_add_compiler_path(FILE *file, const char *path, int *first_item)
-{
-		if (path_acces(path)) {
-				if (!*first_item)
-						fprintf(file, ",");
-				fprintf(file, "\n        \"%s\"", path);
-				*first_item = 0;
-				__toml_base_subdirs(path, file, first_item);
-		}
-}
-
-/**
- * wd_parse_toml_config - Parse and load TOML configuration
+ * wd_set_toml - Initialize and configure TOML settings
  *
- * Return: 1 on success, 0 on failure
+ * Detects environment, finds compiler and gamemodes, generates
+ * appropriate TOML configuration file.
+ *
+ * Return: RETZ on success, RETN on error
  */
-static int wd_parse_toml_config(void)
+int wd_set_toml(void)
 {
-		FILE *proc_file;
-		char errbuf[256];
-		toml_table_t *toml_config;
-		toml_table_t *general_table;
+		int find_pawncc = 0;
+		int find_gamemodes = 0;
+		int compatibility = 0;
+		int optimized_lt = 0;
+		const char *os_type;
+		FILE *toml_file;
 
-		proc_file = fopen("watchdogs.toml", "r");
-		if (!proc_file) {
-				printf_error("Cannot read file %s", "watchdogs.toml");
-				return RETZ;
+		os_type = wd_detect_os();
+
+		/* Find compiler based on platform and configuration */
+		find_pawncc = wd_find_compiler(os_type);
+		if (!find_pawncc) {
+				/* Fallback: search in current directory */
+				if (strcmp(os_type, "windows") == 0)
+						find_pawncc = wd_sef_fdir(".", "pawncc.exe", NULL);
+				else
+						find_pawncc = wd_sef_fdir(".", "pawncc", NULL);
 		}
 
-		toml_config = toml_parse_file(proc_file, errbuf, sizeof(errbuf));
-		fclose(proc_file);
+		/* Find gamemodes */
+		find_gamemodes = wd_sef_fdir("gamemodes/", "*.pwn", NULL);
 
-		if (!toml_config) {
-				printf_error("Parsing TOML: %s", errbuf);
-				return RETZ;
+		/* Check compiler Options */
+		if (find_pawncc) {
+				wd_check_compiler_options(&compatibility, &optimized_lt);
 		}
 
-		/* Extract OS configuration */
-		general_table = toml_table_in(toml_config, "general");
-		if (general_table) {
-				toml_datum_t os_val = toml_string_in(general_table, "os");
-				if (os_val.ok) {
-						wcfg.os = strdup(os_val.u.s);
-						free(os_val.u.s);
+		/* Generate TOML configuration */
+		toml_file = fopen("watchdogs.toml", "r");
+		if (toml_file) {
+				fclose(toml_file);
+		} else {
+				toml_file = fopen("watchdogs.toml", "w");
+				if (!toml_file) {
+						printf_error("Failed to create watchdogs.toml");
+						return RETN;
 				}
+
+                if (find_pawncc)
+				    wd_generate_toml_content(toml_file, os_type, find_gamemodes, 
+										    compatibility, optimized_lt, wcfg.sef_found[1]);
+                else
+				    wd_generate_toml_content(toml_file, os_type, find_gamemodes, 
+										    compatibility, optimized_lt, wcfg.sef_found[0]);
+				fclose(toml_file);
 		}
 
-		toml_free(toml_config);
-		return RETN;
+		/* Parse and load TOML configuration */
+		if (!wd_parse_toml_config()) {
+				printf_error("Failed to parse TOML configuration");
+				return RETN;
+		}
+
+		return RETZ;
 }
 
 /**
  * _try_mv_without_sudo - Move file without sudo using copy-fallback
+ * __mv_with_sudo - Move file with sudo
  * @src: Source file path
  * @dest: Destination file path
- *
- * Attempts rename first, falls back to copy+unlink for cross-device
- * or permission issues.
- *
- * Return: RETZ on success, -RETN on error, -RETW on permission error
  */
  static int _try_mv_without_sudo(const char *src, const char *dest) {
-		char __sz_cp[PATH_MAX + 50];
-		snprintf(__sz_cp, sizeof(__sz_cp), "mv -i %s %s", src, dest);
-		int ret = wd_run_command(__sz_cp);
-		return ret;
- }
-/**
- * _try_cp_with_o_sudo - Copy file without sudo using temporary file
- * @src: Source file path
- * @dest: Destination file path
- *
- * Uses atomic copy via temporary file to avoid partial copies.
- *
- * Return: RETZ on success, -RETN on error, -RETW on permission error
- */
- static int _try_cp_with_o_sudo(const char *src, const char *dest) {
-		char __sz_cp[PATH_MAX + 50];
-		snprintf(__sz_cp, sizeof(__sz_cp), "cp -i %s %s", src, dest);
-		int ret = wd_run_command(__sz_cp);
+		char
+			__sz_mv[PATH_MAX * 2 + 100];
+		snprintf(__sz_mv, sizeof(__sz_mv), "mv -i %s %s/%s", src, dest, src);
+		int ret = wd_run_command(__sz_mv);
 		return ret;
  }
 
-#ifdef _WIN32
-/**
- * __mv_with_sudo - Move file with administrator privileges (Windows)
- * @src: Source file path
- * @dest: Destination file path
- *
- * Return: RETZ on success, -RETN on failure
- */
 static int __mv_with_sudo(const char *src, const char *dest)
 {
-		if (!MoveFileExA(src, dest, MOVEFILE_COPY_ALLOWED | MOVEFILE_REPLACE_EXISTING)) {
-#if defined(_DBG_PRINT)
-				printf_error("MoveFileExA failed: %s -> %s (error %lu)", 
-						     src, dest, GetLastError());
-#endif
-				return -RETN;
-		}
-
-		return RETZ;
+		char
+			__sz_mv[PATH_MAX * 2 + 100];
+		snprintf(__sz_mv, sizeof(__sz_mv), "sudo mv -i %s %s/%s", src, dest, src);
+		int ret = wd_run_command(__sz_mv);
+		return ret;
 }
 
 /**
- * __cp_with_sudo - Copy file with administrator privileges (Windows)
+ * _try_cp_without_sudo - Copy file without sudo using temporary file
+ * __cp_with_sudo - Copy file with sudo
  * @src: Source file path
  * @dest: Destination file path
- *
- * Return: RETZ on success, -RETN on failure
  */
+ static int _try_cp_without_sudo(const char *src, const char *dest) {
+		char
+			__sz_cp[PATH_MAX * 2 + 100];
+		snprintf(__sz_cp, sizeof(__sz_cp), "cp -i %s %s/%s", src, dest, src);
+		int ret = wd_run_command(__sz_cp);
+		return ret;
+}
+
 static int __cp_with_sudo(const char *src, const char *dest)
 {
-		if (!CopyFileA(src, dest, FALSE)) {
-#if defined(_DBG_PRINT)
-				printf_error("CopyFileA failed: %s -> %s (error %lu)", 
-						     src, dest, GetLastError());
-#endif
-				return -RETN;
-		}
-
-		return RETZ;
-}
-#else
-
-/**
- * __mv_with_sudo - Move file with sudo privileges
- * @src: Source file path
- * @dest: Destination file path
- *
- * Return: Exit status of mv command, or negative error code
- */
-static int __mv_with_sudo(const char *src, const char *dest)
-{
-    char __sz_cp[PATH_MAX + 50];
-	snprintf(__sz_cp, sizeof(__sz_cp), "sudo mv -i %s %s", src, dest);
-	int ret = wd_run_command(__sz_cp);
-	return ret;
+		char
+			__sz_cp[PATH_MAX * 2 + 100];
+		snprintf(__sz_cp, sizeof(__sz_cp), "sudo cp -i %s %s/%s", src, dest, src);
+		int ret = wd_run_command(__sz_cp);
+		return ret;
 }
 
-/**
- * __cp_with_sudo - Copy file with sudo privileges
- * @src: Source file path
- * @dest: Destination file path
- *
- * Return: Exit status of cp command, or negative error code
- */
-static int __cp_with_sudo(const char *src, const char *dest)
-{
-    char __sz_cp[PATH_MAX + 50];
-	snprintf(__sz_cp, sizeof(__sz_cp), "sudo cp -i %s %s", src, dest);
-	int ret = wd_run_command(__sz_cp);
-	return ret;
-}
-
-#endif
 /**
  * __wd_sef_safety - Validate source and destination for file operations
  * @c_src: Source file path
@@ -1455,39 +1427,13 @@ static void __wd_sef_set_permissions(const char *c_dest)
 }
 
 /**
- * __wd_sef_try_sudo - Attempt operation with sudo as fallback
- * @op_func: Operation function (move or copy)
- * @c_src: Source file path
- * @c_dest: Destination file path
- * @op_name: Operation name for logging
- *
- * Return: RETZ on success, RETN on failure
- */
-static int __wd_sef_try_sudo(int (*op_func)(const char *, const char *),
-						     const char *c_src, const char *c_dest,
-						     const char *op_name)
-{
-		int ret;
-
-		printf_info("attempting sudo %s due to permission issue", op_name);
-
-		ret = op_func(c_src, c_dest);
-		if (!ret) {
-				printf_info("%s with sudo: %s -> %s", op_name, c_src, c_dest);
-				return RETZ;
-		}
-
-		printf_error("sudo %s failed with code %d", op_name, ret);
-		return RETN;
-}
-
-/**
  * wd_sef_wmv - Move file with safety checks and sudo fallback
  * @c_src: Source file path
  * @c_dest: Destination file path
  *
  * Return: RETZ on success, RETN on failure
  */
+ 
 int wd_sef_wmv(const char *c_src, const char *c_dest)
 {
 		int ret, mv_ret;
@@ -1496,41 +1442,25 @@ int wd_sef_wmv(const char *c_src, const char *c_dest)
 		if (ret != RETN)
 				return RETN;
 
-		mv_ret = _try_mv_without_sudo(c_src, c_dest);
-		if (!mv_ret) {
-				__wd_sef_set_permissions(c_dest);
-				printf_info("moved without sudo: %s -> %s", c_src, c_dest);
-				return RETZ;
-		}
-
-		int has_sudo = wd_run_command("which sudo > /dev/null 2>&1");
-		if (has_sudo == 1) {
-			printf_error("sudo not found!");
-		}
-
-		if (mv_ret == RETN || errno == EACCES || errno == EPERM) {
-				printf_info("permission denied!, try moving with sudo..");	
-				int has_sudo = wd_run_command("which sudo > /dev/null 2>&1");
-				if (has_sudo == 1) {
-					printf_error("sudo not found!");
+		int is_not_sudo = wd_run_command("which sudo > /dev/null 2>&1");
+		if (is_not_sudo == 1) {
+			mv_ret = _try_mv_without_sudo(c_src, c_dest);
+			if (!mv_ret) {
+					__wd_sef_set_permissions(c_dest);
+					printf_info("moved without sudo: %s -> %s", c_src, c_dest);
 					return RETZ;
-				}
-				
-				if (!__wd_sef_try_sudo(__mv_with_sudo, c_src, c_dest, "move"))
-						return RETZ;
-				return RETN;
+			}
+		} else {
+			mv_ret = __mv_with_sudo(c_src, c_dest);
+			if (!mv_ret) {
+					__wd_sef_set_permissions(c_dest);
+					printf_info("moved with sudo: %s -> %s", c_src, c_dest);
+					return RETZ;
+			}
 		}
-
-		printf_error("move without sudo failed (errno=%d %s)", 
-				     errno, strerror(errno));
-		printf_info("attempting sudo as last resort");
-
-		if (!__wd_sef_try_sudo(__mv_with_sudo, c_src, c_dest, "move"))
-				return RETZ;
 
 		return RETN;
 }
-
 /**
  * wd_sef_wcopy - Copy file with safety checks and sudo fallback
  * @c_src: Source file path
@@ -1546,32 +1476,22 @@ int wd_sef_wcopy(const char *c_src, const char *c_dest)
 		if (ret != RETN)
 				return RETN;
 
-		cp_ret = _try_cp_with_o_sudo(c_src, c_dest);
-		if (!cp_ret) {
-				__wd_sef_set_permissions(c_dest);
-				printf_info("copied without sudo: %s -> %s", c_src, c_dest);
-				return RETZ;
-		}
-
-		if (cp_ret == RETN || errno == EACCES || errno == EPERM) {
-				printf_info("permission denied!, try copying with sudo..");	
-				int has_sudo = wd_run_command("which sudo > /dev/null 2>&1");
-				if (has_sudo == 1) {
-					printf_error("sudo not found!");
+		int is_not_sudo = wd_run_command("which sudo > /dev/null 2>&1");
+		if (is_not_sudo == 1) {
+			cp_ret = _try_cp_without_sudo(c_src, c_dest);
+			if (!cp_ret) {
+					__wd_sef_set_permissions(c_dest);
+					printf_info("copying without sudo: %s -> %s", c_src, c_dest);
 					return RETZ;
-				}
-
-				if (!__wd_sef_try_sudo(__cp_with_sudo, c_src, c_dest, "copy"))
-						return RETZ;
-				return RETN;
+			}
+		} else {
+			cp_ret = __cp_with_sudo(c_src, c_dest);
+			if (!cp_ret) {
+					__wd_sef_set_permissions(c_dest);
+					printf_info("copying with sudo: %s -> %s", c_src, c_dest);
+					return RETZ;
+			}
 		}
-
-		printf_error("copy without sudo failed (errno=%d %s)", 
-				     errno, strerror(errno));
-		printf_info("attempting sudo as last resort");
-
-		if (!__wd_sef_try_sudo(__cp_with_sudo, c_src, c_dest, "copy"))
-				return RETZ;
 
 		return RETN;
 }

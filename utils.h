@@ -5,6 +5,7 @@
 #include <stdbool.h>
 #include <stdint.h>
 #include <limits.h>
+#include <dirent.h>
 
 #define min3(a, b, c) \
     ((a) < (b) ? \
@@ -21,9 +22,42 @@
     #define wd_a_history(cmd)
 #endif
 
+#define wdmalloc(x) malloc(x)
+#define wdcalloc(x, y) calloc(x, y)
+#define wdrealloc(x, y) realloc(x, y)
+#define wdfree(x) free(x)
+
 #define RETZ 0
 #define RETN 1
 #define RETW 2
+
+#ifndef DT_UNKNOWN
+#define DT_UNKNOWN  0
+#endif
+#ifndef DT_FIFO
+#define DT_FIFO     1
+#endif
+#ifndef DT_CHR
+#define DT_CHR      2
+#endif
+#ifndef DT_DIR
+#define DT_DIR      4
+#endif
+#ifndef DT_BLK
+#define DT_BLK      6
+#endif
+#ifndef DT_REG
+#define DT_REG      8
+#endif
+#ifndef DT_LNK
+#define DT_LNK      10
+#endif
+#ifndef DT_SOCK
+#define DT_SOCK     12
+#endif
+#ifndef DT_WHT
+#define DT_WHT      14
+#endif
 
 #define COMPILER_SAMP    0x01
 #define COMPILER_OPENMP  0x02
@@ -37,7 +71,8 @@
 #define MAX_SEF_PATH_SIZE PATH_MAX
 
 typedef struct {
-    int ipcc;
+    int ipackage;
+    int idepends;
     const char* os;
     int os_type;
     int f_samp;
@@ -55,14 +90,13 @@ typedef struct {
 
 extern WatchdogConfig wcfg;
 
-int wd_is_special_dir(const char *name);
-int wd_should_ignore_dir(const char *name, const char *ignore_dir);
 void wd_sef_fdir_reset();
 struct struct_of { int (*title)(const char *); };
 extern const char* __command[];
 extern const size_t __command_len;
 int wd_signal_os(void);
 int wd_run_command(const char *cmd);
+void print_file_to_terminal(const char *path);
 int wd_set_permission(const char *src, const char *dst);
 int wd_set_title(const char *__title);
 char* readline_colored(const char* prompt);

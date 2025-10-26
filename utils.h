@@ -66,7 +66,7 @@ static int wd_find_compiler(const char *os_type);
 static int wd_check_compiler_compatibility(void);
 static void wd_generate_toml_content(FILE *file, const char *os_type, 
                                     int has_gamemodes, int compatible,
-                                    char *sef_path);
+                                    int optimized_lt, char *sef_path);
 static void wd_add_include_paths(FILE *file, int *first_item);
 static void wd_add_compiler_path(FILE *file, const char *path, int *first_item);
 static int wd_parse_toml_config(void);

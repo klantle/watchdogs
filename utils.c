@@ -1021,6 +1021,48 @@ static void __toml_add_directory_path(FILE *toml_file, int *first, const char *p
 }
 
 /**
+ * wd_check_compiler_options - Test compiler for specific options
+ */
+static void wd_check_compiler_options(int *compatibility, int *optimized_lt)
+{
+		char run_cmd[PATH_MAX + 258];
+		FILE *proc_file;
+		char log_line[1024];
+
+		/* Run compiler with test command */
+		snprintf(run_cmd, sizeof(run_cmd), 
+				 "%s -___DDDDDDDDDDDDDDDDD-___DDDDDDDDDDDDDDDDD"
+				 "-___DDDDDDDDDDDDDDDDD-___DDDDDDDDDDDDDDDDD > .__CP.log 2>&1", 
+				 wcfg.sef_found[0]);
+		
+		wd_run_command(run_cmd);
+
+		int found_Z = 0, found_ver = 0;
+		proc_file = fopen(".__CP.log", "r");
+		if (proc_file) {
+			while (fgets(log_line, sizeof(log_line), proc_file) != NULL) {
+				if (!found_Z && strstr(log_line, "-Z"))
+					found_Z = 1;
+				if (!found_ver && strstr(log_line, "3.10.11"))
+					found_ver = 1;
+			}
+			fclose(proc_file);
+			if (found_Z) {
+				*compatibility = 1;
+			}
+			if (found_ver) {
+				*optimized_lt = 1;
+			}
+		} else {
+			printf_error("failed to open .__CP.log");
+		}
+
+		/* Cleanup temporary log file */
+		if (path_acces(".__CP.log"))
+				remove(".__CP.log");
+}
+
+/**
  * wd_set_toml - Initialize and configure TOML settings
  *
  * Detects environment, finds compiler and gamemodes, generates
@@ -1032,7 +1074,8 @@ int wd_set_toml(void)
 {
 		int find_pawncc = 0;
 		int find_gamemodes = 0;
-		int pcc_compatible_opt = 0;
+		int compatibility = 0;
+		int optimized_lt = 0;
 		int first_item = 1;
 		const char *os_type;
 		char run_cmd[PATH_MAX + 258];
@@ -1055,9 +1098,9 @@ int wd_set_toml(void)
 		/* Find gamemodes */
 		find_gamemodes = wd_sef_fdir("gamemodes/", "*.pwn", NULL);
 
-		/* Check compiler compatibility */
+		/* Check compiler Options */
 		if (find_pawncc) {
-				pcc_compatible_opt = wd_check_compiler_compatibility();
+				wd_check_compiler_options(&compatibility, &optimized_lt);
 		}
 
 		/* Generate TOML configuration */
@@ -1073,10 +1116,10 @@ int wd_set_toml(void)
 
                 if (find_pawncc)
 				    wd_generate_toml_content(toml_file, os_type, find_gamemodes, 
-										    pcc_compatible_opt, wcfg.sef_found[1]);
+										    compatibility, optimized_lt, wcfg.sef_found[1]);
                 else
 				    wd_generate_toml_content(toml_file, os_type, find_gamemodes, 
-										    pcc_compatible_opt, wcfg.sef_found[0]);
+										    compatibility, optimized_lt, wcfg.sef_found[0]);
 				fclose(toml_file);
 		}
 
@@ -1110,47 +1153,6 @@ static int wd_find_compiler(const char *os_type)
 }
 
 /**
- * wd_check_compiler_compatibility - Test compiler for specific options
- *
- * Return: 1 if compatible, 0 if not
- */
-static int wd_check_compiler_compatibility(void)
-{
-		char run_cmd[PATH_MAX + 258];
-		FILE *proc_file;
-		char log_line[PATH_MAX];
-		int compatible = 0;
-
-		/* Run compiler with test command */
-		snprintf(run_cmd, sizeof(run_cmd), 
-				 "%s -___DDDDDDDDDDDDDDDDD-___DDDDDDDDDDDDDDDDD"
-				 "-___DDDDDDDDDDDDDDDDD-___DDDDDDDDDDDDDDDDD > .__CP.log 2>&1", 
-				 wcfg.sef_found[0]);
-		
-		wd_run_command(run_cmd);
-
-		/* Check output for compatibility markers */
-		proc_file = fopen(".__CP.log", "r");
-		if (proc_file) {
-				while (fgets(log_line, sizeof(log_line), proc_file) != NULL) {
-						if (strfind(log_line, "-Z")) {
-								compatible = 1;
-								break;
-						}
-				}
-				fclose(proc_file);
-		} else {
-				printf_error("Failed to open .__CP.log");
-		}
-
-		/* Cleanup temporary log file */
-		if (path_acces(".__CP.log"))
-				remove(".__CP.log");
-
-		return compatible;
-}
-
-/**
  * wd_generate_toml_content - Write TOML configuration to file
  * @file: File handle to write to
  * @os_type: Operating system type
@@ -1160,7 +1162,7 @@ static int wd_check_compiler_compatibility(void)
  */
 static void wd_generate_toml_content(FILE *file, const char *os_type, 
 								    int has_gamemodes, int compatible,
-								    char *sef_path)
+								    int optimized_lt, char *sef_path)
 {
 		int first_item = 1;
 
@@ -1176,8 +1178,10 @@ static void wd_generate_toml_content(FILE *file, const char *os_type,
 		fprintf(file, "[compiler]\n");
 
 		/* Compiler options */
-		if (compatible) {
-				fprintf(file, "\toption = [\"-Z+\", \"-d3\", \"-;+\", \"-(+\"]\n");
+		if (compatible && optimized_lt) {
+				fprintf(file, "\toption = [\"-Z+\", \"-d2\", \"-O2\", \"-;+\", \"-(+\"]\n");
+		} else if (compatible) {
+				fprintf(file, "\toption = [\"-Z+\", \"-d2\", \"-;+\", \"-(+\"]\n");
 		} else {
 				fprintf(file, "\toption = [\"-d3\", \"-;+\", \"-(+\"]\n");
 		}

@@ -207,7 +207,7 @@ int wd_RunCompiler(const char *arg, const char *compile_args)
                     
                     procc_f = fopen(".wd_compiler.log", "r");
                     if (procc_f) {
-                        char line_buf[PATH_MAX];
+                        char line_buf[1024 + 1024];
                         int __has_error = 0;
                         while (fgets(line_buf, sizeof(line_buf), procc_f)) {
                             fputs(line_buf, stdout);
@@ -403,7 +403,7 @@ int wd_RunCompiler(const char *arg, const char *compile_args)
 
                         procc_f = fopen(".wd_compiler.log", "r");
                         if (procc_f) {
-                            char line_buf[PATH_MAX];
+                            char line_buf[1024 + 1024];
                             int __has_error = 0;
                             while (fgets(line_buf, sizeof(line_buf), procc_f)) {
                                 fputs(line_buf, stdout);

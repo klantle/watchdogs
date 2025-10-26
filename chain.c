@@ -210,7 +210,7 @@ _reexecute_command:
 
                 printf("%s%s+------------------------------------------+%s\n", BORD, FG, RST);
 
-                char line[256];
+                char line[1024];
                 while (fgets(line, sizeof(line), procc_f)) {
                     size_t len = strlen(line);
                     if (len && (line[len-1] == '\n' ||

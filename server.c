@@ -53,7 +53,7 @@ void wd_stop_server_tasks(void)
 static int update_server_config(const char *gamemode)
 {
 		FILE *config_in, *config_out;
-		char line[256];
+		char line[1024];
 		int gamemode_updated = 0;
 
 		/* Backup original config */

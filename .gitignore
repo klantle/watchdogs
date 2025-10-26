@@ -16,6 +16,6 @@ omp*
 openmp*
 Server/*
 .wd_compiler.log
-gitignore
 _S
 ssamp
+.gitignore

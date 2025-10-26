@@ -136,8 +136,6 @@ make windows-debug  # build from source with debug mode (windows)
 # for more: `./__make.sh`
 ```
 
-```
-
 ---
 ![image](https://gitlab.com/mywatchdogs/watchdogs/-/raw/main/IMG/__PATH.png)
 

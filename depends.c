@@ -17,10 +17,12 @@
 #endif
 
 #include <curl/curl.h>
+
 #include "extra.h"
 #include "utils.h"
 #include "curl.h"
 #include "archive.h"
+#include "depends.h"
 
 /**
  * struct curl_buffer - Buffer for CURL response data
@@ -33,14 +35,14 @@ struct curl_buffer {
 };
 
 /**
- * struct repo_info - Repository information structure
+ * struct dep_repo_info - Repository information structure
  * @host: Host name (github, gitlab, gitea, sourceforge)
  * @domain: Domain name
  * @user: Repository owner
  * @repo: Repository name  
  * @tag: Tag or branch name
  */
-struct repo_info {
+struct dep_repo_info {
 		char host[32];
 		char domain[64];
 		char user[128];
@@ -120,7 +122,7 @@ int curl_url_get_response(const char *url)
 int curl_get_html(const char *url, char **out_html)
 {
 		CURL *curl;
-		struct curl_buffer buffer = {0};
+		struct curl_buffer buffer = { 0 };
 		CURLcode res;
 
 		curl = curl_easy_init();
@@ -158,31 +160,31 @@ int curl_get_html(const char *url, char **out_html)
 static int find_archive_from_html(const char *html, char *out_url, size_t out_size)
 {
 		const char *p = html;
-		const char *zip, *tar, *found, *href;
+		const char *zip, *tar, *ret, *href;
 		size_t len, ulen;
 
 		while (p) {
 				zip = strstr(p, ".zip");
 				tar = strstr(p, ".tar.gz");
-				found = NULL;
+				ret = NULL;
 				len = 0;
 
 				if (zip && (!tar || zip < tar)) {
-						found = zip;
+						ret = zip;
 						len = zip - p + 4;
 				} else if (tar) {
-						found = tar;
+						ret = tar;
 						len = tar - p + 7;
 				} else {
 						break;
 				}
 
 				/* Find href=" */
-				href = found;
+				href = ret;
 				while (href > p && *(href - 1) != '"')
 						href--;
 
-				ulen = len + (found - href);
+				ulen = len + (ret - href);
 				if (ulen < out_size) {
 						strncpy(out_url, href, ulen);
 						out_url[ulen] = 0;
@@ -197,7 +199,7 @@ static int find_archive_from_html(const char *html, char *out_url, size_t out_si
 						}
 						return RETN;
 				}
-				p = found + len;
+				p = ret + len;
 		}
 
 		return RETZ;
@@ -246,11 +248,11 @@ static char *select_best_asset(char **assets, int count, const char *preferred_o
 /**
  * parse_repo_input - Parse repository input string
  * @input: Input string (URL or short format)
- * @info: Output repo_info structure
+ * @info: Output dep_repo_info structure
  *
  * Return: 1 on success, 0 on failure
  */
-static int parse_repo_input(const char *input, struct repo_info *info)
+static int parse_repo_input(const char *input, struct dep_repo_info *info)
 {
 		char working[512];
 		char *tag_ptr, *path, *first_slash, *user, *repo_slash, *repo, *git_ext;
@@ -357,7 +359,7 @@ static int parse_repo_input(const char *input, struct repo_info *info)
  * @out_urls: Output array for URLs
  * @max_urls: Maximum number of URLs to fetch
  *
- * Return: Number of assets found
+ * Return: Number of assets ret
  */
 static int get_github_release_assets(const char *user, const char *repo, 
 								     const char *tag, char **out_urls, int max_urls)
@@ -437,7 +439,7 @@ static int check_github_branch(const char *user,
  * @out_url: Output buffer for URL
  * @out_size: Size of output buffer
  */
-static void build_repo_url(const struct repo_info *info, int is_tag_page,
+static void build_repo_url(const struct dep_repo_info *info, int is_tag_page,
 						   char *out_url, size_t out_size)
 {
 		if (strcmp(info->host, "github") == 0) {
@@ -487,21 +489,21 @@ static void build_repo_url(const struct repo_info *info, int is_tag_page,
 
 /**
  * wd_install_dependss - Install depends from repositories
- * handle_github_dependency - Helper for Handling
+ * handle_base_dependency - Helper for Handling
  */
 
-static int handle_github_dependency(const struct repo_info *repo_info,
-									char *out_url,
-									size_t out_sz)
+static int handle_base_dependency(const struct dep_repo_info *dep_repo_info,
+								  char *out_url,
+								  size_t out_sz)
 {
-		int found = 0;
+		int ret = 0;
 
-		if (repo_info->tag[0]) {
+		if (dep_repo_info->tag[0]) {
 			/* Try GitHub release assets */
-			char *assets[10] = {0};
-			int asset_count = get_github_release_assets(repo_info->user,
-														repo_info->repo,
-														repo_info->tag,
+			char *assets[10] = { 0 };
+			int asset_count = get_github_release_assets(dep_repo_info->user,
+														dep_repo_info->repo,
+														dep_repo_info->tag,
 														assets,
 														10);
 
@@ -509,7 +511,7 @@ static int handle_github_dependency(const struct repo_info *repo_info,
 				char *best_asset = select_best_asset(assets, asset_count, NULL);
 				if (best_asset) {
 					strncpy(out_url, best_asset, out_sz - 1);
-					found = 1;
+					ret = 1;
 					wdfree(best_asset);
 				}
 				for (int j = 0; j < asset_count; j++)
@@ -517,75 +519,102 @@ static int handle_github_dependency(const struct repo_info *repo_info,
 			}
 
 			/* Fallback to tagged source archives */
-			if (!found) {
-				const char *formats[] = {
-					"https://github.com/%s/%s/archive/refs/tags/%s.tar.gz",
-					"https://github.com/%s/%s/archive/refs/tags/%s.zip"
-				};
-				for (int j = 0; j < 2 && !found; j++) {
-					snprintf(out_url, out_sz, formats[j],
-							repo_info->user, repo_info->repo, repo_info->tag);
-					if (curl_url_get_response(out_url))
-						found = 1;
+			if (!ret)
+				{
+					const char *formats[] = {
+												"https://github.com/%s/%s/archive/refs/tags/%s.tar.gz",
+												"https://github.com/%s/%s/archive/refs/tags/%s.zip"
+											};
+					for (int j = 0; j < 2 && !ret; j++) {
+						snprintf(out_url, out_sz, formats[j],
+								dep_repo_info->user,
+								dep_repo_info->repo,
+								dep_repo_info->tag);
+						if (curl_url_get_response(out_url))
+							ret = 1;
+					}
 				}
-			}
-		} else {
+		} else
+		{
 			/* Try common branch names */
-			const char *branches[] = { "main", "master" };
-			for (int j = 0; j < 2 && !found; j++) {
+			const char *branches[] = {
+										"main",
+										"master"
+									 };
+			for (int j = 0; j < 2 && !ret; j++) {
 				snprintf(out_url, out_sz,
 						"https://github.com/%s/%s/archive/refs/heads/%s.zip",
-						repo_info->user, repo_info->repo, branches[j]);
+						dep_repo_info->user,
+						dep_repo_info->repo,
+						branches[j]);
 				if (curl_url_get_response(out_url)) {
-					found = 1;
-					if (j == 1)
-						printf_info("Using master branch (main not found)");
+					ret = 1;
+					if (j == 1) printf_info("Using master branch (main not ret)");
 				}
 			}
 		}
 
-		return found;
+		return ret;
 }
 
 void wd_install_depends(const char *dep_one, const char *dep_two)
 {
-		const char *depends[] = { dep_one, dep_two };
-		const int ARR_DEPENDS = 2;
-
-		for (int i = 0; i < ARR_DEPENDS; i++) {
+		const char *depends[] = {
+								  dep_one,
+								  dep_two
+								};
+		for (int i = 0; i < MAX_ARR_DEPENDS; i++) {
 			if (!depends[i] || !*depends[i])
 				continue;
 
-			struct repo_info repo_info;
-			char dep_url[1024] = {0};
-			char repo_name[256] = {0};
-			int dep_found = 0;
+			int dep_item_found = 0;
+			struct dep_repo_info dep_repo_info;
+			char dep_url[1024] = {0}, dep_repo_name[256] = { 0 };
+			size_t dep_url_size = sizeof(dep_url),
+				   dep_repo_name_size = sizeof(dep_repo_name);
 
 			/*  Parse input  */
-			if (!parse_repo_input(depends[i], &repo_info)) {
-				printf_error("Invalid repo format: %s", depends[i]);
+			if (!parse_repo_input(depends[i], &dep_repo_info)) {
+				printf_error("Invalid repo format: %s",
+														depends[i]);
 				continue;
 			}
 
+#ifdef _DBG_PRINT
 			printf_info("Parsed repo: host=%s, domain=%s, user=%s, repo=%s, tag=%s",
-				repo_info.host, repo_info.domain, repo_info.user,
-				repo_info.repo, repo_info.tag[0] ? repo_info.tag : "main");
+					dep_repo_info.host,
+					dep_repo_info.domain,
+					dep_repo_info.user,
+					dep_repo_info.repo,
+					dep_repo_info.tag[0] ? dep_repo_info.tag : "main");
+#endif
 
 			/*  Handle based on host  */
-			if (strcmp(repo_info.host, "github") == 0) {
-				dep_found = handle_github_dependency(&repo_info, dep_url, sizeof(dep_url));
-			} 
-			else if (strcmp(repo_info.host, "sourceforge") == 0) {
-				build_repo_url(&repo_info, 0, dep_url, sizeof(dep_url));
-				dep_found = curl_url_get_response(dep_url);
-			} 
-			else {
-				/* GitLab / Gitea fallback */
-				build_repo_url(&repo_info, 0, dep_url, sizeof(dep_url));
-				dep_found = curl_url_get_response(dep_url);
-			}
+			if (!strcmp(dep_repo_info.host, "github"))
+				{
+					dep_item_found = handle_base_dependency(&dep_repo_info,
+															dep_url,
+															dep_url_size);
+				} 
+			else if (!strcmp(dep_repo_info.host, "sourceforge"))
+				{
+					build_repo_url(&dep_repo_info,
+								0,
+								dep_url,
+								dep_url_size);
+					dep_item_found = curl_url_get_response(dep_url);
+				} 
+			else
+				{
+					/* GitLab / Gitea fallback */
+					build_repo_url(&dep_repo_info,
+								0,
+								dep_url,
+								dep_url_size);
+					dep_item_found = curl_url_get_response(dep_url);
+				}
 
-			if (!dep_found) {
+			if (!dep_item_found) {
 				printf_error("Repository not found or invalid: %s", depends[i]);
 				continue;
 			}
@@ -593,15 +622,18 @@ void wd_install_depends(const char *dep_one, const char *dep_two)
 			printf_info("Repository available: %s", dep_url);
 
 			/*  Extract filename from URL  */
-			const char *last_slash = strrchr(dep_url, '/');
-			if (last_slash && *(last_slash + 1))
-				snprintf(repo_name, sizeof(repo_name), "%s", last_slash + 1);
-			else
-				snprintf(repo_name, sizeof(repo_name), "%s.zip", repo_info.repo);
+			const char *chr_last_slash = strrchr(dep_url, '/');
+			if (chr_last_slash && *(chr_last_slash + 1)) snprintf(dep_repo_name,
+																  dep_repo_name_size,
+																  "%s",
+																  chr_last_slash + 1);
+			else snprintf(dep_repo_name, dep_repo_name_size, "%s.zip", dep_repo_info.repo);
 
 			/*  Download  */
 			wcfg.idepends = 1;
-			printf_info("Downloading %s from %s", repo_name, dep_url);
-			wd_download_file(dep_url, repo_name);
+			printf_info("Downloading %s from %s",
+					dep_repo_name,
+					dep_url);
+			wd_download_file(dep_url, dep_repo_name);
 		}
 }

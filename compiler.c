@@ -51,7 +51,7 @@ int wd_RunCompiler(const char *arg, const char *compile_args)
         }
 
         /* Initialize output container buffer */
-        char container_output[PATH_MAX] = {0};
+        char container_output[PATH_MAX] = { 0 };
 
         /* Reset file directory search */
         wd_sef_fdir_reset();
@@ -176,7 +176,7 @@ int wd_RunCompiler(const char *arg, const char *compile_args)
                 }
             
                 /* Process include paths from TOML configuration */
-                char include_aio_path[PATH_MAX] = {0};
+                char include_aio_path[PATH_MAX] = { 0 };
                 toml_array_t *include_paths = toml_array_in(wd_compiler, "include_path");
                 if (include_paths) 
                 {
@@ -373,10 +373,10 @@ int wd_RunCompiler(const char *arg, const char *compile_args)
                 else 
                 {
                     /* Handle compilation with specific file argument */
-                    char __cp_direct_path[PATH_MAX] = {0};
-                    char __cp_file_name[PATH_MAX] = {0};
-                    char __cp_input_path[PATH_MAX] = {0};
-                    char __cp_any_tmp[PATH_MAX] = {0};
+                    char __cp_direct_path[PATH_MAX] = { 0 };
+                    char __cp_file_name[PATH_MAX] = { 0 };
+                    char __cp_input_path[PATH_MAX] = { 0 };
+                    char __cp_any_tmp[PATH_MAX] = { 0 };
 
                     /* Copy and parse the compile arguments */
                     strncpy(__cp_any_tmp, compile_args, sizeof(__cp_any_tmp) - 1);

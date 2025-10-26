@@ -86,21 +86,21 @@ const size_t
             sizeof(__command[0]);
 
 WatchdogConfig wcfg = {
-    .ipackage = 0,
-    .idepends = 0,
-    .os = NULL,
-    .os_type = 0x00,
-    .f_samp = 0x00,
-    .f_openmp = 0x00,
-    .pointer_samp = NULL,
-    .pointer_openmp = NULL,
-    .compiler_error = 0,
-    .sef_count = 0,
-    .sef_found = { {0} },
-    .serv_dbg = NULL,
-    .ci_options = NULL,
-    .gm_input = NULL,
-    .gm_output = NULL
+		.ipackage = 0,
+		.idepends = 0,
+		.os = NULL,
+		.os_type = 0x00,
+		.f_samp = 0x00,
+		.f_openmp = 0x00,
+		.pointer_samp = NULL,
+		.pointer_openmp = NULL,
+		.compiler_error = 0,
+		.sef_count = 0,
+		.sef_found = { {0} },
+		.serv_dbg = NULL,
+		.ci_options = NULL,
+		.gm_input = NULL,
+		.gm_output = NULL
 };
 
 /**

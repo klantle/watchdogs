@@ -319,12 +319,12 @@ void wd_apply_pawncc(void)
 		int found_pawndisasm_exe, found_pawndisasm;
 		int found_pawnc_dll, found_PAWNC_DLL;
 		const char *dest_dir;
-		char pawncc_src[PATH_MAX] = {0};
-		char pawncc_exe_src[PATH_MAX] = {0};
-		char pawndisasm_src[PATH_MAX] = {0};
-		char pawndisasm_exe_src[PATH_MAX] = {0};
-		char pawnc_dll_src[PATH_MAX] = {0};
-		char PAWNC_DLL_src[PATH_MAX] = {0};
+		char pawncc_src[PATH_MAX] = { 0 },
+			 pawncc_exe_src[PATH_MAX] = { 0 },
+			 pawndisasm_src[PATH_MAX] = { 0 },
+			 pawndisasm_exe_src[PATH_MAX] = { 0 },
+			 pawnc_dll_src[PATH_MAX] = { 0 },
+			 PAWNC_DLL_src[PATH_MAX] = { 0 };
 		
 		int i;
 

@@ -87,8 +87,8 @@ int hardware_cpu_info(HardwareCPU* cpu) {
         memset(cpu, 0, sizeof(HardwareCPU));
         
         // Get CPU brand
-        int cpuInfo[4] = {0};
-        char brand[64] = {0};
+        int cpuInfo[4] = { 0 };
+        char brand[64] = { 0 };
         __cpuid(cpuInfo, 0x80000000);
         unsigned int maxId = cpuInfo[0];
         

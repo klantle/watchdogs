@@ -8,18 +8,18 @@
 #include <dirent.h>
 
 #define min3(a, b, c) \
-    ((a) < (b) ? \
-    ((a) < (c) ? \
-    (a) : (c)) : ((b) < (c) ? \
-    (b) : (c)))
+        ((a) < (b) ? \
+        ((a) < (c) ? \
+        (a) : (c)) : ((b) < (c) ? \
+        (b) : (c)))
 
 #if __has_include(<readline/history.h>)
-    #include <readline/history.h>
-    #define wd_u_history() using_history()
-    #define wd_a_history(cmd) add_history(cmd)
+        #include <readline/history.h>
+        #define wd_u_history() using_history()
+        #define wd_a_history(cmd) add_history(cmd)
 #else
-    #define wd_u_history()
-    #define wd_a_history(cmd)
+        #define wd_u_history()
+        #define wd_a_history(cmd)
 #endif
 
 #define wdmalloc(x) malloc(x)
@@ -33,31 +33,15 @@
 #define RETH 3
 
 #ifndef DT_UNKNOWN
-#define DT_UNKNOWN  0
-#endif
-#ifndef DT_FIFO
-#define DT_FIFO     1
-#endif
-#ifndef DT_CHR
-#define DT_CHR      2
-#endif
-#ifndef DT_DIR
-#define DT_DIR      4
-#endif
-#ifndef DT_BLK
-#define DT_BLK      6
-#endif
-#ifndef DT_REG
-#define DT_REG      8
-#endif
-#ifndef DT_LNK
-#define DT_LNK      10
-#endif
-#ifndef DT_SOCK
-#define DT_SOCK     12
-#endif
-#ifndef DT_WHT
-#define DT_WHT      14
+#define DT_UNKNOWN 0
+#define DT_FIFO 1
+#define DT_CHR 2
+#define DT_DIR 4
+#define DT_BLK 6
+#define DT_REG 8
+#define DT_LNK 10
+#define DT_SOCK 12
+#define DT_WHT 14
 #endif
 
 #define COMPILER_SAMP    0x01
@@ -75,21 +59,21 @@
 #define MAX_SEF_PATH_SIZE PATH_MAX
 
 typedef struct {
-    int ipackage;
-    int idepends;
-    const char* os;
-    uint8_t os_type;
-    uint8_t f_samp;
-    uint8_t f_openmp;
-    char* pointer_samp;
-    char* pointer_openmp;
-    int compiler_error;
-    size_t sef_count;
-    char sef_found[MAX_SEF_ENTRIES][MAX_SEF_PATH_SIZE];
-    char* serv_dbg;
-    char* ci_options;
-    char* gm_input;
-    char* gm_output;
+        int ipackage;
+        int idepends;
+        const char* os;
+        uint8_t os_type;
+        uint8_t f_samp;
+        uint8_t f_openmp;
+        char* pointer_samp;
+        char* pointer_openmp;
+        int compiler_error;
+        size_t sef_count;
+        char sef_found[MAX_SEF_ENTRIES][MAX_SEF_PATH_SIZE];
+        char* serv_dbg;
+        char* ci_options;
+        char* gm_input;
+        char* gm_output;
 } WatchdogConfig;
 
 extern WatchdogConfig wcfg;

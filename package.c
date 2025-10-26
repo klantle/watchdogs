@@ -54,21 +54,21 @@ int uname(struct utsname *name)
 				 osvi.dwBuildNumber);
 
 		switch (si.wProcessorArchitecture) {
-		case PROCESSOR_ARCHITECTURE_AMD64:
-				snprintf(name->machine, sizeof(name->machine), "x86_64");
-				break;
-		case PROCESSOR_ARCHITECTURE_INTEL:
-				snprintf(name->machine, sizeof(name->machine), "x86");
-				break;
-		case PROCESSOR_ARCHITECTURE_ARM:
-				snprintf(name->machine, sizeof(name->machine), "ARM");
-				break;
-		case PROCESSOR_ARCHITECTURE_ARM64:
-				snprintf(name->machine, sizeof(name->machine), "ARM64");
-				break;
-		default:
-				snprintf(name->machine, sizeof(name->machine), "Unknown");
-				break;
+			case PROCESSOR_ARCHITECTURE_AMD64:
+					snprintf(name->machine, sizeof(name->machine), "x86_64");
+					break;
+			case PROCESSOR_ARCHITECTURE_INTEL:
+					snprintf(name->machine, sizeof(name->machine), "x86");
+					break;
+			case PROCESSOR_ARCHITECTURE_ARM:
+					snprintf(name->machine, sizeof(name->machine), "ARM");
+					break;
+			case PROCESSOR_ARCHITECTURE_ARM64:
+					snprintf(name->machine, sizeof(name->machine), "ARM64");
+					break;
+			default:
+					snprintf(name->machine, sizeof(name->machine), "Unknown");
+					break;
 		}
 
 		return RETZ;

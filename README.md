@@ -126,9 +126,9 @@ make                      # install library & build from source
 
 ### [XTERM](https://invisible-island.net/xterm/) USAGE
 ```sh
-xterm -hold -e ./watchdogs             linux
-xterm -hold -e ./watchdogs.win         windows
-xterm -hold -e ./watchdogs.tmux      termux
+xterm -hold -e ./watchdogs             # linux
+xterm -hold -e ./watchdogs.win         # windows
+xterm -hold -e ./watchdogs.tmux        # termux
 ```
 
 ### Base Make command

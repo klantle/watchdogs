@@ -261,31 +261,15 @@ _reexecute_command:
             return RETN;
 
         } else if (strcmp(ptr_command, "hardware") == 0) {
-            printf("=== System Hardware Information ===\n\n");
-            hardware_system_info();
-            printf("\n");
-
-            hardware_cpu_info();
-            printf("\n");
-
-            hardware_memory_info();
-            printf("\n");
-
-            hardware_disk_info();
-            printf("\n");
-
-            hardware_network_info();
-            printf("\n");
-
-#ifdef _WIN32
-            printf("Note: GPU/BIOS info not implemented for Windows version.\n");
-#else
-            hardware_bios_info();
-            hardware_gpu_info();
-#endif
-
-            printf("\n===================================\n");
-            
+            printf("Basic Summary:\n");
+            hardware_show_summary();
+            printf("\nSpecific Fields Query:\n");
+            unsigned int specific_fields[] = {
+                FIELD_CPU_NAME, FIELD_CPU_CORES, FIELD_MEM_TOTAL, FIELD_DISK_FREE
+            };
+            hardware_query_specific(specific_fields, 4);
+            printf("\nDetailed Report:\n");
+            hardware_show_detailed();
             return RETN;
         } else if (strncmp(ptr_command, "install", 7) == 0) {
             wd_set_title("Watchdogs | @ install depends");
@@ -411,7 +395,7 @@ _runners_:
                 else
                     system("xterm -hold -e bash -c 'echo \"here is your watchdogs!..\"; ./watchdogs' &");
 #endif
-                if (wcfg.f_samp == 0x01) {
+                if (wcfg.f_samp == VAL_TRUE) {
                 if (arg == NULL || *arg == '\0' || (arg[0] == '.' && arg[1] == '\0')) {
                         char __sz_run[128];
 #ifdef _WIN32
@@ -437,7 +421,7 @@ _runners_:
                         printf_color(COL_YELLOW, "running..\n");
                         wd_run_samp_server(arg1, wcfg.pointer_samp);
                     }
-                } else if (wcfg.f_openmp == 0x01) {
+                } else if (wcfg.f_openmp == VAL_TRUE) {
                     if (arg == NULL || *arg == '\0' || (arg[0] == '.' && arg[1] == '\0')) {
                         char __sz_run[128];
 #ifdef _WIN32
@@ -461,7 +445,7 @@ _runners_:
                         printf_color(COL_YELLOW, "running..\n");
                         wd_run_omp_server(arg1, wcfg.pointer_openmp);
                     }
-                } else if (wcfg.f_samp == 0x00 || wcfg.f_openmp == 0x00) {
+                } else if (wcfg.f_samp == VAL_FALSE || wcfg.f_openmp == VAL_FALSE) {
                     printf_error("samp-server/open.mp server not found!");
 
                     char *ptr_sigA;

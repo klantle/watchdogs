@@ -86,21 +86,21 @@ const size_t
             sizeof(__command[0]);
 
 WatchdogConfig wcfg = {
-        .ipackage = 0,
-		.idepends = 0,
-        .os = NULL,
-        .os_type = 0x00,
-        .f_samp = 0x00,
-        .f_openmp = 0x00,
-        .pointer_samp = NULL,
-        .pointer_openmp = NULL,
-        .compiler_error = 0,
-        .sef_count = 0,
-        .sef_found = { {0} },
-        .serv_dbg = NULL,
-        .ci_options = NULL,
-        .gm_input = NULL,
-        .gm_output = NULL
+    .ipackage = 0,
+    .idepends = 0,
+    .os = NULL,
+    .os_type = 0x00,
+    .f_samp = 0x00,
+    .f_openmp = 0x00,
+    .pointer_samp = NULL,
+    .pointer_openmp = NULL,
+    .compiler_error = 0,
+    .sef_count = 0,
+    .sef_found = { {0} },
+    .serv_dbg = NULL,
+    .ci_options = NULL,
+    .gm_input = NULL,
+    .gm_output = NULL
 };
 
 /**
@@ -1196,9 +1196,9 @@ static int wd_find_compiler(const char *os_type)
 		int is_windows = (strcmp(os_type, "windows") == 0);
 		const char *compiler_name = is_windows ? "pawncc.exe" : "pawncc";
 
-		if (wcfg.f_samp == 0x01) {
+		if (wcfg.f_samp == VAL_TRUE) {
 				return wd_sef_fdir("pawno", compiler_name, NULL);
-		} else if (wcfg.f_openmp == 0x01) {
+		} else if (wcfg.f_openmp == VAL_TRUE) {
 				return wd_sef_fdir("qawno", compiler_name, NULL);
 		} else {
 				return wd_sef_fdir("pawno", compiler_name, NULL);
@@ -1303,9 +1303,9 @@ static void wd_add_include_paths(FILE *file, int *first_item)
 		}
 
 		/* Add compiler-specific include paths */
-		if (wcfg.f_samp == 0x01) {
+		if (wcfg.f_samp == VAL_TRUE) {
 				wd_add_compiler_path(file, "pawno/include", first_item);
-		} else if (wcfg.f_openmp == 0x01) {
+		} else if (wcfg.f_openmp == VAL_TRUE) {
 				wd_add_compiler_path(file, "qawno/include", first_item);
 		} else {
 				wd_add_compiler_path(file, "pawno/include", first_item);

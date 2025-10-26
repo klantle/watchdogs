@@ -64,6 +64,9 @@
 #define COMPILER_OPENMP  0x02
 #define COMPILER_DEFAULT 0x00
 
+#define VAL_TRUE 0x01
+#define VAL_FALSE 0x00
+
 #define OS_SIGNAL_WINDOWS	0x01
 #define OS_SIGNAL_LINUX		0x00  
 #define OS_SIGNAL_UNKNOWN	0x02
@@ -75,9 +78,9 @@ typedef struct {
     int ipackage;
     int idepends;
     const char* os;
-    int os_type;
-    int f_samp;
-    int f_openmp;
+    uint8_t os_type;
+    uint8_t f_samp;
+    uint8_t f_openmp;
     char* pointer_samp;
     char* pointer_openmp;
     int compiler_error;

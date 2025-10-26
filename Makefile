@@ -132,9 +132,5 @@ debug:
 
 windows-debug:
 	@printf "$(YELLOW)==>$(RESET) Building DEBUG Version $(VERSION) Full Version $(FULL_VERSION)\n"
-	@$(MAKE) $(OBJS) \
-	CC=$(CC) \
-	CFLAGS="$(CFLAGS) -g -O0 -Wall -D_DBG_PRINT" \
-	LDFLAGS="$(LDFLAGS) -liphlpapi -lshlwapi"
-	$(CC) $(CFLAGS) -g -O0 -Wall -D_DBG_PRINT $(OBJS) -o watchdogs.debug.win $(LDFLAGS) -liphlpapi -lshlwapi
+	$(CC) $(CFLAGS) $(SRCS) -g -O0 -D_DBG_PRINT -Wall -o watchdogs.debug.win $(LDFLAGS) -liphlpapi -lshlwapi
 	@printf "$(YELLOW)==>$(RESET) Debug build complete: ./watchdogs.debug.win\n"

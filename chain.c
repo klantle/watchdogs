@@ -407,7 +407,7 @@ _runners_:
                 struct stat st;
                 if (stat("/data/data/com.termux/files/usr/local/lib/", &st) == 0 ||
                         stat("/data/data/com.termux/files/usr/lib/", &st) == 0)
-                    system("xterm -hold -e bash -c 'echo \"here is your watchdogs!..\"; ./watchdogs_termux' &");
+                    system("xterm -hold -e bash -c 'echo \"here is your watchdogs!..\"; ./watchdogs.tmux' &");
                 else
                     system("xterm -hold -e bash -c 'echo \"here is your watchdogs!..\"; ./watchdogs' &");
 #endif

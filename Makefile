@@ -107,7 +107,7 @@ compress:
 	fi
 
 clean:
-	rm -f $(OBJS) watchdogs watchdogs_termux watchdogs.win watchdogs.debug watchdogs.debug.win
+	rm -f $(OBJS) watchdogs watchdogs.tmux watchdogs.win watchdogs.debug watchdogs.debug.win
 	@printf "$(YELLOW)==>$(RESET) Clean done.\n"
 
 linux:
@@ -117,8 +117,8 @@ linux:
 
 termux:
 	@printf "$(YELLOW)==>$(RESET) Building Termux target (clang)...\n"
-	$(CC) $(CFLAGS) -D__ANDROID__ -fPIE $(SRCS) -o watchdogs_termux $(LDFLAGS) -pie
-	@printf "$(YELLOW)==>$(RESET) Build complete: watchdogs_termux Version $(VERSION) Full Version $(FULL_VERSION)\n"
+	$(CC) $(CFLAGS) -D__ANDROID__ -fPIE $(SRCS) -o watchdogs.tmux $(LDFLAGS) -pie
+	@printf "$(YELLOW)==>$(RESET) Build complete: watchdogs.tmux Version $(VERSION) Full Version $(FULL_VERSION)\n"
 
 windows:
 	@printf "$(YELLOW)==>$(RESET) Building Windows target (MinGW)...\n"

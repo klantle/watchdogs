@@ -30,6 +30,7 @@
 #define RETZ 0
 #define RETN 1
 #define RETW 2
+#define RETH 3
 
 #ifndef DT_UNKNOWN
 #define DT_UNKNOWN  0

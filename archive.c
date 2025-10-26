@@ -180,13 +180,13 @@ static int extract_zip_entry(struct archive *archive_read,
 						break;
 				if (ret < ARCHIVE_OK) {
 						printf_error("Read data error: %s", archive_error_string(archive_read));
-						return -2;
+						return -RETW;
 				}
 
 				ret = archive_write_data_block(archive_write, buffer, size, offset);
 				if (ret < ARCHIVE_OK) {
 						printf_error("Write data error: %s", archive_error_string(archive_write));
-						return -3;
+						return -RETH;
 				}
 		}
 

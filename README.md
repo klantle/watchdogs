@@ -75,7 +75,7 @@ cd watch
 # @@@ 8
 make                       # install library & build from source
 # @@@ 9
-./watchdogs_termux         # run
+./watchdogs.tmux           # run
 ```
 
 ### [MSYS2](https://www.msys2.org) USAGE
@@ -124,6 +124,13 @@ make                      # install library & build from source
 ./watchdogs               # run
 ```
 
+### [XTERM](https://invisible-island.net/xterm/) USAGE
+```sh
+xterm -hold -e ./watchdogs             linux
+xterm -hold -e ./watchdogs.win         windows
+xterm -hold -e ./watchdogs.tmux      termux
+```
+
 ### Base Make command
 ```sh
 make                # install library (apt/pkg/msys2)
@@ -151,17 +158,19 @@ Usage: help | help [<command>]
 ### `watchdogs.toml` Struct
 ```toml
 [general]
-   os = "linux" # OS
+	os = "linux"                   # os type
 [compiler]
-  option = [ # options
-      "-d3",
-      "-Z+"
-  ]
-  include_path = [ # include path
+	option = ["-d3", "-;+", "-(+"] # compiler options
+	include_path = [
+      # folders that are also automatically added
       "gamemodes",
-      "gamemodes/z",
+      "gamemodes/x", 
+      "gamemodes/y", 
+      "gamemodes/z", 
       "pawno/include",
-      "pawno/include/z"
+      "pawno/include/x",
+      "pawno/include/y",
+      "pawno/include/z",
   ]
   input = "gamemodes/bare.pwn"   # input compiler
   output = "gamemodes/bare.amx"  # output compiler
@@ -208,6 +217,7 @@ Supported Platforms: Linux, Windows, or macOS via:
 - [Desktop environment](https://en.m.wikipedia.org/wiki/Desktop_environment)
 - [VPS (Virtual Private Server)](https://en.m.wikipedia.org/wiki/Virtual_private_server)
 - [Termux (Android)](https://github.com/termux/termux-app)
+- [xterm](https://invisible-island.net/xterm/)
 - and so on, based on an environment that can run GNU/Bash.
 
 ---
@@ -238,7 +248,7 @@ compile yourmode.pwn
 
 Compile specific path:
 ```
-compile path/path/yourmode.pwn
+compile path/to/yourmode.pwn
 ```
 
 ---

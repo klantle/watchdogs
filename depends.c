@@ -24,12 +24,14 @@
 #include <curl/curl.h>
 
 #include "cJSON/cJSON.h"
+#include "tomlc99/toml.h"
 #include "color.h"
 #include "extra.h"
 #include "utils.h"
 #include "curl.h"
 #include "archive.h"
 #include "crypto.h"
+#include "chain.h"
 #include "depends.h"
 
 /**
@@ -560,6 +562,69 @@ static int handle_base_dependency(const struct dep_repo_info *dep_repo_info,
 }
 
 /**
+ * dep_add_include - Added Include to Gamemode
+ */
+void dep_add_include(const char *modes,
+					 char *dep_name,
+					 char *dep_after) {
+		FILE *file = fopen(modes, "r");
+		if (file == NULL) {
+			return;
+		}
+		
+		fseek(file, 0, SEEK_END);
+		long fileSize = ftell(file);
+		fseek(file, 0, SEEK_SET);
+		
+		char *ct_modes = wdmalloc(fileSize + 1);
+		fread(ct_modes, 1, fileSize, file);
+		ct_modes[fileSize] = '\0';
+		fclose(file);
+
+		printf_info("Adding Include: %s\n", dep_name);
+
+		if (strstr(ct_modes, dep_name) != NULL &&
+			strstr(ct_modes, dep_after) != NULL) {
+			wdfree(ct_modes);
+			return;
+		}
+		
+		char *e_dep_after_pos = strstr(ct_modes,
+					   				   dep_after);
+		
+		FILE *n_file = fopen(modes, "w");
+		if (n_file == NULL) {
+			wdfree(ct_modes);
+			return;
+		}
+		
+		if (e_dep_after_pos != NULL) {
+			fwrite(ct_modes,
+				   1,
+				   e_dep_after_pos - ct_modes + strlen(dep_after),
+				   n_file);
+			fprintf(n_file, "\n%s", dep_name);
+			fputs(e_dep_after_pos + strlen(dep_after), n_file);
+		} else {
+			char *includeToAddPos = strstr(ct_modes, dep_name);
+			
+			if (includeToAddPos != NULL) {
+				fwrite(ct_modes,
+					   1,
+					   includeToAddPos - ct_modes + strlen(dep_name),
+					   n_file);
+				fprintf(n_file, "\n%s", dep_after);
+				fputs(includeToAddPos + strlen(dep_name), n_file);
+			} else {
+				fprintf(n_file, "%s\n%s\n%s", dep_after, dep_name, ct_modes);
+			}
+		}
+		
+		fclose(n_file);
+		wdfree(ct_modes);
+}
+
+/**
  * dep_get_filename - extract filename from a path string
  * @path: the full path to extract filename from
  *
@@ -648,7 +713,7 @@ void move_dependency_files(const char *depends_folder)
 							for (i = 0; i < _e_cnt; i++) {
 								cJSON *_e_item = cJSON_GetArrayItem(_e_depends, i);
 								if (cJSON_IsString(_e_item)) {
-									cJSON_AddItemToArray(depends, 
+									cJSON_AddItemToArray(depends,
 											cJSON_CreateString(_e_item->valuestring));
 								}
 							}
@@ -927,6 +992,64 @@ __default:
 						else if (strfind(__sz_dp_inc, "qawno"))
 								snprintf(__sz_json_item, sizeof(__sz_json_item), "qawno/%s", filename_only);
 						dep_add_ncheck_hash(__sz_json_item, __sz_json_item);
+
+						char errbuf[256];
+						toml_table_t *_toml_config;
+						FILE *procc_f = fopen("watchdogs.toml", "r");
+						_toml_config = toml_parse_file(procc_f, errbuf, sizeof(errbuf));
+						if (procc_f) fclose(procc_f);
+
+						if (!_toml_config) {
+							printf_error("parsing TOML: %s", errbuf);
+							__main(0);
+						}
+
+						toml_table_t *wd_compiler = toml_table_in(_toml_config, "compiler");
+						if (wd_compiler) {
+								toml_datum_t toml_gm_i = toml_string_in(wd_compiler, "input");
+								if (toml_gm_i.ok) 
+								{
+									wcfg.gm_input = strdup(toml_gm_i.u.s);
+									wdfree(toml_gm_i.u.s);
+									toml_gm_i.u.s = NULL;
+								}
+						}
+						toml_free(_toml_config);
+
+						char __sz_gm_input[PATH_MAX];
+						snprintf(__sz_gm_input, sizeof(__sz_gm_input), "%s", wcfg.gm_input);
+
+						const char *dep_n;
+						dep_n = dep_get_filename(wcfg.sef_found[i]); 
+						char __sz_depends_name[PATH_MAX];
+						snprintf(__sz_depends_name, sizeof(__sz_depends_name), "%s", dep_n);
+
+						char *p1 = strrchr(__sz_depends_name, '/');
+						char *p2 = strrchr(__sz_depends_name, '\\');
+
+						char *p = NULL;
+						if (p1 && p2) {
+							p = (p1 > p2) ? p1 : p2;
+						} else if (p1) {
+							p = p1;
+						} else if (p2) {
+							p = p2;
+						}
+
+						if (p != NULL) {
+							memmove(__sz_depends_name, p + 1, strlen(p + 1) + 1);
+						}
+
+						char __sz_include[PATH_MAX];
+						snprintf(__sz_include, sizeof(__sz_include), "#include <%s>", __sz_depends_name);
+
+						if (wcfg.f_samp == VAL_TRUE)
+						__default_i:
+							dep_add_include(__sz_gm_input, __sz_include, "#include <a_samp>");
+						else if (wcfg.f_openmp == VAL_TRUE)
+							dep_add_include(__sz_gm_input, __sz_include, "#include <open.mp>");
+						else
+							goto __default_i;
 				}
 		}
 
@@ -950,9 +1073,67 @@ __default:
 						else if (strfind(__sz_dp_inc, "qawno"))
 								snprintf(__sz_json_item, sizeof(__sz_json_item), "qawno/%s", filename_only);
 						dep_add_ncheck_hash(__sz_json_item, __sz_json_item);
+
+						char errbuf[256];
+						toml_table_t *_toml_config;
+						FILE *procc_f = fopen("watchdogs.toml", "r");
+						_toml_config = toml_parse_file(procc_f, errbuf, sizeof(errbuf));
+						if (procc_f) fclose(procc_f);
+
+						if (!_toml_config) {
+							printf_error("parsing TOML: %s", errbuf);
+							__main(0);
+						}
+
+						toml_table_t *wd_compiler = toml_table_in(_toml_config, "compiler");
+						if (wd_compiler) {
+								toml_datum_t toml_gm_i = toml_string_in(wd_compiler, "input");
+								if (toml_gm_i.ok) 
+								{
+									wcfg.gm_input = strdup(toml_gm_i.u.s);
+									wdfree(toml_gm_i.u.s);
+									toml_gm_i.u.s = NULL;
+								}
+						}
+						toml_free(_toml_config);
+
+						char __sz_gm_input[PATH_MAX];
+						snprintf(__sz_gm_input, sizeof(__sz_gm_input), "%s", wcfg.gm_input);
+
+						const char *dep_n;
+						dep_n = dep_get_filename(wcfg.sef_found[i]); 
+						char __sz_depends_name[PATH_MAX];
+						snprintf(__sz_depends_name, sizeof(__sz_depends_name), "%s", dep_n);
+
+						char *p1 = strrchr(__sz_depends_name, '/'); 
+						char *p2 = strrchr(__sz_depends_name, '\\');
+
+						char *p = NULL;
+						if (p1 && p2) {
+							p = (p1 > p2) ? p1 : p2;
+						} else if (p1) {
+							p = p1;
+						} else if (p2) {
+							p = p2;
+						}
+
+						if (p != NULL) {
+							memmove(__sz_depends_name, p + 1, strlen(p + 1) + 1);
+						}
+
+						char __sz_include[PATH_MAX];
+						snprintf(__sz_include, sizeof(__sz_include), "#include <%s>", __sz_depends_name);
+
+						if (wcfg.f_samp == VAL_TRUE)
+						__default_i2:
+							dep_add_include(__sz_gm_input, __sz_include, "#include <a_samp>");
+						else if (wcfg.f_openmp == VAL_TRUE)
+							dep_add_include(__sz_gm_input, __sz_include, "#include <open.mp>");
+						else
+							goto __default_i2;
 				}
 		}
-
+		
 		/* Add depends array to root JSON object */
 		cJSON_AddItemToObject(root, "depends", depends);
 

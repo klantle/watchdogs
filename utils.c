@@ -175,7 +175,7 @@ int mkdir_recursive(const char *path) {
 			perror("mkdir");
 			return -1;
 		}
-		return 0;
+		return RETZ;
 }
 
 /**

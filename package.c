@@ -189,7 +189,7 @@ static int handle_termux_installation(void)
 		/* Verify Termux environment */
 		if (!is_termux_environment()) {
 				char confirmation;
-				printf("Warning: Not in Termux environment. Continue? [y/N] ");
+				printf_color(COL_GREEN, "warning: Not in Termux environment. Continue? [y/N] ");
 				
 				if (scanf(" %c", &confirmation) != 1 ||
 				    (confirmation != 'y' && confirmation != 'Y')) {

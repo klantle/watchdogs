@@ -20,4 +20,5 @@ components/*
 components
 plugins/*
 plugins
+wd_depends.json
 .gitignore

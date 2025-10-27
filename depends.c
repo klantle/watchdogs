@@ -761,8 +761,8 @@ void __convert_path__(char *path) {
  */
 void dep_add_ncheck_hash(const char *file_path, const char *json_path) {
         char convert_f_path[PATH_MAX], convert_j_path[PATH_MAX];
-		int __sz_cfp = sizeof(convert_f_path),
-			__sz_cjp = sizeof(convert_j_path);
+		size_t __sz_cfp = sizeof(convert_f_path),
+			   __sz_cjp = sizeof(convert_j_path);
         
         // Convert paths to use forward slashes
         strncpy(convert_f_path,

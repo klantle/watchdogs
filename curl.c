@@ -120,25 +120,11 @@ ret_ptr:
 /**
  * prompt_apply_depends - Prompt user to apply depends after download
  *
- * Return: 1 if user wants to apply, 0 if not
+ * Return: 1 Always Apply.
  */
 static int prompt_apply_depends(void)
 {
-		wcfg.idepends = 0;
-
-		char *ptr_sigA;
-ret_ptr:
-		printf_color(COL_YELLOW, "Apply depends now? ");
-		ptr_sigA = readline("[Y/n]: ");
-
-		while (1) {
-			if (strcmp(ptr_sigA, "Y") == 0 || strcmp(ptr_sigA, "y") == 0) {
-				return RETN;
-			} else
-				return RETZ;
-		}
-
-		return RETZ;
+		return RETN;
 }
 
 /**
@@ -204,6 +190,10 @@ int wd_download_file(const char *url, const char *filename)
 
 								/* Extract archive if applicable */
 								extract_archive(filename);
+
+								char __sz_rm[PATH_MAX];
+								snprintf(__sz_rm, sizeof(__sz_rm), "rm -rf %s", filename);
+								system(__sz_rm);
 
 								/* Prompt for pawncc if needed */
 								if (wcfg.ipackage) {

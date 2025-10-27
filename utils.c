@@ -101,6 +101,7 @@ WatchdogConfig wcfg = {
 		.sef_found = { {0} },
 		.serv_dbg = NULL,
 		.ci_options = NULL,
+		.aio_repo = NULL,
 		.gm_input = NULL,
 		.gm_output = NULL
 };
@@ -1393,6 +1394,9 @@ static void wd_generate_toml_content(FILE *file, const char *os_type,
 				fprintf(file, "\tinput = \"gamemodes/bare.pwn\"\n");
 				fprintf(file, "\toutput = \"gamemodes/bare.amx\"\n");
 		}
+
+		fprintf(file, "[depends]\n");
+		fprintf(file, "\taio_repo = [\"Y-Less/sscanf:v2.13.8\", \"samp-incognito/samp-streamer-plugin:v2.9.6\"]");
 }
 
 /**

@@ -276,13 +276,60 @@ _reexecute_command:
             char *arg = ptr_command + 7;
             while (*arg == ' ') arg++;
 
-            char *dep_one = strtok(arg, " ");
-            char *dep_two = strtok(NULL, " ");
-
-            if (!dep_one && !dep_two) {
-                printf_info("install [repo] [repo]");
+            if (*arg) {
+                wd_install_depends_str(arg);
             } else {
-                wd_install_depends(dep_one, dep_two);
+                char errbuf[256];
+                toml_table_t *_toml_config;
+                FILE *procc_f = fopen("watchdogs.toml", "r");
+                _toml_config = toml_parse_file(procc_f, errbuf, sizeof(errbuf));
+                if (procc_f) fclose(procc_f);
+
+                if (!_toml_config) {
+                    printf_error("parsing TOML: %s", errbuf);
+                    return RETZ;
+                }
+
+                toml_table_t *wd_depends = toml_table_in(_toml_config, "depends");
+                if (wd_depends) {
+                    toml_array_t *aio_repo = toml_array_in(wd_depends, "aio_repo");
+                    if (aio_repo) {
+                        size_t arr_sz = toml_array_nelem(aio_repo);
+                        char *merged = NULL;
+
+                        for (size_t i = 0; i < arr_sz; i++) {
+                            toml_datum_t val = toml_string_at(aio_repo, i);
+                            if (!val.ok) continue;
+
+                            size_t old_len = merged ? strlen(merged) : 0;
+                            size_t new_len = old_len + strlen(val.u.s) + 2;
+
+                            char *tmp = wdrealloc(merged, new_len);
+                            if (!tmp) {
+                                wdfree(merged);
+                                wdfree(val.u.s);
+                                merged = NULL;
+                                break;
+                            }
+                            merged = tmp;
+
+                            if (!old_len) {
+                                snprintf(merged, new_len, "%s", val.u.s);
+                            } else {
+                                snprintf(merged + old_len, new_len - old_len, " %s", val.u.s);
+                            }
+
+                            wdfree(val.u.s);
+                            val.u.s = NULL;
+                        }
+
+                        if (!merged) merged = strdup("");
+
+                        wcfg.aio_repo = merged;
+                        wd_install_depends_str(wcfg.aio_repo);
+                    }
+                }
+                toml_free(_toml_config);
             }
 
             return RETN;

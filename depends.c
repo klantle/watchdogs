@@ -24,6 +24,7 @@
 #include <curl/curl.h>
 
 #include "cJSON/cJSON.h"
+#include "color.h"
 #include "extra.h"
 #include "utils.h"
 #include "curl.h"
@@ -558,147 +559,97 @@ static int handle_base_dependency(const struct dep_repo_info *dep_repo_info,
 		return ret;
 }
 
-void wd_install_depends(const char *dep_one, const char *dep_two)
+/**
+ * dep_get_filename - extract filename from a path string
+ * @path: the full path to extract filename from
+ *
+ * Return: pointer to the filename portion of the path
+ */
+const char *dep_get_filename(const char *path)
 {
-		const char *depends[] = {
-								  dep_one,
-								  dep_two
-								};
-		for (int i = 0; i < MAX_ARR_DEPENDS; i++) {
-			if (!depends[i] || !*depends[i])
-				continue;
+		const char *depends;
 
-			int dep_item_found = 0;
-			struct dep_repo_info dep_repo_info;
-			char dep_url[1024] = {0}, dep_repo_name[256] = { 0 };
-			size_t dep_url_size = sizeof(dep_url),
-				   dep_repo_name_size = sizeof(dep_repo_name);
+		/* Find last forward slash */
+		depends = strrchr(path, '/');
+		if (!depends) {
+				/* If no forward slash, try backslash (Windows paths) */
+				depends = strrchr(path, '\\');
+		}
 
-			/*  Parse input  */
-			if (!parse_repo_input(depends[i], &dep_repo_info)) {
-				printf_error("Invalid repo format:\n\t%s",
-														depends[i]);
-				continue;
-			}
+		/* Return filename portion or original path if no slashes found */
+		return depends ? depends + 1 : path;
+}
 
-#if defined(_DBG_PRINT)
-			printf_info("Parsed repo: host=%s, domain=%s, user=%s, repo=%s, tag=%s",
-					dep_repo_info.host,
-					dep_repo_info.domain,
-					dep_repo_info.user,
-					dep_repo_info.repo,
-					dep_repo_info.tag[0] ? dep_repo_info.tag : "main");
-#endif
+/**
+ * __convert_path - convert backslashes to forward slashes in path
+ * @path: path string to convert
+ */
+static void __convert_path(char *path)
+{
+		char *p;
 
-			/*  Handle based on host  */
-			if (!strcmp(dep_repo_info.host, "github"))
-				{
-					dep_item_found = handle_base_dependency(&dep_repo_info,
-															dep_url,
-															dep_url_size);
-				} 
-			else if (!strcmp(dep_repo_info.host, "sourceforge"))
-				{
-					build_repo_url(&dep_repo_info,
-								0,
-								dep_url,
-								dep_url_size);
-					dep_item_found = curl_url_get_response(dep_url);
-				} 
-			else
-				{
-					/* GitLab / Gitea fallback */
-					build_repo_url(&dep_repo_info,
-								0,
-								dep_url,
-								dep_url_size);
-					dep_item_found = curl_url_get_response(dep_url);
-				}
-
-			if (!dep_item_found) {
-				printf_error("Repository not found or invalid:\n\t%s", depends[i]);
-				continue;
-			}
-
-			/*  Extract filename from URL  */
-			const char *chr_last_slash = strrchr(dep_url, '/');
-			if (chr_last_slash && *(chr_last_slash + 1)) snprintf(dep_repo_name,
-																  dep_repo_name_size,
-																  "%s",
-																  chr_last_slash + 1);
-			else snprintf(dep_repo_name, dep_repo_name_size, "%s.zip", dep_repo_info.repo);
-
-			/*  Download  */
-			wcfg.idepends = 1;
-			wd_download_file(dep_url, dep_repo_name);
+		for (p = path; *p; p++) {
+				if (*p == '\\')
+						*p = '/';
 		}
 }
 
 /**
- * Extracts filename from a path string
- * @param path The full path to extract filename from
- * @return Pointer to the filename portion of the path
+ * move_dependency_files - move dependency files and maintain cache of file hashes
+ * @depends_folder: path to the folder containing dependencies
  */
-const char* dep_get_filename(const char *path) {
-        // Find last forward slash
-        const char *depends = strrchr(path, '/');
-        if (!depends) {
-                // If no forward slash, try backslash (Windows paths)
-                depends = strrchr(path, '\\');
-        }
-        // Return filename portion (after slash) or original path if no slashes found
-        return depends ? depends + 1 : path;
-}
+void move_dependency_files(const char *depends_folder)
+{
+		cJSON *root, *depends, *_e_root = NULL, *_e_depends = NULL;
+		unsigned char hash[32]; /* Buffer for SHA256 hash */
+		FILE *e_file, *fp_cache;
+		char __sz_dp_fp[PATH_MAX], __sz_dp_fc[PATH_MAX], __sz_dp_inc[PATH_MAX];
+		char __cwd[PATH_MAX], *dep_inc_path = NULL;
+		int _wd_log_acces, __dll_plugins_f, __so_plugins_f;
+		int __dll_plugins_r, __so_plugins_r, __dll_components_f;
+		int __so_components_f, __dll_components_r, __so_components_r;
+		int __inc_plugins_f, __inc_plugins_r, i;
+		long fp_cache_sz;
+		char *file_content;
 
-/**
- * Moves dependency files from depends folder to appropriate locations
- * and maintains a cache of file hashes to avoid duplicates
- * @param depends_folder Path to the folder containing dependencies
- */
-void move_dependency_files(const char *depends_folder) {
-        // Check if cache file exists, create if it doesn't
-        int _wd_log_acces = path_acces("wd_depends.json");
-        if (!_wd_log_acces) {
-                system("touch wd_depends.json");
-        }
+		/* Check if cache file exists, create if it doesn't */
+		_wd_log_acces = path_acces("wd_depends.json");
+		if (!_wd_log_acces)
+				system("touch wd_depends.json");
 
-        // Create new JSON object for storing dependency information
-        cJSON *root = cJSON_CreateObject();
-        cJSON *depends = cJSON_CreateArray();
-        unsigned char hash[32]; // Buffer for SHA256 hash
-        
-        // Add comment to JSON
-        cJSON_AddStringToObject(root, "comment", " -- this is for cache.");
-        
-        // Variables for reading existing cache
-        cJSON *_e_root = NULL;
-        cJSON *_e_depends = NULL;
-        
-        // Read existing cache file to preserve previous hashes
-        FILE *e_file = fopen("wd_depends.json", "r");
-        if (e_file) {
+		/* Create new JSON object for storing dependency information */
+		root = cJSON_CreateObject();
+		depends = cJSON_CreateArray();
+		
+		/* Add comment to JSON */
+		cJSON_AddStringToObject(root, "comment", " -- this is for cache.");
+
+		/* Read existing cache file to preserve previous hashes */
+		e_file = fopen("wd_depends.json", "r");
+		if (e_file) {
 			fseek(e_file, 0, SEEK_END);
-			long fp_cache_sz = ftell(e_file);
+			fp_cache_sz = ftell(e_file);
 			fseek(e_file, 0, SEEK_SET);
 
 			if (fp_cache_sz > 0) {
-				// Read entire file content
-				char *file_content = wdmalloc(fp_cache_sz + 1);
+				/* Read entire file content */
+				file_content = wdmalloc(fp_cache_sz + 1);
 				if (file_content) {
 					fread(file_content, 1, fp_cache_sz, e_file);
 					file_content[fp_cache_sz] = '\0';
 					
-					// Parse existing JSON
+					/* Parse existing JSON */
 					_e_root = cJSON_Parse(file_content);
 					if (_e_root) {
 						_e_depends = cJSON_GetObjectItem(_e_root, "depends");
 						if (_e_depends && cJSON_IsArray(_e_depends)) {
-							// Copy existing hashes to new array
 							int _e_cnt = cJSON_GetArraySize(_e_depends);
-							for (int i = 0; i < _e_cnt; i++) {
+							/* Copy existing hashes to new array */
+							for (i = 0; i < _e_cnt; i++) {
 								cJSON *_e_item = cJSON_GetArrayItem(_e_depends, i);
 								if (cJSON_IsString(_e_item)) {
-									cJSON_AddItemToArray(depends, cJSON_CreateString(_e_item->valuestring));
+									cJSON_AddItemToArray(depends, 
+											cJSON_CreateString(_e_item->valuestring));
 								}
 							}
 							printf_info("Loaded %d existing hashes from wd_depends.json", _e_cnt);
@@ -708,354 +659,465 @@ void move_dependency_files(const char *depends_folder) {
 				}
 			}
 			fclose(e_file);
-        }
+		}
 
-        // Build paths for different dependency types
-        char __sz_dp_fp[PATH_MAX];  // plugins folder path
-        snprintf(__sz_dp_fp, sizeof(__sz_dp_fp), "%s/plugins", depends_folder);
+/**
+ * dep_add_ncheck_hash - add file hash to dependency list after checking duplicates
+ * @file_path: full path to the file for hashing
+ * @json_path: relative path for JSON storage
+ */
+void dep_add_ncheck_hash(const char *file_path, const char *json_path)
+{
+		char convert_f_path[PATH_MAX], convert_j_path[PATH_MAX];
+		char *hex;
+		int h_exists = 0;
+		int array_size;
+		int j;
 
-        char __sz_dp_fc[PATH_MAX];  // components folder path
-        snprintf(__sz_dp_fc, sizeof(__sz_dp_fc), "%s/components", depends_folder);
+		/* Convert paths to use forward slashes */
+		strncpy(convert_f_path, file_path, sizeof(convert_f_path));
+		convert_f_path[sizeof(convert_f_path) - 1] = '\0';
+		__convert_path(convert_f_path);
 
-        char __sz_dp_inc[PATH_MAX]; // include folder path
-        char *dep_inc_path = NULL;
-        
-        // Determine include path based on configuration
-        if (wcfg.f_samp == VAL_TRUE) {
+		strncpy(convert_j_path, json_path, sizeof(convert_j_path));
+		convert_j_path[sizeof(convert_j_path) - 1] = '\0';
+		__convert_path(convert_j_path);
+
+		printf_info("\tHashing convert path: %s\n", convert_f_path);
+
+		/* Calculate SHA256 hash of the file */
+		if (sha256_hash(convert_f_path, hash) == RETN) {
+				to_hex(hash, 32, &hex);
+
+				/* Check if hash already exists in the list */
+				array_size = cJSON_GetArraySize(depends);
+				for (j = 0; j < array_size; j++) {
+						cJSON *_e_item = cJSON_GetArrayItem(depends, j);
+						if (cJSON_IsString(_e_item) && 
+						    strcmp(_e_item->valuestring, hex) == 0) {
+								h_exists = 1;
+								break;
+						}
+				}
+
+				/* Add hash if it doesn't exist */
+				if (!h_exists) {
+						cJSON_AddItemToArray(depends, cJSON_CreateString(hex));
+						printf_info("\tAdded hash for: %s to wd_depends.json\n", convert_j_path);
+				} else {
+						printf_info("\tHash already exists for: %s in wd_depends.json\n", convert_j_path);
+						printf_info("\t\tHash: %s\n", hex);
+				}
+
+				wdfree(hex);
+		} else {
+				printf_error("Failed to hash: %s (convert: %s)\n", convert_j_path, convert_f_path);
+		}
+}
+
+		/* Build paths for different dependency types */
+		snprintf(__sz_dp_fp, sizeof(__sz_dp_fp), "%s/plugins", depends_folder);
+		snprintf(__sz_dp_fc, sizeof(__sz_dp_fc), "%s/components", depends_folder);
+
+		/* Determine include path based on configuration */
+		if (wcfg.f_samp == VAL_TRUE) {
 __default:
-                dep_inc_path = "pawno/include";
-                snprintf(__sz_dp_inc, sizeof(__sz_dp_inc), "%s/pawno/include", depends_folder);
-        } else if (wcfg.f_openmp == VAL_TRUE) {
-                dep_inc_path = "qawno/include";
-                snprintf(__sz_dp_inc, sizeof(__sz_dp_inc), "%s/qawno/include", depends_folder);
-        } else {
-                goto __default; // Fallback to default
-        }
+				dep_inc_path = "pawno/include";
+				snprintf(__sz_dp_inc, sizeof(__sz_dp_inc), "%s/pawno/include", depends_folder);
+		} else if (wcfg.f_openmp == VAL_TRUE) {
+				dep_inc_path = "qawno/include";
+				snprintf(__sz_dp_inc, sizeof(__sz_dp_inc), "%s/qawno/include", depends_folder);
+		} else {
+				goto __default; /* Fallback to default */
+		}
 
-        // Get current working directory
-        char __cwd[PATH_MAX];
-        size_t __sz_cwd = sizeof(__cwd);
-        if (!getcwd(__cwd, __sz_cwd)) {
-                perror("getcwd");
-                cJSON_Delete(root);
-                if (_e_root) cJSON_Delete(_e_root);
-                return;
-        }
+		/* Get current working directory */
+		if (!getcwd(__cwd, sizeof(__cwd))) {
+				perror("getcwd");
+				cJSON_Delete(root);
+				if (_e_root)
+						cJSON_Delete(_e_root);
+				return;
+		}
 
-/**
- * Converts backslashes to forward slashes in a path string
- * @param path Path string to convert
- */
-void __convert_path__(char *path) {
-        for (char *p = path;
-				  *p;
-				  p++) 
-                if (*p == '\\')
-					*p = '/';
+		/* Process DLL files in plugins subfolder */
+		wd_sef_fdir_reset();
+		__dll_plugins_f = wd_sef_fdir(__sz_dp_fp, "*.dll", NULL);
+		if (__dll_plugins_f) {
+				char __sz_cp[PATH_MAX * 2];
+				char __sz_json_item[PATH_MAX];
+				const char *filename_only;
+
+				for (i = 0; i < wcfg.sef_count; ++i) {
+						filename_only = dep_get_filename(wcfg.sef_found[i]);
+						
+						/* Move file to plugins directory */
+						snprintf(__sz_cp, sizeof(__sz_cp), "mv -f \"%s\" \"%s/plugins/\"", 
+								 wcfg.sef_found[i], __cwd);
+						system(__sz_cp);
+						
+						/* Add to hash list */
+						snprintf(__sz_json_item, sizeof(__sz_json_item), "%s", filename_only);
+						dep_add_ncheck_hash(__sz_json_item, __sz_json_item);
+				}
+		}
+
+		/* Process SO files in plugins subfolder */
+		wd_sef_fdir_reset();
+		__so_plugins_f = wd_sef_fdir(__sz_dp_fp, "*.so", NULL);
+		if (__so_plugins_f) {
+				char __sz_cp[PATH_MAX * 2];
+				char __sz_json_item[PATH_MAX];
+				const char *filename_only;
+
+				for (i = 0; i < wcfg.sef_count; ++i) {
+						filename_only = dep_get_filename(wcfg.sef_found[i]);
+						
+						snprintf(__sz_cp, sizeof(__sz_cp), "mv -f \"%s\" \"%s/plugins/\"", 
+								 wcfg.sef_found[i], __cwd);
+						system(__sz_cp);
+						
+						snprintf(__sz_json_item, sizeof(__sz_json_item), "%s", filename_only);
+						dep_add_ncheck_hash(__sz_json_item, __sz_json_item);
+				}
+		}
+
+		/* Process DLL files in root folder (excluding plugins subfolder) */
+		wd_sef_fdir_reset();
+		__dll_plugins_r = wd_sef_fdir(depends_folder, "*.dll", "plugins");
+		if (__dll_plugins_r) {
+				char __sz_cp[PATH_MAX * 2];
+				char __sz_json_item[PATH_MAX];
+				const char *filename_only;
+
+				for (i = 0; i < wcfg.sef_count; ++i) {
+						filename_only = dep_get_filename(wcfg.sef_found[i]);
+						
+						snprintf(__sz_cp, sizeof(__sz_cp), "mv -f \"%s\" \"%s/plugins/\"", 
+								 wcfg.sef_found[i], __cwd);
+						system(__sz_cp);
+						
+						snprintf(__sz_json_item, sizeof(__sz_json_item), "plugins/%s", filename_only);
+						dep_add_ncheck_hash(__sz_json_item, __sz_json_item);
+				}
+		}
+
+		/* Process SO files in root folder (excluding plugins subfolder) */
+		wd_sef_fdir_reset();
+		__so_plugins_r = wd_sef_fdir(depends_folder, "*.so", "plugins");
+		if (__so_plugins_r) {
+				char __sz_cp[PATH_MAX * 2];
+				char __sz_json_item[PATH_MAX];
+				const char *filename_only;
+
+				for (i = 0; i < wcfg.sef_count; ++i) {
+						filename_only = dep_get_filename(wcfg.sef_found[i]);
+						
+						snprintf(__sz_cp, sizeof(__sz_cp), "mv -f \"%s\" \"%s/plugins/\"", 
+								 wcfg.sef_found[i], __cwd);
+						system(__sz_cp);
+						
+						snprintf(__sz_json_item, sizeof(__sz_json_item), "%s", filename_only);
+						dep_add_ncheck_hash(__sz_json_item, __sz_json_item);
+				}
+		}
+
+		/* Process DLL files in components subfolder */
+		if (wcfg.f_openmp == VAL_TRUE) {
+			wd_sef_fdir_reset();
+			__dll_components_f = wd_sef_fdir(__sz_dp_fc, "*.dll", NULL);
+			if (__dll_components_f) {
+					char __sz_cp[PATH_MAX * 2];
+					char __sz_json_item[PATH_MAX];
+					const char *filename_only;
+
+					for (i = 0; i < wcfg.sef_count; ++i) {
+							filename_only = dep_get_filename(wcfg.sef_found[i]);
+							
+							/* Move file to components directory */
+							snprintf(__sz_cp, sizeof(__sz_cp), "mv -f \"%s\" \"%s/components/\"", 
+									wcfg.sef_found[i], __cwd);
+							system(__sz_cp);
+							
+							snprintf(__sz_json_item, sizeof(__sz_json_item), "%s", filename_only);
+							dep_add_ncheck_hash(__sz_json_item, __sz_json_item);
+					}
+			}
+
+			/* Process SO files in components subfolder */
+			wd_sef_fdir_reset();
+			__so_components_f = wd_sef_fdir(__sz_dp_fc, "*.so", NULL);
+			if (__so_components_f) {
+					char __sz_cp[PATH_MAX * 2];
+					char __sz_json_item[PATH_MAX];
+					const char *filename_only;
+
+					for (i = 0; i < wcfg.sef_count; ++i) {
+							filename_only = dep_get_filename(wcfg.sef_found[i]);
+							
+							snprintf(__sz_cp, sizeof(__sz_cp), "mv -f \"%s\" \"%s/components/\"", 
+									wcfg.sef_found[i], __cwd);
+							system(__sz_cp);
+							
+							snprintf(__sz_json_item, sizeof(__sz_json_item), "%s", filename_only);
+							dep_add_ncheck_hash(__sz_json_item, __sz_json_item);
+					}
+			}
+
+			/* Process DLL files in root folder (excluding components subfolder) */
+			wd_sef_fdir_reset();
+			__dll_components_r = wd_sef_fdir(depends_folder, "*.dll", "components");
+			if (__dll_components_r) {
+					char __sz_cp[PATH_MAX * 2];
+					char __sz_json_item[PATH_MAX];
+					const char *filename_only;
+
+					for (i = 0; i < wcfg.sef_count; ++i) {
+							filename_only = dep_get_filename(wcfg.sef_found[i]);
+							
+							snprintf(__sz_cp, sizeof(__sz_cp), "mv -f \"%s\" \"%s/components/\"", 
+									wcfg.sef_found[i], __cwd);
+							system(__sz_cp);
+							
+							snprintf(__sz_json_item, sizeof(__sz_json_item), "%s", filename_only);
+							dep_add_ncheck_hash(__sz_json_item, __sz_json_item);
+					}
+			}
+
+			/* Process SO files in root folder (excluding components subfolder) */
+			wd_sef_fdir_reset();
+			__so_components_r = wd_sef_fdir(depends_folder, "*.so", "components");
+			if (__so_components_r) {
+					char __sz_cp[PATH_MAX * 2];
+					char __sz_json_item[PATH_MAX];
+					const char *filename_only;
+
+					for (i = 0; i < wcfg.sef_count; ++i) {
+							filename_only = dep_get_filename(wcfg.sef_found[i]);
+							
+							snprintf(__sz_cp, sizeof(__sz_cp), "mv -f \"%s\" \"%s/components/\"", 
+									wcfg.sef_found[i], __cwd);
+							system(__sz_cp);
+							
+							snprintf(__sz_json_item, sizeof(__sz_json_item), "%s", filename_only);
+							dep_add_ncheck_hash(__sz_json_item, __sz_json_item);
+					}
+			}
+		}
+
+		/* Process INC files in include subfolder */
+		wd_sef_fdir_reset();
+		__inc_plugins_f = wd_sef_fdir(__sz_dp_inc, "*.inc", NULL);
+		if (__inc_plugins_f) {
+				char __sz_cp[PATH_MAX * 2];
+				char __sz_json_item[PATH_MAX];
+				const char *filename_only;
+
+				for (i = 0; i < wcfg.sef_count; ++i) {
+						filename_only = dep_get_filename(wcfg.sef_found[i]);
+						
+						/* Move file to appropriate include directory */
+						snprintf(__sz_cp, sizeof(__sz_cp), "mv -f \"%s\" \"%s/%s/\"", 
+								 wcfg.sef_found[i], __cwd, dep_inc_path);
+						system(__sz_cp);
+						
+						/* Determine correct path prefix based on include type */
+						if (strfind(__sz_dp_inc, "pawno"))
+								snprintf(__sz_json_item, sizeof(__sz_json_item), "pawno/%s", filename_only);
+						else if (strfind(__sz_dp_inc, "qawno"))
+								snprintf(__sz_json_item, sizeof(__sz_json_item), "qawno/%s", filename_only);
+						dep_add_ncheck_hash(__sz_json_item, __sz_json_item);
+				}
+		}
+
+		/* Process INC files in root folder (excluding include subfolder) */
+		wd_sef_fdir_reset();
+		__inc_plugins_r = wd_sef_fdir(depends_folder, "*.inc", dep_inc_path);
+		if (__inc_plugins_r) {
+				char __sz_cp[PATH_MAX * 2];
+				char __sz_json_item[PATH_MAX];
+				const char *filename_only;
+
+				for (i = 0; i < wcfg.sef_count; ++i) {
+						filename_only = dep_get_filename(wcfg.sef_found[i]);
+						
+						snprintf(__sz_cp, sizeof(__sz_cp), "mv -f \"%s\" \"%s/%s/\"", 
+								 wcfg.sef_found[i], __cwd, dep_inc_path);
+						system(__sz_cp);
+						
+						if (strfind(__sz_dp_inc, "pawno"))
+								snprintf(__sz_json_item, sizeof(__sz_json_item), "pawno/%s", filename_only);
+						else if (strfind(__sz_dp_inc, "qawno"))
+								snprintf(__sz_json_item, sizeof(__sz_json_item), "qawno/%s", filename_only);
+						dep_add_ncheck_hash(__sz_json_item, __sz_json_item);
+				}
+		}
+
+		/* Add depends array to root JSON object */
+		cJSON_AddItemToObject(root, "depends", depends);
+
+		/* Write updated cache to file with formatted JSON */
+		fp_cache = fopen("wd_depends.json", "w");
+		if (fp_cache) {
+				int array_size = cJSON_GetArraySize(depends);
+				int i;
+
+				fprintf(fp_cache, "{\n");
+				fprintf(fp_cache, "\t\"comment\":\t\" -- this is for cache.\",\n");
+				fprintf(fp_cache, "\t\"depends\":\t[");
+
+				if (array_size > 0) {
+						fprintf(fp_cache, "\n");
+						/* Write each hash string */
+						for (i = 0; i < array_size; i++) {
+								cJSON *item = cJSON_GetArrayItem(depends, i);
+								if (cJSON_IsString(item)) {
+										fprintf(fp_cache, "\t\t\"%s\"", item->valuestring);
+										if (i < array_size - 1)
+												fprintf(fp_cache, ",");
+										fprintf(fp_cache, "\n");
+								}
+						}
+						fprintf(fp_cache, "\t");
+				}
+
+				fprintf(fp_cache, "]\n");
+				fprintf(fp_cache, "}\n");
+				fclose(fp_cache);
+
+				printf_info("Saved %d unique hashes to wd_depends.json\n", array_size);
+		} else {
+				printf_error("Failed to open wd_depends.json for writing\n");
+		}
+
+		/* Clean up JSON objects */
+		cJSON_Delete(root);
+		if (_e_root)
+				cJSON_Delete(_e_root);
+		
+		char __sz_rm[PATH_MAX];
+		snprintf(__sz_rm, sizeof(__sz_rm), "rm -rf %s", depends_folder);
+		system(__sz_rm);
+		printf_color(COL_YELLOW, "apply finished!\n");
 }
 
 /**
- * Adds file hash to dependency list after checking for duplicates
- * @param file_path Full path to the file for hashing
- * @param json_path Relative path for JSON storage
+ * wd_apply_depends - apply depends to gamemodes
+ * @depends_name: name of the dependency to apply
  */
-void dep_add_ncheck_hash(const char *file_path, const char *json_path) {
-        char convert_f_path[PATH_MAX], convert_j_path[PATH_MAX];
-		size_t __sz_cfp = sizeof(convert_f_path),
-			   __sz_cjp = sizeof(convert_j_path);
-        
-        // Convert paths to use forward slashes
-        strncpy(convert_f_path,
-				file_path,
-				__sz_cfp);
-        convert_f_path[__sz_cfp - 1] = '\0';
-        __convert_path__(convert_f_path);
-        
-        strncpy(convert_j_path,
-				json_path,
-				__sz_cjp);
-        convert_j_path[__sz_cjp - 1] = '\0';
-        __convert_path__(convert_j_path);
-        
-        printf("\tHashing convert path: %s\n", convert_f_path);
-        
-        // Calculate SHA256 hash of the file
-        if (sha256_hash(convert_f_path, hash) == RETN) {
-                char *hex;
-                to_hex(hash, 32, &hex); // Convert hash to hexadecimal string
-                
-                // Check if hash already exists in the list
-                int h_exists = 0,
-                        array_size = cJSON_GetArraySize(depends);
-                for (int j = 0; j < array_size; j++) {
-                        cJSON *_e_item = cJSON_GetArrayItem(depends, j);
-                        if (cJSON_IsString(_e_item) && 
-                                strcmp(_e_item->valuestring, hex) == 0) {
-                                h_exists = 1;
-                                break;
-                        }
-                }
-                
-                // Add hash if it doesn't exist
-                if (!h_exists) {
-                        cJSON_AddItemToArray(depends, cJSON_CreateString(hex));
-                        printf("\tAdded hash for: %s to wd_depends.json\n", convert_j_path);
-                } else {
-                        printf("\tHash already exists for: %s in wd_depends.json\n", convert_j_path);
-                        printf("\t\tHash: %s\n", hex);
-                }
-                
-                wdfree(hex);
-        } else {
-                printf_error("Failed to hash: %s (convert: %s)\n", convert_j_path, convert_f_path);
-        }
-}
-        
-        /* Process DLL files in plugins subfolder */
-        wd_sef_fdir_reset();
-        int __dll_plugins_f = wd_sef_fdir(__sz_dp_fp, "*.dll", NULL);
-        if (__dll_plugins_f) {
-                char __sz_cp[PATH_MAX * 2];
-                for (int i = 0; i < wcfg.sef_count; ++i) {
-                        const char *filename_only = dep_get_filename(wcfg.sef_found[i]);
-                        
-                        // Move file to plugins directory
-                        snprintf(__sz_cp, sizeof(__sz_cp), "mv -f \"%s\" \"%s/plugins/\"", wcfg.sef_found[i], __cwd);
-                        system(__sz_cp);
-                        
-                        // Add to hash list
-                        char __sz_json_item[PATH_MAX];
-                        snprintf(__sz_json_item, sizeof(__sz_json_item), "%s", filename_only);
-                        dep_add_ncheck_hash(__sz_json_item, __sz_json_item);
-                }
-        }
-        
-        /* Process SO files in plugins subfolder */
-        wd_sef_fdir_reset();
-        int __so_plugins_f = wd_sef_fdir(__sz_dp_fp, "*.so", NULL);
-        if (__so_plugins_f) {
-                char __sz_cp[PATH_MAX * 2];
-                for (int i = 0; i < wcfg.sef_count; ++i) {
-                        const char *filename_only = dep_get_filename(wcfg.sef_found[i]);
-                        
-                        snprintf(__sz_cp, sizeof(__sz_cp), "mv -f \"%s\" \"%s/plugins/\"", wcfg.sef_found[i], __cwd);
-                        system(__sz_cp);
-                        
-                        char __sz_json_item[PATH_MAX];
-                        snprintf(__sz_json_item, sizeof(__sz_json_item), "%s", filename_only);
-                        dep_add_ncheck_hash(__sz_json_item, __sz_json_item);
-                }
-        }
-        
-        /* Process DLL files in root folder (excluding plugins subfolder) */
-        wd_sef_fdir_reset();
-        int __dll_plugins_r = wd_sef_fdir(depends_folder, "*.dll", "plugins");
-        if (__dll_plugins_r) {
-                char __sz_cp[PATH_MAX * 2];
-                for (int i = 0; i < wcfg.sef_count; ++i) {
-                        const char *filename_only = dep_get_filename(wcfg.sef_found[i]);
-                        
-                        snprintf(__sz_cp, sizeof(__sz_cp), "mv -f \"%s\" \"%s/plugins/\"", wcfg.sef_found[i], __cwd);
-                        system(__sz_cp);
-                        
-                        char __sz_json_item[PATH_MAX];
-                        snprintf(__sz_json_item, sizeof(__sz_json_item), "plugins/%s", filename_only);
-                        dep_add_ncheck_hash(__sz_json_item, __sz_json_item);
-                }
-        }
-        
-        /* Process SO files in root folder (excluding plugins subfolder) */
-        wd_sef_fdir_reset();
-        int __so_plugins_r = wd_sef_fdir(depends_folder, "*.so", "plugins");
-        if (__so_plugins_r) {
-                char __sz_cp[PATH_MAX * 2];
-                for (int i = 0; i < wcfg.sef_count; ++i) {
-                        const char *filename_only = dep_get_filename(wcfg.sef_found[i]);
-                        
-                        snprintf(__sz_cp, sizeof(__sz_cp), "mv -f \"%s\" \"%s/plugins/\"", wcfg.sef_found[i], __cwd);
-                        system(__sz_cp);
-                        
-                        char __sz_json_item[PATH_MAX];
-                        snprintf(__sz_json_item, sizeof(__sz_json_item), "%s", filename_only);
-                        dep_add_ncheck_hash(__sz_json_item, __sz_json_item);
-                }
-        }
-        
-        /* Process DLL files in components subfolder */
-        wd_sef_fdir_reset();
-        int __dll_components_f = wd_sef_fdir(__sz_dp_fc, "*.dll", NULL);
-        if (__dll_components_f) {
-                char __sz_cp[PATH_MAX * 2];
-                for (int i = 0; i < wcfg.sef_count; ++i) {
-                        const char *filename_only = dep_get_filename(wcfg.sef_found[i]);
-                        
-                        // Move file to components directory
-                        snprintf(__sz_cp, sizeof(__sz_cp), "mv -f \"%s\" \"%s/components/\"", wcfg.sef_found[i], __cwd);
-                        system(__sz_cp);
-                        
-                        char __sz_json_item[PATH_MAX];
-                        snprintf(__sz_json_item, sizeof(__sz_json_item), "%s", filename_only);
-                        dep_add_ncheck_hash(__sz_json_item, __sz_json_item);
-                }
-        }
-        
-        /* Process SO files in components subfolder */
-        wd_sef_fdir_reset();
-        int __so_components_f = wd_sef_fdir(__sz_dp_fc, "*.so", NULL);
-        if (__so_components_f) {
-                char __sz_cp[PATH_MAX * 2];
-                for (int i = 0; i < wcfg.sef_count; ++i) {
-                        const char *filename_only = dep_get_filename(wcfg.sef_found[i]);
-                        
-                        snprintf(__sz_cp, sizeof(__sz_cp), "mv -f \"%s\" \"%s/components/\"", wcfg.sef_found[i], __cwd);
-                        system(__sz_cp);
-                        
-                        char __sz_json_item[PATH_MAX];
-                        snprintf(__sz_json_item, sizeof(__sz_json_item), "%s", filename_only);
-                        dep_add_ncheck_hash(__sz_json_item, __sz_json_item);
-                }
-        }
-        
-        /* Process DLL files in root folder (excluding components subfolder) */
-        wd_sef_fdir_reset();
-        int __dll_components_r = wd_sef_fdir(depends_folder, "*.dll", "components");
-        if (__dll_components_r) {
-                char __sz_cp[PATH_MAX * 2];
-                for (int i = 0; i < wcfg.sef_count; ++i) {
-                        const char *filename_only = dep_get_filename(wcfg.sef_found[i]);
-                        
-                        snprintf(__sz_cp, sizeof(__sz_cp), "mv -f \"%s\" \"%s/components/\"", wcfg.sef_found[i], __cwd);
-                        system(__sz_cp);
-                        
-                        char __sz_json_item[PATH_MAX];
-                        snprintf(__sz_json_item, sizeof(__sz_json_item), "%s", filename_only);
-                        dep_add_ncheck_hash(__sz_json_item, __sz_json_item);
-                }
-        }
-        
-        /* Process SO files in root folder (excluding components subfolder) */
-        wd_sef_fdir_reset();
-        int __so_components_r = wd_sef_fdir(depends_folder, "*.so", "components");
-        if (__so_components_r) {
-                char __sz_cp[PATH_MAX * 2];
-                for (int i = 0; i < wcfg.sef_count; ++i) {
-                        const char *filename_only = dep_get_filename(wcfg.sef_found[i]);
-                        
-                        snprintf(__sz_cp, sizeof(__sz_cp), "mv -f \"%s\" \"%s/components/\"", wcfg.sef_found[i], __cwd);
-                        system(__sz_cp);
-                        
-                        char __sz_json_item[PATH_MAX];
-                        snprintf(__sz_json_item, sizeof(__sz_json_item), "%s", filename_only);
-                        dep_add_ncheck_hash(__sz_json_item, __sz_json_item);
-                }
-        }
-        
-        /* Process INC files in include subfolder */
-        wd_sef_fdir_reset();
-        int __inc_plugins_f = wd_sef_fdir(__sz_dp_inc, "*.inc", NULL);
-        if (__inc_plugins_f) {
-                char __sz_cp[PATH_MAX * 2];
-                for (int i = 0; i < wcfg.sef_count; ++i) {
-                        const char *filename_only = dep_get_filename(wcfg.sef_found[i]);
-                        
-                        // Move file to appropriate include directory
-                        snprintf(__sz_cp, sizeof(__sz_cp), "mv -f \"%s\" \"%s/%s/\"", wcfg.sef_found[i], __cwd, dep_inc_path);
-                        system(__sz_cp);
-                        
-                        char __sz_json_item[PATH_MAX];
-                        // Determine correct path prefix based on include type
-                        if (strfind(__sz_dp_inc, "pawno"))
-                                snprintf(__sz_json_item, sizeof(__sz_json_item), "pawno/%s", filename_only);
-                        else if (strfind(__sz_dp_inc, "qawno"))
-                                snprintf(__sz_json_item, sizeof(__sz_json_item), "qawno/%s", filename_only);
-                        dep_add_ncheck_hash(__sz_json_item, __sz_json_item);
-                }
-        }
-
-        /* Process INC files in root folder (excluding include subfolder) */
-        wd_sef_fdir_reset();
-        int __inc_plugins_r = wd_sef_fdir(depends_folder, "*.inc", dep_inc_path);
-        if (__inc_plugins_r) {
-                char __sz_cp[PATH_MAX * 2];
-                for (int i = 0; i < wcfg.sef_count; ++i) {
-                        const char *filename_only = dep_get_filename(wcfg.sef_found[i]);
-                        
-                        snprintf(__sz_cp, sizeof(__sz_cp), "mv -f \"%s\" \"%s/%s/\"", wcfg.sef_found[i], __cwd, dep_inc_path);
-                        system(__sz_cp);
-                        
-                        char __sz_json_item[PATH_MAX];
-                        if (strfind(__sz_dp_inc, "pawno"))
-                                snprintf(__sz_json_item, sizeof(__sz_json_item), "pawno/%s", filename_only);
-                        else if (strfind(__sz_dp_inc, "qawno"))
-                                snprintf(__sz_json_item, sizeof(__sz_json_item), "qawno/%s", filename_only);
-                        dep_add_ncheck_hash(__sz_json_item, __sz_json_item);
-                }
-        }
-        
-        // Add depends array to root JSON object
-        cJSON_AddItemToObject(root, "depends", depends);
-        
-        // Write updated cache to file with formatted JSON
-        FILE *fp_cache = fopen("wd_depends.json", "w");
-        if (fp_cache) {
-                fprintf(fp_cache, "{\n");
-                fprintf(fp_cache, "\t\"comment\":\t\" -- this is for cache.\",\n");
-                fprintf(fp_cache, "\t\"depends\":\t[");
-                
-                int array_size = cJSON_GetArraySize(depends);
-                if (array_size > 0) {
-                        fprintf(fp_cache, "\n");
-                        // Write each hash string
-                        for (int i = 0; i < array_size; i++) {
-                                cJSON *item = cJSON_GetArrayItem(depends, i);
-                                if (cJSON_IsString(item)) {
-                                        fprintf(fp_cache, "\t\t\"%s\"", item->valuestring);
-                                        if (i < array_size - 1) {
-                                                fprintf(fp_cache, ",");
-                                        }
-                                        fprintf(fp_cache, "\n");
-                                }
-                        }
-                        fprintf(fp_cache, "\t");
-                }
-                
-                fprintf(fp_cache, "]\n");
-                fprintf(fp_cache, "}\n");
-                fclose(fp_cache);
-                
-                printf_info("Saved %d unique hashes to wd_depends.json\n", array_size);
-        } else {
-                printf_error("Failed to open wd_depends.json for writing\n");
-        }
-        
-        // Clean up JSON objects
-        cJSON_Delete(root);
-        if (_e_root)
-                cJSON_Delete(_e_root);
-}
-
-/**
- * wd_apply_depends - Apply Depends to Gamemodes
- */
-
-void wd_apply_depends(const char *depends_name) {
+void wd_apply_depends(const char *depends_name)
+{
 		char _depends[PATH_MAX];
-		snprintf(_depends, PATH_MAX, "%s", depends_name);
-		char *ext = strrchr(_depends, '.');
-		if (ext) *ext = '\0';
-
 		char depends_folder[PATH_MAX];
+		struct stat st;
+		char *ext;
+
+		snprintf(_depends, PATH_MAX, "%s", depends_name);
+		ext = strrchr(_depends, '.');
+		if (ext)
+				*ext = '\0';
+
 		snprintf(depends_folder, sizeof(depends_folder), "%s", _depends);
 
-		struct stat st;
 		if (wcfg.f_samp == VAL_TRUE) {
-			if (stat("pawno/include", &st) != 0 && errno == ENOENT) mkdir_recursive("pawno/include");
-			if (stat("plugins", &st) != 0 && errno == ENOENT) mkdir_recursive("plugins");
+				if (stat("pawno/include", &st) != 0 && errno == ENOENT)
+						mkdir_recursive("pawno/include");
+				if (stat("plugins", &st) != 0 && errno == ENOENT)
+						mkdir_recursive("plugins");
 		} else if (wcfg.f_openmp == VAL_TRUE) {
-			if (stat("qawno/include", &st) != 0 && errno == ENOENT) mkdir_recursive("qawno/include");
-			if (stat("components", &st) != 0 && errno == ENOENT) mkdir_recursive("components");
-			if (stat("plugins", &st) != 0 && errno == ENOENT) mkdir_recursive("plugins");
+				if (stat("qawno/include", &st) != 0 && errno == ENOENT)
+						mkdir_recursive("qawno/include");
+				if (stat("components", &st) != 0 && errno == ENOENT)
+						mkdir_recursive("components");
+				if (stat("plugins", &st) != 0 && errno == ENOENT)
+						mkdir_recursive("plugins");
 		}
 
 		move_dependency_files(depends_folder);
+}
+
+/**
+ * wd_install_depends_str - install dependencies from string
+ * @deps_str: string containing dependencies to install
+ */
+void wd_install_depends_str(const char *deps_str)
+{
+		char buffer[1024];
+		const char *depends[MAX_ARR_DEPENDS];
+		char *downloaded_files[MAX_ARR_DEPENDS];
+		char *token;
+		int dep_count = 0;
+		int file_count = 0;
+		int i;
+
+		if (!deps_str || !*deps_str) {
+				printf_info("No valid dependencies to install");
+				return;
+		}
+
+		wcfg.idepends = 0;
+
+		snprintf(buffer, sizeof(buffer), "%s", deps_str);
+
+		token = strtok(buffer, " ");
+		while (token && dep_count < MAX_ARR_DEPENDS) {
+				depends[dep_count++] = token;
+				token = strtok(NULL, " ");
+		}
+
+		if (dep_count == 0) {
+				printf_info("No valid dependencies to install");
+				return;
+		}
+
+		for (i = 0; i < dep_count; i++) {
+				int dep_item_found = 0;
+				struct dep_repo_info dep_repo_info;
+				char dep_url[1024] = {0};
+				char dep_repo_name[256] = {0};
+				const char *chr_last_slash;
+
+				if (!parse_repo_input(depends[i], &dep_repo_info)) {
+						printf_error("Invalid repo format: %s", depends[i]);
+						continue;
+				}
+
+#if defined(_DBG_PRINT)
+				printf_info("Parsed repo: host=%s, domain=%s, user=%s, repo=%s, tag=%s",
+						dep_repo_info.host, dep_repo_info.domain, dep_repo_info.user,
+						dep_repo_info.repo,
+						dep_repo_info.tag[0] ? dep_repo_info.tag : "main");
+#endif
+
+				if (!strcmp(dep_repo_info.host, "github")) {
+						dep_item_found = handle_base_dependency(&dep_repo_info,
+																dep_url,
+																sizeof(dep_url));
+				} else {
+						build_repo_url(&dep_repo_info, 0, dep_url, sizeof(dep_url));
+						dep_item_found = curl_url_get_response(dep_url);
+				}
+
+				if (!dep_item_found) {
+						printf_error("Repository not found: %s", depends[i]);
+						continue;
+				}
+
+				chr_last_slash = strrchr(dep_url, '/');
+				if (chr_last_slash && *(chr_last_slash + 1))
+						snprintf(dep_repo_name, sizeof(dep_repo_name), "%s",
+								chr_last_slash + 1);
+				else
+						snprintf(dep_repo_name, sizeof(dep_repo_name), "%s.zip",
+								dep_repo_info.repo);
+
+				if (wd_download_file(dep_url, dep_repo_name) == RETZ)
+						downloaded_files[file_count++] = strdup(dep_repo_name);
+		}
+
+		wcfg.idepends = 1;
+		for (i = 0; i < file_count; i++) {
+				wd_apply_depends(downloaded_files[i]);
+				wdfree(downloaded_files[i]);
+		}
 }

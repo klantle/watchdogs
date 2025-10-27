@@ -72,6 +72,7 @@ typedef struct {
         char sef_found[MAX_SEF_ENTRIES][MAX_SEF_PATH_SIZE];
         char* serv_dbg;
         char* ci_options;
+        char* aio_repo;
         char* gm_input;
         char* gm_output;
 } WatchdogConfig;

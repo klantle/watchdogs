@@ -174,6 +174,8 @@ Usage: help | help [<command>]
   ]
   input = "gamemodes/bare.pwn"   # input compiler
   output = "gamemodes/bare.amx"  # output compiler
+[depends]                        # depends url - max depends: 41
+	aio_repo = ["Y-Less/sscanf:v2.13.8", "samp-incognito/samp-streamer-plugin:v2.9.6"]
 ```
 
 ### [VSCODE Usage](https://code.visualstudio.com/docs/debugtest/tasks)
@@ -284,7 +286,15 @@ Debug specific `".amx"` with `[<args>]`
 debug yourmode
 ```
 
-### INTRO 1.6 (COMPILER OPTIONS) [3.10.10](https://github.com/pawn-lang/compiler/releases/tag/v3.10.10) (^/v)
+### INTRO 1.6 (DEPENDS INSTALLER)
+
+```sh
+install                 # automatic installing from watchdogs.toml
+install repo/user       # installing depends from (github/gitlab/gitea/sourceforge) by input
+install repo/user:v1.1  # installing depends from (github/gitlab/gitea/sourceforge) by input with specific tags version
+```
+
+### INTRO 1.7 (COMPILER OPTIONS) [3.10.10](https://github.com/pawn-lang/compiler/releases/tag/v3.10.10) (^/v)
 
 | Option          | Description                                                        |
 |-----------------|--------------------------------------------------------------------|

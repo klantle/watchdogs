@@ -138,7 +138,7 @@ make termux         # build from source for termux
 make clean          # clean make
 make debug          # build from source with debug mode (linux)
 make windows-debug  # build from source with debug mode (windows)
-# for more: `./__make.sh`
+# `./__make.sh` for more.
 ```
 
 ---

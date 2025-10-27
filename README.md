@@ -240,6 +240,7 @@ Default compilation:
 ```
 compile .
 ```
+![image](https://gitlab.com/mywatchdogs/watchdogs/-/raw/main/IMG/__C.png)
 
 Compile specific file:
 ```
@@ -250,7 +251,6 @@ Compile specific path:
 ```
 compile path/to/yourmode.pwn
 ```
-![image](https://gitlab.com/mywatchdogs/watchdogs/-/raw/main/IMG/__C.png)
 
 ### INTRO 1.3 (STARTING [¶](https://en.m.wikipedia.org/wiki/Run_command))
 
@@ -258,6 +258,7 @@ Run yourmode of server.cfg/config.json from parameter `gamemode0` or `main_scrip
 ```
 running .
 ```
+![image](https://gitlab.com/mywatchdogs/watchdogs/-/raw/main/IMG/__R.png)
 
 Running specific `".amx"` with `[<args>]`
 ```
@@ -270,6 +271,7 @@ One Step - (o)basic compile & starting:
 ```
 crunn
 ```
+![image](https://gitlab.com/mywatchdogs/watchdogs/-/raw/main/IMG/__CR.png)
 
 ### INTRO 1.5 (DEBUGGING [¶](https://en.m.wikipedia.org/wiki/Debugging))
 
@@ -277,6 +279,7 @@ Debug yourmode of server.cfg/config.json from parameter `gamemode0` or `main_scr
 ```
 debug .
 ```
+![image](https://gitlab.com/mywatchdogs/watchdogs/-/raw/main/IMG/__D.png)
 
 Debug specific `".amx"` with `[<args>]`
 ```

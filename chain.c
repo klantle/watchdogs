@@ -363,14 +363,10 @@ ret_ptr2:
 
             wd_RunCompiler(arg, compile_args);
             return RETN;
-        } else if (strncmp(ptr_command, "running", 7) == 0 || strncmp(ptr_command, "debug", 7) == 0) {
+        } if (strncmp(ptr_command, "debug", 5) == 0 || strncmp(ptr_command, "running", 7) == 0) {
 _runners_:
-                if (strcmp(ptr_command, "debug") == 0) {
-                    wcfg.server_odbg="debug";
-                    wd_set_title("Watchdogs | @ debug");    
-                } else {
-                    wd_set_title("Watchdogs | @ running");
-                }
+                int is_debug = strncmp(ptr_command, "debug", 5) == 0;
+                if (is_debug) wcfg.server_odbg = "debug";
 
                 wd_stop_server_tasks();
 
@@ -381,8 +377,8 @@ _runners_:
                 if (_wd_log_acces)
                     remove("log.txt");
 
-                char *arg;
-                    arg = ptr_command + 7;
+                size_t cmd_len = is_debug ? 5 : 7;
+                char *arg = ptr_command + cmd_len;
                 while (*arg == ' ') arg++;
                 char *arg1 = strtok(arg, " ");
 
@@ -435,7 +431,6 @@ _runners_:
                             printf_color(COL_RED, "running failed!\n");
                         }
                     } else {
-                        printf_color(COL_YELLOW, "running..\n");
                         wd_run_samp_server(arg1, wcfg.pointer_samp);
                     }
                 } else if (!strcmp(wcfg.f_openmp, CRC32_TRUE)) {
@@ -459,7 +454,6 @@ _runners_:
                             printf_color(COL_RED, "running failed!\n");
                         }
                     } else {
-                        printf_color(COL_YELLOW, "running..\n");
                         wd_run_omp_server(arg1, wcfg.pointer_openmp);
                     }
                 } else if (!strcmp(wcfg.f_samp, CRC32_FALSE) || !strcmp(wcfg.f_openmp, CRC32_FALSE)) {
@@ -492,8 +486,48 @@ ret_ptr3:
             const char *arg = NULL;
             const char *compile_args = NULL;
             wd_RunCompiler(arg, compile_args);
-            if (wcfg.compiler_error < 1)
-                goto _runners_;
+            if (wcfg.compiler_error < 1) {
+                char errbuf[256];
+                toml_table_t *_toml_config;
+                FILE *procc_f = fopen("watchdogs.toml", "r");
+                _toml_config = toml_parse_file(procc_f, errbuf, sizeof(errbuf));
+                if (procc_f) fclose(procc_f);
+
+                if (!_toml_config) {
+                    printf_error("parsing TOML: %s", errbuf);
+                    __main(0);
+                }
+
+                toml_table_t *wd_compiler = toml_table_in(_toml_config, "compiler");
+                if (wd_compiler) {
+                        toml_datum_t toml_gm_i = toml_string_in(wd_compiler, "input");
+                        if (toml_gm_i.ok) 
+                        {
+                            wcfg.gm_input = strdup(toml_gm_i.u.s);
+                            wdfree(toml_gm_i.u.s);
+                            toml_gm_i.u.s = NULL;
+                        }
+                }
+                toml_free(_toml_config);
+
+                char __sz_gm_input[PATH_MAX];
+                snprintf(__sz_gm_input, sizeof(__sz_gm_input), "%s", wcfg.gm_input);
+                char *f_EXT = strrchr(__sz_gm_input, '.');
+                if (f_EXT) 
+                    *f_EXT = '\0';
+                char *pos = strstr(__sz_gm_input, "gamemodes/");
+                if (pos) {
+                    memmove(pos, pos + strlen("gamemodes/"),
+                                    strlen(pos + strlen("gamemodes/")) + 1);
+                }
+                if (!strcmp(wcfg.f_samp, CRC32_TRUE)) {
+                    printf_color(COL_YELLOW, "running..\n");
+                    wd_run_samp_server(__sz_gm_input, wcfg.pointer_samp);
+                } else if (!strcmp(wcfg.f_openmp, CRC32_TRUE)) {
+                    printf_color(COL_YELLOW, "running..\n");
+                    wd_run_samp_server(__sz_gm_input, wcfg.pointer_openmp);
+                }
+            }
         } else if (strcmp(ptr_command, "stop") == 0) {
             wd_set_title("Watchdogs | @ stop");
             wd_stop_server_tasks();

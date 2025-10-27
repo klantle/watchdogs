@@ -673,12 +673,11 @@ int wd_RunCompiler(const char *arg, const char *compile_args)
                         printf_color(COL_YELLOW, "-DEBUGGING\n");
                         printf("[COMPILER]:\n\t%s\n", _compiler_);
 #endif
-
                     } 
                     else 
                     {
                         /* Handle case where file cannot be located */
-                        printf_error("Can't locate:");
+                        printf_error("Cannnot locate:");
                         printf("\t%s\n", compile_args);
                         return RETZ;
                     }

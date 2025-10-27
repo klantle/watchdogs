@@ -2,6 +2,7 @@
 #include <stdlib.h>
 #include <ctype.h>
 #include <string.h>
+#include <errno.h>
 #include <sys/stat.h>
 #include <curl/curl.h>
 
@@ -947,11 +948,12 @@ __default:
 				return;
 		}
 
+		char __sz_cp[MAX_PATH * 2];
+
 		/* Process DLL files in plugins subfolder */
 		wd_sef_fdir_reset();
 		__dll_plugins_f = wd_sef_fdir(__sz_dp_fp, "*.dll", NULL);
 		if (__dll_plugins_f) {
-				char __sz_cp[MAX_PATH];
 				char __sz_json_item[PATH_MAX];
 				const char *filename_only;
 
@@ -999,7 +1001,6 @@ __default:
 		wd_sef_fdir_reset();
 		__so_plugins_f = wd_sef_fdir(__sz_dp_fp, "*.so", NULL);
 		if (__so_plugins_f) {
-				char __sz_cp[MAX_PATH];
 				char __sz_json_item[PATH_MAX];
 				const char *filename_only;
 
@@ -1044,7 +1045,6 @@ __default:
 		wd_sef_fdir_reset();
 		__dll_plugins_r = wd_sef_fdir(depends_folder, "*.dll", "plugins");
 		if (__dll_plugins_r) {
-				char __sz_cp[MAX_PATH];
 				char __sz_json_item[PATH_MAX];
 				const char *filename_only;
 
@@ -1089,7 +1089,6 @@ __default:
 		wd_sef_fdir_reset();
 		__so_plugins_r = wd_sef_fdir(depends_folder, "*.so", "plugins");
 		if (__so_plugins_r) {
-				char __sz_cp[MAX_PATH];
 				char __sz_json_item[PATH_MAX];
 				const char *filename_only;
 
@@ -1135,7 +1134,6 @@ __default:
 			wd_sef_fdir_reset();
 			__dll_components_f = wd_sef_fdir(__sz_dp_fc, "*.dll", NULL);
 			if (__dll_components_f) {
-					char __sz_cp[MAX_PATH];
 					char __sz_json_item[PATH_MAX];
 					const char *filename_only;
 
@@ -1156,7 +1154,6 @@ __default:
 			wd_sef_fdir_reset();
 			__so_components_f = wd_sef_fdir(__sz_dp_fc, "*.so", NULL);
 			if (__so_components_f) {
-					char __sz_cp[MAX_PATH];
 					char __sz_json_item[PATH_MAX];
 					const char *filename_only;
 
@@ -1176,7 +1173,6 @@ __default:
 			wd_sef_fdir_reset();
 			__dll_components_r = wd_sef_fdir(depends_folder, "*.dll", "components");
 			if (__dll_components_r) {
-					char __sz_cp[MAX_PATH];
 					char __sz_json_item[PATH_MAX];
 					const char *filename_only;
 
@@ -1196,7 +1192,6 @@ __default:
 			wd_sef_fdir_reset();
 			__so_components_r = wd_sef_fdir(depends_folder, "*.so", "components");
 			if (__so_components_r) {
-					char __sz_cp[MAX_PATH];
 					char __sz_json_item[PATH_MAX];
 					const char *filename_only;
 
@@ -1221,11 +1216,11 @@ void process_inc_files(const char *base_path, const char *dest_base)
 		DIR *dir;
 		struct dirent *entry;
 		struct stat statbuf;
-		char f_path[MAX_PATH];
+		char f_path[PATH_MAX];
 		char parent_dir[PATH_MAX];
 		char dest_path[PATH_MAX];
 		char *dir_name, *dot_ext;
-		char cmd[MAX_PATH];
+		char cmd[MAX_PATH * 3];
 		
 		dir = opendir(base_path);
 		if (!dir)
@@ -1300,7 +1295,6 @@ void process_inc_files(const char *base_path, const char *dest_base)
 		wd_sef_fdir_reset();
 		__inc_plugins_r = wd_sef_fdir(depends_folder, "*.inc", dep_inc_path);
 		if (__inc_plugins_r) {
-				char __sz_cp[MAX_PATH];
 				char __sz_json_item[PATH_MAX];
 				const char *filename_only;
 

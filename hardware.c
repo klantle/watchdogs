@@ -1,6 +1,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <stdarg.h>
 #ifdef _WIN32
 #include <windows.h>
 #include <iphlpapi.h>

@@ -69,7 +69,7 @@ static int progress_callback(void *ptr, curl_off_t dltotal,
  */
 static int extract_archive(const char *filename)
 {
-		char output_path[256];
+		char output_path[PATH_MAX];
 		size_t name_len;
 
 		if (strstr(filename, ".tar") || strstr(filename, ".tar.gz")) {
@@ -100,22 +100,18 @@ static int extract_archive(const char *filename)
  */
 static int prompt_apply_pawncc(void)
 {
-		char response[26];
-
 		wcfg.ipackage = 0;
-		printf("Apply pawncc now? [Y/n]: ");
-		fflush(stdout);
 
-		/* Clear input buffer */
-		int c;
-		while ((c = getchar()) != '\n' && c != EOF);
+		char *ptr_sigA;
+ret_ptr:
+		ptr_sigA = readline("Apply pawncc now? [Y/n]: ");
 
-		if (fgets(response, sizeof(response), stdin) != NULL) {
-				response[strcspn(response, "\n")] = 0;
-				if (strcmp(response, "Y") == 0 || strcmp(response, "y") == 0)
-						return RETN;
+		while (1) {
+			if (strcmp(ptr_sigA, "Y") == 0 || strcmp(ptr_sigA, "y") == 0) {
+				return RETN;
+			} else
+				return RETZ;
 		}
-
 		return RETZ;
 }
 
@@ -126,20 +122,17 @@ static int prompt_apply_pawncc(void)
  */
 static int prompt_apply_depends(void)
 {
-		char response[26];
-
 		wcfg.idepends = 0;
-		printf("Apply depends now? [Y/n]: ");
-		fflush(stdout);
 
-		/* Clear input buffer */
-		int c;
-		while ((c = getchar()) != '\n' && c != EOF);
+		char *ptr_sigA;
+ret_ptr:
+		ptr_sigA = readline("Apply depends now? [Y/n]: ");
 
-		if (fgets(response, sizeof(response), stdin) != NULL) {
-				response[strcspn(response, "\n")] = 0;
-				if (strcmp(response, "Y") == 0 || strcmp(response, "y") == 0)
-						return RETN;
+		while (1) {
+			if (strcmp(ptr_sigA, "Y") == 0 || strcmp(ptr_sigA, "y") == 0) {
+				return RETN;
+			} else
+				return RETZ;
 		}
 
 		return RETZ;
@@ -217,7 +210,7 @@ int wd_download_file(const char *url, const char *filename)
 								}
 								if (wcfg.idepends) {
 									if (prompt_apply_depends())
-											wd_apply_depends();
+											wd_apply_depends(filename);
 								}
 
 								return RETZ;

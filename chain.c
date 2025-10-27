@@ -73,14 +73,14 @@ void __function__(void) {
 
         if (file_s && file_m) {
 __default:
-            wcfg.f_openmp = 0x00;
-            wcfg.f_samp = 0x01;
+            wcfg.f_openmp = VAL_FALSE;
+            wcfg.f_samp = VAL_TRUE;
             fclose(file_s);
         } else if (file_s) {
             goto __default;
         } else if (file_m) {
-            wcfg.f_samp = 0x00;
-            wcfg.f_openmp = 0x01;
+            wcfg.f_samp = VAL_FALSE;
+            wcfg.f_openmp = VAL_TRUE;
             fclose(file_m);
         } else {
             goto __default;

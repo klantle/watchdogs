@@ -16,6 +16,10 @@
 #define SETENV(name, val, overwrite) setenv(name, val, overwrite)
 #endif
 
+#ifndef PATH_MAX
+#define PATH_MAX 4096
+#endif
+
 #include <curl/curl.h>
 
 #include "extra.h"
@@ -407,8 +411,24 @@ static int get_github_release_assets(const char *user, const char *repo,
 /**
  * wd_apply_depends - Apply Depends to Gamemodes
  */
-void wd_apply_depends(void)
-{
+void wd_apply_depends(const char *depends_name) {
+		char _depends[PATH_MAX];
+		snprintf(_depends, PATH_MAX, "%s", depends_name);
+		char *ext = strrchr(_depends, '.');
+		if (ext) *ext = '\0';
+
+		char depends_folder[PATH_MAX];
+		snprintf(depends_folder, sizeof(depends_folder), "_depends/%s", _depends);
+
+		struct stat st;
+		if (wcfg.f_samp == VAL_TRUE) {
+			if (stat("pawno/include", &st) != 0 && errno == ENOENT) MKDIR("pawno/include");
+			if (stat("plugins", &st) != 0 && errno == ENOENT) MKDIR("plugins");
+		} else if (wcfg.f_openmp == VAL_TRUE) {
+			if (stat("qawno/include", &st) != 0 && errno == ENOENT) MKDIR("qawno/include");
+			if (stat("components", &st) != 0 && errno == ENOENT) MKDIR("components");
+			if (stat("plugins", &st) != 0 && errno == ENOENT) MKDIR("plugins");
+		}
 }
 
 /**
@@ -497,6 +517,11 @@ static int handle_base_dependency(const struct dep_repo_info *dep_repo_info,
 								  size_t out_sz)
 {
 		int ret = 0;
+		/* Try common branch names */
+		const char *branches[] = {
+									"main",
+									"master"
+								};
 
 		if (dep_repo_info->tag[0]) {
 			/* Try GitHub release assets */
@@ -536,11 +561,6 @@ static int handle_base_dependency(const struct dep_repo_info *dep_repo_info,
 				}
 		} else
 		{
-			/* Try common branch names */
-			const char *branches[] = {
-										"main",
-										"master"
-									 };
 			for (int j = 0; j < 2 && !ret; j++) {
 				snprintf(out_url, out_sz,
 						"https://github.com/%s/%s/archive/refs/heads/%s.zip",
@@ -580,7 +600,7 @@ void wd_install_depends(const char *dep_one, const char *dep_two)
 				continue;
 			}
 
-#ifdef _DBG_PRINT
+#if defined(_DBG_PRINT)
 			printf_info("Parsed repo: host=%s, domain=%s, user=%s, repo=%s, tag=%s",
 					dep_repo_info.host,
 					dep_repo_info.domain,
@@ -615,11 +635,9 @@ void wd_install_depends(const char *dep_one, const char *dep_two)
 				}
 
 			if (!dep_item_found) {
-				printf_error("Repository not found or invalid: %s", depends[i]);
+				printf_error("Repository not found or invalid:\n%s", depends[i]);
 				continue;
 			}
-
-			printf_info("Repository available: %s", dep_url);
 
 			/*  Extract filename from URL  */
 			const char *chr_last_slash = strrchr(dep_url, '/');
@@ -631,9 +649,8 @@ void wd_install_depends(const char *dep_one, const char *dep_two)
 
 			/*  Download  */
 			wcfg.idepends = 1;
-			printf_info("Downloading %s from %s",
-					dep_repo_name,
-					dep_url);
+			printf_info("Downloading %s...",
+					dep_repo_name);
 			wd_download_file(dep_url, dep_repo_name);
 		}
 }

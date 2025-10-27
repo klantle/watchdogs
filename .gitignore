@@ -16,6 +16,8 @@ omp*
 openmp*
 Server/*
 .wd_compiler.log
-_S
-ssamp
+components/*
+components
+plugins/*
+plugins
 .gitignore

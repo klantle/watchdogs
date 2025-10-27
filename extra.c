@@ -196,7 +196,7 @@ static const char *get_compiler_directory(void)
 			MKDIR("pawno/include");
 		} 
 		else if (stat("qawno/include", &st) != 0 && errno == ENOENT) {
-			MKDIR("pawno/qawno");
+			MKDIR("qawno/qawno");
 		}
 
 		return dir_path;

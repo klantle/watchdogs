@@ -89,9 +89,9 @@ WatchdogConfig wcfg = {
 		.ipackage = 0,
 		.idepends = 0,
 		.os = NULL,
-		.os_type = 0x00,
-		.f_samp = 0x00,
-		.f_openmp = 0x00,
+		.os_type = VAL_FALSE,
+		.f_samp = VAL_FALSE,
+		.f_openmp = VAL_FALSE,
 		.pointer_samp = NULL,
 		.pointer_openmp = NULL,
 		.compiler_error = 0,
@@ -132,7 +132,7 @@ void wd_sef_fdir_reset(void)
  * Returns a signal code based on the detected operating system.
  * Used for platform-specific signal handling.
  *
- * Return: 0x01 for Windows, 0x00 for Linux, 0x02 for unknown
+ * Return: 0x01 for Windows, VAL_FALSE for Linux, 0x02 for unknown
  */
 int wd_signal_os(void)
 {

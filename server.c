@@ -60,7 +60,9 @@ static int update_server_config(const char *gamemode)
 		int gamemode_updated = 0;
 
 		char __sz_mv[MAX_PATH];
-		snprintf(__sz_mv, sizeof(__sz_mv), "mv -f %s %s", "server.cfg", ".server.cfg.bak");
+		snprintf(__sz_mv, sizeof(__sz_mv), "mv -f %s %s",
+										   "server.cfg",
+										   ".server.cfg.bak");
 		system(__sz_mv);
 
 		config_in = fopen(".server.cfg.bak", "r");
@@ -222,7 +224,9 @@ static int update_omp_config(const char *gamemode)
 
 		/* Create backup */
 		char __sz_mv[MAX_PATH];
-		snprintf(__sz_mv, sizeof(__sz_mv), "mv -f %s %s", "config.json", ".config.json.bak");
+		snprintf(__sz_mv, sizeof(__sz_mv), "mv -f %s %s",
+										   "config.json",
+										   ".config.json.bak");
 		if (system(__sz_mv) != 0) {
 			printf_error("Failed to create backup file");
 			return -RETN;
@@ -245,14 +249,16 @@ static int update_omp_config(const char *gamemode)
 		__cJSON_Data = wdmalloc(st.st_size + 1);
 		if (!__cJSON_Data) {
 			printf_error("Memory allocation failed");
-			goto cleanup;
+			goto done;
 		}
 
 		/* Read entire file at once */
 		size_t bytes_read = fread(__cJSON_Data, 1, st.st_size, config_in);
 		if (bytes_read != (size_t)st.st_size) {
-			printf_error("Incomplete file read (%zu of %ld bytes)", bytes_read, st.st_size);
-			goto cleanup;
+			printf_error("Incomplete file read (%zu of %ld bytes)",
+					bytes_read,
+					st.st_size);
+			goto done;
 		}
 
 		__cJSON_Data[st.st_size] = '\0';
@@ -263,14 +269,14 @@ static int update_omp_config(const char *gamemode)
 		root = cJSON_Parse(__cJSON_Data);
 		if (!root) {
 			printf_error("JSON parse error: %s", cJSON_GetErrorPtr());
-			goto cleanup;
+			goto done;
 		}
 
 		/* Get pawn section */
 		pawn = cJSON_GetObjectItem(root, "pawn");
 		if (!pawn) {
 			printf_error("Missing 'pawn' section in config");
-			goto cleanup;
+			goto done;
 		}
 
 		/* Process gamemode name */
@@ -290,29 +296,34 @@ static int update_omp_config(const char *gamemode)
 		config_out = fopen("config.json", "w");
 		if (!config_out) {
 			printf_error("Failed to write config.json");
-			goto cleanup;
+			goto done;
 		}
 
 		__cJSON_Printed = cJSON_Print(root);
 		if (!__cJSON_Printed) {
 			printf_error("Failed to print JSON");
-			goto cleanup;
+			goto done;
 		}
 
 		if (fputs(__cJSON_Printed, config_out) == EOF) {
 			printf_error("Failed to write to config.json");
-			goto cleanup;
+			goto done;
 		}
 
 		ret = RETZ;
 
-cleanup:
+done:
 		/* Cleanup resources in reverse allocation order */
-		if (config_out) fclose(config_out);
-		if (config_in) fclose(config_in);
-		if (__cJSON_Printed) wdfree(__cJSON_Printed);
-		if (root) cJSON_Delete(root);
-		if (__cJSON_Data) wdfree(__cJSON_Data);
+		if (config_out)
+			fclose(config_out);
+		if (config_in)
+			fclose(config_in);
+		if (__cJSON_Printed)
+			wdfree(__cJSON_Printed);
+		if (root)
+			cJSON_Delete(root);
+		if (__cJSON_Data)
+			wdfree(__cJSON_Data);
 
 		return ret;
 }

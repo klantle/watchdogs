@@ -21,7 +21,7 @@ FULL_VERSION = WD-25.10.21.0
 TARGET   	 ?= watchdogs
 CC       	 ?= gcc
 
-CFLAGS   = -Os -pipe -s -flto -fdata-sections -ffunction-sections -fPIE -I/usr/include/openssl
+CFLAGS   = -Os -pipe -s -fdata-sections -ffunction-sections -fPIE -I/usr/include/
 LDFLAGS  = -Wl,-O1,--gc-sections -lm -lcurl -lreadline -lncurses -larchive -lssl -lcrypto
 
 SRCS = extra.c chain.c utils.c depends.c hardware.c compiler.c archive.c curl.c package.c server.c crypto.c \
@@ -69,6 +69,7 @@ install:
             libreadline-dev \
             libarchive-dev \
             zlib1g-dev \
+			libonig-dev \
             xterm; \
 		$(MAKE) linux; \
 	else \
@@ -122,7 +123,7 @@ termux:
 
 windows:
 	@printf "$(YELLOW)==>$(RESET) Building Windows target (MinGW)...\n"
-	$(CC) $(CFLAGS) $(SRCS) -o watchdogs.win $(LDFLAGS) -liphlpapi -lshlwapi
+	$(CC) $(CFLAGS) -I/ucrt64/include $(SRCS) -o watchdogs.win $(LDFLAGS) -liphlpapi -lshlwapi
 	@printf "$(YELLOW)==>$(RESET) Build complete: watchdogs.win Version $(VERSION) Full Version $(FULL_VERSION)\n"
 
 debug:
@@ -132,5 +133,5 @@ debug:
 
 windows-debug:
 	@printf "$(YELLOW)==>$(RESET) Building DEBUG Version $(VERSION) Full Version $(FULL_VERSION)\n"
-	$(CC) $(CFLAGS) $(SRCS) -g -O0 -D_DBG_PRINT -Wall -o watchdogs.debug.win $(LDFLAGS) -liphlpapi -lshlwapi
+	$(CC) $(CFLAGS) -I/ucrt64/include $(SRCS) -g -O0 -D_DBG_PRINT -Wall -o watchdogs.debug.win $(LDFLAGS) -liphlpapi -lshlwapi
 	@printf "$(YELLOW)==>$(RESET) Debug build complete: ./watchdogs.debug.win\n"

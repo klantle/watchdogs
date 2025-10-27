@@ -55,8 +55,6 @@ typedef struct {
 
 extern WatchdogConfig wcfg;
 
-int wd_is_special_dir(const char *name);
-int wd_should_ignore_dir(const char *name, const char *ignore_dir);
 void wd_sef_fdir_reset();
 struct struct_of { int (*title)(const char *); };
 extern const char* __command[];

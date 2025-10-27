@@ -96,6 +96,18 @@ WatchdogConfig wcfg = {
         .gm_output = NULL
 };
 
+static int wd_is_special_dir(const char *name);
+static int wd_should_ignore_dir(const char *name, const char *ignore_dir);
+static int wd_match_filename(const char *name, const char *pattern);
+static void wd_add_found_path(const char *path);
+static void __toml_add_directory_path(FILE *toml_file, int *first, const char *path);
+static int wd_find_compiler(const char *os_type);
+static void wd_generate_toml_content(FILE *file, const char *os_type,
+    int find_gamemodes, int find_pawncc, int find_plugins, char *base_dir);
+static void wd_add_include_paths(FILE *file, int *first_item);
+static void wd_add_compiler_path(FILE *file, const char *path, int *first_item);
+static int wd_parse_toml_config(void);
+
 /**
  * wd_sef_fdir_reset - Reset found directory entries
  * 

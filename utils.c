@@ -1422,44 +1422,16 @@ int wd_set_toml(void)
  * @dest: Destination file path
  */
  static int _try_mv_without_sudo(const char *src, const char *dest) {
-		char clean_src[PATH_MAX];
-		strncpy(clean_src, src, PATH_MAX);
-		clean_src[PATH_MAX - 1] = '\0';
-
-		char *p = clean_src;
-		char *q = clean_src;
-		while (*p) {
-			if (*p != '/' && *p != '\\') {
-				*q++ = *p;
-			}
-			p++;
-		}
-		*q = '\0';
-
-		char __sz_mv[MAX_PATH + 100];
-		snprintf(__sz_mv, sizeof(__sz_mv), "mv -i %s %s/%s", src, dest, clean_src);
+		char __sz_mv[PATH_MAX];
+		snprintf(__sz_mv, sizeof(__sz_mv), "mv -i %s %s", src, dest);
 		int ret = wd_run_command(__sz_mv);
 		return ret;
 }
 
 
 static int __mv_with_sudo(const char *src, const char *dest) {
-		char clean_src[PATH_MAX];
-		strncpy(clean_src, src, PATH_MAX);
-		clean_src[PATH_MAX - 1] = '\0';
-
-		char *p = clean_src;
-		char *q = clean_src;
-		while (*p) {
-			if (*p != '/' && *p != '\\') {
-				*q++ = *p;
-			}
-			p++;
-		}
-		*q = '\0';
-
-		char __sz_mv[MAX_PATH + 100];
-		snprintf(__sz_mv, sizeof(__sz_mv), "sudo mv -i %s %s/%s", src, dest, clean_src);
+		char __sz_mv[PATH_MAX];
+		snprintf(__sz_mv, sizeof(__sz_mv), "sudo mv -i %s %s", src, dest);
 		int ret = wd_run_command(__sz_mv);
 		return ret;
 }
@@ -1471,43 +1443,15 @@ static int __mv_with_sudo(const char *src, const char *dest) {
  * @dest: Destination file path
  */
 static int _try_cp_without_sudo(const char *src, const char *dest) {
-		char clean_src[PATH_MAX];
-		strncpy(clean_src, src, PATH_MAX);
-		clean_src[PATH_MAX - 1] = '\0';
-
-		char *p = clean_src;
-		char *q = clean_src;
-		while (*p) {
-			if (*p != '/' && *p != '\\') {
-				*q++ = *p;
-			}
-			p++;
-		}
-		*q = '\0';
-
-		char __sz_cp[MAX_PATH + 100];
-		snprintf(__sz_cp, sizeof(__sz_cp), "cp -i %s %s/%s", src, dest, clean_src);
+		char __sz_cp[PATH_MAX];
+		snprintf(__sz_cp, sizeof(__sz_cp), "cp -i %s %s", src, dest);
 		int ret = wd_run_command(__sz_cp);
 		return ret;
 }
 
 static int __cp_with_sudo(const char *src, const char *dest) {
-		char clean_src[PATH_MAX];
-		strncpy(clean_src, src, PATH_MAX);
-		clean_src[PATH_MAX - 1] = '\0';
-
-		char *p = clean_src;
-		char *q = clean_src;
-		while (*p) {
-			if (*p != '/' && *p != '\\') {
-				*q++ = *p;
-			}
-			p++;
-		}
-		*q = '\0';
-
-		char __sz_cp[MAX_PATH + 100];
-		snprintf(__sz_cp, sizeof(__sz_cp), "sudo cp -i %s %s/%s", src, dest, clean_src);
+		char __sz_cp[PATH_MAX];
+		snprintf(__sz_cp, sizeof(__sz_cp), "sudo cp -i %s %s", src, dest);
 		int ret = wd_run_command(__sz_cp);
 		return ret;
 }

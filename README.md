@@ -2,7 +2,7 @@
 <div align="center">
   <h3>
     <a href="https://gitlab.com/mywatchdogs/watchdogs" >
-    	💀 W A T C H D O G S 💀
+    	🛹 W A T C H D O G S 🛹
     </a>
   </h3>
 </div>
@@ -15,8 +15,6 @@
   </a>
 </div>
 <!-- markdownlint-enable MD033 -->
-
-![image](https://gitlab.com/mywatchdogs/watchdogs/-/raw/main/IMG/__CONTAINER.png)
 
 ---
 
@@ -252,8 +250,7 @@ Compile specific path:
 ```
 compile path/to/yourmode.pwn
 ```
-
----
+![image](https://gitlab.com/mywatchdogs/watchdogs/-/raw/main/IMG/__C.png)
 
 ### INTRO 1.3 (STARTING [¶](https://en.m.wikipedia.org/wiki/Run_command))
 
@@ -293,6 +290,7 @@ install                 # automatic installing from watchdogs.toml
 install repo/user       # installing depends from (github/gitlab/gitea/sourceforge) by input
 install repo/user:v1.1  # installing depends from (github/gitlab/gitea/sourceforge) by input with specific tags version
 ```
+![image](https://gitlab.com/mywatchdogs/watchdogs/-/raw/main/IMG/__DEP.png)
 
 ### INTRO 1.7 (COMPILER OPTIONS) [3.10.10](https://github.com/pawn-lang/compiler/releases/tag/v3.10.10) (^/v)
 

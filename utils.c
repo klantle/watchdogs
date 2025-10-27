@@ -165,7 +165,7 @@ int mkdir_recursive(const char *path) {
 				*p = 0;
 				if (MKDIR(tmp) != 0 && errno != EEXIST) {
 					perror("mkdir");
-					return -1;
+					return -RETN;
 				}
 				*p = '/';
 			}
@@ -173,7 +173,7 @@ int mkdir_recursive(const char *path) {
 
 		if (MKDIR(tmp) != 0 && errno != EEXIST) {
 			perror("mkdir");
-			return -1;
+			return -RETN;
 		}
 		return RETZ;
 }

@@ -555,7 +555,7 @@ typedef struct {
 } depConfig;
 
 void dep_implementation_samp_conf(depConfig config) {
-		printf_info("Adding Depends: %s", config.dep_added);
+		printf_info("\tAdding Depends: %s", config.dep_added);
 		
 		FILE* file = fopen(config.dep_config, "r");
 		if (file) {
@@ -624,7 +624,7 @@ void dep_implementation_samp_conf(depConfig config) {
     dep_implementation_samp_conf((depConfig){x, y, z})
 
 void dep_implementation_omp_conf(const char* filename, const char* plugin_name) {
-		printf_info("Adding Depends %s", plugin_name);
+		printf_info("\tAdding Depends %s", plugin_name);
 		
 		FILE* c_file = fopen(filename, "r");
 		cJSON* root = NULL;
@@ -724,7 +724,7 @@ void dep_add_include(const char *modes,
 		ct_modes[fileSize] = '\0';
 		fclose(file);
 
-		printf_info("Adding Include: %s", dep_name);
+		printf_info("\tAdding Include: %s", dep_name);
 
 		if (strstr(ct_modes, dep_name) != NULL &&
 			strstr(ct_modes, dep_after) != NULL) {

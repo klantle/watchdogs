@@ -561,6 +561,166 @@ static int handle_base_dependency(const struct dep_repo_info *dep_repo_info,
 		return ret;
 }
 
+/*
+ * dep_implementation_samp_conf - Apply plugins name to SA-MP config
+ * dep_implementation_omp_conf - Apply plugins name to Open.MP config
+ */
+typedef struct {
+    const char *dep_config;
+    const char *dep_target;
+    const char *dep_added;
+} depConfig;
+
+void dep_implementation_samp_conf(depConfig config) {
+		printf_info("Adding Depends: %s", config.dep_added);
+		
+		FILE* file = fopen(config.dep_config, "r");
+		if (file) {
+			char line[256];
+			int t_exist = 0;
+			int tr_exist = 0;
+			int tr_ln_has_tx = 0;
+			
+			while (fgets(line, sizeof(line), file)) {
+				line[strcspn(line, "\n")] = 0;
+				
+				if (strstr(line, config.dep_added) != NULL) {
+					t_exist = 1;
+				}
+				
+				if (strstr(line, config.dep_target) != NULL) {
+					tr_exist = 1;
+					if (strstr(line, config.dep_added) != NULL) {
+						tr_ln_has_tx = 1;
+					}
+				}
+			}
+			fclose(file);
+			
+			if (t_exist) {
+				return;
+			}
+			
+			if (tr_exist && !tr_ln_has_tx) {
+				FILE* temp_file = fopen("temp.txt", "w");
+				file = fopen(config.dep_config, "r");
+				
+				while (fgets(line, sizeof(line), file)) {
+					char clean_line[256];
+					strcpy(clean_line, line);
+					clean_line[strcspn(clean_line, "\n")] = 0;
+					
+					if (strstr(clean_line, config.dep_target) != NULL && 
+						strstr(clean_line, config.dep_added) == NULL) {
+						fprintf(temp_file, "%s %s\n", clean_line, config.dep_added);
+					} else {
+						fputs(line, temp_file);
+					}
+				}
+				
+				fclose(file);
+				fclose(temp_file);
+				
+				remove(config.dep_config);
+				rename("temp.txt", config.dep_config);
+			} else if (!tr_exist) {
+				file = fopen(config.dep_config, "a");
+				fprintf(file, "%s %s\n", config.dep_target, config.dep_added);
+				fclose(file);
+			}
+			
+		} else {
+			file = fopen(config.dep_config, "w");
+			fprintf(file, "%s %s\n",
+					config.dep_target,
+					config.dep_added);
+			fclose(file);
+		}
+}
+#define S_ADD_DEP_AFTER(x, y, z) \
+    dep_implementation_samp_conf((depConfig){x, y, z})
+
+void dep_implementation_omp_conf(const char* filename, const char* plugin_name) {
+		printf_info("Adding Depends %s", plugin_name);
+		
+		FILE* c_file = fopen(filename, "r");
+		cJSON* root = NULL;
+		
+		if (!c_file) {
+			root = cJSON_CreateObject();
+		} else {
+			fseek(c_file, 0, SEEK_END);
+			long file_size = ftell(c_file);
+			fseek(c_file, 0, SEEK_SET);
+			
+			char* buffer = (char*)malloc(file_size + 1);
+			if (!buffer) {
+				printf_error("Memory allocation failed!");
+				fclose(c_file);
+				return;
+			}
+			
+			fread(buffer, 1, file_size, c_file);
+			buffer[file_size] = '\0';
+			fclose(c_file);
+			
+			root = cJSON_Parse(buffer);
+			free(buffer);
+			
+			if (!root) {
+				root = cJSON_CreateObject();
+			}
+		}
+		
+		cJSON* pawn = cJSON_GetObjectItem(root, "pawn");
+		if (!pawn) {
+			pawn = cJSON_CreateObject();
+			cJSON_AddItemToObject(root, "pawn", pawn);
+		}
+		
+		cJSON* legacy_plugins = cJSON_GetObjectItem(pawn, "legacy_plugins");
+		if (!legacy_plugins) {
+			legacy_plugins = cJSON_CreateArray();
+			cJSON_AddItemToObject(pawn,
+								  "legacy_plugins",
+								  legacy_plugins);
+		}
+		
+		if (!cJSON_IsArray(legacy_plugins)) {
+			cJSON_DeleteItemFromObject(pawn, "legacy_plugins");
+			legacy_plugins = cJSON_CreateArray();
+			cJSON_AddItemToObject(pawn,
+								  "legacy_plugins",
+								  legacy_plugins);
+		}
+		
+		cJSON* item;
+		int p_exist = 0;
+		
+		cJSON_ArrayForEach(item, legacy_plugins) {
+			if (cJSON_IsString(item) &&
+				!strcmp(item->valuestring, plugin_name)) {
+				p_exist = 1;
+				break;
+			}
+		}
+		
+		if (!p_exist) {
+			cJSON_AddItemToArray(legacy_plugins, cJSON_CreateString(plugin_name));
+		}
+		
+		char* __cJSON_Printed = cJSON_Print(root);
+		c_file = fopen(filename, "w");
+		if (c_file) {
+			fputs(__cJSON_Printed, c_file);
+			fclose(c_file);
+		}
+		
+		cJSON_Delete(root);
+		free(__cJSON_Printed);
+}
+#define M_ADD_PLUGIN(x, y) dep_implementation_omp_conf(x, y)
+
 /**
  * dep_add_include - Added Include to Gamemode
  */
@@ -581,7 +741,7 @@ void dep_add_include(const char *modes,
 		ct_modes[fileSize] = '\0';
 		fclose(file);
 
-		printf_info("Adding Include: %s\n", dep_name);
+		printf_info("Adding Include: %s", dep_name);
 
 		if (strstr(ct_modes, dep_name) != NULL &&
 			strstr(ct_modes, dep_after) != NULL) {
@@ -824,6 +984,32 @@ __default:
 						/* Add to hash list */
 						snprintf(__sz_json_item, sizeof(__sz_json_item), "%s", filename_only);
 						dep_add_ncheck_hash(__sz_json_item, __sz_json_item);
+
+						const char *dep_n;
+						dep_n = dep_get_filename(wcfg.sef_found[i]); 
+						char __sz_depends_name[PATH_MAX];
+						snprintf(__sz_depends_name, sizeof(__sz_depends_name), "%s", dep_n);
+
+						char *p1 = strrchr(__sz_depends_name, '/');
+						char *p2 = strrchr(__sz_depends_name, '\\');
+
+						char *p = NULL;
+						if (p1 && p2) {
+							p = (p1 > p2) ? p1 : p2;
+						} else if (p1) {
+							p = p1;
+						} else if (p2) {
+							p = p2;
+						}
+
+						if (p != NULL) {
+							memmove(__sz_depends_name, p + 1, strlen(p + 1) + 1);
+						}
+
+						if (wcfg.f_openmp == VAL_TRUE)
+							M_ADD_PLUGIN("config.json", __sz_depends_name);
+						else
+							S_ADD_DEP_AFTER("server.cfg", "plugins", __sz_depends_name);
 				}
 		}
 
@@ -844,6 +1030,31 @@ __default:
 						
 						snprintf(__sz_json_item, sizeof(__sz_json_item), "%s", filename_only);
 						dep_add_ncheck_hash(__sz_json_item, __sz_json_item);
+						const char *dep_n;
+						dep_n = dep_get_filename(wcfg.sef_found[i]); 
+						char __sz_depends_name[PATH_MAX];
+						snprintf(__sz_depends_name, sizeof(__sz_depends_name), "%s", dep_n);
+
+						char *p1 = strrchr(__sz_depends_name, '/');
+						char *p2 = strrchr(__sz_depends_name, '\\');
+
+						char *p = NULL;
+						if (p1 && p2) {
+							p = (p1 > p2) ? p1 : p2;
+						} else if (p1) {
+							p = p1;
+						} else if (p2) {
+							p = p2;
+						}
+
+						if (p != NULL) {
+							memmove(__sz_depends_name, p + 1, strlen(p + 1) + 1);
+						}
+
+						if (wcfg.f_openmp == VAL_TRUE)
+							M_ADD_PLUGIN("config.json", __sz_depends_name);
+						else
+							S_ADD_DEP_AFTER("server.cfg", "plugins", __sz_depends_name);
 				}
 		}
 
@@ -858,12 +1069,37 @@ __default:
 				for (i = 0; i < wcfg.sef_count; ++i) {
 						filename_only = dep_get_filename(wcfg.sef_found[i]);
 						
-						snprintf(__sz_cp, sizeof(__sz_cp), "mv -f \"%s\" \"%s/plugins/\"", 
+						snprintf(__sz_cp, sizeof(__sz_cp), "mv -f \"%s\" \"%s\"", 
 								 wcfg.sef_found[i], __cwd);
 						system(__sz_cp);
 						
-						snprintf(__sz_json_item, sizeof(__sz_json_item), "plugins/%s", filename_only);
+						snprintf(__sz_json_item, sizeof(__sz_json_item), "%s", filename_only);
 						dep_add_ncheck_hash(__sz_json_item, __sz_json_item);
+						const char *dep_n;
+						dep_n = dep_get_filename(wcfg.sef_found[i]); 
+						char __sz_depends_name[PATH_MAX];
+						snprintf(__sz_depends_name, sizeof(__sz_depends_name), "%s", dep_n);
+
+						char *p1 = strrchr(__sz_depends_name, '/');
+						char *p2 = strrchr(__sz_depends_name, '\\');
+
+						char *p = NULL;
+						if (p1 && p2) {
+							p = (p1 > p2) ? p1 : p2;
+						} else if (p1) {
+							p = p1;
+						} else if (p2) {
+							p = p2;
+						}
+
+						if (p != NULL) {
+							memmove(__sz_depends_name, p + 1, strlen(p + 1) + 1);
+						}
+
+						if (wcfg.f_openmp == VAL_TRUE)
+							M_ADD_PLUGIN("config.json", __sz_depends_name);
+						else
+							S_ADD_DEP_AFTER("server.cfg", "plugins", __sz_depends_name);
 				}
 		}
 
@@ -878,12 +1114,37 @@ __default:
 				for (i = 0; i < wcfg.sef_count; ++i) {
 						filename_only = dep_get_filename(wcfg.sef_found[i]);
 						
-						snprintf(__sz_cp, sizeof(__sz_cp), "mv -f \"%s\" \"%s/plugins/\"", 
+						snprintf(__sz_cp, sizeof(__sz_cp), "mv -f \"%s\" \"%s\"", 
 								 wcfg.sef_found[i], __cwd);
 						system(__sz_cp);
 						
 						snprintf(__sz_json_item, sizeof(__sz_json_item), "%s", filename_only);
 						dep_add_ncheck_hash(__sz_json_item, __sz_json_item);
+						const char *dep_n;
+						dep_n = dep_get_filename(wcfg.sef_found[i]); 
+						char __sz_depends_name[PATH_MAX];
+						snprintf(__sz_depends_name, sizeof(__sz_depends_name), "%s", dep_n);
+
+						char *p1 = strrchr(__sz_depends_name, '/');
+						char *p2 = strrchr(__sz_depends_name, '\\');
+
+						char *p = NULL;
+						if (p1 && p2) {
+							p = (p1 > p2) ? p1 : p2;
+						} else if (p1) {
+							p = p1;
+						} else if (p2) {
+							p = p2;
+						}
+
+						if (p != NULL) {
+							memmove(__sz_depends_name, p + 1, strlen(p + 1) + 1);
+						}
+
+						if (wcfg.f_openmp == VAL_TRUE)
+							M_ADD_PLUGIN("config.json", __sz_depends_name);
+						else
+							S_ADD_DEP_AFTER("server.cfg", "plugins", __sz_depends_name);
 				}
 		}
 
@@ -940,7 +1201,7 @@ __default:
 					for (i = 0; i < wcfg.sef_count; ++i) {
 							filename_only = dep_get_filename(wcfg.sef_found[i]);
 							
-							snprintf(__sz_cp, sizeof(__sz_cp), "mv -f \"%s\" \"%s/components/\"", 
+							snprintf(__sz_cp, sizeof(__sz_cp), "mv -f \"%s\" \"%s\"", 
 									wcfg.sef_found[i], __cwd);
 							system(__sz_cp);
 							
@@ -960,7 +1221,7 @@ __default:
 					for (i = 0; i < wcfg.sef_count; ++i) {
 							filename_only = dep_get_filename(wcfg.sef_found[i]);
 							
-							snprintf(__sz_cp, sizeof(__sz_cp), "mv -f \"%s\" \"%s/components/\"", 
+							snprintf(__sz_cp, sizeof(__sz_cp), "mv -f \"%s\" \"%s\"", 
 									wcfg.sef_found[i], __cwd);
 							system(__sz_cp);
 							
@@ -970,87 +1231,48 @@ __default:
 			}
 		}
 
-		/* Process INC files in include subfolder */
-		wd_sef_fdir_reset();
-		__inc_plugins_f = wd_sef_fdir(__sz_dp_inc, "*.inc", NULL);
-		if (__inc_plugins_f) {
-				char __sz_cp[PATH_MAX * 2];
-				char __sz_json_item[PATH_MAX];
-				const char *filename_only;
+		/* Process all folders in depends_folder */
+		DIR *dir;
+		struct dirent *item;
 
-				for (i = 0; i < wcfg.sef_count; ++i) {
-						filename_only = dep_get_filename(wcfg.sef_found[i]);
-						
-						/* Move file to appropriate include directory */
-						snprintf(__sz_cp, sizeof(__sz_cp), "mv -f \"%s\" \"%s/%s/\"", 
-								 wcfg.sef_found[i], __cwd, dep_inc_path);
-						system(__sz_cp);
-						
-						/* Determine correct path prefix based on include type */
-						if (strfind(__sz_dp_inc, "pawno"))
-								snprintf(__sz_json_item, sizeof(__sz_json_item), "pawno/%s", filename_only);
-						else if (strfind(__sz_dp_inc, "qawno"))
-								snprintf(__sz_json_item, sizeof(__sz_json_item), "qawno/%s", filename_only);
-						dep_add_ncheck_hash(__sz_json_item, __sz_json_item);
-
-						char errbuf[256];
-						toml_table_t *_toml_config;
-						FILE *procc_f = fopen("watchdogs.toml", "r");
-						_toml_config = toml_parse_file(procc_f, errbuf, sizeof(errbuf));
-						if (procc_f) fclose(procc_f);
-
-						if (!_toml_config) {
-							printf_error("parsing TOML: %s", errbuf);
-							__main(0);
-						}
-
-						toml_table_t *wd_compiler = toml_table_in(_toml_config, "compiler");
-						if (wd_compiler) {
-								toml_datum_t toml_gm_i = toml_string_in(wd_compiler, "input");
-								if (toml_gm_i.ok) 
-								{
-									wcfg.gm_input = strdup(toml_gm_i.u.s);
-									wdfree(toml_gm_i.u.s);
-									toml_gm_i.u.s = NULL;
-								}
-						}
-						toml_free(_toml_config);
-
-						char __sz_gm_input[PATH_MAX];
-						snprintf(__sz_gm_input, sizeof(__sz_gm_input), "%s", wcfg.gm_input);
-
-						const char *dep_n;
-						dep_n = dep_get_filename(wcfg.sef_found[i]); 
-						char __sz_depends_name[PATH_MAX];
-						snprintf(__sz_depends_name, sizeof(__sz_depends_name), "%s", dep_n);
-
-						char *p1 = strrchr(__sz_depends_name, '/');
-						char *p2 = strrchr(__sz_depends_name, '\\');
-
-						char *p = NULL;
-						if (p1 && p2) {
-							p = (p1 > p2) ? p1 : p2;
-						} else if (p1) {
-							p = p1;
-						} else if (p2) {
-							p = p2;
-						}
-
-						if (p != NULL) {
-							memmove(__sz_depends_name, p + 1, strlen(p + 1) + 1);
-						}
-
-						char __sz_include[PATH_MAX];
-						snprintf(__sz_include, sizeof(__sz_include), "#include <%s>", __sz_depends_name);
-
-						if (wcfg.f_samp == VAL_TRUE)
-						__default_i:
-							dep_add_include(__sz_gm_input, __sz_include, "#include <a_samp>");
-						else if (wcfg.f_openmp == VAL_TRUE)
-							dep_add_include(__sz_gm_input, __sz_include, "#include <open.mp>");
-						else
-							goto __default_i;
+		dir = opendir(depends_folder); 
+		if (dir != NULL) {
+			while ((item = readdir(dir)) != NULL) {
+				if (strcmp(item->d_name, ".") == 0 ||
+					strcmp(item->d_name, "..") == 0) {
+					continue;
 				}
+				
+				char __fpath[PATH_MAX * 2];
+				snprintf(__fpath, sizeof(__fpath), "%s/%s",
+					depends_folder,
+					item->d_name);
+				
+				struct stat path_stat;
+				if (stat(__fpath, &path_stat) == 0 && S_ISDIR(path_stat.st_mode)) {
+					/* It's a folder - move it to include/ */
+					char cmd[PATH_MAX * 3];
+					if (wcfg.f_openmp == VAL_TRUE)
+						snprintf(cmd, sizeof(cmd), "mv \"%s\" \"qawno/include/\"", __fpath);
+					else
+						snprintf(cmd, sizeof(cmd), "mv \"%s\" \"pawno/include/\"", __fpath);
+					system(cmd);
+					
+					/* Add to dependencies */
+					char __ipath[PATH_MAX];
+					if (wcfg.f_openmp == VAL_TRUE)
+						snprintf(__ipath, sizeof(__ipath), "qawno/include/%s", item->d_name);
+					else
+						snprintf(__ipath, sizeof(__ipath), "pawno/include/%s", item->d_name);
+					dep_add_ncheck_hash(__ipath, __ipath);
+					
+					if (wcfg.f_openmp == VAL_TRUE)
+						printf_info("\tMoved folder: %s to qawno/include/\n", item->d_name);
+					else
+						printf_info("\tMoved folder: %s to pawno/include/\n", item->d_name);
+				}
+			}
+			closedir(dir);
 		}
 
 		/* Process INC files in root folder (excluding include subfolder) */
@@ -1125,12 +1347,12 @@ __default:
 						snprintf(__sz_include, sizeof(__sz_include), "#include <%s>", __sz_depends_name);
 
 						if (wcfg.f_samp == VAL_TRUE)
-						__default_i2:
+__default_i:
 							dep_add_include(__sz_gm_input, __sz_include, "#include <a_samp>");
 						else if (wcfg.f_openmp == VAL_TRUE)
 							dep_add_include(__sz_gm_input, __sz_include, "#include <open.mp>");
 						else
-							goto __default_i2;
+							goto __default_i;
 				}
 		}
 		

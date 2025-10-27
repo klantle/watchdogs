@@ -1,5 +1,6 @@
 #include <stdio.h>
 #include <stdlib.h>
+#include <ctype.h>
 #include <string.h>
 #include <sys/stat.h>
 
@@ -104,7 +105,8 @@ static int prompt_apply_pawncc(void)
 
 		char *ptr_sigA;
 ret_ptr:
-		ptr_sigA = readline("Apply pawncc now? [Y/n]: ");
+		printf_color(COL_YELLOW, "Apply pawncc now? ");
+		ptr_sigA = readline("[Y/n]: ");
 
 		while (1) {
 			if (strcmp(ptr_sigA, "Y") == 0 || strcmp(ptr_sigA, "y") == 0) {
@@ -126,7 +128,8 @@ static int prompt_apply_depends(void)
 
 		char *ptr_sigA;
 ret_ptr:
-		ptr_sigA = readline("Apply depends now? [Y/n]: ");
+		printf_color(COL_YELLOW, "Apply depends now? ");
+		ptr_sigA = readline("[Y/n]: ");
 
 		while (1) {
 			if (strcmp(ptr_sigA, "Y") == 0 || strcmp(ptr_sigA, "y") == 0) {
@@ -155,8 +158,7 @@ int wd_download_file(const char *url, const char *filename)
 		const int max_retries = 5;
 		struct stat file_stat;
 
-		printf("Downloading: %s\n", url);
-		printf("Output file: %s\n", filename);
+		printf_info("Downloading: %s", filename);
 
 		do {
 				file = fopen(filename, "wb");

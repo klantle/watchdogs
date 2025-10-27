@@ -193,10 +193,10 @@ static const char *get_compiler_directory(void)
 						dir_path = "pawno";
 		}
 		if (stat("pawno/include", &st) != 0 && errno == ENOENT) {
-			MKDIR("pawno/include");
+			mkdir_recursive("pawno/include");
 		} 
 		else if (stat("qawno/include", &st) != 0 && errno == ENOENT) {
-			MKDIR("qawno/qawno");
+			mkdir_recursive("qawno/include");
 		}
 
 		return dir_path;

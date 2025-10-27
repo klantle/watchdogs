@@ -83,6 +83,7 @@ struct struct_of { int (*title)(const char *); };
 extern const char* __command[];
 extern const size_t __command_len;
 int wd_signal_os(void);
+int mkdir_recursive(const char *path);
 int wd_run_command(const char *cmd);
 void print_file_to_terminal(const char *path);
 int wd_set_permission(const char *src, const char *dst);

@@ -1,5 +1,6 @@
 #include <stdio.h>
 #include <stdlib.h>
+#include <ctype.h>
 #include <string.h>
 #include <sys/stat.h>
 
@@ -26,6 +27,7 @@
 #include "utils.h"
 #include "curl.h"
 #include "archive.h"
+#include "crypto.h"
 #include "depends.h"
 
 /**
@@ -411,6 +413,123 @@ static int get_github_release_assets(const char *user, const char *repo,
 /**
  * wd_apply_depends - Apply Depends to Gamemodes
  */
+void move_dependency_files(const char *depends_folder) {
+		char __sz_dp_fp[PATH_MAX];
+		snprintf(__sz_dp_fp, sizeof(__sz_dp_fp), "%s/plugins", depends_folder);
+
+		char __sz_dp_fc[PATH_MAX];
+		snprintf(__sz_dp_fc, sizeof(__sz_dp_fc), "%s/components", depends_folder);
+
+		char __sz_dp_inc[PATH_MAX];
+		char *dep_inc_path = NULL;
+		if (wcfg.f_samp == VAL_TRUE) {
+__default:
+			dep_inc_path = "pawno/include";
+			snprintf(__sz_dp_inc, sizeof(__sz_dp_inc), "%s/pawno/include", depends_folder);
+		} else if (wcfg.f_openmp == VAL_TRUE) {
+			dep_inc_path = "qawno/include";
+			snprintf(__sz_dp_inc, sizeof(__sz_dp_inc), "%s/qawno/include", depends_folder);
+		} else
+			goto __default;
+
+        char __cwd[PATH_MAX];
+		size_t __sz_cwd = sizeof(__cwd);
+        if (!getcwd(__cwd, __sz_cwd)) {
+            perror("getcwd");
+			return;
+        }
+
+		/// plugins
+		/* in folder of depends_folder/plugins */
+		/* windows - dll */
+		wd_sef_fdir_reset();
+		int __dll_plugins_f = wd_sef_fdir(__sz_dp_fp, "*.dll", NULL);
+		if (__dll_plugins_f) {
+			char __sz_cp[PATH_MAX * 2];
+			for (int i = 0; i < wcfg.sef_count; ++i) {
+				snprintf(__sz_cp, sizeof(__sz_cp), "mv -f \"%s\" \"%s/plugins/\"", wcfg.sef_found[i], __cwd);
+				system(__sz_cp);  
+			}
+		}
+		/* linux - so */
+		wd_sef_fdir_reset();
+		int __so_plugins_f = wd_sef_fdir(__sz_dp_fp, "*.so", NULL);
+		if (__so_plugins_f) {
+			char __sz_cp[PATH_MAX * 2];
+			for (int i = 0; i < wcfg.sef_count; ++i) {
+				snprintf(__sz_cp, sizeof(__sz_cp), "mv -f \"%s\" \"%s/plugins/\"", wcfg.sef_found[i], __cwd);
+				system(__sz_cp);  
+			}
+		}
+
+		/* in folder of depends_folder/components */
+		/* windows - dll */
+		wd_sef_fdir_reset();
+		int __dll_components_f = wd_sef_fdir(__sz_dp_fc, "*.dll", NULL);
+		if (__dll_components_f) {
+			char __sz_cp[PATH_MAX * 2];
+			for (int i = 0; i < wcfg.sef_count; ++i) {
+				snprintf(__sz_cp, sizeof(__sz_cp), "mv -f \"%s\" \"%s/plugins/\"", wcfg.sef_found[i], __cwd);
+				system(__sz_cp);  
+			}
+		}
+		/* linux - so */
+		wd_sef_fdir_reset();
+		int __so_components_f = wd_sef_fdir(__sz_dp_fc, "*.so", NULL);
+		if (__so_components_f) {
+			char __sz_cp[PATH_MAX * 2];
+			for (int i = 0; i < wcfg.sef_count; ++i) {
+				snprintf(__sz_cp, sizeof(__sz_cp), "mv -f \"%s\" \"%s/plugins/\"", wcfg.sef_found[i], __cwd);
+				system(__sz_cp);  
+			}
+		}
+
+		/* in root folder */
+		wd_sef_fdir_reset();
+		/* windows - dll */
+		int __dll_plugins_r = wd_sef_fdir(depends_folder, "*.dll", "plugins");
+		if (__dll_plugins_r) {
+			char __sz_cp[PATH_MAX * 2];
+			for (int i = 0; i < wcfg.sef_count; ++i) {
+				snprintf(__sz_cp, sizeof(__sz_cp), "mv -f \"%s\" \"%s/plugins/\"", wcfg.sef_found[i], __cwd);
+				system(__sz_cp);  
+			}
+		}
+		/* linux - so */
+		wd_sef_fdir_reset();
+		int __so_plugins_r = wd_sef_fdir(depends_folder, "*.so", "plugins");
+		if (__so_plugins_r) {
+			char __sz_cp[PATH_MAX * 2];
+			for (int i = 0; i < wcfg.sef_count; ++i) {
+				snprintf(__sz_cp, sizeof(__sz_cp), "mv -f \"%s\" \"%s/plugins/\"", wcfg.sef_found[i], __cwd);
+				system(__sz_cp);  
+			}
+		}
+
+		/// include
+		/* in folder of depends_folder/pawno/- */
+		wd_sef_fdir_reset();
+		int __inc_plugins_f = wd_sef_fdir(__sz_dp_inc, "*.inc", NULL);
+		if (__inc_plugins_f) {
+			char __sz_cp[PATH_MAX * 2];
+			for (int i = 0; i < wcfg.sef_count; ++i) {
+				snprintf(__sz_cp, sizeof(__sz_cp), "mv -f \"%s\" \"%s/%s/\"", wcfg.sef_found[i], __cwd, dep_inc_path);
+				system(__sz_cp);  
+			}
+		}
+
+		/* in root folder */
+		wd_sef_fdir_reset();
+		int __inc_plugins_r = wd_sef_fdir(depends_folder, "*.inc", dep_inc_path);
+		if (__inc_plugins_r) {
+			char __sz_cp[PATH_MAX * 2];
+			for (int i = 0; i < wcfg.sef_count; ++i) {
+				snprintf(__sz_cp, sizeof(__sz_cp), "mv -f \"%s\" \"%s/%s/\"", wcfg.sef_found[i], __cwd, dep_inc_path);
+				system(__sz_cp);  
+			}
+		}
+}
+
 void wd_apply_depends(const char *depends_name) {
 		char _depends[PATH_MAX];
 		snprintf(_depends, PATH_MAX, "%s", depends_name);
@@ -418,17 +537,19 @@ void wd_apply_depends(const char *depends_name) {
 		if (ext) *ext = '\0';
 
 		char depends_folder[PATH_MAX];
-		snprintf(depends_folder, sizeof(depends_folder), "_depends/%s", _depends);
+		snprintf(depends_folder, sizeof(depends_folder), "%s", _depends);
 
 		struct stat st;
 		if (wcfg.f_samp == VAL_TRUE) {
-			if (stat("pawno/include", &st) != 0 && errno == ENOENT) MKDIR("pawno/include");
-			if (stat("plugins", &st) != 0 && errno == ENOENT) MKDIR("plugins");
+			if (stat("pawno/include", &st) != 0 && errno == ENOENT) mkdir_recursive("pawno/include");
+			if (stat("plugins", &st) != 0 && errno == ENOENT) mkdir_recursive("plugins");
 		} else if (wcfg.f_openmp == VAL_TRUE) {
-			if (stat("qawno/include", &st) != 0 && errno == ENOENT) MKDIR("qawno/include");
-			if (stat("components", &st) != 0 && errno == ENOENT) MKDIR("components");
-			if (stat("plugins", &st) != 0 && errno == ENOENT) MKDIR("plugins");
+			if (stat("qawno/include", &st) != 0 && errno == ENOENT) mkdir_recursive("qawno/include");
+			if (stat("components", &st) != 0 && errno == ENOENT) mkdir_recursive("components");
+			if (stat("plugins", &st) != 0 && errno == ENOENT) mkdir_recursive("plugins");
 		}
+
+		move_dependency_files(depends_folder);
 }
 
 /**
@@ -569,7 +690,8 @@ static int handle_base_dependency(const struct dep_repo_info *dep_repo_info,
 						branches[j]);
 				if (curl_url_get_response(out_url)) {
 					ret = 1;
-					if (j == 1) printf_info("Using master branch (main not ret)");
+					if (j == 1)
+						printf_info("Using master branch (main not ret)");
 				}
 			}
 		}
@@ -595,7 +717,7 @@ void wd_install_depends(const char *dep_one, const char *dep_two)
 
 			/*  Parse input  */
 			if (!parse_repo_input(depends[i], &dep_repo_info)) {
-				printf_error("Invalid repo format: %s",
+				printf_error("Invalid repo format:\n\t%s",
 														depends[i]);
 				continue;
 			}
@@ -635,7 +757,7 @@ void wd_install_depends(const char *dep_one, const char *dep_two)
 				}
 
 			if (!dep_item_found) {
-				printf_error("Repository not found or invalid:\n%s", depends[i]);
+				printf_error("Repository not found or invalid:\n\t%s", depends[i]);
 				continue;
 			}
 
@@ -649,8 +771,6 @@ void wd_install_depends(const char *dep_one, const char *dep_two)
 
 			/*  Download  */
 			wcfg.idepends = 1;
-			printf_info("Downloading %s...",
-					dep_repo_name);
 			wd_download_file(dep_url, dep_repo_name);
 		}
 }

@@ -19,6 +19,7 @@
 #define __PATH_SYM "\\"
 #define IS_PATH_SYM(c) ((c) == '/' || (c) == '\\')
 #define mkdir(path) _mkdir(path)
+#define MKDIR(path) mkdir(path)
 #define Sleep(sec) Sleep((sec)*1000)
 #define setenv(name,val,overwrite) _putenv_s(name,val)
 static int _w_chmod(const char *path) {
@@ -33,6 +34,7 @@ static int _w_chmod(const char *path) {
 #include <fnmatch.h>
 #define __PATH_SYM "/"
 #define IS_PATH_SYM(c) ((c) == '/')
+#define MKDIR(path) mkdir(path, 0755)
 #endif
 
 #include <sys/file.h>
@@ -142,6 +144,38 @@ int wd_signal_os(void)
 				return OS_SIGNAL_LINUX;
 
 		return OS_SIGNAL_UNKNOWN;
+}
+
+/*
+ * mkdir_recursive
+ *
+ * mkdir with parent directory
+ */
+int mkdir_recursive(const char *path) {
+		char tmp[PATH_MAX];
+		char *p = NULL;
+		size_t len;
+
+		snprintf(tmp, sizeof(tmp), "%s", path);
+		len = strlen(tmp);
+		if (tmp[len - 1] == '/' || tmp[len - 1] == '\\') tmp[len - 1] = 0;
+
+		for (p = tmp + 1; *p; p++) {
+			if (*p == '/' || *p == '\\') {
+				*p = 0;
+				if (MKDIR(tmp) != 0 && errno != EEXIST) {
+					perror("mkdir");
+					return -1;
+				}
+				*p = '/';
+			}
+		}
+
+		if (MKDIR(tmp) != 0 && errno != EEXIST) {
+			perror("mkdir");
+			return -1;
+		}
+		return 0;
 }
 
 /**
@@ -1434,18 +1468,44 @@ int wd_set_toml(void)
  * @dest: Destination file path
  */
  static int _try_mv_without_sudo(const char *src, const char *dest) {
-		char
-			__sz_mv[PATH_MAX * 2 + 100];
-		snprintf(__sz_mv, sizeof(__sz_mv), "mv -i %s %s/%s", src, dest, src);
+		char clean_src[PATH_MAX];
+		strncpy(clean_src, src, PATH_MAX);
+		clean_src[PATH_MAX - 1] = '\0';
+
+		char *p = clean_src;
+		char *q = clean_src;
+		while (*p) {
+			if (*p != '/' && *p != '\\') {
+				*q++ = *p;
+			}
+			p++;
+		}
+		*q = '\0';
+
+		char __sz_mv[PATH_MAX * 2 + 100];
+		snprintf(__sz_mv, sizeof(__sz_mv), "mv -i %s %s/%s", src, dest, clean_src);
 		int ret = wd_run_command(__sz_mv);
 		return ret;
- }
+}
 
-static int __mv_with_sudo(const char *src, const char *dest)
-{
-		char
-			__sz_mv[PATH_MAX * 2 + 100];
-		snprintf(__sz_mv, sizeof(__sz_mv), "sudo mv -i %s %s/%s", src, dest, src);
+
+static int __mv_with_sudo(const char *src, const char *dest) {
+		char clean_src[PATH_MAX];
+		strncpy(clean_src, src, PATH_MAX);
+		clean_src[PATH_MAX - 1] = '\0';
+
+		char *p = clean_src;
+		char *q = clean_src;
+		while (*p) {
+			if (*p != '/' && *p != '\\') {
+				*q++ = *p;
+			}
+			p++;
+		}
+		*q = '\0';
+
+		char __sz_mv[PATH_MAX * 2 + 100];
+		snprintf(__sz_mv, sizeof(__sz_mv), "sudo mv -i %s %s/%s", src, dest, clean_src);
 		int ret = wd_run_command(__sz_mv);
 		return ret;
 }
@@ -1456,19 +1516,44 @@ static int __mv_with_sudo(const char *src, const char *dest)
  * @src: Source file path
  * @dest: Destination file path
  */
- static int _try_cp_without_sudo(const char *src, const char *dest) {
-		char
-			__sz_cp[PATH_MAX * 2 + 100];
-		snprintf(__sz_cp, sizeof(__sz_cp), "cp -i %s %s/%s", src, dest, src);
+static int _try_cp_without_sudo(const char *src, const char *dest) {
+		char clean_src[PATH_MAX];
+		strncpy(clean_src, src, PATH_MAX);
+		clean_src[PATH_MAX - 1] = '\0';
+
+		char *p = clean_src;
+		char *q = clean_src;
+		while (*p) {
+			if (*p != '/' && *p != '\\') {
+				*q++ = *p;
+			}
+			p++;
+		}
+		*q = '\0';
+
+		char __sz_cp[PATH_MAX * 2 + 100];
+		snprintf(__sz_cp, sizeof(__sz_cp), "cp -i %s %s/%s", src, dest, clean_src);
 		int ret = wd_run_command(__sz_cp);
 		return ret;
 }
 
-static int __cp_with_sudo(const char *src, const char *dest)
-{
-		char
-			__sz_cp[PATH_MAX * 2 + 100];
-		snprintf(__sz_cp, sizeof(__sz_cp), "sudo cp -i %s %s/%s", src, dest, src);
+static int __cp_with_sudo(const char *src, const char *dest) {
+		char clean_src[PATH_MAX];
+		strncpy(clean_src, src, PATH_MAX);
+		clean_src[PATH_MAX - 1] = '\0';
+
+		char *p = clean_src;
+		char *q = clean_src;
+		while (*p) {
+			if (*p != '/' && *p != '\\') {
+				*q++ = *p;
+			}
+			p++;
+		}
+		*q = '\0';
+
+		char __sz_cp[PATH_MAX * 2 + 100];
+		snprintf(__sz_cp, sizeof(__sz_cp), "sudo cp -i %s %s/%s", src, dest, clean_src);
 		int ret = wd_run_command(__sz_cp);
 		return ret;
 }

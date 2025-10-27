@@ -122,10 +122,9 @@ __default:
 
 int __command__(void)
 {
-        char
-            __cwd[PATH_MAX]
-        ;
-        if (!getcwd(__cwd, sizeof(__cwd))) {
+        char __cwd[PATH_MAX];
+		size_t __sz_cwd = sizeof(__cwd);
+        if (!getcwd(__cwd, __sz_cwd)) {
             perror("getcwd");
             return RETW;
         }

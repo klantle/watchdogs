@@ -1,7 +1,9 @@
 #ifndef UTILS_H
 #define UTILS_H
+
 #define __WATCHDOGS__
 #ifdef __WATCHDOGS__
+
 #include <stddef.h>
 #include <stdbool.h>
 #include <stdint.h>

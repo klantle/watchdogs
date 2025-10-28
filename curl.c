@@ -50,7 +50,7 @@ static int progress_callback(void *ptr, curl_off_t dltotal,
 }
 
 /*
- WriteMemoryCallback - Processing cURL to memory
+ * WriteMemoryCallback - Processing cURL to memory
  */
 size_t WriteMemoryCallback(void *contents,
 								  size_t size,

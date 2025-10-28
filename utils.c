@@ -32,25 +32,26 @@
 #include "chain.h"
 
 const char*
-	__command[] = {
-			"help",
-			"clear",
-			"exit",
-			"kill",
-			"title",
-			"toml",
-			"install",
-			"upstream",
-			"hardware",
-			"gamemode",
-			"pawncc",
-			"compile",
-			"running",
-			"crunn",
-			"debug",
-			"stop",
-			"restart"
-	};
+	__command[] =
+		{
+				"help",
+				"clear",
+				"exit",
+				"kill",
+				"title",
+				"toml",
+				"install",
+				"upstream",
+				"hardware",
+				"gamemode",
+				"pawncc",
+				"compile",
+				"running",
+				"crunn",
+				"debug",
+				"stop",
+				"restart"
+		};
 const size_t __command_len =
             sizeof(__command) /
             sizeof(__command[0]);

@@ -130,23 +130,8 @@ _reexecute_command:
 
             if (strlen(arg) == 0) {
                 println("Usage: help | help [<command>]");
-                println("command:");
-                println(" -> clear");
-                println(" -> exit");
-                println(" -> kill");
-                println(" -> title");
-                println(" -> toml");
-                println(" -> install");
-                println(" -> upstream");
-                println(" -> hardware");
-                println(" -> gamemode");
-                println(" -> pawncc");
-                println(" -> compile");
-                println(" -> running");
-                println(" -> crunn");
-                println(" -> debug");
-                println(" -> stop");
-                println(" -> restart");
+                for (size_t i = 0; i < __command_len; i++)
+                    printf(" -> %s\n", __command[i]);
             } else if (strcmp(arg, "clear") == 0) { println("clear: clear screen watchdogs. | Usage: \"clear\"");
             } else if (strcmp(arg, "exit") == 0) { println("exit: exit from watchdogs. | Usage: \"exit\"");
             } else if (strcmp(arg, "kill") == 0) { println("kill: kill - refresh terminal watchdogs. | Usage: \"kill\"");

@@ -3,24 +3,6 @@
 #include <ctype.h>
 #include <string.h>
 #include <sys/stat.h>
-
-#ifdef _WIN32
-#include <windows.h>
-#include <direct.h>
-#define PATH_SYM "\\"
-#define MKDIR(path) _mkdir(path)
-#define SETENV(name, val, overwrite) _putenv_s(name, val)
-#else
-#include <unistd.h>
-#define PATH_SYM "/"
-#define MKDIR(path) mkdir(path, 0755)
-#define SETENV(name, val, overwrite) setenv(name, val, overwrite)
-#endif
-
-#ifndef PATH_MAX
-#define PATH_MAX 4096
-#endif
-
 #include <curl/curl.h>
 
 #include "cJSON/cJSON.h"
@@ -945,11 +927,11 @@ void dep_add_ncheck_hash(const char *file_path, const char *json_path)
 		snprintf(__sz_dp_fc, sizeof(__sz_dp_fc), "%s/components", depends_folder);
 
 		/* Determine include path based on configuration */
-		if (wcfg.f_samp == VAL_TRUE) {
+		if (!strcmp(wcfg.f_samp, CRC32_TRUE)) {
 __default:
 				dep_inc_path = "pawno/include";
 				snprintf(__sz_dp_inc, sizeof(__sz_dp_inc), "%s/pawno/include", depends_folder);
-		} else if (wcfg.f_openmp == VAL_TRUE) {
+		} else if (!strcmp(wcfg.f_openmp, CRC32_TRUE)) {
 				dep_inc_path = "qawno/include";
 				snprintf(__sz_dp_inc, sizeof(__sz_dp_inc), "%s/qawno/include", depends_folder);
 		} else {
@@ -969,7 +951,7 @@ __default:
 		wd_sef_fdir_reset();
 		__dll_plugins_f = wd_sef_fdir(__sz_dp_fp, "*.dll", NULL);
 		if (__dll_plugins_f) {
-				char __sz_cp[PATH_MAX * 2];
+				char __sz_cp[MAX_PATH];
 				char __sz_json_item[PATH_MAX];
 				const char *filename_only;
 
@@ -1006,7 +988,7 @@ __default:
 							memmove(__sz_depends_name, p + 1, strlen(p + 1) + 1);
 						}
 
-						if (wcfg.f_openmp == VAL_TRUE)
+						if (!strcmp(wcfg.f_openmp, CRC32_TRUE))
 							M_ADD_PLUGIN("config.json", __sz_depends_name);
 						else
 							S_ADD_DEP_AFTER("server.cfg", "plugins", __sz_depends_name);
@@ -1017,7 +999,7 @@ __default:
 		wd_sef_fdir_reset();
 		__so_plugins_f = wd_sef_fdir(__sz_dp_fp, "*.so", NULL);
 		if (__so_plugins_f) {
-				char __sz_cp[PATH_MAX * 2];
+				char __sz_cp[MAX_PATH];
 				char __sz_json_item[PATH_MAX];
 				const char *filename_only;
 
@@ -1051,7 +1033,7 @@ __default:
 							memmove(__sz_depends_name, p + 1, strlen(p + 1) + 1);
 						}
 
-						if (wcfg.f_openmp == VAL_TRUE)
+						if (!strcmp(wcfg.f_openmp, CRC32_TRUE))
 							M_ADD_PLUGIN("config.json", __sz_depends_name);
 						else
 							S_ADD_DEP_AFTER("server.cfg", "plugins", __sz_depends_name);
@@ -1062,7 +1044,7 @@ __default:
 		wd_sef_fdir_reset();
 		__dll_plugins_r = wd_sef_fdir(depends_folder, "*.dll", "plugins");
 		if (__dll_plugins_r) {
-				char __sz_cp[PATH_MAX * 2];
+				char __sz_cp[MAX_PATH];
 				char __sz_json_item[PATH_MAX];
 				const char *filename_only;
 
@@ -1096,7 +1078,7 @@ __default:
 							memmove(__sz_depends_name, p + 1, strlen(p + 1) + 1);
 						}
 
-						if (wcfg.f_openmp == VAL_TRUE)
+						if (!strcmp(wcfg.f_openmp, CRC32_TRUE))
 							M_ADD_PLUGIN("config.json", __sz_depends_name);
 						else
 							S_ADD_DEP_AFTER("server.cfg", "plugins", __sz_depends_name);
@@ -1107,7 +1089,7 @@ __default:
 		wd_sef_fdir_reset();
 		__so_plugins_r = wd_sef_fdir(depends_folder, "*.so", "plugins");
 		if (__so_plugins_r) {
-				char __sz_cp[PATH_MAX * 2];
+				char __sz_cp[MAX_PATH];
 				char __sz_json_item[PATH_MAX];
 				const char *filename_only;
 
@@ -1141,7 +1123,7 @@ __default:
 							memmove(__sz_depends_name, p + 1, strlen(p + 1) + 1);
 						}
 
-						if (wcfg.f_openmp == VAL_TRUE)
+						if (!strcmp(wcfg.f_openmp, CRC32_TRUE))
 							M_ADD_PLUGIN("config.json", __sz_depends_name);
 						else
 							S_ADD_DEP_AFTER("server.cfg", "plugins", __sz_depends_name);
@@ -1149,11 +1131,11 @@ __default:
 		}
 
 		/* Process DLL files in components subfolder */
-		if (wcfg.f_openmp == VAL_TRUE) {
+		if (!strcmp(wcfg.f_openmp, CRC32_TRUE)) {
 			wd_sef_fdir_reset();
 			__dll_components_f = wd_sef_fdir(__sz_dp_fc, "*.dll", NULL);
 			if (__dll_components_f) {
-					char __sz_cp[PATH_MAX * 2];
+					char __sz_cp[MAX_PATH];
 					char __sz_json_item[PATH_MAX];
 					const char *filename_only;
 
@@ -1174,7 +1156,7 @@ __default:
 			wd_sef_fdir_reset();
 			__so_components_f = wd_sef_fdir(__sz_dp_fc, "*.so", NULL);
 			if (__so_components_f) {
-					char __sz_cp[PATH_MAX * 2];
+					char __sz_cp[MAX_PATH];
 					char __sz_json_item[PATH_MAX];
 					const char *filename_only;
 
@@ -1194,7 +1176,7 @@ __default:
 			wd_sef_fdir_reset();
 			__dll_components_r = wd_sef_fdir(depends_folder, "*.dll", "components");
 			if (__dll_components_r) {
-					char __sz_cp[PATH_MAX * 2];
+					char __sz_cp[MAX_PATH];
 					char __sz_json_item[PATH_MAX];
 					const char *filename_only;
 
@@ -1214,7 +1196,7 @@ __default:
 			wd_sef_fdir_reset();
 			__so_components_r = wd_sef_fdir(depends_folder, "*.so", "components");
 			if (__so_components_r) {
-					char __sz_cp[PATH_MAX * 2];
+					char __sz_cp[MAX_PATH];
 					char __sz_json_item[PATH_MAX];
 					const char *filename_only;
 
@@ -1231,55 +1213,94 @@ __default:
 			}
 		}
 
-		/* Process all folders in depends_folder */
+		/*
+		 * Process all .inc files recursively
+		 */
+void process_inc_files(const char *base_path, const char *dest_base)
+{
 		DIR *dir;
-		struct dirent *item;
+		struct dirent *entry;
+		struct stat statbuf;
+		char f_path[MAX_PATH];
+		char parent_dir[PATH_MAX];
+		char dest_path[PATH_MAX];
+		char *dir_name, *dot_ext;
+		char cmd[MAX_PATH];
+		
+		dir = opendir(base_path);
+		if (!dir)
+			return;
 
-		dir = opendir(depends_folder); 
-		if (dir != NULL) {
-			while ((item = readdir(dir)) != NULL) {
-				if (strcmp(item->d_name, ".") == 0 ||
-					strcmp(item->d_name, "..") == 0) {
+		while ((entry = readdir(dir)) != NULL) {
+			if (!strcmp(entry->d_name, ".") || !strcmp(entry->d_name, ".."))
+				continue;
+
+			snprintf(f_path, sizeof(f_path), "%s/%s", base_path, entry->d_name);
+
+			if (stat(f_path, &statbuf) != 0)
+				continue;
+
+			if (S_ISDIR(statbuf.st_mode)) {
+				process_inc_files(f_path, dest_base);
+			} else if (S_ISREG(statbuf.st_mode)) {
+				/* Check if it's .inc file */
+				dot_ext = strrchr(entry->d_name, '.');
+				if (!dot_ext || strcmp(dot_ext, ".inc") != 0)
 					continue;
-				}
-				
-				char __fpath[PATH_MAX * 2];
-				snprintf(__fpath, sizeof(__fpath), "%s/%s",
-					depends_folder,
-					item->d_name);
-				
-				struct stat path_stat;
-				if (stat(__fpath, &path_stat) == 0 && S_ISDIR(path_stat.st_mode)) {
-					/* It's a folder - move it to include/ */
-					char cmd[PATH_MAX * 3];
-					if (wcfg.f_openmp == VAL_TRUE)
-						snprintf(cmd, sizeof(cmd), "mv \"%s\" \"qawno/include/\"", __fpath);
-					else
-						snprintf(cmd, sizeof(cmd), "mv \"%s\" \"pawno/include/\"", __fpath);
-					system(cmd);
+
+				/* Move the parent folder of this .inc file */
+				snprintf(parent_dir, sizeof(parent_dir), "%s", base_path);
+
+				/* Extract just the folder name (not full path) */
+				dir_name = strrchr(parent_dir, '/');
+				if (!dir_name)
+					continue;
+
+				dir_name++; /* skip the '/' */
+
+				snprintf(dest_path, sizeof(dest_path), "%s/%s", 
+					dest_base, dir_name);
+
+				/* Move entire folder containing the .inc file */
+				if (rename(parent_dir, dest_path) != 0) {
+					/* fallback: copy & remove */
+					snprintf(cmd, sizeof(cmd), 
+						"cp -r \"%s\" \"%s\" && rm -rf \"%s\"",
+						parent_dir, dest_path, parent_dir);
 					
-					/* Add to dependencies */
-					char __ipath[PATH_MAX];
-					if (wcfg.f_openmp == VAL_TRUE)
-						snprintf(__ipath, sizeof(__ipath), "qawno/include/%s", item->d_name);
-					else
-						snprintf(__ipath, sizeof(__ipath), "pawno/include/%s", item->d_name);
-					dep_add_ncheck_hash(__ipath, __ipath);
-					
-					if (wcfg.f_openmp == VAL_TRUE)
-						printf_info("\tMoved folder: %s to qawno/include/\n", item->d_name);
-					else
-						printf_info("\tMoved folder: %s to pawno/include/\n", item->d_name);
+					if (system(cmd) != 0) {
+						fprintf(stderr, 
+							"Failed to move folder: %s\n",
+							parent_dir);
+						continue;
+					}
 				}
+
+				/* Add to dependencies */
+				dep_add_ncheck_hash(dest_path, dest_path);
+				
+				printf_info("\tMoved folder: %s to %s/\n", dir_name,
+					!strcmp(wcfg.f_openmp, CRC32_TRUE) ? 
+					"qawno/include" : "pawno/include");
+
+				break; /* Stop processing this directory after moving */
 			}
-			closedir(dir);
 		}
+		closedir(dir);
+}
+
+		/* Usage in your main code */
+		char d_b[MAX_PATH];
+		snprintf(d_b, sizeof(d_b), "%s/include", 
+				!strcmp(wcfg.f_openmp, CRC32_TRUE) ? "qawno" : "pawno");
+
+		process_inc_files(depends_folder, d_b);
 
 		/* Process INC files in root folder (excluding include subfolder) */
 		wd_sef_fdir_reset();
 		__inc_plugins_r = wd_sef_fdir(depends_folder, "*.inc", dep_inc_path);
 		if (__inc_plugins_r) {
-				char __sz_cp[PATH_MAX * 2];
+				char __sz_cp[MAX_PATH];
 				char __sz_json_item[PATH_MAX];
 				const char *filename_only;
 
@@ -1343,13 +1364,13 @@ __default:
 							memmove(__sz_depends_name, p + 1, strlen(p + 1) + 1);
 						}
 
-						char __sz_include[PATH_MAX];
+						char __sz_include[MAX_PATH];
 						snprintf(__sz_include, sizeof(__sz_include), "#include <%s>", __sz_depends_name);
 
-						if (wcfg.f_samp == VAL_TRUE)
+						if (!strcmp(wcfg.f_samp, CRC32_TRUE))
 __default_i:
 							dep_add_include(__sz_gm_input, __sz_include, "#include <a_samp>");
-						else if (wcfg.f_openmp == VAL_TRUE)
+						else if (!strcmp(wcfg.f_openmp, CRC32_TRUE))
 							dep_add_include(__sz_gm_input, __sz_include, "#include <open.mp>");
 						else
 							goto __default_i;
@@ -1413,21 +1434,21 @@ void wd_apply_depends(const char *depends_name)
 		char _depends[PATH_MAX];
 		char depends_folder[PATH_MAX];
 		struct stat st;
-		char *ext;
+		char *__dot_ext;
 
 		snprintf(_depends, PATH_MAX, "%s", depends_name);
-		ext = strrchr(_depends, '.');
-		if (ext)
-				*ext = '\0';
+		__dot_ext = strrchr(_depends, '.');
+		if (__dot_ext)
+				*__dot_ext = '\0';
 
 		snprintf(depends_folder, sizeof(depends_folder), "%s", _depends);
 
-		if (wcfg.f_samp == VAL_TRUE) {
+		if (!strcmp(wcfg.f_samp, CRC32_TRUE)) {
 				if (stat("pawno/include", &st) != 0 && errno == ENOENT)
 						mkdir_recursive("pawno/include");
 				if (stat("plugins", &st) != 0 && errno == ENOENT)
 						mkdir_recursive("plugins");
-		} else if (wcfg.f_openmp == VAL_TRUE) {
+		} else if (!strcmp(wcfg.f_openmp, CRC32_TRUE)) {
 				if (stat("qawno/include", &st) != 0 && errno == ENOENT)
 						mkdir_recursive("qawno/include");
 				if (stat("components", &st) != 0 && errno == ENOENT)

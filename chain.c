@@ -1,27 +1,13 @@
 #ifndef _GNU_SOURCE
 #define _GNU_SOURCE
 #endif
-
+#define _POSIX_C_SOURCE 200809L
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <stdarg.h>
-#ifdef _WIN32
 #include <direct.h>
 #include <windows.h>
-#include <ncursesw/curses.h>
-#define getcwd _getcwd
-#ifndef PATH_MAX
-#define PATH_MAX _MAX_PATH
-#endif
-#define __PATH_SYM "\\"
-#define mkdir(path) _mkdir(path)
-#define setenv(name,val,overwrite) _putenv_s(name,val)
-#else
-#include <unistd.h>
-#define __PATH_SYM "/"
-#endif
-
 #include <limits.h>
 #include <dirent.h>
 #include <time.h>
@@ -31,10 +17,11 @@
 #include <math.h>
 #include <sys/stat.h>
 #include <sys/types.h>
-#include <readline/readline.h>
-#include <readline/history.h>
 #include <archive.h>
 #include <archive_entry.h>
+#include <ncursesw/curses.h>
+#include <readline/readline.h>
+#include <readline/history.h>
 
 #include "tomlc99/toml.h"
 #include "color.h"
@@ -58,12 +45,15 @@ void __function__(void) {
         wd_set_toml();
         wd_u_history();
         
-        wcfg.os_type = wd_signal_os();
-        
-        if (wcfg.os_type == OS_SIGNAL_WINDOWS) {
+		if (strcmp(wcfg.os, "windows") == 0) {
+			wcfg.os_type = OS_SIGNAL_WINDOWS;
+		} else if (strcmp(wcfg.os, "linux") == 0) {
+			wcfg.os_type = OS_SIGNAL_LINUX;
+		}
+        if (!strcmp(wcfg.os_type, OS_SIGNAL_WINDOWS)) {
             wcfg.pointer_samp="samp-server.exe";
             wcfg.pointer_openmp="omp-server.exe";
-        } else if (wcfg.os_type == OS_SIGNAL_LINUX) {
+        } else if (!strcmp(wcfg.os_type, OS_SIGNAL_LINUX)) {
             wcfg.pointer_samp="samp03svr";
             wcfg.pointer_openmp="omp-server";
         }
@@ -73,14 +63,14 @@ void __function__(void) {
 
         if (file_s && file_m) {
 __default:
-            wcfg.f_openmp = VAL_FALSE;
-            wcfg.f_samp = VAL_TRUE;
+            wcfg.f_openmp = CRC32_FALSE;
+            wcfg.f_samp = CRC32_TRUE;
             fclose(file_s);
         } else if (file_s) {
             goto __default;
         } else if (file_m) {
-            wcfg.f_samp = VAL_FALSE;
-            wcfg.f_openmp = VAL_TRUE;
+            wcfg.f_samp = CRC32_FALSE;
+            wcfg.f_openmp = CRC32_TRUE;
             fclose(file_m);
         } else {
             goto __default;
@@ -88,30 +78,13 @@ __default:
 
 #if defined(_DBG_PRINT)
         printf_color(COL_YELLOW, "-DEBUGGING\n");
-        const char *os_name;
-
-        switch (wcfg.os_type) {
-            case OS_SIGNAL_WINDOWS:
-                os_name = "OS_SIGNAL_WINDOWS";
-                break;
-            case OS_SIGNAL_LINUX:
-                os_name = "OS_SIGNAL_LINUX";
-                break;
-            case OS_SIGNAL_UNKNOWN:
-                os_name = "OS_SIGNAL_UNKNOWN";
-                break;
-            default:
-                os_name = "OS_SIGNAL_INVALID";
-                break;
-        }
-
         printf("[__function__]:\n"
-               "\tos_type: 0x0%x (%s)\n"
+               "\tos_type: %s\n"
                "\tpointer_samp: %s\n"
                "\tpointer_openmp: %s\n"
-               "\tf_samp: 0x0%x\n"
-               "\tf_openmp: 0x0%x\n",
-               wcfg.os_type, os_name,
+               "\tf_samp: %s\n"
+               "\tf_openmp: %s\n",
+               wcfg.os_type,
                wcfg.pointer_samp,
                wcfg.pointer_openmp,
                wcfg.f_samp,
@@ -395,7 +368,7 @@ ret_ptr2:
         } else if (strncmp(ptr_command, "running", 7) == 0 || strncmp(ptr_command, "debug", 7) == 0) {
 _runners_:
                 if (strcmp(ptr_command, "debug") == 0) {
-                    wcfg.serv_dbg="debug";
+                    wcfg.server_odbg="debug";
                     wd_set_title("Watchdogs | @ debug");    
                 } else {
                     wd_set_title("Watchdogs | @ running");
@@ -441,8 +414,8 @@ _runners_:
                 else
                     system("xterm -hold -e bash -c 'echo \"here is your watchdogs!..\"; ./watchdogs' &");
 #endif
-                if (wcfg.f_samp == VAL_TRUE) {
-                if (arg == NULL || *arg == '\0' || (arg[0] == '.' && arg[1] == '\0')) {
+                if (!strcmp(wcfg.f_samp, CRC32_TRUE)) {
+                    if (arg == NULL || *arg == '\0' || (arg[0] == '.' && arg[1] == '\0')) {
                         char __sz_run[128];
 #ifdef _WIN32
                         snprintf(__sz_run, sizeof(__sz_run), "%s", wcfg.pointer_samp);
@@ -452,7 +425,7 @@ _runners_:
 #endif
                         int running_FAIL = system(__sz_run);
                         if (running_FAIL == 0) {
-                            if (wcfg.os_type == OS_SIGNAL_LINUX) {
+                            if (!strcmp(wcfg.os_type, OS_SIGNAL_LINUX)) {
 #ifdef _WIN32
 		                        Sleep(2000);
 #else
@@ -467,7 +440,7 @@ _runners_:
                         printf_color(COL_YELLOW, "running..\n");
                         wd_run_samp_server(arg1, wcfg.pointer_samp);
                     }
-                } else if (wcfg.f_openmp == VAL_TRUE) {
+                } else if (!strcmp(wcfg.f_openmp, CRC32_TRUE)) {
                     if (arg == NULL || *arg == '\0' || (arg[0] == '.' && arg[1] == '\0')) {
                         char __sz_run[128];
 #ifdef _WIN32
@@ -491,7 +464,7 @@ _runners_:
                         printf_color(COL_YELLOW, "running..\n");
                         wd_run_omp_server(arg1, wcfg.pointer_openmp);
                     }
-                } else if (wcfg.f_samp == VAL_FALSE || wcfg.f_openmp == VAL_FALSE) {
+                } else if (!strcmp(wcfg.f_samp, CRC32_FALSE) || !strcmp(wcfg.f_openmp, CRC32_FALSE)) {
                     printf_error("samp-server/open.mp server not found!");
 
                     char *ptr_sigA;
@@ -500,9 +473,9 @@ ret_ptr3:
 
                     while (1) {
                         if (strcmp(ptr_sigA, "Y") == 0 || strcmp(ptr_sigA, "y") == 0) {
-                            if (wcfg.os_type == OS_SIGNAL_WINDOWS) {
+                            if (!strcmp(wcfg.os_type, OS_SIGNAL_WINDOWS)) {
                                 wd_install_server("windows");
-                            } else if (wcfg.os_type == OS_SIGNAL_LINUX) {
+                            } else if (!strcmp(wcfg.os_type, OS_SIGNAL_LINUX)) {
                                 wd_install_server("linux");
                             }
                             break;

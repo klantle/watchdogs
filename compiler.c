@@ -18,12 +18,12 @@ int wd_RunCompiler(const char *arg, const char *compile_args)
 {
         /* Determine the compiler binary name based on operating system */
         const char *ptr_pawncc = NULL;
-        if (wcfg.os_type == OS_SIGNAL_WINDOWS) 
+        if (!strcmp(wcfg.os_type, OS_SIGNAL_WINDOWS)) 
         {
             /* Use Windows executable name */
             ptr_pawncc = "pawncc.exe";
         }
-        else if (wcfg.os_type == OS_SIGNAL_LINUX)
+        else if (!strcmp(wcfg.os_type, OS_SIGNAL_LINUX))
         {
             /* Use Linux binary name */
             ptr_pawncc = "pawncc";
@@ -31,12 +31,12 @@ int wd_RunCompiler(const char *arg, const char *compile_args)
         
         /* Set include path based on configuration flag */
         char *path_include = NULL;
-        if (wcfg.f_openmp == VAL_TRUE)
+        if (!strcmp(wcfg.f_openmp, CRC32_TRUE))
         {
             /* Use pawno include directory */
             path_include="pawno/include";
         }
-        else if (wcfg.f_openmp == VAL_TRUE)
+        else if (!strcmp(wcfg.f_openmp, CRC32_TRUE))
         {
             /* Use qawno include directory */
             path_include="qawno/include";

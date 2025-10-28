@@ -1,4 +1,3 @@
-#define _POSIX_C_SOURCE 200809L
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -8,51 +7,21 @@
 #include <sys/stat.h>
 #include <fcntl.h>
 #include <dirent.h>
-
-#ifdef _WIN32
-#include <windows.h>
-#include <direct.h>
-#include <shlwapi.h>
-#include <strings.h>
-#include <io.h>
-#define __PATH_SYM "\\"
-#define IS_PATH_SYM(c) ((c) == '/' || (c) == '\\')
-#define mkdir(path) _mkdir(path)
-#define MKDIR(path) mkdir(path)
-#define Sleep(sec) Sleep((sec)*1000)
-#define setenv(name,val,overwrite) _putenv_s(name,val)
-static int _w_chmod(const char *path) {
-        int mode = _S_IREAD | _S_IWRITE;
-        return chmod(path, mode);
-}
-#else
-#include <sys/utsname.h>
-#include <sys/wait.h>
-#include <unistd.h>
-#include <dirent.h>
-#include <fnmatch.h>
-#define __PATH_SYM "/"
-#define IS_PATH_SYM(c) ((c) == '/')
-#define MKDIR(path) mkdir(path, 0755)
-#endif
-
 #include <sys/file.h>
 #include <sys/types.h>
-#include <ncursesw/curses.h>
 #include <math.h>
 #include <limits.h>
-#ifndef _WIN32
-#define MAX_PATH PATH_MAX + 764
-#endif
 #include <time.h>
 #include <ftw.h>
 #include <curl/curl.h>
-#include <fcntl.h>
 #include <inttypes.h>
 #include <stddef.h>
 #include <libgen.h>
+
+#include <ncursesw/curses.h>
 #include <readline/readline.h>
 #include <readline/history.h>
+
 #include <archive.h>
 #include <archive_entry.h>
 #include <errno.h>
@@ -63,26 +32,26 @@ static int _w_chmod(const char *path) {
 #include "utils.h"
 #include "chain.h"
 
-const char* __command[] = {
-        "help",
-        "clear",
-        "exit",
-        "kill",
-        "title",
-        "toml",
-        "hardware",
-        "install",
-        "gamemode",
-        "pawncc",
-        "compile",
-        "running",
-        "crunn",
-        "debug",
-        "stop",
-        "restart"
-};
-const size_t
-        __command_len =
+const char*
+	__command[] = {
+			"help",
+			"clear",
+			"exit",
+			"kill",
+			"title",
+			"toml",
+			"hardware",
+			"install",
+			"gamemode",
+			"pawncc",
+			"compile",
+			"running",
+			"crunn",
+			"debug",
+			"stop",
+			"restart"
+	};
+const size_t __command_len =
             sizeof(__command) /
             sizeof(__command[0]);
 
@@ -90,15 +59,15 @@ WatchdogConfig wcfg = {
 		.ipackage = 0,
 		.idepends = 0,
 		.os = NULL,
-		.os_type = VAL_FALSE,
-		.f_samp = VAL_FALSE,
-		.f_openmp = VAL_FALSE,
+		.os_type = CRC32_FALSE,
+		.f_samp = CRC32_FALSE,
+		.f_openmp = CRC32_FALSE,
 		.pointer_samp = NULL,
 		.pointer_openmp = NULL,
 		.compiler_error = 0,
 		.sef_count = 0,
 		.sef_found = { {0} },
-		.serv_dbg = NULL,
+		.server_odbg = NULL,
 		.ci_options = NULL,
 		.aio_repo = NULL,
 		.gm_input = NULL,
@@ -126,24 +95,6 @@ void wd_sef_fdir_reset(void)
 		
 		/* Reset counter */
 		wcfg.sef_count = 0;
-}
-
-/**
- * wd_signal_os - Get operating system signal code
- *
- * Returns a signal code based on the detected operating system.
- * Used for platform-specific signal handling.
- *
- * Return: 0x01 for Windows, VAL_FALSE for Linux, 0x02 for unknown
- */
-int wd_signal_os(void)
-{
-		if (strcmp(wcfg.os, "windows") == 0)
-				return OS_SIGNAL_WINDOWS;
-		else if (strcmp(wcfg.os, "linux") == 0)
-				return OS_SIGNAL_LINUX;
-
-		return OS_SIGNAL_UNKNOWN;
 }
 
 /*
@@ -1230,9 +1181,9 @@ static int wd_find_compiler(const char *os_type)
 		int is_windows = (strcmp(os_type, "windows") == 0);
 		const char *compiler_name = is_windows ? "pawncc.exe" : "pawncc";
 
-		if (wcfg.f_samp == VAL_TRUE) {
+		if (!strcmp(wcfg.f_samp, CRC32_TRUE)) {
 				return wd_sef_fdir("pawno", compiler_name, NULL);
-		} else if (wcfg.f_openmp == VAL_TRUE) {
+		} else if (!strcmp(wcfg.f_openmp, CRC32_TRUE)) {
 				return wd_sef_fdir("qawno", compiler_name, NULL);
 		} else {
 				return wd_sef_fdir("pawno", compiler_name, NULL);
@@ -1337,9 +1288,9 @@ static void wd_add_include_paths(FILE *file, int *first_item)
 		}
 
 		/* Add compiler-specific include paths */
-		if (wcfg.f_samp == VAL_TRUE) {
+		if (!strcmp(wcfg.f_samp, CRC32_TRUE)) {
 				wd_add_compiler_path(file, "pawno/include", first_item);
-		} else if (wcfg.f_openmp == VAL_TRUE) {
+		} else if (!strcmp(wcfg.f_openmp, CRC32_TRUE)) {
 				wd_add_compiler_path(file, "qawno/include", first_item);
 		} else {
 				wd_add_compiler_path(file, "pawno/include", first_item);
@@ -1362,9 +1313,9 @@ static void wd_generate_toml_content(FILE *file, const char *os_type,
 
 		/* Build sef_path from found compiler */
 		if (sef_path[0]) {
-				char *ext = strrchr(sef_path, '.');
-				if (ext)
-						*ext = '\0';
+				char *__dot_ext = strrchr(sef_path, '.');
+				if (__dot_ext)
+						*__dot_ext = '\0';
 		}
 
 		fprintf(file, "[general]\n");
@@ -1485,7 +1436,7 @@ int wd_set_toml(void)
 		}
 		*q = '\0';
 
-		char __sz_mv[PATH_MAX * 2 + 100];
+		char __sz_mv[MAX_PATH + 100];
 		snprintf(__sz_mv, sizeof(__sz_mv), "mv -i %s %s/%s", src, dest, clean_src);
 		int ret = wd_run_command(__sz_mv);
 		return ret;
@@ -1507,7 +1458,7 @@ static int __mv_with_sudo(const char *src, const char *dest) {
 		}
 		*q = '\0';
 
-		char __sz_mv[PATH_MAX * 2 + 100];
+		char __sz_mv[MAX_PATH + 100];
 		snprintf(__sz_mv, sizeof(__sz_mv), "sudo mv -i %s %s/%s", src, dest, clean_src);
 		int ret = wd_run_command(__sz_mv);
 		return ret;
@@ -1534,7 +1485,7 @@ static int _try_cp_without_sudo(const char *src, const char *dest) {
 		}
 		*q = '\0';
 
-		char __sz_cp[PATH_MAX * 2 + 100];
+		char __sz_cp[MAX_PATH + 100];
 		snprintf(__sz_cp, sizeof(__sz_cp), "cp -i %s %s/%s", src, dest, clean_src);
 		int ret = wd_run_command(__sz_cp);
 		return ret;
@@ -1555,7 +1506,7 @@ static int __cp_with_sudo(const char *src, const char *dest) {
 		}
 		*q = '\0';
 
-		char __sz_cp[PATH_MAX * 2 + 100];
+		char __sz_cp[MAX_PATH + 100];
 		snprintf(__sz_cp, sizeof(__sz_cp), "sudo cp -i %s %s/%s", src, dest, clean_src);
 		int ret = wd_run_command(__sz_cp);
 		return ret;
@@ -1611,7 +1562,7 @@ static int __wd_sef_safety(const char *c_src, const char *c_dest)
 static void __wd_sef_set_permissions(const char *c_dest)
 {
 #ifdef _WIN32
-		if (_w_chmod(c_dest)) {
+		if (win32_chmod(c_dest)) {
 # if defined(_DBG_PRINT)
 				printf_warning("chmod failed: %s (errno=%d %s)",
 						      c_dest, errno, strerror(errno));

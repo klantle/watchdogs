@@ -1,17 +1,64 @@
 #ifndef UTILS_H
 #define UTILS_H
-
+#define __WATCHDOGS__
+#ifdef __WATCHDOGS__
 #include <stddef.h>
 #include <stdbool.h>
 #include <stdint.h>
 #include <limits.h>
 #include <dirent.h>
+#include <sys/types.h>
+#include <sys/stat.h>
+#ifdef _WIN32
+#include <windows.h>
+#include <direct.h>
+#include <shlwapi.h>
+#include <strings.h>
+#include <io.h>
+#define __PATH_SYM "\\"
+#define IS_PATH_SYM(c) ((c) == '/' || (c) == '\\')
+#define mkdir(path) _mkdir(path)
+#define MKDIR(path) mkdir(path)
+#define Sleep(sec) Sleep((sec)*1000)
+#define setenv(x,y,z) _putenv_s(x,y)
+#define SETEN(x,y,z) setenv(x,y)
+static inline int win32_chmod(const char *path) {
+        int mode = _S_IREAD |
+                   _S_IWRITE;
+        return chmod(path, mode);
+}
+#define CHMOD(path, mode) _chmod(path, mode)
+#define FILE_MODE _S_IREAD | _S_IWRITE
+#define getcwd _getcwd
+#else
+#include <sys/utsname.h>
+#include <sys/wait.h>
+#include <unistd.h>
+#include <fnmatch.h>
+#define __PATH_SYM "/"
+#define IS_PATH_SYM(c) ((c) == '/')
+#define MKDIR(x) mkdir(x,0755)
+#define SETENV(x,y,z) setenv(x,y,z)
+#define CHMOD(x,y) chmod(x,y)
+#define FILE_MODE 0777
+#endif
+#ifndef PATH_MAX
+#define PATH_MAX 260
+#endif
+#ifndef MAX_PATH
+#define MAX_PATH PATH_MAX + 3836
+#else
+#undef MAX_PATH
+#define MAX_PATH PATH_MAX + 3836
+#endif
 
+#ifndef min3
 #define min3(a, b, c) \
         ((a) < (b) ? \
         ((a) < (c) ? \
         (a) : (c)) : ((b) < (c) ? \
         (b) : (c)))
+#endif
 
 #if __has_include(<readline/history.h>)
         #include <readline/history.h>
@@ -48,12 +95,13 @@
 #define COMPILER_OPENMP  0x02
 #define COMPILER_DEFAULT 0x00
 
-#define VAL_TRUE 0x01
-#define VAL_FALSE 0x00
+#define CRC32_TRUE "fdfc4c8d"
+#define CRC32_FALSE "2bcd6830"
+#define CRC32_UNKNOWN "ad26a7c7"
 
-#define OS_SIGNAL_WINDOWS	0x01
-#define OS_SIGNAL_LINUX		0x00  
-#define OS_SIGNAL_UNKNOWN	0x02
+#define OS_SIGNAL_WINDOWS	CRC32_TRUE
+#define OS_SIGNAL_LINUX		CRC32_FALSE  
+#define OS_SIGNAL_UNKNOWN	CRC32_UNKNOWN
 
 #define MAX_SEF_ENTRIES 28
 #define MAX_SEF_PATH_SIZE PATH_MAX
@@ -62,15 +110,15 @@ typedef struct {
         int ipackage;
         int idepends;
         const char* os;
-        uint8_t os_type;
-        uint8_t f_samp;
-        uint8_t f_openmp;
+        char *os_type;
+        char *f_samp;
+        char *f_openmp;
         char* pointer_samp;
         char* pointer_openmp;
         int compiler_error;
         size_t sef_count;
         char sef_found[MAX_SEF_ENTRIES][MAX_SEF_PATH_SIZE];
-        char* serv_dbg;
+        char* server_odbg;
         char* ci_options;
         char* aio_repo;
         char* gm_input;
@@ -83,7 +131,6 @@ void wd_sef_fdir_reset();
 struct struct_of { int (*title)(const char *); };
 extern const char* __command[];
 extern const size_t __command_len;
-int wd_signal_os(void);
 int mkdir_recursive(const char *path);
 int wd_run_command(const char *cmd);
 void print_file_to_terminal(const char *path);
@@ -94,10 +141,8 @@ void wd_strip_dot_fns(char *dst, size_t dst_sz, const char *src);
 bool strfind(const char *text, const char *pattern);
 void wd_escape_quotes(char *dest, size_t size, const char *src);
 extern const char* wd_find_near_command(
-        const char *ptr_command,
-        const char *__commands[],
-        size_t num_cmds,
-        int *out_distance
+        const char *ptr_command, const char *__commands[],
+        size_t num_cmds, int *out_distance
 );
 const char* wd_detect_os(void);
 int kill_process(const char *name);
@@ -115,4 +160,5 @@ int wd_set_toml(void);
 int wd_sef_wcopy(const char *c_src, const char *c_dest);
 int wd_sef_wmv(const char *c_src, const char *c_dest);
 
+#endif
 #endif

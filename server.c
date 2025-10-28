@@ -4,30 +4,7 @@
 #include <errno.h>
 #include <sys/types.h>
 #include <sys/stat.h>
-
-#ifdef _WIN32
-#include <direct.h>
-#include <windows.h>
-#include <io.h>
-#define PATH_SYM "\\"
-#define MKDIR(path) _mkdir(path)
-#define SETENV(name, val, overwrite) _putenv_s(name, val)
-#define CHMOD(path, mode) _chmod(path, mode)
-#define FILE_MODE _S_IREAD | _S_IWRITE
-#else
-#include <unistd.h>
-#include <dirent.h>
-#define PATH_SYM "/"
-#define MKDIR(path) mkdir(path, 0755)
-#define SETENV(name, val, overwrite) setenv(name, val, overwrite)
-#define CHMOD(path, mode) chmod(path, mode)
-#define FILE_MODE 0777
-#endif
-
 #include <limits.h>
-#ifndef _WIN32
-#define MAX_PATH PATH_MAX + 764
-#endif
 
 #include "cJSON/cJSON.h"
 #include "chain.h"
@@ -79,8 +56,8 @@ static int update_server_config(const char *gamemode)
 
 		char _gamemode[256];
 		snprintf(_gamemode, sizeof(_gamemode), "%s", gamemode);
-		char *ext = strrchr(_gamemode, '.');
-		if (ext) *ext = '\0';
+		char *__dot_ext = strrchr(_gamemode, '.');
+		if (__dot_ext) *__dot_ext = '\0';
 		gamemode = _gamemode; 
 
 		/* Update gamemode line */
@@ -106,7 +83,7 @@ static int update_server_config(const char *gamemode)
 /**
  * display_server_logs - Display server logs on Unix systems
  */
-int display_server_logs(int ret)
+void display_server_logs(int ret)
 {
 		FILE *log_file;
 		int ch;
@@ -121,15 +98,13 @@ int display_server_logs(int ret)
 
 next:
 		if (!log_file) {
-				return RETN;
+			return;
 		}
 
 		while ((ch = fgetc(log_file)) != EOF)
 				putchar(ch);
 
 		fclose(log_file);
-
-		__main(0);
 }
 
 /**
@@ -153,8 +128,8 @@ void wd_run_samp_server(const char *gamemode, const char *server_bin)
 
 		char _gamemode[256];
 		snprintf(_gamemode, sizeof(_gamemode), "%s.amx", gamemode);
-		char *ext = strrchr(gamemode, '.');
-		if (!ext) gamemode = _gamemode; 
+		char *__dot_ext = strrchr(gamemode, '.');
+		if (!__dot_ext) gamemode = _gamemode; 
 
 		/* Verify gamemode exists */
 		wd_sef_fdir_reset();
@@ -179,7 +154,7 @@ void wd_run_samp_server(const char *gamemode, const char *server_bin)
 
 		ret = system(command);
 		if (ret == 0) {
-			if (wcfg.os_type == OS_SIGNAL_LINUX) {
+			if (!strcmp(wcfg.os_type, OS_SIGNAL_LINUX)) {
 #ifdef _WIN32
 				Sleep(2000);
 #else
@@ -195,10 +170,10 @@ void wd_run_samp_server(const char *gamemode, const char *server_bin)
 		restore_server_config();
 
 		/* Debug mode cleanup */
-		if (wcfg.serv_dbg && strcmp(wcfg.serv_dbg, "debug") == 0) {
-				if (wcfg.os_type == OS_SIGNAL_WINDOWS) {
+		if (wcfg.server_odbg && strcmp(wcfg.server_odbg, "debug") == 0) {
+				if (!strcmp(wcfg.os_type, OS_SIGNAL_WINDOWS)) {
 						kill_process("samp-server.exe");
-				} else if (wcfg.os_type == OS_SIGNAL_LINUX) {
+				} else if (!strcmp(wcfg.os_type, OS_SIGNAL_LINUX)) {
 						kill_process("samp03svr");
 				}
 		}
@@ -281,8 +256,8 @@ static int update_omp_config(const char *gamemode)
 
 		/* Process gamemode name */
 		snprintf(_gamemode, sizeof(_gamemode), "%s", gamemode);
-		char *ext = strrchr(_gamemode, '.');
-		if (ext) *ext = '\0';
+		char *__dot_ext = strrchr(_gamemode, '.');
+		if (__dot_ext) *__dot_ext = '\0';
 
 		/* Update main_scripts array */
 		cJSON_DeleteItemFromObject(pawn, "main_scripts");
@@ -349,8 +324,8 @@ void wd_run_omp_server(const char *gamemode, const char *server_bin)
 
 		char _gamemode[256];
 		snprintf(_gamemode, sizeof(_gamemode), "%s.amx", gamemode);
-		char *ext = strrchr(gamemode, '.');
-		if (!ext) gamemode = _gamemode; 
+		char *__dot_ext = strrchr(gamemode, '.');
+		if (!__dot_ext) gamemode = _gamemode; 
 
 		/* Verify gamemode exists */
 		wd_sef_fdir_reset();
@@ -389,10 +364,10 @@ void wd_run_omp_server(const char *gamemode, const char *server_bin)
 		restore_omp_config();
 
 		/* Debug mode cleanup */
-		if (wcfg.serv_dbg && strcmp(wcfg.serv_dbg, "debug") == 0) {
-				if (wcfg.os_type == OS_SIGNAL_WINDOWS) {
+		if (wcfg.server_odbg && strcmp(wcfg.server_odbg, "debug") == 0) {
+				if (!strcmp(wcfg.os_type, OS_SIGNAL_WINDOWS)) {
 						kill_process("omp-server.exe");
-				} else if (wcfg.os_type == OS_SIGNAL_LINUX) {
+				} else if (!strcmp(wcfg.os_type, OS_SIGNAL_LINUX)) {
 						kill_process("omp-server");
 				}
 		}

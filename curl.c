@@ -4,19 +4,6 @@
 #include <string.h>
 #include <sys/stat.h>
 
-#ifdef _WIN32
-#include <windows.h>
-#include <direct.h>
-#define PATH_SYM "\\"
-#define MKDIR(path) _mkdir(path)
-#define SETENV(name, val, overwrite) _putenv_s(name, val)
-#else
-#include <unistd.h>
-#define PATH_SYM "/"
-#define MKDIR(path) mkdir(path, 0755)
-#define SETENV(name, val, overwrite) setenv(name, val, overwrite)
-#endif
-
 #include <curl/curl.h>
 #include <readline/readline.h>
 #include <readline/history.h>

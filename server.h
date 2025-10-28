@@ -2,7 +2,7 @@
 #define SERVER_H
 
 void wd_stop_server_tasks(void);
-int display_server_logs(int ret);
+void display_server_logs(int ret);
 void wd_run_samp_server(const char *gamemode_arg, const char *server_bin);
 void wd_run_omp_server(const char *gamemode_arg, const char *server_bin);
 

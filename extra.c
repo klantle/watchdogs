@@ -5,28 +5,6 @@
 #include <sys/stat.h>
 #include <errno.h>
 
-#ifdef _WIN32
-#include <windows.h>
-#include <direct.h>
-#include <shlwapi.h>
-#include <strings.h>
-#include <io.h>
-#define PATH_SYM "\\"
-#define IS_PATH_SYM(c) ((c) == '/' || (c) == '\\')
-#define MKDIR(path) _mkdir(path)
-#define SETENV(name, val, overwrite) _putenv_s(name, val)
-#else
-#include <sys/utsname.h>
-#include <sys/wait.h>
-#include <unistd.h>
-#include <dirent.h>
-#include <fnmatch.h>
-#define PATH_SYM "/"
-#define IS_PATH_SYM(c) ((c) == '/')
-#define MKDIR(path) mkdir(path, 0755)
-#define SETENV(name, val, overwrite) setenv(name, val, overwrite)
-#endif
-
 #include "color.h"
 #include "chain.h"
 #include "utils.h"

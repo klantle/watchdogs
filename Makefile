@@ -25,7 +25,7 @@ CFLAGS   = -Os -pipe -s -fdata-sections -ffunction-sections -fPIE -I/usr/include
 LDFLAGS  = -Wl,-O1,--gc-sections -lm -lcurl -lreadline -lncurses -larchive -lssl -lcrypto
 
 SRCS = extra.c chain.c utils.c depends.c hardware.c compiler.c archive.c curl.c package.c server.c crypto.c \
-       tomlc99/toml.c cJSON/cJSON.c
+       include/tomlc/toml.c include/cJSON/cJSON.c
 
 OBJS = $(SRCS:.c=.o)
 
@@ -40,7 +40,7 @@ install:
 		$(MAKE) windows; \
 	elif echo "$$UNAME_S" | grep -qi "Linux" && [ -d "/data/data/com.termux" ]; then \
 		echo "$(YELLOW)==>$(RESET) Detected: Termux environment"; \
-		pkg update -y && pkg install -y clang openssl curl libarchive ncurses readline xterm; \
+		pkg update -y && pkg install -y clang openssl curl libarchive ncurses readline; \
 		$(MAKE) termux; \
 	elif echo "$$UNAME_S" | grep -qi "MINGW64_NT"; then \
 		echo "$(YELLOW)==>$(RESET) Detected: MSYS2 MinGW UCRT64 environment"; \
@@ -117,8 +117,8 @@ linux:
 	@printf "$(YELLOW)==>$(RESET) Build complete: $(TARGET) Version $(VERSION) Full Version $(FULL_VERSION)\n"
 
 termux:
-	@printf "$(YELLOW)==>$(RESET) Building Termux target (clang)...\n"
-	$(CC) $(CFLAGS) -D__ANDROID__ -fPIE $(SRCS) -o watchdogs.tmux $(LDFLAGS) -pie
+	@printf "$(YELLOW)==>$(RESET) Building Termux target with clang...\n"
+	CC=clang $(CC) $(CFLAGS) -D__ANDROID__ -fPIE -I/data/data/com.termux/files/usr/include $(SRCS) -o watchdogs.tmux $(LDFLAGS) -pie
 	@printf "$(YELLOW)==>$(RESET) Build complete: watchdogs.tmux Version $(VERSION) Full Version $(FULL_VERSION)\n"
 
 windows:

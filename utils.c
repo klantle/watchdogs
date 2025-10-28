@@ -26,7 +26,7 @@
 #include <archive_entry.h>
 #include <errno.h>
 
-#include "tomlc99/toml.h"
+#include "include/tomlc/toml.h"
 #include "color.h"
 #include "extra.h"
 #include "utils.h"
@@ -56,45 +56,45 @@ const size_t __command_len =
             sizeof(__command[0]);
 
 WatchdogConfig wcfg = {
-		.ipackage = 0,
-		.idepends = 0,
-		.os = NULL,
-		.os_type = CRC32_FALSE,
-		.f_samp = CRC32_FALSE,
-		.f_openmp = CRC32_FALSE,
-		.pointer_samp = NULL,
-		.pointer_openmp = NULL,
-		.compiler_error = 0,
-		.sef_count = 0,
-		.sef_found = { {0} },
-		.server_odbg = NULL,
-		.ci_options = NULL,
-		.aio_repo = NULL,
-		.gm_input = NULL,
-		.gm_output = NULL
+		.wd_toml_os_type = NULL,
+		.wd_ipackage = 0,
+		.wd_idepends = 0,
+		.wd_os_type = CRC32_FALSE,
+		.wd_is_samp = CRC32_FALSE,
+		.wd_is_omp = CRC32_FALSE,
+		.wd_ptr_samp = NULL,
+		.wd_ptr_omp = NULL,
+		.wd_compiler_stats = 0,
+		.wd_sef_count = 0,
+		.wd_sef_found_list = { {0} },
+		.wd_runn_mode = NULL,
+		.wd_toml_aio_opt = NULL,
+		.wd_toml_aio_repo = NULL,
+		.wd_toml_gm_input = NULL,
+		.wd_toml_gm_output = NULL
 };
 
 /**
  * wd_sef_fdir_reset - Reset found directory entries
  * 
- * Clears all entries in the sef_found array and resets the count.
+ * Clears all entries in the wd_sef_found_list array and resets the count.
  * Uses both iterative clearing and memset for completeness.
  */
 void wd_sef_fdir_reset(void)
 {
-		size_t max_entries = sizeof(wcfg.sef_found) / 
-						     sizeof(wcfg.sef_found[0]);
+		size_t max_entries = sizeof(wcfg.wd_sef_found_list) / 
+						     sizeof(wcfg.wd_sef_found_list[0]);
 		size_t i;
 
 		/* Clear each string individually */
 		for (i = 0; i < max_entries; i++)
-				wcfg.sef_found[i][0] = '\0';
+				wcfg.wd_sef_found_list[i][0] = '\0';
 
 		/* Ensure complete memory clearance */
-		memset(wcfg.sef_found, 0, sizeof(wcfg.sef_found));
+		memset(wcfg.wd_sef_found_list, 0, sizeof(wcfg.wd_sef_found_list));
 		
 		/* Reset counter */
-		wcfg.sef_count = 0;
+		wcfg.wd_sef_count = 0;
 }
 
 /*
@@ -312,6 +312,24 @@ int wd_run_command(const char *cmd)
 
 		ret = system(cmd);
 		return ret;
+}
+
+/**
+ * is_termux_environment - Check if running in Termux environment
+ *
+ * Return: 1 if Termux, 0 if not
+ */
+int is_termux_environment(void)
+{
+		struct stat st;
+		int is_termux = RETZ;
+#if defined(__ANDROID__)
+                is_termux = RETN;
+#endif
+		if (stat("/data/data/com.termux/files/usr/local/lib/", &st) == 0 ||
+			stat("/data/data/com.termux/files/usr/lib/", &st) == 0)
+			is_termux = RETN;
+		return is_termux;
 }
 
 /**
@@ -763,23 +781,17 @@ int ensure_parent_dir(char *out_parent, size_t n, const char *dest)
  */
 int kill_process(const char *name)
 {
-		char cmd[256];
+		if (name && strlen(name) > 0) {
+			char cmd[256];
 
-		if (!name)
-				return -RETN;
+			if (!name)
+					return -RETN;
 
-		snprintf(cmd, sizeof(cmd), "pkill -9 -f \"%s\" > /dev/null 2>&1", name);
-		return system(cmd);
-}
-
-/**
- * kill_process_safe - Safely kill process by name
- * @name: Process name
- */
-void kill_process_safe(const char *name)
-{
-		if (name && strlen(name) > 0)
-				kill_process(name);
+			snprintf(cmd, sizeof(cmd), "pkill -9 -f \"%s\" > /dev/null 2>&1", name);
+			return system(cmd);
+		} else {
+			return RETZ;
+		}
 }
 
 /**
@@ -859,19 +871,19 @@ static void __toml_add_directory_path(FILE *toml_file, int *first, const char *p
 
 /**
  * wd_find_compiler - Locate PAWN compiler executable based on environment
- * @os_type: Operating system type ("windows" or "linux")
+ * @wd_os_type: Operating system type ("windows" or "linux")
  * 
  * Searches for pawncc compiler in platform-specific locations.
  * Consults configuration flags to determine search directory.
  * 
  * Return: 1 if compiler found, 0 if not found
  */
-static int wd_find_compiler(const char *os_type);
+static int wd_find_compiler(const char *wd_os_type);
 
 /**
  * wd_generate_toml_content - Generate complete TOML configuration content
  * @file: FILE handle for output
- * @os_type: Target operating system
+ * @wd_os_type: Target operating system
  * @find_gamemodes: Flag indicating if gamemodes were found
  * @find_pawncc: Flag indicating if compiler was found  
  * @find_plugins: Flag indicating if plugins should be included
@@ -880,7 +892,7 @@ static int wd_find_compiler(const char *os_type);
  * Constructs complete watchdogs.toml configuration including
  * compiler options, include paths, and input/output file settings.
  */
-static void wd_generate_toml_content(FILE *file, const char *os_type,
+static void wd_generate_toml_content(FILE *file, const char *wd_os_type,
     int find_gamemodes, int find_pawncc, int find_plugins, char *base_dir);
 
 /**
@@ -951,10 +963,10 @@ static int wd_should_ignore_dir(const char *name, const char *ignore_dir)
  */
 static void wd_add_found_path(const char *path)
 {
-		if (wcfg.sef_count < (sizeof(wcfg.sef_found) / sizeof(wcfg.sef_found[0]))) {
-				strncpy(wcfg.sef_found[wcfg.sef_count], path, MAX_SEF_PATH_SIZE);
-				wcfg.sef_found[wcfg.sef_count][MAX_SEF_PATH_SIZE - 1] = '\0';
-				wcfg.sef_count++;
+		if (wcfg.wd_sef_count < (sizeof(wcfg.wd_sef_found_list) / sizeof(wcfg.wd_sef_found_list[0]))) {
+				strncpy(wcfg.wd_sef_found_list[wcfg.wd_sef_count], path, MAX_SEF_PATH_SIZE);
+				wcfg.wd_sef_found_list[wcfg.wd_sef_count][MAX_SEF_PATH_SIZE - 1] = '\0';
+				wcfg.wd_sef_count++;
 		}
 }
 
@@ -1023,7 +1035,7 @@ int wd_sef_fdir(const char *sef_path, const char *sef_name, const char *ignore_d
 		if (!dir)
 				return RETZ;
 
-		while ((item = readdir(dir)) != NULL) {
+		while ((item = readdir(dir)) != WD_ISNULL) {
 				name = item->d_name;
 				if (wd_is_special_dir(name))
 						continue;
@@ -1102,14 +1114,14 @@ static void wd_check_compiler_options(int *compatibility, int *optimized_lt)
 		snprintf(run_cmd, sizeof(run_cmd), 
 				 "%s -___DDDDDDDDDDDDDDDDD-___DDDDDDDDDDDDDDDDD"
 				 "-___DDDDDDDDDDDDDDDDD-___DDDDDDDDDDDDDDDDD > .__CP.log 2>&1", 
-				 wcfg.sef_found[0]);
+				 wcfg.wd_sef_found_list[0]);
 		
 		system(run_cmd);
 
 		int found_Z = 0, found_ver = 0;
 		proc_file = fopen(".__CP.log", "r");
 		if (proc_file) {
-			while (fgets(log_line, sizeof(log_line), proc_file) != NULL) {
+			while (fgets(log_line, sizeof(log_line), proc_file) != WD_ISNULL) {
 				if (!found_Z && strstr(log_line, "-Z"))
 					found_Z = 1;
 				if (!found_ver && strstr(log_line, "3.10.11"))
@@ -1161,7 +1173,7 @@ static int wd_parse_toml_config(void)
 		if (general_table) {
 				toml_datum_t os_val = toml_string_in(general_table, "os");
 				if (os_val.ok) {
-						wcfg.os = strdup(os_val.u.s);
+						wcfg.wd_toml_os_type = strdup(os_val.u.s);
 						wdfree(os_val.u.s);
 				}
 		}
@@ -1172,18 +1184,18 @@ static int wd_parse_toml_config(void)
 
 /**
  * wd_find_compiler - Locate pawn compiler based on OS and config
- * @os_type: Operating system type
+ * @wd_os_type: Operating system type
  *
  * Return: 1 if found, 0 if not found
  */
-static int wd_find_compiler(const char *os_type)
+static int wd_find_compiler(const char *wd_os_type)
 {
-		int is_windows = (strcmp(os_type, "windows") == 0);
+		int is_windows = (strcmp(wd_os_type, "windows") == 0);
 		const char *compiler_name = is_windows ? "pawncc.exe" : "pawncc";
 
-		if (!strcmp(wcfg.f_samp, CRC32_TRUE)) {
+		if (!strcmp(wcfg.wd_is_samp, CRC32_TRUE)) {
 				return wd_sef_fdir("pawno", compiler_name, NULL);
-		} else if (!strcmp(wcfg.f_openmp, CRC32_TRUE)) {
+		} else if (!strcmp(wcfg.wd_is_omp, CRC32_TRUE)) {
 				return wd_sef_fdir("qawno", compiler_name, NULL);
 		} else {
 				return wd_sef_fdir("pawno", compiler_name, NULL);
@@ -1237,7 +1249,7 @@ static void __toml_base_subdirs(const char *base_path, FILE *toml_file, int *fir
 		if (!dir)
 				return;
 
-		while ((item = readdir(dir)) != NULL) {
+		while ((item = readdir(dir)) != WD_ISNULL) {
 				if (item->d_type == DT_DIR) {
 						if (strcmp(item->d_name, ".") == 0 ||
 						    strcmp(item->d_name, "..") == 0)
@@ -1288,9 +1300,9 @@ static void wd_add_include_paths(FILE *file, int *first_item)
 		}
 
 		/* Add compiler-specific include paths */
-		if (!strcmp(wcfg.f_samp, CRC32_TRUE)) {
+		if (!strcmp(wcfg.wd_is_samp, CRC32_TRUE)) {
 				wd_add_compiler_path(file, "pawno/include", first_item);
-		} else if (!strcmp(wcfg.f_openmp, CRC32_TRUE)) {
+		} else if (!strcmp(wcfg.wd_is_omp, CRC32_TRUE)) {
 				wd_add_compiler_path(file, "qawno/include", first_item);
 		} else {
 				wd_add_compiler_path(file, "pawno/include", first_item);
@@ -1300,12 +1312,12 @@ static void wd_add_include_paths(FILE *file, int *first_item)
 /**
  * wd_generate_toml_content - Write TOML configuration to file
  * @file: File handle to write to
- * @os_type: Operating system type
+ * @wd_os_type: Operating system type
  * @has_gamemodes: Whether gamemodes were found
  * @compatible: Compiler compatibility flag
  * @sef_path: Path for input/output files
  */
-static void wd_generate_toml_content(FILE *file, const char *os_type, 
+static void wd_generate_toml_content(FILE *file, const char *wd_os_type, 
 								    int has_gamemodes, int compatible,
 								    int optimized_lt, char *sef_path)
 {
@@ -1319,7 +1331,7 @@ static void wd_generate_toml_content(FILE *file, const char *os_type,
 		}
 
 		fprintf(file, "[general]\n");
-		fprintf(file, "\tos = \"%s\"\n", os_type);
+		fprintf(file, "\tos = \"%s\"\n", wd_os_type);
 		fprintf(file, "[compiler]\n");
 
 		/* Compiler options */
@@ -1363,16 +1375,16 @@ int wd_set_toml(void)
 		int find_gamemodes = 0;
 		int compatibility = 0;
 		int optimized_lt = 0;
-		const char *os_type;
+		const char *wd_os_type;
 		FILE *toml_file;
 
-		os_type = wd_detect_os();
+		wd_os_type = wd_detect_os();
 
 		/* Find compiler based on platform and configuration */
-		find_pawncc = wd_find_compiler(os_type);
+		find_pawncc = wd_find_compiler(wd_os_type);
 		if (!find_pawncc) {
 				/* Fallback: search in current directory */
-				if (strcmp(os_type, "windows") == 0)
+				if (strcmp(wd_os_type, "windows") == 0)
 						find_pawncc = wd_sef_fdir(".", "pawncc.exe", NULL);
 				else
 						find_pawncc = wd_sef_fdir(".", "pawncc", NULL);
@@ -1398,11 +1410,11 @@ int wd_set_toml(void)
 				}
 
                 if (find_pawncc)
-				    wd_generate_toml_content(toml_file, os_type, find_gamemodes, 
-										    compatibility, optimized_lt, wcfg.sef_found[1]);
+				    wd_generate_toml_content(toml_file, wd_os_type, find_gamemodes, 
+										    compatibility, optimized_lt, wcfg.wd_sef_found_list[1]);
                 else
-				    wd_generate_toml_content(toml_file, os_type, find_gamemodes, 
-										    compatibility, optimized_lt, wcfg.sef_found[0]);
+				    wd_generate_toml_content(toml_file, wd_os_type, find_gamemodes, 
+										    compatibility, optimized_lt, wcfg.wd_sef_found_list[0]);
 				fclose(toml_file);
 		}
 

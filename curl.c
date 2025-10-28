@@ -88,7 +88,7 @@ static int extract_archive(const char *filename)
  */
 static int prompt_apply_pawncc(void)
 {
-		wcfg.ipackage = 0;
+		wcfg.wd_ipackage = 0;
 
 		char *ptr_sigA;
 ret_ptr:
@@ -183,11 +183,11 @@ int wd_download_file(const char *url, const char *filename)
 								system(__sz_rm);
 
 								/* Prompt for pawncc if needed */
-								if (wcfg.ipackage) {
+								if (wcfg.wd_ipackage) {
 									if (prompt_apply_pawncc())
 											wd_apply_pawncc();
 								}
-								if (wcfg.idepends) {
+								if (wcfg.wd_idepends) {
 									if (prompt_apply_depends())
 											wd_apply_depends(filename);
 								}
@@ -203,11 +203,7 @@ int wd_download_file(const char *url, const char *filename)
 				}
 
 				retry_count++;
-#ifdef _WIN32
-				Sleep(3000);
-#else
 				sleep(3);
-#endif
 		} while (retry_count < max_retries);
 
 		printf_error("Download failed after %d retries", max_retries);

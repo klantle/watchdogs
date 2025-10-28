@@ -20,5 +20,6 @@ components/*
 components
 plugins/*
 plugins
+server.cfg
 wd_depends.json
 .gitignore

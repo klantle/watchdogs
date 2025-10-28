@@ -21,7 +21,7 @@
 #include <readline/readline.h>
 #include <readline/history.h>
 
-#include "tomlc99/toml.h"
+#include "include/tomlc/toml.h"
 #include "color.h"
 #include "extra.h"
 #include "utils.h"
@@ -43,32 +43,32 @@ void __function__(void) {
         wd_set_toml();
         wd_u_history();
         
-		if (strcmp(wcfg.os, "windows") == 0) {
-			wcfg.os_type = OS_SIGNAL_WINDOWS;
-		} else if (strcmp(wcfg.os, "linux") == 0) {
-			wcfg.os_type = OS_SIGNAL_LINUX;
+		if (strcmp(wcfg.wd_toml_os_type, "windows") == 0) {
+			wcfg.wd_os_type = OS_SIGNAL_WINDOWS;
+		} else if (strcmp(wcfg.wd_toml_os_type, "linux") == 0) {
+			wcfg.wd_os_type = OS_SIGNAL_LINUX;
 		}
-        if (!strcmp(wcfg.os_type, OS_SIGNAL_WINDOWS)) {
-            wcfg.pointer_samp="samp-server.exe";
-            wcfg.pointer_openmp="omp-server.exe";
-        } else if (!strcmp(wcfg.os_type, OS_SIGNAL_LINUX)) {
-            wcfg.pointer_samp="samp03svr";
-            wcfg.pointer_openmp="omp-server";
+        if (!strcmp(wcfg.wd_os_type, OS_SIGNAL_WINDOWS)) {
+            wcfg.wd_ptr_samp="samp-server.exe";
+            wcfg.wd_ptr_omp="omp-server.exe";
+        } else if (!strcmp(wcfg.wd_os_type, OS_SIGNAL_LINUX)) {
+            wcfg.wd_ptr_samp="samp03svr";
+            wcfg.wd_ptr_omp="omp-server";
         }
         
-        FILE *file_s = fopen(wcfg.pointer_samp, "r");
-        FILE *file_m = fopen(wcfg.pointer_openmp, "r");
+        FILE *file_s = fopen(wcfg.wd_ptr_samp, "r");
+        FILE *file_m = fopen(wcfg.wd_ptr_omp, "r");
 
         if (file_s && file_m) {
 __default:
-            wcfg.f_openmp = CRC32_FALSE;
-            wcfg.f_samp = CRC32_TRUE;
+            wcfg.wd_is_omp = CRC32_FALSE;
+            wcfg.wd_is_samp = CRC32_TRUE;
             fclose(file_s);
         } else if (file_s) {
             goto __default;
         } else if (file_m) {
-            wcfg.f_samp = CRC32_FALSE;
-            wcfg.f_openmp = CRC32_TRUE;
+            wcfg.wd_is_samp = CRC32_FALSE;
+            wcfg.wd_is_omp = CRC32_TRUE;
             fclose(file_m);
         } else {
             goto __default;
@@ -82,11 +82,11 @@ __default:
                "\tpointer_openmp: %s\n"
                "\tf_samp: %s\n"
                "\tf_openmp: %s\n",
-               wcfg.os_type,
-               wcfg.pointer_samp,
-               wcfg.pointer_openmp,
-               wcfg.f_samp,
-               wcfg.f_openmp);
+               wcfg.wd_os_type,
+               wcfg.wd_ptr_samp,
+               wcfg.wd_ptr_omp,
+               wcfg.wd_is_samp,
+               wcfg.wd_is_omp);
 #endif
         return;
 }
@@ -108,7 +108,7 @@ _ptr_command:
             snprintf(ptr_prompt, sizeof(ptr_prompt), "[" COL_YELLOW "watchdogs:%s" COL_DEFAULT "] > $", __cwd);
         char* ptr_command = readline(ptr_prompt);
 
-        if (ptr_command == NULL || ptr_command[0] == '\0')
+        if (ptr_command == WD_ISNULL || ptr_command[0] == '\0')
             goto _ptr_command;
         
         wd_a_history(ptr_command);
@@ -172,11 +172,7 @@ _reexecute_command:
         } else if (strcmp(ptr_command, "kill") == 0) {
             wd_set_title("Watchdogs | @ kill");
             wd_run_command("clear");
-#ifdef _WIN32
-            Sleep(1000);
-#else
             sleep(1);
-#endif
             __function__();
             return RETN;
         } else if (strncmp(ptr_command, "title", 5) == 0) {
@@ -263,13 +259,13 @@ _reexecute_command:
 
                 toml_table_t *wd_depends = toml_table_in(_toml_config, "depends");
                 if (wd_depends) {
-                    toml_array_t *aio_repo = toml_array_in(wd_depends, "aio_repo");
-                    if (aio_repo) {
-                        size_t arr_sz = toml_array_nelem(aio_repo);
+                    toml_array_t *wd_toml_aio_repo = toml_array_in(wd_depends, "wd_toml_aio_repo");
+                    if (wd_toml_aio_repo) {
+                        size_t arr_sz = toml_array_nelem(wd_toml_aio_repo);
                         char *merged = NULL;
 
                         for (size_t i = 0; i < arr_sz; i++) {
-                            toml_datum_t val = toml_string_at(aio_repo, i);
+                            toml_datum_t val = toml_string_at(wd_toml_aio_repo, i);
                             if (!val.ok) continue;
 
                             size_t old_len = merged ? strlen(merged) : 0;
@@ -296,8 +292,8 @@ _reexecute_command:
 
                         if (!merged) merged = strdup("");
 
-                        wcfg.aio_repo = merged;
-                        wd_install_depends_str(wcfg.aio_repo);
+                        wcfg.wd_toml_aio_repo = merged;
+                        wd_install_depends_str(wcfg.wd_toml_aio_repo);
                     }
                 }
                 toml_free(_toml_config);
@@ -366,7 +362,7 @@ ret_ptr2:
         } if (strncmp(ptr_command, "debug", 5) == 0 || strncmp(ptr_command, "running", 7) == 0) {
 _runners_:
                 int is_debug = strncmp(ptr_command, "debug", 5) == 0;
-                if (is_debug) wcfg.server_odbg = "debug";
+                if (is_debug) wcfg.wd_runn_mode = "debug";
 
                 wd_stop_server_tasks();
 
@@ -401,62 +397,52 @@ _runners_:
 
                 system("C:\\msys64\\usr\\bin\\mintty.exe /bin/bash -c \"./watchdogs.win; pwd; exec bash\"");
 #else
-                struct stat st;
-                if (stat("/data/data/com.termux/files/usr/local/lib/", &st) == 0 ||
-                        stat("/data/data/com.termux/files/usr/lib/", &st) == 0)
-                    system("xterm -hold -e bash -c 'echo \"here is your watchdogs!..\"; ./watchdogs.tmux' &");
+                if (is_termux_environment)
+                    printf_error("xterm not supported in termux!");
                 else
                     system("xterm -hold -e bash -c 'echo \"here is your watchdogs!..\"; ./watchdogs' &");
 #endif
-                if (!strcmp(wcfg.f_samp, CRC32_TRUE)) {
-                    if (arg == NULL || *arg == '\0' || (arg[0] == '.' && arg[1] == '\0')) {
+                if (!strcmp(wcfg.wd_is_samp, CRC32_TRUE)) {
+                    if (arg == WD_ISNULL || *arg == '\0' || (arg[0] == '.' && arg[1] == '\0')) {
                         char __sz_run[128];
 #ifdef _WIN32
-                        snprintf(__sz_run, sizeof(__sz_run), "%s", wcfg.pointer_samp);
+                        snprintf(__sz_run, sizeof(__sz_run), "%s", wcfg.wd_ptr_samp);
 #else
-                        chmod(wcfg.pointer_samp, 0777);
-                        snprintf(__sz_run, sizeof(__sz_run), "./%s", wcfg.pointer_samp);
+                        chmod(wcfg.wd_ptr_samp, 0777);
+                        snprintf(__sz_run, sizeof(__sz_run), "./%s", wcfg.wd_ptr_samp);
 #endif
                         int running_FAIL = system(__sz_run);
                         if (running_FAIL == 0) {
-                            if (!strcmp(wcfg.os_type, OS_SIGNAL_LINUX)) {
-#ifdef _WIN32
-		                        Sleep(2000);
-#else
+                            if (!strcmp(wcfg.wd_os_type, OS_SIGNAL_LINUX)) {
                                 sleep(2);
-#endif
                                 display_server_logs(0);
                             }
                         } else {
                             printf_color(COL_RED, "running failed!\n");
                         }
                     } else {
-                        wd_run_samp_server(arg1, wcfg.pointer_samp);
+                        wd_run_samp_server(arg1, wcfg.wd_ptr_samp);
                     }
-                } else if (!strcmp(wcfg.f_openmp, CRC32_TRUE)) {
-                    if (arg == NULL || *arg == '\0' || (arg[0] == '.' && arg[1] == '\0')) {
+                } else if (!strcmp(wcfg.wd_is_omp, CRC32_TRUE)) {
+                    if (arg == WD_ISNULL || *arg == '\0' || (arg[0] == '.' && arg[1] == '\0')) {
                         char __sz_run[128];
 #ifdef _WIN32
-                        snprintf(__sz_run, sizeof(__sz_run), "%s", wcfg.pointer_openmp);
+                        snprintf(__sz_run, sizeof(__sz_run), "%s", wcfg.wd_ptr_omp);
 #else
-                        chmod(wcfg.pointer_samp, 0777);
-                        snprintf(__sz_run, sizeof(__sz_run), "./%s", wcfg.pointer_openmp);
+                        chmod(wcfg.wd_ptr_samp, 0777);
+                        snprintf(__sz_run, sizeof(__sz_run), "./%s", wcfg.wd_ptr_omp);
 #endif
                         int running_FAIL = system(__sz_run);
                         if (running_FAIL == 0) {
-#ifdef _WIN32
-		                    Sleep(2000);
-#else
                             sleep(2);
-#endif
                             display_server_logs(1);
                         } else {
                             printf_color(COL_RED, "running failed!\n");
                         }
                     } else {
-                        wd_run_omp_server(arg1, wcfg.pointer_openmp);
+                        wd_run_omp_server(arg1, wcfg.wd_ptr_omp);
                     }
-                } else if (!strcmp(wcfg.f_samp, CRC32_FALSE) || !strcmp(wcfg.f_openmp, CRC32_FALSE)) {
+                } else if (!strcmp(wcfg.wd_is_samp, CRC32_FALSE) || !strcmp(wcfg.wd_is_omp, CRC32_FALSE)) {
                     printf_error("samp-server/open.mp server not found!");
 
                     char *ptr_sigA;
@@ -465,9 +451,9 @@ ret_ptr3:
 
                     while (1) {
                         if (strcmp(ptr_sigA, "Y") == 0 || strcmp(ptr_sigA, "y") == 0) {
-                            if (!strcmp(wcfg.os_type, OS_SIGNAL_WINDOWS)) {
+                            if (!strcmp(wcfg.wd_os_type, OS_SIGNAL_WINDOWS)) {
                                 wd_install_server("windows");
-                            } else if (!strcmp(wcfg.os_type, OS_SIGNAL_LINUX)) {
+                            } else if (!strcmp(wcfg.wd_os_type, OS_SIGNAL_LINUX)) {
                                 wd_install_server("linux");
                             }
                             break;
@@ -486,7 +472,7 @@ ret_ptr3:
             const char *arg = NULL;
             const char *compile_args = NULL;
             wd_RunCompiler(arg, compile_args);
-            if (wcfg.compiler_error < 1) {
+            if (wcfg.wd_compiler_stats < 1) {
                 char errbuf[256];
                 toml_table_t *_toml_config;
                 FILE *procc_f = fopen("watchdogs.toml", "r");
@@ -503,7 +489,7 @@ ret_ptr3:
                         toml_datum_t toml_gm_i = toml_string_in(wd_compiler, "input");
                         if (toml_gm_i.ok) 
                         {
-                            wcfg.gm_input = strdup(toml_gm_i.u.s);
+                            wcfg.wd_toml_gm_input = strdup(toml_gm_i.u.s);
                             wdfree(toml_gm_i.u.s);
                             toml_gm_i.u.s = NULL;
                         }
@@ -511,7 +497,7 @@ ret_ptr3:
                 toml_free(_toml_config);
 
                 char __sz_gm_input[PATH_MAX];
-                snprintf(__sz_gm_input, sizeof(__sz_gm_input), "%s", wcfg.gm_input);
+                snprintf(__sz_gm_input, sizeof(__sz_gm_input), "%s", wcfg.wd_toml_gm_input);
                 char *f_EXT = strrchr(__sz_gm_input, '.');
                 if (f_EXT) 
                     *f_EXT = '\0';
@@ -520,12 +506,12 @@ ret_ptr3:
                     memmove(pos, pos + strlen("gamemodes/"),
                                     strlen(pos + strlen("gamemodes/")) + 1);
                 }
-                if (!strcmp(wcfg.f_samp, CRC32_TRUE)) {
+                if (!strcmp(wcfg.wd_is_samp, CRC32_TRUE)) {
                     printf_color(COL_YELLOW, "running..\n");
-                    wd_run_samp_server(__sz_gm_input, wcfg.pointer_samp);
-                } else if (!strcmp(wcfg.f_openmp, CRC32_TRUE)) {
+                    wd_run_samp_server(__sz_gm_input, wcfg.wd_ptr_samp);
+                } else if (!strcmp(wcfg.wd_is_omp, CRC32_TRUE)) {
                     printf_color(COL_YELLOW, "running..\n");
-                    wd_run_samp_server(__sz_gm_input, wcfg.pointer_openmp);
+                    wd_run_samp_server(__sz_gm_input, wcfg.wd_ptr_omp);
                 }
             }
         } else if (strcmp(ptr_command, "stop") == 0) {
@@ -534,11 +520,7 @@ ret_ptr3:
             return RETN;
         } else if (strcmp(ptr_command, "restart") == 0) {
             wd_stop_server_tasks();
-#ifdef _WIN32
-            Sleep(2000);
-#else
             sleep(2);
-#endif
             goto _runners_;
         } else if (strcmp(ptr_command, _dist_command) != 0 && c_distance <= 2) {
             wd_set_title("Watchdogs | @ undefined");

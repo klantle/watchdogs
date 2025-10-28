@@ -248,7 +248,7 @@ static int setup_linux_library(void)
 		struct stat st;
 		int i, found_lib;
 
-		if (wcfg.os_type != OS_SIGNAL_LINUX)
+		if (wcfg.wd_os_type != OS_SIGNAL_LINUX)
 				return RETZ;
 
 		/* Find libpawnc.so */
@@ -257,9 +257,9 @@ static int setup_linux_library(void)
 				return RETZ;
 
 		/* Get source path */
-		for (i = 0; i < wcfg.sef_count; i++) {
-				if (strstr(wcfg.sef_found[i], "libpawnc.so")) {
-						strncpy(libpawnc_src, wcfg.sef_found[i], sizeof(libpawnc_src));
+		for (i = 0; i < wcfg.wd_sef_count; i++) {
+				if (strstr(wcfg.wd_sef_found_list[i], "libpawnc.so")) {
+						strncpy(libpawnc_src, wcfg.wd_sef_found_list[i], sizeof(libpawnc_src));
 						break;
 				}
 		}
@@ -309,7 +309,7 @@ void wd_apply_pawncc(void)
 		wd_sef_fdir_reset();
 
 		/* Find compiler tools */
-		find_compiler_tools(wcfg.f_samp ? COMPILER_SAMP : COMPILER_OPENMP,
+		find_compiler_tools(wcfg.wd_is_samp ? COMPILER_SAMP : COMPILER_OPENMP,
 						    &found_pawncc_exe, &found_pawncc,
 						    &found_pawndisasm_exe, &found_pawndisasm,
 							&found_pawnc_dll, &found_PAWNC_DLL);
@@ -322,8 +322,8 @@ void wd_apply_pawncc(void)
 		}
 
 		/* Collect source paths */
-		for (i = 0; i < wcfg.sef_count; i++) {
-				const char *item = wcfg.sef_found[i];
+		for (i = 0; i < wcfg.wd_sef_count; i++) {
+				const char *item = wcfg.wd_sef_found_list[i];
 				if (!item)
 						continue;
 

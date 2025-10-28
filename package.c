@@ -102,19 +102,6 @@ struct version_info {
 };
 
 /**
- * is_termux_environment - Check if running in Termux environment
- *
- * Return: 1 if Termux, 0 if not
- */
-static int is_termux_environment(void)
-{
-		struct stat st;
-
-		return (stat("/data/data/com.termux/files/usr/local/lib/", &st) == 0 ||
-				stat("/data/data/com.termux/files/usr/lib/", &st) == 0);
-}
-
-/**
  * get_termux_architecture - Detect or select Termux architecture
  * @out_arch: Output buffer for architecture
  * @buf_size: Buffer size
@@ -234,7 +221,7 @@ static int handle_termux_installation(void)
 				 termux_versions[version_index], architecture);
 
 		/* Trigger download */
-		wcfg.ipackage = 1;
+		wcfg.wd_ipackage = 1;
 		wd_download_file(url, filename);
 
 		return RETZ;
@@ -309,7 +296,7 @@ static int handle_standard_installation(const char *platform)
 				 versions[version_index], platform, archive_ext);
 
 		/* Trigger download */
-		wcfg.ipackage = 1;
+		wcfg.wd_ipackage = 1;
 		wd_download_file(url, filename);
 
 		return RETZ;

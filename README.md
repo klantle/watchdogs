@@ -57,13 +57,13 @@ docker rm -f <container-name>              # remove a container
 - note: Please use termux from https://github.com/termux/termux-app/releases
 ```sh
 # @@@ 1
-termux-setup-storage       # setup your storage
+termux-setup-storage                 # setup your storage
 # @@@ 2
-termux-change-repo         # change repo
+termux-change-repo                   # change repo
 # @@@ 3
-apt update                 # sync repo
+apt update                           # sync repo
 # @@@ 4
-apt upgrade                # upgrade - optional
+apt upgrade                          # upgrade - optional
 # @@@ 5
 pkg install make git
 # @@@ 6
@@ -71,27 +71,29 @@ git clone https://github.com/klantle/watchdogs watch
 # @@@ 7
 cd watch
 # @@@ 8
-make                       # install library & build from source
-# @@@ 9
-./watchdogs.tmux           # run
+make                                 # install library & build from source
+# @@@ 9                              # moving & running
+mv watchdogs.tmux .. && cd ..        # out from watch folder
+mv watchdogs.tmux path/to/yourfolder # where your gamemode's
+./watcdogs.tmux                      # run
 ```
 
 ### [MSYS2](https://www.msys2.org) USAGE
 - note: Please see https://www.msys2.org for introduction of MSYS2
 ```sh
 # @@@ 1
-pacman -Sy                 # sync repo
+pacman -Sy                          # sync repo
 # @@@ 2 - add more mirror (if failed in install packages)
 nano /etc/pacman.d/mirrorlist.mingw64
 nano /etc/pacman.d/mirrorlist.msys
 nano /etc/pacman.d/mirrorlist.ucrt64
-# -- nano; CTRL + X & ENTER
+# * nano; [CTRL] + [X] & [ENTER]
 Server = https://repo.msys2.org/msys/$arch
 Server = https://mirror.msys2.org/msys/$arch
 Server = https://mirror.selfnet.de/msys2/msys/$arch
 Server = https://mirrors.rit.edu/msys2/msys/$arch
 Server = https://ftp.osuosl.org/pub/msys2/msys/$arch
-# sync mirror
+# * sync mirror
 pacman -Sy
 # @@@ 3
 pacman -S make git
@@ -100,26 +102,30 @@ git clone https://github.com/klantle/watchdogs watch
 # @@@ 5
 cd watch
 # @@@ 6
-make                      # install library & build from source
-# @@@ 7
-./watcdogs.win            # run
+make                                 # install library & build from source
+# @@@ 7                              # moving & running
+mv watchdogs.win .. && cd ..         # out from watch folder
+mv watchdogs.win path/to/yourfolder  # where your gamemode's
+./watcdogs.win                       # run
 ```
 
 ### [BASH - LINUX](https://en.wikipedia.org/wiki/Bash_(Unix_shell)) USAGE
 - note: this only in debian/ubuntu based
 ```sh
 # @@@ 1
-apt update                # sync repo
+apt update                           # sync repo
 # @@@ 2
 apt install make git
 # @@@ 3
 git clone https://github.com/klantle/watchdogs watch
 # @@@ 4
 cd watch
-# @@@ 5
-make                      # install library & build from source
-# @@@ 6
-./watchdogs               # run
+# @@@ 5 
+make                                 # install library & build from source\
+# @@@ 6                              # moving & running
+mv watchdogs .. && cd ..             # out from watch folder
+mv watchdogs path/to/yourfolder      # where your gamemode's
+./watcdogs                           # run
 ```
 
 ### [XTERM](https://invisible-island.net/xterm/) USAGE
@@ -173,7 +179,7 @@ Usage: help | help [<command>]
   input = "gamemodes/bare.pwn"   # input compiler
   output = "gamemodes/bare.amx"  # output compiler
 [depends]                        # depends url - max depends: 101
-	aio_repo = ["Y-Less/sscanf:v2.13.8", "samp-incognito/samp-streamer-plugin:v2.9.6"]
+	wd_toml_aio_repo = ["Y-Less/sscanf:v2.13.8", "samp-incognito/samp-streamer-plugin:v2.9.6"]
 ```
 
 ### [VSCODE Usage](https://code.visualstudio.com/docs/debugtest/tasks)

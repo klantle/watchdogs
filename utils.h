@@ -18,19 +18,30 @@
 #include <strings.h>
 #include <io.h>
 #define __PATH_SYM "\\"
-#define IS_PATH_SYM(c) ((c) == '/' || (c) == '\\')
-#define mkdir(path) _mkdir(path)
-#define MKDIR(path) mkdir(path)
-#define Sleep(sec) Sleep((sec)*1000)
-#define setenv(x,y,z) _putenv_s(x,y)
-#define SETEN(x,y,z) setenv(x,y)
-static inline int win32_chmod(const char *path) {
+#define IS_PATH_SYM(c) \
+        ((c) == '/' || (c) == '\\')
+#define mkdir(path) \
+        _mkdir(path)
+#define MKDIR(path) \
+        mkdir(path)
+#define Sleep(sec) \
+        Sleep((sec)*1000)
+#define sleep(x) \
+        Sleep(x)
+#define setenv(x,y,z) \
+        _putenv_s(x,y)
+#define SETEN(x,y,z) \
+        setenv(x,y)
+static inline int
+win32_chmod(const char *path) {
         int mode = _S_IREAD |
                    _S_IWRITE;
         return chmod(path, mode);
 }
-#define CHMOD(path, mode) _chmod(path, mode)
-#define FILE_MODE _S_IREAD | _S_IWRITE
+#define CHMOD(path, mode) \
+        _chmod(path, mode)
+#define FILE_MODE \
+        _S_IREAD | _S_IWRITE
 #define getcwd _getcwd
 #else
 #include <sys/utsname.h>
@@ -38,10 +49,14 @@ static inline int win32_chmod(const char *path) {
 #include <unistd.h>
 #include <fnmatch.h>
 #define __PATH_SYM "/"
-#define IS_PATH_SYM(c) ((c) == '/')
-#define MKDIR(x) mkdir(x,0755)
-#define SETENV(x,y,z) setenv(x,y,z)
-#define CHMOD(x,y) chmod(x,y)
+#define IS_PATH_SYM(c) \
+        ((c) == '/')
+#define MKDIR(x) \
+        mkdir(x,0755)
+#define SETENV(x,y,z) \
+        setenv(x,y,z)
+#define CHMOD(x,y) \
+        chmod(x,y)
 #define FILE_MODE 0777
 #endif
 #ifndef PATH_MAX
@@ -53,6 +68,8 @@ static inline int win32_chmod(const char *path) {
 #undef MAX_PATH
 #define MAX_PATH PATH_MAX + 3836
 #endif
+
+#define WD_ISNULL NULL
 
 #ifndef min3
 #define min3(a, b, c) \
@@ -109,22 +126,39 @@ static inline int win32_chmod(const char *path) {
 #define MAX_SEF_PATH_SIZE PATH_MAX
 
 typedef struct {
-        int ipackage;
-        int idepends;
-        const char* os;
-        char *os_type;
-        char *f_samp;
-        char *f_openmp;
-        char* pointer_samp;
-        char* pointer_openmp;
-        int compiler_error;
-        size_t sef_count;
-        char sef_found[MAX_SEF_ENTRIES][MAX_SEF_PATH_SIZE];
-        char* server_odbg;
-        char* ci_options;
-        char* aio_repo;
-        char* gm_input;
-        char* gm_output;
+        const char*
+                wd_toml_os_type;
+        int
+                wd_ipackage;
+        int
+                wd_idepends;
+        char
+                *wd_os_type;
+        char
+                *wd_is_samp;
+        char
+                *wd_is_omp;
+        char*
+                wd_ptr_samp;
+        char*
+                wd_ptr_omp;
+        int
+                wd_compiler_stats;
+        size_t
+                wd_sef_count;
+        char
+                wd_sef_found_list
+                        [MAX_SEF_ENTRIES]
+                        [MAX_SEF_PATH_SIZE];
+        char*
+                wd_runn_mode;
+        char*
+                wd_toml_aio_opt;
+        char*
+                wd_toml_aio_repo;
+        char*
+                wd_toml_gm_input;
+        char*   wd_toml_gm_output;
 } WatchdogConfig;
 
 extern WatchdogConfig wcfg;
@@ -135,20 +169,20 @@ extern const char* __command[];
 extern const size_t __command_len;
 int mkdir_recursive(const char *path);
 int wd_run_command(const char *cmd);
+int is_termux_environment(void);
 void print_file_to_terminal(const char *path);
 int wd_set_permission(const char *src, const char *dst);
 int wd_set_title(const char *__title);
-char* readline_colored(const char* prompt);
 void wd_strip_dot_fns(char *dst, size_t dst_sz, const char *src);
 bool strfind(const char *text, const char *pattern);
 void wd_escape_quotes(char *dest, size_t size, const char *src);
-extern const char* wd_find_near_command(
+extern const char*
+wd_find_near_command(
         const char *ptr_command, const char *__commands[],
         size_t num_cmds, int *out_distance
 );
 const char* wd_detect_os(void);
 int kill_process(const char *name);
-void kill_process_safe(const char *name);
 int dir_exists(const char *path);
 int path_exists(const char *path);
 int dir_writable(const char *path);

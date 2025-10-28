@@ -6,7 +6,7 @@
 #include <sys/stat.h>
 #include <limits.h>
 
-#include "cJSON/cJSON.h"
+#include "include/cJSON/cJSON.h"
 #include "chain.h"
 #include "color.h"
 #include "extra.h"
@@ -18,10 +18,10 @@
  */
 void wd_stop_server_tasks(void)
 {
-		kill_process_safe("samp-server.exe");
-		kill_process_safe("samp03svr");
-		kill_process_safe("omp-server.exe");
-		kill_process_safe("omp-server");
+		kill_process("samp-server.exe");
+		kill_process("samp03svr");
+		kill_process("omp-server.exe");
+		kill_process("omp-server");
 }
 
 /**
@@ -87,9 +87,6 @@ void display_server_logs(int ret)
 {
 		FILE *log_file;
 		int ch;
-		
-		printf_color(COL_YELLOW, "Press enter to print logs..");
-		getchar();
 
 		if (!ret)
 			log_file = fopen("server_log.txt", "r");
@@ -154,12 +151,8 @@ void wd_run_samp_server(const char *gamemode, const char *server_bin)
 
 		ret = system(command);
 		if (ret == 0) {
-			if (!strcmp(wcfg.os_type, OS_SIGNAL_LINUX)) {
-#ifdef _WIN32
-				Sleep(2000);
-#else
+			if (!strcmp(wcfg.wd_os_type, OS_SIGNAL_LINUX)) {
 				sleep(2);
-#endif
 				display_server_logs(0);
 			}
 		} else {
@@ -170,10 +163,10 @@ void wd_run_samp_server(const char *gamemode, const char *server_bin)
 		restore_server_config();
 
 		/* Debug mode cleanup */
-		if (wcfg.server_odbg && strcmp(wcfg.server_odbg, "debug") == 0) {
-				if (!strcmp(wcfg.os_type, OS_SIGNAL_WINDOWS)) {
+		if (wcfg.wd_runn_mode && strcmp(wcfg.wd_runn_mode, "debug") == 0) {
+				if (!strcmp(wcfg.wd_os_type, OS_SIGNAL_WINDOWS)) {
 						kill_process("samp-server.exe");
-				} else if (!strcmp(wcfg.os_type, OS_SIGNAL_LINUX)) {
+				} else if (!strcmp(wcfg.wd_os_type, OS_SIGNAL_LINUX)) {
 						kill_process("samp03svr");
 				}
 		}
@@ -350,11 +343,7 @@ void wd_run_omp_server(const char *gamemode, const char *server_bin)
 
 		ret = system(command);
 		if (ret == 0) {
-#ifdef _WIN32
-			Sleep(2000);
-#else
 			sleep(2);
-#endif
 			display_server_logs(1);
 		} else {
 			printf_color(COL_RED, "Server startup failed!\n");
@@ -364,10 +353,10 @@ void wd_run_omp_server(const char *gamemode, const char *server_bin)
 		restore_omp_config();
 
 		/* Debug mode cleanup */
-		if (wcfg.server_odbg && strcmp(wcfg.server_odbg, "debug") == 0) {
-				if (!strcmp(wcfg.os_type, OS_SIGNAL_WINDOWS)) {
+		if (wcfg.wd_runn_mode && strcmp(wcfg.wd_runn_mode, "debug") == 0) {
+				if (!strcmp(wcfg.wd_os_type, OS_SIGNAL_WINDOWS)) {
 						kill_process("omp-server.exe");
-				} else if (!strcmp(wcfg.os_type, OS_SIGNAL_LINUX)) {
+				} else if (!strcmp(wcfg.wd_os_type, OS_SIGNAL_LINUX)) {
 						kill_process("omp-server");
 				}
 		}

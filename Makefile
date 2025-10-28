@@ -19,9 +19,10 @@ export LANG := C.UTF-8
 VERSION  	 = WD-10.21
 FULL_VERSION = WD-25.10.21.0
 TARGET   	 ?= watchdogs
-CC       	 ?= gcc
+CC       	 ?= clang
+STRIP        ?= llvm-strip
 
-CFLAGS   = -Os -pipe -s -fdata-sections -ffunction-sections -fPIE -I/usr/include/
+CFLAGS   = -Os -pipe -s -fdata-sections -ffunction-sections -fPIE
 LDFLAGS  = -Wl,-O1,--gc-sections -lm -lcurl -lreadline -lncurses -larchive -lssl -lcrypto
 
 SRCS = extra.c chain.c utils.c depends.c hardware.c compiler.c archive.c curl.c package.c server.c crypto.c \
@@ -29,7 +30,7 @@ SRCS = extra.c chain.c utils.c depends.c hardware.c compiler.c archive.c curl.c 
 
 OBJS = $(SRCS:.c=.o)
 
-.PHONY: install all clean linux termux windows compress strip debug windows-debug
+.PHONY: install all clean linux termux windows compress strip debug termux-debug windows-debug
 
 install:
 	@echo "$(YELLOW)==>$(RESET) Detecting system environment..."
@@ -47,7 +48,9 @@ install:
 		pacman -Sy --noconfirm && \
 		pacman -S --needed --noconfirm \
 			base-devel \
-			mingw-w64-ucrt-x86_64-toolchain \
+			mingw-w64-ucrt-x86_64-clang \
+			mingw-w64-ucrt-x86_64-lld \
+			mingw-w64-ucrt-x86_64-libc++ \
 			mingw-w64-ucrt-x86_64-curl \
 			mingw-w64-ucrt-x86_64-readline \
 			mingw-w64-ucrt-x86_64-ncurses \
@@ -60,15 +63,20 @@ install:
 		sudo dpkg --add-architecture i386; \
 		sudo apt update -y && \
         sudo apt install -y build-essential \
-            libssl-dev \
-            libncurses5-dev \
-            libc6:i386 \
-            libstdc++6:i386 \
-            libncursesw5-dev \
-            libcurl4-openssl-dev \
-            libreadline-dev \
-            libarchive-dev \
-            zlib1g-dev \
+			clang \
+			lld \
+			libc++-dev \
+			libc++abi-dev \
+			make \
+			cmake \
+			ninja-build \
+			libssl-dev \
+			libncurses5-dev \
+			libncursesw5-dev \
+			libcurl4-openssl-dev \
+			libreadline-dev \
+			libarchive-dev \
+			zlib1g-dev \
 			libonig-dev \
             xterm; \
 		$(MAKE) linux; \
@@ -94,7 +102,7 @@ $(TARGET): $(OBJS)
 strip:
 	@if [ -f "$(TARGET)" ]; then \
 		printf "$(YELLOW)==>$(RESET) Stripping binary...\n"; \
-		strip --strip-all $(TARGET) || true; \
+		$(STRIP) --strip-all $(TARGET) || true; \
 	else \
 		printf "$(YELLOW)==>$(RESET) Nothing to strip\n"; \
 	fi
@@ -113,12 +121,12 @@ clean:
 
 linux:
 	@printf "$(YELLOW)==>$(RESET) Building $(TARGET) Version $(VERSION) Full Version $(FULL_VERSION)\n"
-	$(CC) $(CFLAGS) $(SRCS) -o $(TARGET) $(LDFLAGS)
+	$(CC) $(CFLAGS) -I/usr/include/ $(SRCS) -o $(TARGET) $(LDFLAGS)
 	@printf "$(YELLOW)==>$(RESET) Build complete: $(TARGET) Version $(VERSION) Full Version $(FULL_VERSION)\n"
 
 termux:
 	@printf "$(YELLOW)==>$(RESET) Building Termux target with clang...\n"
-	CC=clang $(CC) $(CFLAGS) -D__ANDROID__ -fPIE -I/data/data/com.termux/files/usr/include $(SRCS) -o watchdogs.tmux $(LDFLAGS) -pie
+	$(CC) $(CFLAGS) -I/data/data/com.termux/files/usr/include -I$PREFIX/lib -I$PREFIX/bin -D__ANDROID__ -fPIE $(SRCS) -o watchdogs.tmux $(LDFLAGS) -pie
 	@printf "$(YELLOW)==>$(RESET) Build complete: watchdogs.tmux Version $(VERSION) Full Version $(FULL_VERSION)\n"
 
 windows:
@@ -128,8 +136,13 @@ windows:
 
 debug:
 	@printf "$(YELLOW)==>$(RESET) Building DEBUG Version $(VERSION) Full Version $(FULL_VERSION)\n"
-	$(CC) $(CFLAGS) $(SRCS) -g -O0 -D_DBG_PRINT -Wall -o watchdogs.debug $(LDFLAGS)
+	$(CC) $(CFLAGS) -I/usr/include/ $(SRCS) -g -O0 -D_DBG_PRINT -Wall -o watchdogs.debug $(LDFLAGS)
 	@printf "$(YELLOW)==>$(RESET) Build complete: watchdogs.debug Version $(VERSION) Full Version $(FULL_VERSION)\n"
+
+termux-debug:
+	@printf "$(YELLOW)==>$(RESET) Building DEBUG Version $(VERSION) Full Version $(FULL_VERSION)\n"
+	$(CC) $(CFLAGS) I/data/data/com.termux/files/usr/include -I$PREFIX/lib -I$PREFIX/bin -D__ANDROID__ $(SRCS) -g -O0 -D_DBG_PRINT -Wall -o watchdogs.debug.tmux $(LDFLAGS)
+	@printf "$(YELLOW)==>$(RESET) Build complete: watchdogs.debug.tmux Version $(VERSION) Full Version $(FULL_VERSION)\n"
 
 windows-debug:
 	@printf "$(YELLOW)==>$(RESET) Building DEBUG Version $(VERSION) Full Version $(FULL_VERSION)\n"

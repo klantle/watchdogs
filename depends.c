@@ -544,6 +544,75 @@ static int handle_base_dependency(const struct dep_repo_info *dep_repo_info,
 		return ret;
 }
 
+/**
+ * __convert_path - convert backslashes to forward slashes in path
+ * @path: path string to convert
+ */
+void __convert_path(char *path)
+{
+		char *p;
+
+		for (p = path; *p; p++) {
+				if (*p == '\\')
+						*p = '/';
+		}
+}
+
+/**
+ * dep_add_ncheck_hash - add file hash to dependency list after checking duplicates
+ * @file_path: full path to the file for hashing
+ * @json_path: relative path for JSON storage
+ */
+void dep_add_ncheck_hash(cJSON *depends, const char *file_path, const char *json_path)
+{
+		char convert_f_path[PATH_MAX], convert_j_path[PATH_MAX];
+		unsigned char hash[32]; /* Buffer for SHA256 hash */
+		char *hex;
+		int h_exists = 0;
+		int array_size;
+		int j;
+
+		/* Convert paths to use forward slashes */
+		strncpy(convert_f_path, file_path, sizeof(convert_f_path));
+		convert_f_path[sizeof(convert_f_path) - 1] = '\0';
+		__convert_path(convert_f_path);
+
+		strncpy(convert_j_path, json_path, sizeof(convert_j_path));
+		convert_j_path[sizeof(convert_j_path) - 1] = '\0';
+		__convert_path(convert_j_path);
+
+		printf_info("\tHashing convert path: %s\n", convert_f_path);
+
+		/* Calculate SHA256 hash of the file */
+		if (sha256_hash(convert_f_path, hash) == RETN) {
+				to_hex(hash, 32, &hex);
+
+				/* Check if hash already exists in the list */
+				array_size = cJSON_GetArraySize(depends);
+				for (j = 0; j < array_size; j++) {
+						cJSON *_e_item = cJSON_GetArrayItem(depends, j);
+						if (cJSON_IsString(_e_item) && 
+						    strcmp(_e_item->valuestring, hex) == 0) {
+								h_exists = 1;
+								break;
+						}
+				}
+
+				/* Add hash if it doesn't exist */
+				if (!h_exists) {
+						cJSON_AddItemToArray(depends, cJSON_CreateString(hex));
+						printf_info("\tAdded hash for: %s to wd_depends.json\n", convert_j_path);
+				} else {
+						printf_info("\tHash already exists for: %s in wd_depends.json\n", convert_j_path);
+						printf_info("\t\tHash: %s\n", hex);
+				}
+
+				wdfree(hex);
+		} else {
+				printf_error("Failed to hash: %s (convert: %s)\n", convert_j_path, convert_f_path);
+		}
+}
+
 /*
  * dep_implementation_samp_conf - Apply plugins name to SA-MP config
  * dep_implementation_omp_conf - Apply plugins name to Open.MP config
@@ -707,6 +776,7 @@ void dep_implementation_omp_conf(const char* filename, const char* plugin_name) 
 /**
  * dep_add_include - Added Include to Gamemode
  */
+void dep_add_include(const char *modes, char *dep_name, char *dep_after);
 void dep_add_include(const char *modes,
 					 char *dep_name,
 					 char *dep_after) {
@@ -790,23 +860,9 @@ const char *dep_get_filename(const char *path)
 }
 
 /**
- * __convert_path - convert backslashes to forward slashes in path
- * @path: path string to convert
- */
-static void __convert_path(char *path)
-{
-		char *p;
-
-		for (p = path; *p; p++) {
-				if (*p == '\\')
-						*p = '/';
-		}
-}
-
-/**
  * Process all .inc files recursively
  */
-void process_inc_files(const char *base_path, const char *dest_base)
+void process_inc_files(cJSON *depends, const char *base_path, const char *dest_base)
 {
 		DIR *dir;
 		struct dirent *item;
@@ -829,7 +885,7 @@ void process_inc_files(const char *base_path, const char *dest_base)
 				continue;
 
 			if (S_ISDIR(statbuf.st_mode)) {
-				process_inc_files(f_path, dest_base);
+				process_inc_files(depends, f_path, dest_base);
 			} else if (S_ISREG(statbuf.st_mode)) {
 				/* Check if it's .inc file */
 				dot_ext = strrchr(item->d_name, '.');
@@ -865,7 +921,7 @@ void process_inc_files(const char *base_path, const char *dest_base)
 				}
 
 				/* Add to dependencies */
-				dep_add_ncheck_hash(dest_path, dest_path);
+				dep_add_ncheck_hash(depends, dest_path, dest_path);
 				
 				printf_info("\tMoved folder: %s to %s/\n", dir_name,
 					!strcmp(wcfg.wd_is_omp, CRC32_TRUE) ? 
@@ -878,69 +934,19 @@ void process_inc_files(const char *base_path, const char *dest_base)
 }
 
 /**
- * dep_add_ncheck_hash - add file hash to dependency list after checking duplicates
- * @file_path: full path to the file for hashing
- * @json_path: relative path for JSON storage
- */
-void dep_add_ncheck_hash(const char *file_path, const char *json_path)
-{
-		char convert_f_path[PATH_MAX], convert_j_path[PATH_MAX];
-		char *hex;
-		int h_exists = 0;
-		int array_size;
-		int j;
-
-		/* Convert paths to use forward slashes */
-		strncpy(convert_f_path, file_path, sizeof(convert_f_path));
-		convert_f_path[sizeof(convert_f_path) - 1] = '\0';
-		__convert_path(convert_f_path);
-
-		strncpy(convert_j_path, json_path, sizeof(convert_j_path));
-		convert_j_path[sizeof(convert_j_path) - 1] = '\0';
-		__convert_path(convert_j_path);
-
-		printf_info("\tHashing convert path: %s\n", convert_f_path);
-
-		/* Calculate SHA256 hash of the file */
-		if (sha256_hash(convert_f_path, hash) == RETN) {
-				to_hex(hash, 32, &hex);
-
-				/* Check if hash already exists in the list */
-				array_size = cJSON_GetArraySize(depends);
-				for (j = 0; j < array_size; j++) {
-						cJSON *_e_item = cJSON_GetArrayItem(depends, j);
-						if (cJSON_IsString(_e_item) && 
-						    strcmp(_e_item->valuestring, hex) == 0) {
-								h_exists = 1;
-								break;
-						}
-				}
-
-				/* Add hash if it doesn't exist */
-				if (!h_exists) {
-						cJSON_AddItemToArray(depends, cJSON_CreateString(hex));
-						printf_info("\tAdded hash for: %s to wd_depends.json\n", convert_j_path);
-				} else {
-						printf_info("\tHash already exists for: %s in wd_depends.json\n", convert_j_path);
-						printf_info("\t\tHash: %s\n", hex);
-				}
-
-				wdfree(hex);
-		} else {
-				printf_error("Failed to hash: %s (convert: %s)\n", convert_j_path, convert_f_path);
-		}
-}
-
-/**
  * move_dependency_files - move dependency files and maintain cache of file hashes
  * @depends_folder: path to the folder containing dependencies
  */
 void move_dependency_files(const char *depends_folder)
 {
-		cJSON *root, *depends, *_e_root = NULL, *_e_depends = NULL;
-		unsigned char hash[32]; /* Buffer for SHA256 hash */
+		cJSON *root;
+		cJSON *depends;
+		cJSON *_e_root = NULL;
+		cJSON *_e_depends = NULL;
 		FILE *e_file, *fp_cache;
-		char __sz_dp_fp[PATH_MAX], __sz_dp_fc[PATH_MAX], __sz_dp_inc[PATH_MAX];
+		char __sz_dp_fp[PATH_MAX],
+			 __sz_dp_fc[PATH_MAX],
+			 __sz_dp_inc[PATH_MAX];
 		char __cwd[PATH_MAX], *dep_inc_path = NULL;
 		int _wd_log_acces, __dll_plugins_f, __so_plugins_f;
 		int __dll_plugins_r, __so_plugins_r, __dll_components_f;
@@ -1043,7 +1049,7 @@ __default:
 					
 					/* Add to hash list */
 					snprintf(__sz_json_item, sizeof(__sz_json_item), "%s", filename_only);
-					dep_add_ncheck_hash(__sz_json_item, __sz_json_item);
+					dep_add_ncheck_hash(depends, __sz_json_item, __sz_json_item);
 
 					const char *dep_n;
 					dep_n = dep_get_filename(wcfg.wd_sef_found_list[i]); 
@@ -1089,7 +1095,8 @@ __default:
 					system(__sz_cp);
 					
 					snprintf(__sz_json_item, sizeof(__sz_json_item), "%s", filename_only);
-					dep_add_ncheck_hash(__sz_json_item, __sz_json_item);
+					dep_add_ncheck_hash(depends, __sz_json_item, __sz_json_item);
+
 					const char *dep_n;
 					dep_n = dep_get_filename(wcfg.wd_sef_found_list[i]); 
 					char __sz_depends_name[PATH_MAX];
@@ -1134,7 +1141,8 @@ __default:
 					system(__sz_cp);
 					
 					snprintf(__sz_json_item, sizeof(__sz_json_item), "%s", filename_only);
-					dep_add_ncheck_hash(__sz_json_item, __sz_json_item);
+					dep_add_ncheck_hash(depends, __sz_json_item, __sz_json_item);
+
 					const char *dep_n;
 					dep_n = dep_get_filename(wcfg.wd_sef_found_list[i]); 
 					char __sz_depends_name[PATH_MAX];
@@ -1179,7 +1187,8 @@ __default:
 					system(__sz_cp);
 					
 					snprintf(__sz_json_item, sizeof(__sz_json_item), "%s", filename_only);
-					dep_add_ncheck_hash(__sz_json_item, __sz_json_item);
+					dep_add_ncheck_hash(depends, __sz_json_item, __sz_json_item);
+
 					const char *dep_n;
 					dep_n = dep_get_filename(wcfg.wd_sef_found_list[i]); 
 					char __sz_depends_name[PATH_MAX];
@@ -1225,7 +1234,7 @@ __default:
 							system(__sz_cp);
 							
 							snprintf(__sz_json_item, sizeof(__sz_json_item), "%s", filename_only);
-							dep_add_ncheck_hash(__sz_json_item, __sz_json_item);
+							dep_add_ncheck_hash(depends, __sz_json_item, __sz_json_item);
 					}
 			}
 
@@ -1244,7 +1253,7 @@ __default:
 							system(__sz_cp);
 							
 							snprintf(__sz_json_item, sizeof(__sz_json_item), "%s", filename_only);
-							dep_add_ncheck_hash(__sz_json_item, __sz_json_item);
+							dep_add_ncheck_hash(depends, __sz_json_item, __sz_json_item);
 					}
 			}
 
@@ -1263,7 +1272,7 @@ __default:
 							system(__sz_cp);
 							
 							snprintf(__sz_json_item, sizeof(__sz_json_item), "%s", filename_only);
-							dep_add_ncheck_hash(__sz_json_item, __sz_json_item);
+							dep_add_ncheck_hash(depends, __sz_json_item, __sz_json_item);
 					}
 			}
 
@@ -1282,7 +1291,7 @@ __default:
 							system(__sz_cp);
 							
 							snprintf(__sz_json_item, sizeof(__sz_json_item), "%s", filename_only);
-							dep_add_ncheck_hash(__sz_json_item, __sz_json_item);
+							dep_add_ncheck_hash(depends, __sz_json_item, __sz_json_item);
 					}
 			}
 		}
@@ -1291,7 +1300,7 @@ __default:
 		snprintf(d_b, sizeof(d_b), "%s/include", 
 				!strcmp(wcfg.wd_is_omp, CRC32_TRUE) ? "qawno" : "pawno");
 
-		process_inc_files(depends_folder, d_b);
+		process_inc_files(depends, depends_folder, d_b);
 
 		/* Process INC files in root folder (excluding include subfolder) */
 		wd_sef_fdir_reset();
@@ -1312,7 +1321,7 @@ __default:
 							snprintf(__sz_json_item, sizeof(__sz_json_item), "pawno/%s", filename_only);
 					else if (strfind(__sz_dp_inc, "qawno"))
 							snprintf(__sz_json_item, sizeof(__sz_json_item), "qawno/%s", filename_only);
-					dep_add_ncheck_hash(__sz_json_item, __sz_json_item);
+					dep_add_ncheck_hash(depends, __sz_json_item, __sz_json_item);
 
 					char errbuf[256];
 					toml_table_t *_toml_config;

@@ -645,14 +645,14 @@ int wd_RunCompiler(const char *arg, const char *compile_args)
                                 {
                                     remove(_container_output);
                                 }
-                                wcfg.wd_compiler_stats++;
+                                ++wcfg.wd_compiler_stats;
                             } 
                             else 
                             {
                                 /* Decrement error counter on successful compilation */
                                 if (wcfg.wd_compiler_stats) 
                                 {
-                                    wcfg.wd_compiler_stats--;
+                                    --wcfg.wd_compiler_stats;
                                 }
                             }
                         } 

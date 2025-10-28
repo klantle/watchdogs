@@ -202,7 +202,7 @@ int wd_download_file(const char *url, const char *filename)
 								     response_code, res);
 				}
 
-				retry_count++;
+				++retry_count;
 				sleep(3);
 		} while (retry_count < max_retries);
 

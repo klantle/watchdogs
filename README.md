@@ -179,7 +179,7 @@ Usage: help | help [<command>]
   input = "gamemodes/bare.pwn"   # input compiler
   output = "gamemodes/bare.amx"  # output compiler
 [depends]                        # depends url - max depends: 101
-	wd_toml_aio_repo = ["Y-Less/sscanf:v2.13.8", "samp-incognito/samp-streamer-plugin:v2.9.6"]
+  wd_toml_aio_repo = ["Y-Less/sscanf:v2.13.8", "samp-incognito/samp-streamer-plugin:v2.9.6"]
 ```
 
 ### [VSCODE Usage](https://code.visualstudio.com/docs/debugtest/tasks)

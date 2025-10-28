@@ -6,7 +6,6 @@
 #include <time.h>
 #include <readline/readline.h>
 
-#include "include/tomlc/toml.h"
 #include "color.h"
 #include "extra.h"
 #include "utils.h"

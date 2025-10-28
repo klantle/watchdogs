@@ -6,7 +6,6 @@
 #include <sys/stat.h>
 #include <limits.h>
 
-#include "include/cJSON/cJSON.h"
 #include "chain.h"
 #include "color.h"
 #include "extra.h"

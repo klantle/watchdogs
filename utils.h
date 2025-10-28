@@ -11,6 +11,8 @@
 #include <dirent.h>
 #include <sys/types.h>
 #include <sys/stat.h>
+#include "include/cJSON/cJSON.h"
+#include "include/tomlc/toml.h"
 #ifdef _WIN32
 #include <windows.h>
 #include <direct.h>

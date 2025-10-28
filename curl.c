@@ -49,6 +49,30 @@ static int progress_callback(void *ptr, curl_off_t dltotal,
 		return RETZ;
 }
 
+/*
+ WriteMemoryCallback - Processing cURL to memory
+ */
+size_t WriteMemoryCallback(void *contents,
+								  size_t size,
+								  size_t nmemb,
+								  void *userp) {
+		size_t realsize = size * nmemb;
+		struct MemoryStruct *mem = (struct MemoryStruct *)userp;
+
+		char *ptr = realloc(mem->memory, mem->size + realsize + 1);
+		if (ptr == NULL) {
+			fprintf(stderr, "Out of memory!\n");
+			return 0;
+		}
+
+		mem->memory = ptr;
+		memcpy(&(mem->memory[mem->size]), contents, realsize);
+		mem->size += realsize;
+		mem->memory[mem->size] = 0;
+
+		return realsize;
+}
+
 /**
  * extract_archive - Extract downloaded archive based on file type
  * @filename: Archive filename

@@ -26,7 +26,6 @@
 #include <archive_entry.h>
 #include <errno.h>
 
-#include "include/tomlc/toml.h"
 #include "color.h"
 #include "extra.h"
 #include "utils.h"
@@ -40,8 +39,9 @@ const char*
 			"kill",
 			"title",
 			"toml",
-			"hardware",
 			"install",
+			"upstream",
+			"hardware",
 			"gamemode",
 			"pawncc",
 			"compile",

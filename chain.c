@@ -16,12 +16,12 @@
 #include <sys/stat.h>
 #include <sys/types.h>
 #include <archive.h>
+#include <curl/curl.h>
 #include <archive_entry.h>
 #include <ncursesw/curses.h>
 #include <readline/readline.h>
 #include <readline/history.h>
 
-#include "include/tomlc/toml.h"
 #include "color.h"
 #include "extra.h"
 #include "utils.h"
@@ -137,6 +137,8 @@ _reexecute_command:
                 println(" -> title");
                 println(" -> toml");
                 println(" -> install");
+                println(" -> upstream");
+                println(" -> hardware");
                 println(" -> gamemode");
                 println(" -> pawncc");
                 println(" -> compile");
@@ -145,13 +147,13 @@ _reexecute_command:
                 println(" -> debug");
                 println(" -> stop");
                 println(" -> restart");
-                println(" -> hardware");
             } else if (strcmp(arg, "clear") == 0) { println("clear: clear screen watchdogs. | Usage: \"clear\"");
             } else if (strcmp(arg, "exit") == 0) { println("exit: exit from watchdogs. | Usage: \"exit\"");
             } else if (strcmp(arg, "kill") == 0) { println("kill: kill - refresh terminal watchdogs. | Usage: \"kill\"");
             } else if (strcmp(arg, "title") == 0) { println("title: set-title terminal watchdogs. | Usage: \"title\" | [<args>]");
             } else if (strcmp(arg, "toml") == 0) { println("toml: re-create toml - re-create & re-write watchdogs.toml\" | Usage: \"toml\"");
             } else if (strcmp(arg, "install") == 0) { println("install: download & install depends | Usage: \"install\" | [<args>] - install github.com/github.com/gitea.com:user/repo:vtags");
+            } else if (strcmp(arg, "upstream") == 0) { println("upstream: get newer commits from upstream (gitlab). | Usage: \"upstream\"");
             } else if (strcmp(arg, "hardware") == 0) { println("hardware: hardware information. | Usage: \"hardware\"");
             } else if (strcmp(arg, "gamemode") == 0) { println("gamemode: gamemode - download sa-mp gamemode. | Usage: \"gamemode\"");
             } else if (strcmp(arg, "pawncc") == 0) { println("pawncc: pawncc - download sa-mp pawncc. | Usage: \"pawncc\"");
@@ -204,11 +206,12 @@ _reexecute_command:
                 }
 #endif
 
-                const char *BG  = "\x1b[48;5;235m";
-                const char *FG  = "\x1b[97m";
-                const char *BORD= "\x1b[33m";
+                // Borders Colors
+                const char *BG = "\x1b[48;5;235m";
+                const char *FG = "\x1b[97m";
+                const char *BORD = "\x1b[33m";
                 const char *RST = "\x1b[0m";
-
+                                
                 printf("%s%s+------------------------------------------+%s\n", BORD, FG, RST);
 
                 char line[1024];
@@ -224,8 +227,94 @@ _reexecute_command:
                 printf("%s%s+------------------------------------------+%s\n", BORD, FG, RST);
                 fclose(procc_f);
             }
-            return RETN;
 
+            return RETN;
+        } else if (strcmp(ptr_command, "upstream") == 0) {
+            CURL *curl_handle;
+            CURLcode res;
+            struct MemoryStruct chunk;
+
+            chunk.memory = malloc(1);
+            chunk.size = 0;
+
+            curl_global_init(CURL_GLOBAL_DEFAULT);
+            curl_handle = curl_easy_init();
+
+            if (!curl_handle) {
+                fprintf(stderr, "Failed to initialize curl\n");
+                return 1;
+            }
+
+            curl_easy_setopt(curl_handle, CURLOPT_URL,
+                            "https://gitlab.com/api/v4/projects/75403219/repository/commits");
+            curl_easy_setopt(curl_handle, CURLOPT_WRITEFUNCTION, WriteMemoryCallback);
+            curl_easy_setopt(curl_handle, CURLOPT_WRITEDATA, (void *)&chunk);
+            curl_easy_setopt(curl_handle, CURLOPT_USERAGENT, "libcurl-agent/1.0");
+
+            res = curl_easy_perform(curl_handle);
+            if (res != CURLE_OK) {
+                fprintf(stderr, "curl_easy_perform() failed: %s\n",
+                        curl_easy_strerror(res));
+            } else {
+                cJSON *root = cJSON_Parse(chunk.memory);
+                if (!root) {
+                    fprintf(stderr, "JSON parsing failed\n");
+                } else {
+                    cJSON *output_array = cJSON_CreateArray();
+                    int array_size = cJSON_GetArraySize(root);
+
+                    for (int i = 0; i < array_size; i++) {
+                        cJSON *item = cJSON_GetArrayItem(root, i);
+                        if (!item)
+                            continue;
+
+                        cJSON *id = cJSON_GetObjectItem(item, "id");
+                        cJSON *title = cJSON_GetObjectItem(item, "title");
+                        cJSON *author = cJSON_GetObjectItem(item, "author_name");
+                        cJSON *date = cJSON_GetObjectItem(item, "created_at");
+
+                        cJSON *commit_obj = cJSON_CreateObject();
+                        cJSON_AddStringToObject(commit_obj, "id",
+                                                id ? id->valuestring : "");
+                        cJSON_AddStringToObject(commit_obj, "title",
+                                                title ? title->valuestring : "");
+                        cJSON_AddStringToObject(commit_obj, "author",
+                                                author ? author->valuestring : "");
+                        cJSON_AddStringToObject(commit_obj, "date",
+                                                date ? date->valuestring : "");
+
+                        cJSON_AddItemToArray(output_array, commit_obj);
+                    }
+
+                    char *pretty = cJSON_Print(output_array);
+
+                    // Borders Colors
+                    const char *BG = "\x1b[48;5;235m";
+                    const char *FG = "\x1b[97m";
+                    const char *BORD = "\x1b[33m";
+                    const char *RST = "\x1b[0m";
+                
+                    printf("%s%s+------------------------------------------+%s\n", BORD, FG, RST);
+
+                    char *line = strtok(pretty, "\n");
+                    while (line) {
+                        printf("%s%s|%s %-40.40s %s|%s\n", BORD, FG, BG, line, BORD, RST);
+                        line = strtok(NULL, "\n");
+                    }
+
+                    printf("%s%s+------------------------------------------+%s\n", BORD, FG, RST);
+
+                    free(pretty);
+                    cJSON_Delete(output_array);
+                    cJSON_Delete(root);
+                }
+            }
+
+            curl_easy_cleanup(curl_handle);
+            curl_global_cleanup();
+            wdfree(chunk.memory);
+
+            return RETN;
         } else if (strcmp(ptr_command, "hardware") == 0) {
             printf("Basic Summary:\n");
             hardware_show_summary();

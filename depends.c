@@ -6,8 +6,6 @@
 #include <sys/stat.h>
 #include <curl/curl.h>
 
-#include "include/cJSON/cJSON.h"
-#include "include/tomlc/toml.h"
 #include "color.h"
 #include "extra.h"
 #include "utils.h"

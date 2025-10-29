@@ -608,10 +608,15 @@ void dep_add_ncheck_hash(cJSON *depends, const char *file_path, const char *json
 				/* Add hash if it doesn't exist */
 				if (!h_exists) {
 						cJSON_AddItemToArray(depends, cJSON_CreateString(hex));
-						pr_info(stdout, "\tAdded hash for: %s to wd_depends.json\n", convert_j_path);
+						pr_info(stdout,
+								"\tAdded hash for: %s to wd_depends.json\n",
+								convert_j_path);
 				} else {
-						pr_info(stdout, "\tHash already exists for: %s in wd_depends.json\n", convert_j_path);
-						pr_info(stdout, "\t\tHash: %s\n", hex);
+						pr_info(stdout,
+								"\tHash already exists for: %s in wd_depends.json\n",
+								convert_j_path);
+						pr_info(stdout, "\tHash:");
+						pr_color(stdout, FCOLOUR_GREEN, "\t\t%s\n", hex);
 				}
 
 				wdfree(hex);
@@ -700,7 +705,7 @@ void dep_implementation_samp_conf(depConfig config) {
     dep_implementation_samp_conf((depConfig){x, y, z})
 
 void dep_implementation_omp_conf(const char* filename, const char* plugin_name) {
-		pr_info(stdout, "\tAdding Depends %s", plugin_name);
+		pr_color(stdout, FCOLOUR_GREEN, "Depends: Adding Depends '%s'", plugin_name);
 		
 		FILE* c_file = fopen(filename, "r");
 		cJSON* root = NULL;
@@ -800,7 +805,7 @@ void dep_add_include(const char *modes,
 		ct_modes[fileSize] = '\0';
 		fclose(file);
 
-		pr_info(stdout, "\tAdding Include: %s", dep_name);
+		pr_color(stdout, FCOLOUR_GREEN, "Depends: Adding Include: '%s'", dep_name);
 
 		if (strstr(ct_modes, dep_name) != WD_ISNULL &&
 			strstr(ct_modes, dep_after) != WD_ISNULL) {
@@ -1301,8 +1306,8 @@ void wd_install_depends_str(const char *deps_str)
 		for (i = 0; i < dep_count; i++) {
 			int dep_item_found = 0;
 			struct dep_repo_info dep_repo_info;
-			char dep_url[1024] = {0};
-			char dep_repo_name[256] = {0};
+			char dep_url[1024] = { 0 };
+			char dep_repo_name[256] = { 0 };
 			const char *chr_last_slash;
 
 			if (!dep_parse_repo_input(depends[i], &dep_repo_info)) {

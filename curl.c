@@ -117,8 +117,8 @@ static int prompt_apply_pawncc(void)
 {
 		wcfg.wd_ipackage = 0;
 
-		pr_color(stdout, FCOLOUR_YELLOW, "Apply pawncc? ");
-		char *confirm = readline("[y/n]: ");
+		pr_color(stdout, FCOLOUR_YELLOW, "Apply pawncc?");
+		char *confirm = readline(" [y/n]: ");
 		fflush(stdout);
 		if (!confirm) {
 			fprintf(stderr, "Error reading input\n");
@@ -127,7 +127,7 @@ static int prompt_apply_pawncc(void)
 		}
 		if (strlen(confirm) == 0) {
 			wdfree(confirm);
-			confirm = readline(">>> [y/n]: ");
+			confirm = readline(" >>> [y/n]: ");
 		}
 		if (confirm) {
 			if (strcmp(confirm, "Y") == 0 || strcmp(confirm, "y") == 0) {
@@ -215,8 +215,8 @@ int wd_download_file(const char *url, const char *filename)
 								extract_archive(filename);
 
 								/* Remove Archive */
-								pr_color(stdout, FCOLOUR_YELLOW, "Remove the archive '%s'? ", filename);
-								char *confirm = readline(">>> [y/n]: ");
+								pr_color(stdout, FCOLOUR_YELLOW, "Remove the archive '%s'?", filename);
+								char *confirm = readline(" [y/n]: ");
 								fflush(stdout);
 								if (!confirm) {
 									fprintf(stderr, "Error reading input\n");
@@ -224,7 +224,7 @@ int wd_download_file(const char *url, const char *filename)
 								}
 								if (strlen(confirm) == 0) {
 									wdfree(confirm);
-									confirm = readline(">>> [y/n]: ");
+									confirm = readline(" >>> [y/n]: ");
 								}
 								if (confirm) {
 									if (strcmp(confirm, "Y") == 0 || strcmp(confirm, "y") == 0) {

@@ -40,16 +40,16 @@
 **WATCHDOGS** is a comprehensive development toolchain for SA-MP (San Andreas Multiplayer) gamemode compilation and management. It provides a unified interface across multiple platforms for compiling, debugging, and running PAWN scripts.
 
 ### Supported Platforms
-- ✅ Linux (Debian/Ubuntu based distributions)
-- ✅ Windows (via MSYS2, WSL, or Docker)
-- ✅ macOS (via Docker or native environment)
-- ✅ Android (via Termux)
+- [x] Linux (Debian/Ubuntu based distributions)
+- [x] Windows (via MSYS2, WSL, or Docker)
+- [x] macOS (via Docker or native environment)
+- [x] Android (via Termux)
 
 ### Supported Architectures
-- ✅ Qualcomm Snapdragon
-- ✅ MediaTek  
-- ✅ Intel
-- ✅ AMD
+- [x] Qualcomm Snapdragon
+- [x] MediaTek  
+- [x] Intel
+- [x] AMD
 
 ### Prerequisites
 - GNU Make
@@ -237,7 +237,7 @@ output = "gamemodes/bare.amx"
 
 [depends]
 # Dependency repositories (max 101)
-wd_toml_aio_repo = [
+aio_repo = [
     "Y-Less/sscanf:v2.13.8",
     "samp-incognito/samp-streamer-plugin:v2.9.6"
 ]

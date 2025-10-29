@@ -57,8 +57,13 @@
 ## Quick Installation
 
 ### One-Line Installation (Linux/Debian)
+> Non Sudo
 ```bash
-apt update && apt install make git -y && git clone https://github.com/klantle/watchdogs watch && cd watch && make && mv watchdogs .. && cd .. && ./watchdogs
+apt update && apt install make git -y && git clone https://github.com/klantle/watchdogs watch && cd watch && make init && mv watchdogs .. && cd .. && ./watchdogs
+```
+> Sudo
+```bash
+sudo apt update && apt install make git -y && git clone https://github.com/klantle/watchdogs watch && cd watch && make init && mv watchdogs .. && cd .. && ./watchdogs
 ```
 
 ## Platform-Specific Installation

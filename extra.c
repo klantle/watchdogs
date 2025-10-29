@@ -56,7 +56,7 @@ void printf_success(FILE *stream, const char *format, ...)
 		va_list args;
 
 		va_start(args, format);
-		printf_color(stdout, FCOLOUR_YELLOW, "success: ");
+		pr_color(stdout, FCOLOUR_YELLOW, "success: ");
 		vprintf(format, args);
 		printf("\n");
 		va_end(args);
@@ -74,7 +74,7 @@ void printf_info(FILE *stream, const char *format, ...)
 		va_list args;
 
 		va_start(args, format);
-		printf_color(stdout, FCOLOUR_YELLOW, "info: ");
+		pr_color(stdout, FCOLOUR_YELLOW, "info: ");
 		vprintf(format, args);
 		printf("\n");
 		va_end(args);
@@ -92,7 +92,7 @@ void printf_warning(FILE *stream, const char *format, ...)
 		va_list args;
 
 		va_start(args, format);
-		printf_color(stdout, FCOLOUR_GREEN, "warning: ");
+		pr_color(stdout, FCOLOUR_GREEN, "warning: ");
 		vprintf(format, args);
 		printf("\n");
 		va_end(args);
@@ -110,7 +110,7 @@ void printf_error(FILE *stream, const char *format, ...)
 		va_list args;
 
 		va_start(args, format);
-		printf_color(stdout, FCOLOUR_RED, "error: ");
+		pr_color(stdout, FCOLOUR_RED, "error: ");
 		vprintf(format, args);
 		printf("\n");
 		va_end(args);
@@ -128,7 +128,7 @@ void printf_crit(FILE *stream, const char *format, ...)
 		va_list args;
 
 		va_start(args, format);
-		printf_color(stdout, FCOLOUR_RED, "crit: ");
+		pr_color(stdout, FCOLOUR_RED, "crit: ");
 		vprintf(format, args);
 		printf("\n");
 		va_end(args);
@@ -324,7 +324,7 @@ void wd_apply_pawncc(void)
 		/* Get or create destination directory */
 		dest_dir = get_compiler_directory();
 		if (!dest_dir) {
-				printf_error(stdout, "Failed to create compiler directory");
+				pr_error(stdout, "Failed to create compiler directory");
 				goto done;
 		}
 

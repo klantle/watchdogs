@@ -103,7 +103,7 @@ static int extract_archive(const char *filename)
 				
 				return wd_extract_zip(filename, output_path);
 		} else {
-				printf_info(stdout, "Unknown archive type, skipping extraction: %s\n", filename);
+				pr_info(stdout, "Unknown archive type, skipping extraction: %s\n", filename);
 				return -RETN;
 		}
 }
@@ -117,7 +117,7 @@ static int prompt_apply_pawncc(void)
 {
 		wcfg.wd_ipackage = 0;
 
-		printf_color(stdout, FCOLOUR_YELLOW, "Apply pawncc? ");
+		pr_color(stdout, FCOLOUR_YELLOW, "Apply pawncc? ");
 		char *confirm = readline("[y/n]: ");
 		fflush(stdout);
 		if (!confirm) {
@@ -167,13 +167,13 @@ int wd_download_file(const char *url, const char *filename)
 		const int max_retries = MAX_RETRIES;
 		struct stat file_stat;
 
-		printf_color(stdout, FCOLOUR_YELLOW, " Downloading: %s\n", filename);
+		pr_color(stdout, FCOLOUR_YELLOW, " Downloading: %s\n", filename);
 
 		do {
 				file = fopen(filename, "wb");
 				if (!file) {
 #if defined(_DBG_PRINT)
-						printf_error(stdout, "Failed to open file: %s", filename);
+						pr_error(stdout, "Failed to open file: %s", filename);
 #endif
 						return -RETN;
 				}
@@ -181,7 +181,7 @@ int wd_download_file(const char *url, const char *filename)
 				curl = curl_easy_init();
 				if (!curl) {
 #if defined(_DBG_PRINT)
-						printf_error(stdout, "Failed to initialize CURL");
+						pr_error(stdout, "Failed to initialize CURL");
 #endif
 						fclose(file);
 						return -RETN;
@@ -215,8 +215,8 @@ int wd_download_file(const char *url, const char *filename)
 								extract_archive(filename);
 
 								/* Remove Archive */
-								printf_color(stdout, FCOLOUR_YELLOW, "Remove the archive '%s'? ", filename);
-								char *confirm = readline("[y/n]: ");
+								pr_color(stdout, FCOLOUR_YELLOW, "Remove the archive '%s'? ", filename);
+								char *confirm = readline(">>> [y/n]: ");
 								fflush(stdout);
 								if (!confirm) {
 									fprintf(stderr, "Error reading input\n");
@@ -224,7 +224,7 @@ int wd_download_file(const char *url, const char *filename)
 								}
 								if (strlen(confirm) == 0) {
 									wdfree(confirm);
-									confirm = readline("[y/n]: ");
+									confirm = readline(">>> [y/n]: ");
 								}
 								if (confirm) {
 									if (strcmp(confirm, "Y") == 0 || strcmp(confirm, "y") == 0) {
@@ -247,11 +247,11 @@ int wd_download_file(const char *url, const char *filename)
 
 								return RETZ;
 						} else {
-								printf_error(stdout, " Downloaded file too small: %ld bytes", 
-										     file_stat.st_size);
+								pr_color(stdout, FCOLOUR_RED, " Downloaded file too small: %ld bytes", 
+										    file_stat.st_size);
 						}
 				} else {
-						printf_error(stdout, " Download failed - HTTP: %ld, CURL: %d, retrying...",
+						pr_color(stdout, FCOLOUR_RED, " Download failed - HTTP: %ld, CURL: %d, retrying...",
 								     response_code, res);
 				}
 
@@ -259,6 +259,6 @@ int wd_download_file(const char *url, const char *filename)
 				sleep(3);
 		} while (retry_count < max_retries);
 
-		printf_error(stdout, " Download failed after %d retries", max_retries);
+		pr_color(stdout, FCOLOUR_RED, " Download failed after %d retries", max_retries);
 		return -RETN;
 }

@@ -77,7 +77,7 @@ __default:
         }
 
 #if defined(_DBG_PRINT)
-        printf_color(stdout,
+        pr_color(stdout,
                 FCOLOUR_YELLOW,
                 "-DEBUGGING\n");
         printf("[__function__]:\n"
@@ -95,6 +95,7 @@ __default:
 
 int __command__(void)
 {
+        wcfg.wd_sel_stat = 0;
         setlocale(LC_ALL, "en_US.UTF-8");
 
         char __cwd[PATH_MAX];
@@ -109,10 +110,10 @@ _ptr_command:
         size_t __sz_ptrp = sizeof(ptr_prompt);
         if (strlen(__cwd) > 100)
             snprintf(ptr_prompt, __sz_ptrp,
-                     "[" FCOLOUR_YELLOW "watchdogs:%s" FCOLOUR_DEFAULT "]\n\t> $", __cwd);
+                     "[" FCOLOUR_YELLOW "watchdogs:%s" FCOLOUR_DEFAULT "]\n\t> $ ", __cwd);
         else
             snprintf(ptr_prompt, __sz_ptrp,
-                     "[" FCOLOUR_YELLOW "watchdogs:%s" FCOLOUR_DEFAULT "] > $", __cwd);
+                     "[" FCOLOUR_YELLOW "watchdogs:%s" FCOLOUR_DEFAULT "] > $ ", __cwd);
         char* ptr_command = readline(ptr_prompt);
 
         if (ptr_command == WD_ISNULL || ptr_command[0] == '\0')
@@ -222,7 +223,7 @@ loop_stopwatch:
                 int hh = (int)(stw_elp / 3600);
                 int mm = (int)((stw_elp - hh * 3600) / 60);
                 int ss = (int)(stw_elp) % 60;
-                printf_color(stdout,
+                pr_color(stdout,
                              FCOLOUR_YELLOW,
                              "\rSTOPWATCH: %02d:%02d:%02d",
                              hh, mm, ss);
@@ -381,7 +382,7 @@ loop_stopwatch:
                 if (procc_f) fclose(procc_f);
 
                 if (!_toml_config) {
-                    printf_error(stdout, "parsing TOML: %s", errbuf);
+                    pr_error(stdout, "parsing TOML: %s", errbuf);
                     return RETZ;
                 }
 
@@ -430,75 +431,94 @@ loop_stopwatch:
             goto done;
         } else if (strcmp(ptr_command, "gamemode") == 0) {
             wd_set_title("Watchdogs | @ gamemode");
-            char platform = 0;
 ret_ptr:
-                println(stdout, "Select platform:");
-                println(stdout, "-> [L/l] Linux");
-                println(stdout, "-> [W/w] Windows");
-                printf_color(stdout, FCOLOUR_YELLOW, " ^ work's in WSL/MSYS2\n");
-                printf("==> ");
+            println(stdout, "Select platform:");
+            println(stdout, "-> [L/l] Linux");
+            println(stdout, "-> [W/w] Windows");
+            pr_color(stdout, FCOLOUR_YELLOW, " ^ work's in WSL/MSYS2\n");
+            
+            wcfg.wd_sel_stat = 1;
 
-            if (scanf(" %c", &platform) != 1)
-                return RETN;
+            char *platform = readline("==> ");
 
-            if (platform == 'L' || platform == 'l') {
+            if (strfind(platform, "L")) {
                 wdfree(ptr_command);
+                wdfree(platform);
 loop_igm:
                 int ret = wd_install_server("linux");
-                if (ret == -RETN) 
+                if (ret == -RETN && wcfg.wd_sel_stat != 0)
                     goto loop_igm;
-            } else if (platform == 'W' || platform == 'w') {
+                else if (ret == RETZ)
+                    goto _ptr_command;
+            } else if (strfind(platform, "W")) {
                 wdfree(ptr_command);
+                wdfree(platform);
 loop_igm2:
                 int ret = wd_install_server("windows");
-                if (ret == -RETN)
+                if (ret == -RETN && wcfg.wd_sel_stat != 0)
                     goto loop_igm2;
-            } else if (platform == 'E' || platform == 'e') {
+                else if (ret == RETZ)
+                    goto _ptr_command;
+            } else if (strfind(platform, "E")) {
                 wdfree(ptr_command);
+                wdfree(platform);
                 goto _ptr_command;
             } else {
-                printf_error(stdout, "Invalid platform selection. Input 'E/e' to exit");
+                pr_error(stdout, "Invalid platform selection. Input 'E/e' to exit");
+                wdfree(platform);
                 goto ret_ptr;
             }
 
             goto done;
         } else if (strcmp(ptr_command, "pawncc") == 0) {
             wd_set_title("Watchdogs | @ pawncc");
-            char platform = 0;
 ret_ptr2:
-                println(stdout, "Select platform:");
-                println(stdout, "-> [L/l] Linux");
-                println(stdout, "-> [W/w] Windows");
-                printf_color(stdout, FCOLOUR_YELLOW, " ^ work's in WSL/MSYS2\n");
-                println(stdout, "-> [T/t] Termux");
-                printf("==> ");
+            println(stdout, "Select platform:");
+            println(stdout, "-> [L/l] Linux");
+            println(stdout, "-> [W/w] Windows");
+            pr_color(stdout, FCOLOUR_YELLOW, " ^ work's in WSL/MSYS2\n");
+            println(stdout, "-> [T/t] Termux");
 
-            if (scanf(" %c", &platform) != 1)
-                return RETN;
+            wcfg.wd_sel_stat = 1;
 
-            if (platform == 'L' || platform == 'l') {
+            char *platform = readline("==> ");
+
+            if (strfind(platform, "L")) {
                 wdfree(ptr_command);
+                wdfree(platform);
+                ptr_command = NULL;
 loop_ipcc:
                 int ret = wd_install_pawncc("linux");
-                if (ret == -RETN)
+                if (ret == -RETN && wcfg.wd_sel_stat != 0)
                     goto loop_ipcc;
-            } else if (platform == 'W' || platform == 'w'){
+                else if (ret == RETZ)
+                    goto _ptr_command;
+            } else if (strfind(platform, "W")) {
                 wdfree(ptr_command);
+                wdfree(platform);
+                ptr_command = NULL;
 loop_ipcc2:
                 int ret = wd_install_pawncc("windows");
-                if (ret == -RETN)
+                if (ret == -RETN && wcfg.wd_sel_stat != 0)
                     goto loop_ipcc2;
-            } else if (platform == 'T' || platform == 't'){
+                else if (ret == RETZ)
+                    goto _ptr_command;
+            } else if (strfind(platform, "T")) {
                 wdfree(ptr_command);
+                wdfree(platform);
+                ptr_command = NULL;
 loop_ipcc3:
                 int ret = wd_install_pawncc("termux");
-                if (ret == -RETN)
+                if (ret == -RETN && wcfg.wd_sel_stat != 0)
                     goto loop_ipcc3;
-            } else if (platform == 'E' || platform == 'e') {
+                else if (ret == RETZ)
+                    goto _ptr_command;
+            } else if (strfind(platform, "E")) {
                 wdfree(ptr_command);
+                wdfree(platform);
                 goto _ptr_command;
             } else {
-                printf_error(stdout, "Invalid platform selection. Input 'E/e' to exit");
+                pr_error(stdout, "Invalid platform selection. Input 'E/e' to exit");
                 goto ret_ptr2;
             }
             
@@ -547,13 +567,13 @@ _runners_:
 			        title_running_info = NULL;
 		        }
 
-                printf_color(stdout, FCOLOUR_YELLOW, "running..\n");
+                pr_color(stdout, FCOLOUR_YELLOW, "running..\n");
 #ifdef _WIN32
 
                 system("C:\\msys64\\usr\\bin\\mintty.exe /bin/bash -c \"./watchdogs.win; pwd; exec bash\"");
 #else
                 if (is_termux_environment)
-                    printf_error(stdout, "xterm not supported in termux!");
+                    pr_error(stdout, "xterm not supported in termux!");
                 else
                     system("xterm -hold -e bash -c 'echo \"here is your watchdogs!..\"; ./watchdogs' &");
 #endif
@@ -573,7 +593,7 @@ _runners_:
                                 display_server_logs(0);
                             }
                         } else {
-                            printf_color(stdout, FCOLOUR_RED, "running failed!\n");
+                            pr_color(stdout, FCOLOUR_RED, "running failed!\n");
                         }
                     } else {
                         wd_run_samp_server(arg1, wcfg.wd_ptr_samp);
@@ -592,13 +612,13 @@ _runners_:
                             sleep(2);
                             display_server_logs(1);
                         } else {
-                            printf_color(stdout, FCOLOUR_RED, "running failed!\n");
+                            pr_color(stdout, FCOLOUR_RED, "running failed!\n");
                         }
                     } else {
                         wd_run_omp_server(arg1, wcfg.wd_ptr_omp);
                     }
                 } else if (!strcmp(wcfg.wd_is_samp, CRC32_FALSE) || !strcmp(wcfg.wd_is_omp, CRC32_FALSE)) {
-                    printf_crit(stdout, "samp-server/open.mp server not found!");
+                    pr_crit(stdout, "samp-server/open.mp server not found!");
 
                     char *ptr_sigA;
 ret_ptr3:
@@ -610,12 +630,12 @@ ret_ptr3:
                             if (!strcmp(wcfg.wd_os_type, OS_SIGNAL_WINDOWS)) {
 n_loop_igm:
                                 int ret = wd_install_server("windows");
-                                if (ret == -RETN)
+                                if (ret == -RETN && wcfg.wd_sel_stat != 0)
                                     goto n_loop_igm;
                             } else if (!strcmp(wcfg.wd_os_type, OS_SIGNAL_LINUX)) {
 n_loop_igm2:
                                 int ret = wd_install_server("linux");
-                                if (ret == -RETN)
+                                if (ret == -RETN && wcfg.wd_sel_stat != 0)
                                     goto n_loop_igm2;
                             }
                             break;
@@ -623,7 +643,7 @@ n_loop_igm2:
                             wdfree(ptr_sigA);
                             break;
                         } else {
-                            printf_error(stdout, "Invalid input. Please type Y/y to install or N/n to cancel.");
+                            pr_error(stdout, "Invalid input. Please type Y/y to install or N/n to cancel.");
                             wdfree(ptr_sigA);
                             goto ret_ptr3;
                         }
@@ -636,7 +656,7 @@ n_loop_igm2:
             const char *arg = NULL;
             const char *compile_args = NULL;
             wd_RunCompiler(arg, compile_args);
-            if (wcfg.wd_compiler_stats < 1) {
+            if (wcfg.wd_compiler_stat < 1) {
                 char errbuf[256];
                 toml_table_t *_toml_config;
                 FILE *procc_f = fopen("watchdogs.toml", "r");
@@ -644,7 +664,7 @@ n_loop_igm2:
                 if (procc_f) fclose(procc_f);
 
                 if (!_toml_config) {
-                    printf_error(stdout, "parsing TOML: %s", errbuf);
+                    pr_error(stdout, "parsing TOML: %s", errbuf);
                     __main(0);
                 }
 
@@ -671,10 +691,10 @@ n_loop_igm2:
                                     strlen(pos + strlen("gamemodes/")) + 1);
                 }
                 if (!strcmp(wcfg.wd_is_samp, CRC32_TRUE)) {
-                    printf_color(stdout, FCOLOUR_YELLOW, "running..\n");
+                    pr_color(stdout, FCOLOUR_YELLOW, "running..\n");
                     wd_run_samp_server(__sz_gm_input, wcfg.wd_ptr_samp);
                 } else if (!strcmp(wcfg.wd_is_omp, CRC32_TRUE)) {
-                    printf_color(stdout, FCOLOUR_YELLOW, "running..\n");
+                    pr_color(stdout, FCOLOUR_YELLOW, "running..\n");
                     wd_run_samp_server(__sz_gm_input, wcfg.wd_ptr_omp);
                 }
             }
@@ -789,7 +809,7 @@ L"   W   A   T   C   H   D   O   G   S\n");
                 strfind(ptr_command, "zsh") ||
                 strfind(ptr_command, "make") ||
                 strfind(ptr_command, "cd")) {
-                    printf_error(stdout, "you can't run it!");
+                    pr_error(stdout, "you can't run it!");
                     goto _ptr_command;
                 }
             char _p_command[256];
@@ -820,7 +840,7 @@ loop_main:
             clock_gettime(CLOCK_MONOTONIC, &cmd_end);
             command_dur = (cmd_end.tv_sec - cmd_start.tv_sec) +
                           (cmd_end.tv_nsec - cmd_start.tv_nsec) / 1e9;
-            printf_color(stdout,
+            pr_color(stdout,
                          FCOLOUR_YELLOW,
                          " ==> [C]Finished in %.3fs\n",
                          command_dur);

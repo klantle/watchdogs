@@ -5,6 +5,9 @@
 #include <unistd.h>
 #include <stddef.h>
 
+#include <readline/readline.h>
+#include <readline/history.h>
+
 #include "color.h"
 #include "extra.h"
 #include "utils.h"
@@ -111,10 +114,9 @@ struct version_info {
 static int get_termux_architecture(char *out_arch, size_t buf_size)
 {
 		struct utsname uname_data;
-		char selection;
 
 		if (uname(&uname_data) != 0) {
-				printf_error(stdout, "Failed to get system information");
+				pr_error(stdout, "Failed to get system information");
 				return -RETN;
 		}
 
@@ -130,31 +132,28 @@ static int get_termux_architecture(char *out_arch, size_t buf_size)
 
 		/* Manual selection for unknown architectures */
 		printf("Unknown or unsupported architecture: %s\n", uname_data.machine);
-		printf("Do you want to select architecture manually? [y/N] ");
 		
-		if (scanf(" %c", &selection) != 1 || 
-		    (selection != 'y' && selection != 'Y')) {
-				return -RETN;
-		}
-
 		printf("Select architecture for Termux:\n");
 		printf("[A/a] arm32\n");
 		printf("[B/b] arm64\n");
-		printf("==> ");
+		
+		char *selection = readline("==> ");
 
-		if (scanf(" %c", &selection) != 1)
-				return -RETN;
-
-		switch (selection) {
-		case 'A': case 'a':
-				strncpy(out_arch, "arm32", buf_size);
+		if (strfind(selection, "A"))
+		{
+			strncpy(out_arch, "arm32", buf_size);
+			wdfree(selection);
+			return RETZ;
+		} else if (strfind(selection, "B")) {
+			strncpy(out_arch, "arm64", buf_size);
+			wdfree(selection);
+			return RETZ;
+		} else {
+			pr_error(stdout, "Invalid architecture selection");
+			if (wcfg.wd_sel_stat == 0)
 				return RETZ;
-		case 'B': case 'b':
-				strncpy(out_arch, "arm64", buf_size);
-				return RETZ;
-		default:
-				printf_error(stdout, "Invalid architecture selection");
-				return -RETN;
+			wdfree(selection);
+			return -RETN;
 		}
 }
 
@@ -175,13 +174,7 @@ static int handle_termux_installation(void)
 
 		/* Verify Termux environment */
 		if (!is_termux_environment()) {
-				char confirmation;
-				printf_warning(stdout, "Currently not in Termux. Continue? [y/N] ");
-				
-				if (scanf(" %c", &confirmation) != 1 ||
-				    (confirmation != 'y' && confirmation != 'Y')) {
-						return -RETN;
-				}
+				pr_warning(stdout, "Currently not in Termux!");
 		}
 
 		/* Display version selection */
@@ -193,24 +186,28 @@ static int handle_termux_installation(void)
 				termux_versions[i]);
 		}
 
-		printf("==> ");
-
-		if (scanf(" %c", &version_selection) != 1)
-				return -RETN;
+		char *__version__ = readline("==> ");
 
 		/* Parse version selection */
-		if (version_selection >= 'A' && version_selection < 'A' + version_count) {
-				version_index = version_selection - 'A';
-		} else if (version_selection >= 'a' && version_selection < 'a' + version_count) {
-				version_index = version_selection - 'a';
+		version_selection = __version__[0];
+
+		if (version_selection >= 'A' && version_selection < 'A' + (char)version_count) {
+			version_index = version_selection - 'A';
+		} else if (version_selection >= 'a' && version_selection < 'a' + (char)version_count) {
+			version_index = version_selection - 'a';
 		} else {
-				printf_error(stdout, "Invalid version selection");
-				return -RETN;
-		}
+			printf("error: Invalid version selection '%c'. Input must be A..%c or a..%c\n",
+				version_selection,
+				'A' + (int)version_count - 1,
+				'a' + (int)version_count - 1);
+			wdfree(__version__);
+			return -1;
+    	}
 
 		/* Get architecture */
-		if (get_termux_architecture(architecture, sizeof(architecture)) != 0)
-				return -RETN;
+		int ret = get_termux_architecture(architecture, sizeof(architecture) != 0);
+		if (ret == 0)
+			return RETZ;
 
 		/* Build download URL and filename */
 		snprintf(url, sizeof(url),
@@ -249,7 +246,7 @@ static int handle_standard_installation(const char *platform)
 
 		/* Validate platform */
 		if (strcmp(platform, "linux") != 0 && strcmp(platform, "windows") != 0) {
-				printf_error(stdout, "Unsupported platform: %s", platform);
+				pr_error(stdout, "Unsupported platform: %s", platform);
 				return -RETN;
 		}
 
@@ -262,19 +259,20 @@ static int handle_standard_installation(const char *platform)
 				versions[i]);
 		}
 
-		printf("==> ");
-
-		if (scanf(" %c", &version_selection) != 1)
-				return -RETN;
+		char *__version__ = readline("==> ");
 
 		/* Parse version selection */
+		version_selection = __version__[0];
 		if (version_selection >= 'A' && version_selection <= 'J') {
-				version_index = version_selection - 'A';
+			version_index = version_selection - 'A';
 		} else if (version_selection >= 'a' && version_selection <= 'j') {
-				version_index = version_selection - 'a';
+			version_index = version_selection - 'a';
 		} else {
-				printf_error(stdout, "Invalid version selection");
-				return -RETN;
+			if (wcfg.wd_sel_stat == 0)
+				return RETZ;
+			pr_error(stdout, "Invalid version selection");
+			wdfree(__version__);
+			return -RETN;
 		}
 
 		/* Determine repository and archive extension */
@@ -311,19 +309,25 @@ static int handle_standard_installation(const char *platform)
 int wd_install_pawncc(const char *platform)
 {
 		if (!platform) {
-				printf_error(stdout, "Platform parameter is NULL");
+				pr_error(stdout, "Platform parameter is NULL");
+				if (wcfg.wd_sel_stat == 0)
+					return RETZ;
 				return -RETN;
 		}
 		if (strcmp(platform, "termux") == 0) {
 loop_ipcc:
 			int ret = handle_termux_installation();
-			if (ret == -RETN)
+			if (ret == -RETN && wcfg.wd_sel_stat != 0)
 				goto loop_ipcc;
+			else if (ret == RETZ)
+				return RETZ;
 		} else {
 loop_ipcc2:
 			int ret = handle_standard_installation(platform);
-			if (ret == -RETN)
+			if (ret == -RETN && wcfg.wd_sel_stat != 0)
 				goto loop_ipcc2;
+			else if (ret == RETZ)
+				return RETZ;
 		}
 
 		return RETZ;
@@ -403,7 +407,9 @@ int wd_install_server(const char *platform)
 
 		/* Validate platform */
 		if (strcmp(platform, "linux") != 0 && strcmp(platform, "windows") != 0) {
-				printf_error(stdout, "Unsupported platform: %s", platform);
+				pr_error(stdout, "Unsupported platform: %s", platform);
+				if (wcfg.wd_sel_stat == 0)
+					return RETZ;
 				return -RETN;
 		}
 
@@ -413,12 +419,11 @@ int wd_install_server(const char *platform)
 				printf("[%c/%c] %s\n", versions[i].key, versions[i].key + 32, 
 				       versions[i].name);
 		}
-		printf("==> ");
 
-		if (scanf(" %c", &selection) != 1)
-				return -RETN;
+		char *__selection__ = readline("==> ");
 
 		/* Find selected version */
+		selection = __selection__[0];
 		for (i = 0; i < version_count; i++) {
 				if (selection == versions[i].key || selection == versions[i].key + 32) {
 						chosen = &versions[i];
@@ -427,7 +432,10 @@ int wd_install_server(const char *platform)
 		}
 
 		if (!chosen) {
-				printf_error(stdout, "Invalid selection");
+				pr_error(stdout, "Invalid selection");
+				if (wcfg.wd_sel_stat == 0)
+					return RETZ;
+				wdfree(__selection__);
 				return -RETN;
 		}
 

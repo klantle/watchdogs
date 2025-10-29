@@ -4,7 +4,9 @@
 #include <unistd.h>
 #include <limits.h>
 #include <time.h>
+
 #include <readline/readline.h>
+#include <readline/history.h>
 
 #include "color.h"
 #include "extra.h"
@@ -66,7 +68,7 @@ int wd_RunCompiler(const char *arg, const char *compile_args)
             {
 #if defined(_DBG_PRINT)
                 /* Debug print for memory allocation failure */
-                printf_error(stdout, "memory allocation failed for _compiler_!");
+                pr_error(stdout, "memory allocation failed for _compiler_!");
 #endif
                 return RETZ;
             }
@@ -76,7 +78,7 @@ int wd_RunCompiler(const char *arg, const char *compile_args)
             if (!procc_f) 
             {
                 /* Handle TOML file read error */
-                printf_error(stdout, "Can't read file %s", "watchdogs.toml");
+                pr_error(stdout, "Can't read file %s", "watchdogs.toml");
                 if (_compiler_) 
                 {
                     /* Clean up allocated memory */
@@ -101,7 +103,7 @@ int wd_RunCompiler(const char *arg, const char *compile_args)
             if (!_toml_config) 
             {
                 /* Handle TOML parsing error */
-                printf_error(stdout, "parsing TOML: %s", errbuf);    
+                pr_error(stdout, "parsing TOML: %s", errbuf);    
                 if (_compiler_) 
                 {
                     /* Clean up allocated memory */
@@ -274,7 +276,7 @@ int wd_RunCompiler(const char *arg, const char *compile_args)
                     /* Check for snprintf errors */
                     if (ret_compiler < 0 || (size_t)ret_compiler >= (size_t)format_size_compiler)
                     {
-                        printf_error(stdout, "snprintf() failed or buffer too small (needed %d bytes)", ret_compiler);
+                        pr_error(stdout, "snprintf() failed or buffer too small (needed %d bytes)", ret_compiler);
                     }
                     
                     /* Create window title with compilation info */
@@ -340,29 +342,29 @@ int wd_RunCompiler(const char *arg, const char *compile_args)
                             {
                                 remove(_container_output);
                             }
-                            wcfg.wd_compiler_stats = 1;
+                            wcfg.wd_compiler_stat = 1;
                             } 
                             else 
                             {
                                 /* Set error to Zero for successful compilation */
-                                wcfg.wd_compiler_stats = 0;
+                                wcfg.wd_compiler_stat = 0;
                             }
                     } 
                     else 
                     {
-                        printf_error(stdout, "Failed to open .wd_compiler.log");
+                        pr_error(stdout, "Failed to open .wd_compiler.log");
                     }
 
                     /* Calculate and display compilation duration */
                     compiler_dur = (end.tv_sec - start.tv_sec)
                                         + (end.tv_nsec - start.tv_nsec) / 1e9;
 
-                    printf_color(stdout, FCOLOUR_YELLOW,
+                    pr_color(stdout, FCOLOUR_YELLOW,
                         " ==> [P]Finished in %.3fs (%.0f ms)\n",
                         compiler_dur, compiler_dur * 1000.0);
 #if defined(_DBG_PRINT)
                     /* Debug output for compiler command */
-                    printf_color(stdout, FCOLOUR_YELLOW, "-DEBUGGING\n");
+                    pr_color(stdout, FCOLOUR_YELLOW, "-DEBUGGING\n");
                     printf("[COMPILER]:\n\t%s\n", _compiler_);
 #endif
                 } 
@@ -575,7 +577,7 @@ int wd_RunCompiler(const char *arg, const char *compile_args)
                         /* Check for snprintf errors */
                         if (ret_compiler < 0 || (size_t)ret_compiler >= (size_t)format_size_compiler)
                         {
-                            printf_error(stdout, "snprintf() failed or buffer too small (needed %d bytes)", ret_compiler);
+                            pr_error(stdout, "snprintf() failed or buffer too small (needed %d bytes)", ret_compiler);
                         }
 
                         /* Create window title with compilation info */
@@ -641,36 +643,36 @@ int wd_RunCompiler(const char *arg, const char *compile_args)
                                 {
                                     remove(_container_output);
                                 }
-                                wcfg.wd_compiler_stats = 1;
+                                wcfg.wd_compiler_stat = 1;
                             } 
                             else 
                             {
                                  /* Set error to Zero for successful compilation */
-                                wcfg.wd_compiler_stats = 0;
+                                wcfg.wd_compiler_stat = 0;
                             }
                         } 
                         else 
                         {
-                            printf_error(stdout, "Failed to open .wd_compiler.log");
+                            pr_error(stdout, "Failed to open .wd_compiler.log");
                         }
 
                         /* Calculate and display compilation duration */
                         compiler_dur = (end.tv_sec - start.tv_sec)
                                             + (end.tv_nsec - start.tv_nsec) / 1e9;
 
-                        printf_color(stdout, FCOLOUR_YELLOW,
+                        pr_color(stdout, FCOLOUR_YELLOW,
                             " ==> [P]Finished in %.3fs (%.0f ms)\n",
                             compiler_dur, compiler_dur * 1000.0);
 #if defined(_DBG_PRINT)
                         /* Debug output for compiler command */
-                        printf_color(stdout, FCOLOUR_YELLOW, "-DEBUGGING\n");
+                        pr_color(stdout, FCOLOUR_YELLOW, "-DEBUGGING\n");
                         printf("[COMPILER]:\n\t%s\n", _compiler_);
 #endif
                     } 
                     else 
                     {
                         /* Handle case where file cannot be located */
-                        printf_error(stdout, "Cannnot locate:");
+                        pr_error(stdout, "Cannnot locate:");
                         printf("\t%s\n", compile_args);
                         return RETZ;
                     }
@@ -691,7 +693,7 @@ int wd_RunCompiler(const char *arg, const char *compile_args)
         else 
         {
             /* Handle case where pawncc compiler is not found */
-            printf_crit(stdout, "pawncc not found!");
+            pr_crit(stdout, "pawncc not found!");
     
             /* Prompt user to install the compiler */
             char *ptr_sigA;
@@ -703,51 +705,53 @@ int wd_RunCompiler(const char *arg, const char *compile_args)
                 {
                     wdfree(ptr_sigA);
                     /* User wants to install compiler - select platform */
-                    char platform = 0;
 ret_ptr:
                     println(stdout, "Select platform:");
                     println(stdout, "-> [L/l] Linux");
                     println(stdout, "-> [W/w] Windows");
-                    printf_color(stdout, FCOLOUR_YELLOW, " ^ work's in WSL/MSYS2\n");
+                    pr_color(stdout, FCOLOUR_YELLOW, " ^ work's in WSL/MSYS2\n");
                     println(stdout, "-> [T/t] Termux");
-                    printf("==> ");
 
-                    if (scanf(" %c", &platform) != 1)
-                    {
-                        return RETZ;
-                    }
+                    wcfg.wd_sel_stat = 1;
 
-                    if (platform == 'L' || platform == 'l')
+                    char *platform = readline("==> ");
+
+                    if (strfind(platform, "L"))
                     {
                         /* Install for Linux */
 loop_ipcc:
+                        wdfree(platform);
                         int ret = wd_install_pawncc("linux");
-                        if (ret == -RETN)
+                        if (ret == -RETN && wcfg.wd_sel_stat != 0)
                             goto loop_ipcc;
                     }
-                    else if (platform == 'W' || platform == 'w')
+                    if (strfind(platform, "W"))
                     {
                         /* Install for Windows */
 loop_ipcc2:
+                        wdfree(platform);
                         int ret = wd_install_pawncc("windows");
-                        if (ret == -RETN)
+                        if (ret == -RETN && wcfg.wd_sel_stat != 0)
                             goto loop_ipcc2;
                     }
-                    else if (platform == 'T' || platform == 't')
+                    if (strfind(platform, "T"))
                     {
                         /* Install for Termux */
 loop_ipcc3:
+                        wdfree(platform);
                         int ret = wd_install_pawncc("termux");
-                        if (ret == -RETN)
+                        if (ret == -RETN && wcfg.wd_sel_stat != 0)
                             goto loop_ipcc3;
                     }
-                    else if (platform == 'E' || platform == 'e') {
+                    if (strfind(platform, "E")) {
+                        wdfree(platform);
                         goto done;
                     }
                     else
                     {
                         /* Invalid platform selection */
-                        printf_error(stdout, "Invalid platform selection. Input 'E/e' to exit");
+                        pr_error(stdout, "Invalid platform selection. Input 'E/e' to exit");
+                        wdfree(platform);
                         goto ret_ptr;
                     }
 
@@ -764,7 +768,7 @@ done:
                 else 
                 {
                     /* Invalid input - prompt again */
-                    printf_error(stdout, "Invalid input. Please type Y/y to install or N/n to cancel.");
+                    pr_error(stdout, "Invalid input. Please type Y/y to install or N/n to cancel.");
                     wdfree(ptr_sigA);
                     goto ret_ptr;
                 }

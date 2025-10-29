@@ -88,11 +88,12 @@ sizeof(__command) / sizeof(__command[0]);
  *   wd_ipackage           - Package index counter
  *   wd_idepends           - Dependency counter
  *   wd_os_type            - OS type flag (CRC32_FALSE by default)
+ *   wd_sel_stat           - Selection Status - anti redundancy
  *   wd_is_samp            - Flag if running on SAMP (CRC32_FALSE)
  *   wd_is_omp             - Flag if running on OMP (CRC32_FALSE)
  *   wd_ptr_samp           - Pointer to SAMP module (NULL)
  *   wd_ptr_omp            - Pointer to OMP module (NULL)
- *   wd_compiler_stats     - Compiler statistics (0)
+ *   wd_compiler_stat      - Compiler statistics (0)
  *   wd_stopwatch_end	   - Stopwatch End Loop
  *   wd_sef_count          - Count of SEF modules (0)
  *   wd_sef_found_list     - List of found SEF modules (initialized to zero)
@@ -108,11 +109,12 @@ WatchdogConfig wcfg = {
 		.wd_ipackage = 0,
 		.wd_idepends = 0,
 		.wd_os_type = CRC32_FALSE,
+		.wd_sel_stat = 0,
 		.wd_is_samp = CRC32_FALSE,
 		.wd_is_omp = CRC32_FALSE,
 		.wd_ptr_samp = NULL,
 		.wd_ptr_omp = NULL,
-		.wd_compiler_stats = 0,
+		.wd_compiler_stat = 0,
 		.wd_sef_count = 0,
 		.wd_stopwatch_end = 0,
 		.wd_sef_found_list = { {0} },
@@ -314,11 +316,11 @@ static int __regex_check__(const char *cmd, char *badch, size_t *pos) {
 static int wd_confirm_dangerous_command(const char *cmd, char badch, size_t pos)
 {
 		if (isprint((unsigned char)badch)) {
-				printf_warning(stdout,
+				pr_warning(stdout,
 							   "Symbol detected in command - char='%c' (0x%02X) at pos=%zu; cmd=\"%s\"",
 						       badch, (unsigned char)badch, pos, cmd);
 		} else {
-				printf_warning(stdout,
+				pr_warning(stdout,
 							   "Control symbol detected in command - char=0x%02X at pos=%zu; cmd=\"%s\"",
 						       (unsigned char)badch, pos, cmd);
 		}
@@ -1195,7 +1197,7 @@ static void wd_check_compiler_options(int *compatibility, int *optimized_lt)
 			if (found_ver)
 				*optimized_lt = 1;
 		} else {
-			printf_error(stdout, "Failed to open .__CP.log");
+			pr_error(stdout, "Failed to open .__CP.log");
 		}
 
 		/* Cleanup temporary log file */
@@ -1218,7 +1220,7 @@ static int wd_parse_toml_config(void)
 
 		proc_file = fopen("watchdogs.toml", "r");
 		if (!proc_file) {
-				printf_error(stdout, "Cannot read file %s", "watchdogs.toml");
+				pr_error(stdout, "Cannot read file %s", "watchdogs.toml");
 				return RETZ;
 		}
 
@@ -1226,7 +1228,7 @@ static int wd_parse_toml_config(void)
 		fclose(proc_file);
 
 		if (!toml_config) {
-				printf_error(stdout, "Parsing TOML: %s", errbuf);
+				pr_error(stdout, "Parsing TOML: %s", errbuf);
 				return RETZ;
 		}
 
@@ -1480,7 +1482,7 @@ int wd_set_toml(void)
 		} else {
 				toml_file = fopen("watchdogs.toml", "w");
 				if (!toml_file) {
-						printf_error(stdout, "Failed to create watchdogs.toml");
+						pr_error(stdout, "Failed to create watchdogs.toml");
 						return RETN;
 				}
 
@@ -1495,7 +1497,7 @@ int wd_set_toml(void)
 
 		/* Parse and load TOML configuration */
 		if (!wd_parse_toml_config()) {
-				printf_error(stdout, "Failed to parse TOML configuration");
+				pr_error(stdout, "Failed to parse TOML configuration");
 				return RETN;
 		}
 
@@ -1555,32 +1557,32 @@ static int __wd_sef_safety(const char *c_src, const char *c_dest)
 		struct stat st;
 
 		if (!c_src || !c_dest)
-				printf_error(stdout, "src or dest is null");
+				pr_error(stdout, "src or dest is null");
 
 		if (!*c_src || !*c_dest)
-				printf_error(stdout, "src or dest empty");
+				pr_error(stdout, "src or dest empty");
 
 		if (strlen(c_src) >= PATH_MAX || strlen(c_dest) >= PATH_MAX)
-				printf_error(stdout, "path too long");
+				pr_error(stdout, "path too long");
 
 		if (!path_exists(c_src))
-				printf_error(stdout, "source does not exist: %s", c_src);
+				pr_error(stdout, "source does not exist: %s", c_src);
 
 		if (!file_regular(c_src))
-				printf_error(stdout, "source is not a regular file: %s", c_src);
+				pr_error(stdout, "source is not a regular file: %s", c_src);
 
 		if (path_exists(c_dest) && file_same_file(c_src, c_dest)) {
-				printf_info(stdout, "source and dest are the same file: %s", c_src);
+				pr_info(stdout, "source and dest are the same file: %s", c_src);
 		}
 
 		if (ensure_parent_dir(parent, sizeof(parent), c_dest))
-				printf_error(stdout, "cannot determine parent dir of dest");
+				pr_error(stdout, "cannot determine parent dir of dest");
 
 		if (stat(parent, &st))
-				printf_error(stdout, "destination dir does not exist: %s", parent);
+				pr_error(stdout, "destination dir does not exist: %s", parent);
 
 		if (!S_ISDIR(st.st_mode))
-				printf_error(stdout, "destination parent is not a dir: %s", parent);
+				pr_error(stdout, "destination parent is not a dir: %s", parent);
 
 		return RETN;
 }
@@ -1594,14 +1596,14 @@ static void __wd_sef_set_permissions(const char *c_dest)
 #ifdef _WIN32
 		if (win32_chmod(c_dest)) {
 # if defined(_DBG_PRINT)
-				printf_warning(stdout, "chmod failed: %s (errno=%d %s)",
+				pr_warning(stdout, "chmod failed: %s (errno=%d %s)",
 						      c_dest, errno, strerror(errno));
 # endif
 		}
 #else
 		if (chmod(c_dest, 0755)) {
 # if defined(_DBG_PRINT)
-				printf_warning(stdout, "chmod failed: %s (errno=%d %s)",
+				pr_warning(stdout, "chmod failed: %s (errno=%d %s)",
 						      c_dest, errno, strerror(errno));
 # endif
 		}
@@ -1629,14 +1631,14 @@ int wd_sef_wmv(const char *c_src, const char *c_dest)
 			mv_ret = _try_mv_without_sudo(c_src, c_dest);
 			if (!mv_ret) {
 					__wd_sef_set_permissions(c_dest);
-					printf_info(stdout, "moved without sudo: %s -> %s", c_src, c_dest);
+					pr_info(stdout, "moved without sudo: %s -> %s", c_src, c_dest);
 					return RETZ;
 			}
 		} else {
 			mv_ret = __mv_with_sudo(c_src, c_dest);
 			if (!mv_ret) {
 					__wd_sef_set_permissions(c_dest);
-					printf_info(stdout, "moved with sudo: %s -> %s", c_src, c_dest);
+					pr_info(stdout, "moved with sudo: %s -> %s", c_src, c_dest);
 					return RETZ;
 			}
 		}
@@ -1663,14 +1665,14 @@ int wd_sef_wcopy(const char *c_src, const char *c_dest)
 			cp_ret = _try_cp_without_sudo(c_src, c_dest);
 			if (!cp_ret) {
 					__wd_sef_set_permissions(c_dest);
-					printf_info(stdout, "copying without sudo: %s -> %s", c_src, c_dest);
+					pr_info(stdout, "copying without sudo: %s -> %s", c_src, c_dest);
 					return RETZ;
 			}
 		} else {
 			cp_ret = __cp_with_sudo(c_src, c_dest);
 			if (!cp_ret) {
 					__wd_sef_set_permissions(c_dest);
-					printf_info(stdout, "copying with sudo: %s -> %s", c_src, c_dest);
+					pr_info(stdout, "copying with sudo: %s -> %s", c_src, c_dest);
 					return RETZ;
 			}
 		}

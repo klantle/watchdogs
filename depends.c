@@ -42,7 +42,7 @@ struct dep_repo_info {
 };
 
 /**
- * write_callback - CURL write callback function
+ * dep_write_callback - CURL write callback function
  * @contents: Received data
  * @size: Size of each element
  * @nmemb: Number of elements
@@ -50,7 +50,7 @@ struct dep_repo_info {
  *
  * Return: Number of bytes processed
  */
-static size_t write_callback(void *contents, size_t size, size_t nmemb, void *userp)
+static size_t dep_write_callback(void *contents, size_t size, size_t nmemb, void *userp)
 {
 		struct curl_buffer *mem = (struct curl_buffer *)userp;
 		size_t realsize = size * nmemb;
@@ -69,12 +69,12 @@ static size_t write_callback(void *contents, size_t size, size_t nmemb, void *us
 }
 
 /**
- * curl_url_get_response - Check if URL is accessible
+ * dep_curl_url_get_response - Check if URL is accessible
  * @url: URL to check
  *
  * Return: 1 if accessible, 0 if not
  */
-int curl_url_get_response(const char *url)
+int dep_curl_url_get_response(const char *url)
 {
 		CURL *curl;
 		CURLcode res;
@@ -104,13 +104,13 @@ int curl_url_get_response(const char *url)
 }
 
 /**
- * curl_get_html - Fetch HTML content from URL
+ * dep_curl_get_html - Fetch HTML content from URL
  * @url: URL to fetch
  * @out_html: Output pointer for HTML data
  *
  * Return: 1 on success, 0 on failure
  */
-int curl_get_html(const char *url, char **out_html)
+int dep_curl_get_html(const char *url, char **out_html)
 {
 		CURL *curl;
 		struct curl_buffer buffer = { 0 };
@@ -121,7 +121,7 @@ int curl_get_html(const char *url, char **out_html)
 				return RETZ;
 
 		curl_easy_setopt(curl, CURLOPT_URL, url);
-		curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, write_callback);
+		curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, dep_write_callback);
 		curl_easy_setopt(curl, CURLOPT_WRITEDATA, (void *)&buffer);
 		curl_easy_setopt(curl, CURLOPT_USERAGENT, "watchdogs/1.0");
 		curl_easy_setopt(curl, CURLOPT_FOLLOWLOCATION, 1L);
@@ -141,14 +141,14 @@ int curl_get_html(const char *url, char **out_html)
 }
 
 /**
- * find_archive_from_html - Find archive URL in HTML content
+ * dep_find_archive_f_html - Find archive URL in HTML content
  * @html: HTML content to search
  * @out_url: Output buffer for URL
  * @out_size: Size of output buffer
  *
  * Return: 1 if found, 0 if not
  */
-static int find_archive_from_html(const char *html, char *out_url, size_t out_size)
+static int dep_find_archive_f_html(const char *html, char *out_url, size_t out_size)
 {
 		const char *p = html;
 		const char *zip, *tar, *ret, *href;
@@ -184,7 +184,7 @@ static int find_archive_from_html(const char *html, char *out_url, size_t out_si
 						if (out_url[0] == '/') {
 								char full_url[PATH_MAX];
 								snprintf(full_url, sizeof(full_url), 
-										 "https://github.com%s", out_url);
+										 "%sgithub.com%s", "https://", out_url);
 								strncpy(out_url, full_url, out_size - 1);
 								out_url[out_size - 1] = '\0';
 						}
@@ -197,14 +197,14 @@ static int find_archive_from_html(const char *html, char *out_url, size_t out_si
 }
 
 /**
- * select_best_asset - Select most appropriate asset for current platform
+ * dep_gh_select_best_asset - Select most appropriate asset for current platform
  * @assets: Array of asset URLs
  * @count: Number of assets
  * @preferred_os: Preferred OS name
  *
  * Return: Duplicated string of best asset URL
  */
-static char *select_best_asset(char **assets, int count, const char *preferred_os)
+static char *dep_gh_select_best_asset(char **assets, int count, const char *preferred_os)
 {
 		int i, j;
 		const char *os_patterns[] = {
@@ -237,13 +237,13 @@ static char *select_best_asset(char **assets, int count, const char *preferred_o
 }
 
 /**
- * parse_repo_input - Parse repository input string
+ * dep_parse_repo_input - Parse repository input string
  * @input: Input string (URL or short format)
  * @info: Output dep_repo_info structure
  *
  * Return: 1 on success, 0 on failure
  */
-static int parse_repo_input(const char *input, struct dep_repo_info *info)
+static int dep_parse_repo_input(const char *input, struct dep_repo_info *info)
 {
 		char working[512];
 		char *tag_ptr, *path, *first_slash, *user, *repo_slash, *repo, *git_ext;
@@ -343,7 +343,7 @@ static int parse_repo_input(const char *input, struct dep_repo_info *info)
 }
 
 /**
- * get_github_release_assets - Get release assets from GitHub API
+ * dep_gh_release_assets - Get release assets from GitHub API
  * @user: Repository owner
  * @repo: Repository name
  * @tag: Release tag
@@ -352,8 +352,8 @@ static int parse_repo_input(const char *input, struct dep_repo_info *info)
  *
  * Return: Number of assets ret
  */
-static int get_github_release_assets(const char *user, const char *repo, 
-								         const char *tag, char **out_urls, int max_urls)
+static int dep_gh_release_assets(const char *user, const char *repo, 
+									 const char *tag, char **out_urls, int max_urls)
 {
 		char api_url[PATH_MAX];
 		char *json_data = NULL;
@@ -361,10 +361,10 @@ static int get_github_release_assets(const char *user, const char *repo,
 		int url_count = 0;
 
 		snprintf(api_url, sizeof(api_url),
-				 "https://api.github.com/repos/%s/%s/releases/tags/%s",
-				 user, repo, tag);
+				 "%sapi.github.com/repos/%s/%s/releases/tags/%s",
+				 "https://", user, repo, tag);
 
-		if (!curl_get_html(api_url, &json_data))
+		if (!dep_curl_get_html(api_url, &json_data))
 				return RETZ;
 
 		p = json_data;
@@ -396,87 +396,94 @@ static int get_github_release_assets(const char *user, const char *repo,
 }
 
 /**
- * check_github_branch - Check if GitHub branch exists
+ * dep_check_github_branch - Check if GitHub branch exists
  * @user: Repository owner
  * @repo: Repository name  
  * @branch: Branch name
  *
  * Return: 1 if exists, 0 if not
  */
-static int check_github_branch(const char *user,
-							   const char *repo,
-							   const char *branch)
+static int dep_check_github_branch(const char *user,
+								   const char *repo,
+								   const char *branch)
 {
 		char url[1024];
 
 		snprintf(url, sizeof(url),
-				 "https://github.com/%s/%s/archive/refs/heads/%s.zip",
-				 user, repo, branch);
+				 "github.com/%s/%s/archive/refs/heads/%s.zip",
+				 "https://", user, repo, branch);
 
-		return curl_url_get_response(url);
+		return dep_curl_url_get_response(url);
 }
 
 /**
- * build_repo_url - Build repository URL based on host and type
+ * dep_build_repo_url - Build repository URL based on host and type
  * @info: Repository information
  * @is_tag_page: Whether to build tag page URL
  * @out_url: Output buffer for URL
  * @out_size: Size of output buffer
  */
-static void build_repo_url(const struct dep_repo_info *info, int is_tag_page,
-						   char *out_url, size_t out_size)
+static void dep_build_repo_url(const struct dep_repo_info *info, int is_tag_page,
+						   	   char *out_url, size_t out_size)
 {
-		if (strcmp(info->host, "github") == 0) {
-				if (is_tag_page && info->tag[0]) {
-						snprintf(out_url, out_size, "https://%s/%s/%s/releases/tag/%s",
-								 info->domain, info->user, info->repo, info->tag);
-				} else if (info->tag[0]) {
-						snprintf(out_url, out_size, "https://%s/%s/%s/archive/refs/tags/%s.tar.gz",
-								 info->domain, info->user, info->repo, info->tag);
-				} else {
-						snprintf(out_url, out_size, "https://%s/%s/%s/archive/refs/heads/main.zip",
-								 info->domain, info->user, info->repo);
-				}
-		} else if (strcmp(info->host, "gitlab") == 0) {
-				if (is_tag_page && info->tag[0]) {
-						snprintf(out_url, out_size, "https://%s/%s/%s/-/tags/%s",
-								 info->domain, info->user, info->repo, info->tag);
-				} else if (info->tag[0]) {
-						snprintf(out_url, out_size, "https://%s/%s/%s/-/archive/%s/%s-%s.tar.gz",
-								 info->domain, info->user, info->repo, info->tag,
-								 info->repo, info->tag);
-				} else {
-						snprintf(out_url, out_size, "https://%s/%s/%s/-/archive/main/%s-main.zip",
-								 info->domain, info->user, info->repo, info->repo);
-				}
-		} else if (strcmp(info->host, "gitea") == 0) {
-				if (is_tag_page && info->tag[0]) {
-						snprintf(out_url, out_size, "https://%s/%s/%s/tags/%s",
-								 info->domain, info->user, info->repo, info->tag);
-				} else if (info->tag[0]) {
-						snprintf(out_url, out_size, "https://%s/%s/%s/archive/%s.tar.gz",
-								 info->domain, info->user, info->repo, info->tag);
-				} else {
-						snprintf(out_url, out_size, "https://%s/%s/%s/archive/main.zip",
-								 info->domain, info->user, info->repo);
-				}
-		} else if (strcmp(info->host, "sourceforge") == 0) {
-				if (info->tag[0]) {
-						snprintf(out_url, out_size, "https://%s/projects/%s/files/latest/download",
-								 info->domain, info->repo);
-				} else {
-						snprintf(out_url, out_size, "https://%s/projects/%s/files/latest/download",
-								 info->domain, info->repo);
-				}
-		}
+		if (strcmp(info->host, "github") == 0)
+			{
+					if (is_tag_page && info->tag[0]) {
+							snprintf(out_url, out_size, "%s%s/%s/%s/releases/tag/%s",
+									"https://", info->domain, info->user, info->repo, info->tag);
+					} else if (info->tag[0]) {
+							snprintf(out_url, out_size, "%s%s/%s/%s/archive/refs/tags/%s.tar.gz",
+									"https://", info->domain, info->user, info->repo, info->tag);
+					} else {
+							snprintf(out_url, out_size, "%s%s/%s/%s/archive/refs/heads/main.zip",
+									"https://", info->domain, info->user, info->repo);
+					}
+			}
+		else if (strcmp(info->host, "gitlab") == 0)
+			{
+					if (is_tag_page && info->tag[0]) {
+							snprintf(out_url, out_size, "%s%s/%s/%s/-/tags/%s",
+									"https://", info->domain, info->user, info->repo, info->tag);
+					} else if (info->tag[0]) {
+							snprintf(out_url, out_size, "%s%s/%s/%s/-/archive/%s/%s-%s.tar.gz",
+									"https://", info->domain, info->user, info->repo, info->tag,
+									info->repo, info->tag);
+					} else {
+							snprintf(out_url, out_size, "%s%s/%s/%s/-/archive/main/%s-main.zip",
+									"https://", info->domain, info->user, info->repo, info->repo);
+					}
+			}
+		else if (strcmp(info->host, "gitea") == 0)
+			{
+					if (is_tag_page && info->tag[0]) {
+							snprintf(out_url, out_size, "%s%s/%s/%s/tags/%s",
+									"https://", info->domain, info->user, info->repo, info->tag);
+					} else if (info->tag[0]) {
+							snprintf(out_url, out_size, "%s%s/%s/%s/archive/%s.tar.gz",
+									"https://", info->domain, info->user, info->repo, info->tag);
+					} else {
+							snprintf(out_url, out_size, "%s%s/%s/%s/archive/main.zip",
+									"https://", info->domain, info->user, info->repo);
+					}
+			}
+		else if (strcmp(info->host, "sourceforge") == 0)
+			{
+					if (info->tag[0]) {
+							snprintf(out_url, out_size, "%s%s/projects/%s/files/latest/download",
+									"https://", info->domain, info->repo);
+					} else {
+							snprintf(out_url, out_size, "%s%s/projects/%s/files/latest/download",
+									"https://", info->domain, info->repo);
+					}
+			}
 }
 
 /**
  * wd_install_dependss - Install depends from repositories
- * handle_base_dependency - Helper for Handling
+ * dep_handle_repo - Helper for Handling
  */
 
-static int handle_base_dependency(const struct dep_repo_info *dep_repo_info,
+static int dep_handle_repo(const struct dep_repo_info *dep_repo_info,
 								  char *out_url,
 								  size_t out_sz)
 {
@@ -490,14 +497,15 @@ static int handle_base_dependency(const struct dep_repo_info *dep_repo_info,
 		if (dep_repo_info->tag[0]) {
 			/* Try GitHub release assets */
 			char *assets[10] = { 0 };
-			int asset_count = get_github_release_assets(dep_repo_info->user,
-														dep_repo_info->repo,
-														dep_repo_info->tag,
-														assets,
-														10);
+			int asset_count = dep_gh_release_assets(dep_repo_info->user,
+													dep_repo_info->repo,
+													dep_repo_info->tag,
+													assets,
+													10);
 
 			if (asset_count > 0) {
-				char *best_asset = select_best_asset(assets, asset_count, NULL);
+				char *best_asset;
+				best_asset = dep_gh_select_best_asset(assets, asset_count, NULL);
 				if (best_asset) {
 					strncpy(out_url, best_asset, out_sz - 1);
 					ret = 1;
@@ -519,7 +527,7 @@ static int handle_base_dependency(const struct dep_repo_info *dep_repo_info,
 								dep_repo_info->user,
 								dep_repo_info->repo,
 								dep_repo_info->tag);
-						if (curl_url_get_response(out_url))
+						if (dep_curl_url_get_response(out_url))
 							ret = 1;
 					}
 				}
@@ -527,14 +535,15 @@ static int handle_base_dependency(const struct dep_repo_info *dep_repo_info,
 		{
 			for (int j = 0; j < 2 && !ret; j++) {
 				snprintf(out_url, out_sz,
-						"https://github.com/%s/%s/archive/refs/heads/%s.zip",
+						"%s%s/%s/archive/refs/heads/%s.zip",
+						"https://",
 						dep_repo_info->user,
 						dep_repo_info->repo,
 						branches[j]);
-				if (curl_url_get_response(out_url)) {
+				if (dep_curl_url_get_response(out_url)) {
 					ret = 1;
 					if (j == 1)
-						printf_info(stdout, "Using master branch (main not master)");
+						pr_info(stdout, "Using master branch (main not master)");
 				}
 			}
 		}
@@ -579,7 +588,7 @@ void dep_add_ncheck_hash(cJSON *depends, const char *file_path, const char *json
 		convert_j_path[sizeof(convert_j_path) - 1] = '\0';
 		__convert_path(convert_j_path);
 
-		printf_info(stdout, "\tHashing convert path: %s\n", convert_f_path);
+		pr_info(stdout, "\tHashing convert path: %s\n", convert_f_path);
 
 		/* Calculate SHA256 hash of the file */
 		if (sha256_hash(convert_f_path, hash) == RETN) {
@@ -599,15 +608,15 @@ void dep_add_ncheck_hash(cJSON *depends, const char *file_path, const char *json
 				/* Add hash if it doesn't exist */
 				if (!h_exists) {
 						cJSON_AddItemToArray(depends, cJSON_CreateString(hex));
-						printf_info(stdout, "\tAdded hash for: %s to wd_depends.json\n", convert_j_path);
+						pr_info(stdout, "\tAdded hash for: %s to wd_depends.json\n", convert_j_path);
 				} else {
-						printf_info(stdout, "\tHash already exists for: %s in wd_depends.json\n", convert_j_path);
-						printf_info(stdout, "\t\tHash: %s\n", hex);
+						pr_info(stdout, "\tHash already exists for: %s in wd_depends.json\n", convert_j_path);
+						pr_info(stdout, "\t\tHash: %s\n", hex);
 				}
 
 				wdfree(hex);
 		} else {
-				printf_error(stdout, "Failed to hash: %s (convert: %s)\n", convert_j_path, convert_f_path);
+				pr_error(stdout, "Failed to hash: %s (convert: %s)\n", convert_j_path, convert_f_path);
 		}
 }
 
@@ -622,7 +631,7 @@ typedef struct {
 } depConfig;
 
 void dep_implementation_samp_conf(depConfig config) {
-		printf_info(stdout, "\tAdding Depends: %s", config.dep_added);
+		pr_info(stdout, "\tAdding Depends: %s", config.dep_added);
 		
 		FILE* file = fopen(config.dep_config, "r");
 		if (file) {
@@ -691,7 +700,7 @@ void dep_implementation_samp_conf(depConfig config) {
     dep_implementation_samp_conf((depConfig){x, y, z})
 
 void dep_implementation_omp_conf(const char* filename, const char* plugin_name) {
-		printf_info(stdout, "\tAdding Depends %s", plugin_name);
+		pr_info(stdout, "\tAdding Depends %s", plugin_name);
 		
 		FILE* c_file = fopen(filename, "r");
 		cJSON* root = NULL;
@@ -705,7 +714,7 @@ void dep_implementation_omp_conf(const char* filename, const char* plugin_name) 
 			
 			char* buffer = (char*)malloc(file_size + 1);
 			if (!buffer) {
-				printf_error(stdout, "Memory allocation failed!");
+				pr_error(stdout, "Memory allocation failed!");
 				fclose(c_file);
 				return;
 			}
@@ -774,7 +783,6 @@ void dep_implementation_omp_conf(const char* filename, const char* plugin_name) 
 /**
  * dep_add_include - Added Include to Gamemode
  */
-void dep_add_include(const char *modes, char *dep_name, char *dep_after);
 void dep_add_include(const char *modes,
 					 char *dep_name,
 					 char *dep_after) {
@@ -792,7 +800,7 @@ void dep_add_include(const char *modes,
 		ct_modes[fileSize] = '\0';
 		fclose(file);
 
-		printf_info(stdout, "\tAdding Include: %s", dep_name);
+		pr_info(stdout, "\tAdding Include: %s", dep_name);
 
 		if (strstr(ct_modes, dep_name) != WD_ISNULL &&
 			strstr(ct_modes, dep_after) != WD_ISNULL) {
@@ -903,7 +911,7 @@ static void dep_pr_include_addition(const char *filename)
 		if (procc_f) fclose(procc_f);
 
 		if (!_toml_config) {
-			printf_error(stdout, "parsing TOML: %s", errbuf);
+			pr_error(stdout, "parsing TOML: %s", errbuf);
 			return;
 		}
 
@@ -933,16 +941,21 @@ static void dep_pr_include_addition(const char *filename)
 }
 
 /**
- * Process all .inc files recursively
+ * dep_pr_inc_files - process all .inc files recursively
+ * @depends: cJSON dependency array
+ * @bp: base path to start scanning
+ * @db: destination base directory
  */
 void dep_pr_inc_files(cJSON *depends, const char *bp, const char *db)
 {
 		DIR *dir;
 		struct dirent *item;
-		struct stat statbuf;
-		char cmd[MAX_PATH * 3],
-			 f_path[PATH_MAX], parent_dir[PATH_MAX],
-			 dest_path[PATH_MAX], *dir_name, *dot_ext;
+		struct stat st;
+		char cmd[MAX_PATH * 3];
+		char fpath[PATH_MAX];
+		char parent[PATH_MAX];
+		char dest[PATH_MAX];
+		char *dname, *ext;
 
 		dir = opendir(bp);
 		if (!dir)
@@ -952,57 +965,55 @@ void dep_pr_inc_files(cJSON *depends, const char *bp, const char *db)
 			if (!strcmp(item->d_name, ".") || !strcmp(item->d_name, ".."))
 				continue;
 
-			snprintf(f_path, sizeof(f_path), "%s/%s", bp, item->d_name);
+			snprintf(fpath, sizeof(fpath), "%s/%s", bp, item->d_name);
 
-			if (stat(f_path, &statbuf) != 0)
+			if (stat(fpath, &st) != 0)
 				continue;
 
-			if (S_ISDIR(statbuf.st_mode)) {
-				dep_pr_inc_files(depends, f_path, db);
-			} else if (S_ISREG(statbuf.st_mode)) {
-				/* Check if it's .inc file */
-				dot_ext = strrchr(item->d_name, '.');
-				if (!dot_ext || strcmp(dot_ext, ".inc") != 0)
-					continue;
-
-				/* Move the parent folder of this .inc file */
-				snprintf(parent_dir, sizeof(parent_dir), "%s", bp);
-
-				/* Extract just the folder name (not full path) */
-				dir_name = strrchr(parent_dir, '/');
-				if (!dir_name)
-					continue;
-
-				++dir_name; /* skip the '/' */
-
-				snprintf(dest_path, sizeof(dest_path), "%s/%s", 
-					db, dir_name);
-
-				/* Move entire folder containing the .inc file */
-				if (rename(parent_dir, dest_path) != 0) {
-					/* fallback: copy & remove */
-					snprintf(cmd, sizeof(cmd), 
-						"cp -r \"%s\" \"%s\" && rm -rf \"%s\"",
-						parent_dir, dest_path, parent_dir);
-					
-					if (system(cmd) != 0) {
-						fprintf(stderr, 
-							"Failed to move folder: %s\n",
-							parent_dir);
-						continue;
-					}
-				}
-
-				/* Add to dependencies */
-				dep_add_ncheck_hash(depends, dest_path, dest_path);
-				
-				printf_info(stdout, "\tMoved folder: %s to %s/\n", dir_name,
-					!strcmp(wcfg.wd_is_omp, CRC32_TRUE) ? 
-					"qawno/include" : "pawno/include");
-
-				break; /* Stop processing this directory after moving */
+			if (S_ISDIR(st.st_mode)) {
+				dep_pr_inc_files(depends, fpath, db);
+				continue;
 			}
+
+			if (!S_ISREG(st.st_mode))
+				continue;
+
+			/* Check file extension */
+			ext = strrchr(item->d_name, '.');
+			if (!ext || strcmp(ext, ".inc"))
+				continue;
+
+			/* Copy parent directory name */
+			snprintf(parent, sizeof(parent), "%s", bp);
+			dname = strrchr(parent, '/');
+			if (!dname)
+				continue;
+
+			dname++; /* skip '/' */
+
+			snprintf(dest, sizeof(dest), "%s/%s", db, dname);
+
+			/* Try moving directory */
+			if (rename(parent, dest)) {
+				snprintf(cmd, sizeof(cmd),
+					"cp -r \"%s\" \"%s\" && rm -rf \"%s\"",
+					parent, dest, parent);
+				if (system(cmd)) {
+					pr_error(stdout, "Failed to move folder: %s\n", parent);
+					continue;
+				}
+			}
+
+			/* Add to dependency JSON */
+			dep_add_ncheck_hash(depends, dest, dest);
+
+			pr_info(stdout, "\tmoved folder: %s to %s/\n",
+				dname, !strcmp(wcfg.wd_is_omp, CRC32_TRUE) ?
+				"qawno/include" : "pawno/include");
+
+			break; /* Stop after moving this folder */
 		}
+
 		closedir(dir);
 }
 
@@ -1021,8 +1032,8 @@ static void dep_pr_file_type(const char *path, const char *pattern,
 		
 		if (found) {
 			for (int i = 0; i < wcfg.wd_sef_count; ++i) {
-				const char *filename = dep_get_fname(wcfg.wd_sef_found_list[i]);
-				const char *basename = dep_get_bname(wcfg.wd_sef_found_list[i]);
+				const char *dep_names = dep_get_fname(wcfg.wd_sef_found_list[i]),
+						   *dep_base_names = dep_get_bname(wcfg.wd_sef_found_list[i]);
 				
 				/* Move file */
 				if (target_dir[0] != '\0')
@@ -1034,7 +1045,7 @@ static void dep_pr_file_type(const char *path, const char *pattern,
 				system(cp_cmd);
 				
 				/* Add to hash list */
-				snprintf(json_item, sizeof(json_item), "%s", filename);
+				snprintf(json_item, sizeof(json_item), "%s", dep_names);
 				dep_add_ncheck_hash(depends, json_item, json_item);
 				
 				/* Skip adding if plugins on root */
@@ -1042,9 +1053,9 @@ static void dep_pr_file_type(const char *path, const char *pattern,
 
 				/* Add to config */
 				if (!strcmp(wcfg.wd_is_omp, CRC32_TRUE))
-					M_ADD_PLUGIN("config.json", basename);
+					M_ADD_PLUGIN("config.json", dep_base_names);
 				else
-					S_ADD_DEP_AFTER("server.cfg", "plugins", basename);
+					S_ADD_DEP_AFTER("server.cfg", "plugins", dep_base_names);
 			}
 		}
 done:
@@ -1067,16 +1078,19 @@ void dep_move_files(const char *dep_dir)
 		FILE *e_file, *fp_cache;
 		char dp_fp[PATH_MAX], dp_fc[PATH_MAX], dp_inc[PATH_MAX];
 		char cwd[PATH_MAX], *dep_inc_path = NULL;
-		int wd_log_acces, i;
+		char cp_cmd[MAX_PATH * 2];
+		char d_b[MAX_PATH];
+		char rm_cmd[PATH_MAX];
+		int wd_log_acces, i, __inc_legacyplug_r;
 		long fp_cache_sz;
 		char *file_content;
 
-		/* Check/create cache file */
+		/* Check or create cache file */
 		wd_log_acces = path_acces("wd_depends.json");
 		if (!wd_log_acces)
 			system("touch wd_depends.json");
 
-		/* Create JSON objects */
+		/* Create JSON root object */
 		root = cJSON_CreateObject();
 		depends = cJSON_CreateArray();
 		cJSON_AddStringToObject(root, "comment", " -- cache file");
@@ -1093,16 +1107,19 @@ void dep_move_files(const char *dep_dir)
 				if (file_content) {
 					fread(file_content, 1, fp_cache_sz, e_file);
 					file_content[fp_cache_sz] = '\0';
-					
+
 					_e_root = cJSON_Parse(file_content);
 					if (_e_root) {
-						cJSON *_e_depends = cJSON_GetObjectItem(_e_root, "depends");
+						cJSON *_e_depends;
+
+						_e_depends = cJSON_GetObjectItem(_e_root, "depends");
 						if (_e_depends && cJSON_IsArray(_e_depends)) {
 							int _e_cnt = cJSON_GetArraySize(_e_depends);
-							for (i = 0; i < _e_cnt; i++) {
+
+							for (i = 0; i < _e_cnt; i++)
 								dep_cjson_additem(_e_depends, i, depends);
-							}
-							printf_info(stdout, "Loaded %d existing hashes", _e_cnt);
+
+							pr_info(stdout, "Loaded %d existing hashes", _e_cnt);
 						}
 					}
 					wdfree(file_content);
@@ -1127,21 +1144,19 @@ void dep_move_files(const char *dep_dir)
 			snprintf(dp_inc, sizeof(dp_inc), "%s/pawno/include", dep_dir);
 		}
 
-		/* Get current directory */
+		/* Get current working directory */
 		if (!getcwd(cwd, sizeof(cwd))) {
 			perror("getcwd");
 			goto cleanup;
 		}
 
-		char cp_cmd[MAX_PATH * 2];
-
-		/* Process files with helper function */
+		/* Process plugin files */
 		dep_pr_file_type(dp_fp, "*.dll", NULL, cwd, depends, "plugins", 1);
 		dep_pr_file_type(dp_fp, "*.so", NULL, cwd, depends, "plugins", 1);
 		dep_pr_file_type(dep_dir, "*.dll", "plugins", cwd, depends, "", 0);
 		dep_pr_file_type(dep_dir, "*.so", "plugins", cwd, depends, "", 0);
 
-		/* Process components for OMP */
+		/* Process components (OMP only) */
 		if (!strcmp(wcfg.wd_is_omp, CRC32_TRUE)) {
 			dep_pr_file_type(dp_fc, "*.dll", NULL, cwd, depends, "components", 1);
 			dep_pr_file_type(dp_fc, "*.so", NULL, cwd, depends, "components", 1);
@@ -1150,29 +1165,24 @@ void dep_move_files(const char *dep_dir)
 		}
 
 		/* Process include files */
-		char d_b[MAX_PATH];
-		snprintf(d_b, sizeof(d_b), "%s/include", 
-				!strcmp(wcfg.wd_is_omp, CRC32_TRUE) ? "qawno" : "pawno");
+		snprintf(d_b, sizeof(d_b), "%s/include",
+			!strcmp(wcfg.wd_is_omp, CRC32_TRUE) ? "qawno" : "pawno");
 
 		dep_pr_inc_files(depends, dep_dir, d_b);
 
-		/* Process INC files in root */
+		/* Process legacy include files */
 		wd_sef_fdir_reset();
-		int __inc_legacyplug_r = wd_sef_fdir(dep_dir, "*.inc", dep_inc_path);
+		__inc_legacyplug_r = wd_sef_fdir(dep_dir, "*.inc", dep_inc_path);
 		if (__inc_legacyplug_r) {
 			for (i = 0; i < wcfg.wd_sef_count; ++i) {
-				const char *fi_depends_name = dep_get_fname(wcfg.wd_sef_found_list[i]);
-				
-				snprintf(cp_cmd, sizeof(cp_cmd), "mv -f \"%s\" \"%s/%s/\"", 
-						wcfg.wd_sef_found_list[i], cwd, dep_inc_path);
+				const char *fi_depends_name;
+
+				fi_depends_name = dep_get_fname(wcfg.wd_sef_found_list[i]);
+				snprintf(cp_cmd, sizeof(cp_cmd),
+					"mv -f \"%s\" \"%s/%s/\"",
+					wcfg.wd_sef_found_list[i], cwd, dep_inc_path);
 				system(cp_cmd);
-				
-				char json_item[PATH_MAX];
-				if (strfind(dp_inc, "pawno"))
-					snprintf(json_item, sizeof(json_item), "pawno/%s", fi_depends_name);
-				else if (strfind(dp_inc, "qawno"))
-					snprintf(json_item, sizeof(json_item), "qawno/%s", fi_depends_name);
-				
+
 				dep_add_ncheck_hash(depends, fi_depends_name, fi_depends_name);
 				dep_pr_include_addition(fi_depends_name);
 			}
@@ -1180,18 +1190,20 @@ void dep_move_files(const char *dep_dir)
 
 		/* Save updated cache */
 		cJSON_AddItemToObject(root, "depends", depends);
+
 		fp_cache = fopen("wd_depends.json", "w");
 		if (fp_cache) {
 			int array_size = cJSON_GetArraySize(depends);
-			
+
 			fprintf(fp_cache, "{\n");
 			fprintf(fp_cache, "\t\"comment\":\t\" -- this is for cache.\",\n");
 			fprintf(fp_cache, "\t\"depends\":\t[");
-			
+
 			if (array_size > 0) {
 				fprintf(fp_cache, "\n");
 				for (i = 0; i < array_size; i++) {
 					cJSON *item = cJSON_GetArrayItem(depends, i);
+
 					if (cJSON_IsString(item)) {
 						fprintf(fp_cache, "\t\t\"%s\"", item->valuestring);
 						if (i < array_size - 1)
@@ -1201,19 +1213,18 @@ void dep_move_files(const char *dep_dir)
 				}
 				fprintf(fp_cache, "\t");
 			}
-			
+
 			fprintf(fp_cache, "]\n}\n");
 			fclose(fp_cache);
-			printf_info(stdout, "Saved %d unique hashes", array_size);
+
+			pr_info(stdout, "Saved %d unique hashes", array_size);
 		}
 
 cleanup:
-		/* Cleanup */
 		cJSON_Delete(root);
 		if (_e_root)
 			cJSON_Delete(_e_root);
-		
-		char rm_cmd[PATH_MAX];
+
 		snprintf(rm_cmd, sizeof(rm_cmd), "rm -rf %s", dep_dir);
 		system(rm_cmd);
 }
@@ -1268,7 +1279,7 @@ void wd_install_depends_str(const char *deps_str)
 		int i;
 
 		if (!deps_str || !*deps_str) {
-			printf_info(stdout, "No valid dependencies to install");
+			pr_info(stdout, "No valid dependencies to install");
 			return;
 		}
 
@@ -1283,7 +1294,7 @@ void wd_install_depends_str(const char *deps_str)
 		}
 
 		if (dep_count == 0) {
-			printf_info(stdout, "No valid dependencies to install");
+			pr_info(stdout, "No valid dependencies to install");
 			return;
 		}
 
@@ -1294,13 +1305,13 @@ void wd_install_depends_str(const char *deps_str)
 			char dep_repo_name[256] = {0};
 			const char *chr_last_slash;
 
-			if (!parse_repo_input(depends[i], &dep_repo_info)) {
-				printf_error(stdout, "Invalid repo format: %s", depends[i]);
+			if (!dep_parse_repo_input(depends[i], &dep_repo_info)) {
+				pr_error(stdout, "Invalid repo format: %s", depends[i]);
 				continue;
 			}
 
 #if defined(_DBG_PRINT)
-			printf_info(stdout, "Parsed repo: host=%s, domain=%s, user=%s, repo=%s, tag=%s",
+			pr_info(stdout, "Parsed repo: host=%s, domain=%s, user=%s, repo=%s, tag=%s",
 						dep_repo_info.host, dep_repo_info.domain, dep_repo_info.user,
 						dep_repo_info.repo,
 						dep_repo_info.tag[0] ? dep_repo_info.tag : "main");
@@ -1308,18 +1319,18 @@ void wd_install_depends_str(const char *deps_str)
 
 			if (!strcmp(dep_repo_info.host, "github"))
 				{
-					dep_item_found = handle_base_dependency(&dep_repo_info,
-															dep_url,
-															sizeof(dep_url));
+					dep_item_found = dep_handle_repo(&dep_repo_info,
+													 dep_url,
+													 sizeof(dep_url));
 				}
 			else
 				{
-					build_repo_url(&dep_repo_info, 0, dep_url, sizeof(dep_url));
-					dep_item_found = curl_url_get_response(dep_url);
+					dep_build_repo_url(&dep_repo_info, 0, dep_url, sizeof(dep_url));
+					dep_item_found = dep_curl_url_get_response(dep_url);
 				}
 
 			if (!dep_item_found) {
-				printf_error(stdout, "Repository not found: %s", depends[i]);
+				pr_error(stdout, "Repository not found: %s", depends[i]);
 				continue;
 			}
 

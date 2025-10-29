@@ -142,6 +142,8 @@ typedef struct {
                 wd_idepends;
         char
                 *wd_os_type;
+        int
+                wd_sel_stat;
         char
                 *wd_is_samp;
         char
@@ -151,7 +153,7 @@ typedef struct {
         char*
                 wd_ptr_omp;
         int
-                wd_compiler_stats;
+                wd_compiler_stat;
         volatile sig_atomic_t
                 wd_stopwatch_end;
         size_t

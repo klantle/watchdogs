@@ -340,16 +340,13 @@ int wd_RunCompiler(const char *arg, const char *compile_args)
                             {
                                 remove(_container_output);
                             }
-                            wcfg.wd_compiler_stats++;
-                        } 
-                        else 
-                        {
-                            /* Decrement error counter on successful compilation */
-                            if (wcfg.wd_compiler_stats) 
+                            wcfg.wd_compiler_stats = 1;
+                            } 
+                            else 
                             {
-                                wcfg.wd_compiler_stats--;
+                                /* Set error to Zero for successful compilation */
+                                wcfg.wd_compiler_stats = 0;
                             }
-                        }
                     } 
                     else 
                     {
@@ -644,15 +641,12 @@ int wd_RunCompiler(const char *arg, const char *compile_args)
                                 {
                                     remove(_container_output);
                                 }
-                                ++wcfg.wd_compiler_stats;
+                                wcfg.wd_compiler_stats = 1;
                             } 
                             else 
                             {
-                                /* Decrement error counter on successful compilation */
-                                if (wcfg.wd_compiler_stats) 
-                                {
-                                    --wcfg.wd_compiler_stats;
-                                }
+                                 /* Set error to Zero for successful compilation */
+                                wcfg.wd_compiler_stats = 0;
                             }
                         } 
                         else 

@@ -1319,7 +1319,11 @@ __default:
 							snprintf(__sz_json_item, sizeof(__sz_json_item), "pawno/%s", filename_only);
 					else if (strfind(__sz_dp_inc, "qawno"))
 							snprintf(__sz_json_item, sizeof(__sz_json_item), "qawno/%s", filename_only);
-					dep_add_ncheck_hash(depends, __sz_json_item, __sz_json_item);
+					char *pos;
+					while ((pos = strstr(filename_only, "include/")) != NULL) {
+						memmove(pos, pos + strlen("include/"), strlen(pos + strlen("include/")) + 1);
+					}
+					dep_add_ncheck_hash(depends, filename_only, filename_only);
 
 					char errbuf[256];
 					toml_table_t *_toml_config;

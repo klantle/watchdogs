@@ -20,7 +20,7 @@
 
 ## Page
 
-1. [Introduction](#introduction)\
+1. [Introduction](#introduction)
 2. [Quick Installation](#quick-installation)
 3. [Platform-Specific Installation](#platform-specific-installation)
    - [Docker](#docker)
@@ -29,7 +29,7 @@
    - [Linux (Bash)](#linux-bash)
 4. [Configuration](#configuration)
 6. [Usage Guide](#usage-guide)
-6. [Compiler Reference](#compiler-reference)\
+6. [Compiler Reference](#compiler-reference)
 
 ---
 
@@ -126,8 +126,8 @@ git clone https://github.com/klantle/watchdogs watch
 # 7. Navigate to directory
 cd watch
 
-# 8. Build from source
-make
+# 8. Installing Library & Build from source
+make init
 
 # 9. Move executable and run
 mv watchdogs.tmux .. && cd ..
@@ -150,8 +150,8 @@ git clone https://github.com/klantle/watchdogs watch
 # 4. Navigate to directory
 cd watch
 
-# 5. Build from source
-make
+# 5. Installing Library & Build from source
+make init
 
 # 6. Move executable and run
 mv watchdogs.win .. && cd ..
@@ -189,8 +189,8 @@ git clone https://github.com/klantle/watchdogs watch
 # 4. Navigate to directory
 cd watch
 
-# 5. Build from source
-make
+# 5. Installing Library & Build from source
+make init
 
 # 6. Move executable and run
 mv watchdogs .. && cd ..

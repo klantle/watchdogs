@@ -30,9 +30,9 @@ SRCS = extra.c chain.c utils.c depends.c hardware.c compiler.c archive.c curl.c 
 
 OBJS = $(SRCS:.c=.o)
 
-.PHONY: install all clean linux termux windows compress strip debug termux-debug windows-debug
+.PHONY: init all clean linux termux windows compress strip debug termux-debug windows-debug
 
-install:
+init:
 	@echo "$(YELLOW)==>$(RESET) Detecting system environment..."
 	@UNAME_S=$$(uname -s); \
 	if echo "$$UNAME_S" | grep -qi "microsoft"; then \

@@ -16,6 +16,8 @@
 </div>
 <!-- markdownlint-enable MD033 -->
 
+![img](https://raw.githubusercontent.com/klantle/watchdogs/main/watchdogs.png)
+
 ---
 
 ## Page
@@ -287,8 +289,7 @@ For WSL environments:
 
 Get help:
 ```bash
-help
-help [command]
+Usage: help | help [<command>]
 ```
 
 ### Compilation Commands
@@ -385,11 +386,6 @@ alias watch='./path/to/watchdogs'
 Default (if in root directory):
 ```bash
 alias watch='./watchdogs'
-```
-
-Usage:
-```bash
-watch [command]
 ```
 
 ## Compiler Reference

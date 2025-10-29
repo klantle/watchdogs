@@ -125,6 +125,11 @@ win32_chmod(const char *path) {
 #define OS_SIGNAL_LINUX		CRC32_FALSE  
 #define OS_SIGNAL_UNKNOWN	CRC32_UNKNOWN
 
+extern const char *BG,
+                  *FG,
+                  *BORD,
+                  *RST;
+                  
 #define MAX_SEF_ENTRIES 28
 #define MAX_SEF_PATH_SIZE PATH_MAX
 

@@ -32,6 +32,12 @@
 #include "utils.h"
 #include "chain.h"
 
+// Borders Colors
+const char *BG = "\x1b[48;5;235m";
+const char *FG = "\x1b[97m";
+const char *BORD = "\x1b[33m";
+const char *RST = "\x1b[0m";
+
 /**
  * __command - List of supported commands in the watchdog shell.
  * 
@@ -1277,25 +1283,33 @@ static void __toml_base_subdirs(const char *base_path, FILE *toml_file, int *fir
 
 		snprintf(search_path, sizeof(search_path), "%s\\*", base_path);
 		find_handle = FindFirstFileA(search_path, &find_data);
-
 		if (find_handle == INVALID_HANDLE_VALUE)
-				return;
+			return;
 
 		do {
-				if (find_data.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY) {
-						if (strcmp(find_data.cFileName, ".") == 0 ||
-						    strcmp(find_data.cFileName, "..") == 0)
-								continue;
+			if (find_data.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY) {
+				/* Skip . and .. */
+				if (strcmp(find_data.cFileName, ".") == 0 ||
+					strcmp(find_data.cFileName, "..") == 0)
+					continue;
 
-						snprintf(full_path, sizeof(full_path), "%s/%s", 
-								 base_path, find_data.cFileName);
+				/* Skip folder with same name as parent */
+				const char *last_slash = strrchr(base_path, '\\');
+				if (last_slash && strcmp(last_slash + 1, find_data.cFileName) == 0)
+					continue;
 
-						__toml_add_directory_path(toml_file, first, full_path);
-						__toml_base_subdirs(full_path, toml_file, first);
-				}
+				snprintf(full_path, sizeof(full_path), "%s/%s",
+						base_path, find_data.cFileName);
+
+				__toml_add_directory_path(toml_file, first, full_path);
+
+				/* Recurse deeper */
+				__toml_base_subdirs(full_path, toml_file, first);
+			}
 		} while (FindNextFileA(find_handle, &find_data) != 0);
 
 		FindClose(find_handle);
+
 #else
 		DIR *dir;
 		struct dirent *item;
@@ -1303,20 +1317,25 @@ static void __toml_base_subdirs(const char *base_path, FILE *toml_file, int *fir
 
 		dir = opendir(base_path);
 		if (!dir)
-				return;
+			return;
 
 		while ((item = readdir(dir)) != WD_ISNULL) {
-				if (item->d_type == DT_DIR) {
-						if (strcmp(item->d_name, ".") == 0 ||
-						    strcmp(item->d_name, "..") == 0)
-								continue;
+			if (item->d_type == DT_DIR) {
+				if (strcmp(item->d_name, ".") == 0 ||
+					strcmp(item->d_name, "..") == 0)
+					continue;
 
-						snprintf(full_path, sizeof(full_path), "%s/%s", 
-								 base_path, item->d_name);
+				/* Skip folder with same name as parent */
+				const char *last_slash = strrchr(base_path, '/');
+				if (last_slash && strcmp(last_slash + 1, item->d_name) == 0)
+					continue;
 
-						__toml_add_directory_path(toml_file, first, full_path);
-						__toml_base_subdirs(full_path, toml_file, first);
-				}
+				snprintf(full_path, sizeof(full_path), "%s/%s",
+						base_path, item->d_name);
+
+				__toml_add_directory_path(toml_file, first, full_path);
+				__toml_base_subdirs(full_path, toml_file, first);
+			}
 		}
 
 		closedir(dir);

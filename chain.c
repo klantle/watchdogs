@@ -103,10 +103,13 @@ int __command__(void)
 
 _ptr_command:
         char ptr_prompt[PATH_MAX + 56];
+        size_t __sz_ptrp = sizeof(ptr_prompt);
         if (strlen(__cwd) > 100)
-            snprintf(ptr_prompt, sizeof(ptr_prompt), "[" FCOLOUR_YELLOW "watchdogs:%s" FCOLOUR_DEFAULT "]\n\t> $", __cwd);
+            snprintf(ptr_prompt, __sz_ptrp,
+                     "[" FCOLOUR_YELLOW "watchdogs:%s" FCOLOUR_DEFAULT "]\n\t> $", __cwd);
         else
-            snprintf(ptr_prompt, sizeof(ptr_prompt), "[" FCOLOUR_YELLOW "watchdogs:%s" FCOLOUR_DEFAULT "] > $", __cwd);
+            snprintf(ptr_prompt, __sz_ptrp,
+                     "[" FCOLOUR_YELLOW "watchdogs:%s" FCOLOUR_DEFAULT "] > $", __cwd);
         char* ptr_command = readline(ptr_prompt);
 
         if (ptr_command == WD_ISNULL || ptr_command[0] == '\0')
@@ -115,10 +118,11 @@ _ptr_command:
         wd_a_history(ptr_command);
 
         int c_distance = INT_MAX;
-        const char *_dist_command = wd_find_near_command(ptr_command,
-                                                       __command,
-                                                       __command_len,
-                                                       &c_distance);
+        const char *_dist_command;
+        _dist_command = wd_find_near_command(ptr_command,
+                                             __command,
+                                             __command_len,
+                                             &c_distance);
 
 _reexecute_command:
         clock_gettime(CLOCK_MONOTONIC, &cmd_start);
@@ -135,16 +139,15 @@ _reexecute_command:
                     printf(" -> %s\n", __command[i]);
             } else if (strcmp(arg, "clear") == 0) { println(stdout, "clear: clear screen watchdogs. | Usage: \"clear\"");
             } else if (strcmp(arg, "exit") == 0) { println(stdout, "exit: exit from watchdogs. | Usage: \"exit\"");
-            } else if (strcmp(arg, "kill") == 0) { println(stdout, "kill: kill - refresh terminal watchdogs. | Usage: \"kill\"");
+            } else if (strcmp(arg, "kill") == 0) { println(stdout, "kill: refresh terminal watchdogs. | Usage: \"kill\"");
             } else if (strcmp(arg, "title") == 0) { println(stdout, "title: set-title terminal watchdogs. | Usage: \"title\" | [<args>]");
             } else if (strcmp(arg, "time") == 0) { println(stdout, "time: print current time. | Usage: \"time\"");
-            } else if (strcmp(arg, "time") == 0) { println(stdout, "time: print current time. | Usage: \"time\"");
             } else if (strcmp(arg, "stopwatch") == 0) { println(stdout, "stopwatch: calculating time. Usage: \"stopwatch\"");
-            } else if (strcmp(arg, "install") == 0) { println(stdout, "install: download & install depends | Usage: \"install\" | [<args>] - install github.com/github.com/gitea.com:user/repo:vtags");
-            } else if (strcmp(arg, "upstream") == 0) { println(stdout, "upstream: get newer commits from upstream (gitlab). | Usage: \"upstream\"");
+            } else if (strcmp(arg, "install") == 0) { println(stdout, "install: download & install depends | Usage: \"install\" | [<args>]\n\tinstall github.com/github.com/gitea.com:user/repo:tags");
+            } else if (strcmp(arg, "upstream") == 0) { println(stdout, "upstream: print newer commits from upstream (gitlab). | Usage: \"upstream\"");
             } else if (strcmp(arg, "hardware") == 0) { println(stdout, "hardware: hardware information. | Usage: \"hardware\"");
-            } else if (strcmp(arg, "gamemode") == 0) { println(stdout, "gamemode: gamemode - download sa-mp gamemode. | Usage: \"gamemode\"");
-            } else if (strcmp(arg, "pawncc") == 0) { println(stdout, "pawncc: pawncc - download sa-mp pawncc. | Usage: \"pawncc\"");
+            } else if (strcmp(arg, "gamemode") == 0) { println(stdout, "gamemode: download sa-mp gamemode. | Usage: \"gamemode\"");
+            } else if (strcmp(arg, "pawncc") == 0) { println(stdout, "pawncc: download sa-mp pawncc. | Usage: \"pawncc\"");
             } else if (strcmp(arg, "compile") == 0) { println(stdout, "compile: compile your project. | Usage: \"compile\" | [<args>]");
             } else if (strcmp(arg, "running") == 0) { println(stdout, "running: running your project. | Usage: \"running\" | [<args>]");
             } else if (strcmp(arg, "crunn") == 0) { println(stdout, "crunn: compile & running your project. | Usage: \"crunn\" | [<args>]");
@@ -246,23 +249,18 @@ loop_stopwatch:
                                        ENABLE_VIRTUAL_TERMINAL_PROCESSING);
                 }
 #endif
-
-                // Borders Colors
-                const char *BG = "\x1b[48;5;235m";
-                const char *FG = "\x1b[97m";
-                const char *BORD = "\x1b[33m";
-                const char *RST = "\x1b[0m";
                                 
                 printf("%s%s+------------------------------------------+%s\n", BORD, FG, RST);
 
-                char line[1024];
+                char line[MAX_PATH * 3];
                 while (fgets(line, sizeof(line), procc_f)) {
                     size_t len = strlen(line);
                     if (len && (line[len-1] == '\n' ||
                         line[len-1] == '\r'))
                         line[--len] = '\0';
-
-                    printf("%s%s|%s %-40s %s|%s\n", BORD, FG, BG, line, BORD, RST);
+                    printf("%s%s|%s %-40s %s|%s\n",
+                           BORD, FG, BG,
+                           line, BORD, RST);
                 }
 
                 printf("%s%s+------------------------------------------+%s\n", BORD, FG, RST);
@@ -275,7 +273,7 @@ loop_stopwatch:
             CURLcode res;
             struct MemoryStruct chunk;
 
-            chunk.memory = malloc(1);
+            chunk.memory = wdmalloc(1);
             chunk.size = 0;
 
             curl_global_init(CURL_GLOBAL_DEFAULT);
@@ -329,23 +327,19 @@ loop_stopwatch:
 
                     char *pretty = cJSON_Print(output_array);
 
-                    // Borders Colors
-                    const char *BG = "\x1b[48;5;235m";
-                    const char *FG = "\x1b[97m";
-                    const char *BORD = "\x1b[33m";
-                    const char *RST = "\x1b[0m";
-                
                     printf("%s%s+------------------------------------------+%s\n", BORD, FG, RST);
 
                     char *line = strtok(pretty, "\n");
                     while (line) {
-                        printf("%s%s|%s %-40.40s %s|%s\n", BORD, FG, BG, line, BORD, RST);
+                        printf("%s%s|%s %-40.40s %s|%s\n",
+                               BORD, FG, BG,
+                               line, BORD, RST);
                         line = strtok(NULL, "\n");
                     }
 
                     printf("%s%s+------------------------------------------+%s\n", BORD, FG, RST);
 
-                    free(pretty);
+                    wdfree(pretty);
                     cJSON_Delete(output_array);
                     cJSON_Delete(root);
                 }

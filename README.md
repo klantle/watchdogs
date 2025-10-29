@@ -1,5 +1,11 @@
-# 🛹 WATCHDOGS Documentation
-
+<!-- markdownlint-disable MD033 MD041 -->
+<div align="center">
+  <h3>
+    <a href="https://gitlab.com/mywatchdogs/watchdogs" >
+    	🛹 W A T C H D O G S 🛹
+    </a>
+  </h3>
+</div>
 <div align="center">
   <img src="https://readme-typing-svg.demolab.com?lines=Welcome!;Discord+Server:;to+get+help+and+support&font=Fira+Code&center=true&width=380&height=50&duration=4000&pause=1000" alt="Typing SVG">
 </div>
@@ -8,23 +14,22 @@
     <img src="https://img.shields.io/discord/819650821314052106?color=7289DA&logo=discord&logoColor=white&style=for-the-badge"/>
   </a>
 </div>
+<!-- markdownlint-enable MD033 -->
 
 ---
 
 ## Page
 
-1. [Introduction](#introduction)
-2. [System Requirements](#system-requirements)
-3. [Quick Installation](#quick-installation)
-4. [Platform-Specific Installation](#platform-specific-installation)
+1. [Introduction](#introduction)\
+2. [Quick Installation](#quick-installation)
+3. [Platform-Specific Installation](#platform-specific-installation)
    - [Docker](#docker)
    - [Termux](#termux)
    - [MSYS2](#msys2)
    - [Linux (Bash)](#linux-bash)
-5. [Configuration](#configuration)
+4. [Configuration](#configuration)
 6. [Usage Guide](#usage-guide)
-7. [Compiler Reference](#compiler-reference)
-8. [Troubleshooting](#troubleshooting)
+6. [Compiler Reference](#compiler-reference)\
 
 ---
 
@@ -352,8 +357,9 @@ make linux          # Build for Linux
 make windows        # Build for Windows
 make termux         # Build for Termux
 make clean          # Clean build artifacts
-make debug          # Build with debug symbols (Linux)
-make windows-debug  # Build with debug symbols (Windows)
+make debug          # Build with debug mode (Linux)
+make debug-termux   # Build with debug mode (Termux)
+make windows-debug  # Build with debug mode (Windows)
 ```
 
 ### XTerm Usage

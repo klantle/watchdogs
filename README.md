@@ -215,7 +215,7 @@ os = "linux"
 
 [compiler]
 # Compiler options
-option = ["-Z+", "-O2", -d2", "-;+", "-(+"]
+option = ["-Z+", "-O2", "-d2", "-;+", "-(+"]
 
 # Include paths for compiler
 include_path = [

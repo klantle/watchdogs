@@ -579,6 +579,11 @@ void dep_add_ncheck_hash(cJSON *depends, const char *file_path, const char *json
 		int array_size;
 		int j;
 
+		char *pos;
+		while ((pos = strstr(file_path, "include/")) != NULL) {
+			memmove(pos, pos + strlen("include/"), strlen(pos + strlen("include/")) + 1);
+		}
+
 		/* Convert paths to use forward slashes */
 		strncpy(convert_f_path, file_path, sizeof(convert_f_path));
 		convert_f_path[sizeof(convert_f_path) - 1] = '\0';

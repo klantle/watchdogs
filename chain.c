@@ -108,12 +108,8 @@ int __command__(void)
 _ptr_command:
         char ptr_prompt[PATH_MAX + 56];
         size_t __sz_ptrp = sizeof(ptr_prompt);
-        if (strlen(__cwd) > 100)
-            snprintf(ptr_prompt, __sz_ptrp,
-                     "[" FCOLOUR_YELLOW "watchdogs:%s" FCOLOUR_DEFAULT "]\n\t> $ ", __cwd);
-        else
-            snprintf(ptr_prompt, __sz_ptrp,
-                     "[" FCOLOUR_YELLOW "watchdogs:%s" FCOLOUR_DEFAULT "] > $ ", __cwd);
+        snprintf(ptr_prompt, __sz_ptrp,
+                 "[" FCOLOUR_CYAN "watchdogs ~ %s" FCOLOUR_DEFAULT "]$ ", __cwd);
         char* ptr_command = readline(ptr_prompt);
 
         if (ptr_command == WD_ISNULL || ptr_command[0] == '\0')
@@ -139,8 +135,9 @@ _reexecute_command:
 
             if (strlen(arg) == 0) {
                 println(stdout, "Usage: help | help [<command>]");
+
                 for (size_t i = 0; i < __command_len; i++)
-                    printf(" -> %s\n", __command[i]);
+                    printf(" --|> %s\n", __command[i]);
             } else if (strcmp(arg, "clear") == 0) { println(stdout, "clear: clear screen watchdogs. | Usage: \"clear\"");
             } else if (strcmp(arg, "exit") == 0) { println(stdout, "exit: exit from watchdogs. | Usage: \"exit\"");
             } else if (strcmp(arg, "kill") == 0) { println(stdout, "kill: refresh terminal watchdogs. | Usage: \"kill\"");
@@ -164,18 +161,16 @@ _reexecute_command:
         } else if (strcmp(ptr_command, "clear") == 0) {
             wd_set_title("Watchdogs | @ clear");
             wd_run_command("clear");
+            
             goto _ptr_command;
-
-            goto done;
         } else if (strcmp(ptr_command, "exit") == 0) {
             exit(1);
         } else if (strcmp(ptr_command, "kill") == 0) {
             wd_set_title("Watchdogs | @ kill");
             wd_run_command("clear");
-            sleep(1);
             __function__();
             
-            goto done;
+            goto _ptr_command;
         } else if (strncmp(ptr_command, "title", 5) == 0) {
             char *arg = ptr_command + 6;
             while (*arg == ' ') ++arg;
@@ -841,7 +836,7 @@ loop_main:
             command_dur = (cmd_end.tv_sec - cmd_start.tv_sec) +
                           (cmd_end.tv_nsec - cmd_start.tv_nsec) / 1e9;
             pr_color(stdout,
-                         FCOLOUR_YELLOW,
+                         FCOLOUR_GREEN,
                          " ==> [C]Finished in %.3fs\n",
                          command_dur);
             goto loop_main;

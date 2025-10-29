@@ -359,7 +359,7 @@ int wd_RunCompiler(const char *arg, const char *compile_args)
                     compiler_dur = (end.tv_sec - start.tv_sec)
                                         + (end.tv_nsec - start.tv_nsec) / 1e9;
 
-                    pr_color(stdout, FCOLOUR_YELLOW,
+                    pr_color(stdout, FCOLOUR_GREEN,
                         " ==> [P]Finished in %.3fs (%.0f ms)\n",
                         compiler_dur, compiler_dur * 1000.0);
 #if defined(_DBG_PRINT)
@@ -660,7 +660,7 @@ int wd_RunCompiler(const char *arg, const char *compile_args)
                         compiler_dur = (end.tv_sec - start.tv_sec)
                                             + (end.tv_nsec - start.tv_nsec) / 1e9;
 
-                        pr_color(stdout, FCOLOUR_YELLOW,
+                        pr_color(stdout, FCOLOUR_GREEN,
                             " ==> [P]Finished in %.3fs (%.0f ms)\n",
                             compiler_dur, compiler_dur * 1000.0);
 #if defined(_DBG_PRINT)

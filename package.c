@@ -114,7 +114,7 @@ static int get_termux_architecture(char *out_arch, size_t buf_size)
 		char selection;
 
 		if (uname(&uname_data) != 0) {
-				printf_error("Failed to get system information");
+				printf_error(stdout, "Failed to get system information");
 				return -RETN;
 		}
 
@@ -153,7 +153,7 @@ static int get_termux_architecture(char *out_arch, size_t buf_size)
 				strncpy(out_arch, "arm64", buf_size);
 				return RETZ;
 		default:
-				printf_error("Invalid architecture selection");
+				printf_error(stdout, "Invalid architecture selection");
 				return -RETN;
 		}
 }
@@ -176,7 +176,7 @@ static int handle_termux_installation(void)
 		/* Verify Termux environment */
 		if (!is_termux_environment()) {
 				char confirmation;
-				printf_color(COL_GREEN, "warning: Not in Termux environment. Continue? [y/N] ");
+				printf_color(stdout, FCOLOUR_GREEN, "warning: Not in Termux. Continue? [y/N] ");
 				
 				if (scanf(" %c", &confirmation) != 1 ||
 				    (confirmation != 'y' && confirmation != 'Y')) {
@@ -204,7 +204,7 @@ static int handle_termux_installation(void)
 		} else if (version_selection >= 'a' && version_selection < 'a' + version_count) {
 				version_index = version_selection - 'a';
 		} else {
-				printf_error("Invalid version selection");
+				printf_error(stdout, "Invalid version selection");
 				return -RETN;
 		}
 
@@ -249,7 +249,7 @@ static int handle_standard_installation(const char *platform)
 
 		/* Validate platform */
 		if (strcmp(platform, "linux") != 0 && strcmp(platform, "windows") != 0) {
-				printf_error("Unsupported platform: %s", platform);
+				printf_error(stdout, "Unsupported platform: %s", platform);
 				return -RETN;
 		}
 
@@ -273,7 +273,7 @@ static int handle_standard_installation(const char *platform)
 		} else if (version_selection >= 'a' && version_selection <= 'j') {
 				version_index = version_selection - 'a';
 		} else {
-				printf_error("Invalid version selection");
+				printf_error(stdout, "Invalid version selection");
 				return -RETN;
 		}
 
@@ -309,7 +309,7 @@ static int handle_standard_installation(const char *platform)
 void wd_install_pawncc(const char *platform)
 {
 		if (!platform) {
-				printf_error("Platform parameter is NULL");
+				printf_error(stdout, "Platform parameter is NULL");
 				return;
 		}
 
@@ -392,7 +392,7 @@ void wd_install_server(const char *platform)
 
 		/* Validate platform */
 		if (strcmp(platform, "linux") != 0 && strcmp(platform, "windows") != 0) {
-				printf_error("Unsupported platform: %s", platform);
+				printf_error(stdout, "Unsupported platform: %s", platform);
 				return;
 		}
 
@@ -416,7 +416,7 @@ void wd_install_server(const char *platform)
 		}
 
 		if (!chosen) {
-				printf_error("Invalid selection");
+				printf_error(stdout, "Invalid selection");
 				return;
 		}
 

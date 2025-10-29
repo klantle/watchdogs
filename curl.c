@@ -116,7 +116,7 @@ static int prompt_apply_pawncc(void)
 
 		char *ptr_sigA;
 ret_ptr:
-		printf_color(COL_YELLOW, "Apply pawncc now? ");
+		printf_color(stdout, FCOLOUR_YELLOW, "Apply pawncc now? ");
 		ptr_sigA = readline("[Y/n]: ");
 
 		while (1) {
@@ -155,13 +155,13 @@ int wd_download_file(const char *url, const char *filename)
 		const int max_retries = 5;
 		struct stat file_stat;
 
-		printf_info("Downloading: %s", filename);
+		printf_info(stdout, "Downloading: %s", filename);
 
 		do {
 				file = fopen(filename, "wb");
 				if (!file) {
 #if defined(_DBG_PRINT)
-						printf_error("Failed to open file: %s", filename);
+						printf_error(stdout, "Failed to open file: %s", filename);
 #endif
 						return -RETN;
 				}
@@ -169,7 +169,7 @@ int wd_download_file(const char *url, const char *filename)
 				curl = curl_easy_init();
 				if (!curl) {
 #if defined(_DBG_PRINT)
-						printf_error("Failed to initialize CURL");
+						printf_error(stdout, "Failed to initialize CURL");
 #endif
 						fclose(file);
 						return -RETN;
@@ -218,11 +218,11 @@ int wd_download_file(const char *url, const char *filename)
 
 								return RETZ;
 						} else {
-								printf_error("Downloaded file too small: %ld bytes", 
+								printf_error(stdout, "Downloaded file too small: %ld bytes", 
 										     file_stat.st_size);
 						}
 				} else {
-						printf_error("Download failed - HTTP: %ld, CURL: %d, retrying...",
+						printf_error(stdout, "Download failed - HTTP: %ld, CURL: %d, retrying...",
 								     response_code, res);
 				}
 
@@ -230,6 +230,6 @@ int wd_download_file(const char *url, const char *filename)
 				sleep(3);
 		} while (retry_count < max_retries);
 
-		printf_error("Download failed after %d retries", max_retries);
+		printf_error(stdout, "Download failed after %d retries", max_retries);
 		return -RETN;
 }

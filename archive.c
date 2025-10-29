@@ -30,13 +30,13 @@ static int arch_copy_data(struct archive *ar, struct archive *aw)
 				if (ret == ARCHIVE_EOF)
 						return ARCHIVE_OK;
 				if (ret != ARCHIVE_OK) {
-						printf_error("Read error: %s", archive_error_string(ar));
+						printf_error(stdout, "Read error: %s", archive_error_string(ar));
 						return ret;
 				}
 
 				ret = archive_write_data_block(aw, buffer, size, offset);
 				if (ret != ARCHIVE_OK) {
-						printf_error("Write error: %s", archive_error_string(aw));
+						printf_error(stdout, "Write error: %s", archive_error_string(aw));
 						return ret;
 				}
 		}
@@ -59,7 +59,7 @@ int wd_extract_tar(const char *tar_file)
 		archive_write = archive_write_disk_new();
 
 		if (!archive_read || !archive_write) {
-				printf_error("Failed to create archive handles");
+				printf_error(stdout, "Failed to create archive handles");
 				goto error;
 		}
 
@@ -81,7 +81,7 @@ int wd_extract_tar(const char *tar_file)
 		/* Open archive file */
 		ret = archive_read_open_filename(archive_read, tar_file, 1024 * 1024);
 		if (ret != ARCHIVE_OK) {
-				printf_error("Cannot open file: %s", archive_error_string(archive_read));
+				printf_error(stdout, "Cannot open file: %s", archive_error_string(archive_read));
 				goto error;
 		}
 
@@ -91,13 +91,13 @@ int wd_extract_tar(const char *tar_file)
 				if (ret == ARCHIVE_EOF)
 						break;
 				if (ret != ARCHIVE_OK) {
-						printf_error("Header error: %s", archive_error_string(archive_read));
+						printf_error(stdout, "Header error: %s", archive_error_string(archive_read));
 						break;
 				}
 
 				ret = archive_write_header(archive_write, item);
 				if (ret != ARCHIVE_OK) {
-						printf_error("Write header error: %s", archive_error_string(archive_write));
+						printf_error(stdout, "Write header error: %s", archive_error_string(archive_write));
 						break;
 				}
 
@@ -169,7 +169,7 @@ static int extract_zip_entry(struct archive *archive_read,
 
 		ret = archive_write_header(archive_write, item);
 		if (ret != ARCHIVE_OK) {
-				printf_error("Write header error: %s", archive_error_string(archive_write));
+				printf_error(stdout, "Write header error: %s", archive_error_string(archive_write));
 				return -RETN;
 		}
 
@@ -179,13 +179,13 @@ static int extract_zip_entry(struct archive *archive_read,
 				if (ret == ARCHIVE_EOF)
 						break;
 				if (ret < ARCHIVE_OK) {
-						printf_error("Read data error: %s", archive_error_string(archive_read));
+						printf_error(stdout, "Read data error: %s", archive_error_string(archive_read));
 						return -RETW;
 				}
 
 				ret = archive_write_data_block(archive_write, buffer, size, offset);
 				if (ret < ARCHIVE_OK) {
-						printf_error("Write data error: %s", archive_error_string(archive_write));
+						printf_error(stdout, "Write data error: %s", archive_error_string(archive_write));
 						return -RETH;
 				}
 		}
@@ -213,7 +213,7 @@ int wd_extract_zip(const char *zip_file, const char *dest_path)
 		archive_write = archive_write_disk_new();
 
 		if (!archive_read || !archive_write) {
-				printf_error("Failed to create archive handles");
+				printf_error(stdout, "Failed to create archive handles");
 				goto error;
 		}
 
@@ -228,7 +228,7 @@ int wd_extract_zip(const char *zip_file, const char *dest_path)
 		/* Open ZIP file */
 		ret = archive_read_open_filename(archive_read, zip_file, 1024 * 1024);
 		if (ret != ARCHIVE_OK) {
-				printf_error("Cannot open file: %s", archive_error_string(archive_read));
+				printf_error(stdout, "Cannot open file: %s", archive_error_string(archive_read));
 				goto error;
 		}
 

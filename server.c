@@ -43,12 +43,12 @@ static int update_server_config(const char *gamemode)
 
 		config_in = fopen(".server.cfg.bak", "r");
 		if (!config_in) {
-				printf_error("Failed to open backup config");
+				printf_error(stdout, "Failed to open backup config");
 				return -RETN;
 		}
 		config_out = fopen("server.cfg", "w");
 		if (!config_out) {
-				printf_error("Failed to write new config");
+				printf_error(stdout, "Failed to write new config");
 				fclose(config_in);
 				return -RETN;
 		}
@@ -130,7 +130,7 @@ void wd_run_samp_server(const char *gamemode, const char *server_bin)
 		/* Verify gamemode exists */
 		wd_sef_fdir_reset();
 		if (wd_sef_fdir(".", gamemode, NULL) != 1) {
-				printf_error("Cannot locate gamemode: %s", gamemode);
+				printf_error(stdout, "Cannot locate gamemode: %s", gamemode);
 				__main(0);
 		}
 
@@ -155,7 +155,7 @@ void wd_run_samp_server(const char *gamemode, const char *server_bin)
 				display_server_logs(0);
 			}
 		} else {
-				printf_color(COL_RED, "Server startup failed!\n");
+				printf_color(stdout, FCOLOUR_RED, "Server startup failed!\n");
 		}
 
 		/* Restore original configuration */
@@ -195,34 +195,34 @@ static int update_omp_config(const char *gamemode)
 										   "config.json",
 										   ".config.json.bak");
 		if (system(__sz_mv) != 0) {
-			printf_error("Failed to create backup file");
+			printf_error(stdout, "Failed to create backup file");
 			return -RETN;
 		}
 
 		/* Use stat to get file size */
 		if (stat(".config.json.bak", &st) != 0) {
-			printf_error("Failed to get file status");
+			printf_error(stdout, "Failed to get file status");
 			return -RETN;
 		}
 
 		/* Open input file */
 		config_in = fopen(".config.json.bak", "rb");
 		if (!config_in) {
-			printf_error("Failed to open .config.json.bak");
+			printf_error(stdout, "Failed to open .config.json.bak");
 			return -RETN;
 		}
 
 		/* Allocate memory */
 		__cJSON_Data = wdmalloc(st.st_size + 1);
 		if (!__cJSON_Data) {
-			printf_error("Memory allocation failed");
+			printf_error(stdout, "Memory allocation failed");
 			goto done;
 		}
 
 		/* Read entire file at once */
 		size_t bytes_read = fread(__cJSON_Data, 1, st.st_size, config_in);
 		if (bytes_read != (size_t)st.st_size) {
-			printf_error("Incomplete file read (%zu of %ld bytes)",
+			printf_error(stdout, "Incomplete file read (%zu of %ld bytes)",
 					bytes_read,
 					st.st_size);
 			goto done;
@@ -235,14 +235,14 @@ static int update_omp_config(const char *gamemode)
 		/* Parse JSON */
 		root = cJSON_Parse(__cJSON_Data);
 		if (!root) {
-			printf_error("JSON parse error: %s", cJSON_GetErrorPtr());
+			printf_error(stdout, "JSON parse error: %s", cJSON_GetErrorPtr());
 			goto done;
 		}
 
 		/* Get pawn section */
 		pawn = cJSON_GetObjectItem(root, "pawn");
 		if (!pawn) {
-			printf_error("Missing 'pawn' section in config");
+			printf_error(stdout, "Missing 'pawn' section in config");
 			goto done;
 		}
 
@@ -262,18 +262,18 @@ static int update_omp_config(const char *gamemode)
 		/* Write updated config */
 		config_out = fopen("config.json", "w");
 		if (!config_out) {
-			printf_error("Failed to write config.json");
+			printf_error(stdout, "Failed to write config.json");
 			goto done;
 		}
 
 		__cJSON_Printed = cJSON_Print(root);
 		if (!__cJSON_Printed) {
-			printf_error("Failed to print JSON");
+			printf_error(stdout, "Failed to print JSON");
 			goto done;
 		}
 
 		if (fputs(__cJSON_Printed, config_out) == EOF) {
-			printf_error("Failed to write to config.json");
+			printf_error(stdout, "Failed to write to config.json");
 			goto done;
 		}
 
@@ -322,7 +322,7 @@ void wd_run_omp_server(const char *gamemode, const char *server_bin)
 		/* Verify gamemode exists */
 		wd_sef_fdir_reset();
 		if (wd_sef_fdir(".", gamemode, NULL) != 1) {
-				printf_error("Cannot locate gamemode: %s", gamemode);
+				printf_error(stdout, "Cannot locate gamemode: %s", gamemode);
 				__main(0);
 		}
 
@@ -345,7 +345,7 @@ void wd_run_omp_server(const char *gamemode, const char *server_bin)
 			sleep(2);
 			display_server_logs(1);
 		} else {
-			printf_color(COL_RED, "Server startup failed!\n");
+			printf_color(stdout, FCOLOUR_RED, "Server startup failed!\n");
 		}
 
 		/* Restore original configuration */

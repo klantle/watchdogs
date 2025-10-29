@@ -15,7 +15,7 @@
  * @fmt: Format string
  * @...: Format arguments
  */
-void println(const char *fmt, ...)
+void println(FILE *stream, const char *fmt, ...)
 {
 		va_list args;
 
@@ -23,7 +23,8 @@ void println(const char *fmt, ...)
 		vprintf(fmt, args);
 		printf("\n");
 		va_end(args);
-		fflush(stdout);
+
+		fflush(stream);
 }
 
 /**
@@ -32,16 +33,17 @@ void println(const char *fmt, ...)
  * @format: Format string
  * @...: Format arguments
  */
-void printf_color(const char *color, const char *format, ...)
+void printf_color(FILE *stream, const char *color, const char *format, ...)
 {
 		va_list args;
 
 		va_start(args, format);
 		printf("%s", color);
 		vprintf(format, args);
-		printf("%s", COL_DEFAULT);
+		printf("%s", FCOLOUR_DEFAULT);
 		va_end(args);
-		fflush(stdout);
+
+		fflush(stream);
 }
 
 /**
@@ -49,16 +51,17 @@ void printf_color(const char *color, const char *format, ...)
  * @format: Format string
  * @...: Format arguments
  */
-void printf_success(const char *format, ...)
+void printf_success(FILE *stream, const char *format, ...)
 {
 		va_list args;
 
 		va_start(args, format);
-		printf_color(COL_YELLOW, "success: ");
+		printf_color(stdout, FCOLOUR_YELLOW, "success: ");
 		vprintf(format, args);
 		printf("\n");
 		va_end(args);
-		fflush(stdout);
+
+		fflush(stream);
 }
 
 /**
@@ -66,16 +69,17 @@ void printf_success(const char *format, ...)
  * @format: Format string
  * @...: Format arguments
  */
-void printf_info(const char *format, ...)
+void printf_info(FILE *stream, const char *format, ...)
 {
 		va_list args;
 
 		va_start(args, format);
-		printf_color(COL_YELLOW, "info: ");
+		printf_color(stdout, FCOLOUR_YELLOW, "info: ");
 		vprintf(format, args);
 		printf("\n");
 		va_end(args);
-		fflush(stdout);
+
+		fflush(stream);
 }
 
 /**
@@ -83,16 +87,17 @@ void printf_info(const char *format, ...)
  * @format: Format string
  * @...: Format arguments
  */
-void printf_warning(const char *format, ...)
+void printf_warning(FILE *stream, const char *format, ...)
 {
 		va_list args;
 
 		va_start(args, format);
-		printf_color(COL_GREEN, "warning: ");
+		printf_color(stdout, FCOLOUR_GREEN, "warning: ");
 		vprintf(format, args);
 		printf("\n");
 		va_end(args);
-		fflush(stdout);
+
+		fflush(stream);
 }
 
 /**
@@ -100,16 +105,17 @@ void printf_warning(const char *format, ...)
  * @format: Format string
  * @...: Format arguments
  */
-void printf_error(const char *format, ...)
+void printf_error(FILE *stream, const char *format, ...)
 {
 		va_list args;
 
 		va_start(args, format);
-		printf_color(COL_RED, "error: ");
+		printf_color(stdout, FCOLOUR_RED, "error: ");
 		vprintf(format, args);
 		printf("\n");
 		va_end(args);
-		fflush(stdout);
+
+		fflush(stream);
 }
 
 /**
@@ -117,16 +123,17 @@ void printf_error(const char *format, ...)
  * @format: Format string
  * @...: Format arguments
  */
-void printf_crit(const char *format, ...)
+void printf_crit(FILE *stream, const char *format, ...)
 {
 		va_list args;
 
 		va_start(args, format);
-		printf_color(COL_RED, "crit: ");
+		printf_color(stdout, FCOLOUR_RED, "crit: ");
 		vprintf(format, args);
 		printf("\n");
 		va_end(args);
-		fflush(stdout);
+
+		fflush(stream);
 }
 
 /**
@@ -317,8 +324,8 @@ void wd_apply_pawncc(void)
 		/* Get or create destination directory */
 		dest_dir = get_compiler_directory();
 		if (!dest_dir) {
-				printf_error("Failed to create compiler directory");
-				goto error;
+				printf_error(stdout, "Failed to create compiler directory");
+				goto done;
 		}
 
 		/* Collect source paths */
@@ -364,9 +371,8 @@ void wd_apply_pawncc(void)
 		/* Setup library on Linux */
 		setup_linux_library();
 
-		printf_success("Compiler tools installed successfully");
+		printf_success(stdout, "Compiler installed successfully!");
 
-error:
-		printf_color(COL_YELLOW, "apply finished!\n");
+done:
 		__main(0);
 }

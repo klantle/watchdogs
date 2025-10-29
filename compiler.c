@@ -66,7 +66,7 @@ int wd_RunCompiler(const char *arg, const char *compile_args)
             {
 #if defined(_DBG_PRINT)
                 /* Debug print for memory allocation failure */
-                printf_error("memory allocation failed for _compiler_!");
+                printf_error(stdout, "memory allocation failed for _compiler_!");
 #endif
                 return RETZ;
             }
@@ -76,7 +76,7 @@ int wd_RunCompiler(const char *arg, const char *compile_args)
             if (!procc_f) 
             {
                 /* Handle TOML file read error */
-                printf_error("Can't read file %s", "watchdogs.toml");
+                printf_error(stdout, "Can't read file %s", "watchdogs.toml");
                 if (_compiler_) 
                 {
                     /* Clean up allocated memory */
@@ -101,7 +101,7 @@ int wd_RunCompiler(const char *arg, const char *compile_args)
             if (!_toml_config) 
             {
                 /* Handle TOML parsing error */
-                printf_error("parsing TOML: %s", errbuf);    
+                printf_error(stdout, "parsing TOML: %s", errbuf);    
                 if (_compiler_) 
                 {
                     /* Clean up allocated memory */
@@ -274,7 +274,7 @@ int wd_RunCompiler(const char *arg, const char *compile_args)
                     /* Check for snprintf errors */
                     if (ret_compiler < 0 || (size_t)ret_compiler >= (size_t)format_size_compiler)
                     {
-                        printf_error("snprintf() failed or buffer too small (needed %d bytes)", ret_compiler);
+                        printf_error(stdout, "snprintf() failed or buffer too small (needed %d bytes)", ret_compiler);
                     }
                     
                     /* Create window title with compilation info */
@@ -350,19 +350,19 @@ int wd_RunCompiler(const char *arg, const char *compile_args)
                     } 
                     else 
                     {
-                        printf_error("Failed to open .wd_compiler.log");
+                        printf_error(stdout, "Failed to open .wd_compiler.log");
                     }
 
                     /* Calculate and display compilation duration */
                     compiler_dur = (end.tv_sec - start.tv_sec)
                                         + (end.tv_nsec - start.tv_nsec) / 1e9;
 
-                    printf_color(COL_YELLOW,
+                    printf_color(stdout, FCOLOUR_YELLOW,
                         " ==> [P]Finished in %.3fs (%.0f ms)\n",
                         compiler_dur, compiler_dur * 1000.0);
 #if defined(_DBG_PRINT)
                     /* Debug output for compiler command */
-                    printf_color(COL_YELLOW, "-DEBUGGING\n");
+                    printf_color(stdout, FCOLOUR_YELLOW, "-DEBUGGING\n");
                     printf("[COMPILER]:\n\t%s\n", _compiler_);
 #endif
                 } 
@@ -575,7 +575,7 @@ int wd_RunCompiler(const char *arg, const char *compile_args)
                         /* Check for snprintf errors */
                         if (ret_compiler < 0 || (size_t)ret_compiler >= (size_t)format_size_compiler)
                         {
-                            printf_error("snprintf() failed or buffer too small (needed %d bytes)", ret_compiler);
+                            printf_error(stdout, "snprintf() failed or buffer too small (needed %d bytes)", ret_compiler);
                         }
 
                         /* Create window title with compilation info */
@@ -651,26 +651,26 @@ int wd_RunCompiler(const char *arg, const char *compile_args)
                         } 
                         else 
                         {
-                            printf_error("Failed to open .wd_compiler.log");
+                            printf_error(stdout, "Failed to open .wd_compiler.log");
                         }
 
                         /* Calculate and display compilation duration */
                         compiler_dur = (end.tv_sec - start.tv_sec)
                                             + (end.tv_nsec - start.tv_nsec) / 1e9;
 
-                        printf_color(COL_YELLOW,
+                        printf_color(stdout, FCOLOUR_YELLOW,
                             " ==> [P]Finished in %.3fs (%.0f ms)\n",
                             compiler_dur, compiler_dur * 1000.0);
 #if defined(_DBG_PRINT)
                         /* Debug output for compiler command */
-                        printf_color(COL_YELLOW, "-DEBUGGING\n");
+                        printf_color(stdout, FCOLOUR_YELLOW, "-DEBUGGING\n");
                         printf("[COMPILER]:\n\t%s\n", _compiler_);
 #endif
                     } 
                     else 
                     {
                         /* Handle case where file cannot be located */
-                        printf_error("Cannnot locate:");
+                        printf_error(stdout, "Cannnot locate:");
                         printf("\t%s\n", compile_args);
                         return RETZ;
                     }
@@ -691,7 +691,7 @@ int wd_RunCompiler(const char *arg, const char *compile_args)
         else 
         {
             /* Handle case where pawncc compiler is not found */
-            printf_error("pawncc not found!");
+            printf_error(stdout, "pawncc not found!");
     
             /* Prompt user to install the compiler */
             char *ptr_sigA;
@@ -704,11 +704,11 @@ int wd_RunCompiler(const char *arg, const char *compile_args)
                     /* User wants to install compiler - select platform */
                     char platform = 0;
 ret_ptr:
-                        println("Select platform:");
-                        println("-> [L/l] Linux");
-                        println("-> [W/w] Windows");
+                        println(stdout, "Select platform:");
+                        println(stdout, "-> [L/l] Linux");
+                        println(stdout, "-> [W/w] Windows");
                         printf(" ^ work's in WSL/MSYS2\n");
-                        println("-> [T/t] Termux");
+                        println(stdout, "-> [T/t] Termux");
                         printf("==> ");
 
                     if (scanf(" %c", &platform) != 1)
@@ -734,7 +734,7 @@ ret_ptr:
                     else 
                     {
                         /* Invalid platform selection */
-                        printf_error("Invalid platform selection. use C^ to exit.");
+                        printf_error(stdout, "Invalid platform selection. use C^ to exit.");
                         goto ret_ptr;
                     }
 
@@ -749,7 +749,7 @@ ret_ptr:
                 else 
                 {
                     /* Invalid input - prompt again */
-                    printf_error("Invalid input. Please type Y/y to install or N/n to cancel.");
+                    printf_error(stdout, "Invalid input. Please type Y/y to install or N/n to cancel.");
                     ptr_sigA = readline("install now? [Y/n]: ");
                 }
             }

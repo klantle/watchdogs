@@ -176,7 +176,7 @@ static int handle_termux_installation(void)
 		/* Verify Termux environment */
 		if (!is_termux_environment()) {
 				char confirmation;
-				printf_color(stdout, FCOLOUR_GREEN, "warning: Not in Termux. Continue? [y/N] ");
+				printf_warning(stdout, "Currently not in Termux. Continue? [y/N] ");
 				
 				if (scanf(" %c", &confirmation) != 1 ||
 				    (confirmation != 'y' && confirmation != 'Y')) {
@@ -187,7 +187,7 @@ static int handle_termux_installation(void)
 		/* Display version selection */
 		printf("Select the PawnCC version to download:\n");
 		for (size_t i = 0; i < version_count; i++) {
-			printf("[%c/%c] PawnCC %s\n",
+			printf("[%c/%c] PawnCC %s (mxp96)\n",
 				(int)('A' + i),
 				(int)('a' + i),
 				termux_versions[i]);
@@ -305,26 +305,37 @@ static int handle_standard_installation(const char *platform)
 /**
  * wd_install_pawncc - Install pawn compiler for specified platform
  * @platform: Target platform ("linux", "windows", or "termux")
+ *
+ * Return: 0 on success, -1 on failure  
  */
-void wd_install_pawncc(const char *platform)
+int wd_install_pawncc(const char *platform)
 {
 		if (!platform) {
 				printf_error(stdout, "Platform parameter is NULL");
-				return;
+				return -RETN;
+		}
+		if (strcmp(platform, "termux") == 0) {
+loop_ipcc:
+			int ret = handle_termux_installation();
+			if (ret == -RETN)
+				goto loop_ipcc;
+		} else {
+loop_ipcc2:
+			int ret = handle_standard_installation(platform);
+			if (ret == -RETN)
+				goto loop_ipcc2;
 		}
 
-		if (strcmp(platform, "termux") == 0) {
-				handle_termux_installation();
-		} else {
-				handle_standard_installation(platform);
-		}
+		return RETZ;
 }
 
 /**
  * wd_install_server - Install SA-MP/OpenMP server for specified platform
  * @platform: Target platform ("linux" or "windows")
+ *
+ * Return: 0 on success, -1 on failure  
  */
-void wd_install_server(const char *platform)
+int wd_install_server(const char *platform)
 {
 		struct version_info versions[] = {
 				{
@@ -393,7 +404,7 @@ void wd_install_server(const char *platform)
 		/* Validate platform */
 		if (strcmp(platform, "linux") != 0 && strcmp(platform, "windows") != 0) {
 				printf_error(stdout, "Unsupported platform: %s", platform);
-				return;
+				return -RETN;
 		}
 
 		/* Display version selection */
@@ -405,7 +416,7 @@ void wd_install_server(const char *platform)
 		printf("==> ");
 
 		if (scanf(" %c", &selection) != 1)
-				return;
+				return -RETN;
 
 		/* Find selected version */
 		for (i = 0; i < version_count; i++) {
@@ -417,7 +428,7 @@ void wd_install_server(const char *platform)
 
 		if (!chosen) {
 				printf_error(stdout, "Invalid selection");
-				return;
+				return -RETN;
 		}
 
 		/* Download selected version */
@@ -427,4 +438,6 @@ void wd_install_server(const char *platform)
 				chosen->linux_file : chosen->windows_file;
 
 		wd_download_file(url, filename);
+
+		return RETZ;
 }

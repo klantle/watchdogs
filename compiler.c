@@ -691,7 +691,7 @@ int wd_RunCompiler(const char *arg, const char *compile_args)
         else 
         {
             /* Handle case where pawncc compiler is not found */
-            printf_error(stdout, "pawncc not found!");
+            printf_crit(stdout, "pawncc not found!");
     
             /* Prompt user to install the compiler */
             char *ptr_sigA;
@@ -701,15 +701,16 @@ int wd_RunCompiler(const char *arg, const char *compile_args)
             {
                 if (strcmp(ptr_sigA, "Y") == 0 || strcmp(ptr_sigA, "y") == 0) 
                 {
+                    wdfree(ptr_sigA);
                     /* User wants to install compiler - select platform */
                     char platform = 0;
 ret_ptr:
-                        println(stdout, "Select platform:");
-                        println(stdout, "-> [L/l] Linux");
-                        println(stdout, "-> [W/w] Windows");
-                        printf(" ^ work's in WSL/MSYS2\n");
-                        println(stdout, "-> [T/t] Termux");
-                        printf("==> ");
+                    println(stdout, "Select platform:");
+                    println(stdout, "-> [L/l] Linux");
+                    println(stdout, "-> [W/w] Windows");
+                    printf_color(stdout, FCOLOUR_YELLOW, " ^ work's in WSL/MSYS2\n");
+                    println(stdout, "-> [T/t] Termux");
+                    printf("==> ");
 
                     if (scanf(" %c", &platform) != 1)
                     {
@@ -719,38 +720,53 @@ ret_ptr:
                     if (platform == 'L' || platform == 'l')
                     {
                         /* Install for Linux */
-                        wd_install_pawncc("linux");
+loop_ipcc:
+                        int ret = wd_install_pawncc("linux");
+                        if (ret == -RETN)
+                            goto loop_ipcc;
                     }
                     else if (platform == 'W' || platform == 'w')
                     {
                         /* Install for Windows */
-                        wd_install_pawncc("windows");
+loop_ipcc2:
+                        int ret = wd_install_pawncc("windows");
+                        if (ret == -RETN)
+                            goto loop_ipcc2;
                     }
                     else if (platform == 'T' || platform == 't')
                     {
                         /* Install for Termux */
-                        wd_install_pawncc("termux");
+loop_ipcc3:
+                        int ret = wd_install_pawncc("termux");
+                        if (ret == -RETN)
+                            goto loop_ipcc3;
                     }
-                    else 
+                    else if (platform == 'E' || platform == 'e') {
+                        goto done;
+                    }
+                    else
                     {
                         /* Invalid platform selection */
-                        printf_error(stdout, "Invalid platform selection. use C^ to exit.");
+                        printf_error(stdout, "Invalid platform selection. Input 'E/e' to exit");
                         goto ret_ptr;
                     }
 
-                    /* Restart main function after installation */
+                    /* goto main function after installation */
+done:
                     __main(0);
                 } 
                 else if (strcmp(ptr_sigA, "N") == 0 || strcmp(ptr_sigA, "n") == 0) 
                 {
                     /* User declined installation */
+                    wdfree(ptr_sigA);
                     break;
                 } 
                 else 
                 {
                     /* Invalid input - prompt again */
                     printf_error(stdout, "Invalid input. Please type Y/y to install or N/n to cancel.");
-                    ptr_sigA = readline("install now? [Y/n]: ");
+                    wdfree(ptr_sigA);
+                    goto ret_ptr;
                 }
             }
         }

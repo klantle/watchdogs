@@ -11,6 +11,7 @@
 #include <dirent.h>
 #include <sys/types.h>
 #include <sys/stat.h>
+#include <signal.h>
 #include "include/cJSON/cJSON.h"
 #include "include/tomlc/toml.h"
 #ifdef _WIN32
@@ -146,6 +147,8 @@ typedef struct {
                 wd_ptr_omp;
         int
                 wd_compiler_stats;
+        volatile sig_atomic_t
+                wd_stopwatch_end;
         size_t
                 wd_sef_count;
         char
@@ -170,6 +173,7 @@ struct struct_of { int (*title)(const char *); };
 extern const char* __command[];
 extern const size_t __command_len;
 int mkdir_recursive(const char *path);
+void stopwatch_signal_handler(int signum);
 int wd_run_command(const char *cmd);
 int is_termux_environment(void);
 void print_file_to_terminal(const char *path);

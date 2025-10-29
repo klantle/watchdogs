@@ -8,6 +8,8 @@ watchdogs_termux
 watchdogs.debug
 watchdogs.toml
 pawnc*
+qawno/*
+qawno
 pawno/*
 pawno
 samp*

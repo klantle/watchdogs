@@ -13,6 +13,7 @@
 #include <limits.h>
 #include <time.h>
 #include <ftw.h>
+#include <signal.h>
 #include <curl/curl.h>
 #include <inttypes.h>
 #include <stddef.h>
@@ -47,6 +48,8 @@ const char* __command[] = {
 		"exit",
 		"kill",
 		"title",
+		"time",
+		"stopwatch",
 		"toml",
 		"install",
 		"upstream",
@@ -84,6 +87,7 @@ sizeof(__command) / sizeof(__command[0]);
  *   wd_ptr_samp           - Pointer to SAMP module (NULL)
  *   wd_ptr_omp            - Pointer to OMP module (NULL)
  *   wd_compiler_stats     - Compiler statistics (0)
+ *   wd_stopwatch_end	   - Stopwatch End Loop
  *   wd_sef_count          - Count of SEF modules (0)
  *   wd_sef_found_list     - List of found SEF modules (initialized to zero)
  *   wd_runn_mode          - Runtime mode string (NULL)
@@ -104,6 +108,7 @@ WatchdogConfig wcfg = {
 		.wd_ptr_omp = NULL,
 		.wd_compiler_stats = 0,
 		.wd_sef_count = 0,
+		.wd_stopwatch_end = 0,
 		.wd_sef_found_list = { {0} },
 		.wd_runn_mode = NULL,
 		.wd_toml_aio_opt = NULL,
@@ -302,8 +307,6 @@ static int __regex_check__(const char *cmd, char *badch, size_t *pos) {
  */
 static int wd_confirm_dangerous_command(const char *cmd, char badch, size_t pos)
 {
-		char *response;
-
 		if (isprint((unsigned char)badch)) {
 				printf_warning(stdout,
 							   "Symbol detected in command - char='%c' (0x%02X) at pos=%zu; cmd=\"%s\"",
@@ -314,17 +317,27 @@ static int wd_confirm_dangerous_command(const char *cmd, char badch, size_t pos)
 						       (unsigned char)badch, pos, cmd);
 		}
 
-		response = readline("Continue [y/n]: ");
-		if (!response)
-				return RETZ;
-
-		if (strcmp(response, "Y") == 0 || strcmp(response, "y") == 0) {
-				wdfree(response);
+		char *confirm;
+		confirm = readline("Continue [y/n]: ");
+		if (!confirm)
+				goto done;
+		if (strcmp(confirm, "Y") == 0 || strcmp(confirm, "y") == 0) {
+				wdfree(confirm);
 				return RETN;
 		}
 
-		wdfree(response);
+done:
+		wdfree(confirm);
 		return RETZ;
+}
+
+/*
+ * stopwatch_signal_handler - signal number handler for stopwatch
+ */
+void stopwatch_signal_handler(int signum) {
+		wcfg.wd_stopwatch_end = 1;
+		write(STDOUT_FILENO, "\n", 1);
+		__main(signum);
 }
 
 /**
@@ -520,7 +533,7 @@ bool strfind(const char *text, const char *pattern)
 				while (text[i + j] &&
 				       tolower((unsigned char)text[i + j]) ==
 				       tolower((unsigned char)pattern[j]))
-						j++;
+						++j;
 
 				if (j == pat_len) {
 						bool left_ok = (i == 0 ||
@@ -1009,7 +1022,7 @@ static void wd_add_found_path(const char *path)
 		if (wcfg.wd_sef_count < (sizeof(wcfg.wd_sef_found_list) / sizeof(wcfg.wd_sef_found_list[0]))) {
 				strncpy(wcfg.wd_sef_found_list[wcfg.wd_sef_count], path, MAX_SEF_PATH_SIZE);
 				wcfg.wd_sef_found_list[wcfg.wd_sef_count][MAX_SEF_PATH_SIZE - 1] = '\0';
-				wcfg.wd_sef_count++;
+				++wcfg.wd_sef_count;
 		}
 }
 
@@ -1476,13 +1489,12 @@ int wd_set_toml(void)
  * @src: Source file path
  * @dest: Destination file path
  */
- static int _try_mv_without_sudo(const char *src, const char *dest) {
+static int _try_mv_without_sudo(const char *src, const char *dest) {
 		char __sz_mv[PATH_MAX];
 		snprintf(__sz_mv, sizeof(__sz_mv), "mv -i %s %s", src, dest);
 		int ret = wd_run_command(__sz_mv);
 		return ret;
 }
-
 
 static int __mv_with_sudo(const char *src, const char *dest) {
 		char __sz_mv[PATH_MAX];

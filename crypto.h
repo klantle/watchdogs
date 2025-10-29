@@ -11,6 +11,7 @@ extern "C" {
 #define CRYPTO_SALT_LEN 16
 #define CRYPTO_IV_LEN 16
 #define CRYPTO_KEY_LEN 32
+#define SHA256_DIGEST_LENGTH (32)
 
 void OPENSSL_cleanse(void *ptr, size_t len);
 int sha256_hash(const char *input, unsigned char output[32]);

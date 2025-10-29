@@ -173,7 +173,7 @@ static int find_archive_from_html(const char *html, char *out_url, size_t out_si
 				/* Find href=" */
 				href = ret;
 				while (href > p && *(href - 1) != '"')
-						href--;
+						--href;
 
 				ulen = len + (ret - href);
 				if (ulen < out_size) {
@@ -376,7 +376,7 @@ static int get_github_release_assets(const char *user, const char *repo,
 				p = strchr(p, '"');
 				if (!p)
 						break;
-				p++;
+				++p;
 
 				url_end = strchr(p, '"');
 				if (!url_end)
@@ -387,7 +387,7 @@ static int get_github_release_assets(const char *user, const char *repo,
 				strncpy(out_urls[url_count], p, url_len);
 				out_urls[url_count][url_len] = '\0';
 
-				url_count++;
+				++url_count;
 				p = url_end + 1;
 		}
 
@@ -534,7 +534,7 @@ static int handle_base_dependency(const struct dep_repo_info *dep_repo_info,
 				if (curl_url_get_response(out_url)) {
 					ret = 1;
 					if (j == 1)
-						printf_info(stdout, "Using master branch (main not ret)");
+						printf_info(stdout, "Using master branch (main not master)");
 				}
 			}
 		}
@@ -564,7 +564,7 @@ void __convert_path(char *path)
 void dep_add_ncheck_hash(cJSON *depends, const char *file_path, const char *json_path)
 {
 		char convert_f_path[PATH_MAX], convert_j_path[PATH_MAX];
-		unsigned char hash[32]; /* Buffer for SHA256 hash */
+		unsigned char hash[SHA256_DIGEST_LENGTH]; /* Buffer for SHA256 hash */
 		char *hex;
 		int h_exists = 0;
 		int array_size;
@@ -973,7 +973,7 @@ void dep_pr_inc_files(cJSON *depends, const char *bp, const char *db)
 				if (!dir_name)
 					continue;
 
-				dir_name++; /* skip the '/' */
+				++dir_name; /* skip the '/' */
 
 				snprintf(dest_path, sizeof(dest_path), "%s/%s", 
 					db, dir_name);
@@ -1011,7 +1011,7 @@ void dep_pr_inc_files(cJSON *depends, const char *bp, const char *db)
  */
 static void dep_pr_file_type(const char *path, const char *pattern, 
                              const char *exclude, const char *cwd, 
-                             cJSON *depends, const char *target_dir)
+                             cJSON *depends, const char *target_dir, int root)
 {
 		char cp_cmd[MAX_PATH * 2];
 		char json_item[PATH_MAX];
@@ -1037,6 +1037,9 @@ static void dep_pr_file_type(const char *path, const char *pattern,
 				snprintf(json_item, sizeof(json_item), "%s", filename);
 				dep_add_ncheck_hash(depends, json_item, json_item);
 				
+				/* Skip adding if plugins on root */
+				if (root != 1) goto done;
+
 				/* Add to config */
 				if (!strcmp(wcfg.wd_is_omp, CRC32_TRUE))
 					M_ADD_PLUGIN("config.json", basename);
@@ -1044,6 +1047,8 @@ static void dep_pr_file_type(const char *path, const char *pattern,
 					S_ADD_DEP_AFTER("server.cfg", "plugins", basename);
 			}
 		}
+done:
+		return;
 }
 
 /**
@@ -1131,17 +1136,17 @@ void dep_move_files(const char *dep_dir)
 		char cp_cmd[MAX_PATH * 2];
 
 		/* Process files with helper function */
-		dep_pr_file_type(dp_fp, "*.dll", NULL, cwd, depends, "plugins");
-		dep_pr_file_type(dp_fp, "*.so", NULL, cwd, depends, "plugins");
-		dep_pr_file_type(dep_dir, "*.dll", "plugins", cwd, depends, "");
-		dep_pr_file_type(dep_dir, "*.so", "plugins", cwd, depends, "");
+		dep_pr_file_type(dp_fp, "*.dll", NULL, cwd, depends, "plugins", 1);
+		dep_pr_file_type(dp_fp, "*.so", NULL, cwd, depends, "plugins", 1);
+		dep_pr_file_type(dep_dir, "*.dll", "plugins", cwd, depends, "", 0);
+		dep_pr_file_type(dep_dir, "*.so", "plugins", cwd, depends, "", 0);
 
 		/* Process components for OMP */
 		if (!strcmp(wcfg.wd_is_omp, CRC32_TRUE)) {
-			dep_pr_file_type(dp_fc, "*.dll", NULL, cwd, depends, "components");
-			dep_pr_file_type(dp_fc, "*.so", NULL, cwd, depends, "components");
-			dep_pr_file_type(dep_dir, "*.dll", "components", cwd, depends, "");
-			dep_pr_file_type(dep_dir, "*.so", "components", cwd, depends, "");
+			dep_pr_file_type(dp_fc, "*.dll", NULL, cwd, depends, "components", 1);
+			dep_pr_file_type(dp_fc, "*.so", NULL, cwd, depends, "components", 1);
+			dep_pr_file_type(dep_dir, "*.dll", "components", cwd, depends, "", 0);
+			dep_pr_file_type(dep_dir, "*.so", "components", cwd, depends, "", 0);
 		}
 
 		/* Process include files */

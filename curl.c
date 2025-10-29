@@ -10,11 +10,14 @@
 
 #include "color.h"
 #include "extra.h"
+#include "crypto.h"
 #include "utils.h"
-#include "curl.h"
 #include "archive.h"
 #include "chain.h"
 #include "depends.h"
+#include "curl.h"
+
+#define MAX_RETRIES 5
 
 /**
  * progress_callback - CURL progress callback function
@@ -37,9 +40,9 @@ static int progress_callback(void *ptr, curl_off_t dltotal,
 				percent = (int)((dlnow * 100) / dltotal);
 				if (percent != last_percent) {
 						if (percent < 100)
-								printf("\rDownloading... %3d%% ?-", percent);
+								printf("\r\tDownloading... %3d%% ?-", percent);
 						else
-								printf("\rDownloading... %3d%% - ", percent);
+								printf("\r\tDownloading... %3d%% - ", percent);
 
 						fflush(stdout);
 						last_percent = percent;
@@ -85,10 +88,10 @@ static int extract_archive(const char *filename)
 		size_t name_len;
 
 		if (strstr(filename, ".tar") || strstr(filename, ".tar.gz")) {
-				printf("Extracting TAR archive: %s\n", filename);
+				printf(" Extracting TAR archive: %s\n", filename);
 				return wd_extract_tar(filename);
 		} else if (strstr(filename, ".zip")) {
-				printf("Extracting ZIP archive: %s\n", filename);
+				printf(" Extracting ZIP archive: %s\n", filename);
 				
 				name_len = strlen(filename);
 				if (name_len > 4 && !strncmp(filename + name_len - 4, ".zip", 4)) {
@@ -100,7 +103,7 @@ static int extract_archive(const char *filename)
 				
 				return wd_extract_zip(filename, output_path);
 		} else {
-				printf("Unknown archive type, skipping extraction: %s\n", filename);
+				printf_info(stdout, "Unknown archive type, skipping extraction: %s\n", filename);
 				return -RETN;
 		}
 }
@@ -114,17 +117,26 @@ static int prompt_apply_pawncc(void)
 {
 		wcfg.wd_ipackage = 0;
 
-		char *ptr_sigA;
-ret_ptr:
-		printf_color(stdout, FCOLOUR_YELLOW, "Apply pawncc now? ");
-		ptr_sigA = readline("[Y/n]: ");
-
-		while (1) {
-			if (strcmp(ptr_sigA, "Y") == 0 || strcmp(ptr_sigA, "y") == 0) {
-				return RETN;
-			} else
-				return RETZ;
+		printf_color(stdout, FCOLOUR_YELLOW, "Apply pawncc? ");
+		char *confirm = readline("[y/n]: ");
+		fflush(stdout);
+		if (!confirm) {
+			fprintf(stderr, "Error reading input\n");
+			wdfree(confirm);
+			goto done;
 		}
+		if (strlen(confirm) == 0) {
+			wdfree(confirm);
+			confirm = readline(">>> [y/n]: ");
+		}
+		if (confirm) {
+			if (strcmp(confirm, "Y") == 0 || strcmp(confirm, "y") == 0) {
+				wdfree(confirm);
+				return RETN;
+			}
+		}
+
+done:
 		return RETZ;
 }
 
@@ -152,10 +164,10 @@ int wd_download_file(const char *url, const char *filename)
 		CURLcode res;
 		long response_code = 0;
 		int retry_count = 0;
-		const int max_retries = 5;
+		const int max_retries = MAX_RETRIES;
 		struct stat file_stat;
 
-		printf_info(stdout, "Downloading: %s", filename);
+		printf_color(stdout, FCOLOUR_YELLOW, " Downloading: %s\n", filename);
 
 		do {
 				file = fopen(filename, "wb");
@@ -197,16 +209,33 @@ int wd_download_file(const char *url, const char *filename)
 				if (res == CURLE_OK && response_code == 200) {
 						if (stat(filename, &file_stat) == 0 && file_stat.st_size > 1024) {
 								printf("Download successful: %ld bytes\n", file_stat.st_size);
-								printf("Checking file type for extraction...\n");
+								printf(" Checking file type for extraction...\n");
 
 								/* Extract archive if applicable */
 								extract_archive(filename);
 
-								char __sz_rm[PATH_MAX];
-								snprintf(__sz_rm, sizeof(__sz_rm), "rm -rf %s", filename);
-								system(__sz_rm);
+								/* Remove Archive */
+								printf_color(stdout, FCOLOUR_YELLOW, "Remove the archive '%s'? ", filename);
+								char *confirm = readline("[y/n]: ");
+								fflush(stdout);
+								if (!confirm) {
+									fprintf(stderr, "Error reading input\n");
+									wdfree(confirm);
+								}
+								if (strlen(confirm) == 0) {
+									wdfree(confirm);
+									confirm = readline("[y/n]: ");
+								}
+								if (confirm) {
+									if (strcmp(confirm, "Y") == 0 || strcmp(confirm, "y") == 0) {
+										wdfree(confirm);
+										char __sz_rm[PATH_MAX];
+										snprintf(__sz_rm, sizeof(__sz_rm), "rm -rf %s", filename);
+										system(__sz_rm);
+									}
+								}
 
-								/* Prompt for pawncc if needed */
+								/* Prompt */
 								if (wcfg.wd_ipackage) {
 									if (prompt_apply_pawncc())
 											wd_apply_pawncc();
@@ -218,11 +247,11 @@ int wd_download_file(const char *url, const char *filename)
 
 								return RETZ;
 						} else {
-								printf_error(stdout, "Downloaded file too small: %ld bytes", 
+								printf_error(stdout, " Downloaded file too small: %ld bytes", 
 										     file_stat.st_size);
 						}
 				} else {
-						printf_error(stdout, "Download failed - HTTP: %ld, CURL: %d, retrying...",
+						printf_error(stdout, " Download failed - HTTP: %ld, CURL: %d, retrying...",
 								     response_code, res);
 				}
 
@@ -230,6 +259,6 @@ int wd_download_file(const char *url, const char *filename)
 				sleep(3);
 		} while (retry_count < max_retries);
 
-		printf_error(stdout, "Download failed after %d retries", max_retries);
+		printf_error(stdout, " Download failed after %d retries", max_retries);
 		return -RETN;
 }

@@ -192,9 +192,6 @@ git clone https://github.com/klantle/libwatchdogs watch && cd watch && mv libwat
 ~
 ```
 
-### Installation Steps
-```bash
-pacm
 #### Mirror Configuration (if needed)
 Edit mirror lists:
 ```bash
@@ -204,7 +201,7 @@ nano /etc/pacman.d/mirrorlist.ucrt64
 ```
 
 Add mirrors:
-```
+```yaml
 Server = https://repo.msys2.org/msys/$arch
 Server = https://mirror.msys2.org/msys/$arch
 Server = https://mirror.selfnet.de/msys2/msys/$arch

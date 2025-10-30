@@ -207,6 +207,7 @@ int wd_download_file(const char *url, const char *filename)
 
 			if (strfind(wcfg.wd_toml_github_tokens_table, "DO_HERE")) {
 				printf_info(stdout, "Can't read Github token.. skipping");
+				sleep(1);
 			} else { 
 				if (wcfg.wd_toml_github_tokens_table && strlen(wcfg.wd_toml_github_tokens_table) > 0) {
 					char auth_header[512];

@@ -833,7 +833,7 @@ L"\t\t   W   A   T   C   H   D   O   G   S\n");
                 strfind(ptr_command, "zsh") ||
                 strfind(ptr_command, "make") ||
                 strfind(ptr_command, "cd")) {
-                    pr_error(stdout, "you can't run it!");
+                    pr_error(stdout, "You can't run it!");
                     goto _ptr_command;
                 }
             char _p_command[256];

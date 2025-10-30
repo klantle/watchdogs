@@ -171,7 +171,7 @@ mv watchdogs.win .. && cd ..
 pacman -Sy
 
 # 2. Install required packages
-pacman -S make git curl unzip
+pacman -S make git
 
 # 3. Clone repository
 git clone https://gitlab.com/mywatchdogs/watchdogs watch
@@ -182,11 +182,11 @@ cd watch
 # 5. Installing Library & Build from source
 make init
 
-# 6. Exiting Watchdogs on MSYS2
+# 6. Exiting Watchdogs
 exit
 
 # 7. Installing .dll library
-git clone https://github.com/klantle/libwatchdogs watch && cd watch && mv libwatchdogs /c/ && cd ..
+git clone https://github.com/klantle/libwatchdogs watch && cd watch && mv libwatchdogs /c/ && mv run-native.bat .. && cd .. && rm -rf watch
 
 # 8. You can run '.bat' (out of msys2, where .bat & watchdogs.win)
 ~

@@ -165,6 +165,36 @@ mv watchdogs.win .. && cd ..
 ./watchdogs.win
 ```
 
+## Windows (Native - `.exe`) - needed [msys2](https://www.msys2.org/) for compile
+```bash
+# 1. Sync package database
+pacman -Sy
+
+# 2. Install required packages
+pacman -S make git curl unzip
+
+# 3. Clone repository
+git clone https://gitlab.com/mywatchdogs/watchdogs watch
+
+# 4. Navigate to directory
+cd watch
+
+# 5. Installing Library & Build from source
+make init
+
+# 6. Exiting Watchdogs on MSYS2
+exit
+
+# 7. Installing .dll library
+git clone https://github.com/klantle/libwatchdogs watch && cd watch && mv libwatchdogs /c/ && cd ..
+
+# 8. You can run '.bat' (out of msys2, where .bat & watchdogs.win)
+~
+```
+
+### Installation Steps
+```bash
+pacm
 #### Mirror Configuration (if needed)
 Edit mirror lists:
 ```bash

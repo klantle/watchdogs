@@ -160,8 +160,13 @@ _reexecute_command:
             goto done;
         } else if (strcmp(ptr_command, "clear") == 0) {
             wd_set_title("Watchdogs | @ clear");
-            wd_run_command("clear");
-            
+            char* msys2_env = getenv("MSYSTEM");
+            if (msys2_env != NULL) {
+                wd_run_command("clear");
+            } else if (msys2_env == NULL && !strcmp(wcfg.wd_os_type, OS_SIGNAL_WINDOWS)) {
+                wd_run_command("cls");
+            }
+
             goto _ptr_command;
         } else if (strcmp(ptr_command, "exit") == 0) {
             exit(1);

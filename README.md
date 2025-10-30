@@ -390,18 +390,6 @@ running yourmode
 crunn
 ```
 
-### Debugging
-
-**Debug default gamemode:**
-```bash
-debug .
-```
-
-**Debug specific gamemode:**
-```bash
-debug yourmode
-```
-
 ### Dependency Management
 
 **Install dependencies from configuration:**

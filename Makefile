@@ -41,7 +41,7 @@ init:
 		$(MAKE) windows; \
 	elif echo "$$UNAME_S" | grep -qi "Linux" && [ -d "/data/data/com.termux" ]; then \
 		echo "$(YELLOW)==>$(RESET) Detected: Termux environment"; \
-		pkg update -y && pkg install -y clang openssl curl libarchive ncurses readline; \
+		pkg update -y && pkg install -y procps clang openssl curl libarchive ncurses readline; \
 		$(MAKE) termux; \
 	elif echo "$$UNAME_S" | grep -qi "MINGW64_NT"; then \
 		echo "$(YELLOW)==>$(RESET) Detected: MSYS2 MinGW UCRT64 environment"; \
@@ -64,6 +64,7 @@ init:
 		sudo dpkg --add-architecture i386; \
 		sudo apt update -y && \
         sudo apt install -y build-essential \
+			procps \
 			clang \
 			lld \
 			libc++-dev \

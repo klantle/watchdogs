@@ -72,6 +72,7 @@ win32_chmod(const char *path) {
 #define MAX_PATH PATH_MAX + 3836
 #endif
 
+#define findstr strfind
 #define WD_ISNULL NULL
 
 #ifndef min3

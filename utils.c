@@ -65,7 +65,6 @@ const char* __command[] = {
 		"compile",
 		"running",
 		"crunn",
-		"debug",
 		"stop",
 		"restart"
 };
@@ -97,7 +96,6 @@ sizeof(__command) / sizeof(__command[0]);
  *   wd_stopwatch_end	   - Stopwatch End Loop
  *   wd_sef_count          - Count of SEF modules (0)
  *   wd_sef_found_list     - List of found SEF modules (initialized to zero)
- *   wd_runn_mode          - Runtime mode string (NULL)
  *   wd_toml_aio_opt_table       - AIO options from TOML (NULL)
  *   wd_toml_aio_repo_array      - AIO repository string from TOML (NULL)
  *   wd_toml_gm_input_table      - Game mode input path (NULL)
@@ -118,7 +116,6 @@ WatchdogConfig wcfg = {
 		.wd_sef_count = 0,
 		.wd_stopwatch_end = 0,
 		.wd_sef_found_list = { { 0 } },
-		.wd_runn_mode = NULL,
 		.wd_toml_aio_opt_table = NULL,
 		.wd_toml_aio_repo_array = NULL,
 		.wd_toml_gm_input_table = NULL,
@@ -851,7 +848,11 @@ int kill_process(const char *name)
 			if (!name)
 					return -RETN;
 
+#ifndef _WIN32
 			snprintf(cmd, sizeof(cmd), "pkill -9 -f \"%s\" > /dev/null 2>&1", name);
+#else
+			snprintf(cmd, sizeof(cmd), "C:\\Windows\\System32\\taskkill.exe /F /IM \"%s\" >nul 2>&1", name);
+#endif
 			return system(cmd);
 		} else {
 			return RETZ;

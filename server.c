@@ -161,18 +161,6 @@ void wd_run_samp_server(const char *gamemode, const char *server_bin)
 		/* Restore original configuration */
 		restore_server_config();
 
-		/* Debug mode cleanup */
-		if (wcfg.wd_runn_mode && strcmp(wcfg.wd_runn_mode, "debug") == 0) {
-    			fprintf(stdout,
-					    "[DEBUG] %s:%d %s()\n",
-					    __FILE__, __LINE__, __func__);
-				if (!strcmp(wcfg.wd_os_type, OS_SIGNAL_WINDOWS)) {
-						kill_process("samp-server.exe");
-				} else if (!strcmp(wcfg.wd_os_type, OS_SIGNAL_LINUX)) {
-						kill_process("samp03svr");
-				}
-		}
-
 		__main(0);
 }
 
@@ -353,18 +341,6 @@ void wd_run_omp_server(const char *gamemode, const char *server_bin)
 
 		/* Restore original configuration */
 		restore_omp_config();
-
-		/* Debug mode cleanup */
-		if (wcfg.wd_runn_mode && strcmp(wcfg.wd_runn_mode, "debug") == 0) {
-    			fprintf(stdout,
-					    "[DEBUG] %s:%d %s()\n",
-					    __FILE__, __LINE__, __func__);
-				if (!strcmp(wcfg.wd_os_type, OS_SIGNAL_WINDOWS)) {
-						kill_process("omp-server.exe");
-				} else if (!strcmp(wcfg.wd_os_type, OS_SIGNAL_LINUX)) {
-						kill_process("omp-server");
-				}
-		}
 
 		__main(0);
 }

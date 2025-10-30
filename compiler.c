@@ -152,8 +152,8 @@ const char *cp_find_error_explanation(const char *sz_line)
 void print_file_with_explanations(const char *filename)
 {
         FILE *file;
-        char line[1024];
-        char pv_line[1024] = "";
+        char _l_explanation[1024],
+             _pl_explanation[1024] = "";
         int line_number = 0;
         const char *warning_ptr;
         const char *error_ptr;
@@ -163,45 +163,58 @@ void print_file_with_explanations(const char *filename)
         int target_pos;
         int i;
 
+        /* Open the file for reading */
         file = fopen(filename, "r");
         if (!file) {
             printf("Cannot open file: %s\n", filename);
             return;
         }
 
-        while (fgets(line, sizeof(line), file)) {
-            line_number++;
+        /* Read the file line by line */
+        while (fgets(_l_explanation, sizeof(_l_explanation), file)) {
+            ++line_number;
 
-            printf("%s", line);
+            /* Print the current line */
+            printf("%s", _l_explanation);
 
+            /* Initialize variables for error/warning detection */
             explanation = NULL;
             warning_pos = -1;
             error_pos = -1;
 
-            warning_ptr = strstr(line, "warning");
-            error_ptr = strstr(line, "error");
+            /* Check if line contains "warning" or "error" */
+            warning_ptr = strstr(_l_explanation, "warning");
+            error_ptr = strstr(_l_explanation, "error");
 
+            /* If warning found, get its position and explanation */
             if (warning_ptr) {
-                warning_pos = warning_ptr - line;
-                explanation = cp_find_error_explanation(line);
+                warning_pos = warning_ptr - _l_explanation;
+                explanation = cp_find_error_explanation(_l_explanation);
             } else if (error_ptr) {
-                error_pos = error_ptr - line;
-                explanation = cp_find_error_explanation(line);
+                /* If error found, get its position and explanation */
+                error_pos = error_ptr - _l_explanation;
+                explanation = cp_find_error_explanation(_l_explanation);
             }
 
+            /* If we have an explanation and found either warning or error */
             if (explanation && (warning_pos != -1 || error_pos != -1)) {
+                /* Determine the target position for the caret */
                 target_pos = (warning_pos != -1) ? warning_pos : error_pos;
 
+                /* Print spaces to align the caret with the warning/error */
                 for (i = 0; i < target_pos; i++)
                     printf(" ");
 
+                /* Print colored explanation with caret */
                 pr_color(stdout, FCOLOUR_CYAN, "^ %s\n\n", explanation);
             }
 
-            strncpy(pv_line, line, sizeof(pv_line) - 1);
-            pv_line[sizeof(pv_line) - 1] = '\0';
+            /* Save current line as previous line for next iteration */
+            strncpy(_pl_explanation, _l_explanation, sizeof(_pl_explanation) - 1);
+            _pl_explanation[sizeof(_pl_explanation) - 1] = '\0';
         }
 
+        /* Close the file */
         fclose(file);
 }
 

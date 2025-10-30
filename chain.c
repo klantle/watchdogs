@@ -153,7 +153,6 @@ _reexecute_command:
             } else if (strcmp(arg, "compile") == 0) { println(stdout, "compile: compile your project. | Usage: \"compile\" | [<args>]");
             } else if (strcmp(arg, "running") == 0) { println(stdout, "running: running your project. | Usage: \"running\" | [<args>]");
             } else if (strcmp(arg, "crunn") == 0) { println(stdout, "crunn: compile & running your project. | Usage: \"crunn\" | [<args>]");
-            } else if (strcmp(arg, "debug") == 0) { println(stdout, "debug: debugging your project. | Usage: \"debug\" | [<args>]");
             } else if (strcmp(arg, "stop") == 0) { println(stdout, "stop: stopped server task. | Usage: \"stop\"");
             } else if (strcmp(arg, "restart") == 0) { println(stdout, "restart: restart server task. | Usage: \"restart\"");
             } else println(stdout, "help not found for: '%s'", arg);
@@ -567,21 +566,18 @@ loop_ipcc3:
             wd_run_compiler(arg, compile_args);
             
             goto done;
-        } if (strncmp(ptr_command, "debug", 5) == 0 || strncmp(ptr_command, "running", 7) == 0) {
+        } if (strncmp(ptr_command, "running", 7) == 0) {
 _runners_:
-                int is_debug = strncmp(ptr_command, "debug", 5) == 0;
-                if (is_debug) wcfg.wd_runn_mode = "debug";
-
                 wd_stop_server_tasks();
 
-                int _wd_log_acces = path_acces("server_log.txt");
+                int _wd_log_acces = path_acces(".server_log.txt");
                 if (_wd_log_acces)
-                    remove("server_log.txt");
-                _wd_log_acces = path_acces("log.txt");
+                    remove(".server_log.txt");
+                _wd_log_acces = path_acces(".log.txt");
                 if (_wd_log_acces)
-                    remove("log.txt");
+                    remove(".log.txt");
 
-                size_t cmd_len = is_debug ? 5 : 7;
+                size_t cmd_len = 7;
                 char *arg = ptr_command + cmd_len;
                 while (*arg == ' ') ++arg;
                 char *arg1 = strtok(arg, " ");
@@ -602,13 +598,15 @@ _runners_:
 
                 pr_color(stdout, FCOLOUR_YELLOW, "running..\n");
 #ifdef _WIN32
-
-                system("C:\\msys64\\usr\\bin\\mintty.exe /bin/bash -c \"./watchdogs.win; pwd; exec bash\"");
+                if (system("tasklist | findstr /i watchdogs >nul 2>nul") != 0)
+                    system("C:\\msys64\\usr\\bin\\mintty.exe /bin/bash -c \"echo here is your watchdogs!..; ./watchdogs.win; pwd; exec bash\"");
 #else
                 if (is_termux_environment)
                     pr_error(stdout, "xterm not supported in termux!");
-                else
-                    system("xterm -hold -e bash -c 'echo \"here is your watchdogs!..\"; ./watchdogs' &");
+                else {
+                    if (system("pgrep -x watchdogs > /dev/null") != 0)
+                        system("xterm -hold -e bash -c 'echo \"here is your watchdogs!..\"; ./watchdogs' &");
+                }
 #endif
                 if (!strcmp(wcfg.wd_is_samp, CRC32_TRUE)) {
                     if (arg == WD_ISNULL || *arg == '\0' || (arg[0] == '.' && arg[1] == '\0')) {

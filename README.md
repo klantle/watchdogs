@@ -283,8 +283,8 @@ output = "gamemodes/bare.amx"
 github_tokens = "DO_HERE"
 # Dependency repositories (max 101)
 aio_repo = [
-    "Y-Less/sscanf:v2.13.8",
-    "samp-incognito/samp-streamer-plugin:v2.9.6"
+    "Y-Less/sscanf:latest",
+    "samp-incognito/samp-streamer-plugin:latest"
 ]
 ```
 

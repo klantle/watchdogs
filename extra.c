@@ -255,7 +255,8 @@ static int setup_linux_library(void)
 		struct stat st;
 		int i, found_lib;
 
-		if (wcfg.wd_os_type != OS_SIGNAL_LINUX)
+		if (!strcmp(wcfg.wd_toml_os_type, OS_SIGNAL_WINDOWS) ||
+			!strcmp(wcfg.wd_toml_os_type, OS_SIGNAL_UNKNOWN))
 				return RETZ;
 
 		/* Find libpawnc.so */

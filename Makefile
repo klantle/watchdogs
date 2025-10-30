@@ -41,7 +41,7 @@ init:
 		$(MAKE) windows; \
 	elif echo "$$UNAME_S" | grep -qi "Linux" && [ -d "/data/data/com.termux" ]; then \
 		echo "$(YELLOW)==>$(RESET) Detected: Termux environment"; \
-		pkg update -y && pkg install -y procps clang openssl curl libarchive ncurses readline; \
+		pkg update -y && pkg install -y unstable-repo coreutils procps clang openssl curl libarchive ncurses readline; \
 		$(MAKE) termux; \
 	elif echo "$$UNAME_S" | grep -qi "MINGW64_NT"; then \
 		echo "$(YELLOW)==>$(RESET) Detected: MSYS2 MinGW UCRT64 environment"; \
@@ -148,7 +148,7 @@ debug:
 termux-debug:
 	@echo "LANG = $$LANG"
 	@printf "$(YELLOW)==>$(RESET) Building DEBUG Version $(VERSION) Full Version $(FULL_VERSION)\n"
-	$(CC) $(CFLAGS) I/data/data/com.termux/files/usr/include -I$PREFIX/lib -I$PREFIX/bin -D__ANDROID__ $(SRCS) -g -O0 -D_DBG_PRINT -Wall -o watchdogs.debug.tmux $(LDFLAGS)
+	$(CC) -g -O0 -Wall -fno-omit-frame-pointer -fno-inline -I/data/data/com.termux/files/usr/include -I$PREFIX/include -D__ANDROID__ $(SRCS) -o watchdogs.debug.tmux $(LDFLAGS)
 	@printf "$(YELLOW)==>$(RESET) Build complete: watchdogs.debug.tmux Version $(VERSION) Full Version $(FULL_VERSION)\n"
 
 windows-debug:

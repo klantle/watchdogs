@@ -922,27 +922,27 @@ ret_ptr:
                     if (strfind(platform, "L"))
                     {
                         /* Install for Linux */
+                        int ret = wd_install_pawncc("linux");
 loop_ipcc:
                         wdfree(platform);
-                        int ret = wd_install_pawncc("linux");
                         if (ret == -RETN && wcfg.wd_sel_stat != 0)
                             goto loop_ipcc;
                     }
                     if (strfind(platform, "W"))
                     {
                         /* Install for Windows */
+                        int ret = wd_install_pawncc("windows");
 loop_ipcc2:
                         wdfree(platform);
-                        int ret = wd_install_pawncc("windows");
                         if (ret == -RETN && wcfg.wd_sel_stat != 0)
                             goto loop_ipcc2;
                     }
                     if (strfind(platform, "T"))
                     {
                         /* Install for Termux */
+                        int ret = wd_install_pawncc("termux");
 loop_ipcc3:
                         wdfree(platform);
-                        int ret = wd_install_pawncc("termux");
                         if (ret == -RETN && wcfg.wd_sel_stat != 0)
                             goto loop_ipcc3;
                     }

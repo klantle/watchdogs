@@ -290,85 +290,111 @@ static int dep_parse_repo_input(const char *input, struct dep_repo_info *info)
 		/* Parse tag if present */
 		tag_ptr = strrchr(working, ':');
 		if (tag_ptr) {
-				*tag_ptr = '\0';
-				strncpy(info->tag, tag_ptr + 1, sizeof(info->tag) - 1);
+			*tag_ptr = '\0';
+			strncpy(info->tag, tag_ptr + 1, sizeof(info->tag) - 1);
+			
+			/* Handle special tags */
+			if (strcmp(info->tag, "latest") == 0) {
+				/* Keep as 'latest', will be converted to latest tag later */
+				pr_info(stdout, "latest tag detected, will use latest release");
+			}
 		}
 
 		path = working;
 
 		/* Skip protocol if present */
 		if (strncmp(path, "https://", 8) == 0) {
-				path += 8;
+			path += 8;
 		} else if (strncmp(path, "http://", 7) == 0) {
-				path += 7;
+			path += 7;
 		}
 
 		/* Handle short formats */
 		if (strncmp(path, "github/", 7) == 0) {
-				strcpy(info->host, "github");
-				strcpy(info->domain, "github.com");
-				path += 7;
+			strcpy(info->host, "github");
+			strcpy(info->domain, "github.com");
+			path += 7;
 		} else if (strncmp(path, "gitlab/", 7) == 0) {
-				strcpy(info->host, "gitlab");
-				strcpy(info->domain, "gitlab.com");
-				path += 7;
+			strcpy(info->host, "gitlab");
+			strcpy(info->domain, "gitlab.com");
+			path += 7;
 		} else if (strncmp(path, "gitea/", 6) == 0) {
-				strcpy(info->host, "gitea");
-				strcpy(info->domain, "gitea.com");
-				path += 6;
+			strcpy(info->host, "gitea");
+			strcpy(info->domain, "gitea.com");
+			path += 6;
 		} else if (strncmp(path, "sourceforge/", 12) == 0) {
-				strcpy(info->host, "sourceforge");
-				strcpy(info->domain, "sourceforge.net");
-				path += 12;
+			strcpy(info->host, "sourceforge");
+			strcpy(info->domain, "sourceforge.net");
+			path += 12;
 		} else {
-				/* Long format with explicit domain */
-				first_slash = strchr(path, '/');
-				if (first_slash && strchr(path, '.') && strchr(path, '.') < first_slash) {
-						char domain[128];
-						strncpy(domain, path, first_slash - path);
-						domain[first_slash - path] = '\0';
+			/* Long format with explicit domain */
+			first_slash = strchr(path, '/');
+			if (first_slash && strchr(path, '.') && strchr(path, '.') < first_slash) {
+				char domain[128];
+				strncpy(domain, path, first_slash - path);
+				domain[first_slash - path] = '\0';
 
-						if (strstr(domain, "github")) {
-								strcpy(info->host, "github");
-								strcpy(info->domain, "github.com");
-						} else if (strstr(domain, "gitlab")) {
-								strcpy(info->host, "gitlab");
-								strcpy(info->domain, "gitlab.com");
-						} else if (strstr(domain, "gitea")) {
-								strcpy(info->host, "gitea");
-								strcpy(info->domain, "gitea.com");
-						} else if (strstr(domain, "sourceforge")) {
-								strcpy(info->host, "sourceforge");
-								strcpy(info->domain, "sourceforge.net");
-						}
-						path = first_slash + 1;
+				if (strstr(domain, "github")) {
+					strcpy(info->host, "github");
+					strcpy(info->domain, "github.com");
+				} else if (strstr(domain, "gitlab")) {
+					strcpy(info->host, "gitlab");
+					strcpy(info->domain, "gitlab.com");
+				} else if (strstr(domain, "gitea")) {
+					strcpy(info->host, "gitea");
+					strcpy(info->domain, "gitea.com");
+				} else if (strstr(domain, "sourceforge")) {
+					strcpy(info->host, "sourceforge");
+					strcpy(info->domain, "sourceforge.net");
+				} else {
+					/* Custom domain */
+					strncpy(info->domain, domain, sizeof(info->domain) - 1);
+					strcpy(info->host, "custom");
 				}
+				path = first_slash + 1;
+			}
 		}
 
 		/* Parse user/repo from path */
 		user = path;
 		repo_slash = strchr(path, '/');
 		if (!repo_slash)
-				return RETZ;
+			return RETZ;
 
 		*repo_slash = '\0';
 		repo = repo_slash + 1;
 
 		/* SourceForge has different format */
 		if (strcmp(info->host, "sourceforge") == 0) {
-				strncpy(info->user, user, sizeof(info->user) - 1);
-				strncpy(info->repo, repo, sizeof(info->repo) - 1);
+			strncpy(info->user, user, sizeof(info->user) - 1);
+			strncpy(info->repo, repo, sizeof(info->repo) - 1);
+			
+			/* SourceForge projects often don't have user field */
+			if (strlen(info->user) == 0) {
+				strncpy(info->repo, user, sizeof(info->repo) - 1);
+			}
 		} else {
-				strncpy(info->user, user, sizeof(info->user) - 1);
+			strncpy(info->user, user, sizeof(info->user) - 1);
 
-				/* Remove .git extension if present */
-				git_ext = strstr(repo, ".git");
-				if (git_ext)
-						*git_ext = '\0';
-				strncpy(info->repo, repo, sizeof(info->repo) - 1);
+			/* Remove .git extension if present */
+			git_ext = strstr(repo, ".git");
+			if (git_ext)
+				*git_ext = '\0';
+			strncpy(info->repo, repo, sizeof(info->repo) - 1);
 		}
 
-		return RETN;
+		/* Validate required fields */
+		if (strlen(info->user) == 0 || strlen(info->repo) == 0) {
+			return RETZ;
+		}
+
+#if defined(_DBG_PRINT)
+		pr_info(stdout, "Parsed repo: host=%s, domain=%s, user=%s, repo=%s, tag=%s",
+				info->host, info->domain, info->user, info->repo,
+				info->tag[0] ? info->tag : "(none)");
+#endif
+
+    	return RETN;
 }
 
 /**
@@ -452,85 +478,217 @@ static int dep_check_github_branch(const char *user,
  * @out_url: Output buffer for URL
  * @out_size: Size of output buffer
  */
+/**
+ * dep_build_repo_url - Build repository URL based on host and type
+ * @info: Repository information
+ * @is_tag_page: Whether to build tag page URL
+ * @out_url: Output buffer for URL
+ * @out_size: Size of output buffer
+ */
 static void dep_build_repo_url(const struct dep_repo_info *info, int is_tag_page,
-						   	   char *out_url, size_t out_size)
+                               char *out_url, size_t out_size)
 {
-		if (strcmp(info->host, "github") == 0)
-			{
-					if (is_tag_page && info->tag[0]) {
-							snprintf(out_url, out_size, "%s%s/%s/%s/releases/tag/%s",
-									"https://", info->domain, info->user, info->repo, info->tag);
-					} else if (info->tag[0]) {
-							snprintf(out_url, out_size, "%s%s/%s/%s/archive/refs/tags/%s.tar.gz",
-									"https://", info->domain, info->user, info->repo, info->tag);
-					} else {
-							snprintf(out_url, out_size, "%s%s/%s/%s/archive/refs/heads/main.zip",
-									"https://", info->domain, info->user, info->repo);
-					}
+		char actual_tag[128] = {0};
+		
+		/* Copy tag for processing */
+		if (info->tag[0]) {
+			strncpy(actual_tag, info->tag, sizeof(actual_tag) - 1);
+			
+			/* For latest, we keep it as is for URL building
+			Actual conversion to latest tag happens in dep_handle_repo */
+			if (strcmp(actual_tag, "latest") == 0) {
+				/* For GitHub, latest in URL context typically means latest release */
+				if (strcmp(info->host, "github") == 0 && !is_tag_page) {
+					/* For download URLs, we'll let dep_handle_repo handle the conversion */
+					strcpy(actual_tag, "latest");
+				}
 			}
-		else if (strcmp(info->host, "gitlab") == 0)
-			{
-					if (is_tag_page && info->tag[0]) {
-							snprintf(out_url, out_size, "%s%s/%s/%s/-/tags/%s",
-									"https://", info->domain, info->user, info->repo, info->tag);
-					} else if (info->tag[0]) {
-							snprintf(out_url, out_size, "%s%s/%s/%s/-/archive/%s/%s-%s.tar.gz",
-									"https://", info->domain, info->user, info->repo, info->tag,
-									info->repo, info->tag);
-					} else {
-							snprintf(out_url, out_size, "%s%s/%s/%s/-/archive/main/%s-main.zip",
-									"https://", info->domain, info->user, info->repo, info->repo);
-					}
+		}
+
+		if (strcmp(info->host, "github") == 0) {
+			if (is_tag_page && actual_tag[0]) {
+				if (strcmp(actual_tag, "latest") == 0 || strcmp(actual_tag, "latest") == 0) {
+					snprintf(out_url, out_size, "%s%s/%s/%s/releases/latest",
+							"https://", info->domain, info->user, info->repo);
+				} else {
+					snprintf(out_url, out_size, "%s%s/%s/%s/releases/tag/%s",
+							"https://", info->domain, info->user, info->repo, actual_tag);
+				}
+			} else if (actual_tag[0]) {
+				if (strcmp(actual_tag, "latest") == 0 || strcmp(actual_tag, "latest") == 0) {
+					/* For latest/latest, use the latest release API */
+					snprintf(out_url, out_size, "%s%s/%s/%s/releases/latest",
+							"https://", info->domain, info->user, info->repo);
+				} else {
+					snprintf(out_url, out_size, "%s%s/%s/%s/archive/refs/tags/%s.tar.gz",
+							"https://", info->domain, info->user, info->repo, actual_tag);
+				}
+			} else {
+				/* No tag specified - use main branch */
+				snprintf(out_url, out_size, "%s%s/%s/%s/archive/refs/heads/main.zip",
+						"https://", info->domain, info->user, info->repo);
 			}
-		else if (strcmp(info->host, "gitea") == 0)
-			{
-					if (is_tag_page && info->tag[0]) {
-							snprintf(out_url, out_size, "%s%s/%s/%s/tags/%s",
-									"https://", info->domain, info->user, info->repo, info->tag);
-					} else if (info->tag[0]) {
-							snprintf(out_url, out_size, "%s%s/%s/%s/archive/%s.tar.gz",
-									"https://", info->domain, info->user, info->repo, info->tag);
-					} else {
-							snprintf(out_url, out_size, "%s%s/%s/%s/archive/main.zip",
-									"https://", info->domain, info->user, info->repo);
-					}
+		}
+		else if (strcmp(info->host, "gitlab") == 0) {
+			if (is_tag_page && actual_tag[0]) {
+				snprintf(out_url, out_size, "%s%s/%s/%s/-/tags/%s",
+						"https://", info->domain, info->user, info->repo, actual_tag);
+			} else if (actual_tag[0]) {
+				if (strcmp(actual_tag, "latest") == 0) {
+					/* GitLab doesn't have a direct 'latest' equivalent, use main branch */
+					snprintf(out_url, out_size, "%s%s/%s/%s/-/archive/main/%s-main.zip",
+							"https://", info->domain, info->user, info->repo, info->repo);
+				} else {
+					snprintf(out_url, out_size, "%s%s/%s/%s/-/archive/%s/%s-%s.tar.gz",
+							"https://", info->domain, info->user, info->repo, actual_tag,
+							info->repo, actual_tag);
+				}
+			} else {
+				snprintf(out_url, out_size, "%s%s/%s/%s/-/archive/main/%s-main.zip",
+						"https://", info->domain, info->user, info->repo, info->repo);
 			}
-		else if (strcmp(info->host, "sourceforge") == 0)
-			{
-					if (info->tag[0]) {
-							snprintf(out_url, out_size, "%s%s/projects/%s/files/latest/download",
-									"https://", info->domain, info->repo);
-					} else {
-							snprintf(out_url, out_size, "%s%s/projects/%s/files/latest/download",
-									"https://", info->domain, info->repo);
-					}
+		}
+		else if (strcmp(info->host, "gitea") == 0) {
+			if (is_tag_page && actual_tag[0]) {
+				snprintf(out_url, out_size, "%s%s/%s/%s/tags/%s",
+						"https://", info->domain, info->user, info->repo, actual_tag);
+			} else if (actual_tag[0]) {
+				if (strcmp(actual_tag, "latest") == 0) {
+					/* Gitea - use main branch for latest */
+					snprintf(out_url, out_size, "%s%s/%s/%s/archive/main.zip",
+							"https://", info->domain, info->user, info->repo);
+				} else {
+					snprintf(out_url, out_size, "%s%s/%s/%s/archive/%s.tar.gz",
+							"https://", info->domain, info->user, info->repo, actual_tag);
+				}
+			} else {
+				snprintf(out_url, out_size, "%s%s/%s/%s/archive/main.zip",
+						"https://", info->domain, info->user, info->repo);
 			}
+		}
+		else if (strcmp(info->host, "sourceforge") == 0) {
+			if (actual_tag[0] && strcmp(actual_tag, "latest") != 0) {
+				/* SourceForge with specific tag */
+				snprintf(out_url, out_size, "%s%s/projects/%s/files/%s/download",
+						"https://", info->domain, info->repo, actual_tag);
+			} else {
+				/* SourceForge latest or latest */
+				snprintf(out_url, out_size, "%s%s/projects/%s/files/latest/download",
+						"https://", info->domain, info->repo);
+			}
+		}
+		else {
+			/* Custom/unknown host - use generic GitHub-like format */
+			if (is_tag_page && actual_tag[0]) {
+				snprintf(out_url, out_size, "%s%s/%s/%s/releases/tag/%s",
+						"https://", info->domain, info->user, info->repo, actual_tag);
+			} else if (actual_tag[0]) {
+				snprintf(out_url, out_size, "%s%s/%s/%s/archive/refs/tags/%s.tar.gz",
+						"https://", info->domain, info->user, info->repo, actual_tag);
+			} else {
+				snprintf(out_url, out_size, "%s%s/%s/%s/archive/refs/heads/main.zip",
+						"https://", info->domain, info->user, info->repo);
+			}
+		}
+
+#if defined(_DBG_PRINT)
+		pr_info(stdout, "Built URL: %s (is_tag_page=%d, tag=%s)", 
+				out_url, is_tag_page, actual_tag[0] ? actual_tag : "(none)");
+#endif
+}
+
+/**
+ * dep_get_latest_tag - Get the latest tag from GitHub API
+ * @user: Repository owner
+ * @repo: Repository name
+ * @out_tag: Output buffer for latest tag
+ * @out_size: Size of output buffer
+ *
+ * Return: 1 if found, 0 if not
+ */
+static int dep_get_latest_tag(const char *user, const char *repo, 
+                              char *out_tag, size_t out_size)
+{
+		char api_url[PATH_MAX];
+		char *json_data = NULL;
+		const char *p;
+		int ret = 0;
+
+		snprintf(api_url, sizeof(api_url),
+				"%sapi.github.com/repos/%s/%s/releases/latest",
+				"https://", user, repo);
+
+		if (!dep_curl_get_html(api_url, &json_data))
+			return RETZ;
+
+		/* Parse tag_name from JSON response */
+		p = strstr(json_data, "\"tag_name\"");
+		if (p) {
+			p = strchr(p, ':');
+			if (p) {
+				p++; // skip colon
+				while (*p && (*p == ' ' || *p == '\t' || *p == '\n' || *p == '\r')) p++;
+				
+				if (*p == '"') {
+					p++; // skip opening quote
+					const char *end = strchr(p, '"');
+					if (end) {
+						size_t tag_len = end - p;
+						if (tag_len < out_size) {
+							strncpy(out_tag, p, tag_len);
+							out_tag[tag_len] = '\0';
+							ret = 1;
+						}
+					}
+				}
+			}
+		}
+
+		wdfree(json_data);
+		return ret;
 }
 
 /**
  * wd_install_dependss - Install depends from repositories
  * dep_handle_repo - Helper for Handling
  */
-
 static int dep_handle_repo(const struct dep_repo_info *dep_repo_info,
-								  char *out_url,
-								  size_t out_sz)
+                          char *out_url,
+                          size_t out_sz)
 {
 		int ret = 0;
 		/* Try common branch names */
 		const char *branches[] = {
-									"main",
-									"master"
-								};
+			"main",
+			"master"
+		};
 
-		if (dep_repo_info->tag[0]) {
+		char actual_tag[128] = {0};
+		
+		/* Handle latest -> latest tag conversion */
+		if (dep_repo_info->tag[0] && strcmp(dep_repo_info->tag, "latest") == 0) {
+			if (dep_get_latest_tag(dep_repo_info->user, 
+								dep_repo_info->repo, 
+								actual_tag, 
+								sizeof(actual_tag))) {
+				pr_info(stdout, "Using latest tag: %s (instead of latest)", actual_tag);
+			} else {
+				pr_error(stdout, "Failed to get latest tag for %s/%s, falling back to main branch",
+						dep_repo_info->user, dep_repo_info->repo);
+				strcpy(actual_tag, ""); // Fallback to main branch
+			}
+		} else {
+			strncpy(actual_tag, dep_repo_info->tag, sizeof(actual_tag) - 1);
+		}
+
+		if (actual_tag[0]) {
 			/* Try GitHub release assets */
 			char *assets[10] = { 0 };
 			int asset_count = dep_gh_release_assets(dep_repo_info->user,
-													dep_repo_info->repo,
-													dep_repo_info->tag,
-													assets,
-													10);
+												dep_repo_info->repo,
+												actual_tag,
+												assets,
+												10);
 
 			if (asset_count > 0) {
 				char *best_asset;
@@ -545,23 +703,22 @@ static int dep_handle_repo(const struct dep_repo_info *dep_repo_info,
 			}
 
 			/* Fallback to tagged source archives */
-			if (!ret)
-				{
-					const char *formats[] = {
-												"https://github.com/%s/%s/archive/refs/tags/%s.tar.gz",
-												"https://github.com/%s/%s/archive/refs/tags/%s.zip"
-											};
-					for (int j = 0; j < 2 && !ret; j++) {
-						snprintf(out_url, out_sz, formats[j],
-								dep_repo_info->user,
-								dep_repo_info->repo,
-								dep_repo_info->tag);
-						if (dep_curl_url_get_response(out_url, wcfg.wd_toml_github_tokens_table))
-							ret = 1;
-					}
+			if (!ret) {
+				const char *formats[] = {
+					"https://github.com/%s/%s/archive/refs/tags/%s.tar.gz",
+					"https://github.com/%s/%s/archive/refs/tags/%s.zip"
+				};
+				for (int j = 0; j < 2 && !ret; j++) {
+					snprintf(out_url, out_sz, formats[j],
+							dep_repo_info->user,
+							dep_repo_info->repo,
+							actual_tag);
+					if (dep_curl_url_get_response(out_url, wcfg.wd_toml_github_tokens_table))
+						ret = 1;
 				}
-		} else
-		{
+			}
+		} else {
+			/* No tag specified or latest failed - try branches */
 			for (int j = 0; j < 2 && !ret; j++) {
 				snprintf(out_url, out_sz,
 						"%s%s/%s/archive/refs/heads/%s.zip",
@@ -572,7 +729,7 @@ static int dep_handle_repo(const struct dep_repo_info *dep_repo_info,
 				if (dep_curl_url_get_response(out_url, wcfg.wd_toml_github_tokens_table)) {
 					ret = 1;
 					if (j == 1)
-						pr_info(stdout, "Using master branch (main not master)");
+						pr_info(stdout, "Using master branch (main not found)");
 				}
 			}
 		}

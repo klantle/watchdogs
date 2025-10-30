@@ -61,20 +61,22 @@ void __function__(void) {
         FILE *file_s = fopen(wcfg.wd_ptr_samp, "r");
         FILE *file_m = fopen(wcfg.wd_ptr_omp, "r");
 
-        if (file_s && file_m) {
-__default:
-            wcfg.wd_is_omp = CRC32_FALSE;
+        if (file_s != NULL && file_m != NULL) {
             wcfg.wd_is_samp = CRC32_TRUE;
-            fclose(file_s);
-        } else if (file_s) {
-            goto __default;
-        } else if (file_m) {
+            wcfg.wd_is_omp  = CRC32_FALSE;
+        } else if (file_s != NULL) {
+            wcfg.wd_is_samp = CRC32_TRUE;
+            wcfg.wd_is_omp  = CRC32_FALSE;
+        } else if (file_m != NULL) {
             wcfg.wd_is_samp = CRC32_FALSE;
-            wcfg.wd_is_omp = CRC32_TRUE;
-            fclose(file_m);
+            wcfg.wd_is_omp  = CRC32_TRUE;
         } else {
-            goto __default;
+            wcfg.wd_is_samp = CRC32_TRUE;
+            wcfg.wd_is_omp  = CRC32_FALSE;
         }
+
+        if (file_s) fclose(file_s);
+        if (file_m) fclose(file_m);
 
 #if defined(_DBG_PRINT)
         pr_color(stdout,
@@ -106,8 +108,9 @@ int __command__(void)
             return RETW;
         }
 
-_ptr_command:
         char ptr_prompt[PATH_MAX + 56];
+
+_ptr_command:
         size_t __sz_ptrp = sizeof(ptr_prompt);
         snprintf(ptr_prompt, __sz_ptrp,
                  "[" FCOLOUR_CYAN "watchdogs ~ %s" FCOLOUR_DEFAULT "]$ ", __cwd);
@@ -475,8 +478,8 @@ ret_ptr:
             if (strfind(platform, "L")) {
                 wdfree(ptr_command);
                 wdfree(platform);
-loop_igm:
                 int ret = wd_install_server("linux");
+loop_igm:
                 if (ret == -RETN && wcfg.wd_sel_stat != 0)
                     goto loop_igm;
                 else if (ret == RETZ)
@@ -484,8 +487,8 @@ loop_igm:
             } else if (strfind(platform, "W")) {
                 wdfree(ptr_command);
                 wdfree(platform);
-loop_igm2:
                 int ret = wd_install_server("windows");
+loop_igm2:
                 if (ret == -RETN && wcfg.wd_sel_stat != 0)
                     goto loop_igm2;
                 else if (ret == RETZ)
@@ -519,8 +522,8 @@ ret_ptr2:
                 wdfree(ptr_command);
                 wdfree(platform);
                 ptr_command = NULL;
-loop_ipcc:
                 int ret = wd_install_pawncc("linux");
+loop_ipcc:
                 if (ret == -RETN && wcfg.wd_sel_stat != 0)
                     goto loop_ipcc;
                 else if (ret == RETZ)
@@ -529,8 +532,8 @@ loop_ipcc:
                 wdfree(ptr_command);
                 wdfree(platform);
                 ptr_command = NULL;
-loop_ipcc2:
                 int ret = wd_install_pawncc("windows");
+loop_ipcc2:
                 if (ret == -RETN && wcfg.wd_sel_stat != 0)
                     goto loop_ipcc2;
                 else if (ret == RETZ)
@@ -539,8 +542,8 @@ loop_ipcc2:
                 wdfree(ptr_command);
                 wdfree(platform);
                 ptr_command = NULL;
-loop_ipcc3:
                 int ret = wd_install_pawncc("termux");
+loop_ipcc3:
                 if (ret == -RETN && wcfg.wd_sel_stat != 0)
                     goto loop_ipcc3;
                 else if (ret == RETZ)
@@ -601,7 +604,7 @@ _runners_:
                 if (system("tasklist | findstr /i watchdogs >nul 2>nul") != 0)
                     system("C:\\msys64\\usr\\bin\\mintty.exe /bin/bash -c \"echo here is your watchdogs!..; ./watchdogs.win; pwd; exec bash\"");
 #else
-                if (is_termux_environment)
+                if (is_termux_environment())
                     pr_error(stdout, "xterm not supported in termux!");
                 else {
                     if (system("pgrep -x watchdogs > /dev/null") != 0)
@@ -659,13 +662,13 @@ ret_ptr3:
                         if (strcmp(ptr_sigA, "Y") == 0 || strcmp(ptr_sigA, "y") == 0) {
                             wdfree(ptr_sigA);
                             if (!strcmp(wcfg.wd_os_type, OS_SIGNAL_WINDOWS)) {
-n_loop_igm:
                                 int ret = wd_install_server("windows");
+n_loop_igm:
                                 if (ret == -RETN && wcfg.wd_sel_stat != 0)
                                     goto n_loop_igm;
                             } else if (!strcmp(wcfg.wd_os_type, OS_SIGNAL_LINUX)) {
-n_loop_igm2:
                                 int ret = wd_install_server("linux");
+n_loop_igm2:
                                 if (ret == -RETN && wcfg.wd_sel_stat != 0)
                                     goto n_loop_igm2;
                             }
@@ -864,9 +867,9 @@ void __main(int sig_unused) {
         (void)sig_unused;
         wd_set_title(NULL);
         __function__();
-loop_main:
         int ret = -RETW;
-            ret = __command__();
+loop_main:
+        ret = __command__();
         if (ret == -RETN || ret == RETZ || ret == RETN) {
             clock_gettime(CLOCK_MONOTONIC, &cmd_end);
             command_dur = (cmd_end.tv_sec - cmd_start.tv_sec) +

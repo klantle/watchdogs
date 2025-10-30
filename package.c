@@ -315,15 +315,15 @@ int wd_install_pawncc(const char *platform)
 				return -RETN;
 		}
 		if (strcmp(platform, "termux") == 0) {
-loop_ipcc:
 			int ret = handle_termux_installation();
+loop_ipcc:
 			if (ret == -RETN && wcfg.wd_sel_stat != 0)
 				goto loop_ipcc;
 			else if (ret == RETZ)
 				return RETZ;
 		} else {
-loop_ipcc2:
 			int ret = handle_standard_installation(platform);
+loop_ipcc2:
 			if (ret == -RETN && wcfg.wd_sel_stat != 0)
 				goto loop_ipcc2;
 			else if (ret == RETZ)

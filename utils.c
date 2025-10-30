@@ -1437,7 +1437,7 @@ static void wd_generate_toml_content(FILE *file, const char *wd_os_type,
 
 		fprintf(file, "[depends]\n");
 		fprintf(file, "\tgithub_tokens = \"DO_HERE\"\n");
-		fprintf(file, "\taio_repo = [\"Y-Less/sscanf:v2.13.8\", \"samp-incognito/samp-streamer-plugin:v2.9.6\"]");
+		fprintf(file, "\taio_repo = [\"Y-Less/sscanf:latest\", \"samp-incognito/samp-streamer-plugin:latest\"]");
 }
 
 /**

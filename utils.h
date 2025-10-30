@@ -148,7 +148,6 @@ typedef struct {
         volatile sig_atomic_t wd_stopwatch_end;
         size_t wd_sef_count;
         char wd_sef_found_list[MAX_SEF_ENTRIES][MAX_SEF_PATH_SIZE];
-        char *wd_runn_mode;
         char *wd_toml_aio_opt_table;
         char *wd_toml_aio_repo_array;
         char *wd_toml_gm_input_table;

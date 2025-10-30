@@ -234,22 +234,21 @@ int wd_download_file(const char *url, const char *filename)
 			curl_easy_setopt(curl, CURLOPT_FOLLOWLOCATION, 1L);
 			curl_easy_setopt(curl, CURLOPT_SSL_VERIFYPEER, 1L);
 			curl_easy_setopt(curl, CURLOPT_NOPROGRESS, 0L);
-			
-			if (progress_callback) {
-				curl_easy_setopt(curl, CURLOPT_XFERINFOFUNCTION, progress_callback);
-				curl_easy_setopt(curl, CURLOPT_XFERINFODATA, NULL);
-			}
+			curl_easy_setopt(curl, CURLOPT_XFERINFOFUNCTION, progress_callback);
+			curl_easy_setopt(curl, CURLOPT_XFERINFODATA, NULL);
 
 			res = curl_easy_perform(curl);
 			curl_easy_getinfo(curl, CURLINFO_RESPONSE_CODE, &response_code);
 
 			curl_easy_cleanup(curl);
 			curl_slist_free_all(headers);
-			fclose(file);
+			
+			if (file)
+				fclose(file);
 
 			if (res == CURLE_OK && response_code == 200) {
 				if (stat(filename, &file_stat) == 0 && file_stat.st_size > 0) {
-					printf("Download successful: %ld bytes\n", file_stat.st_size);
+					printf("Download successful: %lld bytes\n", file_stat.st_size);
 					
 					if (is_archive_file(filename)) {
 						printf("Checking file type for extraction...\n");

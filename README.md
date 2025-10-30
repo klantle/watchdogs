@@ -279,6 +279,8 @@ input = "gamemodes/bare.pwn"
 output = "gamemodes/bare.amx"
 
 [depends]
+# Personal access tokens (classic) - https://github.com/settings/tokens
+github_tokens = "DO_HERE"
 # Dependency repositories (max 101)
 aio_repo = [
     "Y-Less/sscanf:v2.13.8",

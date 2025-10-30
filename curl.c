@@ -17,8 +17,6 @@
 #include "depends.h"
 #include "curl.h"
 
-#define MAX_RETRIES 5
-
 /**
  * progress_callback - CURL progress callback function
  * @ptr: User pointer (unused)
@@ -151,6 +149,29 @@ static int prompt_apply_depends(void)
 }
 
 /**
+ * is_archive_file - Checking Archive Type
+ *
+ * Return: 1 Succes, 0 Failed
+ */
+int is_archive_file(const char *filename)
+{
+		const char *ext = strrchr(filename, '.');
+		if (!ext) return 0;
+		
+		const char *archive_exts[] = {
+			".zip", ".tar", ".tar.gz", NULL
+		};
+		
+		for (int i = 0; archive_exts[i] != NULL; i++) {
+			if (strcasecmp(ext, archive_exts[i]) == 0) {
+				return 1;
+			}
+		}
+		
+		return 0;
+}
+
+/**
  * wd_download_file - Download file from URL with retry logic
  * @url: URL to download from
  * @filename: Local filename to save as
@@ -164,101 +185,101 @@ int wd_download_file(const char *url, const char *filename)
 		CURLcode res;
 		long response_code = 0;
 		int retry_count = 0;
-		const int max_retries = MAX_RETRIES;
 		struct stat file_stat;
 
-		pr_color(stdout, FCOLOUR_YELLOW, " Downloading: %s\n", filename);
+		pr_color(stdout, FCOLOUR_GREEN, "Downloading: %s\n", filename);
 
 		do {
-				file = fopen(filename, "wb");
-				if (!file) {
-#if defined(_DBG_PRINT)
-						pr_error(stdout, "Failed to open file: %s", filename);
-#endif
-						return -RETN;
-				}
+			file = fopen(filename, "wb");
+			if (!file) {
+				pr_color(stdout, FCOLOUR_RED, "Failed to open file: %s\n", filename);
+				return -RETN;
+			}
 
-				curl = curl_easy_init();
-				if (!curl) {
-#if defined(_DBG_PRINT)
-						pr_error(stdout, "Failed to initialize CURL");
-#endif
-						fclose(file);
-						return -RETN;
-				}
+			curl = curl_easy_init();
+			if (!curl) {
+				pr_color(stdout, FCOLOUR_RED, "Failed to initialize CURL\n");
+				fclose(file);
+				return -RETN;
+			}
+			
+			struct curl_slist *headers = NULL;
 
-				/* Configure CURL options */
-				curl_easy_setopt(curl, CURLOPT_URL, url);
-				curl_easy_setopt(curl, CURLOPT_WRITEDATA, file);
-				curl_easy_setopt(curl, CURLOPT_FAILONERROR, 1L);
-				curl_easy_setopt(curl, CURLOPT_USERAGENT, "watchdogs/1.0");
-				curl_easy_setopt(curl, CURLOPT_CONNECTTIMEOUT, 15L);
-				curl_easy_setopt(curl, CURLOPT_TIMEOUT, 300L);
-				curl_easy_setopt(curl, CURLOPT_FOLLOWLOCATION, 1L);
-				curl_easy_setopt(curl, CURLOPT_SSL_VERIFYPEER, 1L);
-				curl_easy_setopt(curl, CURLOPT_NOPROGRESS, 0L);
+			if (strfind(wcfg.wd_toml_github_tokens_table, "DO_HERE")) {
+				printf_info(stdout, "Can't read Github token.. skipping");
+			} else { 
+				if (wcfg.wd_toml_github_tokens_table && strlen(wcfg.wd_toml_github_tokens_table) > 0) {
+					char auth_header[512];
+					snprintf(auth_header, sizeof(auth_header), "Authorization: token %s", wcfg.wd_toml_github_tokens_table);
+					headers = curl_slist_append(headers, auth_header);
+				}
+			}
+
+			headers = curl_slist_append(headers, "User-Agent: watchdogs/1.0");
+			headers = curl_slist_append(headers, "Accept: application/vnd.github.v3.raw");
+
+			curl_easy_setopt(curl, CURLOPT_URL, url);
+			curl_easy_setopt(curl, CURLOPT_WRITEDATA, file);
+			curl_easy_setopt(curl, CURLOPT_FAILONERROR, 1L);
+			curl_easy_setopt(curl, CURLOPT_HTTPHEADER, headers);
+			curl_easy_setopt(curl, CURLOPT_CONNECTTIMEOUT, 15L);
+			curl_easy_setopt(curl, CURLOPT_TIMEOUT, 300L);
+			curl_easy_setopt(curl, CURLOPT_FOLLOWLOCATION, 1L);
+			curl_easy_setopt(curl, CURLOPT_SSL_VERIFYPEER, 1L);
+			curl_easy_setopt(curl, CURLOPT_NOPROGRESS, 0L);
+			
+			if (progress_callback) {
 				curl_easy_setopt(curl, CURLOPT_XFERINFOFUNCTION, progress_callback);
 				curl_easy_setopt(curl, CURLOPT_XFERINFODATA, NULL);
+			}
 
-				res = curl_easy_perform(curl);
-				curl_easy_getinfo(curl, CURLINFO_RESPONSE_CODE, &response_code);
-				
-				curl_easy_cleanup(curl);
-				fclose(file);
+			res = curl_easy_perform(curl);
+			curl_easy_getinfo(curl, CURLINFO_RESPONSE_CODE, &response_code);
 
-				if (res == CURLE_OK && response_code == 200) {
-						if (stat(filename, &file_stat) == 0 && file_stat.st_size > 1024) {
-								printf("Download successful: %ld bytes\n", file_stat.st_size);
-								printf(" Checking file type for extraction...\n");
+			curl_easy_cleanup(curl);
+			curl_slist_free_all(headers);
+			fclose(file);
 
-								/* Extract archive if applicable */
-								extract_archive(filename);
+			if (res == CURLE_OK && response_code == 200) {
+				if (stat(filename, &file_stat) == 0 && file_stat.st_size > 0) {
+					printf("Download successful: %ld bytes\n", file_stat.st_size);
+					
+					if (is_archive_file(filename)) {
+						printf("Checking file type for extraction...\n");
+						extract_archive(filename);
 
-								/* Remove Archive */
-								pr_color(stdout, FCOLOUR_YELLOW, "Remove the archive '%s'?", filename);
-								char *confirm = readline(" [y/n]: ");
-								fflush(stdout);
-								if (!confirm) {
-									fprintf(stderr, "Error reading input\n");
-									wdfree(confirm);
-								}
-								if (strlen(confirm) == 0) {
-									wdfree(confirm);
-									confirm = readline(" >>> [y/n]: ");
-								}
-								if (confirm) {
-									if (strcmp(confirm, "Y") == 0 || strcmp(confirm, "y") == 0) {
-										wdfree(confirm);
-										char __sz_rm[PATH_MAX];
-										snprintf(__sz_rm, sizeof(__sz_rm), "rm -rf %s", filename);
-										system(__sz_rm);
-									}
-								}
-
-								/* Prompt */
-								if (wcfg.wd_ipackage) {
-									if (prompt_apply_pawncc())
-											wd_apply_pawncc();
-								}
-								if (wcfg.wd_idepends) {
-									if (prompt_apply_depends())
-											wd_apply_depends(filename);
-								}
-
-								return RETZ;
-						} else {
-								pr_color(stdout, FCOLOUR_RED, " Downloaded file too small: %ld bytes", 
-										    file_stat.st_size);
+						pr_color(stdout, FCOLOUR_GREEN, "Remove the archive '%s'? ", filename);
+						char *confirm = readline(" [y/n]: ");
+						if (confirm) {
+							if (confirm[0] == 'Y' || confirm[0] == 'y') {
+								char rm_cmd[PATH_MAX];
+								snprintf(rm_cmd, sizeof(rm_cmd), "rm -rf %s", filename);
+								system(rm_cmd);
+							}
+							wdfree(confirm);
 						}
+					} else {
+						printf("File is not an archive, skipping extraction.\n");
+					}
+
+					if (wcfg.wd_ipackage && prompt_apply_pawncc())
+						wd_apply_pawncc();
+
+					if (wcfg.wd_idepends && prompt_apply_depends())
+						wd_apply_depends(filename);
+
+					return RETZ;
 				} else {
-						pr_color(stdout, FCOLOUR_RED, " Download failed - HTTP: %ld, CURL: %d, retrying...",
-								     response_code, res);
+					pr_color(stdout, FCOLOUR_RED, "Downloaded file is empty or missing\n");
 				}
+			} else {
+				pr_color(stdout, FCOLOUR_RED, "Download failed - HTTP: %ld, CURL: %d, retrying...\n", response_code, res);
+			}
 
-				++retry_count;
-				sleep(3);
-		} while (retry_count < max_retries);
+			++retry_count;
+			sleep(3);
+		} while (retry_count < 5);
 
-		pr_color(stdout, FCOLOUR_RED, " Download failed after %d retries", max_retries);
+		pr_color(stdout, FCOLOUR_RED, "Download failed after 5 retries\n");
 		return -RETN;
 }

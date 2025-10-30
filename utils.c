@@ -1435,6 +1435,7 @@ static void wd_generate_toml_content(FILE *file, const char *wd_os_type,
 		}
 
 		fprintf(file, "[depends]\n");
+		fprintf(file, "\tgithub_tokens = \"DO_HERE\"\n");
 		fprintf(file, "\taio_repo = [\"Y-Less/sscanf:v2.13.8\", \"samp-incognito/samp-streamer-plugin:v2.9.6\"]");
 }
 
@@ -1501,6 +1502,29 @@ int wd_set_toml(void)
 				return RETN;
 		}
 
+		char errbuf[256];
+		toml_table_t *_toml_config;
+		FILE *procc_f = fopen("watchdogs.toml", "r");
+		_toml_config = toml_parse_file(procc_f, errbuf, sizeof(errbuf));
+		if (procc_f) fclose(procc_f);
+
+		if (!_toml_config) {
+			pr_error(stdout, "parsing TOML: %s", errbuf);
+			__main(0);
+		}
+
+		toml_table_t *wd_toml_depends = toml_table_in(_toml_config, "depends");
+		if (wd_toml_depends) {
+				toml_datum_t toml_gh_tokens = toml_string_in(wd_toml_depends, "github_tokens");
+				if (toml_gh_tokens.ok) 
+				{
+					wcfg.wd_toml_github_tokens_table = strdup(toml_gh_tokens.u.s);
+					wdfree(toml_gh_tokens.u.s);
+					toml_gh_tokens.u.s = NULL;
+				}
+		}
+		toml_free(_toml_config);
+		
 		return RETZ;
 }
 

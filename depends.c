@@ -74,33 +74,61 @@ static size_t dep_write_callback(void *contents, size_t size, size_t nmemb, void
  *
  * Return: 1 if accessible, 0 if not
  */
-int dep_curl_url_get_response(const char *url)
+int dep_curl_url_get_response(const char *url, const char *github_token)
 {
-		CURL *curl;
+		CURL *curl = curl_easy_init();
+		if (!curl) return 0;
+
 		CURLcode res;
 		long response_code = 0;
-		int ret = 0;
+		struct curl_slist *headers = NULL;
+		char error_buffer[CURL_ERROR_SIZE] = {0};
 
-		curl = curl_easy_init();
-		if (!curl)
-				return RETZ;
-
+		printf("\tUsing URL: %s...\n", url);
+		if (strfind(wcfg.wd_toml_github_tokens_table, "DO_HERE")) {
+			printf_info(stdout, "Can't read Github token.. skipping");
+		} else {
+			if (github_token && strlen(github_token) > 0) {
+				char auth_header[512];
+				snprintf(auth_header, sizeof(auth_header), "Authorization: token %s", github_token);
+				headers = curl_slist_append(headers, auth_header);
+				int reveal = 8;
+				int len = strlen(github_token);
+				char masked[len + 1]; 
+				strncpy(masked, github_token, reveal);
+				for(int i = reveal; i < len; i++) {
+					masked[i] = '*';
+				}
+				masked[len] = '\0';
+				printf("\tUsing token: %s...\n", masked);
+			}
+		}
+		
+		headers = curl_slist_append(headers, "User-Agent: watchdogs/1.0");
+		headers = curl_slist_append(headers, "Accept: application/vnd.github.v3+json");
+		
+		curl_easy_setopt(curl, CURLOPT_HTTPHEADER, headers);
 		curl_easy_setopt(curl, CURLOPT_URL, url);
-		curl_easy_setopt(curl, CURLOPT_NOBODY, 1L);
+		curl_easy_setopt(curl, CURLOPT_NOBODY, 1L); // HEAD request
 		curl_easy_setopt(curl, CURLOPT_FOLLOWLOCATION, 1L);
-		curl_easy_setopt(curl, CURLOPT_MAXREDIRS, 5L);
-		curl_easy_setopt(curl, CURLOPT_TIMEOUT, 5L);
-		curl_easy_setopt(curl, CURLOPT_CONNECTTIMEOUT, 3L);
-		curl_easy_setopt(curl, CURLOPT_SSL_VERIFYPEER, 1L);
-		curl_easy_setopt(curl, CURLOPT_SSL_VERIFYHOST, 2L);
-
+		curl_easy_setopt(curl, CURLOPT_TIMEOUT, 30L);
+		
+		curl_easy_setopt(curl, CURLOPT_VERBOSE, 1L);
+		curl_easy_setopt(curl, CURLOPT_ERRORBUFFER, error_buffer);
+		
 		res = curl_easy_perform(curl);
-		if (res == CURLE_OK)
-				curl_easy_getinfo(curl, CURLINFO_RESPONSE_CODE, &response_code);
+		curl_easy_getinfo(curl, CURLINFO_RESPONSE_CODE, &response_code);
+
+		printf("cURL result: %s\n", curl_easy_strerror(res));
+		printf("Response code: %ld\n", response_code);
+		if (strlen(error_buffer) > 0) {
+			printf("Error: %s\n", error_buffer);
+		}
 
 		curl_easy_cleanup(curl);
+		curl_slist_free_all(headers);
 
-		return (res == CURLE_OK && response_code == 200);
+		return (res == CURLE_OK && response_code >= 200 && response_code < 300);
 }
 
 /**
@@ -410,10 +438,10 @@ static int dep_check_github_branch(const char *user,
 		char url[1024];
 
 		snprintf(url, sizeof(url),
-				 "github.com/%s/%s/archive/refs/heads/%s.zip",
+				 "%sgithub.com/%s/%s/archive/refs/heads/%s.zip",
 				 "https://", user, repo, branch);
 
-		return dep_curl_url_get_response(url);
+		return dep_curl_url_get_response(url, wcfg.wd_toml_github_tokens_table);
 }
 
 /**
@@ -527,7 +555,7 @@ static int dep_handle_repo(const struct dep_repo_info *dep_repo_info,
 								dep_repo_info->user,
 								dep_repo_info->repo,
 								dep_repo_info->tag);
-						if (dep_curl_url_get_response(out_url))
+						if (dep_curl_url_get_response(out_url, wcfg.wd_toml_github_tokens_table))
 							ret = 1;
 					}
 				}
@@ -536,11 +564,11 @@ static int dep_handle_repo(const struct dep_repo_info *dep_repo_info,
 			for (int j = 0; j < 2 && !ret; j++) {
 				snprintf(out_url, out_sz,
 						"%s%s/%s/archive/refs/heads/%s.zip",
-						"https://",
+						"https://github.com/",
 						dep_repo_info->user,
 						dep_repo_info->repo,
 						branches[j]);
-				if (dep_curl_url_get_response(out_url)) {
+				if (dep_curl_url_get_response(out_url, wcfg.wd_toml_github_tokens_table)) {
 					ret = 1;
 					if (j == 1)
 						pr_info(stdout, "Using master branch (main not master)");
@@ -1341,7 +1369,7 @@ void wd_install_depends_str(const char *deps_str)
 			else
 				{
 					dep_build_repo_url(&dep_repo_info, 0, dep_url, sizeof(dep_url));
-					dep_item_found = dep_curl_url_get_response(dep_url);
+					dep_item_found = dep_curl_url_get_response(dep_url, wcfg.wd_toml_github_tokens_table);
 				}
 
 			if (!dep_item_found) {

@@ -152,6 +152,7 @@ typedef struct {
         char *wd_toml_aio_repo_array;
         char *wd_toml_gm_input_table;
         char *wd_toml_gm_output_table;
+        char *wd_toml_github_tokens_table;
 } WatchdogConfig;
 
 extern WatchdogConfig wcfg;

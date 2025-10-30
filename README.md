@@ -144,6 +144,7 @@ mv watchdogs.tmux .. && cd ..
 ### MSYS2
 
 #### Installation Steps
+
 ```bash
 # 1. Sync package database
 pacman -Sy
@@ -165,7 +166,7 @@ mv watchdogs.win .. && cd ..
 ./watchdogs.win
 ```
 
-## Windows (Native - `.exe`) - needed [msys2](https://www.msys2.org/) for compile
+### Windows (Native - `.exe`) - needed [msys2](https://www.msys2.org/) for compile
 ```bash
 # 1. Sync package database
 pacman -Sy
@@ -205,6 +206,11 @@ Add mirrors:
 Server = https://repo.msys2.org/msys/$arch
 Server = https://mirror.msys2.org/msys/$arch
 Server = https://mirror.selfnet.de/msys2/msys/$arch
+```
+
+Save & Exit
+```
+CTRL + X & Y & ENTER
 ```
 
 ### Linux (Bash)

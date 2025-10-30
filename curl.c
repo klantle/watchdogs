@@ -51,25 +51,31 @@ static int progress_callback(void *ptr, curl_off_t dltotal,
 }
 
 /*
- * WriteMemoryCallback - Processing cURL to memory
+ * write_memory_callback - Processing cURL to memory
  */
-size_t WriteMemoryCallback(void *contents,
-								  size_t size,
-								  size_t nmemb,
-								  void *userp) {
+size_t write_memory_callback(void *contents, size_t size, 
+							size_t nmemb, void *userp)
+{
+		struct memory_struct *mem = userp;
 		size_t realsize = size * nmemb;
-		struct MemoryStruct *mem = (struct MemoryStruct *)userp;
+		char *ptr;
 
-		char *ptr = realloc(mem->memory, mem->size + realsize + 1);
-		if (ptr == NULL) {
-			fprintf(stderr, "Out of memory!\n");
+		if (!contents || !mem)
+			return RETZ;
+
+		ptr = wdrealloc(mem->memory, mem->size + realsize + 1);
+		if (!ptr) {
+#if defined(_DBG_PRINT)
+			pr_error(stdout,
+				   "Out of memory detected in %s\n", __func__);
+#endif
 			return RETZ;
 		}
 
 		mem->memory = ptr;
-		memcpy(&(mem->memory[mem->size]), contents, realsize);
+		memcpy(&mem->memory[mem->size], contents, realsize);
 		mem->size += realsize;
-		mem->memory[mem->size] = 0;
+		mem->memory[mem->size] = '\0';
 
 		return realsize;
 }

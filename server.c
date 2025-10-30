@@ -80,9 +80,9 @@ static int update_server_config(const char *gamemode)
 }
 
 /**
- * display_server_logs - Display server logs on Unix systems
+ * wd_display_server_logs - Display server logs on Unix systems
  */
-void display_server_logs(int ret)
+void wd_display_server_logs(int ret)
 {
 		FILE *log_file;
 		int ch;
@@ -152,7 +152,7 @@ void wd_run_samp_server(const char *gamemode, const char *server_bin)
 		if (ret == RETZ) {
 			if (!strcmp(wcfg.wd_os_type, OS_SIGNAL_LINUX)) {
 				sleep(2);
-				display_server_logs(0);
+				wd_display_server_logs(0);
 			}
 		} else {
 				pr_color(stdout, FCOLOUR_RED, "Server startup failed!\n");
@@ -163,6 +163,9 @@ void wd_run_samp_server(const char *gamemode, const char *server_bin)
 
 		/* Debug mode cleanup */
 		if (wcfg.wd_runn_mode && strcmp(wcfg.wd_runn_mode, "debug") == 0) {
+    			fprintf(stdout,
+					    "[DEBUG] %s:%d %s()\n",
+					    __FILE__, __LINE__, __func__);
 				if (!strcmp(wcfg.wd_os_type, OS_SIGNAL_WINDOWS)) {
 						kill_process("samp-server.exe");
 				} else if (!strcmp(wcfg.wd_os_type, OS_SIGNAL_LINUX)) {
@@ -343,7 +346,7 @@ void wd_run_omp_server(const char *gamemode, const char *server_bin)
 		ret = system(command);
 		if (ret == RETZ) {
 			sleep(2);
-			display_server_logs(1);
+			wd_display_server_logs(1);
 		} else {
 			pr_color(stdout, FCOLOUR_RED, "Server startup failed!\n");
 		}
@@ -353,6 +356,9 @@ void wd_run_omp_server(const char *gamemode, const char *server_bin)
 
 		/* Debug mode cleanup */
 		if (wcfg.wd_runn_mode && strcmp(wcfg.wd_runn_mode, "debug") == 0) {
+    			fprintf(stdout,
+					    "[DEBUG] %s:%d %s()\n",
+					    __FILE__, __LINE__, __func__);
 				if (!strcmp(wcfg.wd_os_type, OS_SIGNAL_WINDOWS)) {
 						kill_process("omp-server.exe");
 				} else if (!strcmp(wcfg.wd_os_type, OS_SIGNAL_LINUX)) {

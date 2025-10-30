@@ -80,12 +80,13 @@ __default:
         pr_color(stdout,
                 FCOLOUR_YELLOW,
                 "-DEBUGGING\n");
-        printf("[__function__]:\n"
-               "\tos_type: %s\n"
+        printf("[function: %s | pretty function: %s | line: %d | file: %s]:\n"
+               "\tos_type: %s (CRC32)"
                "\tpointer_samp: %s\n"
-               "\tpointer_openmp: %s\n"
-               "\tf_samp: %s\n"
-               "\tf_openmp: %s\n",
+               "\tpointer_openmp: %s"
+               "\tf_samp: %s (CRC32)\n"
+               "\tf_openmp: %s (CRC32)\n",
+                __func__, __PRETTY_FUNCTION__, __LINE__, __FILE__,
                 wcfg.wd_os_type, wcfg.wd_ptr_samp,
                 wcfg.wd_ptr_omp, wcfg.wd_is_samp,
                 wcfg.wd_is_omp);
@@ -253,11 +254,13 @@ loop_stopwatch:
                                        ENABLE_VIRTUAL_TERMINAL_PROCESSING);
                 }
 #endif
-                char line[MAX_PATH * 3];
                 size_t len;
+                printf("%s%s+", BORD, FG);
+                    for (int i = 0; i < 42; ++i)
+                        putchar('-'); 
+                printf("+%s\n", RST);
 
-                printf("%s%s+------------------------------------------+%s\n",
-                        BORD, FG, RST);
+                char line[MAX_PATH * 3];
 
                 while (fgets(line, sizeof(line), procc_f)) 
                 {
@@ -271,8 +274,10 @@ loop_stopwatch:
                                 line, BORD, RST);
                 }
 
-                printf("%s%s+------------------------------------------+%s\n",
-                        BORD, FG, RST);
+                printf("%s%s+", BORD, FG);
+                    for (int i = 0; i < 42; ++i)
+                        putchar('-'); 
+                printf("+%s\n", RST);
 
                 fclose(procc_f);
             }
@@ -281,7 +286,7 @@ loop_stopwatch:
         } else if (strcmp(ptr_command, "upstream") == 0) {
             CURL *curl_handle;
             CURLcode res;
-            struct MemoryStruct chunk;
+            struct memory_struct chunk = { 0 };
 
             chunk.memory = wdmalloc(1);
             chunk.size = 0;
@@ -296,7 +301,7 @@ loop_stopwatch:
 
             curl_easy_setopt(curl_handle, CURLOPT_URL,
                             "https://gitlab.com/api/v4/projects/75403219/repository/commits");
-            curl_easy_setopt(curl_handle, CURLOPT_WRITEFUNCTION, WriteMemoryCallback);
+            curl_easy_setopt(curl_handle, CURLOPT_WRITEFUNCTION, write_memory_callback);
             curl_easy_setopt(curl_handle, CURLOPT_WRITEDATA, (void *)&chunk);
             curl_easy_setopt(curl_handle, CURLOPT_USERAGENT, "libcurl-agent/1.0");
 
@@ -335,12 +340,12 @@ loop_stopwatch:
                         cJSON_AddItemToArray(output_array, commit_obj);
                     }
 
-                    char *pretty = cJSON_Print(output_array);
+                    printf("%s%s+", BORD, FG);
+                        for (int i = 0; i < 42; ++i)
+                            putchar('-'); 
+                    printf("+%s\n", RST);
 
-                    char *line;
-
-                    printf("%s%s+------------------------------------------+%s\n",
-                            BORD, FG, RST);
+                    char *line, *pretty = cJSON_Print(output_array);
 
                     line = strtok(pretty, "\n");
                     while (line) 
@@ -352,8 +357,10 @@ loop_stopwatch:
                             line = strtok(NULL, "\n");
                     }
 
-                    printf("%s%s+------------------------------------------+%s\n",
-                            BORD, FG, RST);
+                    printf("%s%s+", BORD, FG);
+                        for (int i = 0; i < 42; ++i)
+                            putchar('-'); 
+                    printf("+%s\n", RST);
 
                     wdfree(pretty);
                     cJSON_Delete(output_array);
@@ -385,7 +392,7 @@ loop_stopwatch:
             while (*arg == ' ') ++arg;
 
             if (*arg) {
-                wd_install_depends_str(arg);
+                wd_install_depends(arg);
             } else {
                 char errbuf[256];
                 toml_table_t *_toml_config;
@@ -446,7 +453,7 @@ free_val:
                     merged = strdup("");
 
                 wcfg.wd_toml_aio_repo_array = merged;
-                wd_install_depends_str(wcfg.wd_toml_aio_repo_array);
+                wd_install_depends(wcfg.wd_toml_aio_repo_array);
 
 out:
                 toml_free(_toml_config);
@@ -459,7 +466,8 @@ ret_ptr:
             println(stdout, "Select platform:");
             println(stdout, "-> [L/l] Linux");
             println(stdout, "-> [W/w] Windows");
-            pr_color(stdout, FCOLOUR_YELLOW, " ^ work's in WSL/MSYS2\n");
+            pr_color(stdout, FCOLOUR_YELLOW, " ^ ");
+            println(stdout, "work's in WSL/MSYS2");
             
             wcfg.wd_sel_stat = 1;
 
@@ -500,7 +508,8 @@ ret_ptr2:
             println(stdout, "Select platform:");
             println(stdout, "-> [L/l] Linux");
             println(stdout, "-> [W/w] Windows");
-            pr_color(stdout, FCOLOUR_YELLOW, " ^ work's in WSL/MSYS2\n");
+            pr_color(stdout, FCOLOUR_YELLOW, " ^ ");
+            println(stdout, "work's in WSL/MSYS2");
             println(stdout, "-> [T/t] Termux");
 
             wcfg.wd_sel_stat = 1;
@@ -555,7 +564,7 @@ loop_ipcc3:
             char *compile_args;
             compile_args = strtok(arg, " ");
 
-            wd_RunCompiler(arg, compile_args);
+            wd_run_compiler(arg, compile_args);
             
             goto done;
         } if (strncmp(ptr_command, "debug", 5) == 0 || strncmp(ptr_command, "running", 7) == 0) {
@@ -614,7 +623,7 @@ _runners_:
                         if (running_FAIL == 0) {
                             if (!strcmp(wcfg.wd_os_type, OS_SIGNAL_LINUX)) {
                                 sleep(2);
-                                display_server_logs(0);
+                                wd_display_server_logs(0);
                             }
                         } else {
                             pr_color(stdout, FCOLOUR_RED, "running failed!\n");
@@ -634,7 +643,7 @@ _runners_:
                         int running_FAIL = system(__sz_run);
                         if (running_FAIL == 0) {
                             sleep(2);
-                            display_server_logs(1);
+                            wd_display_server_logs(1);
                         } else {
                             pr_color(stdout, FCOLOUR_RED, "running failed!\n");
                         }
@@ -679,7 +688,7 @@ n_loop_igm2:
             wd_set_title("Watchdogs | @ crunn");
             const char *arg = NULL;
             const char *compile_args = NULL;
-            wd_RunCompiler(arg, compile_args);
+            wd_run_compiler(arg, compile_args);
             if (wcfg.wd_compiler_stat < 1) {
                 char errbuf[256];
                 toml_table_t *_toml_config;

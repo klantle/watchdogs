@@ -82,7 +82,7 @@ int dep_curl_url_get_response(const char *url, const char *github_token)
 		CURLcode res;
 		long response_code = 0;
 		struct curl_slist *headers = NULL;
-		char error_buffer[CURL_ERROR_SIZE] = {0};
+		char error_buffer[CURL_ERROR_SIZE] = { 0 };
 
 		printf("\tUsing URL: %s...\n", url);
 		if (strfind(wcfg.wd_toml_github_tokens_table, "DO_HERE")) {
@@ -996,7 +996,7 @@ void dep_pr_inc_files(cJSON *depends, const char *bp, const char *db)
 		struct dirent *item;
 		struct stat st;
 		char cmd[MAX_PATH * 3];
-		char fpath[PATH_MAX];
+		char fpath[PATH_MAX * 2];
 		char parent[PATH_MAX];
 		char dest[PATH_MAX];
 		char *dname, *ext;
@@ -1309,10 +1309,10 @@ void wd_apply_depends(const char *depends_name)
 }
 
 /**
- * wd_install_depends_str - install dependencies from string
+ * wd_install_depends - install dependencies from string
  * @deps_str: string containing dependencies to install
  */
-void wd_install_depends_str(const char *deps_str)
+void wd_install_depends(const char *deps_str)
 {
 		char buffer[1024];
 		const char *depends[MAX_ARR_DEPENDS];

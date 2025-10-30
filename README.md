@@ -61,11 +61,11 @@
 ### One-Line Installation (Linux/Debian)
 > Non Sudo
 ```bash
-apt update && apt install make git -y && git clone https://github.com/klantle/watchdogs watch && cd watch && make init && mv watchdogs .. && cd .. && ./watchdogs
+apt update && apt install make git -y && git clone https://gitlab.com/mywatchdogs/watchdogs watch && cd watch && make init && mv watchdogs .. && cd .. && ./watchdogs
 ```
 > Sudo
 ```bash
-sudo apt update && apt install make git -y && git clone https://github.com/klantle/watchdogs watch && cd watch && make init && mv watchdogs .. && cd .. && ./watchdogs
+sudo apt update && apt install make git -y && git clone https://gitlab.com/mywatchdogs/watchdogs watch && cd watch && make init && mv watchdogs .. && cd .. && ./watchdogs
 ```
 
 ## Platform-Specific Installation
@@ -128,7 +128,7 @@ apt upgrade
 pkg install make git
 
 # 6. Clone repository
-git clone https://github.com/klantle/watchdogs watch
+git clone https://gitlab.com/mywatchdogs/watchdogs watch
 
 # 7. Navigate to directory
 cd watch
@@ -152,7 +152,7 @@ pacman -Sy
 pacman -S make git
 
 # 3. Clone repository
-git clone https://github.com/klantle/watchdogs watch
+git clone https://gitlab.com/mywatchdogs/watchdogs watch
 
 # 4. Navigate to directory
 cd watch
@@ -191,7 +191,7 @@ apt update
 apt install make git
 
 # 3. Clone repository
-git clone https://github.com/klantle/watchdogs watch
+git clone https://gitlab.com/mywatchdogs/watchdogs watch
 
 # 4. Navigate to directory
 cd watch

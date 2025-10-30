@@ -117,9 +117,9 @@ win32_chmod(const char *path) {
 #define COMPILER_OPENMP  0x02
 #define COMPILER_DEFAULT 0x00
 
-#define CRC32_TRUE "fdfc4c8d"
-#define CRC32_FALSE "2bcd6830"
-#define CRC32_UNKNOWN "ad26a7c7"
+#define CRC32_TRUE              "fdfc4c8d"
+#define CRC32_FALSE             "2bcd6830"
+#define CRC32_UNKNOWN           "ad26a7c7"
 
 #define OS_SIGNAL_WINDOWS	CRC32_TRUE
 #define OS_SIGNAL_LINUX		CRC32_FALSE  
@@ -134,43 +134,24 @@ extern const char *BG,
 #define MAX_SEF_PATH_SIZE PATH_MAX
 
 typedef struct {
-        const char*
-                wd_toml_os_type;
-        int
-                wd_ipackage;
-        int
-                wd_idepends;
-        char
-                *wd_os_type;
-        int
-                wd_sel_stat;
-        char
-                *wd_is_samp;
-        char
-                *wd_is_omp;
-        char*
-                wd_ptr_samp;
-        char*
-                wd_ptr_omp;
-        int
-                wd_compiler_stat;
-        volatile sig_atomic_t
-                wd_stopwatch_end;
-        size_t
-                wd_sef_count;
-        char
-                wd_sef_found_list
-                        [MAX_SEF_ENTRIES]
-                        [MAX_SEF_PATH_SIZE];
-        char*
-                wd_runn_mode;
-        char*
-                wd_toml_aio_opt;
-        char*
-                wd_toml_aio_repo;
-        char*
-                wd_toml_gm_input;
-        char*   wd_toml_gm_output;
+        const char *wd_toml_os_type;
+        int wd_ipackage;
+        int wd_idepends;
+        char *wd_os_type;
+        int wd_sel_stat;
+        char *wd_is_samp;
+        char *wd_is_omp;
+        char *wd_ptr_samp;
+        char *wd_ptr_omp;
+        int wd_compiler_stat;
+        volatile sig_atomic_t wd_stopwatch_end;
+        size_t wd_sef_count;
+        char wd_sef_found_list[MAX_SEF_ENTRIES][MAX_SEF_PATH_SIZE];
+        char *wd_runn_mode;
+        char *wd_toml_aio_opt_table;
+        char *wd_toml_aio_repo_array;
+        char *wd_toml_gm_input_table;
+        char *wd_toml_gm_output_table;
 } WatchdogConfig;
 
 extern WatchdogConfig wcfg;

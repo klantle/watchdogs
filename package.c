@@ -201,12 +201,12 @@ static int handle_termux_installation(void)
 				'A' + (int)version_count - 1,
 				'a' + (int)version_count - 1);
 			wdfree(__version__);
-			return -1;
+			return -RETN;;
     	}
 
 		/* Get architecture */
 		int ret = get_termux_architecture(architecture, sizeof(architecture) != 0);
-		if (ret == 0)
+		if (ret == RETZ)
 			return RETZ;
 
 		/* Build download URL and filename */

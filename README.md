@@ -16,7 +16,7 @@
 </div>
 <!-- markdownlint-enable MD033 -->
 
-![img](https://raw.githubusercontent.com/klantle/watchdogs/main/watchdogs.png)
+![img](https://raw.githubusercontent.com/klantle/watchdogs/main/WD.png)
 
 ---
 
@@ -28,6 +28,7 @@
    - [Docker](#docker)
    - [Termux](#termux)
    - [MSYS2](#msys2)
+   - [Windows Native](#Native)
    - [Linux (Bash)](#linux-bash)
 4. [Configuration](#configuration)
 6. [Usage Guide](#usage-guide)
@@ -137,7 +138,7 @@ cd watch
 make init
 
 # 9. Move executable and run
-mv watchdogs.tmux .. && cd ..
+mv -f watchdogs.tmux .. && cd ..
 ./watchdogs.tmux
 ```
 
@@ -162,11 +163,16 @@ cd watch
 make init
 
 # 6. Move executable and run
-mv watchdogs.win .. && cd ..
+mv -f watchdogs.win .. && cd ..
 ./watchdogs.win
 ```
 
-### Windows (Native - `.exe`) - needed [msys2](https://www.msys2.org/) for compile
+### Native
+
+#### Installation Steps
+
+> needed [msys2](https://www.msys2.org/) for compile.
+
 ```bash
 # 1. Sync package database
 pacman -Sy
@@ -187,7 +193,7 @@ make init
 exit
 
 # 7. Installing .dll library
-git clone https://github.com/klantle/libwatchdogs watch && cd watch && mv libwatchdogs /c/ && mv run-native.bat .. && cd .. && rm -rf watch
+git clone https://github.com/klantle/libwatchdogs watch && cd watch && rm -rf /c/libwatchdogs && mv -f libwatchdogs /c/ && mv -f run-native.bat .. && cd .. && rm -rf watch
 
 # 8. You can run '.bat' (out of msys2, where .bat & watchdogs.win)
 ~
@@ -197,7 +203,11 @@ git clone https://github.com/klantle/libwatchdogs watch && cd watch && mv libwat
 Edit mirror lists:
 ```bash
 nano /etc/pacman.d/mirrorlist.mingw64
+```
+```bash
 nano /etc/pacman.d/mirrorlist.msys
+```
+```bash
 nano /etc/pacman.d/mirrorlist.ucrt64
 ```
 
@@ -233,7 +243,7 @@ cd watch
 make init
 
 # 6. Move executable and run
-mv watchdogs .. && cd ..
+mv -f watchdogs .. && cd ..
 ./watchdogs
 ```
 
@@ -288,6 +298,25 @@ Add to `.vscode/tasks.json`:
       "label": "watchdogs",
       "type": "shell",
       "command": "${workspaceRoot}/watchdogs",
+      "group": {
+        "kind": "build",
+        "isDefault": true
+      }
+    }
+  ]
+}
+```
+
+For Windows Native:
+
+```json
+{
+  "version": "2.0.0",
+  "tasks": [
+    {
+      "label": "watchdogs",
+      "type": "shell",
+      "command": "${workspaceRoot}/run-native.bat",
       "group": {
         "kind": "build",
         "isDefault": true

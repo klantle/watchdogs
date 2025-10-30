@@ -65,7 +65,7 @@ size_t WriteMemoryCallback(void *contents,
 		char *ptr = realloc(mem->memory, mem->size + realsize + 1);
 		if (ptr == NULL) {
 			fprintf(stderr, "Out of memory!\n");
-			return 0;
+			return RETZ;
 		}
 
 		mem->memory = ptr;
@@ -191,10 +191,10 @@ int wd_download_file(const char *url, const char *filename)
 				curl_easy_setopt(curl, CURLOPT_URL, url);
 				curl_easy_setopt(curl, CURLOPT_WRITEDATA, file);
 				curl_easy_setopt(curl, CURLOPT_FAILONERROR, 1L);
-				curl_easy_setopt(curl, CURLOPT_FOLLOWLOCATION, 1L);
 				curl_easy_setopt(curl, CURLOPT_USERAGENT, "watchdogs/1.0");
 				curl_easy_setopt(curl, CURLOPT_CONNECTTIMEOUT, 15L);
 				curl_easy_setopt(curl, CURLOPT_TIMEOUT, 300L);
+				curl_easy_setopt(curl, CURLOPT_FOLLOWLOCATION, 1L);
 				curl_easy_setopt(curl, CURLOPT_SSL_VERIFYPEER, 1L);
 				curl_easy_setopt(curl, CURLOPT_NOPROGRESS, 0L);
 				curl_easy_setopt(curl, CURLOPT_XFERINFOFUNCTION, progress_callback);

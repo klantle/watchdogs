@@ -15,6 +15,196 @@
 #include "package.h"
 #include "compiler.h"
 
+typedef struct {
+        const char *trigger;
+        const char *message;
+} ErrorExplanation;
+
+ErrorExplanation error_db[] = {
+        {"expected token", "A required token is missing from the code; the compiler will point to the line where the token (e.g., a semicolon) should be."},
+        {"only a single statement", "A `case` statement in a `switch` block can only contain one statement. To use multiple statements, they must be enclosed in braces `{}`."},
+        {"declaration of a local variable must appear in a compound block", "A local variable must be declared inside a compound block, which is a section of code enclosed in braces (`{...}`)."},
+        {"is not implemented", "A function was declared but no code was provided for its implementation. This is often caused by a missing brace `}` in the function defined just above it."},
+        {"function may not have arguments", "The `main()` function, which is the program's entry point, cannot accept any arguments."},
+        {"must be assigned to an array", "String literals or arrays must be assigned to an array variable. This can also indicate a missing index on the array on the right side of an assignment."},
+        {"operator cannot be redefined", "The specified operator is not one of the few that can be redefined in Pawn."},
+        {"must be a constant expression; assumed zero", "The size of arrays and the parameters of most compiler directives need to be constant values."},
+        {"invalid array size", "The size of an array must be 1 or greater."},
+        {"undefined symbol", "The symbol (variable, constant, or function) has been used in the code but has not been formally declared. This is often caused by a misspelled name or by copying code without its dependencies."},
+        {"initialization data exceeds declared size", "An array is being initialized with more values than its declared size."},
+        {"must be lvalue", "The symbol being modified must be a modifiable variable (an lvalue), not a constant, function, or string literal."},
+        {"array assignment must be simple assignment", "When assigning one array to another, you cannot combine it with an arithmetic operation."},
+        {"break or continue is out of context", "The `break` and `continue` statements are only valid inside a loop (`do`, `for`, or `while`). Unlike C/C++, `break` does not exit a `switch` statement."},
+        {"function heading differs from prototype", "The number or type of arguments in a function's definition does not match a previous declaration of that function."},
+        {"invalid character constant", "This can be caused by an unknown escape sequence or by putting multiple characters in single quotes."},
+        {"invalid expression, assumed zero", "The compiler could not understand the expression."},
+        {"array index out of bounds", "An array index is larger than the highest valid index for the array."},
+        {"empty statement", "A semicolon is on a line without an expression. Pawn does not support empty statements; an empty compound block `{}` should be used instead."},
+        {"too many function arguments", "The number of arguments passed to a function exceeds the maximum limit of 64."},
+        {"symbol is never used", "A variable, constant, or function was defined but never used. Public functions are excluded from this check. This is a warning."},
+        {"symbol is assigned a value that is never used", "A value was assigned to a symbol, but the symbol's content was never accessed afterward. This is a warning."},
+        {"redundant code: constant expression is zero", "A conditional expression is a constant value of zero, so the code block will never be executed. This is a warning."},
+        {"should return a value", "A function is defined to return a value but does not return anything. This is a warning."},
+        {"possibly unintended assignment", "An assignment may have been made unintentionally (e.g., using a single `=` instead of `==` for comparison). This is a warning."},
+        {"tag mismatch", "The 'tag' of an expression or variable does not match the expected tag. This is a core mechanism for enforcing type-like safety in Pawn. This is a warning."},
+        {"expression has no effect", "An expression is evaluated, but its result is not used. This is a warning."},
+        {"loose indentation", "The indentation style is inconsistent or loose. This is a warning."},
+        {"Function is deprecated", "The function being called has been marked as outdated and may be removed in future versions. You should replace it with the suggested alternative. This is a warning."},
+        
+        /* Additional common errors and warnings */
+        {"invalid function call", "The symbol being called is not a function or the function call syntax is incorrect."},
+        {"no entry point", "The file lacks a `main` function or any public function, so it has no starting point for execution."},
+        {"invalid statement; not in switch", "The `case` and `default` statements are only valid within a `switch` statement."},
+        {"default case must be the last case", "The `default` clause must be the final clause in a `switch` statement."},
+        {"multiple defaults in switch", "A `switch` statement can only have one `default` clause."},
+        {"not a label", "A `goto` statement is trying to branch to a symbol that is not a label."},
+        {"invalid symbol name", "A symbol name must start with a letter, an underscore, or an '@' sign, followed by letters, digits, and underscores."},
+        {"symbol already defined", "A symbol has already been defined at the current scope level."},
+        {"no matching #if", "A `#else` or `#endif` directive was found without a corresponding `#if`."},
+        {"invalid subscript", "The subscript operators `[` and `]` are only valid with arrays, and the number of subscripts must not exceed the array's dimensions."},
+        {"compound statement not closed", "The file ended unexpectedly before one or more compound statements were closed with a `}` brace."},
+        {"unknown directive", "A line starting with `#` does not contain a valid directive."},
+        {"array must be indexed", "An array cannot be used in an expression as a whole; a specific element must be indicated with square brackets."},
+        {"argument does not have a default value", "The argument placeholder can only be used if the function definition provides a default value for that argument."},
+        {"argument type mismatch", "The type of the argument passed to a function does not match the expected type, and the compiler cannot automatically convert it."},
+        {"invalid string", "A string is not properly formed, such as a missing ending quote or a missing quote around a filename for an `#include` directive."},
+        {"extra characters on line", "A line with a compiler directive has extra characters after the directive."},
+        {"constant symbol has no size", "A symbolic constant cannot be used with the `sizeof` operator because it does not have a size."},
+        {"duplicate case label", "A `case` label in a `switch` statement has the same value as a previous `case` label."},
+        {"invalid ellipsis", "The compiler cannot determine the size of an array from a declaration like `arr = { 1,... };`."},
+        {"invalid combination of class specifiers", "A function or variable is declared with an unsupported combination of class specifiers."},
+        {"character constant exceeds range", "An attempt was made to store a Unicode character in a packed string where a character is limited to 8 bits."},
+        {"positional parameters must precede", "A function call must use either all named parameters or all positional parameters, not a mix of both."},
+        {"unknown array size", "For array assignment, the sizes of both arrays must be explicitly defined, including when they are passed as function arguments."},
+        {"array sizes do not match", "For array assignment, the arrays must have the same number of dimensions. For single-dimension arrays, the destination array must be the same size or larger than the source."},
+        {"array dimensions do not match", "The dimensions of arrays on both sides of an assignment, or between a function call and definition, must match."},
+        {"invalid line continuation", "A backslash used for line continuation is in an invalid position, such as at the end of a file or within a single-line comment."},
+        {"invalid range", "A numeric range expression like `n1..n2` is invalid."},
+        {"start of function body without function header", "The function body starts without a proper function header. This error usually indicates an erroneously placed semicolon at the end of the function header."},
+        
+        /* Fatal errors */
+        {"cannot read from file", "The specified file could not be found or the compiler does not have permission to access it. This is a fatal error, and compilation is aborted."},
+        {"cannot write to file", "The compiler cannot write to the output file, likely due to insufficient disk space or read-only access rights. This is a fatal error."},
+        {"table overflow", "An internal compiler table, such as the one for loops or literals, has exceeded its fixed limit. This is a fatal error."},
+        {"insufficient memory", "The compiler is attempting to allocate more memory than is available. This is a fatal error."},
+        {"invalid assembler instruction", "An invalid opcode was used in an `#emit` directive. This is a fatal error."},
+        {"numeric overflow", "A numeric constant, such as an array dimension, exceeds its capacity. This is a fatal error."},
+        {"too many error messages on one line", "A single line of source code generated more than four error messages, so the compiler stops compilation. This is a fatal error."},
+        {"codepage mapping file not found", "The file specified for codepage translation could not be loaded. This is a fatal error."},
+        {"invalid path", "A specified path, for example, for include files or codepage files, is invalid. This is a fatal error."},
+        {"assertion failed", "A compile-time assertion has failed. This is a fatal error."},
+        {"user error", "The parser encountered an `#error` directive in the source code. This is a fatal error."},
+        
+        /* Additional warnings */
+        {"is truncated to", "The symbol name is longer than the maximum allowed length and has been cut short. This is a warning."},
+        {"redefinition of constant", "A constant or a text substitution macro has been redefined with a different value or substitution text. This is a warning."},
+        {"number of arguments does not match", "The number of arguments in a function call is different from the number of formal arguments declared in the function's heading. This is a warning."},
+        {"redundant test: constant expression is non-zero", "This warning is for a constant expression that is unnecessarily tested for being non-zero."},
+        {"array argument was intended", "A potentially constant array argument was passed to a function without the `const` qualifier. This is a warning."},
+        {"shadows a variable", "A local variable with the same name as a variable in an outer scope is used, which can cause confusion. This is a warning."},
+        {"Public function lacks forward declaration", "A public function is used within the script before it is formally declared, which is required in Pawn to ensure the compiler knows the function's signature. This is a warning."},
+        {"Literal array/string passed to a non-const parameter", "A string or array literal is being passed to a function that expects a non-constant parameter. Non-const parameters cannot accept literal values directly. This is a warning."},
+        
+        /* More specific error patterns */
+        {"missing semicolon", "A semicolon is expected at the end of the statement."},
+        {"unexpected end of file", "The file ended unexpectedly, likely due to missing closing braces or parentheses."},
+        {"illegal character", "An invalid character was encountered in the source code."},
+        {"too many nested includes", "The maximum include file nesting level has been exceeded."},
+        {"recursive include", "A file is including itself either directly or indirectly."},
+        {"macro recursion too deep", "Macro expansion has exceeded the maximum recursion depth."},
+        {"division by zero", "A compile-time division by zero was detected."},
+        {"overflow in constant expression", "A constant expression calculation resulted in overflow."},
+        {"undefined macro", "A macro used in #if or #elif directive is not defined."},
+        {"missing preprocessor argument", "A macro requires arguments but none were provided."},
+        {"too many macro arguments", "More arguments were provided to a macro than it can accept."},
+        {"missing closing parenthesis", "A parenthesis was opened but not closed."},
+        {"missing closing bracket", "A square bracket was opened but not closed."},
+        {"missing closing brace", "A curly brace was opened but not closed."},
+        
+        {NULL, NULL} // Sentinel
+};
+
+/**
+ * cp_find_error_explanation - Find error explanation for a given line
+ * @sz_line: The line to search for error patterns
+ *
+ * Returns: Pointer to explanation string or NULL if not found
+ */
+const char *cp_find_error_explanation(const char *sz_line)
+{
+        int i;
+
+        for (i = 0; error_db[i].trigger != NULL; i++) {
+            if (strstr(sz_line, error_db[i].trigger) != NULL)
+                return error_db[i].message;
+        }
+
+        return NULL;
+}
+
+/**
+ * print_file_with_explanations - Print compiler output with error explanations
+ * @filename: The file to read and print
+ *
+ * Reads compiler output file and displays error/warning messages with
+ * explanatory text below each one.
+ */
+void print_file_with_explanations(const char *filename)
+{
+        FILE *file;
+        char line[1024];
+        char pv_line[1024] = "";
+        int line_number = 0;
+        const char *warning_ptr;
+        const char *error_ptr;
+        const char *explanation;
+        int warning_pos;
+        int error_pos;
+        int target_pos;
+        int i;
+
+        file = fopen(filename, "r");
+        if (!file) {
+            printf("Cannot open file: %s\n", filename);
+            return;
+        }
+
+        while (fgets(line, sizeof(line), file)) {
+            line_number++;
+
+            printf("%s", line);
+
+            explanation = NULL;
+            warning_pos = -1;
+            error_pos = -1;
+
+            warning_ptr = strstr(line, "warning");
+            error_ptr = strstr(line, "error");
+
+            if (warning_ptr) {
+                warning_pos = warning_ptr - line;
+                explanation = cp_find_error_explanation(line);
+            } else if (error_ptr) {
+                error_pos = error_ptr - line;
+                explanation = cp_find_error_explanation(line);
+            }
+
+            if (explanation && (warning_pos != -1 || error_pos != -1)) {
+                target_pos = (warning_pos != -1) ? warning_pos : error_pos;
+
+                for (i = 0; i < target_pos; i++)
+                    printf(" ");
+
+                pr_color(stdout, FCOLOUR_CYAN, "^ %s\n\n", explanation);
+            }
+
+            strncpy(pv_line, line, sizeof(pv_line) - 1);
+            pv_line[sizeof(pv_line) - 1] = '\0';
+        }
+
+        fclose(file);
+}
+
 int wd_RunCompiler(const char *arg, const char *compile_args)
 {
         /* Determine the compiler binary name based on operating system */
@@ -167,12 +357,12 @@ int wd_RunCompiler(const char *arg, const char *compile_args)
                     /* Store merged options in global configuration */
                     if (merged) 
                     {
-                        wcfg.wd_toml_aio_opt = merged;
+                        wcfg.wd_toml_aio_opt_table = merged;
                     }
                     else 
                     {
                         /* Set empty options if none were provided */
-                        wcfg.wd_toml_aio_opt = strdup("");
+                        wcfg.wd_toml_aio_opt_table = strdup("");
                     }
                 }
             
@@ -231,7 +421,7 @@ int wd_RunCompiler(const char *arg, const char *compile_args)
                     toml_datum_t toml_gm_i = toml_string_in(wd_compiler, "input");
                     if (toml_gm_i.ok) 
                     {
-                        wcfg.wd_toml_gm_input = strdup(toml_gm_i.u.s);
+                        wcfg.wd_toml_gm_input_table = strdup(toml_gm_i.u.s);
                         wdfree(toml_gm_i.u.s);
                         toml_gm_i.u.s = NULL;
                     }
@@ -240,7 +430,7 @@ int wd_RunCompiler(const char *arg, const char *compile_args)
                     toml_datum_t toml_gm_o = toml_string_in(wd_compiler, "output");
                     if (toml_gm_o.ok) 
                     {
-                        wcfg.wd_toml_gm_output = strdup(toml_gm_o.u.s);
+                        wcfg.wd_toml_gm_output_table = strdup(toml_gm_o.u.s);
                         wdfree(toml_gm_o.u.s);
                         toml_gm_o.u.s = NULL;
                     }
@@ -252,9 +442,9 @@ int wd_RunCompiler(const char *arg, const char *compile_args)
                         format_size_compiler,
                         "%s %s -o%s %s %s -i%s > .wd_compiler.log 2>&1",
                         wcfg.wd_sef_found_list[0],                      // compiler binary
-                        wcfg.wd_toml_gm_input,                          // input file
-                        wcfg.wd_toml_gm_output,                         // output file
-                        wcfg.wd_toml_aio_opt,                           // additional options
+                        wcfg.wd_toml_gm_input_table,                          // input file
+                        wcfg.wd_toml_gm_output_table,                         // output file
+                        wcfg.wd_toml_aio_opt_table,                           // additional options
                         include_aio_path,                               // include search path
                         path_include                                    // include directory
                     );
@@ -265,9 +455,9 @@ int wd_RunCompiler(const char *arg, const char *compile_args)
                         format_size_compiler,
                         "\"%s\" \"%s\" -o\"%s\" \"%s\" %s -i\"%s\" > .wd_compiler.log 2>&1",
                         wcfg.wd_sef_found_list[0],                      // compiler binary
-                        wcfg.wd_toml_gm_input,                          // input file
-                        wcfg.wd_toml_gm_output,                         // output file
-                        wcfg.wd_toml_aio_opt,                           // additional options
+                        wcfg.wd_toml_gm_input_table,                          // input file
+                        wcfg.wd_toml_gm_output_table,                         // output file
+                        wcfg.wd_toml_aio_opt_table,                           // additional options
                         include_aio_path,                               // include search path
                         path_include                                    // include directory
                     );
@@ -282,8 +472,8 @@ int wd_RunCompiler(const char *arg, const char *compile_args)
                     /* Create window title with compilation info */
                     size_t needed = snprintf(NULL, 0, "Watchdogs | @ compile | %s | %s | %s",
                                                       wcfg.wd_sef_found_list[0],
-                                                      wcfg.wd_toml_gm_input,
-                                                      wcfg.wd_toml_gm_output) + 1;
+                                                      wcfg.wd_toml_gm_input_table,
+                                                      wcfg.wd_toml_gm_output_table) + 1;
                     char *title_compiler_info = wdmalloc(needed);
                     if (!title_compiler_info) 
                     { 
@@ -291,8 +481,8 @@ int wd_RunCompiler(const char *arg, const char *compile_args)
                     }
                     snprintf(title_compiler_info, needed, "Watchdogs | @ compile | %s | %s | %s",
                                                           wcfg.wd_sef_found_list[0],
-                                                          wcfg.wd_toml_gm_input,
-                                                          wcfg.wd_toml_gm_output);
+                                                          wcfg.wd_toml_gm_input_table,
+                                                          wcfg.wd_toml_gm_output_table);
                     if (title_compiler_info) 
                     {
                         /* Set window/tab title */
@@ -310,10 +500,10 @@ int wd_RunCompiler(const char *arg, const char *compile_args)
                         wd_run_command(_compiler_);
                     clock_gettime(CLOCK_MONOTONIC, &end);
                         
-                    /* Display compiler output if log file exists */
+                    /* Display compiler output with explanations if log file exists */
                     if (procc_f) 
                     {
-                        print_file_to_terminal(".wd_compiler.log");
+                        print_file_with_explanations(".wd_compiler.log");
                     }
 
                     /* Construct output file path */
@@ -555,7 +745,7 @@ int wd_RunCompiler(const char *arg, const char *compile_args)
                             wcfg.wd_sef_found_list[0],                      // compiler binary
                             wcfg.wd_sef_found_list[1],                      // input file
                             container_output,                               // output file
-                            wcfg.wd_toml_aio_opt,                           // additional options
+                            wcfg.wd_toml_aio_opt_table,                           // additional options
                             include_aio_path,                               // include search path
                             path_include                                    // include directory
                         );
@@ -568,7 +758,7 @@ int wd_RunCompiler(const char *arg, const char *compile_args)
                             wcfg.wd_sef_found_list[0],                      // compiler binary
                             wcfg.wd_sef_found_list[1],                      // input file
                             container_output,                               // output file
-                            wcfg.wd_toml_aio_opt,                           // additional options
+                            wcfg.wd_toml_aio_opt_table,                           // additional options
                             include_aio_path,                               // include search path
                             path_include                                    // include directory
                         );
@@ -611,10 +801,10 @@ int wd_RunCompiler(const char *arg, const char *compile_args)
                             wd_run_command(_compiler_);
                         clock_gettime(CLOCK_MONOTONIC, &end);
                         
-                        /* Display compiler output if log file exists */
+                        /* Display compiler output with explanations if log file exists */
                         if (procc_f) 
                         {
-                            print_file_to_terminal(".wd_compiler.log");
+                            print_file_with_explanations(".wd_compiler.log");
                         }
 
                         /* Construct output file path */

@@ -16,8 +16,8 @@ endif
 export LANG := C.UTF-8
 export LC_ALL := C.UTF-8
 
-VERSION  	 = WD-10.21
-FULL_VERSION = WD-25.10.21.0
+VERSION  	 = WD-10.30
+FULL_VERSION = WD-251030
 TARGET   	 ?= watchdogs
 CC       	 ?= clang
 STRIP        ?= llvm-strip
@@ -47,8 +47,9 @@ init:
 		echo "$(YELLOW)==>$(RESET) Detected: MSYS2 MinGW UCRT64 environment"; \
 		pacman -Sy --noconfirm && \
 		pacman -S --needed --noconfirm \
+			clang \
 			base-devel \
-			mingw-w64-ucrt-x86_64-clang \
+			mingw-w64-ucrt-x86_64-gcc \
 			mingw-w64-ucrt-x86_64-lld \
 			mingw-w64-ucrt-x86_64-libc++ \
 			mingw-w64-ucrt-x86_64-curl \

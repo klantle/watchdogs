@@ -98,10 +98,10 @@ sizeof(__command) / sizeof(__command[0]);
  *   wd_sef_count          - Count of SEF modules (0)
  *   wd_sef_found_list     - List of found SEF modules (initialized to zero)
  *   wd_runn_mode          - Runtime mode string (NULL)
- *   wd_toml_aio_opt       - AIO options from TOML (NULL)
- *   wd_toml_aio_repo      - AIO repository string from TOML (NULL)
- *   wd_toml_gm_input      - Game mode input path (NULL)
- *   wd_toml_gm_output     - Game mode output path (NULL)
+ *   wd_toml_aio_opt_table       - AIO options from TOML (NULL)
+ *   wd_toml_aio_repo_array      - AIO repository string from TOML (NULL)
+ *   wd_toml_gm_input_table      - Game mode input path (NULL)
+ *   wd_toml_gm_output_table     - Game mode output path (NULL)
  *
  */
 WatchdogConfig wcfg = {
@@ -119,10 +119,10 @@ WatchdogConfig wcfg = {
 		.wd_stopwatch_end = 0,
 		.wd_sef_found_list = { {0} },
 		.wd_runn_mode = NULL,
-		.wd_toml_aio_opt = NULL,
-		.wd_toml_aio_repo = NULL,
-		.wd_toml_gm_input = NULL,
-		.wd_toml_gm_output = NULL
+		.wd_toml_aio_opt_table = NULL,
+		.wd_toml_aio_repo_array = NULL,
+		.wd_toml_gm_input_table = NULL,
+		.wd_toml_gm_output_table = NULL
 };
 
 /**

@@ -581,19 +581,21 @@ void dep_add_ncheck_hash(cJSON *depends, const char *file_path, const char *json
 
 		char *pos;
 		while ((pos = strstr(file_path, "include/")) != NULL) {
-			memmove(pos, pos + strlen("include/"), strlen(pos + strlen("include/")) + 1);
+			memmove(pos, pos + strlen("include/"),
+							   strlen(pos + strlen("include/")) + 1);
 		}
 		while ((pos = strstr(json_path, "include/")) != NULL) {
-			memmove(pos, pos + strlen("include/"), strlen(pos + strlen("include/")) + 1);
+			memmove(pos, pos + strlen("include/"),
+							   strlen(pos + strlen("include/")) + 1);
 		}
 
 		/* Convert paths to use forward slashes */
 		strncpy(convert_f_path, file_path, sizeof(convert_f_path));
-		convert_f_path[sizeof(convert_f_path) - 1] = '\0';
+			convert_f_path[sizeof(convert_f_path) - 1] = '\0';
 		__convert_path(convert_f_path);
 
 		strncpy(convert_j_path, json_path, sizeof(convert_j_path));
-		convert_j_path[sizeof(convert_j_path) - 1] = '\0';
+			convert_j_path[sizeof(convert_j_path) - 1] = '\0';
 		__convert_path(convert_j_path);
 
 		pr_info(stdout, "\tHashing convert path: %s\n", convert_f_path);
@@ -933,7 +935,7 @@ static void dep_pr_include_addition(const char *filename)
 		if (wd_compiler) {
 			toml_datum_t toml_gm_i = toml_string_in(wd_compiler, "input");
 			if (toml_gm_i.ok) {
-				wcfg.wd_toml_gm_input = strdup(toml_gm_i.u.s);
+				wcfg.wd_toml_gm_input_table = strdup(toml_gm_i.u.s);
 				wdfree(toml_gm_i.u.s);
 			}
 		}
@@ -945,11 +947,11 @@ static void dep_pr_include_addition(const char *filename)
 
 		/* Add to main file */
 		if (!strcmp(wcfg.wd_is_samp, CRC32_TRUE)) {
-			DEP_ADD_INCLUDES(wcfg.wd_toml_gm_input, idirective, "#include <a_samp>");
+			DEP_ADD_INCLUDES(wcfg.wd_toml_gm_input_table, idirective, "#include <a_samp>");
 		} else if (!strcmp(wcfg.wd_is_omp, CRC32_TRUE)) {
-			DEP_ADD_INCLUDES(wcfg.wd_toml_gm_input, idirective, "#include <open.mp>");
+			DEP_ADD_INCLUDES(wcfg.wd_toml_gm_input_table, idirective, "#include <open.mp>");
 		} else {
-			DEP_ADD_INCLUDES(wcfg.wd_toml_gm_input, idirective, "#include <a_samp>");
+			DEP_ADD_INCLUDES(wcfg.wd_toml_gm_input_table, idirective, "#include <a_samp>");
 		}
 }
 

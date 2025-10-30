@@ -253,21 +253,27 @@ loop_stopwatch:
                                        ENABLE_VIRTUAL_TERMINAL_PROCESSING);
                 }
 #endif
-                                
-                printf("%s%s+------------------------------------------+%s\n", BORD, FG, RST);
-
                 char line[MAX_PATH * 3];
-                while (fgets(line, sizeof(line), procc_f)) {
-                    size_t len = strlen(line);
-                    if (len && (line[len-1] == '\n' ||
-                        line[len-1] == '\r'))
-                        line[--len] = '\0';
-                    printf("%s%s|%s %-40s %s|%s\n",
-                           BORD, FG, BG,
-                           line, BORD, RST);
+                size_t len;
+
+                printf("%s%s+------------------------------------------+%s\n",
+                        BORD, FG, RST);
+
+                while (fgets(line, sizeof(line), procc_f)) 
+                {
+                        len = strlen(line);
+                        if (len && (line[len - 1] == '\n' ||
+                                    line[len - 1] == '\r'))
+                                line[--len] = '\0';
+
+                        printf("%s%s|%s %-40s %s|%s\n",
+                                BORD, FG, BG,
+                                line, BORD, RST);
                 }
 
-                printf("%s%s+------------------------------------------+%s\n", BORD, FG, RST);
+                printf("%s%s+------------------------------------------+%s\n",
+                        BORD, FG, RST);
+
                 fclose(procc_f);
             }
             
@@ -285,7 +291,7 @@ loop_stopwatch:
 
             if (!curl_handle) {
                 fprintf(stderr, "Failed to initialize curl\n");
-                return 1;
+                return RETN;
             }
 
             curl_easy_setopt(curl_handle, CURLOPT_URL,
@@ -331,17 +337,23 @@ loop_stopwatch:
 
                     char *pretty = cJSON_Print(output_array);
 
-                    printf("%s%s+------------------------------------------+%s\n", BORD, FG, RST);
+                    char *line;
 
-                    char *line = strtok(pretty, "\n");
-                    while (line) {
-                        printf("%s%s|%s %-40.40s %s|%s\n",
-                               BORD, FG, BG,
-                               line, BORD, RST);
-                        line = strtok(NULL, "\n");
+                    printf("%s%s+------------------------------------------+%s\n",
+                            BORD, FG, RST);
+
+                    line = strtok(pretty, "\n");
+                    while (line) 
+                    {
+                            printf("%s%s|%s %-40.40s %s|%s\n",
+                                    BORD, FG, BG,
+                                    line, BORD, RST);
+
+                            line = strtok(NULL, "\n");
                     }
 
-                    printf("%s%s+------------------------------------------+%s\n", BORD, FG, RST);
+                    printf("%s%s+------------------------------------------+%s\n",
+                            BORD, FG, RST);
 
                     wdfree(pretty);
                     cJSON_Delete(output_array);
@@ -386,45 +398,57 @@ loop_stopwatch:
                     return RETZ;
                 }
 
-                toml_table_t *wd_depends = toml_table_in(_toml_config, "depends");
-                if (wd_depends) {
-                    toml_array_t *wd_toml_aio_repo = toml_array_in(wd_depends, "wd_toml_aio_repo");
-                    if (wd_toml_aio_repo) {
-                        size_t arr_sz = toml_array_nelem(wd_toml_aio_repo);
-                        char *merged = NULL;
+                toml_table_t *wd_depends;
+                size_t arr_sz, i;
+                char *merged = NULL;
+                
+                wd_depends = toml_table_in(_toml_config, "depends");
+                if (!wd_depends)
+                    goto out;
 
-                        for (size_t i = 0; i < arr_sz; i++) {
-                            toml_datum_t val = toml_string_at(wd_toml_aio_repo, i);
-                            if (!val.ok) continue;
+                toml_array_t *wd_toml_aio_repo = toml_array_in(wd_depends, "aio_repo");
+                if (!wd_toml_aio_repo)
+                    goto out;
 
-                            size_t old_len = merged ? strlen(merged) : 0;
+                arr_sz = toml_array_nelem(wd_toml_aio_repo);
+                for (i = 0; i < arr_sz; i++) {
+                    toml_datum_t val;
+
+                    val = toml_string_at(wd_toml_aio_repo, i);
+                    if (!val.ok)
+                            continue;
+
+                    if (!merged) {
+                            merged = wdrealloc(NULL, strlen(val.u.s) + 1);
+                            if (!merged)
+                                    goto free_val;
+
+                            snprintf(merged, strlen(val.u.s) + 1, "%s", val.u.s);
+                    } else {
+                            char *tmp;
+                            size_t old_len = strlen(merged);
                             size_t new_len = old_len + strlen(val.u.s) + 2;
 
-                            char *tmp = wdrealloc(merged, new_len);
-                            if (!tmp) {
-                                wdfree(merged);
-                                wdfree(val.u.s);
-                                merged = NULL;
-                                break;
-                            }
+                            tmp = wdrealloc(merged, new_len);
+                            if (!tmp)
+                                    goto free_val;
+
                             merged = tmp;
-
-                            if (!old_len) {
-                                snprintf(merged, new_len, "%s", val.u.s);
-                            } else {
-                                snprintf(merged + old_len, new_len - old_len, " %s", val.u.s);
-                            }
-
-                            wdfree(val.u.s);
-                            val.u.s = NULL;
-                        }
-
-                        if (!merged) merged = strdup("");
-
-                        wcfg.wd_toml_aio_repo = merged;
-                        wd_install_depends_str(wcfg.wd_toml_aio_repo);
+                            snprintf(merged + old_len, new_len - old_len, " %s", val.u.s);
                     }
+
+free_val:
+                    wdfree(val.u.s);
+                    val.u.s = NULL;
                 }
+
+                if (!merged)
+                    merged = strdup("");
+
+                wcfg.wd_toml_aio_repo_array = merged;
+                wd_install_depends_str(wcfg.wd_toml_aio_repo_array);
+
+out:
                 toml_free(_toml_config);
             }
             
@@ -673,7 +697,7 @@ n_loop_igm2:
                         toml_datum_t toml_gm_i = toml_string_in(wd_compiler, "input");
                         if (toml_gm_i.ok) 
                         {
-                            wcfg.wd_toml_gm_input = strdup(toml_gm_i.u.s);
+                            wcfg.wd_toml_gm_input_table = strdup(toml_gm_i.u.s);
                             wdfree(toml_gm_i.u.s);
                             toml_gm_i.u.s = NULL;
                         }
@@ -681,7 +705,7 @@ n_loop_igm2:
                 toml_free(_toml_config);
 
                 char __sz_gm_input[PATH_MAX];
-                snprintf(__sz_gm_input, sizeof(__sz_gm_input), "%s", wcfg.wd_toml_gm_input);
+                snprintf(__sz_gm_input, sizeof(__sz_gm_input), "%s", wcfg.wd_toml_gm_input_table);
                 char *f_EXT = strrchr(__sz_gm_input, '.');
                 if (f_EXT) 
                     *f_EXT = '\0';

@@ -16,8 +16,8 @@ endif
 export LANG := C.UTF-8
 export LC_ALL := C.UTF-8
 
-VERSION  	 = WD-10.30
-FULL_VERSION = WD-251030
+VERSION  	 = WD-10.31
+FULL_VERSION = WD-251031
 TARGET   	 ?= watchdogs
 CC       	 ?= clang
 STRIP        ?= llvm-strip

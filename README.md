@@ -38,12 +38,10 @@
 
 ## Introduction
 
-**WATCHDOGS** is a comprehensive development toolchain for SA-MP (San Andreas Multiplayer) gamemode compilation and management. It provides a unified interface across multiple platforms for compiling, debugging, and running PAWN scripts.
-
 ### Supported Platforms
 - [x] Linux (Debian/Ubuntu based distributions)
-- [x] Windows (via MSYS2, WSL, or Docker)
-- [x] macOS (via Docker or native environment)
+- [x] Windows (via Native, MSYS2, WSL, or Docker)
+- [x] macOS (via Docker)
 - [x] Android (via Termux)
 
 ### Supported Architectures
@@ -108,6 +106,10 @@ docker exec -it <container-name> /bin/bash # Enter a running container
 docker stop <container-name>               # Stop a container
 docker rm -f <container-name>              # Remove a container
 ```
+
+---
+
+> We recommend using Watchdogs from https://github.com/klantle/watchdogs/tags if you want guaranteed stability and security rather than the rapid updates from upstream. Executables are already available for each platform.
 
 ### Termux
 

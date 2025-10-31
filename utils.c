@@ -385,11 +385,17 @@ int is_termux_environment(void)
 		struct stat st;
 		int is_termux = RETZ;
 #if defined(__ANDROID__)
-                is_termux = RETN;
+		is_termux = RETN;
 #endif
 		if (stat("/data/data/com.termux/files/usr/local/lib/", &st) == 0 ||
-			stat("/data/data/com.termux/files/usr/lib/", &st) == 0)
+			stat("/data/data/com.termux/files/usr/lib/", &st) == 0 ||
+			stat("/data/data/com.termux/arm64/usr/lib", &st) == 0 ||
+			stat("/data/data/com.termux/arm32/usr/lib", &st) == 0 ||
+			stat("/data/data/com.termux/amd32/usr/lib", &st) == 0 ||
+			stat("/data/data/com.termux/amd64/usr/lib", &st) == 0)
+		{
 			is_termux = RETN;
+		}
 		return is_termux;
 }
 

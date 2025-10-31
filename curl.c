@@ -2,6 +2,7 @@
 #include <stdlib.h>
 #include <ctype.h>
 #include <string.h>
+#include <inttypes.h>
 #include <sys/stat.h>
 
 #include <curl/curl.h>
@@ -248,7 +249,7 @@ int wd_download_file(const char *url, const char *filename)
 
 			if (res == CURLE_OK && response_code == 200) {
 				if (stat(filename, &file_stat) == 0 && file_stat.st_size > 0) {
-					printf("Download successful: %lld bytes\n", file_stat.st_size);
+					printf("Download successful: %" PRIdMAX " bytes\n", (intmax_t)file_stat.st_size);
 					
 					if (is_archive_file(filename)) {
 						printf("Checking file type for extraction...\n");

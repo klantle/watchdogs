@@ -243,17 +243,21 @@ static int setup_linux_library(void)
 #ifdef _WIN32
 		return RETZ; /* Not applicable on Windows */
 #else
+		const char *selected_path = NULL;
 		char libpawnc_src[PATH_MAX];
 		char dest_path[PATH_MAX];
+		struct stat st;
+		int i, found_lib;
 		const char *lib_paths[] = {
 				"/data/data/com.termux/files/usr/lib/",
 				"/data/data/com.termux/files/usr/local/lib/",
+				"/data/data/com.termux/arm64/usr/lib",
+				"/data/data/com.termux/arm32/usr/lib",
+				"/data/data/com.termux/amd32/usr/lib",
+				"/data/data/com.termux/amd64/usr/lib",
 				"/usr/local/lib",
 				"/usr/local/lib32"
 		};
-		const char *selected_path = NULL;
-		struct stat st;
-		int i, found_lib;
 
 		if (!strcmp(wcfg.wd_toml_os_type, OS_SIGNAL_WINDOWS) ||
 			!strcmp(wcfg.wd_toml_os_type, OS_SIGNAL_UNKNOWN))

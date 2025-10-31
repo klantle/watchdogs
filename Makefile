@@ -130,7 +130,7 @@ linux:
 termux:
 	@echo "LANG = $$LANG"
 	@printf "$(YELLOW)==>$(RESET) Building Termux target with clang...\n"
-	$(CC) $(CFLAGS) -I/data/data/com.termux/files/usr/include -I$PREFIX/lib -I$PREFIX/bin -D__ANDROID__ -fPIE $(SRCS) -o watchdogs.tmux $(LDFLAGS) -pie
+	$(CC) $(CFLAGS) -I/data/data/com.termux/files/usr/include -I$PREFIX/include -I$PREFIX/lib -I$PREFIX/bin -D__ANDROID__ -fPIE $(SRCS) -o watchdogs.tmux $(LDFLAGS) -pie
 	@printf "$(YELLOW)==>$(RESET) Build complete: watchdogs.tmux Version $(VERSION) Full Version $(FULL_VERSION)\n"
 
 windows:
@@ -148,7 +148,7 @@ debug:
 termux-debug:
 	@echo "LANG = $$LANG"
 	@printf "$(YELLOW)==>$(RESET) Building DEBUG Version $(VERSION) Full Version $(FULL_VERSION)\n"
-	$(CC) -g -O0 -Wall -fno-omit-frame-pointer -fno-inline -I/data/data/com.termux/files/usr/include -I$PREFIX/include -D__ANDROID__ $(SRCS) -o watchdogs.debug.tmux $(LDFLAGS)
+	$(CC) -g -O0 -Wall -fno-omit-frame-pointer -fno-inline -I/data/data/com.termux/files/usr/include -I$PREFIX/include -I$PREFIX/lib -I$PREFIX/bin -D__ANDROID__ $(SRCS) -o watchdogs.debug.tmux $(LDFLAGS)
 	@printf "$(YELLOW)==>$(RESET) Build complete: watchdogs.debug.tmux Version $(VERSION) Full Version $(FULL_VERSION)\n"
 
 windows-debug:

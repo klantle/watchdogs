@@ -100,29 +100,28 @@ int __command__(void)
 {
         wcfg.wd_sel_stat = 0;
         setlocale(LC_ALL, "en_US.UTF-8");
-
         char __cwd[PATH_MAX];
 		size_t __sz_cwd = sizeof(__cwd);
         if (!getcwd(__cwd, __sz_cwd)) {
             perror("getcwd");
             return RETW;
         }
-
         char ptr_prompt[PATH_MAX + 56];
+        size_t __sz_ptrp = sizeof(ptr_prompt);
+        char *ptr_command;
+        int c_distance = INT_MAX;
+        const char *_dist_command;
 
 _ptr_command:
-        size_t __sz_ptrp = sizeof(ptr_prompt);
         snprintf(ptr_prompt, __sz_ptrp,
                  "[" FCOLOUR_CYAN "watchdogs ~ %s" FCOLOUR_DEFAULT "]$ ", __cwd);
-        char* ptr_command = readline(ptr_prompt);
+        ptr_command = readline(ptr_prompt);
 
         if (ptr_command == WD_ISNULL || ptr_command[0] == '\0')
             goto _ptr_command;
         
         wd_a_history(ptr_command);
-
-        int c_distance = INT_MAX;
-        const char *_dist_command;
+        
         _dist_command = wd_find_near_command(ptr_command,
                                              __command,
                                              __command_len,

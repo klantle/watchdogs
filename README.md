@@ -113,6 +113,8 @@ docker rm -f <container-name>              # Remove a container
 
 ### Termux
 
+> We highly recommend using the Termux distribution directly from GitHub instead of the Google Play Store to ensure compatibility with the latest Termux features and to enjoy the freedom offered outside the Play Store. https://github.com/termux/termux-app/releases
+
 #### Installation Steps
 ```bash
 # 1. Setup storage permissions

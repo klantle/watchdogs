@@ -8,7 +8,6 @@
 
 #include "chain.h"
 #include "color.h"
-#include "extra.h"
 #include "utils.h"
 #include "server.h"
 

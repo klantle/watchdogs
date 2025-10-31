@@ -23,9 +23,9 @@ CC       	 ?= clang
 STRIP        ?= llvm-strip
 
 CFLAGS   = -Os -pipe -s -fdata-sections -ffunction-sections -fPIE
-LDFLAGS  = -Wl,-O1,--gc-sections -lm -lcurl -lreadline -lncurses -larchive -lssl -lcrypto
+LDFLAGS  = -Wl,-O1,--gc-sections -lm -lcurl -lreadline -lncursesw -larchive -lssl -lcrypto
 
-SRCS = extra.c chain.c utils.c depends.c hardware.c compiler.c archive.c curl.c package.c server.c crypto.c \
+SRCS = color.c curl.c chain.c utils.c depends.c hardware.c compiler.c archive.c package.c server.c crypto.c \
        include/tomlc/toml.c include/cJSON/cJSON.c
 
 OBJS = $(SRCS:.c=.o)

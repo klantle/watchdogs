@@ -28,7 +28,6 @@
 #include <errno.h>
 
 #include "color.h"
-#include "extra.h"
 #include "utils.h"
 #include "chain.h"
 
@@ -314,12 +313,12 @@ static int wd_confirm_dangerous_command(const char *cmd, char badch, size_t pos)
 {
 		if (isprint((unsigned char)badch)) {
 				pr_warning(stdout,
-							   "Symbol detected in command - char='%c' (0x%02X) at pos=%zu; cmd=\"%s\"",
-						       badch, (unsigned char)badch, pos, cmd);
+							"Symbol detected in command - char='%c' (0x%02X) at pos=%zu; cmd=\"%s\"",
+							badch, (unsigned char)badch, pos, cmd);
 		} else {
 				pr_warning(stdout,
-							   "Control symbol detected in command - char=0x%02X at pos=%zu; cmd=\"%s\"",
-						       (unsigned char)badch, pos, cmd);
+							"Control symbol detected in command - char=0x%02X at pos=%zu; cmd=\"%s\"",
+							(unsigned char)badch, pos, cmd);
 		}
 
 		char *confirm;

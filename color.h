@@ -1,4 +1,5 @@
-#pragma once
+#ifndef EXTRA_H
+#define EXTRA_H
 
 // Foreground Colors (Standard)
 #define FCOLOUR_BLACK      "\033[0;30m"
@@ -53,3 +54,17 @@
 #define FCOLOUR_DEFAULT    "\033[39m"
 #define BKG_DEFAULT    "\033[49m"
 
+#define pr_color printf_color
+#define pr_info printf_info
+#define pr_warning printf_warning
+#define pr_error printf_error
+#define pr_crit printf_crit
+
+void println(FILE *stream, const char* format, ...);
+void printf_color(FILE *stream, const char *color, const char *format, ...);
+void printf_info(FILE *stream, const char *format, ...);
+void printf_warning(FILE *stream, const char *format, ...);
+void printf_error(FILE *stream, const char *format, ...);
+void printf_crit(FILE *stream, const char *format, ...);
+
+#endif

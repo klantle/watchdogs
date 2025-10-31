@@ -5,7 +5,6 @@
 #include <archive_entry.h>
 
 #include "color.h"
-#include "extra.h"
 #include "utils.h"
 #include "archive.h"
 #include "curl.h"

@@ -25,7 +25,6 @@
 #include <readline/history.h>
 
 #include "color.h"
-#include "extra.h"
 #include "utils.h"
 #include "hardware.h"
 #include "crypto.h"

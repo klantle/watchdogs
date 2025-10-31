@@ -7,7 +7,6 @@
 #include <curl/curl.h>
 
 #include "color.h"
-#include "extra.h"
 #include "utils.h"
 #include "curl.h"
 #include "archive.h"
@@ -86,7 +85,7 @@ int dep_curl_url_get_response(const char *url, const char *github_token)
 
 		printf("\tUsing URL: %s...\n", url);
 		if (strfind(wcfg.wd_toml_github_tokens_table, "DO_HERE")) {
-			printf_info(stdout, "Can't read Github token.. skipping");
+			pr_info(stdout, "Can't read Github token.. skipping");
 			sleep(1);
 		} else {
 			if (github_token && strlen(github_token) > 0) {

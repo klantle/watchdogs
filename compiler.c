@@ -9,7 +9,6 @@
 #include <readline/history.h>
 
 #include "color.h"
-#include "extra.h"
 #include "utils.h"
 #include "chain.h"
 #include "package.h"

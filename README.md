@@ -379,6 +379,8 @@ compile path/to/yourmode.pwn
 
 ### Server Management
 
+> It operates as usual by running the samp-server or open.mp server binary according to its default name. In the `[<args>]` section, how it works is by modifying the `gamemode0` parameter in server.cfg for SA-MP or the `main_scripts` parameter in config.json for Open.MP.
+
 **Start server with default gamemode:**
 ```bash
 running .
@@ -395,6 +397,14 @@ crunn
 ```
 
 ### Dependency Management
+
+> Serves as an assistant for installing various files required by SA-MP/Open.MP. When installing dependencies that contain a `plugins/` folder and include files, it will install them into the `plugins/` and `/pawno-qawno/include` directories, respectively. It also handles gamemode components (root watchdogs). Watchdogs will automatically add the include names to the gamemode based on the main gamemode filename specified in the `input` key within `watchdogs.toml`. Furthermore, Watchdogs assists in installing the plugin names and their respective formats into `config.json` (for Open.MP) or `server.cfg` (for SA-MP). Note that the `components/` directory is not required for Open.MP.
+
+> For plugin or include files located in the root directory of the dependency archive (for both Linux and Windows), their installation paths will be adjusted accordingly. Plugins found in the root folder will be placed directly into the server's root directory, rather than in specific subdirectories like `plugins/` or `components/`.
+
+> The handling of YSI includes differs due to their structure containing multiple nested folders of include files. In this case, the entire folder containing these includes is moved directly to the target path (e.g., `pawno/include` or `qawno/include`), streamlining the process.
+
+> Upon completion of the file transfers, all affected paths are hashed using the SHA256 algorithm in hexadecimal format via the OpenSSL/Crypto library. The resulting hash is then stored in `wd_depends.json`.
 
 **Install dependencies from configuration:**
 ```bash
@@ -446,61 +456,98 @@ alias watch='./watchdogs'
 
 ## Compiler Reference
 
-Based on PAWN Compiler 3.10.10
+> Pawncc is essentially an extension for converting .pwn files into .amx files (a converter). The primary language for SA-MP/Open.MP is [Pawn Code](https://www.compuphase.com/pawn/pawn.htm), and pawno/qawno are Pawn Editors designed to facilitate the integration of Pawncc itself. PawnCC refers to a modified version of Pawncc from pawn-lang - https://github.com/pawn-lang/compiler, which means Pawn Community Compiler (PawnCC or PCC).
+
+> You need the -Z+ option if it exists to support specific paths with `\` on Linux and `/` on Windows for cross-platform compatibility. https://github.com/pawn-lang/compiler/wiki/Compatibility-mode
 
 ### General Options
 
+Based on PAWN Compiler [3.10.11](https://github.com/openmultiplayer/compiler/releases/tag/v3.10.11)/[3.10.10](https://github.com/pawn-lang/compiler/releases/tag/v3.10.10)
+
+### Example Usage
+
+```bash
+pawncc "input" -o"output.amx" -O1 -d3 -i"include/" sym=DEBUG
+```
+
 | Option | Description | Default |
 |--------|-------------|---------|
-| `-A<num>` | Alignment in bytes of data segment and stack | - |
+| `-A<num>` | Alignment in bytes of the data segment and the stack | - |
 | `-a` | Output assembler code | - |
 | `-C[+/-]` | Compact encoding for output file | `+` |
-| `-c<name>` | Codepage name or number | - |
+| `-c<name>` | Codepage name or number (e.g., `1252` for Windows Latin-1) | - |
+| `-Dpath` | Active directory path | - |
+| `-H<hwnd>` | Window handle to send a notification message on finish | - |
+| `-i<name>` | Path for include files | - |
+| `-l` | Create list file (preprocess only) | - |
+| `-o<name>` | Set base name of (P-code) output file | - |
+| `-p<name>` | Set name of "prefix" file | - |
+| `-s<num>` | Skip lines from the input file | - |
+| `-t<num>` | TAB indent size in character positions | `8` |
+| `-v<num>` | Verbosity level (`0=quiet`, `1=normal`, `2=verbose`) | `1` |
+| `-w<num>` | Disable a specific warning by its number | - |
+| `-Z[+/-]` | Run in compatibility mode | `-` |
+| `-\` | Use backslash `\` for escape characters | - |
+| `-^` | Use caret `^` for escape characters | - |
+| `sym=val` | Define constant `sym` with value `val` | - |
+| `sym=` | Define constant `sym` with value `0` | - |
+
+---
 
 ### Debugging Options
 
-| Option | Description | Levels |
-|--------|-------------|---------|
-| `-d<num>` | Debugging level | `0-3` |
+| Option | Description | Levels / Default |
+|--------|-------------|------------------|
+| `-d<num>` | Debugging level | `-d1` |
 | `-d0` | No symbolic information, no run-time checks | - |
-| `-d1` | Run-time checks, no symbolic information | - |
+| `-d1` | Run-time checks, no symbolic information | *(default)* |
 | `-d2` | Full debug information and dynamic checking | - |
-| `-d3` | Same as -d2, but implies `-O0` | - |
+| `-d3` | Same as `-d2`, but implies `-O0` | - |
+| `-E[+/-]` | Turn warnings into errors | - |
+
+---
 
 ### Optimization Options
 
-| Option | Description | Levels |
-|--------|-------------|---------|
-| `-O<num>` | Optimization level | `0-2` |
+| Option | Description | Levels / Default |
+|--------|-------------|------------------|
+| `-O<num>` | Optimization level | `-O1` |
 | `-O0` | No optimization | - |
-| `-O1` | JIT-compatible optimizations only | - |
+| `-O1` | JIT-compatible optimizations only | *(default)* |
 | `-O2` | Full optimizations | - |
 
-### Syntax Options
+---
+
+### Memory and Machine Options
 
 | Option | Description | Default |
 |--------|-------------|---------|
-| `-;[+/-]` | Require semicolon to end each statement | `-` |
+| `-S<num>` | Stack/heap size in cells | `4096` |
+| `-X<num>` | Abstract machine size limit in bytes | - |
+| `-XD<num>` | Abstract machine data/stack size limit in bytes | - |
+
+---
+
+### Reporting and Analysis Options
+
+| Option | Description | Default |
+|--------|-------------|---------|
+| `-R[+/-]` | Add detailed recursion report with call chains | `-` |
+| `-r[name]` | Write cross reference report to console or specified file | - |
+
+---
+
+### Syntax Enforcement Options
+
+| Option | Description | Default |
+|--------|-------------|---------|
+| `-;[+/-]` | Require a semicolon to end each statement | `-` |
 | `-([+/-]` | Require parentheses for function invocation | `-` |
-| `-E[+/-]` | Turn warnings into errors | - |
 
-### File Options
+---
 
-| Option | Description |
-|--------|-------------|
-| `-e<name>` | Set error file name (quiet compile) |
-| `-i<name>` | Path for include files |
-| `-o<name>` | Set base name of output file |
-| `-p<name>` | Set name of "prefix" file |
+### Output and Error Handling
 
-### Miscellaneous Options
-
-| Option | Description |
-|--------|-------------|
-| `-v<num>` | Verbosity level (`0=quiet`, `1=normal`, `2=verbose`) |
-| `-w<num>` | Disable specific warning by number |
-| `-R[+/-]` | Add detailed recursion report with call chains |
-| `-r[name]` | Write cross reference report |
-| `-S<num>` | Stack/heap size in cells |
-| `-X<num>` | Abstract machine size limit in bytes |
-| `sym=val` | Define constant `sym` with value `val` |
+| Option | Description | Default |
+|--------|-------------|---------|
+| `-e<name>` | Set name of error file (quiet compile) | - |

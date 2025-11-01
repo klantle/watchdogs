@@ -72,7 +72,6 @@ win32_chmod(const char *path) {
 #endif
 
 #define findstr strfind
-#define WD_ISNULL NULL
 
 #ifndef min3
 #define min3(a, b, c) \
@@ -124,11 +123,6 @@ win32_chmod(const char *path) {
 #define OS_SIGNAL_WINDOWS	CRC32_TRUE
 #define OS_SIGNAL_LINUX		CRC32_FALSE  
 #define OS_SIGNAL_UNKNOWN	CRC32_UNKNOWN
-
-extern const char *BG,
-                  *FG,
-                  *BORD,
-                  *RST;
                   
 #define MAX_SEF_ENTRIES 28
 #define MAX_SEF_PATH_SIZE PATH_MAX
@@ -164,6 +158,7 @@ extern const size_t __command_len;
 int mkdir_recursive(const char *path);
 int wd_run_command(const char *cmd);
 int is_termux_environment(void);
+int is_native_windows(void);
 void print_file_to_terminal(const char *path);
 int wd_set_permission(const char *src, const char *dst);
 int wd_set_title(const char *__title);

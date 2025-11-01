@@ -196,6 +196,20 @@ git clone https://github.com/klantle/libwatchdogs watch && cd watch && [ -d "/c/
 ~
 ```
 
+### Native with Git Bash only
+> Download Git first in https://git-scm.com/install/windows
+
+```bash
+# Run Git Bash
+# cd to your_project directory
+cd /c/users/desktop_name/downloads/your_project
+# Download stable binary
+curl -L -o watchdogs.win "https://github.com/klantle/watchdogs/releases/download/WD-251101/watchdogs.win"
+# Install library
+git clone https://github.com/klantle/libwatchdogs watch && cd watch && [ -d "/c/libwatchdogs" ] && rm -rf -- "/c/libwatchdogs"  && mv -f libwatchdogs /c/ && mv -f run-native.bat .. && cd .. && rm -rf watch
+# Exit from Git Bash and run '.bat' in your your_project on Windows File Explorer.
+```
+
 #### Mirror Configuration (if needed)
 Edit mirror lists:
 ```bash

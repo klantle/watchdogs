@@ -141,7 +141,7 @@ const char *cp_find_error_explanation(const char *sz_line) {
         for (int i = 0;
             compiler_cause_list[i].cause_trigger;
             i++) {
-            if (strstr(sz_line, compiler_cause_list[i].cause_trigger))
+            if (hash_str(sz_line) == cause_hash[i])
                 return compiler_cause_list[i].cause_info;
         }
         return NULL;
@@ -211,7 +211,7 @@ void print_file_with_explanations(const char *filename)
                     printf(" ");
 
                 /* Print colored explanation with caret */
-                pr_color(stdout, FCOLOUR_CYAN, "^ %s\n\n", explanation);
+                pr_color(stdout, FCOLOUR_CYAN, "^ %s :(\n", explanation);
             }
 
             /* Save current line as previous line for next iteration */
@@ -433,7 +433,7 @@ int wd_run_compiler(const char *arg, const char *compile_args)
                 }
     
                 /* Handle compilation without specific file argument */
-                if (arg == WD_ISNULL || *arg == '\0' || (arg[0] == '.' && arg[1] == '\0')) 
+                if (arg == NULL || *arg == '\0' || (arg[0] == '.' && arg[1] == '\0')) 
                 {
                     /* Get input file from TOML configuration */
                     toml_datum_t toml_gm_i = toml_string_in(wd_compiler, "input");

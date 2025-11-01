@@ -40,8 +40,8 @@ double command_dur;
 
 void __function__(void) {
         wd_sef_fdir_reset();
-        wd_set_toml();
         wd_u_history();
+        wd_set_toml();
 #if defined(_DBG_PRINT)
         pr_color(stdout,
                 FCOLOUR_YELLOW,
@@ -78,11 +78,12 @@ int __command__(void)
         const char *_dist_command;
 
 _ptr_command:
+        __function__();
         snprintf(ptr_prompt, __sz_ptrp,
                  "[" FCOLOUR_CYAN "watchdogs ~ %s" FCOLOUR_DEFAULT "]$ ", __cwd);
         ptr_command = readline(ptr_prompt);
 
-        if (ptr_command == WD_ISNULL || ptr_command[0] == '\0')
+        if (ptr_command == NULL || ptr_command[0] == '\0')
             goto _ptr_command;
         
         wd_a_history(ptr_command);
@@ -128,10 +129,10 @@ _reexecute_command:
             goto done;
         } else if (strcmp(ptr_command, "clear") == 0) {
             wd_set_title("Watchdogs | @ clear");
-            char* msys2_env = getenv("MSYSTEM");
-            if (msys2_env != NULL) {
+
+            if (!is_native_windows()) {
                 wd_run_command("clear");
-            } else if (msys2_env == NULL && !strcmp(wcfg.wd_os_type, OS_SIGNAL_WINDOWS)) {
+            } else {
                 wd_run_command("cls");
             }
 
@@ -140,7 +141,13 @@ _reexecute_command:
             exit(1);
         } else if (strcmp(ptr_command, "kill") == 0) {
             wd_set_title("Watchdogs | @ kill");
-            wd_run_command("clear");
+
+            if (!is_native_windows()) {
+                wd_run_command("clear");
+            } else {
+                wd_run_command("cls");
+            }
+
             __function__();
             
             goto _ptr_command;
@@ -172,7 +179,7 @@ _reexecute_command:
 
             goto done;
         } else if (strncmp(ptr_command, "stopwatch", 9) == 0) {
-            struct timespec start, now, end;
+            struct timespec start, now;
             double stw_elp;
 
             char *arg = ptr_command + 10;
@@ -592,7 +599,7 @@ _runners_:
                 }
 #endif
                 if (!strcmp(wcfg.wd_is_samp, CRC32_TRUE)) {
-                    if (arg == WD_ISNULL || *arg == '\0' || (arg[0] == '.' && arg[1] == '\0')) {
+                    if (arg == NULL || *arg == '\0' || (arg[0] == '.' && arg[1] == '\0')) {
                         char __sz_run[128];
 #ifdef _WIN32
                         snprintf(__sz_run, sizeof(__sz_run), "%s", wcfg.wd_ptr_samp);
@@ -613,7 +620,7 @@ _runners_:
                         wd_run_samp_server(arg1, wcfg.wd_ptr_samp);
                     }
                 } else if (!strcmp(wcfg.wd_is_omp, CRC32_TRUE)) {
-                    if (arg == WD_ISNULL || *arg == '\0' || (arg[0] == '.' && arg[1] == '\0')) {
+                    if (arg == NULL || *arg == '\0' || (arg[0] == '.' && arg[1] == '\0')) {
                         char __sz_run[128];
 #ifdef _WIN32
                         snprintf(__sz_run, sizeof(__sz_run), "%s", wcfg.wd_ptr_omp);
@@ -818,14 +825,17 @@ L"\t\t   W   A   T   C   H   D   O   G   S\n");
                 goto done;
             }
         } else {
-            if (strfind(ptr_command, "bash") ||
+            if (
                 strfind(ptr_command, "sh") ||
+                strfind(ptr_command, "bash") ||
                 strfind(ptr_command, "zsh") ||
                 strfind(ptr_command, "make") ||
-                strfind(ptr_command, "cd")) {
+                strfind(ptr_command, "cd")
+                )
+            {
                     pr_error(stdout, "You can't run it!");
                     goto _ptr_command;
-                }
+            }
             char _p_command[256];
             snprintf(_p_command, 256, "%s", ptr_command);
             int ret = wd_run_command(_p_command);
@@ -846,7 +856,6 @@ done:
 void __main(int sig_unused) {
         (void)sig_unused;
         wd_set_title(NULL);
-        __function__();
         int ret = -RETW;
 loop_main:
         ret = __command__();

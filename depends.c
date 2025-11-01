@@ -15,11 +15,11 @@
 #include "depends.h"
 
 /**
- * struct curl_buffer - Buffer for CURL response data
+ * struct dep_curl_buffer - Buffer for CURL response data
  * @data: Pointer to allocated data
  * @size: Size of allocated data
  */
-struct curl_buffer {
+struct dep_curl_buffer {
 		char *data;
 		size_t size;
 };
@@ -40,18 +40,28 @@ struct dep_repo_info {
 		char tag[128];
 };
 
+/*
+ * dep_implementation_samp_conf - Apply plugins name to SA-MP config
+ * dep_implementation_omp_conf - Apply plugins name to Open.MP config
+ */
+typedef struct {
+		const char *dep_config;
+		const char *dep_target;
+		const char *dep_added;
+} depConfig;
+
 /**
- * dep_write_callback - CURL write callback function
+ * dep_curl_write_cb - CURL write callback function
  * @contents: Received data
  * @size: Size of each element
  * @nmemb: Number of elements
- * @userp: User pointer (curl_buffer)
+ * @userp: User pointer (dep_curl_buffer)
  *
  * Return: Number of bytes processed
  */
-static size_t dep_write_callback(void *contents, size_t size, size_t nmemb, void *userp)
+static size_t dep_curl_write_cb (void *contents, size_t size, size_t nmemb, void *userp)
 {
-		struct curl_buffer *mem = (struct curl_buffer *)userp;
+		struct dep_curl_buffer *mem = (struct dep_curl_buffer *)userp;
 		size_t realsize = size * nmemb;
 		char *ptr;
 
@@ -68,12 +78,12 @@ static size_t dep_write_callback(void *contents, size_t size, size_t nmemb, void
 }
 
 /**
- * dep_curl_url_get_response - Check if URL is accessible
+ * dep_http_check_url- Check if URL is accessible
  * @url: URL to check
  *
  * Return: 1 if accessible, 0 if not
  */
-int dep_curl_url_get_response(const char *url, const char *github_token)
+int dep_check_url (const char *url, const char *github_token)
 {
 		CURL *curl = curl_easy_init();
 		if (!curl) return 0;
@@ -85,7 +95,7 @@ int dep_curl_url_get_response(const char *url, const char *github_token)
 
 		printf("\tUsing URL: %s...\n", url);
 		if (strfind(wcfg.wd_toml_github_tokens, "DO_HERE")) {
-			pr_color(stdout, FCOLOUR_GREEN, "DEPENDS: Can't read Github token.. skipping");
+			pr_color(stdout, FCOLOUR_GREEN, "DEPENDS: Can't read Github token.. skipping\n");
 			sleep(2);
 		} else {
 			if (github_token && strlen(github_token) > 0) {
@@ -116,6 +126,15 @@ int dep_curl_url_get_response(const char *url, const char *github_token)
 		curl_easy_setopt(curl, CURLOPT_VERBOSE, 1L);
 		curl_easy_setopt(curl, CURLOPT_ERRORBUFFER, error_buffer);
 		
+		if (is_native_windows()) {
+			if (access("cacert.pem", F_OK) == 0)
+				curl_easy_setopt(curl, CURLOPT_CAINFO, "cacert.pem");
+			else if (access("C:/libwatchdogs/cacert.pem", F_OK) == 0)
+				curl_easy_setopt(curl, CURLOPT_CAINFO, "C:/libwatchdogs/cacert.pem");
+			else
+				pr_color(stdout, FCOLOUR_YELLOW, "Warning: No CA file found. SSL verification may fail.\n");
+		}
+		
 		res = curl_easy_perform(curl);
 		curl_easy_getinfo(curl, CURLINFO_RESPONSE_CODE, &response_code);
 
@@ -132,16 +151,16 @@ int dep_curl_url_get_response(const char *url, const char *github_token)
 }
 
 /**
- * dep_curl_get_html - Fetch HTML content from URL
+ * dep_http_get_content - Fetch HTML content from URL
  * @url: URL to fetch
  * @out_html: Output pointer for HTML data
  *
  * Return: 1 on success, 0 on failure
  */
-int dep_curl_get_html(const char *url, char **out_html)
+int dep_http_get_content (const char *url, char **out_html)
 {
 		CURL *curl;
-		struct curl_buffer buffer = { 0 };
+		struct dep_curl_buffer buffer = { 0 };
 		CURLcode res;
 
 		curl = curl_easy_init();
@@ -149,7 +168,7 @@ int dep_curl_get_html(const char *url, char **out_html)
 				return RETZ;
 
 		curl_easy_setopt(curl, CURLOPT_URL, url);
-		curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, dep_write_callback);
+		curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, dep_curl_write_cb);
 		curl_easy_setopt(curl, CURLOPT_WRITEDATA, (void *)&buffer);
 		curl_easy_setopt(curl, CURLOPT_USERAGENT, "watchdogs/1.0");
 		curl_easy_setopt(curl, CURLOPT_FOLLOWLOCATION, 1L);
@@ -169,70 +188,14 @@ int dep_curl_get_html(const char *url, char **out_html)
 }
 
 /**
- * dep_find_archive_f_html - Find archive URL in HTML content
- * @html: HTML content to search
- * @out_url: Output buffer for URL
- * @out_size: Size of output buffer
- *
- * Return: 1 if found, 0 if not
- */
-static int dep_find_archive_f_html(const char *html, char *out_url, size_t out_size)
-{
-		const char *p = html;
-		const char *zip, *tar, *ret, *href;
-		size_t len, ulen;
-
-		while (p) {
-				zip = strstr(p, ".zip");
-				tar = strstr(p, ".tar.gz");
-				ret = NULL;
-				len = 0;
-
-				if (zip && (!tar || zip < tar)) {
-						ret = zip;
-						len = zip - p + 4;
-				} else if (tar) {
-						ret = tar;
-						len = tar - p + 7;
-				} else {
-						break;
-				}
-
-				/* Find href=" */
-				href = ret;
-				while (href > p && *(href - 1) != '"')
-						--href;
-
-				ulen = len + (ret - href);
-				if (ulen < out_size) {
-						strncpy(out_url, href, ulen);
-						out_url[ulen] = 0;
-
-						/* Convert relative URL to absolute */
-						if (out_url[0] == '/') {
-								char full_url[PATH_MAX];
-								snprintf(full_url, sizeof(full_url), 
-										 "%sgithub.com%s", "https://", out_url);
-								strncpy(out_url, full_url, out_size - 1);
-								out_url[out_size - 1] = '\0';
-						}
-						return RETN;
-				}
-				p = ret + len;
-		}
-
-		return RETZ;
-}
-
-/**
- * dep_gh_select_best_asset - Select most appropriate asset for current platform
- * @assets: Array of asset URLs
- * @count: Number of assets
+ * dep_get_assets - Select most appropriate asset for current platform
+ * @deps_assets: Array of asset URLs
+ * @count: Number of deps_assets
  * @preferred_os: Preferred OS name
  *
  * Return: Duplicated string of best asset URL
  */
-static char *dep_gh_select_best_asset(char **assets, int count, const char *preferred_os)
+static char *dep_get_assets (char **deps_assets, int count, const char *preferred_os)
 {
 		int i, j;
 		const char *os_patterns[] = {
@@ -250,39 +213,41 @@ static char *dep_gh_select_best_asset(char **assets, int count, const char *pref
 		if (count == 0)
 				return NULL;
 		if (count == 1)
-				return strdup(assets[0]);
+				return strdup(deps_assets[0]);
 
 		/* Prioritize OS-specific binaries */
 		for (i = 0; i < num_patterns; i++) {
 				for (j = 0; j < count; j++) {
-						if (strstr(assets[j], os_patterns[i]))
-								return strdup(assets[j]);
+						if (strstr(deps_assets[j], os_patterns[i]))
+								return strdup(deps_assets[j]);
 				}
 		}
 
 		/* Fallback to first asset */
-		return strdup(assets[0]);
+		return strdup(deps_assets[0]);
 }
 
 /**
- * dep_parse_repo_input - Parse repository input string
+ * dep_parse_repo - Parse repository input string
  * @input: Input string (URL or short format)
- * @info: Output dep_repo_info structure
+ * @__deps_data: Output dep_repo_info structure
  *
  * Return: 1 on success, 0 on failure
  */
-static int dep_parse_repo_input(const char *input, struct dep_repo_info *info)
+static int
+dep_parse_repo(const char *input, struct dep_repo_info *__deps_data)
 {
 		char working[512];
-		char *tag_ptr, *path, *first_slash, *user, *repo_slash, *repo, *git_ext;
+		char *tag_ptr, *path, *first_slash;
+		char *user, *repo_slash, *repo, *git_ext;
 
-		memset(info, 0, sizeof(*info));
+		memset(__deps_data, 0, sizeof(*__deps_data));
 
-		/* Default values */
-		strcpy(info->host, "github");
-		strcpy(info->domain, "github.com");
+		/* Default host/domain values */
+		strcpy(__deps_data->host, "github");
+		strcpy(__deps_data->domain, "github.com");
 
-		/* Create working copy */
+		/* Create working copy of input */
 		strncpy(working, input, sizeof(working) - 1);
 		working[sizeof(working) - 1] = '\0';
 
@@ -290,66 +255,66 @@ static int dep_parse_repo_input(const char *input, struct dep_repo_info *info)
 		tag_ptr = strrchr(working, ':');
 		if (tag_ptr) {
 			*tag_ptr = '\0';
-			strncpy(info->tag, tag_ptr + 1, sizeof(info->tag) - 1);
-			
+			strncpy(__deps_data->tag, tag_ptr + 1, sizeof(__deps_data->tag) - 1);
+
 			/* Handle special tags */
-			if (strcmp(info->tag, "latest") == 0) {
-				/* Keep as 'latest', will be converted to latest tag later */
-				pr_info(stdout, "latest tag detected, will use latest release");
+			if (!strcmp(__deps_data->tag, "latest")) {
+				pr_info(stdout, "Latest (:latest) tag detected, will use latest release");
 			}
 		}
 
 		path = working;
 
-		/* Skip protocol if present */
-		if (strncmp(path, "https://", 8) == 0) {
+		/* Skip protocol prefix */
+		if (!strncmp(path, "https://", 8))
 			path += 8;
-		} else if (strncmp(path, "http://", 7) == 0) {
+		else if (!strncmp(path, "http://", 7))
 			path += 7;
-		}
 
-		/* Handle short formats */
-		if (strncmp(path, "github/", 7) == 0) {
-			strcpy(info->host, "github");
-			strcpy(info->domain, "github.com");
+		/* Short deps_arch_format */
+		if (!strncmp(path, "github/", 7)) {
+			strcpy(__deps_data->host, "github");
+			strcpy(__deps_data->domain, "github.com");
 			path += 7;
-		} else if (strncmp(path, "gitlab/", 7) == 0) {
-			strcpy(info->host, "gitlab");
-			strcpy(info->domain, "gitlab.com");
+		} else if (!strncmp(path, "gitlab/", 7)) {
+			strcpy(__deps_data->host, "gitlab");
+			strcpy(__deps_data->domain, "gitlab.com");
 			path += 7;
-		} else if (strncmp(path, "gitea/", 6) == 0) {
-			strcpy(info->host, "gitea");
-			strcpy(info->domain, "gitea.com");
+		} else if (!strncmp(path, "gitea/", 6)) {
+			strcpy(__deps_data->host, "gitea");
+			strcpy(__deps_data->domain, "gitea.com");
 			path += 6;
-		} else if (strncmp(path, "sourceforge/", 12) == 0) {
-			strcpy(info->host, "sourceforge");
-			strcpy(info->domain, "sourceforge.net");
+		} else if (!strncmp(path, "sourceforge/", 12)) {
+			strcpy(__deps_data->host, "sourceforge");
+			strcpy(__deps_data->domain, "sourceforge.net");
 			path += 12;
 		} else {
 			/* Long format with explicit domain */
 			first_slash = strchr(path, '/');
 			if (first_slash && strchr(path, '.') && strchr(path, '.') < first_slash) {
 				char domain[128];
+
 				strncpy(domain, path, first_slash - path);
 				domain[first_slash - path] = '\0';
 
 				if (strstr(domain, "github")) {
-					strcpy(info->host, "github");
-					strcpy(info->domain, "github.com");
+					strcpy(__deps_data->host, "github");
+					strcpy(__deps_data->domain, "github.com");
 				} else if (strstr(domain, "gitlab")) {
-					strcpy(info->host, "gitlab");
-					strcpy(info->domain, "gitlab.com");
+					strcpy(__deps_data->host, "gitlab");
+					strcpy(__deps_data->domain, "gitlab.com");
 				} else if (strstr(domain, "gitea")) {
-					strcpy(info->host, "gitea");
-					strcpy(info->domain, "gitea.com");
+					strcpy(__deps_data->host, "gitea");
+					strcpy(__deps_data->domain, "gitea.com");
 				} else if (strstr(domain, "sourceforge")) {
-					strcpy(info->host, "sourceforge");
-					strcpy(info->domain, "sourceforge.net");
+					strcpy(__deps_data->host, "sourceforge");
+					strcpy(__deps_data->domain, "sourceforge.net");
 				} else {
-					/* Custom domain */
-					strncpy(info->domain, domain, sizeof(info->domain) - 1);
-					strcpy(info->host, "custom");
+					strncpy(__deps_data->domain, domain,
+						sizeof(__deps_data->domain) - 1);
+					strcpy(__deps_data->host, "custom");
 				}
+
 				path = first_slash + 1;
 			}
 		}
@@ -363,51 +328,50 @@ static int dep_parse_repo_input(const char *input, struct dep_repo_info *info)
 		*repo_slash = '\0';
 		repo = repo_slash + 1;
 
-		/* SourceForge has different format */
-		if (strcmp(info->host, "sourceforge") == 0) {
-			strncpy(info->user, user, sizeof(info->user) - 1);
-			strncpy(info->repo, repo, sizeof(info->repo) - 1);
-			
-			/* SourceForge projects often don't have user field */
-			if (strlen(info->user) == 0) {
-				strncpy(info->repo, user, sizeof(info->repo) - 1);
-			}
+		if (!strcmp(__deps_data->host, "sourceforge")) {
+			strncpy(__deps_data->user, user, sizeof(__deps_data->user) - 1);
+			strncpy(__deps_data->repo, repo, sizeof(__deps_data->repo) - 1);
+
+			if (strlen(__deps_data->user) == 0)
+				strncpy(__deps_data->repo, user, sizeof(__deps_data->repo) - 1);
 		} else {
-			strncpy(info->user, user, sizeof(info->user) - 1);
+			strncpy(__deps_data->user, user, sizeof(__deps_data->user) - 1);
 
 			/* Remove .git extension if present */
 			git_ext = strstr(repo, ".git");
 			if (git_ext)
 				*git_ext = '\0';
-			strncpy(info->repo, repo, sizeof(info->repo) - 1);
+			strncpy(__deps_data->repo, repo, sizeof(__deps_data->repo) - 1);
 		}
 
 		/* Validate required fields */
-		if (strlen(info->user) == 0 || strlen(info->repo) == 0) {
+		if (strlen(__deps_data->user) == 0 || strlen(__deps_data->repo) == 0)
 			return RETZ;
-		}
 
 #if defined(_DBG_PRINT)
-		pr_info(stdout, "Parsed repo: host=%s, domain=%s, user=%s, repo=%s, tag=%s",
-				info->host, info->domain, info->user, info->repo,
-				info->tag[0] ? info->tag : "(none)");
+		pr_info(stdout, "repo: host=%s, domain=%s, user=%s, repo=%s, tag=%s",
+			__deps_data->host,
+			__deps_data->domain,
+			__deps_data->user,
+			__deps_data->repo,
+			__deps_data->tag[0] ? __deps_data->tag : "(none)");
 #endif
 
-    	return RETN;
+		return RETN;
 }
 
 /**
- * dep_gh_release_assets - Get release assets from GitHub API
+ * dep_gh_release_assets - Get release deps_assets from GitHub API
  * @user: Repository owner
  * @repo: Repository name
  * @tag: Release tag
  * @out_urls: Output array for URLs
  * @max_urls: Maximum number of URLs to fetch
  *
- * Return: Number of assets ret
+ * Return: Number of deps_assets ret
  */
-static int dep_gh_release_assets(const char *user, const char *repo, 
-									 const char *tag, char **out_urls, int max_urls)
+static int dep_gh_release_assets (const char *user, const char *repo, 
+								  const char *tag, char **out_urls, int max_urls)
 {
 		char api_url[PATH_MAX];
 		char *json_data = NULL;
@@ -418,11 +382,11 @@ static int dep_gh_release_assets(const char *user, const char *repo,
 				 "%sapi.github.com/repos/%s/%s/releases/tags/%s",
 				 "https://", user, repo, tag);
 
-		if (!dep_curl_get_html(api_url, &json_data))
+		if (!dep_http_get_content(api_url, &json_data))
 				return RETZ;
 
 		p = json_data;
-		while (url_count < max_urls && (p = strstr(p, "\"browser_download_url\"")) != WD_ISNULL) {
+		while (url_count < max_urls && (p = strstr(p, "\"browser_download_url\"")) != NULL) {
 				const char *url_end;
 				size_t url_len;
 
@@ -448,165 +412,200 @@ static int dep_gh_release_assets(const char *user, const char *repo,
 		wdfree(json_data);
 		return url_count;
 }
-
-/**
- * dep_check_github_branch - Check if GitHub branch exists
- * @user: Repository owner
- * @repo: Repository name  
- * @branch: Branch name
- *
- * Return: 1 if exists, 0 if not
- */
-static int dep_check_github_branch(const char *user,
-								   const char *repo,
-								   const char *branch)
-{
-		char url[1024];
-
-		snprintf(url, sizeof(url),
-				 "%sgithub.com/%s/%s/archive/refs/heads/%s.zip",
-				 "https://", user, repo, branch);
-
-		return dep_curl_url_get_response(url, wcfg.wd_toml_github_tokens);
-}
-
 /**
  * dep_build_repo_url - Build repository URL based on host and type
- * @info: Repository information
+ * @__deps_data: Repository information
  * @is_tag_page: Whether to build tag page URL
- * @out_url: Output buffer for URL
- * @out_size: Size of output buffer
+ * @deps_put_url: Output buffer for URL
+ * @deps_put_size: Size of output buffer
  */
-/**
- * dep_build_repo_url - Build repository URL based on host and type
- * @info: Repository information
- * @is_tag_page: Whether to build tag page URL
- * @out_url: Output buffer for URL
- * @out_size: Size of output buffer
- */
-static void dep_build_repo_url(const struct dep_repo_info *info, int is_tag_page,
-                               char *out_url, size_t out_size)
+static void
+dep_build_repo_url(const struct dep_repo_info *__deps_data, int is_tag_page,
+		   char *deps_put_url, size_t deps_put_size)
 {
-		char actual_tag[128] = {0};
-		
+		char deps_actual_tag[128] = { 0 };
+
 		/* Copy tag for processing */
-		if (info->tag[0]) {
-			strncpy(actual_tag, info->tag, sizeof(actual_tag) - 1);
-			
+		if (__deps_data->tag[0]) {
+			strncpy(deps_actual_tag, __deps_data->tag,
+				sizeof(deps_actual_tag) - 1);
+
 			/* For latest, we keep it as is for URL building
-			Actual conversion to latest tag happens in dep_handle_repo */
-			if (strcmp(actual_tag, "latest") == 0) {
+			* Actual conversion to latest tag happens in dep_handle_repo
+			*/
+			if (strcmp(deps_actual_tag, "latest") == 0) {
 				/* For GitHub, latest in URL context typically means latest release */
-				if (strcmp(info->host, "github") == 0 && !is_tag_page) {
-					/* For download URLs, we'll let dep_handle_repo handle the conversion */
-					strcpy(actual_tag, "latest");
+				if (strcmp(__deps_data->host, "github") == 0 && !is_tag_page) {
+					/* For download URLs, let dep_handle_repo handle conversion */
+					strcpy(deps_actual_tag, "latest");
 				}
 			}
 		}
 
-		if (strcmp(info->host, "github") == 0) {
-			if (is_tag_page && actual_tag[0]) {
-				if (strcmp(actual_tag, "latest") == 0 || strcmp(actual_tag, "latest") == 0) {
-					snprintf(out_url, out_size, "%s%s/%s/%s/releases/latest",
-							"https://", info->domain, info->user, info->repo);
+		if (strcmp(__deps_data->host, "github") == 0) {
+			if (is_tag_page && deps_actual_tag[0]) {
+				if (!strcmp(deps_actual_tag, "latest")) {
+					snprintf(deps_put_url, deps_put_size,
+						"https://%s/%s/%s/releases/latest",
+						__deps_data->domain,
+						__deps_data->user,
+						__deps_data->repo);
 				} else {
-					snprintf(out_url, out_size, "%s%s/%s/%s/releases/tag/%s",
-							"https://", info->domain, info->user, info->repo, actual_tag);
+					snprintf(deps_put_url, deps_put_size,
+						"https://%s/%s/%s/releases/tag/%s",
+						__deps_data->domain,
+						__deps_data->user,
+						__deps_data->repo,
+						deps_actual_tag);
 				}
-			} else if (actual_tag[0]) {
-				if (strcmp(actual_tag, "latest") == 0 || strcmp(actual_tag, "latest") == 0) {
-					/* For latest/latest, use the latest release API */
-					snprintf(out_url, out_size, "%s%s/%s/%s/releases/latest",
-							"https://", info->domain, info->user, info->repo);
+			} else if (deps_actual_tag[0]) {
+				if (!strcmp(deps_actual_tag, "latest")) {
+					snprintf(deps_put_url, deps_put_size,
+						"https://%s/%s/%s/releases/latest",
+						__deps_data->domain,
+						__deps_data->user,
+						__deps_data->repo);
 				} else {
-					snprintf(out_url, out_size, "%s%s/%s/%s/archive/refs/tags/%s.tar.gz",
-							"https://", info->domain, info->user, info->repo, actual_tag);
-				}
-			} else {
-				/* No tag specified - use main branch */
-				snprintf(out_url, out_size, "%s%s/%s/%s/archive/refs/heads/main.zip",
-						"https://", info->domain, info->user, info->repo);
-			}
-		}
-		else if (strcmp(info->host, "gitlab") == 0) {
-			if (is_tag_page && actual_tag[0]) {
-				snprintf(out_url, out_size, "%s%s/%s/%s/-/tags/%s",
-						"https://", info->domain, info->user, info->repo, actual_tag);
-			} else if (actual_tag[0]) {
-				if (strcmp(actual_tag, "latest") == 0) {
-					/* GitLab doesn't have a direct 'latest' equivalent, use main branch */
-					snprintf(out_url, out_size, "%s%s/%s/%s/-/archive/main/%s-main.zip",
-							"https://", info->domain, info->user, info->repo, info->repo);
-				} else {
-					snprintf(out_url, out_size, "%s%s/%s/%s/-/archive/%s/%s-%s.tar.gz",
-							"https://", info->domain, info->user, info->repo, actual_tag,
-							info->repo, actual_tag);
+					snprintf(deps_put_url, deps_put_size,
+						"https://%s/%s/%s/archive/refs/tags/%s.tar.gz",
+						__deps_data->domain,
+						__deps_data->user,
+						__deps_data->repo,
+						deps_actual_tag);
 				}
 			} else {
-				snprintf(out_url, out_size, "%s%s/%s/%s/-/archive/main/%s-main.zip",
-						"https://", info->domain, info->user, info->repo, info->repo);
+				snprintf(deps_put_url, deps_put_size,
+					"https://%s/%s/%s/archive/refs/heads/main.zip",
+					__deps_data->domain,
+					__deps_data->user,
+					__deps_data->repo);
 			}
-		}
-		else if (strcmp(info->host, "gitea") == 0) {
-			if (is_tag_page && actual_tag[0]) {
-				snprintf(out_url, out_size, "%s%s/%s/%s/tags/%s",
-						"https://", info->domain, info->user, info->repo, actual_tag);
-			} else if (actual_tag[0]) {
-				if (strcmp(actual_tag, "latest") == 0) {
-					/* Gitea - use main branch for latest */
-					snprintf(out_url, out_size, "%s%s/%s/%s/archive/main.zip",
-							"https://", info->domain, info->user, info->repo);
+		} else if (strcmp(__deps_data->host, "gitlab") == 0) {
+			if (is_tag_page && deps_actual_tag[0]) {
+				snprintf(deps_put_url, deps_put_size,
+					"https://%s/%s/%s/-/tags/%s",
+					__deps_data->domain,
+					__deps_data->user,
+					__deps_data->repo,
+					deps_actual_tag);
+			} else if (deps_actual_tag[0]) {
+				if (!strcmp(deps_actual_tag, "latest")) {
+					snprintf(deps_put_url, deps_put_size,
+						"https://%s/%s/%s/-/archive/main/%s-main.zip",
+						__deps_data->domain,
+						__deps_data->user,
+						__deps_data->repo,
+						__deps_data->repo);
 				} else {
-					snprintf(out_url, out_size, "%s%s/%s/%s/archive/%s.tar.gz",
-							"https://", info->domain, info->user, info->repo, actual_tag);
+					snprintf(deps_put_url, deps_put_size,
+						"https://%s/%s/%s/-/archive/%s/%s-%s.tar.gz",
+						__deps_data->domain,
+						__deps_data->user,
+						__deps_data->repo,
+						deps_actual_tag,
+						__deps_data->repo,
+						deps_actual_tag);
 				}
 			} else {
-				snprintf(out_url, out_size, "%s%s/%s/%s/archive/main.zip",
-						"https://", info->domain, info->user, info->repo);
+				snprintf(deps_put_url, deps_put_size,
+					"https://%s/%s/%s/-/archive/main/%s-main.zip",
+					__deps_data->domain,
+					__deps_data->user,
+					__deps_data->repo,
+					__deps_data->repo);
 			}
-		}
-		else if (strcmp(info->host, "sourceforge") == 0) {
-			if (actual_tag[0] && strcmp(actual_tag, "latest") != 0) {
-				/* SourceForge with specific tag */
-				snprintf(out_url, out_size, "%s%s/projects/%s/files/%s/download",
-						"https://", info->domain, info->repo, actual_tag);
+		} else if (strcmp(__deps_data->host, "gitea") == 0) {
+			if (is_tag_page && deps_actual_tag[0]) {
+				snprintf(deps_put_url, deps_put_size,
+					"https://%s/%s/%s/%s/tags/%s",
+					__deps_data->domain,
+					__deps_data->user,
+					__deps_data->repo,
+					__deps_data->repo,
+					deps_actual_tag);
+			} else if (deps_actual_tag[0]) {
+				if (!strcmp(deps_actual_tag, "latest")) {
+					snprintf(deps_put_url, deps_put_size,
+						"https://%s/%s/%s/%s/archive/main.zip",
+						__deps_data->domain,
+						__deps_data->user,
+						__deps_data->repo,
+						__deps_data->repo);
+				} else {
+					snprintf(deps_put_url, deps_put_size,
+						"https://%s/%s/%s/%s/archive/%s.tar.gz",
+						__deps_data->domain,
+						__deps_data->user,
+						__deps_data->repo,
+						__deps_data->repo,
+						deps_actual_tag);
+				}
 			} else {
-				/* SourceForge latest or latest */
-				snprintf(out_url, out_size, "%s%s/projects/%s/files/latest/download",
-						"https://", info->domain, info->repo);
+				snprintf(deps_put_url, deps_put_size,
+					"https://%s/%s/%s/%s/archive/main.zip",
+					__deps_data->domain,
+					__deps_data->user,
+					__deps_data->repo,
+					__deps_data->repo);
 			}
-		}
-		else {
-			/* Custom/unknown host - use generic GitHub-like format */
-			if (is_tag_page && actual_tag[0]) {
-				snprintf(out_url, out_size, "%s%s/%s/%s/releases/tag/%s",
-						"https://", info->domain, info->user, info->repo, actual_tag);
-			} else if (actual_tag[0]) {
-				snprintf(out_url, out_size, "%s%s/%s/%s/archive/refs/tags/%s.tar.gz",
-						"https://", info->domain, info->user, info->repo, actual_tag);
+		} else if (strcmp(__deps_data->host, "sourceforge") == 0) {
+			if (deps_actual_tag[0] && strcmp(deps_actual_tag, "latest")) {
+				snprintf(deps_put_url, deps_put_size,
+					"https://%s%s/projects/%s/files/%s/download",
+					"https://",
+					__deps_data->domain,
+					__deps_data->repo,
+					deps_actual_tag);
 			} else {
-				snprintf(out_url, out_size, "%s%s/%s/%s/archive/refs/heads/main.zip",
-						"https://", info->domain, info->user, info->repo);
+				snprintf(deps_put_url, deps_put_size,
+					"https://%s%s/projects/%s/files/latest/download",
+					"https://",
+					__deps_data->domain,
+					__deps_data->repo);
+			}
+		} else {
+			/* Custom/unknown host */
+			if (is_tag_page && deps_actual_tag[0]) {
+				snprintf(deps_put_url, deps_put_size,
+					"https://%s/%s/%s/releases/tag/%s",
+					__deps_data->domain,
+					__deps_data->user,
+					__deps_data->repo,
+					deps_actual_tag);
+			} else if (deps_actual_tag[0]) {
+				snprintf(deps_put_url, deps_put_size,
+					"https://%s/%s/%s/archive/refs/tags/%s.tar.gz",
+					__deps_data->domain,
+					__deps_data->user,
+					__deps_data->repo,
+					deps_actual_tag);
+			} else {
+				snprintf(deps_put_url, deps_put_size,
+					"https://%s/%s/%s/archive/refs/heads/main.zip",
+					__deps_data->domain,
+					__deps_data->user,
+					__deps_data->repo);
 			}
 		}
 
 #if defined(_DBG_PRINT)
-		pr_info(stdout, "Built URL: %s (is_tag_page=%d, tag=%s)", 
-				out_url, is_tag_page, actual_tag[0] ? actual_tag : "(none)");
+		pr_info(stdout, "Built URL: %s (is_tag_page=%d, tag=%s)",
+			deps_put_url, is_tag_page,
+			deps_actual_tag[0] ? deps_actual_tag : "(none)");
 #endif
 }
 
 /**
- * dep_get_latest_tag - Get the latest tag from GitHub API
+ * dep_gh_latest_tag - Get the latest tag from GitHub API
  * @user: Repository owner
  * @repo: Repository name
  * @out_tag: Output buffer for latest tag
- * @out_size: Size of output buffer
+ * @deps_put_size: Size of output buffer
  *
  * Return: 1 if found, 0 if not
  */
-static int dep_get_latest_tag(const char *user, const char *repo, 
-                              char *out_tag, size_t out_size)
+static int dep_gh_latest_tag (const char *user, const char *repo, 
+                              		  char *out_tag, size_t deps_put_size)
 {
 		char api_url[PATH_MAX];
 		char *json_data = NULL;
@@ -617,7 +616,7 @@ static int dep_get_latest_tag(const char *user, const char *repo,
 				"%sapi.github.com/repos/%s/%s/releases/latest",
 				"https://", user, repo);
 
-		if (!dep_curl_get_html(api_url, &json_data))
+		if (!dep_http_get_content(api_url, &json_data))
 			return RETZ;
 
 		/* Parse tag_name from JSON response */
@@ -639,7 +638,7 @@ static int dep_get_latest_tag(const char *user, const char *repo,
 					const char *end = strchr(p, '"');
 					if (end) {
 						size_t tag_len = end - p;
-						if (tag_len < out_size) {
+						if (tag_len < deps_put_size) {
 							strncpy(out_tag, p, tag_len);
 							out_tag[tag_len] = '\0';
 							ret = 1;
@@ -654,99 +653,165 @@ static int dep_get_latest_tag(const char *user, const char *repo,
 }
 
 /**
- * wd_install_dependss - Install depends from repositories
- * dep_handle_repo - Helper for Handling
+ * dep_handle_repo - Helper function for handling repository dependencies
  */
-static int dep_handle_repo(const struct dep_repo_info *dep_repo_info,
-                          char *out_url,
-                          size_t out_sz)
+static int dep_handle_repo (const struct dep_repo_info *dep_repo_info,
+                           char *deps_put_url,
+                           size_t deps_put_size)
 {
-		int ret = 0;
-		/* Try common branch names */
-		const char *branches[] = {
-									"main",
-									"master"
-								 };
+		int ret = 0; 
+		/// Initialize return value
+		/// 0 indicates failure by default
+		/// Will set to 1 if a valid source URL is found
 
-		char actual_tag[128] = {0};
-		
-		/* Handle latest -> latest tag conversion */
+		const char *deps_repo_branch[] = {
+											"main",
+											"master"
+										 };
+		/// List of common branch names
+		/// Try "main" first, then "master" as fallback
+		/// Used if tag is not specified or retrieval fails
+
+		char deps_actual_tag[128] = { 0 };
+		/// Buffer to store the resolved tag
+		/// Initialized to zero
+		/// Stores either the actual GitHub release tag or empty string
+
 		if (dep_repo_info->tag[0] && strcmp(dep_repo_info->tag, "latest") == 0) {
-			if (dep_get_latest_tag(dep_repo_info->user, 
+			/// Check if the requested tag is "latest"
+			/// Convert "latest" into the actual release tag
+			/// Use GitHub API helper function dep_gh_latest_tag
+
+			if (dep_gh_latest_tag(dep_repo_info->user, 
 								dep_repo_info->repo, 
-								actual_tag, 
-								sizeof(actual_tag))) {
-				pr_info(stdout, "Using latest tag: %s (instead of latest)", actual_tag);
+								deps_actual_tag, 
+								sizeof(deps_actual_tag))) {
+				/// Successfully retrieved latest tag from GitHub
+				/// Store it in deps_actual_tag
+				/// Log the tag being used for debugging
+				pr_info(stdout, "Using latest tag: %s"
+								"(instead of latest)", deps_actual_tag);
 			} else {
-				pr_error(stdout, "Failed to get latest tag for %s/%s, falling back to main branch",
-						dep_repo_info->user, dep_repo_info->repo);
-				strcpy(actual_tag, ""); // Fallback to main branch
+				/// Failed to retrieve latest release tag
+				/// Fallback to default branch approach
+				/// Log an error message
+				pr_error(stdout, "Failed to get latest tag for %s/%s,"
+								"falling back to main branch",
+								dep_repo_info->user, dep_repo_info->repo);
+				strcpy(deps_actual_tag, ""); 
+				/// Set to empty string to trigger branch fallback
+				/// Ensures later logic will attempt main/master branches
 			}
 		} else {
-			strncpy(actual_tag, dep_repo_info->tag, sizeof(actual_tag) - 1);
+			/// Copy the specified tag from dep_repo_info
+			/// Only if it's not "latest"
+			/// Ensure buffer is not overflowed
+			strncpy(deps_actual_tag, dep_repo_info->tag, sizeof(deps_actual_tag) - 1);
 		}
 
-		if (actual_tag[0]) {
-			/* Try GitHub release assets */
-			char *assets[10] = { 0 };
-			int asset_count = dep_gh_release_assets(dep_repo_info->user,
-												dep_repo_info->repo,
-												actual_tag,
-												assets,
-												10);
+		if (deps_actual_tag[0]) {
+			/// If a valid tag exists
+			/// Attempt to retrieve release assets from GitHub
+			/// Assets may contain pre-built binaries or archives
 
-			if (asset_count > 0) {
-				char *best_asset;
-				best_asset = dep_gh_select_best_asset(assets, asset_count, NULL);
-				if (best_asset) {
-					strncpy(out_url, best_asset, out_sz - 1);
+			char *deps_assets[10] = { 0 };
+			/// Array to store asset URLs
+			/// Maximum of 10 assets
+			/// Initialized to NULL pointers
+
+			int deps_asset_count = dep_gh_release_assets(dep_repo_info->user,
+														 dep_repo_info->repo,
+														 deps_actual_tag,
+														 deps_assets,
+														 10);
+			/// Fetch release assets for the given tag
+			/// Store in deps_assets array
+			/// Returns number of assets found
+
+			if (deps_asset_count > 0) {
+				/// If assets are available
+				/// Choose the best suitable asset
+				char *deps_best_asset = NULL;
+				if (deps_best_asset == NULL)
+					deps_best_asset = dep_get_assets(deps_assets, deps_asset_count, NULL);
+				/// Select the best asset based on platform/format
+				/// NULL as third argument means default selection
+
+				if (deps_best_asset) {
+					/// If a suitable asset is found
+					/// Copy URL to deps_put_url buffer
+					/// Mark return value as success
+					strncpy(deps_put_url, deps_best_asset, deps_put_size - 1);
 					ret = 1;
-					wdfree(best_asset);
+					wdfree(deps_best_asset);
+					/// Free memory allocated for best asset string
 				}
-				for (int j = 0; j < asset_count; j++)
-					wdfree(assets[j]);
+
+				for (int j = 0; j < deps_asset_count; j++)
+					wdfree(deps_assets[j]);
+				/// Free memory for all other asset strings
+				/// Prevent memory leaks
 			}
 
-			/* Fallback to tagged source archives */
 			if (!ret) {
-				const char *formats[] = {
+				/// If no asset was suitable or available
+				/// Fallback to downloading tagged source archives
+				const char *deps_arch_format[] = {
 					"https://github.com/%s/%s/archive/refs/tags/%s.tar.gz",
 					"https://github.com/%s/%s/archive/refs/tags/%s.zip"
 				};
+				/// Define possible archive deps_arch_format
+				/// Try .tar.gz first, then .zip
+
 				for (int j = 0; j < 2 && !ret; j++) {
-					snprintf(out_url, out_sz, formats[j],
-							dep_repo_info->user,
-							dep_repo_info->repo,
-							actual_tag);
-					if (dep_curl_url_get_response(out_url, wcfg.wd_toml_github_tokens))
+					snprintf(deps_put_url, deps_put_size, deps_arch_format[j],
+							 dep_repo_info->user,
+							 dep_repo_info->repo,
+							 deps_actual_tag);
+					/// Format the URL for the archive
+					/// Insert user, repo, and tag into URL
+
+					if (dep_check_url(deps_put_url, wcfg.wd_toml_github_tokens))
 						ret = 1;
+					/// Check if the URL is reachable
+					/// If yes, mark success
 				}
 			}
 		} else {
-			/* No tag specified or latest failed - try branches */
+			/// If no tag specified or 'latest' failed
+			/// Attempt to use common branch names
 			for (int j = 0; j < 2 && !ret; j++) {
-				snprintf(out_url, out_sz,
+				snprintf(deps_put_url, deps_put_size,
 						"%s%s/%s/archive/refs/heads/%s.zip",
 						"https://github.com/",
 						dep_repo_info->user,
 						dep_repo_info->repo,
-						branches[j]);
-				if (dep_curl_url_get_response(out_url, wcfg.wd_toml_github_tokens)) {
+						deps_repo_branch[j]);
+				/// Format URL for branch archive
+				/// Try main first, then master
+
+				if (dep_check_url(deps_put_url, wcfg.wd_toml_github_tokens)) {
 					ret = 1;
+					/// Found valid branch archive
 					if (j == 1)
-						pr_info(stdout, "Using master branch (main not found)");
+						pr_info(stdout,
+								"Using master branch (main not found)");
+					/// Log if fallback to master branch occurs
 				}
 			}
 		}
 
 		return ret;
+		/// Return 1 if a valid download URL was set
+		/// Return 0 if no valid source found
+		/// End of function
 }
 
 /**
- * __convert_path - convert backslashes to forward slashes in path
+ * dep_sym_convert - convert backslashes to forward slashes in path
  * @path: path string to convert
  */
-void __convert_path(char *path)
+void dep_sym_convert (char *path)
 {
 		char *p;
 
@@ -758,12 +823,14 @@ void __convert_path(char *path)
 
 /**
  * dep_add_ncheck_hash - add file hash to dependency list after checking duplicates
- * @file_path: full path to the file for hashing
- * @json_path: relative path for JSON storage
+ * @_FP: full path to the file for hashing
+ * @_JP: relative path for JSON storage
  */
-void dep_add_ncheck_hash(cJSON *depends, const char *file_path, const char *json_path)
+void
+dep_add_ncheck_hash(cJSON *depends, const char *_FP, const char *_JP)
 {
-		char convert_f_path[PATH_MAX], convert_j_path[PATH_MAX];
+		char convert_f_path[PATH_MAX];
+		char convert_j_path[PATH_MAX];
 		unsigned char hash[SHA256_DIGEST_LENGTH]; /* Buffer for SHA256 hash */
 		char *hex;
 		int h_exists = 0;
@@ -771,76 +838,71 @@ void dep_add_ncheck_hash(cJSON *depends, const char *file_path, const char *json
 		int j;
 
 		char *pos;
-		while ((pos = strstr(file_path, "include/")) != NULL) {
+
+		/* Remove "include/" from file paths */
+		while ((pos = strstr(_FP, "include/")) != NULL) {
 			memmove(pos, pos + strlen("include/"),
-							   strlen(pos + strlen("include/")) + 1);
+				strlen(pos + strlen("include/")) + 1);
 		}
-		while ((pos = strstr(json_path, "include/")) != NULL) {
+
+		while ((pos = strstr(_JP, "include/")) != NULL) {
 			memmove(pos, pos + strlen("include/"),
-							   strlen(pos + strlen("include/")) + 1);
+				strlen(pos + strlen("include/")) + 1);
 		}
 
 		/* Convert paths to use forward slashes */
-		strncpy(convert_f_path, file_path, sizeof(convert_f_path));
-			convert_f_path[sizeof(convert_f_path) - 1] = '\0';
-		__convert_path(convert_f_path);
+		strncpy(convert_f_path, _FP, sizeof(convert_f_path));
+		convert_f_path[sizeof(convert_f_path) - 1] = '\0';
+		dep_sym_convert(convert_f_path);
 
-		strncpy(convert_j_path, json_path, sizeof(convert_j_path));
-			convert_j_path[sizeof(convert_j_path) - 1] = '\0';
-		__convert_path(convert_j_path);
+		strncpy(convert_j_path, _JP, sizeof(convert_j_path));
+		convert_j_path[sizeof(convert_j_path) - 1] = '\0';
+		dep_sym_convert(convert_j_path);
 
 		pr_info(stdout, "\tHashing convert path: %s\n", convert_f_path);
 
 		/* Calculate SHA256 hash of the file */
 		if (sha256_hash(convert_f_path, hash) == RETN) {
-				to_hex(hash, 32, &hex);
+			to_hex(hash, 32, &hex);
 
-				/* Check if hash already exists in the list */
-				array_size = cJSON_GetArraySize(depends);
-				for (j = 0; j < array_size; j++) {
-						cJSON *_e_item = cJSON_GetArrayItem(depends, j);
-						if (cJSON_IsString(_e_item) && 
-						    strcmp(_e_item->valuestring, hex) == 0) {
-								h_exists = 1;
-								break;
-						}
+			/* Check if hash already exists in the JSON array */
+			array_size = cJSON_GetArraySize(depends);
+			for (j = 0; j < array_size; j++) {
+				cJSON *_e_item = cJSON_GetArrayItem(depends, j);
+				if (cJSON_IsString(_e_item) &&
+					strcmp(_e_item->valuestring, hex) == 0) {
+					h_exists = 1;
+					break;
 				}
+			}
 
-				/* Add hash if it doesn't exist */
-				if (!h_exists) {
-						cJSON_AddItemToArray(depends, cJSON_CreateString(hex));
-						pr_info(stdout,
-								"\tAdded hash for: %s to wd_depends.json\n",
-								convert_j_path);
-				} else {
-						pr_info(stdout,
-								"\tHash already exists for: %s in wd_depends.json\n",
-								convert_j_path);
-						pr_info(stdout, "\tHash:");
-						pr_color(stdout, FCOLOUR_GREEN, "\t\t%s\n", hex);
-				}
+			/* Add hash if it doesn't exist */
+			if (!h_exists) {
+				cJSON_AddItemToArray(depends, cJSON_CreateString(hex));
+				pr_info(stdout,
+					"\tAdded hash for: %s to wd_depends.json\n",
+					convert_j_path);
+			} else {
+				pr_info(stdout,
+					"\tHash already exists for: %s in wd_depends.json\n",
+					convert_j_path);
+				pr_info(stdout, "\tHash:");
+				pr_color(stdout, FCOLOUR_GREEN, "\t\t%s\n", hex);
+			}
 
-				wdfree(hex);
+			wdfree(hex);
 		} else {
-				pr_error(stdout,
-						 "Failed to hash: %s (convert: %s)\n",
-						 convert_j_path,
-						 convert_f_path);
+			pr_error(stdout,
+				"Failed to hash: %s (convert: %s)\n",
+				convert_j_path,
+				convert_f_path);
 		}
 }
 
-/*
- * dep_implementation_samp_conf - Apply plugins name to SA-MP config
- * dep_implementation_omp_conf - Apply plugins name to Open.MP config
- */
-typedef struct {
-    const char *dep_config;
-    const char *dep_target;
-    const char *dep_added;
-} depConfig;
-
-void dep_implementation_samp_conf(depConfig config) {
-		pr_info(stdout, "\tAdding Depends: %s", config.dep_added);
+void dep_implementation_samp_conf (depConfig config) {
+		pr_info(stdout,
+				"\tAdding Depends: %s",
+				config.dep_added);
 		
 		FILE* file = fopen(config.dep_config, "r");
 		if (file) {
@@ -851,12 +913,12 @@ void dep_implementation_samp_conf(depConfig config) {
 			
 			while (fgets(line, sizeof(line), file)) {
 				line[strcspn(line, "\n")] = 0;
-				if (strstr(line, config.dep_added) != WD_ISNULL) {
+				if (strstr(line, config.dep_added) != NULL) {
 					t_exist = 1;
 				}
-				if (strstr(line, config.dep_target) != WD_ISNULL) {
+				if (strstr(line, config.dep_target) != NULL) {
 					tr_exist = 1;
-					if (strstr(line, config.dep_added) != WD_ISNULL) {
+					if (strstr(line, config.dep_added) != NULL) {
 						tr_ln_has_tx = 1;
 					}
 				}
@@ -868,7 +930,7 @@ void dep_implementation_samp_conf(depConfig config) {
 			}
 			
 			if (tr_exist && !tr_ln_has_tx) {
-				FILE* temp_file = fopen("temp.txt", "w");
+				FILE* temp_file = fopen(".deps_tmp", "w");
 				file = fopen(config.dep_config, "r");
 				
 				while (fgets(line, sizeof(line), file)) {
@@ -876,8 +938,8 @@ void dep_implementation_samp_conf(depConfig config) {
 					strcpy(clean_line, line);
 					clean_line[strcspn(clean_line, "\n")] = 0;
 					
-					if (strstr(clean_line, config.dep_target) != WD_ISNULL && 
-						strstr(clean_line, config.dep_added) == WD_ISNULL) {
+					if (strstr(clean_line, config.dep_target) != NULL && 
+						strstr(clean_line, config.dep_added) == NULL) {
 						fprintf(temp_file, "%s %s\n", clean_line, config.dep_added);
 					} else {
 						fputs(line, temp_file);
@@ -888,7 +950,7 @@ void dep_implementation_samp_conf(depConfig config) {
 				fclose(temp_file);
 				
 				remove(config.dep_config);
-				rename("temp.txt", config.dep_config);
+				rename(".deps_tmp", config.dep_config);
 			} else if (!tr_exist) {
 				file = fopen(config.dep_config, "a");
 				fprintf(file, "%s %s\n", config.dep_target, config.dep_added);
@@ -906,10 +968,13 @@ void dep_implementation_samp_conf(depConfig config) {
 #define S_ADD_PLUGIN(x, y, z) \
     dep_implementation_samp_conf((depConfig){x, y, z})
 
-void dep_implementation_omp_conf(const char* filename, const char* plugin_name) {
-		pr_color(stdout, FCOLOUR_GREEN, "Depends: Adding Depends '%s'", plugin_name);
+void dep_implementation_omp_conf (const char* config_name, const char* deps_name) {
+		pr_color(stdout,
+				 FCOLOUR_GREEN,
+				 "Depends: Adding Depends '%s'",
+				 deps_name);
 		
-		FILE* c_file = fopen(filename, "r");
+		FILE* c_file = fopen(config_name, "r");
 		cJSON* root = NULL;
 		
 		if (!c_file) {
@@ -965,18 +1030,18 @@ void dep_implementation_omp_conf(const char* filename, const char* plugin_name) 
 		
 		cJSON_ArrayForEach(item, legacy_plugins) {
 			if (cJSON_IsString(item) &&
-				!strcmp(item->valuestring, plugin_name)) {
+				!strcmp(item->valuestring, deps_name)) {
 				p_exist = 1;
 				break;
 			}
 		}
 		
 		if (!p_exist) {
-			cJSON_AddItemToArray(legacy_plugins, cJSON_CreateString(plugin_name));
+			cJSON_AddItemToArray(legacy_plugins, cJSON_CreateString(deps_name));
 		}
 		
 		char* __cJSON_Printed = cJSON_Print(root);
-		c_file = fopen(filename, "w");
+		c_file = fopen(config_name, "w");
 		if (c_file) {
 			fputs(__cJSON_Printed, c_file);
 			fclose(c_file);
@@ -990,11 +1055,16 @@ void dep_implementation_omp_conf(const char* filename, const char* plugin_name) 
 /**
  * dep_add_include - Added Include to Gamemode
  */
-void dep_add_include(const char *modes,
-					 char *dep_name,
-					 char *dep_after) {
+void dep_add_include (const char *modes,
+					  char *dep_name,
+					  char *dep_after) {
+		pr_color(stdout,
+				 FCOLOUR_GREEN,
+				 "Depends: Adding Include: '%s'",
+				 dep_name);
+
 		FILE *file = fopen(modes, "r");
-		if (file == WD_ISNULL) {
+		if (file == NULL) {
 			return;
 		}
 		
@@ -1007,10 +1077,8 @@ void dep_add_include(const char *modes,
 		ct_modes[fileSize] = '\0';
 		fclose(file);
 
-		pr_color(stdout, FCOLOUR_GREEN, "Depends: Adding Include: '%s'", dep_name);
-
-		if (strstr(ct_modes, dep_name) != WD_ISNULL &&
-			strstr(ct_modes, dep_after) != WD_ISNULL) {
+		if (strstr(ct_modes, dep_name) != NULL &&
+			strstr(ct_modes, dep_after) != NULL) {
 			wdfree(ct_modes);
 			return;
 		}
@@ -1019,12 +1087,12 @@ void dep_add_include(const char *modes,
 					   				   dep_after);
 		
 		FILE *n_file = fopen(modes, "w");
-		if (n_file == WD_ISNULL) {
+		if (n_file == NULL) {
 			wdfree(ct_modes);
 			return;
 		}
 		
-		if (e_dep_after_pos != WD_ISNULL) {
+		if (e_dep_after_pos != NULL) {
 			fwrite(ct_modes,
 				   1,
 				   e_dep_after_pos - ct_modes + strlen(dep_after),
@@ -1034,7 +1102,7 @@ void dep_add_include(const char *modes,
 		} else {
 			char *includeToAddPos = strstr(ct_modes, dep_name);
 			
-			if (includeToAddPos != WD_ISNULL) {
+			if (includeToAddPos != NULL) {
 				fwrite(ct_modes,
 					   1,
 					   includeToAddPos - ct_modes + strlen(dep_name),
@@ -1052,12 +1120,9 @@ void dep_add_include(const char *modes,
 #define DEP_ADD_INCLUDES(x, y, z) dep_add_include(x, y, z)
 
 /**
- * dep_get_fname - extract filename from a path string
- * @path: the full path to extract filename from
- *
- * Return: pointer to the filename portion of the path
+ * dep_get_fname - convert depends name
  */
-const char *dep_get_fname(const char *path)
+const char *dep_get_fname (const char *path)
 {
 		const char *depends;
 
@@ -1068,17 +1133,16 @@ const char *dep_get_fname(const char *path)
 				depends = strrchr(path, '\\');
 		}
 
-		/* Return filename portion or original path if no slashes found */
 		return depends ? depends + 1 : path;
 }
 
 /**
- * dep_get_bname - Extract basename from file path
+ * dep_get_bname - Extract direct_bnames from file path
  * @path: Full file path
  * 
- * Return: Pointer to basename in path
+ * Return: Pointer to direct_bnames in path
  */
-static const char *dep_get_bname(const char *path)
+static const char *dep_get_bname (const char *path)
 {
 		const char *p1 = strrchr(path, '/');
 		const char *p2 = strrchr(path, '\\');
@@ -1096,21 +1160,21 @@ static const char *dep_get_bname(const char *path)
 }
 
 /**
- * dep_pr_include_addition - Add include directive to main file
- * @filename: Include filename
+ * dep_pr_include_directive - Add include directive to main file
+ * @deps_include: Include deps_include
  */
-static void dep_pr_include_addition(const char *filename)
+static void dep_pr_include_directive (const char *deps_include)
 {
 		char errbuf[256];
 		toml_table_t *_toml_config;
 		char depends_name[PATH_MAX];
 		char idirective[MAX_PATH];
 		
-		/* Extract basename */
-		const char *dep_n = dep_get_fname(filename);
+		/* Extract Basename */
+		const char *dep_n = dep_get_fname(deps_include);
 		snprintf(depends_name, sizeof(depends_name), "%s", dep_n);
 		
-		const char *basename = dep_get_bname(depends_name);
+		const char *direct_bnames = dep_get_bname(depends_name);
 		
 		/* Parse TOML config */
 		FILE *procc_f = fopen("watchdogs.toml", "r");
@@ -1135,7 +1199,7 @@ static void dep_pr_include_addition(const char *filename)
 
 		/* Create include directive */
 		snprintf(idirective, sizeof(idirective), 
-				"#include <%s>", basename);
+				"#include <%s>", direct_bnames);
 
 		/* Add to main file */
 		if (!strcmp(wcfg.wd_is_samp, CRC32_TRUE)) {
@@ -1154,27 +1218,25 @@ static void dep_pr_include_addition(const char *filename)
 }
 
 /**
- * dep_pr_inc_files - process all .inc files recursively
+ * dep_pr_include_files - process all `.inc` files recursively
  * @depends: cJSON dependency array
  * @bp: base path to start scanning
  * @db: destination base directory
  */
-void dep_pr_inc_files(cJSON *depends, const char *bp, const char *db)
+void dep_pr_include_files (cJSON *depends, const char *bp, const char *db)
 {
 		DIR *dir;
 		struct dirent *item;
 		struct stat st;
-		char cmd[MAX_PATH * 3];
-		char fpath[PATH_MAX * 2];
-		char parent[PATH_MAX];
-		char dest[PATH_MAX];
+		char cmd[MAX_PATH * 3], fpath[PATH_MAX * 2], 
+			 parent[PATH_MAX], dest[PATH_MAX];
 		char *dname, *ext;
 
 		dir = opendir(bp);
 		if (!dir)
 			return;
 
-		while ((item = readdir(dir)) != WD_ISNULL) {
+		while ((item = readdir(dir)) != NULL) {
 			if (!strcmp(item->d_name, ".") || !strcmp(item->d_name, ".."))
 				continue;
 
@@ -1184,7 +1246,7 @@ void dep_pr_inc_files(cJSON *depends, const char *bp, const char *db)
 				continue;
 
 			if (S_ISDIR(st.st_mode)) {
-				dep_pr_inc_files(depends, fpath, db);
+				dep_pr_include_files(depends, fpath, db);
 				continue;
 			}
 
@@ -1208,9 +1270,15 @@ void dep_pr_inc_files(cJSON *depends, const char *bp, const char *db)
 
 			/* Try moving directory */
 			if (rename(parent, dest)) {
-				snprintf(cmd, sizeof(cmd),
-					"cp -r \"%s\" \"%s\" && rm -rf \"%s\"",
-					parent, dest, parent);
+				if (is_native_windows()) {
+					snprintf(cmd, sizeof(cmd),
+						"xcopy \"%s\" \"%s\" /E /I /H /Y && rmdir /S /Q \"%s\"",
+						parent, dest, parent);
+				} else {
+					snprintf(cmd, sizeof(cmd),
+						"cp -r \"%s\" \"%s\" && rm -rf \"%s\"",
+						parent, dest, parent);
+				}
 				if (system(cmd)) {
 					pr_error(stdout, "Failed to move folder: %s\n", parent);
 					continue;
@@ -1233,9 +1301,9 @@ void dep_pr_inc_files(cJSON *depends, const char *bp, const char *db)
 /**
  * dep_pr_file_type - Process files of specific type
  */
-static void dep_pr_file_type(const char *path, const char *pattern, 
-                             const char *exclude, const char *cwd, 
-                             cJSON *depends, const char *target_dir, int root)
+static void dep_pr_file_type (const char *path, const char *pattern, 
+                              const char *exclude, const char *cwd, 
+                              cJSON *depends, const char *target_dir, int root)
 {
 		char cp_cmd[MAX_PATH * 2];
 		char json_item[PATH_MAX];
@@ -1245,20 +1313,33 @@ static void dep_pr_file_type(const char *path, const char *pattern,
 		
 		if (found) {
 			for (int i = 0; i < wcfg.wd_sef_count; ++i) {
-				const char *dep_names = dep_get_fname(wcfg.wd_sef_found_list[i]),
-						   *dep_base_names = dep_get_bname(wcfg.wd_sef_found_list[i]);
+				const char *deps_names = dep_get_fname(wcfg.wd_sef_found_list[i]),
+						   *deps_bnames = dep_get_bname(wcfg.wd_sef_found_list[i]);
 				
 				/* Move file */
-				if (target_dir[0] != '\0')
-					snprintf(cp_cmd, sizeof(cp_cmd), "mv -f \"%s\" \"%s/%s/\"", 
+				if (target_dir[0] != '\0') {
+					if (is_native_windows())
+						snprintf(cp_cmd, sizeof(cp_cmd),
+							"move /Y \"%s\" \"%s\\%s\\\"",
 							wcfg.wd_sef_found_list[i], cwd, target_dir);
-				else
-					snprintf(cp_cmd, sizeof(cp_cmd), "mv -f \"%s\" \"%s\"", 
+					else
+						snprintf(cp_cmd, sizeof(cp_cmd), "mv -f \"%s\" \"%s/%s/\"", 
+							wcfg.wd_sef_found_list[i], cwd, target_dir);
+				} else {
+					if (is_native_windows())
+						snprintf(cp_cmd, sizeof(cp_cmd),
+							"move /Y \"%s\" \"%s\"",
 							wcfg.wd_sef_found_list[i], cwd);
+					else
+						snprintf(cp_cmd, sizeof(cp_cmd),
+							"mv -f \"%s\" \"%s\"", 
+							wcfg.wd_sef_found_list[i], cwd);
+				}
+				
 				system(cp_cmd);
 				
 				/* Add to hash list */
-				snprintf(json_item, sizeof(json_item), "%s", dep_names);
+				snprintf(json_item, sizeof(json_item), "%s", deps_names);
 				dep_add_ncheck_hash(depends, json_item, json_item);
 				
 				/* Skip adding if plugins on root */
@@ -1267,10 +1348,10 @@ static void dep_pr_file_type(const char *path, const char *pattern,
 				/* Add to config */
 				if (!strcmp(wcfg.wd_is_omp, CRC32_TRUE))
 					M_ADD_PLUGIN(wcfg.wd_toml_config,
-								 dep_base_names);
+								 deps_bnames);
 				else
 					S_ADD_PLUGIN(wcfg.wd_toml_config,
-								"plugins", dep_base_names);
+								"plugins", deps_bnames);
 			}
 		}
 done:
@@ -1281,13 +1362,15 @@ done:
  * dep_move_files - Move dependency files and maintain cache
  * @dep_dir: Path to dependencies folder
  */
-void dep_cjson_additem(cJSON *p1, int p2, cJSON *p3)
+void dep_cjson_additem (cJSON *p1, int p2, cJSON *p3)
 {
 		cJSON *_e_item = cJSON_GetArrayItem(p1, p2);
-		if (cJSON_IsString(_e_item)) cJSON_AddItemToArray(p3, cJSON_CreateString(_e_item->valuestring));
+		if (cJSON_IsString(_e_item))
+			cJSON_AddItemToArray(p3,
+				cJSON_CreateString(_e_item->valuestring));
 }
 
-void dep_move_files(const char *dep_dir)
+void dep_move_files (const char *dep_dir)
 {
 		cJSON *root, *depends, *_e_root = NULL;
 		FILE *e_file, *fp_cache;
@@ -1302,8 +1385,12 @@ void dep_move_files(const char *dep_dir)
 
 		/* Check or create cache file */
 		wd_log_acces = path_acces("wd_depends.json");
-		if (!wd_log_acces)
-			system("touch wd_depends.json");
+		if (!wd_log_acces) {
+			if (is_native_windows())
+				system("type nul > wd_depends.json");
+			else
+				system("touch wd_depends.json");
+		}
 
 		/* Create JSON root object */
 		root = cJSON_CreateObject();
@@ -1390,7 +1477,7 @@ out_close:
 		snprintf(d_b, sizeof(d_b), "%s/include",
 			!strcmp(wcfg.wd_is_omp, CRC32_TRUE) ? "qawno" : "pawno");
 
-		dep_pr_inc_files(depends, dep_dir, d_b);
+		dep_pr_include_files(depends, dep_dir, d_b);
 
 		/* Process legacy include files */
 		wd_sef_fdir_reset();
@@ -1398,15 +1485,21 @@ out_close:
 		if (__inc_legacyplug_r) {
 			for (i = 0; i < wcfg.wd_sef_count; ++i) {
 				const char *fi_depends_name;
-
 				fi_depends_name = dep_get_fname(wcfg.wd_sef_found_list[i]);
-				snprintf(cp_cmd, sizeof(cp_cmd),
-					"mv -f \"%s\" \"%s/%s/\"",
-					wcfg.wd_sef_found_list[i], cwd, dep_inc_path);
+				
+				if (is_native_windows())
+					snprintf(cp_cmd, sizeof(cp_cmd),
+						"move /Y \"%s\" \"%s\\%s\\\"",
+						wcfg.wd_sef_found_list[i], cwd, dep_inc_path);
+				else
+					snprintf(cp_cmd, sizeof(cp_cmd),
+						"mv -f \"%s\" \"%s/%s/\"",
+						wcfg.wd_sef_found_list[i], cwd, dep_inc_path);
+
 				system(cp_cmd);
 
 				dep_add_ncheck_hash(depends, fi_depends_name, fi_depends_name);
-				dep_pr_include_addition(fi_depends_name);
+				dep_pr_include_directive(fi_depends_name);
 			}
 		}
 
@@ -1447,7 +1540,14 @@ cleanup:
 		if (_e_root)
 			cJSON_Delete(_e_root);
 
-		snprintf(rm_cmd, sizeof(rm_cmd), "rm -rf %s", dep_dir);
+		if (is_native_windows())
+			snprintf(rm_cmd, sizeof(rm_cmd),
+				"rmdir /s /q \"%s\"",
+				dep_dir);
+		else
+			snprintf(rm_cmd, sizeof(rm_cmd),
+				"rm -rf %s",
+				dep_dir);
 		system(rm_cmd);
 }
 
@@ -1455,115 +1555,268 @@ cleanup:
  * wd_apply_depends - apply depends to gamemodes
  * @depends_name: name of the dependency to apply
  */
-void wd_apply_depends(const char *depends_name)
+void wd_apply_depends (const char *depends_name)
 {
 		char _depends[PATH_MAX];
+		/// Temporary buffer to store dependency name without extension
+		/// Size limited by PATH_MAX
+		/// Initialized later using snprintf
+
 		char dep_dir[PATH_MAX];
+		/// Buffer to store directory name derived from dependency
+		/// Will be used for moving/extracting files
+		/// Size limited by PATH_MAX
+
 		struct stat st;
+		/// Structure used for filesystem status checks
+		/// Used with stat() to check existence of directories
+		/// Helps decide if mkdir_recursive is needed
+
 		char *__dot_ext;
+		/// Pointer to locate the last dot in dependency name
+		/// Used to strip file extension
+		/// Will point to '.' in filenames like "lib.zip"
 
 		snprintf(_depends, PATH_MAX, "%s", depends_name);
+		/// Copy dependency name into temporary buffer
+		/// Ensures safe null-terminated string
+		/// Original depends_name remains unchanged
+
 		__dot_ext = strrchr(_depends, '.');
+		/// Find last occurrence of '.' in filename
+		/// Helps identify file extension
+		/// Returns NULL if no dot found
+
 		if (__dot_ext)
-				*__dot_ext = '\0';
+			*__dot_ext = '\0';
+		/// Remove file extension by replacing dot with null terminator
+		/// Converts "lib.zip" -> "lib"
+		/// Prepares directory name for extraction/move
 
 		snprintf(dep_dir, sizeof(dep_dir), "%s", _depends);
+		/// Copy stripped name into dep_dir buffer
+		/// dep_dir will be used for file operations
+		/// Safe string copy with size limit
 
 		if (!strcmp(wcfg.wd_is_samp, CRC32_TRUE)) {
-				if (stat("pawno/include", &st) != 0 && errno == ENOENT)
-						mkdir_recursive("pawno/include");
-				if (stat("plugins", &st) != 0 && errno == ENOENT)
-						mkdir_recursive("plugins");
+			/// If project type is SA-MP
+			/// Perform SA-MP specific directory setup
+			/// Check and create required folders
+
+			if (stat("pawno/include", &st) != 0 && errno == ENOENT)
+				mkdir_recursive("pawno/include");
+			/// If "pawno/include" does not exist
+			/// Create directory recursively
+			/// Ensures header files can be placed
+
+			if (stat("plugins", &st) != 0 && errno == ENOENT)
+				mkdir_recursive("plugins");
+			/// If "plugins" folder does not exist
+			/// Create it recursively
+			/// Ensures plugin files can be placed
 		} else if (!strcmp(wcfg.wd_is_omp, CRC32_TRUE)) {
-				if (stat("qawno/include", &st) != 0 && errno == ENOENT)
-						mkdir_recursive("qawno/include");
-				if (stat("components", &st) != 0 && errno == ENOENT)
-						mkdir_recursive("components");
-				if (stat("plugins", &st) != 0 && errno == ENOENT)
-						mkdir_recursive("plugins");
+			/// If project type is OMP (OpenMP)
+			/// Perform OMP specific directory setup
+			/// Check and create required folders
+
+			if (stat("qawno/include", &st) != 0 && errno == ENOENT)
+				mkdir_recursive("qawno/include");
+			/// If "qawno/include" does not exist
+			/// Create recursively
+			/// Ensures OMP headers can be placed
+
+			if (stat("components", &st) != 0 && errno == ENOENT)
+				mkdir_recursive("components");
+			/// If "components" folder does not exist
+			/// Create recursively
+			/// Used for modular OMP components
+
+			if (stat("plugins", &st) != 0 && errno == ENOENT)
+				mkdir_recursive("plugins");
+			/// If "plugins" folder does not exist
+			/// Create recursively
+			/// OMP plugins go here
 		}
 
 		dep_move_files(dep_dir);
+		/// Move/extract files from dependency directory
+		/// Handles copying headers, scripts, plugins, or assets
+		/// Final step to integrate dependency into project
 }
 
 /**
  * wd_install_depends - install dependencies from string
  * @deps_str: string containing dependencies to install
  */
-void wd_install_depends(const char *deps_str)
+void wd_install_depends (const char *deps_str)
 {
 		char buffer[1024];
-		const char *depends[MAX_ARR_DEPENDS];
-		char *downloaded_files[MAX_ARR_DEPENDS];
+		/// Temporary buffer to copy the input dependency string
+		/// Used for tokenization with strtok
+		/// Maximum size 1024 bytes
+
+		const char *depends[MAX_DEPENDS];
+		/// Array of dependency tokens
+		/// Stores pointers to each dependency name
+		/// Maximum count defined by MAX_DEPENDS
+
+		char *depends_files[MAX_DEPENDS];
+		/// Array of downloaded dependency filenames
+		/// Will store strdup copies of downloaded files
+		/// To be used later in wd_apply_depends
+
 		char *token;
-		int dep_count = 0;
+		/// Pointer used for strtok tokenization
+		/// Points to current dependency in loop
+		/// Updated in while loop
+
+		int DEP_CNT = 0;
+		/// Counter for number of dependencies parsed
+		/// Initially zero
+		/// Incremented for each valid token
+
 		int file_count = 0;
-		int i;
+		/// Counter for successfully downloaded dependency files
+		/// Used for applying dependencies later
+		/// Incremented only when download succeeds
 
 		if (!deps_str || !*deps_str) {
+			/// Check if input string is NULL or empty
+			/// No dependencies to process
+			/// Log __deps_data and return early
 			pr_info(stdout, "No valid dependencies to install");
 			return;
 		}
 
 		wcfg.wd_idepends = 0;
+		/// Mark installation in progress
+		/// Used by configuration/state flags
+		/// Prevents re-entry or race conditions
 
 		snprintf(buffer, sizeof(buffer), "%s", deps_str);
+		/// Copy input string into buffer safely
+		/// Avoid modifying original deps_str
+		/// Ensures null termination
 
 		token = strtok(buffer, " ");
-		while (token && dep_count < MAX_ARR_DEPENDS) {
-			depends[dep_count++] = token;
+		/// Begin tokenizing the buffer by spaces
+		/// Each token represents a dependency
+		/// strtok modifies buffer in-place
+
+		while (token && DEP_CNT < MAX_DEPENDS) {
+			depends[DEP_CNT++] = token;
+			/// Store pointer to token in depends array
+			/// Increment DEP_CNT
+			/// Stop when MAX_DEPENDS reached
+
 			token = strtok(NULL, " ");
+			/// Get next token
+			/// Returns NULL if no more tokens
+			/// Loop continues until all tokens processed
 		}
 
-		if (dep_count == 0) {
+		if (DEP_CNT == 0) {
+			/// If no valid dependencies were parsed
+			/// Log __deps_data message
+			/// Return early
 			pr_info(stdout, "No valid dependencies to install");
 			return;
 		}
 
-		for (i = 0; i < dep_count; i++) {
-			int dep_item_found = 0;
-			struct dep_repo_info dep_repo_info;
-			char dep_url[1024] = { 0 };
-			char dep_repo_name[256] = { 0 };
-			const char *chr_last_slash;
+		int i;
+		/// Loop index for processing each dependency
+		/// Declared outside loop for reuse
 
-			if (!dep_parse_repo_input(depends[i], &dep_repo_info)) {
+		for (i = 0; i < DEP_CNT; i++) {
+			int dep_item_found = 0;
+			/// Flag indicating if dependency source is found
+			/// Initialized to 0 (not found)
+			/// Set to 1 if valid URL or asset is located
+
+			struct dep_repo_info dep_repo_info;
+			/// Structure to hold parsed repository __deps_data
+			/// Filled by dep_parse_repo
+			/// Includes host, user, repo, tag, etc.
+
+			char dep_url[1024] = { 0 };
+			/// Buffer to store constructed dependency URL
+			/// Initialized to zero
+			/// Used in downloading dependency
+
+			char dep_repo_name[256] = { 0 };
+			/// Buffer to store local filename for dependency
+			/// Derived from repo URL or tag
+			/// Used in wd_download_file
+
+			const char *chr_last_slash;
+			/// Pointer used to find last '/' in URL
+			/// Helps extract file name from URL
+			/// NULL if '/' not found
+
+			if (!dep_parse_repo(depends[i], &dep_repo_info)) {
+				/// Parse dependency string into dep_repo_info
+				/// Return 0 if format invalid
+				/// Log error and skip this dependency
 				pr_error(stdout, "Invalid repo format: %s", depends[i]);
 				continue;
 			}
 
-			if (!strcmp(dep_repo_info.host, "github"))
-				{
-					dep_item_found = dep_handle_repo(&dep_repo_info,
-													 dep_url,
-													 sizeof(dep_url));
-				}
-			else
-				{
-					dep_build_repo_url(&dep_repo_info, 0, dep_url, sizeof(dep_url));
-					dep_item_found = dep_curl_url_get_response(dep_url, wcfg.wd_toml_github_tokens);
-				}
+			if (!strcmp(dep_repo_info.host, "github")) {
+				/// If repository host is GitHub
+				/// Use dep_handle_repo to resolve latest tag, release assets, or branch
+				dep_item_found = dep_handle_repo(&dep_repo_info,
+												dep_url,
+												sizeof(dep_url));
+			} else {
+				/// Non-GitHub repositories
+				/// Build URL manually
+				/// Then check if reachable
+				dep_build_repo_url(&dep_repo_info, 0, dep_url, sizeof(dep_url));
+				dep_item_found = dep_check_url(dep_url, wcfg.wd_toml_github_tokens);
+			}
 
 			if (!dep_item_found) {
+				/// Dependency not found or unreachable
+				/// Log error and skip
 				pr_error(stdout, "Repository not found: %s", depends[i]);
 				continue;
 			}
 
 			chr_last_slash = strrchr(dep_url, '/');
-			if (chr_last_slash && *(chr_last_slash + 1))
+			/// Find last '/' in URL
+			/// Used to extract file name for download
+
+			if (chr_last_slash && *(chr_last_slash + 1)) {
 				snprintf(dep_repo_name, sizeof(dep_repo_name), "%s",
 						chr_last_slash + 1);
-			else
+				/// Use substring after last '/' as filename
+				/// Typical for GitHub archives
+			} else {
 				snprintf(dep_repo_name, sizeof(dep_repo_name), "%s.zip",
 						dep_repo_info.repo);
+				/// Fallback: use repo name plus .zip
+				/// Ensures a valid local filename
+			}
 
 			if (wd_download_file(dep_url, dep_repo_name) == RETZ)
-				downloaded_files[file_count++] = strdup(dep_repo_name);
+				depends_files[file_count++] = strdup(dep_repo_name);
+			/// Download dependency file
+			/// If successful, store copy of filename in depends_files
+			/// Increment file_count
 		}
 
 		wcfg.wd_idepends = 1;
+		/// Mark dependency installation as completed
+		/// Prevents further interference
+		/// State flag updated for configuration
+
 		for (i = 0; i < file_count; i++) {
-			wd_apply_depends(downloaded_files[i]);
-			wdfree(downloaded_files[i]);
+			wd_apply_depends(depends_files[i]);
+			/// Apply each downloaded dependency
+			/// This may extract, compile, or copy files
+
+			wdfree(depends_files[i]);
+			/// Free memory allocated by strdup
+			/// Avoid memory leaks
 		}
 }

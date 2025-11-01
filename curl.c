@@ -185,9 +185,9 @@ static void copy_compiler_tool(const char *src_path, const char *tool_name,
  * update_library_environment - Update library path environment
  * @lib_path: Library path that was used
  */
+#ifndef _WIN32
 static void update_library_environment(const char *lib_path)
 {
-#ifndef _WIN32
 		const char *old_path;
 		char new_path[256];
 
@@ -209,8 +209,8 @@ static void update_library_environment(const char *lib_path)
 		}
 
 		SETENV("LD_LIBRARY_PATH", new_path, 1);
-#endif
 }
+#endif
 
 /**
  * setup_linux_library - Setup library on Linux systems
@@ -464,7 +464,7 @@ int wd_download_file(const char *url, const char *filename)
 			struct curl_slist *headers = NULL;
 
 			if (strfind(wcfg.wd_toml_github_tokens, "DO_HERE")) {
-				pr_color(stdout, FCOLOUR_GREEN, "CURL: Can't read Github token.. skipping");
+				pr_color(stdout, FCOLOUR_GREEN, "CURL: Can't read Github token.. skipping\n");
 				sleep(2);
 			} else { 
 				if (wcfg.wd_toml_github_tokens && strlen(wcfg.wd_toml_github_tokens) > 0) {
@@ -491,12 +491,7 @@ int wd_download_file(const char *url, const char *filename)
 			curl_easy_setopt(curl, CURLOPT_XFERINFOFUNCTION, progress_callback);
 			curl_easy_setopt(curl, CURLOPT_XFERINFODATA, NULL);
 
-			char* msys2_env = getenv("MSYSTEM");
-			int _is_win32 = 0;
-#ifdef _WIN32
-			_is_win32 = 1;
-#endif
-            if (msys2_env == NULL && _is_win32 == 1) {
+			if (is_native_windows()) {
 				if (access("cacert.pem", F_OK) == 0)
 					curl_easy_setopt(curl, CURLOPT_CAINFO, "cacert.pem");
 				else if (access("C:/libwatchdogs/cacert.pem", F_OK) == 0)
@@ -527,7 +522,14 @@ int wd_download_file(const char *url, const char *filename)
 						if (confirm) {
 							if (confirm[0] == 'Y' || confirm[0] == 'y') {
 								char rm_cmd[PATH_MAX];
-								snprintf(rm_cmd, sizeof(rm_cmd), "rm -rf %s", filename);
+								if (is_native_windows())
+									snprintf(rm_cmd, sizeof(rm_cmd),
+										"if exist \"%s\" (del /f /q \"%s\" 2>nul || rmdir /s /q \"%s\" 2>nul)",
+										filename, filename, filename);
+								else
+									snprintf(rm_cmd, sizeof(rm_cmd),
+										"rm -rf %s",
+										filename);
 								system(rm_cmd);
 							}
 							wdfree(confirm);

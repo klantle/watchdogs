@@ -5,6 +5,12 @@
 
 #include "color.h"
 
+// Borders Colors
+char *BG = "\x1b[48;5;235m";
+char *FG = "\x1b[97m";
+char *BORD = "\x1b[33m";
+char *RST = "\x1b[0m";
+
 /**
  * println - Print formatted string with newline
  * @stream : Stream Output

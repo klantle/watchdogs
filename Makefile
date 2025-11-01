@@ -8,8 +8,8 @@ MAKE_TERMOUT := 1
 export LANG := C.UTF-8
 export LC_ALL := C.UTF-8
 
-VERSION  	 = WD-10.31
-FULL_VERSION = WD-251031
+VERSION  	 = WD-11.01
+FULL_VERSION = WD-251101
 TARGET   	 ?= watchdogs
 CC       	 ?= clang
 STRIP        ?= llvm-strip

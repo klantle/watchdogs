@@ -54,6 +54,12 @@
 #define FCOLOUR_DEFAULT    "\033[39m"
 #define BKG_DEFAULT    "\033[49m"
 
+/* Global color definitions for terminal UI */
+extern char *BG;   /* Background color: RGB(35,35,35) - dark gray */
+extern char *FG;   /* Foreground color: ANSI 97 - bright white */
+extern char *BORD; /* Border color: ANSI 33 - yellow/orange */
+extern char *RST;  /* Reset color: ANSI 0 - default terminal colors */
+
 #define pr_color printf_color
 #define pr_info printf_info
 #define pr_warning printf_warning

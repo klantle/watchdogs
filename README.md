@@ -190,7 +190,7 @@ make init
 exit
 
 # 7. Installing .dll library
-git clone https://github.com/klantle/libwatchdogs watch && cd watch && rm -rf /c/libwatchdogs && mv -f libwatchdogs /c/ && mv -f run-native.bat .. && cd .. && rm -rf watch
+git clone https://github.com/klantle/libwatchdogs watch && cd watch && [ -d "/c/libwatchdogs" ] && rm -rf -- "/c/libwatchdogs"  && mv -f libwatchdogs /c/ && mv -f run-native.bat .. && cd .. && rm -rf watch
 
 # 8. You can run '.bat' (out of msys2, where .bat & watchdogs.win)
 ~

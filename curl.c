@@ -2,6 +2,7 @@
 #include <stdlib.h>
 #include <ctype.h>
 #include <string.h>
+#include <errno.h>
 #include <inttypes.h>
 #include <sys/stat.h>
 
@@ -485,9 +486,24 @@ int wd_download_file(const char *url, const char *filename)
 			curl_easy_setopt(curl, CURLOPT_FOLLOWLOCATION, 1L);
 			curl_easy_setopt(curl, CURLOPT_SSL_VERIFYPEER, 1L);
 			curl_easy_setopt(curl, CURLOPT_NOPROGRESS, 0L);
+
 			printf("\n");
 			curl_easy_setopt(curl, CURLOPT_XFERINFOFUNCTION, progress_callback);
 			curl_easy_setopt(curl, CURLOPT_XFERINFODATA, NULL);
+
+			char* msys2_env = getenv("MSYSTEM");
+			int _is_win32 = 0;
+#ifdef _WIN32
+			_is_win32 = 1;
+#endif
+            if (msys2_env == NULL && _is_win32 == 1) {
+				if (access("cacert.pem", F_OK) == 0)
+					curl_easy_setopt(curl, CURLOPT_CAINFO, "cacert.pem");
+				else if (access("C:/libwatchdogs/cacert.pem", F_OK) == 0)
+        			curl_easy_setopt(curl, CURLOPT_CAINFO, "C:/libwatchdogs/cacert.pem");
+				else
+					pr_color(stdout, FCOLOUR_YELLOW, "Warning: No CA file found. SSL verification may fail.\n");
+			}
 
 			res = curl_easy_perform(curl);
 			curl_easy_getinfo(curl, CURLINFO_RESPONSE_CODE, &response_code);

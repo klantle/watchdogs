@@ -163,7 +163,10 @@ static int get_termux_architecture(char *out_arch, size_t buf_size)
  */
 static int handle_termux_installation(void)
 {
-		const char *termux_versions[] = { "3.10.11", "3.10.10" };
+		const char *termux_versions[] = {
+											"3.10.11",
+											"3.10.10"
+										};
 		const size_t version_count = sizeof(termux_versions) / sizeof(termux_versions[0]);
 		char version_selection;
 		char architecture[16];
@@ -232,9 +235,9 @@ static int handle_termux_installation(void)
 static int handle_standard_installation(const char *platform)
 {
 		const char *versions[] = {
-				"3.10.11", "3.10.10", "3.10.9", "3.10.8", "3.10.7",
-				"3.10.6", "3.10.5", "3.10.4", "3.10.3", "3.10.2"
-		};
+									"3.10.11", "3.10.10", "3.10.9", "3.10.8", "3.10.7",
+									"3.10.6", "3.10.5", "3.10.4", "3.10.3", "3.10.2"
+								 };
 		const size_t version_count = sizeof(versions) / sizeof(versions[0]);
 		char version_selection;
 		char url[526];

@@ -1,17 +1,9 @@
 UNAME_S := $(shell uname -s)
 
-ifeq ($(UNAME_S),Linux)
-  ESC := $(shell printf '\033')
-  YELLOW := $(ESC)[1;33m
-  RESET := $(ESC)[0m
-else ifeq ($(UNAME_S),MINGW64_NT-10.0)
-  ESC := $(shell printf '\033')
-  YELLOW := $(ESC)[1;33m
-  RESET := $(ESC)[0m
-else
-  YELLOW :=
-  RESET :=
-endif
+export TERM
+YELLOW := $(shell if command -v tput >/dev/null 2>&1; then tput setaf 3; else printf '\033[1;33m'; fi)
+RESET  := $(shell if command -v tput >/dev/null 2>&1; then tput sgr0; else printf '\033[0m'; fi)
+MAKE_TERMOUT := 1
 
 export LANG := C.UTF-8
 export LC_ALL := C.UTF-8
@@ -119,7 +111,7 @@ compress:
 
 clean:
 	rm -f $(OBJS) watchdogs watchdogs.tmux watchdogs.win watchdogs.debug watchdogs.debug.win
-	@printf "$(YELLOW)==>$(RESET) Clean done.\n"
+	@printf "\n$(YELLOW)==>$(RESET) Clean done.\n"
 
 linux:
 	@echo "LANG = $$LANG"

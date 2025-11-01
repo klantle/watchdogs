@@ -14,7 +14,6 @@
 #include <sys/file.h>
 #include <fcntl.h>
 #include <math.h>
-#include <signal.h>
 #include <sys/stat.h>
 #include <sys/types.h>
 #include <archive.h>
@@ -52,11 +51,12 @@ void __function__(void) {
                "\tpointer_samp: %s\n"
                "\tpointer_openmp: %s"
                "\tf_samp: %s (CRC32)\n"
-               "\tf_openmp: %s (CRC32)\n",
+               "\tf_openmp: %s (CRC32)\n"
+               "\tconfig: %s\n",
                 __func__, __PRETTY_FUNCTION__, __LINE__, __FILE__,
                 wcfg.wd_os_type, wcfg.wd_ptr_samp,
                 wcfg.wd_ptr_omp, wcfg.wd_is_samp,
-                wcfg.wd_is_omp);
+                wcfg.wd_is_omp, wcfg.wd_toml_config);
 #endif
         return;
 }
@@ -111,8 +111,9 @@ _reexecute_command:
             } else if (strcmp(arg, "kill") == 0) { println(stdout, "kill: refresh terminal watchdogs. | Usage: \"kill\"");
             } else if (strcmp(arg, "title") == 0) { println(stdout, "title: set-title terminal watchdogs. | Usage: \"title\" | [<args>]");
             } else if (strcmp(arg, "time") == 0) { println(stdout, "time: print current time. | Usage: \"time\"");
-            } else if (strcmp(arg, "stopwatch") == 0) { println(stdout, "stopwatch: calculating time. Usage: \"stopwatch\"");
-            } else if (strcmp(arg, "install") == 0) { println(stdout, "install: download & install depends | Usage: \"install\" | [<args>]\n\tinstall github.com/github.com/gitea.com:user/repo:tags");
+            } else if (strcmp(arg, "stopwatch") == 0) { println(stdout, "stopwatch: calculating time. Usage: \"stopwatch\" | [<args>]");
+            } else if (strcmp(arg, "install") == 0) { println(stdout, "install: download & install depends | Usage: \"install\" |"
+                                                                      "[<args>]\n\t- install github.com/github.com/gitea.com:user/repo:tags");
             } else if (strcmp(arg, "upstream") == 0) { println(stdout, "upstream: print newer commits from upstream (gitlab). | Usage: \"upstream\"");
             } else if (strcmp(arg, "hardware") == 0) { println(stdout, "hardware: hardware information. | Usage: \"hardware\"");
             } else if (strcmp(arg, "gamemode") == 0) { println(stdout, "gamemode: download sa-mp gamemode. | Usage: \"gamemode\"");
@@ -146,6 +147,7 @@ _reexecute_command:
         } else if (strncmp(ptr_command, "title", 5) == 0) {
             char *arg = ptr_command + 6;
             while (*arg == ' ') ++arg;
+            
             if (*arg == '\0') {
                 println(stdout, "Usage: title [<title>]");
             } else {
@@ -169,40 +171,51 @@ _reexecute_command:
             printf("Now: %s\n", time_string);
 
             goto done;
-        } else if (strcmp(ptr_command, "stopwatch") == 0) {
+        } else if (strncmp(ptr_command, "stopwatch", 9) == 0) {
             struct timespec start, now, end;
             double stw_elp;
 
-            clock_gettime(CLOCK_MONOTONIC, &start);
-
-            signal(SIGINT, stopwatch_signal_handler);
-
-loop_stopwatch:
-            if (wcfg.wd_stopwatch_end == 1) {
-                wcfg.wd_stopwatch_end = 0;
-                clock_gettime(CLOCK_MONOTONIC, &end);
+            char *arg = ptr_command + 10;
+            while (*arg == ' ') ++arg;
+            
+            if (*arg == '\0') {
+                println(stdout, "Usage: stopwatch [<sec>]");
             } else {
-                clock_gettime(CLOCK_MONOTONIC, &now);
+                int ts = atoi(arg);
+                if (ts <= 0) {
+                    println(stdout, "Usage: stopwatch [<sec>]");
+                    goto done;
+                }
 
-                stw_elp = (now.tv_sec - start.tv_sec)
-                        + (now.tv_nsec - start.tv_nsec) / 1e9;
+                clock_gettime(CLOCK_MONOTONIC, &start);
 
-                int hh = (int)(stw_elp / 3600);
-                int mm = (int)((stw_elp - hh * 3600) / 60);
-                int ss = (int)(stw_elp) % 60;
-                pr_color(stdout,
-                             FCOLOUR_YELLOW,
-                             "\rSTOPWATCH: %02d:%02d:%02d",
-                             hh, mm, ss);
-                fflush(stdout);
+                while (true) {
+                    clock_gettime(CLOCK_MONOTONIC, &now);
 
-                struct timespec ts = {1, 0};
-                nanosleep(&ts, NULL);
+                    stw_elp = (now.tv_sec - start.tv_sec)
+                            + (now.tv_nsec - start.tv_nsec) / 1e9;
 
-                goto loop_stopwatch;
+                    if (stw_elp >= ts) {
+                        wd_set_title("S T O P W A T C H : DONE");
+                        break;
+                    }
+
+                    int hh = (int)(stw_elp / 3600),
+                        mm = (int)((stw_elp - hh*3600)/60),
+                        ss = (int)(stw_elp) % 60;
+
+                    char title_set[128];
+                    snprintf(title_set, sizeof(title_set),
+                            "S T O P W A T C H : %02d:%02d:%02d / %d sec",
+                            hh, mm, ss, ts);
+                    wd_set_title(title_set);
+
+                    struct timespec ts = {0, 10000000};
+                    nanosleep(&ts, NULL);
+                }
             }
 
-            goto _ptr_command;
+            goto done;
         } else if (strcmp(ptr_command, "toml") == 0) {
             if (access("watchdogs.toml", F_OK) == 0) {
                 remove("watchdogs.toml");
@@ -344,8 +357,11 @@ loop_stopwatch:
             hardware_show_summary();
             printf("\nSpecific Fields Query:\n");
             unsigned int specific_fields[] = {
-                FIELD_CPU_NAME, FIELD_CPU_CORES, FIELD_MEM_TOTAL, FIELD_DISK_FREE
-            };
+                                                FIELD_CPU_NAME,
+                                                FIELD_CPU_CORES,
+                                                FIELD_MEM_TOTAL,
+                                                FIELD_DISK_FREE
+                                             };
             hardware_query_specific(specific_fields, 4);
             printf("\nDetailed Report:\n");
             hardware_show_detailed();

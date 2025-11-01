@@ -98,7 +98,9 @@ static int extract_archive(const char *filename)
 				printf(" Extracting ZIP archive: %s\n", filename);
 				
 				name_len = strlen(filename);
-				if (name_len > 4 && !strncmp(filename + name_len - 4, ".zip", 4)) {
+				if (name_len > 4 &&
+					!strncmp(filename + name_len - 4, ".zip", 4))
+				{
 						strncpy(output_path, filename, name_len - 4);
 						output_path[name_len - 4] = '\0';
 				} else {
@@ -224,16 +226,16 @@ static int setup_linux_library(void)
 		char dest_path[PATH_MAX];
 		struct stat st;
 		int i, found_lib;
-		const char *lib_paths[] = {
-				"/data/data/com.termux/files/usr/lib/",
-				"/data/data/com.termux/files/usr/local/lib/",
-				"/data/data/com.termux/arm64/usr/lib",
-				"/data/data/com.termux/arm32/usr/lib",
-				"/data/data/com.termux/amd32/usr/lib",
-				"/data/data/com.termux/amd64/usr/lib",
-				"/usr/local/lib",
-				"/usr/local/lib32"
-		};
+		const char *lib_paths[] =	{
+										"/data/data/com.termux/files/usr/lib/",
+										"/data/data/com.termux/files/usr/local/lib/",
+										"/data/data/com.termux/arm64/usr/lib",
+										"/data/data/com.termux/arm32/usr/lib",
+										"/data/data/com.termux/amd32/usr/lib",
+										"/data/data/com.termux/amd64/usr/lib",
+										"/usr/local/lib",
+										"/usr/local/lib32"
+									};
 
 		if (!strcmp(wcfg.wd_toml_os_type, OS_SIGNAL_WINDOWS) ||
 			!strcmp(wcfg.wd_toml_os_type, OS_SIGNAL_UNKNOWN))
@@ -411,8 +413,11 @@ int is_archive_file(const char *filename)
 		if (!ext) return 0;
 		
 		const char *archive_exts[] = {
-			".zip", ".tar", ".tar.gz", NULL
-		};
+										".zip",
+										".tar",
+										".tar.gz",
+										NULL
+									 };
 		
 		for (int i = 0; archive_exts[i] != NULL; i++) {
 			if (strcasecmp(ext, archive_exts[i]) == 0) {
@@ -458,8 +463,8 @@ int wd_download_file(const char *url, const char *filename)
 			struct curl_slist *headers = NULL;
 
 			if (strfind(wcfg.wd_toml_github_tokens, "DO_HERE")) {
-				pr_info(stdout, "Can't read Github token.. skipping");
-				sleep(1);
+				pr_color(stdout, FCOLOUR_GREEN, "CURL: Can't read Github token.. skipping");
+				sleep(2);
 			} else { 
 				if (wcfg.wd_toml_github_tokens && strlen(wcfg.wd_toml_github_tokens) > 0) {
 					char auth_header[512];
@@ -480,6 +485,7 @@ int wd_download_file(const char *url, const char *filename)
 			curl_easy_setopt(curl, CURLOPT_FOLLOWLOCATION, 1L);
 			curl_easy_setopt(curl, CURLOPT_SSL_VERIFYPEER, 1L);
 			curl_easy_setopt(curl, CURLOPT_NOPROGRESS, 0L);
+			printf("\n");
 			curl_easy_setopt(curl, CURLOPT_XFERINFOFUNCTION, progress_callback);
 			curl_easy_setopt(curl, CURLOPT_XFERINFODATA, NULL);
 

@@ -85,8 +85,8 @@ int dep_curl_url_get_response(const char *url, const char *github_token)
 
 		printf("\tUsing URL: %s...\n", url);
 		if (strfind(wcfg.wd_toml_github_tokens, "DO_HERE")) {
-			pr_info(stdout, "Can't read Github token.. skipping");
-			sleep(1);
+			pr_color(stdout, FCOLOUR_GREEN, "DEPENDS: Can't read Github token.. skipping");
+			sleep(2);
 		} else {
 			if (github_token && strlen(github_token) > 0) {
 				char auth_header[512];
@@ -625,11 +625,17 @@ static int dep_get_latest_tag(const char *user, const char *repo,
 		if (p) {
 			p = strchr(p, ':');
 			if (p) {
-				p++; // skip colon
-				while (*p && (*p == ' ' || *p == '\t' || *p == '\n' || *p == '\r')) p++;
+				++p; // skip colon
+				while (*p &&
+					   (*p == ' ' ||
+					   *p == '\t' ||
+					   *p == '\n' ||
+					   *p == '\r')
+					  )
+					  ++p;
 				
 				if (*p == '"') {
-					p++; // skip opening quote
+					++p; // skip opening quote
 					const char *end = strchr(p, '"');
 					if (end) {
 						size_t tag_len = end - p;
@@ -658,9 +664,9 @@ static int dep_handle_repo(const struct dep_repo_info *dep_repo_info,
 		int ret = 0;
 		/* Try common branch names */
 		const char *branches[] = {
-			"main",
-			"master"
-		};
+									"main",
+									"master"
+								 };
 
 		char actual_tag[128] = {0};
 		
@@ -816,7 +822,10 @@ void dep_add_ncheck_hash(cJSON *depends, const char *file_path, const char *json
 
 				wdfree(hex);
 		} else {
-				pr_error(stdout, "Failed to hash: %s (convert: %s)\n", convert_j_path, convert_f_path);
+				pr_error(stdout,
+						 "Failed to hash: %s (convert: %s)\n",
+						 convert_j_path,
+						 convert_f_path);
 		}
 }
 
@@ -842,11 +851,9 @@ void dep_implementation_samp_conf(depConfig config) {
 			
 			while (fgets(line, sizeof(line), file)) {
 				line[strcspn(line, "\n")] = 0;
-				
 				if (strstr(line, config.dep_added) != WD_ISNULL) {
 					t_exist = 1;
 				}
-				
 				if (strstr(line, config.dep_target) != WD_ISNULL) {
 					tr_exist = 1;
 					if (strstr(line, config.dep_added) != WD_ISNULL) {
@@ -896,7 +903,7 @@ void dep_implementation_samp_conf(depConfig config) {
 			fclose(file);
 		}
 }
-#define S_ADD_DEP_AFTER(x, y, z) \
+#define S_ADD_PLUGIN(x, y, z) \
     dep_implementation_samp_conf((depConfig){x, y, z})
 
 void dep_implementation_omp_conf(const char* filename, const char* plugin_name) {
@@ -1132,11 +1139,17 @@ static void dep_pr_include_addition(const char *filename)
 
 		/* Add to main file */
 		if (!strcmp(wcfg.wd_is_samp, CRC32_TRUE)) {
-			DEP_ADD_INCLUDES(wcfg.wd_toml_gm_input, idirective, "#include <a_samp>");
+			DEP_ADD_INCLUDES(wcfg.wd_toml_gm_input,
+							 idirective,
+							 "#include <a_samp>");
 		} else if (!strcmp(wcfg.wd_is_omp, CRC32_TRUE)) {
-			DEP_ADD_INCLUDES(wcfg.wd_toml_gm_input, idirective, "#include <open.mp>");
+			DEP_ADD_INCLUDES(wcfg.wd_toml_gm_input,
+							 idirective,
+							 "#include <open.mp>");
 		} else {
-			DEP_ADD_INCLUDES(wcfg.wd_toml_gm_input, idirective, "#include <a_samp>");
+			DEP_ADD_INCLUDES(wcfg.wd_toml_gm_input,
+							 idirective,
+							 "#include <a_samp>");
 		}
 }
 
@@ -1189,7 +1202,7 @@ void dep_pr_inc_files(cJSON *depends, const char *bp, const char *db)
 			if (!dname)
 				continue;
 
-			dname++; /* skip '/' */
+			++dname; /* skip '/' */
 
 			snprintf(dest, sizeof(dest), "%s/%s", db, dname);
 
@@ -1253,9 +1266,11 @@ static void dep_pr_file_type(const char *path, const char *pattern,
 
 				/* Add to config */
 				if (!strcmp(wcfg.wd_is_omp, CRC32_TRUE))
-					M_ADD_PLUGIN(wcfg.wd_toml_config, dep_base_names);
+					M_ADD_PLUGIN(wcfg.wd_toml_config,
+								 dep_base_names);
 				else
-					S_ADD_DEP_AFTER(wcfg.wd_toml_config, "plugins", dep_base_names);
+					S_ADD_PLUGIN(wcfg.wd_toml_config,
+								"plugins", dep_base_names);
 			}
 		}
 done:
@@ -1297,36 +1312,43 @@ void dep_move_files(const char *dep_dir)
 
 		/* Load existing cache */
 		e_file = fopen("wd_depends.json", "r");
-		if (e_file) {
-			fseek(e_file, 0, SEEK_END);
-			fp_cache_sz = ftell(e_file);
-			fseek(e_file, 0, SEEK_SET);
+		if (!e_file)
+			return;
 
-			if (fp_cache_sz > 0) {
-				file_content = wdmalloc(fp_cache_sz + 1);
-				if (file_content) {
-					fread(file_content, 1, fp_cache_sz, e_file);
-					file_content[fp_cache_sz] = '\0';
+		fseek(e_file, 0, SEEK_END);
+		fp_cache_sz = ftell(e_file);
+		fseek(e_file, 0, SEEK_SET);
 
-					_e_root = cJSON_Parse(file_content);
-					if (_e_root) {
-						cJSON *_e_depends;
+		if (fp_cache_sz <= 0)
+			goto out_close;
 
-						_e_depends = cJSON_GetObjectItem(_e_root, "depends");
-						if (_e_depends && cJSON_IsArray(_e_depends)) {
-							int _e_cnt = cJSON_GetArraySize(_e_depends);
+		file_content = wdmalloc(fp_cache_sz + 1);
+		if (!file_content)
+			goto out_close;
 
-							for (i = 0; i < _e_cnt; i++)
-								dep_cjson_additem(_e_depends, i, depends);
+		fread(file_content, 1, fp_cache_sz, e_file);
+		file_content[fp_cache_sz] = '\0';
 
-							pr_info(stdout, "Loaded %d existing hashes", _e_cnt);
-						}
-					}
-					wdfree(file_content);
-				}
-			}
-			fclose(e_file);
+		_e_root = cJSON_Parse(file_content);
+		if (!_e_root)
+			goto out_free;
+
+		cJSON *_e_depends;
+		_e_depends = cJSON_GetObjectItem(_e_root, "depends");
+		if (_e_depends && cJSON_IsArray(_e_depends)) {
+			int cnt = cJSON_GetArraySize(_e_depends);
+			int i;
+
+			for (i = 0; i < cnt; i++)
+				dep_cjson_additem(_e_depends, i, depends);
+
+			pr_info(stdout, "Loaded %d existing hashes", cnt);
 		}
+
+out_free:
+		wdfree(file_content);
+out_close:
+		fclose(e_file);
 
 		/* Build paths */
 		snprintf(dp_fp, sizeof(dp_fp), "%s/plugins", dep_dir);
@@ -1509,13 +1531,6 @@ void wd_install_depends(const char *deps_str)
 				pr_error(stdout, "Invalid repo format: %s", depends[i]);
 				continue;
 			}
-
-#if defined(_DBG_PRINT)
-			pr_info(stdout, "Parsed repo: host=%s, domain=%s, user=%s, repo=%s, tag=%s",
-						dep_repo_info.host, dep_repo_info.domain, dep_repo_info.user,
-						dep_repo_info.repo,
-						dep_repo_info.tag[0] ? dep_repo_info.tag : "main");
-#endif
 
 			if (!strcmp(dep_repo_info.host, "github"))
 				{

@@ -86,16 +86,9 @@ sudo systemctl enable docker
 sudo systemctl start docker
 ```
 
-#### Build and Run
+#### Run Ubuntu
 ```bash
-# Navigate to Docker directory
-cd Docker/dockerfile
-
-# Build Docker image
-docker build -t docker_usage .
-
-# Run container
-docker run --rm -it docker_usage
+docker run -it ubuntu
 ```
 
 #### Common Docker Commands
@@ -271,11 +264,11 @@ option = ["-Z+", "-O2", "-d2", "-;+", "-(+"]
 
 # Include paths for compiler
 include_path = [
-    "gamemodes/",
+    "gamemodes",
     "gamemodes/x", 
     "gamemodes/y", 
     "gamemodes/z", 
-    "pawno/include/",
+    "pawno/include",
     "pawno/include/x",
     "pawno/include/y",
     "pawno/include/z",
@@ -465,7 +458,8 @@ alias watch='./watchdogs'
 
 > You need the -Z+ option if it exists to support specific paths with `\` on Linux and `/` on Windows for cross-platform compatibility. https://github.com/pawn-lang/compiler/wiki/Compatibility-mode
 
-> There may be instances where the `-i"path/"` option does not reliably detect include files located in subdirectories within the specified path. To address this, Watchdogs implements its own detection mechanism to recursively scan and add all folders within `pawno-qawno/include` and `gamemodes/`.
+> There may be instances where the -i"path/" option does not reliably detect include files located in subdirectories within the specified path. To address this, Watchdogs implements its own detection mechanism to recursively scan and add all folders within pawno-qawno/include and gamemodes/.
+> By default, Watchdogs disables the automatic `-i` flag for folders under `gamemodes/` or `pawno-qawno/include/` https://github.com/klantle/watchdogs/blob/main/utils.c#L1390 https://github.com/klantle/watchdogs/blob/main/utils.c#L1374 because the compiler can still handle includes correctly even if the flag is not explicitly set. Users can manually enable it by adding a trailing / to the target folder, allowing the compiler to automatically include all subdirectories under that path.
 
 ### General Options
 

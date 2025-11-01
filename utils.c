@@ -13,7 +13,6 @@
 #include <limits.h>
 #include <time.h>
 #include <ftw.h>
-#include <signal.h>
 #include <curl/curl.h>
 #include <inttypes.h>
 #include <stddef.h>
@@ -47,26 +46,26 @@ const char *RST = "\x1b[0m";
  * __command_len stores the number of commands in this array.
  *
  */
-const char* __command[] = {
-		"help",
-		"clear",
-		"exit",
-		"kill",
-		"title",
-		"time",
-		"stopwatch",
-		"toml",
-		"install",
-		"upstream",
-		"hardware",
-		"gamemode",
-		"pawncc",
-		"compile",
-		"running",
-		"crunn",
-		"stop",
-		"restart"
-};
+const char* __command[]={
+							"help",
+							"clear",
+							"exit",
+							"kill",
+							"title",
+							"time",
+							"stopwatch",
+							"toml",
+							"install",
+							"upstream",
+							"hardware",
+							"gamemode",
+							"pawncc",
+							"compile",
+							"running",
+							"crunn",
+							"stop",
+							"restart"
+						};
 
 /** 
  * __command_len - Number of commands in __command array.
@@ -93,7 +92,6 @@ sizeof(__command) / sizeof(__command[0]);
  *   wd_is_omp             - Flag if running on OMP (CRC32_FALSE)
  *   wd_ptr_samp           - Pointer to SAMP module (NULL)
  *   wd_ptr_omp            - Pointer to OMP module (NULL)
- *   wd_compiler_stat      - Compiler statistics (0)
  *   wd_stopwatch_end	   - Stopwatch End Loop
  *   wd_sef_count          - Count of SEF modules (0)
  *   wd_sef_found_list     - List of found SEF modules (initialized to zero)
@@ -117,7 +115,6 @@ WatchdogConfig wcfg = {
 		.wd_ptr_omp = NULL,
 		.wd_compiler_stat = 0,
 		.wd_sef_count = 0,
-		.wd_stopwatch_end = 0,
 		.wd_sef_found_list = { { 0 } },
 		.wd_toml_aio_opt = NULL,
 		.wd_toml_aio_repo = NULL,
@@ -248,8 +245,10 @@ static int __regex_v_unix(const char *s, char *badch, size_t *pos)
 						return RETN;
 
 				/* Unix-specific additional checks */
-				if (c == '(' || c == ')' || c == '{' || c == '}' ||
-				    c == '[' || c == ']' || c == '*' || c == '?' || 
+				if (c == '(' || c == ')' ||
+					c == '{' || c == '}' ||
+				    c == '[' || c == ']' ||
+					c == '*' || c == '?' || 
 				    c == '~' || c == '#') {
 						if (badch)
 								*badch = c;
@@ -337,15 +336,6 @@ static int wd_confirm_dangerous_command(const char *cmd, char badch, size_t pos)
 done:
 		wdfree(confirm);
 		return RETZ;
-}
-
-/*
- * stopwatch_signal_handler - signal number handler for stopwatch
- */
-void stopwatch_signal_handler(int signum) {
-		wcfg.wd_stopwatch_end = 1;
-		write(STDOUT_FILENO, "\n", 1);
-		__main(signum);
 }
 
 /**
@@ -1305,7 +1295,7 @@ static void __toml_base_subdirs(const char *base_path, FILE *toml_file, int *fir
 		WIN32_FIND_DATAA find_data;
 		HANDLE find_handle;
 		char search_path[MAX_PATH];
-		char full_path[MAX_PATH + 50];
+		char full_path[MAX_PATH * 4];
 
 		snprintf(search_path, sizeof(search_path), "%s\\*", base_path);
 		find_handle = FindFirstFileA(search_path, &find_data);
@@ -1339,7 +1329,7 @@ static void __toml_base_subdirs(const char *base_path, FILE *toml_file, int *fir
 #else
 		DIR *dir;
 		struct dirent *item;
-		char full_path[PATH_MAX + 50];
+		char full_path[MAX_PATH * 4];
 
 		dir = opendir(base_path);
 		if (!dir)
@@ -1380,8 +1370,8 @@ static void wd_add_compiler_path(FILE *file, const char *path, int *first_item)
 				if (!*first_item)
 						fprintf(file, ",");
 				fprintf(file, "\n        \"%s\"", path);
-				*first_item = 0;
-				__toml_base_subdirs(path, file, first_item);
+				//*first_item = 0;
+				//__toml_base_subdirs(path, file, first_item);
 		}
 }
 
@@ -1397,7 +1387,7 @@ static void wd_add_include_paths(FILE *file, int *first_item)
 						fprintf(file, ",");
 				fprintf(file, "\n        \"gamemodes/\"");
 				*first_item = 0;
-				__toml_base_subdirs("gamemodes", file, first_item);
+				//__toml_base_subdirs("gamemodes", file, first_item);
 		}
 
 		/* Add compiler-specific include paths */
@@ -1491,7 +1481,7 @@ static void wd_generate_toml_content(FILE *file, const char *wd_os_type,
 		/* Include paths */
 		fprintf(file, "\tinclude_path = [");
 		wd_add_include_paths(file, &first_item);
-		fprintf(file, "\n    ]\n");
+		fprintf(file, "\n\t]\n");
 
 		/* Input/output files */
 		if (has_gamemodes && sef_path[0]) {
@@ -1505,44 +1495,6 @@ static void wd_generate_toml_content(FILE *file, const char *wd_os_type,
 		fprintf(file, "[depends]\n");
 		fprintf(file, "\tgithub_tokens = \"DO_HERE\"\n");
 		fprintf(file, "\taio_repo = [\"Y-Less/sscanf:latest\", \"samp-incognito/samp-streamer-plugin:latest\"]");
-
-		FILE *proc_file;
-		char errbuf[256];
-		toml_table_t *toml_config;
-		toml_table_t *general_table;
-
-		proc_file = fopen("watchdogs.toml", "r");
-		if (!proc_file) {
-				pr_error(stdout, "Cannot read file %s", "watchdogs.toml");
-		}
-
-		toml_config = toml_parse_file(proc_file, errbuf, sizeof(errbuf));
-		fclose(proc_file);
-
-		if (!toml_config) {
-				pr_error(stdout, "Parsing TOML: %s", errbuf);
-		}
-
-		general_table = toml_table_in(toml_config, "general");
-		if (general_table) {
-				toml_datum_t bin_val = toml_string_in(general_table, "binary");
-				if (bin_val.ok) {
-						if (_is_samp == 1)
-							wcfg.wd_ptr_samp = strdup(bin_val.u.s);
-						else
-							wcfg.wd_ptr_omp = strdup(bin_val.u.s);
-						wdfree(bin_val.u.s);
-				}
-				toml_datum_t conf_val = toml_string_in(general_table, "config");
-				if (conf_val.ok) {
-						if (_is_samp == 1)
-							wcfg.wd_toml_config = strdup(conf_val.u.s);
-						else
-							wcfg.wd_toml_config = strdup(conf_val.u.s);
-						wdfree(conf_val.u.s);
-				}
-		}
-		toml_free(toml_config);
 }
 
 /**
@@ -1629,6 +1581,26 @@ int wd_set_toml(void)
 					toml_gh_tokens.u.s = NULL;
 				}
 		}
+		
+		toml_table_t *general_table = toml_table_in(_toml_config, "general");
+		if (general_table) {
+				toml_datum_t bin_val = toml_string_in(general_table, "binary");
+				if (bin_val.ok) {
+						if (!strcmp(wcfg.wd_is_samp, CRC32_TRUE))
+							wcfg.wd_ptr_samp = strdup(bin_val.u.s);
+						else if (!strcmp(wcfg.wd_is_omp, CRC32_TRUE))
+							wcfg.wd_ptr_omp = strdup(bin_val.u.s);
+						else
+							wcfg.wd_ptr_samp = strdup(bin_val.u.s);
+						wdfree(bin_val.u.s);
+				}
+				toml_datum_t conf_val = toml_string_in(general_table, "config");
+				if (conf_val.ok) {
+						wcfg.wd_toml_config = strdup(conf_val.u.s);
+						wdfree(conf_val.u.s);
+				}
+		}
+
 		toml_free(_toml_config);
 		
 		if (strcmp(wcfg.wd_toml_os_type, "windows") == 0) {

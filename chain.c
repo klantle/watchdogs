@@ -43,40 +43,6 @@ void __function__(void) {
         wd_sef_fdir_reset();
         wd_set_toml();
         wd_u_history();
-        
-		if (strcmp(wcfg.wd_toml_os_type, "windows") == 0) {
-			wcfg.wd_os_type = OS_SIGNAL_WINDOWS;
-		} else if (strcmp(wcfg.wd_toml_os_type, "linux") == 0) {
-			wcfg.wd_os_type = OS_SIGNAL_LINUX;
-		}
-        if (!strcmp(wcfg.wd_os_type, OS_SIGNAL_WINDOWS)) {
-            wcfg.wd_ptr_samp="samp-server.exe";
-            wcfg.wd_ptr_omp="omp-server.exe";
-        } else if (!strcmp(wcfg.wd_os_type, OS_SIGNAL_LINUX)) {
-            wcfg.wd_ptr_samp="samp03svr";
-            wcfg.wd_ptr_omp="omp-server";
-        }
-        
-        FILE *file_s = fopen(wcfg.wd_ptr_samp, "r");
-        FILE *file_m = fopen(wcfg.wd_ptr_omp, "r");
-
-        if (file_s != NULL && file_m != NULL) {
-            wcfg.wd_is_samp = CRC32_TRUE;
-            wcfg.wd_is_omp  = CRC32_FALSE;
-        } else if (file_s != NULL) {
-            wcfg.wd_is_samp = CRC32_TRUE;
-            wcfg.wd_is_omp  = CRC32_FALSE;
-        } else if (file_m != NULL) {
-            wcfg.wd_is_samp = CRC32_FALSE;
-            wcfg.wd_is_omp  = CRC32_TRUE;
-        } else {
-            wcfg.wd_is_samp = CRC32_TRUE;
-            wcfg.wd_is_omp  = CRC32_FALSE;
-        }
-
-        if (file_s) fclose(file_s);
-        if (file_m) fclose(file_m);
-
 #if defined(_DBG_PRINT)
         pr_color(stdout,
                 FCOLOUR_YELLOW,
@@ -260,7 +226,7 @@ loop_stopwatch:
                         putchar('-'); 
                 printf("+%s\n", RST);
 
-                char line[MAX_PATH * 3];
+                char line[MAX_PATH * 4];
 
                 while (fgets(line, sizeof(line), procc_f)) 
                 {
@@ -452,8 +418,8 @@ free_val:
                 if (!merged)
                     merged = strdup("");
 
-                wcfg.wd_toml_aio_repo_array = merged;
-                wd_install_depends(wcfg.wd_toml_aio_repo_array);
+                wcfg.wd_toml_aio_repo = merged;
+                wd_install_depends(wcfg.wd_toml_aio_repo);
 
 out:
                 toml_free(_toml_config);
@@ -585,12 +551,12 @@ _runners_:
 
 		        size_t needed = snprintf(NULL, 0, "Watchdogs | @ running | args: %s | %s",
 									              arg1,
-									              "config.json") + 1;
+									              wcfg.wd_toml_config) + 1;
 		        char *title_running_info = wdmalloc(needed);
 		        if (!title_running_info) { return RETN; }
 		        snprintf(title_running_info, needed, "Watchdogs | @ running | args: %s | %s",
 									                  arg1,
-									                  "config.json");
+									                  wcfg.wd_toml_config);
 		        if (title_running_info) {
 			        wd_set_title(title_running_info);
 			        wdfree(title_running_info);
@@ -705,7 +671,7 @@ n_loop_igm2:
                         toml_datum_t toml_gm_i = toml_string_in(wd_compiler, "input");
                         if (toml_gm_i.ok) 
                         {
-                            wcfg.wd_toml_gm_input_table = strdup(toml_gm_i.u.s);
+                            wcfg.wd_toml_gm_input = strdup(toml_gm_i.u.s);
                             wdfree(toml_gm_i.u.s);
                             toml_gm_i.u.s = NULL;
                         }
@@ -713,7 +679,7 @@ n_loop_igm2:
                 toml_free(_toml_config);
 
                 char __sz_gm_input[PATH_MAX];
-                snprintf(__sz_gm_input, sizeof(__sz_gm_input), "%s", wcfg.wd_toml_gm_input_table);
+                snprintf(__sz_gm_input, sizeof(__sz_gm_input), "%s", wcfg.wd_toml_gm_input);
                 char *f_EXT = strrchr(__sz_gm_input, '.');
                 if (f_EXT) 
                     *f_EXT = '\0';

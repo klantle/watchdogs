@@ -2,8 +2,6 @@
 #include <stdlib.h>
 #include <string.h>
 #include <stdarg.h>
-#include <sys/stat.h>
-#include <ncursesw/curses.h>
 
 #include "color.h"
 

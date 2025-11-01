@@ -16,14 +16,12 @@
  */
 void wd_stop_server_tasks(void)
 {
-		kill_process("samp-server.exe");
-		kill_process("samp03svr");
-		kill_process("omp-server.exe");
-		kill_process("omp-server");
+		kill_process(wcfg.wd_ptr_samp);
+		kill_process(wcfg.wd_ptr_omp);
 }
 
 /**
- * update_server_config - Update server.cfg with new gamemode
+ * update_server_config - Update wcfg.wd_toml_config with new gamemode
  * @gamemode: Gamemode filename
  *
  * Return: 0 on success, -1 on failure
@@ -34,18 +32,21 @@ static int update_server_config(const char *gamemode)
 		char line[1024];
 		int gamemode_updated = 0;
 
+		char __sz_config[PATH_MAX];
+		snprintf(__sz_config, sizeof(__sz_config), ".%s.bak", wcfg.wd_toml_config);
+
 		char __sz_mv[MAX_PATH];
 		snprintf(__sz_mv, sizeof(__sz_mv), "mv -f %s %s",
-										   "server.cfg",
-										   ".server.cfg.bak");
+										   wcfg.wd_toml_config,
+										   __sz_config);
 		system(__sz_mv);
 
-		config_in = fopen(".server.cfg.bak", "r");
+		config_in = fopen(__sz_config, "r");
 		if (!config_in) {
 				pr_error(stdout, "Failed to open backup config");
 				return -RETN;
 		}
-		config_out = fopen("server.cfg", "w");
+		config_out = fopen(wcfg.wd_toml_config, "w");
 		if (!config_out) {
 				pr_error(stdout, "Failed to write new config");
 				fclose(config_in);
@@ -107,8 +108,11 @@ next:
  */
 static void restore_server_config(void)
 {
-		remove("server.cfg");
-		rename(".server.cfg.bak", "server.cfg");
+		char __sz_config[PATH_MAX];
+		snprintf(__sz_config, sizeof(__sz_config), ".%s.bak", wcfg.wd_toml_config);
+
+		remove(wcfg.wd_toml_config);
+		rename(__sz_config, wcfg.wd_toml_config);
 }
 
 /**
@@ -164,7 +168,7 @@ void wd_run_samp_server(const char *gamemode, const char *server_bin)
 }
 
 /**
- * update_omp_config - Update OpenMP config.json with new gamemode
+ * update_omp_config - Update OpenMP wcfg.wd_toml_config with new gamemode
  * @gamemode: Gamemode filename
  *
  * Return: 0 on success, -1 on failure
@@ -179,26 +183,29 @@ static int update_omp_config(const char *gamemode)
 		char _gamemode[256];
 		int ret = -RETN;
 
+		char __sz_config[PATH_MAX];
+		snprintf(__sz_config, sizeof(__sz_config), ".%s.bak", wcfg.wd_toml_config);
+
 		/* Create backup */
 		char __sz_mv[MAX_PATH];
 		snprintf(__sz_mv, sizeof(__sz_mv), "mv -f %s %s",
-										   "config.json",
-										   ".config.json.bak");
+										   wcfg.wd_toml_config,
+										   __sz_config);
 		if (system(__sz_mv) != 0) {
 			pr_error(stdout, "Failed to create backup file");
 			return -RETN;
 		}
 
 		/* Use stat to get file size */
-		if (stat(".config.json.bak", &st) != 0) {
+		if (stat(__sz_config, &st) != 0) {
 			pr_error(stdout, "Failed to get file status");
 			return -RETN;
 		}
 
 		/* Open input file */
-		config_in = fopen(".config.json.bak", "rb");
+		config_in = fopen(__sz_config, "rb");
 		if (!config_in) {
-			pr_error(stdout, "Failed to open .config.json.bak");
+			pr_error(stdout, "Failed to open %s", __sz_config);
 			return -RETN;
 		}
 
@@ -250,9 +257,9 @@ static int update_omp_config(const char *gamemode)
 		cJSON_AddItemToObject(pawn, "main_scripts", main_scripts);
 
 		/* Write updated config */
-		config_out = fopen("config.json", "w");
+		config_out = fopen(wcfg.wd_toml_config, "w");
 		if (!config_out) {
-			pr_error(stdout, "Failed to write config.json");
+			pr_error(stdout, "Failed to write %s", wcfg.wd_toml_config);
 			goto done;
 		}
 
@@ -263,7 +270,7 @@ static int update_omp_config(const char *gamemode)
 		}
 
 		if (fputs(__cJSON_Printed, config_out) == EOF) {
-			pr_error(stdout, "Failed to write to config.json");
+			pr_error(stdout, "Failed to write to %s", wcfg.wd_toml_config);
 			goto done;
 		}
 
@@ -290,8 +297,11 @@ done:
  */
 static void restore_omp_config(void)
 {
-		remove("config.json");
-		rename(".config.json.bak", "config.json");
+		char __sz_config[PATH_MAX];
+		snprintf(__sz_config, sizeof(__sz_config), ".%s.bak", wcfg.wd_toml_config);
+
+		remove(wcfg.wd_toml_config);
+		rename(__sz_config, wcfg.wd_toml_config);
 }
 
 /**

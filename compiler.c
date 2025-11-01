@@ -369,12 +369,12 @@ int wd_run_compiler(const char *arg, const char *compile_args)
                     /* Store merged options in global configuration */
                     if (merged) 
                     {
-                        wcfg.wd_toml_aio_opt_table = merged;
+                        wcfg.wd_toml_aio_opt = merged;
                     }
                     else 
                     {
                         /* Set empty options if none were provided */
-                        wcfg.wd_toml_aio_opt_table = strdup("");
+                        wcfg.wd_toml_aio_opt = strdup("");
                     }
                 }
             
@@ -433,7 +433,7 @@ int wd_run_compiler(const char *arg, const char *compile_args)
                     toml_datum_t toml_gm_i = toml_string_in(wd_compiler, "input");
                     if (toml_gm_i.ok) 
                     {
-                        wcfg.wd_toml_gm_input_table = strdup(toml_gm_i.u.s);
+                        wcfg.wd_toml_gm_input = strdup(toml_gm_i.u.s);
                         wdfree(toml_gm_i.u.s);
                         toml_gm_i.u.s = NULL;
                     }
@@ -442,7 +442,7 @@ int wd_run_compiler(const char *arg, const char *compile_args)
                     toml_datum_t toml_gm_o = toml_string_in(wd_compiler, "output");
                     if (toml_gm_o.ok) 
                     {
-                        wcfg.wd_toml_gm_output_table = strdup(toml_gm_o.u.s);
+                        wcfg.wd_toml_gm_output = strdup(toml_gm_o.u.s);
                         wdfree(toml_gm_o.u.s);
                         toml_gm_o.u.s = NULL;
                     }
@@ -454,9 +454,9 @@ int wd_run_compiler(const char *arg, const char *compile_args)
                         format_size_compiler,
                         "%s %s -o%s %s %s -i%s > .wd_compiler.log 2>&1",
                         wcfg.wd_sef_found_list[0],                      // compiler binary
-                        wcfg.wd_toml_gm_input_table,                          // input file
-                        wcfg.wd_toml_gm_output_table,                         // output file
-                        wcfg.wd_toml_aio_opt_table,                           // additional options
+                        wcfg.wd_toml_gm_input,                          // input file
+                        wcfg.wd_toml_gm_output,                         // output file
+                        wcfg.wd_toml_aio_opt,                           // additional options
                         include_aio_path,                               // include search path
                         path_include                                    // include directory
                     );
@@ -467,9 +467,9 @@ int wd_run_compiler(const char *arg, const char *compile_args)
                         format_size_compiler,
                         "\"%s\" \"%s\" -o\"%s\" \"%s\" %s -i\"%s\" > .wd_compiler.log 2>&1",
                         wcfg.wd_sef_found_list[0],                      // compiler binary
-                        wcfg.wd_toml_gm_input_table,                          // input file
-                        wcfg.wd_toml_gm_output_table,                         // output file
-                        wcfg.wd_toml_aio_opt_table,                           // additional options
+                        wcfg.wd_toml_gm_input,                          // input file
+                        wcfg.wd_toml_gm_output,                         // output file
+                        wcfg.wd_toml_aio_opt,                           // additional options
                         include_aio_path,                               // include search path
                         path_include                                    // include directory
                     );
@@ -484,8 +484,8 @@ int wd_run_compiler(const char *arg, const char *compile_args)
                     /* Create window title with compilation info */
                     size_t needed = snprintf(NULL, 0, "Watchdogs | @ compile | %s | %s | %s",
                                                       wcfg.wd_sef_found_list[0],
-                                                      wcfg.wd_toml_gm_input_table,
-                                                      wcfg.wd_toml_gm_output_table) + 1;
+                                                      wcfg.wd_toml_gm_input,
+                                                      wcfg.wd_toml_gm_output) + 1;
                     char *title_compiler_info = wdmalloc(needed);
                     if (!title_compiler_info) 
                     { 
@@ -493,8 +493,8 @@ int wd_run_compiler(const char *arg, const char *compile_args)
                     }
                     snprintf(title_compiler_info, needed, "Watchdogs | @ compile | %s | %s | %s",
                                                           wcfg.wd_sef_found_list[0],
-                                                          wcfg.wd_toml_gm_input_table,
-                                                          wcfg.wd_toml_gm_output_table);
+                                                          wcfg.wd_toml_gm_input,
+                                                          wcfg.wd_toml_gm_output);
                     if (title_compiler_info) 
                     {
                         /* Set window/tab title */
@@ -757,7 +757,7 @@ int wd_run_compiler(const char *arg, const char *compile_args)
                             wcfg.wd_sef_found_list[0],                      // compiler binary
                             wcfg.wd_sef_found_list[1],                      // input file
                             container_output,                               // output file
-                            wcfg.wd_toml_aio_opt_table,                           // additional options
+                            wcfg.wd_toml_aio_opt,                           // additional options
                             include_aio_path,                               // include search path
                             path_include                                    // include directory
                         );
@@ -770,7 +770,7 @@ int wd_run_compiler(const char *arg, const char *compile_args)
                             wcfg.wd_sef_found_list[0],                      // compiler binary
                             wcfg.wd_sef_found_list[1],                      // input file
                             container_output,                               // output file
-                            wcfg.wd_toml_aio_opt_table,                           // additional options
+                            wcfg.wd_toml_aio_opt,                           // additional options
                             include_aio_path,                               // include search path
                             path_include                                    // include directory
                         );

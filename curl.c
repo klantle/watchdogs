@@ -457,13 +457,13 @@ int wd_download_file(const char *url, const char *filename)
 			
 			struct curl_slist *headers = NULL;
 
-			if (strfind(wcfg.wd_toml_github_tokens_table, "DO_HERE")) {
+			if (strfind(wcfg.wd_toml_github_tokens, "DO_HERE")) {
 				pr_info(stdout, "Can't read Github token.. skipping");
 				sleep(1);
 			} else { 
-				if (wcfg.wd_toml_github_tokens_table && strlen(wcfg.wd_toml_github_tokens_table) > 0) {
+				if (wcfg.wd_toml_github_tokens && strlen(wcfg.wd_toml_github_tokens) > 0) {
 					char auth_header[512];
-					snprintf(auth_header, sizeof(auth_header), "Authorization: token %s", wcfg.wd_toml_github_tokens_table);
+					snprintf(auth_header, sizeof(auth_header), "Authorization: token %s", wcfg.wd_toml_github_tokens);
 					headers = curl_slist_append(headers, auth_header);
 				}
 			}

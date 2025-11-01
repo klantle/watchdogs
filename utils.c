@@ -83,6 +83,8 @@ sizeof(__command) / sizeof(__command[0]);
  *
  * Members:
  *   wd_toml_os_type       - OS type string from TOML config (default NULL)
+ *   wd_toml_binary        - SA-MP/Open.MP Binary File
+ *   wd_toml_config        - SA-MP/Open.MP Config File
  *   wd_ipackage           - Package index counter
  *   wd_idepends           - Dependency counter
  *   wd_os_type            - OS type flag (CRC32_FALSE by default)
@@ -95,14 +97,16 @@ sizeof(__command) / sizeof(__command[0]);
  *   wd_stopwatch_end	   - Stopwatch End Loop
  *   wd_sef_count          - Count of SEF modules (0)
  *   wd_sef_found_list     - List of found SEF modules (initialized to zero)
- *   wd_toml_aio_opt_table       - AIO options from TOML (NULL)
- *   wd_toml_aio_repo_array      - AIO repository string from TOML (NULL)
- *   wd_toml_gm_input_table      - Game mode input path (NULL)
- *   wd_toml_gm_output_table     - Game mode output path (NULL)
+ *   wd_toml_aio_opt       - AIO options from TOML (NULL)
+ *   wd_toml_aio_repo      - AIO repository string from TOML (NULL)
+ *   wd_toml_gm_input      - Game mode input path (NULL)
+ *   wd_toml_gm_output     - Game mode output path (NULL)
  *
  */
 WatchdogConfig wcfg = {
 		.wd_toml_os_type = NULL,
+		.wd_toml_binary = NULL,
+		.wd_toml_config = NULL,
 		.wd_ipackage = 0,
 		.wd_idepends = 0,
 		.wd_os_type = CRC32_FALSE,
@@ -115,10 +119,10 @@ WatchdogConfig wcfg = {
 		.wd_sef_count = 0,
 		.wd_stopwatch_end = 0,
 		.wd_sef_found_list = { { 0 } },
-		.wd_toml_aio_opt_table = NULL,
-		.wd_toml_aio_repo_array = NULL,
-		.wd_toml_gm_input_table = NULL,
-		.wd_toml_gm_output_table = NULL
+		.wd_toml_aio_opt = NULL,
+		.wd_toml_aio_repo = NULL,
+		.wd_toml_gm_input = NULL,
+		.wd_toml_gm_output = NULL
 };
 
 /**
@@ -1377,18 +1381,18 @@ static void wd_add_include_paths(FILE *file, int *first_item)
 		if (path_acces("gamemodes")) {
 				if (!*first_item)
 						fprintf(file, ",");
-				fprintf(file, "\n        \"gamemodes\"");
+				fprintf(file, "\n        \"gamemodes/\"");
 				*first_item = 0;
 				__toml_base_subdirs("gamemodes", file, first_item);
 		}
 
 		/* Add compiler-specific include paths */
 		if (!strcmp(wcfg.wd_is_samp, CRC32_TRUE)) {
-				wd_add_compiler_path(file, "pawno/include", first_item);
+				wd_add_compiler_path(file, "pawno/include/", first_item);
 		} else if (!strcmp(wcfg.wd_is_omp, CRC32_TRUE)) {
-				wd_add_compiler_path(file, "qawno/include", first_item);
+				wd_add_compiler_path(file, "qawno/include/", first_item);
 		} else {
-				wd_add_compiler_path(file, "pawno/include", first_item);
+				wd_add_compiler_path(file, "pawno/include/", first_item);
 		}
 }
 
@@ -1413,8 +1417,52 @@ static void wd_generate_toml_content(FILE *file, const char *wd_os_type,
 						*__dot_ext = '\0';
 		}
 
+		int _is_samp = 0;
+		char *ptr_samp = NULL;
+		char *ptr_omp = NULL;
+
+        if (!strcmp(wd_os_type, "windows")) {
+			ptr_samp = "samp-server.exe";
+			ptr_omp = "omp-server.exe";
+        } else if (!strcmp(wd_os_type, "linux")) {
+			ptr_samp = "samp03svr";
+			ptr_omp = "omp-server";
+        }
+        
+        FILE *file_s = fopen(ptr_samp, "r");
+        FILE *file_m = fopen(ptr_omp, "r");
+
+        if (file_s != NULL && file_m != NULL) {
+			_is_samp = 0;
+            wcfg.wd_is_samp = CRC32_TRUE;
+            wcfg.wd_is_omp  = CRC32_FALSE;
+        } else if (file_s != NULL) {
+			_is_samp = 1;
+            wcfg.wd_is_samp = CRC32_TRUE;
+            wcfg.wd_is_omp  = CRC32_FALSE;
+        } else if (file_m != NULL) {
+			_is_samp = 0;
+            wcfg.wd_is_samp = CRC32_FALSE;
+            wcfg.wd_is_omp  = CRC32_TRUE;
+        } else {
+			_is_samp = 1;
+            wcfg.wd_is_samp = CRC32_TRUE;
+            wcfg.wd_is_omp  = CRC32_FALSE;
+        }
+
+        if (file_s) fclose(file_s);
+        if (file_m) fclose(file_m);
+
 		fprintf(file, "[general]\n");
 		fprintf(file, "\tos = \"%s\"\n", wd_os_type);
+		if (_is_samp == 1) {
+			fprintf(file, "\tbinary = \"%s\"\n", ptr_samp);
+			fprintf(file, "\tconfig = \"%s\"\n", "server.cfg");
+		} else {
+			fprintf(file, "\tbinary = \"%s\"\n", ptr_omp);
+			fprintf(file, "\tconfig = \"%s\"\n", "server.cfg");
+		}
+
 		fprintf(file, "[compiler]\n");
 
 		/* Compiler options */
@@ -1443,6 +1491,44 @@ static void wd_generate_toml_content(FILE *file, const char *wd_os_type,
 		fprintf(file, "[depends]\n");
 		fprintf(file, "\tgithub_tokens = \"DO_HERE\"\n");
 		fprintf(file, "\taio_repo = [\"Y-Less/sscanf:latest\", \"samp-incognito/samp-streamer-plugin:latest\"]");
+
+		FILE *proc_file;
+		char errbuf[256];
+		toml_table_t *toml_config;
+		toml_table_t *general_table;
+
+		proc_file = fopen("watchdogs.toml", "r");
+		if (!proc_file) {
+				pr_error(stdout, "Cannot read file %s", "watchdogs.toml");
+		}
+
+		toml_config = toml_parse_file(proc_file, errbuf, sizeof(errbuf));
+		fclose(proc_file);
+
+		if (!toml_config) {
+				pr_error(stdout, "Parsing TOML: %s", errbuf);
+		}
+
+		general_table = toml_table_in(toml_config, "general");
+		if (general_table) {
+				toml_datum_t bin_val = toml_string_in(general_table, "binary");
+				if (bin_val.ok) {
+						if (_is_samp == 1)
+							wcfg.wd_ptr_samp = strdup(bin_val.u.s);
+						else
+							wcfg.wd_ptr_omp = strdup(bin_val.u.s);
+						wdfree(bin_val.u.s);
+				}
+				toml_datum_t conf_val = toml_string_in(general_table, "config");
+				if (conf_val.ok) {
+						if (_is_samp == 1)
+							wcfg.wd_toml_config = strdup(conf_val.u.s);
+						else
+							wcfg.wd_toml_config = strdup(conf_val.u.s);
+						wdfree(conf_val.u.s);
+				}
+		}
+		toml_free(toml_config);
 }
 
 /**
@@ -1524,13 +1610,19 @@ int wd_set_toml(void)
 				toml_datum_t toml_gh_tokens = toml_string_in(wd_toml_depends, "github_tokens");
 				if (toml_gh_tokens.ok) 
 				{
-					wcfg.wd_toml_github_tokens_table = strdup(toml_gh_tokens.u.s);
+					wcfg.wd_toml_github_tokens = strdup(toml_gh_tokens.u.s);
 					wdfree(toml_gh_tokens.u.s);
 					toml_gh_tokens.u.s = NULL;
 				}
 		}
 		toml_free(_toml_config);
 		
+		if (strcmp(wcfg.wd_toml_os_type, "windows") == 0) {
+			wcfg.wd_os_type = OS_SIGNAL_WINDOWS;
+		} else if (strcmp(wcfg.wd_toml_os_type, "linux") == 0) {
+			wcfg.wd_os_type = OS_SIGNAL_LINUX;
+		}
+
 		return RETZ;
 }
 

@@ -223,8 +223,9 @@ Server = https://mirror.selfnet.de/msys2/msys/$arch
 ```
 
 Save & Exit
-```
-CTRL + X & Y & ENTER
+```yaml
+CTRL + X
+Y & ENTER
 ```
 
 ### Linux (Bash)
@@ -259,6 +260,10 @@ mv -f watchdogs .. && cd ..
 [general]
 # Operating system type
 os = "linux"
+# SA-MP/Open.MP binary
+binary = "samp-server.exe"
+# SA-MP/Open.MP Config
+config = "server.cfg"
 
 [compiler]
 # Compiler options
@@ -266,11 +271,11 @@ option = ["-Z+", "-O2", "-d2", "-;+", "-(+"]
 
 # Include paths for compiler
 include_path = [
-    "gamemodes",
+    "gamemodes/",
     "gamemodes/x", 
     "gamemodes/y", 
     "gamemodes/z", 
-    "pawno/include",
+    "pawno/include/",
     "pawno/include/x",
     "pawno/include/y",
     "pawno/include/z",
@@ -379,7 +384,7 @@ compile path/to/yourmode.pwn
 
 ### Server Management
 
-> It operates as usual by running the samp-server or open.mp server binary according to its default name. In the `[<args>]` section, how it works is by modifying the `gamemode0` parameter in server.cfg for SA-MP or the `main_scripts` parameter in config.json for Open.MP.
+> It operates as usual by running the samp-server or open.mp server binary according to its default name in watchdogs.toml. In the `[<args>]` section, how it works is by modifying the `gamemode0` parameter in server.cfg for SA-MP or the `main_scripts` parameter in config.json for Open.MP.
 
 **Start server with default gamemode:**
 ```bash
@@ -398,7 +403,7 @@ crunn
 
 ### Dependency Management
 
-> Serves as an assistant for installing various files required by SA-MP/Open.MP. When installing dependencies that contain a `plugins/` folder and include files, it will install them into the `plugins/` and `/pawno-qawno/include` directories, respectively. It also handles gamemode components (root watchdogs). Watchdogs will automatically add the include names to the gamemode based on the main gamemode filename specified in the `input` key within `watchdogs.toml`. Furthermore, Watchdogs assists in installing the plugin names and their respective formats into `config.json` (for Open.MP) or `server.cfg` (for SA-MP). Note that the `components/` directory is not required for Open.MP.
+> Serves as an assistant for installing various files required by SA-MP/Open.MP. When installing dependencies that contain a `plugins/` folder and include files, it will install them into the `plugins/` and `/pawno-qawno/include` directories, respectively. It also handles gamemode components (root watchdogs). Watchdogs will automatically add the include names to the gamemode based on the main gamemode filename specified in the `input` key within `watchdogs.toml`. Furthermore, Watchdogs assists in installing the plugin names and their respective formats into `config.json` (from watchdogs.toml) - (for Open.MP) or `server.cfg` (from watchdogs.toml) - (for SA-MP). Note that the `components/` directory is not required for Open.MP.
 
 > For plugin or include files located in the root directory of the dependency archive (for both Linux and Windows), their installation paths will be adjusted accordingly. Plugins found in the root folder will be placed directly into the server's root directory, rather than in specific subdirectories like `plugins/` or `components/`.
 
@@ -459,6 +464,8 @@ alias watch='./watchdogs'
 > Pawncc is essentially an extension for converting .pwn files into .amx files (a converter). The primary language for SA-MP/Open.MP is [Pawn Code](https://www.compuphase.com/pawn/pawn.htm), and pawno/qawno are Pawn Editors designed to facilitate the integration of Pawncc itself. PawnCC refers to a modified version of Pawncc from pawn-lang - https://github.com/pawn-lang/compiler, which means Pawn Community Compiler (PawnCC or PCC).
 
 > You need the -Z+ option if it exists to support specific paths with `\` on Linux and `/` on Windows for cross-platform compatibility. https://github.com/pawn-lang/compiler/wiki/Compatibility-mode
+
+> There may be instances where the `-i"path/"` option does not reliably detect include files located in subdirectories within the specified path. To address this, Watchdogs implements its own detection mechanism to recursively scan and add all folders within `pawno-qawno/include` and `gamemodes/`.
 
 ### General Options
 

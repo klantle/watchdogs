@@ -84,7 +84,7 @@ int dep_curl_url_get_response(const char *url, const char *github_token)
 		char error_buffer[CURL_ERROR_SIZE] = { 0 };
 
 		printf("\tUsing URL: %s...\n", url);
-		if (strfind(wcfg.wd_toml_github_tokens_table, "DO_HERE")) {
+		if (strfind(wcfg.wd_toml_github_tokens, "DO_HERE")) {
 			pr_info(stdout, "Can't read Github token.. skipping");
 			sleep(1);
 		} else {
@@ -467,7 +467,7 @@ static int dep_check_github_branch(const char *user,
 				 "%sgithub.com/%s/%s/archive/refs/heads/%s.zip",
 				 "https://", user, repo, branch);
 
-		return dep_curl_url_get_response(url, wcfg.wd_toml_github_tokens_table);
+		return dep_curl_url_get_response(url, wcfg.wd_toml_github_tokens);
 }
 
 /**
@@ -712,7 +712,7 @@ static int dep_handle_repo(const struct dep_repo_info *dep_repo_info,
 							dep_repo_info->user,
 							dep_repo_info->repo,
 							actual_tag);
-					if (dep_curl_url_get_response(out_url, wcfg.wd_toml_github_tokens_table))
+					if (dep_curl_url_get_response(out_url, wcfg.wd_toml_github_tokens))
 						ret = 1;
 				}
 			}
@@ -725,7 +725,7 @@ static int dep_handle_repo(const struct dep_repo_info *dep_repo_info,
 						dep_repo_info->user,
 						dep_repo_info->repo,
 						branches[j]);
-				if (dep_curl_url_get_response(out_url, wcfg.wd_toml_github_tokens_table)) {
+				if (dep_curl_url_get_response(out_url, wcfg.wd_toml_github_tokens)) {
 					ret = 1;
 					if (j == 1)
 						pr_info(stdout, "Using master branch (main not found)");
@@ -1120,7 +1120,7 @@ static void dep_pr_include_addition(const char *filename)
 		if (wd_compiler) {
 			toml_datum_t toml_gm_i = toml_string_in(wd_compiler, "input");
 			if (toml_gm_i.ok) {
-				wcfg.wd_toml_gm_input_table = strdup(toml_gm_i.u.s);
+				wcfg.wd_toml_gm_input = strdup(toml_gm_i.u.s);
 				wdfree(toml_gm_i.u.s);
 			}
 		}
@@ -1132,11 +1132,11 @@ static void dep_pr_include_addition(const char *filename)
 
 		/* Add to main file */
 		if (!strcmp(wcfg.wd_is_samp, CRC32_TRUE)) {
-			DEP_ADD_INCLUDES(wcfg.wd_toml_gm_input_table, idirective, "#include <a_samp>");
+			DEP_ADD_INCLUDES(wcfg.wd_toml_gm_input, idirective, "#include <a_samp>");
 		} else if (!strcmp(wcfg.wd_is_omp, CRC32_TRUE)) {
-			DEP_ADD_INCLUDES(wcfg.wd_toml_gm_input_table, idirective, "#include <open.mp>");
+			DEP_ADD_INCLUDES(wcfg.wd_toml_gm_input, idirective, "#include <open.mp>");
 		} else {
-			DEP_ADD_INCLUDES(wcfg.wd_toml_gm_input_table, idirective, "#include <a_samp>");
+			DEP_ADD_INCLUDES(wcfg.wd_toml_gm_input, idirective, "#include <a_samp>");
 		}
 }
 
@@ -1253,9 +1253,9 @@ static void dep_pr_file_type(const char *path, const char *pattern,
 
 				/* Add to config */
 				if (!strcmp(wcfg.wd_is_omp, CRC32_TRUE))
-					M_ADD_PLUGIN("config.json", dep_base_names);
+					M_ADD_PLUGIN(wcfg.wd_toml_config, dep_base_names);
 				else
-					S_ADD_DEP_AFTER("server.cfg", "plugins", dep_base_names);
+					S_ADD_DEP_AFTER(wcfg.wd_toml_config, "plugins", dep_base_names);
 			}
 		}
 done:
@@ -1526,7 +1526,7 @@ void wd_install_depends(const char *deps_str)
 			else
 				{
 					dep_build_repo_url(&dep_repo_info, 0, dep_url, sizeof(dep_url));
-					dep_item_found = dep_curl_url_get_response(dep_url, wcfg.wd_toml_github_tokens_table);
+					dep_item_found = dep_curl_url_get_response(dep_url, wcfg.wd_toml_github_tokens);
 				}
 
 			if (!dep_item_found) {

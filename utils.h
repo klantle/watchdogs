@@ -135,7 +135,9 @@ extern const char *BG,
 #define MAX_SEF_PATH_SIZE PATH_MAX
 
 typedef struct {
-        const char *wd_toml_os_type;
+        char *wd_toml_os_type;
+        char *wd_toml_binary;
+        char *wd_toml_config;
         int wd_ipackage;
         int wd_idepends;
         char *wd_os_type;
@@ -148,11 +150,11 @@ typedef struct {
         volatile sig_atomic_t wd_stopwatch_end;
         size_t wd_sef_count;
         char wd_sef_found_list[MAX_SEF_ENTRIES][MAX_SEF_PATH_SIZE];
-        char *wd_toml_aio_opt_table;
-        char *wd_toml_aio_repo_array;
-        char *wd_toml_gm_input_table;
-        char *wd_toml_gm_output_table;
-        char *wd_toml_github_tokens_table;
+        char *wd_toml_aio_opt;
+        char *wd_toml_aio_repo;
+        char *wd_toml_gm_input;
+        char *wd_toml_gm_output;
+        char *wd_toml_github_tokens;
 } WatchdogConfig;
 
 extern WatchdogConfig wcfg;

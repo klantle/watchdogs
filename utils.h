@@ -172,6 +172,7 @@ int wd_set_permission(const char *src, const char *dst);
 int wd_set_title(const char *__title);
 void wd_strip_dot_fns(char *dst, size_t dst_sz, const char *src);
 bool strfind(const char *text, const char *pattern);
+uint32_t hash_str(const char *s);
 void wd_escape_quotes(char *dest, size_t size, const char *src);
 extern const char*
 wd_find_near_command(

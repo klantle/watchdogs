@@ -562,6 +562,20 @@ bool strfind(const char *text, const char *pattern)
 }
 
 /**
+ * hash_str - Hashing for String
+ */
+uint32_t hash_str(const char *s)
+{
+		uint32_t h = 5381;
+		int c;
+
+		while ((c = *s++))
+			h = ((h << 5) + h) + (uint32_t)c; /* h * 33 + c */
+
+		return h;
+}
+
+/**
  * wd_escape_quotes - Escape double quotes in string
  * @dest: Destination buffer
  * @size: Destination buffer size

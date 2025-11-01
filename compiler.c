@@ -15,11 +15,11 @@
 #include "compiler.h"
 
 typedef struct {
-        const char *trigger;
-        const char *message;
+        const char *cause_trigger;
+        const char *cause_info;
 } ErrorExplanation;
 
-ErrorExplanation error_db[] = {
+ErrorExplanation compiler_cause_list[] = {
         {"expected token", "A required token is missing from the code; the compiler will point to the line where the token (e.g., a semicolon) should be."},
         {"only a single statement", "A `case` statement in a `switch` block can only contain one statement. To use multiple statements, they must be enclosed in braces `{}`."},
         {"declaration of a local variable must appear in a compound block", "A local variable must be declared inside a compound block, which is a section of code enclosed in braces (`{...}`)."},
@@ -129,15 +129,24 @@ ErrorExplanation error_db[] = {
  *
  * Returns: Pointer to explanation string or NULL if not found
  */
-const char *cp_find_error_explanation(const char *sz_line)
-{
-        int i;
+const char *cp_find_error_explanation(const char *sz_line) {
+        static int hash_init = 0;
+        static uint32_t cause_hash[256];
 
-        for (i = 0; error_db[i].trigger != NULL; i++) {
-            if (strstr(sz_line, error_db[i].trigger) != NULL)
-                return error_db[i].message;
+        if (!hash_init) {
+            for (int i = 0;
+                compiler_cause_list[i].cause_trigger;
+                i++)
+                cause_hash[i] = hash_str(compiler_cause_list[i].cause_trigger);
+            hash_init = 1;
         }
 
+        for (int i = 0;
+            compiler_cause_list[i].cause_trigger;
+            i++) {
+            if (strstr(sz_line, compiler_cause_list[i].cause_trigger))
+                return compiler_cause_list[i].cause_info;
+        }
         return NULL;
 }
 

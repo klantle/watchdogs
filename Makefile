@@ -53,32 +53,41 @@ init:
 		$(MAKE) windows; \
 	elif echo "$$UNAME_S" | grep -qi "Linux"; then \
 		echo "$(YELLOW)==>$(RESET) Detected: Native Linux environment"; \
-		sudo dpkg --add-architecture i386; \
-		sudo apt update -y && \
-        sudo apt install -y build-essential \
-			procps \
-			clang \
-			lld \
-			libc++-dev \
-			libc++abi-dev \
-			make \
-			cmake \
-			ninja-build \
-			libssl-dev \
-			libncurses5-dev \
-			libncursesw5-dev \
-			libcurl4-openssl-dev \
-			libreadline-dev \
-			libarchive-dev \
-			zlib1g-dev \
-			libonig-dev \
-            xterm; \
+		echo "$(YELLOW)==>$(RESET) Installing dependencies without sudo..."; \
+		if command -v apt >/dev/null 2>&1; then \
+			apt update -y && \
+			apt install -y build-essential \
+				procps \
+				clang \
+				lld \
+				make \
+				libssl-dev \
+				libncursesw5-dev \
+				libcurl4-openssl-dev \
+				libreadline-dev \
+				libarchive-dev \
+				zlib1g-dev \
+				libonig-dev \
+				xterm; \
+		elif command -v yum >/dev/null 2>&1; then \
+			yum groupinstall -y "Development Tools" && \
+			yum install -y clang lld libcxx-devel openssl-devel ncurses-devel curl-devel readline-devel libarchive-devel zlib-devel oniguruma-devel xterm; \
+		elif command -v dnf >/dev/null 2>&1; then \
+			dnf groupinstall -y "Development Tools" && \
+			dnf install -y clang lld libcxx-devel openssl-devel ncurses-devel curl-devel readline-devel libarchive-devel zlib-devel oniguruma-devel xterm; \
+		elif command -v pacman >/dev/null 2>&1; then \
+			pacman -Sy --noconfirm && \
+			pacman -S --needed --noconfirm base-devel clang lld libc++ openssl ncurses curl readline libarchive zlib oniguruma xterm; \
+		else \
+			echo "$(RED)==>$(RESET) Cannot install dependencies: package manager not found"; \
+			echo "$(YELLOW)==>$(RESET) Please install dependencies manually"; \
+		fi; \
 		$(MAKE) linux; \
 	else \
 		echo "$(YELLOW)==>$(RESET) Unknown or unsupported environment."; \
 		exit 1; \
 	fi
-
+	
 all: $(TARGET)
 	@printf "$(YELLOW)==>$(RESET) Building $(TARGET) Version $(VERSION) Full Version $(FULL_VERSION)\n"
 	@printf "$(YELLOW)==>$(RESET) Build complete: $(TARGET) Version $(VERSION) Full Version $(FULL_VERSION)\n"

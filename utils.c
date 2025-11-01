@@ -700,22 +700,32 @@ const char *wd_find_near_command(const char *command, const char *commands[],
  */
 const char *wd_detect_os(void)
 {
-		static char os[64] = "unknown";
+    	static char os[64] = "unknown";
 
 #ifdef _WIN32
-		strncpy(os, "windows", sizeof(os));
+    	strncpy(os, "windows", sizeof(os));
 #else
-		/* Check for WSL */
-		if (getenv("WSL_INTEROP") || getenv("WSL_DISTRO_NAME")) {
+		/* Check if we're inside Docker container first */
+		if (access("/.dockerenv", F_OK) == 0) {
+			strncpy(os, "linux", sizeof(os));
+		}
+		/* Check for WSL but running Docker */
+		else if ((getenv("WSL_INTEROP") || getenv("WSL_DISTRO_NAME")) && 
+				system("which docker > /dev/null 2>&1") == 0) {
+			/* Check if we're likely to use Docker */
+			if (getenv("WD_USE_DOCKER") || access("Dockerfile", F_OK) == 0) {
+				strncpy(os, "linux", sizeof(os));
+			} else {
 				strncpy(os, "windows", sizeof(os));
+			}
 		} else {
-				struct utsname sys_info;
-				if (uname(&sys_info) == 0) {
-						if (strstr(sys_info.sysname, "Linux"))
-								strncpy(os, "linux", sizeof(os));
-						else
-								strncpy(os, sys_info.sysname, sizeof(os));
-				}
+			struct utsname sys_info;
+			if (uname(&sys_info) == 0) {
+				if (strstr(sys_info.sysname, "Linux"))
+					strncpy(os, "linux", sizeof(os));
+				else
+					strncpy(os, sys_info.sysname, sizeof(os));
+			}
 		}
 #endif
 

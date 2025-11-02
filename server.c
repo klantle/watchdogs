@@ -17,34 +17,6 @@
 #include <limits.h>
 #include <signal.h>
 
-/*
- * Windows compatibility layer for signal handling
- * _WIN32 macro is defined when compiling for Windows systems
- */
-#ifdef _WIN32
-    /* Stub implementation of sigaction for Windows */
-    #define sigaction sigaction_stub
-    /* Windows doesn't have sigemptyset, define as no-op */
-    #define sigemptyset(a) ((void)0)
-    /* SA_RESTART flag not supported on Windows */
-    #define SA_RESTART 0
-    
-    /* Simplified sigaction structure for Windows compatibility */
-    struct sigaction {
-        void (*sa_handler)(int);  /* Signal handler function pointer */
-        int sa_flags;             /* Signal flags */
-    };
-    
-    /*
-     * sigaction stub implementation for Windows
-     * Maps sigaction to Windows signal() function
-     */
-    int sigaction_stub(int sig, const struct sigaction *act, struct sigaction *oldact) {
-        signal(sig, act->sa_handler);
-        return 0;
-    }
-#endif
-
 /* Local module headers */
 #include "chain.h"
 #include "color.h"
@@ -88,14 +60,15 @@ static int update_server_config(const char *gamemode)
         /* Platform-specific move command for backup */
         char __sz_mv[MAX_PATH];
         if (is_native_windows())
-			snprintf(__sz_mv, sizeof(__sz_mv),
-				"move /Y \"%s\" \"%s\"",
-				wcfg.wd_toml_config,
-				__sz_config);
+                snprintf(__sz_mv, sizeof(__sz_mv),
+                                "ren %s %s",
+                                wcfg.wd_toml_config,
+                                __sz_config);
 		else
-        	snprintf(__sz_mv, sizeof(__sz_mv), "mv -f %s %s",
-                 wcfg.wd_toml_config,
-                 __sz_config);
+                        snprintf(__sz_mv, sizeof(__sz_mv),
+                                "mv -f %s %s",
+                                wcfg.wd_toml_config,
+                                __sz_config);
         if (system(__sz_mv) != 0) {
                 pr_error(stdout, "Failed to create backup file");
                 return -RETN;
@@ -176,11 +149,9 @@ void wd_display_server_logs(int ret)
  */
 void restore_samp_config(void)
 {
-        char __sz_config[PATH_MAX];
+        char __sz_config[PATH_MAX * 2];
         snprintf(__sz_config, sizeof(__sz_config), ".%s.bak", wcfg.wd_toml_config);
-
-        remove(wcfg.wd_toml_config);              /* Remove modified config */
-        rename(__sz_config, wcfg.wd_toml_config); /* Restore backup */
+        remove(wcfg.wd_toml_config);
 }
 
 /*
@@ -224,8 +195,30 @@ void wd_run_samp_server(const char *gamemode, const char *server_bin)
                 exit(EXIT_FAILURE);
         }
 
-        /* Set terminal title */
-        wd_set_title("Watchdogs | @ server - sa-mp | CTRL + C to stop");
+        struct timespec start, now;
+        double stw_elp;
+        
+        clock_gettime(CLOCK_MONOTONIC, &start);
+
+        while (true) {
+                clock_gettime(CLOCK_MONOTONIC, &now);
+
+                stw_elp = (now.tv_sec - start.tv_sec)
+                        + (now.tv_nsec - start.tv_nsec) / 1e9;
+
+                int hh = (int)(stw_elp / 3600),
+                    mm = (int)((stw_elp - hh*3600)/60),
+                    ss = (int)(stw_elp) % 60;
+
+                char title_set[128];
+                snprintf(title_set, sizeof(title_set),
+                        "S T O P W A T C H : %02d:%02d:%02d | CTRL + C to stop.",
+                        hh, mm, ss);
+                wd_set_title(title_set);
+
+                struct timespec ts = {0, 10000000};
+                nanosleep(&ts, NULL);
+        }
         
         /* Build execution command */
 #ifdef _WIN32
@@ -271,11 +264,18 @@ static int update_omp_config(const char *gamemode)
         char __sz_config[PATH_MAX];
         snprintf(__sz_config, sizeof(__sz_config), ".%s.bak", wcfg.wd_toml_config);
 
-        /* Backup original config file */
+        /* Platform-specific move command for backup */
         char __sz_mv[MAX_PATH];
-        snprintf(__sz_mv, sizeof(__sz_mv), "mv -f %s %s",
-                                           wcfg.wd_toml_config,
-                                           __sz_config);
+        if (is_native_windows())
+                snprintf(__sz_mv, sizeof(__sz_mv),
+                                "ren %s %s",
+                                wcfg.wd_toml_config,
+                                __sz_config);
+		else
+                        snprintf(__sz_mv, sizeof(__sz_mv),
+                                "mv -f %s %s",
+                                wcfg.wd_toml_config,
+                                __sz_config);
         if (system(__sz_mv) != 0) {
                 pr_error(stdout, "Failed to create backup file");
                 return -RETN;
@@ -430,9 +430,31 @@ void wd_run_omp_server(const char *gamemode, const char *server_bin)
                 exit(EXIT_FAILURE);
         }
 
-        /* Set terminal title */
-        wd_set_title("Watchdogs | @ server - open.mp | CTRL + C to stop");
+        struct timespec start, now;
+        double stw_elp;
         
+        clock_gettime(CLOCK_MONOTONIC, &start);
+
+        while (true) {
+                clock_gettime(CLOCK_MONOTONIC, &now);
+
+                stw_elp = (now.tv_sec - start.tv_sec)
+                        + (now.tv_nsec - start.tv_nsec) / 1e9;
+
+                int hh = (int)(stw_elp / 3600),
+                    mm = (int)((stw_elp - hh*3600)/60),
+                    ss = (int)(stw_elp) % 60;
+
+                char title_set[128];
+                snprintf(title_set, sizeof(title_set),
+                        "S T O P W A T C H : %02d:%02d:%02d | CTRL + C to stop.",
+                        hh, mm, ss);
+                wd_set_title(title_set);
+
+                struct timespec ts = {0, 10000000};
+                nanosleep(&ts, NULL);
+        }
+
         /* Build execution command */
 #ifdef _WIN32
         snprintf(command, sizeof(command), "%s", server_bin);

@@ -344,25 +344,6 @@ For Windows Native:
 }
 ```
 
-For WSL environments:
-
-```json
-{
-  "version": "2.0.0",
-  "tasks": [
-    {
-      "label": "watchdogs",
-      "type": "shell",
-      "command": "wsl ${workspaceRoot}/watchdogs",
-      "group": {
-        "kind": "build",
-        "isDefault": true
-      }
-    }
-  ]
-}
-```
-
 ## Usage Guide
 
 ### Basic Operations

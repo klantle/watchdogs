@@ -17,6 +17,7 @@
 #include <sys/stat.h>
 #include <sys/types.h>
 #include <archive.h>
+#include <signal.h>
 #include <curl/curl.h>
 #include <archive_entry.h>
 #include <ncursesw/curses.h>
@@ -148,6 +149,8 @@ _reexecute_command:
                 wd_run_command("cls");
             }
 
+            _already_compiler_check = 0;
+
             __function__();
             
             goto _ptr_command;
@@ -227,7 +230,11 @@ _reexecute_command:
             if (access("watchdogs.toml", F_OK) == 0) {
                 remove("watchdogs.toml");
             }
+            
+            _already_compiler_check = 0;
+
             __function__();
+            
             FILE *procc_f = fopen("watchdogs.toml", "r");
             if (procc_f) {
 #ifdef _WIN32
@@ -290,6 +297,15 @@ _reexecute_command:
             curl_easy_setopt(curl_handle, CURLOPT_WRITEFUNCTION, write_memory_callback);
             curl_easy_setopt(curl_handle, CURLOPT_WRITEDATA, (void *)&chunk);
             curl_easy_setopt(curl_handle, CURLOPT_USERAGENT, "libcurl-agent/1.0");
+
+			if (is_native_windows()) {
+				if (access("cacert.pem", F_OK) == 0)
+					curl_easy_setopt(curl_handle, CURLOPT_CAINFO, "cacert.pem");
+				else if (access("C:/libwatchdogs/cacert.pem", F_OK) == 0)
+        			curl_easy_setopt(curl_handle, CURLOPT_CAINFO, "C:/libwatchdogs/cacert.pem");
+				else
+					pr_color(stdout, FCOLOUR_YELLOW, "Warning: No CA file found. SSL verification may fail.\n");
+			}
 
             res = curl_easy_perform(curl_handle);
             if (res != CURLE_OK) {
@@ -586,21 +602,89 @@ _runners_:
 			        title_running_info = NULL;
 		        }
 
-                pr_color(stdout, FCOLOUR_YELLOW, "running..\n");
-#ifdef _WIN32
-                if (system("tasklist | findstr /i watchdogs >nul 2>nul") != 0)
-                    system("C:\\msys64\\usr\\bin\\mintty.exe /bin/bash -c \"echo here is your watchdogs!..; ./watchdogs.win; pwd; exec bash\"");
-#else
-                if (is_termux_environment())
-                    pr_error(stdout, "xterm not supported in termux!");
-                else {
-                    if (system("pgrep -x watchdogs > /dev/null") != 0)
-                        system("xterm -hold -e bash -c 'echo \"here is your watchdogs!..\"; ./watchdogs' &");
+                int _wd_config_acces = path_acces(wcfg.wd_toml_config);
+                if (!_wd_config_acces)
+                {
+                    pr_error(stdout, "%s not found!", wcfg.wd_toml_config);
+                    goto done;
                 }
+
+                pr_color(stdout, FCOLOUR_YELLOW, "running..\n");
+                char* msys2_env = getenv("MSYSTEM");
+		        int is_native = RETZ;
+		        int is_win32 = RETZ;
+                int is_linux = RETZ;
+#ifdef _WIN32
+		        is_win32 = RETN;
 #endif
+#ifdef __linux__
+                is_linux = RETN;
+#endif
+                printf(" kkkkkkkkkkkkkkkkkkkk %d %d %d", is_native, is_win32, is_linux);
+                if (msys2_env == NULL && is_win32 == RETN) {
+                    is_native = RETN;
+                } else if (msys2_env == NULL && is_linux == 1) {
+                    is_native = RETW;
+                }
+                if (is_native == RETZ) {
+#ifdef _WIN32
+                    FILE *fp;
+                    fp = popen("powershell \"Get-Process mintty -ErrorAction SilentlyContinue | "
+                               "Where-Object {$_.MainWindowTitle -like '*watchdogs*'} | "
+                               "Measure-Object | Select-Object -Expand Count\"", "r");
+                    if (fp) {
+                        char buffer[128];
+                        if (fgets(buffer, sizeof(buffer), fp)) {
+                            int count = atoi(buffer);
+                            if (count < 2) {
+                                system("start \"\" \"C:\\\\msys64\\\\usr\\\\bin\\\\mintty.exe\" "
+                                    "-e /bin/bash -lc \"echo here is your watchdogs!...; pwd; ./watchdogs.win; bash &\"");
+                            }
+                        }
+                        pclose(fp);
+                    }
+#endif
+                } else if (is_native == RETW) {
+                    if (is_termux_environment())
+                        pr_error(stdout, "xterm not supported in termux!");
+                    else {
+#ifndef _WIN32
+                        int result = system("pgrep -c watchdogs > /dev/null");
+                        if (result != -1 && WEXITSTATUS(result) < 2)
+                            system("xterm -hold -e bash -c 'echo \"here is your watchdogs!..\"; ./watchdogs; bash' &");
+#endif
+                    }
+                }
+
                 if (!strcmp(wcfg.wd_is_samp, CRC32_TRUE)) {
                     if (arg == NULL || *arg == '\0' || (arg[0] == '.' && arg[1] == '\0')) {
                         char __sz_run[128];
+    
+                        struct timespec start, now;
+                        double stw_elp;
+                        
+                        clock_gettime(CLOCK_MONOTONIC, &start);
+
+                        while (true) {
+                                clock_gettime(CLOCK_MONOTONIC, &now);
+
+                                stw_elp = (now.tv_sec - start.tv_sec)
+                                        + (now.tv_nsec - start.tv_nsec) / 1e9;
+
+                                int hh = (int)(stw_elp / 3600),
+                                    mm = (int)((stw_elp - hh*3600)/60),
+                                    ss = (int)(stw_elp) % 60;
+
+                                char title_set[128];
+                                snprintf(title_set, sizeof(title_set),
+                                        "S T O P W A T C H : %02d:%02d:%02d | CTRL + C to stop.",
+                                        hh, mm, ss);
+                                wd_set_title(title_set);
+
+                                struct timespec ts = {0, 10000000};
+                                nanosleep(&ts, NULL);
+                        }
+
 #ifdef _WIN32
                         snprintf(__sz_run, sizeof(__sz_run), "%s", wcfg.wd_ptr_samp);
 #else
@@ -622,6 +706,32 @@ _runners_:
                 } else if (!strcmp(wcfg.wd_is_omp, CRC32_TRUE)) {
                     if (arg == NULL || *arg == '\0' || (arg[0] == '.' && arg[1] == '\0')) {
                         char __sz_run[128];
+                        
+                        struct timespec start, now;
+                        double stw_elp;
+                        
+                        clock_gettime(CLOCK_MONOTONIC, &start);
+
+                        while (true) {
+                                clock_gettime(CLOCK_MONOTONIC, &now);
+
+                                stw_elp = (now.tv_sec - start.tv_sec)
+                                        + (now.tv_nsec - start.tv_nsec) / 1e9;
+
+                                int hh = (int)(stw_elp / 3600),
+                                    mm = (int)((stw_elp - hh*3600)/60),
+                                    ss = (int)(stw_elp) % 60;
+
+                                char title_set[128];
+                                snprintf(title_set, sizeof(title_set),
+                                        "S T O P W A T C H : %02d:%02d:%02d | CTRL + C to stop.",
+                                        hh, mm, ss);
+                                wd_set_title(title_set);
+
+                                struct timespec ts = {0, 10000000};
+                                nanosleep(&ts, NULL);
+                        }
+
 #ifdef _WIN32
                         snprintf(__sz_run, sizeof(__sz_run), "%s", wcfg.wd_ptr_omp);
 #else

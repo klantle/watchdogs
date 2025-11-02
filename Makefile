@@ -14,8 +14,8 @@ TARGET   	 ?= watchdogs
 CC       	 ?= clang
 STRIP        ?= llvm-strip
 
-CFLAGS   = -Os -pipe -s -fdata-sections -ffunction-sections -fPIE
-LDFLAGS  = -Wl,-O1,--gc-sections -lm -lcurl -lreadline -lncursesw -larchive -lssl -lcrypto
+CFLAGS   = -Os -pipe -s -fdata-sections -ffunction-sections
+LDFLAGS  = -Wl,-O0,--gc-sections -lm -lcurl -lreadline -lncursesw -larchive -lssl -lcrypto
 
 SRCS = color.c curl.c chain.c utils.c depends.c hardware.c compiler.c archive.c package.c server.c crypto.c \
        include/tomlc/toml.c include/cJSON/cJSON.c

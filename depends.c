@@ -95,7 +95,7 @@ int dep_check_url (const char *url, const char *github_token)
 
 		printf("\tUsing URL: %s...\n", url);
 		if (strfind(wcfg.wd_toml_github_tokens, "DO_HERE")) {
-			pr_color(stdout, FCOLOUR_GREEN, "DEPENDS: Can't read Github token.. skipping\n");
+			pr_color(stdout, FCOLOUR_GREEN, "DEPS: Can't read Github token.. skipping\n");
 			sleep(2);
 		} else {
 			if (github_token && strlen(github_token) > 0) {
@@ -174,6 +174,15 @@ int dep_http_get_content (const char *url, char **out_html)
 		curl_easy_setopt(curl, CURLOPT_FOLLOWLOCATION, 1L);
 		curl_easy_setopt(curl, CURLOPT_CONNECTTIMEOUT, 15L);
 		curl_easy_setopt(curl, CURLOPT_TIMEOUT, 60L);
+
+		if (is_native_windows()) {
+			if (access("cacert.pem", F_OK) == 0)
+				curl_easy_setopt(curl, CURLOPT_CAINFO, "cacert.pem");
+			else if (access("C:/libwatchdogs/cacert.pem", F_OK) == 0)
+				curl_easy_setopt(curl, CURLOPT_CAINFO, "C:/libwatchdogs/cacert.pem");
+			else
+				pr_color(stdout, FCOLOUR_YELLOW, "Warning: No CA file found. SSL verification may fail.\n");
+		}
 
 		res = curl_easy_perform(curl);
 		curl_easy_cleanup(curl);

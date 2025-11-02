@@ -1208,41 +1208,42 @@ static void __toml_add_directory_path(FILE *toml_file, int *first, const char *p
 /**
  * wd_check_compiler_options - Test compiler for specific options
  */
+int _already_compiler_check = 0;
 static void wd_check_compiler_options(int *compatibility, int *optimized_lt)
 {
-		char run_cmd[PATH_MAX + 258];
-		FILE *proc_file;
-		char log_line[1024];
-
 		/* Run compiler with test command */
-		snprintf(run_cmd, sizeof(run_cmd), 
-				 "%s -___DDDDDDDDDDDDDDDDD-___DDDDDDDDDDDDDDDDD"
-				 "-___DDDDDDDDDDDDDDDDD-___DDDDDDDDDDDDDDDDD > .__CP.log 2>&1", 
-				 wcfg.wd_sef_found_list[0]);
-		
-		system(run_cmd);
-
-		int found_Z = 0, found_ver = 0;
-		proc_file = fopen(".__CP.log", "r");
-		if (proc_file) {
-			while (fgets(log_line, sizeof(log_line), proc_file) != NULL) {
-				if (!found_Z && strstr(log_line, "-Z"))
-					found_Z = 1;
-				if (!found_ver && strstr(log_line, "3.10.11"))
-					found_ver = 1;
+		if (_already_compiler_check == 0) {
+			_already_compiler_check = 1;
+			char run_cmd[PATH_MAX + 258];
+			FILE *proc_file;
+			char log_line[1024];
+			snprintf(run_cmd, sizeof(run_cmd), 
+					"%s -___DDDDDDDDDDDDDDDDD-___DDDDDDDDDDDDDDDDD"
+					"-___DDDDDDDDDDDDDDDDD-___DDDDDDDDDDDDDDDDD > .__CP.log 2>&1", 
+					wcfg.wd_sef_found_list[0]);	
+			system(run_cmd);
+			int found_Z = 0, found_ver = 0;
+			proc_file = fopen(".__CP.log", "r");
+			if (proc_file) {
+				while (fgets(log_line, sizeof(log_line), proc_file) != NULL) {
+					if (!found_Z && strstr(log_line, "-Z"))
+						found_Z = 1;
+					if (!found_ver && strstr(log_line, "3.10.11"))
+						found_ver = 1;
+				}
+				fclose(proc_file);
+				if (found_Z)
+					*compatibility = 1;
+				if (found_ver)
+					*optimized_lt = 1;
+			} else {
+				pr_error(stdout, "Failed to open .__CP.log");
 			}
-			fclose(proc_file);
-			if (found_Z)
-				*compatibility = 1;
-			if (found_ver)
-				*optimized_lt = 1;
-		} else {
-			pr_error(stdout, "Failed to open .__CP.log");
-		}
 
-		/* Cleanup temporary log file */
-		if (path_acces(".__CP.log"))
-				remove(".__CP.log");
+			/* Cleanup temporary log file */
+			if (path_acces(".__CP.log"))
+					remove(".__CP.log");
+		}
 }
 
 
@@ -1434,6 +1435,7 @@ static void wd_add_include_paths(FILE *file, int *first_item)
  * @compatible: Compiler compatibility flag
  * @sef_path: Path for input/output files
  */
+static int _is_samp_ = 0;
 static void wd_generate_toml_content(FILE *file, const char *wd_os_type, 
 								    int has_gamemodes, int compatible,
 								    int optimized_lt, char *sef_path)
@@ -1447,7 +1449,6 @@ static void wd_generate_toml_content(FILE *file, const char *wd_os_type,
 						*__dot_ext = '\0';
 		}
 
-		int _is_samp = 0;
 		char *ptr_samp = NULL;
 		char *ptr_omp = NULL;
 
@@ -1463,13 +1464,13 @@ static void wd_generate_toml_content(FILE *file, const char *wd_os_type,
         FILE *file_m = fopen(ptr_omp, "r");
 
         if (file_s != NULL && file_m != NULL) {
-			_is_samp = 0;
+			_is_samp_ = 0;
         } else if (file_s != NULL) {
-			_is_samp = 1;
+			_is_samp_ = 1;
         } else if (file_m != NULL) {
-			_is_samp = 0;
+			_is_samp_ = 0;
         } else {
-			_is_samp = 1;
+			_is_samp_ = 1;
         }
 
         if (file_s) fclose(file_s);
@@ -1477,12 +1478,12 @@ static void wd_generate_toml_content(FILE *file, const char *wd_os_type,
 
 		fprintf(file, "[general]\n");
 		fprintf(file, "\tos = \"%s\"\n", wd_os_type);
-		if (_is_samp == 1) {
+		if (_is_samp_ == 1) {
 			fprintf(file, "\tbinary = \"%s\"\n", ptr_samp);
 			fprintf(file, "\tconfig = \"%s\"\n", "server.cfg");
 		} else {
 			fprintf(file, "\tbinary = \"%s\"\n", ptr_omp);
-			fprintf(file, "\tconfig = \"%s\"\n", "server.cfg");
+			fprintf(file, "\tconfig = \"%s\"\n", "config.json");
 		}
 
 		fprintf(file, "[compiler]\n");
@@ -1512,7 +1513,8 @@ static void wd_generate_toml_content(FILE *file, const char *wd_os_type,
 
 		fprintf(file, "[depends]\n");
 		fprintf(file, "\tgithub_tokens = \"DO_HERE\"\n");
-		fprintf(file, "\taio_repo = [\"Y-Less/sscanf:latest\", \"samp-incognito/samp-streamer-plugin:latest\"]");
+		fprintf(file, "\taio_repo = [\"Y-Less/sscanf:latest\", "
+					  "\"samp-incognito/samp-streamer-plugin:latest\"]");
 }
 
 /**
@@ -1604,9 +1606,9 @@ int wd_set_toml(void)
 		if (general_table) {
 				toml_datum_t bin_val = toml_string_in(general_table, "binary");
 				if (bin_val.ok) {
-						if (!strcmp(wcfg.wd_is_samp, CRC32_TRUE))
+						if (_is_samp_ == 1)
 							wcfg.wd_ptr_samp = strdup(bin_val.u.s);
-						else if (!strcmp(wcfg.wd_is_omp, CRC32_TRUE))
+						else if (_is_samp_ == 0)
 							wcfg.wd_ptr_omp = strdup(bin_val.u.s);
 						else
 							wcfg.wd_ptr_samp = strdup(bin_val.u.s);
@@ -1812,7 +1814,12 @@ int wd_sef_wmv(const char *c_src, const char *c_dest)
 		if (ret != RETN)
 				return RETN;
 
-		int is_not_sudo = wd_run_command("which sudo > /dev/null 2>&1");
+		int is_not_sudo = 0;
+		if (is_native_windows())
+			is_not_sudo = 1;
+		else
+			is_not_sudo = system("which sudo > /dev/null 2>&1");
+
 		if (is_not_sudo == 1) {
 			mv_ret = _try_mv_without_sudo(c_src, c_dest);
 			if (!mv_ret) {
@@ -1846,7 +1853,12 @@ int wd_sef_wcopy(const char *c_src, const char *c_dest)
 		if (ret != RETN)
 				return RETN;
 
-		int is_not_sudo = wd_run_command("which sudo > /dev/null 2>&1");
+		int is_not_sudo = 0;
+		if (is_native_windows())
+			is_not_sudo = 1;
+		else
+			is_not_sudo = system("which sudo > /dev/null 2>&1");
+
 		if (is_not_sudo == 1) {
 			cp_ret = _try_cp_without_sudo(c_src, c_dest);
 			if (!cp_ret) {

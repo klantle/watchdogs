@@ -48,7 +48,7 @@ static int progress_callback(void *ptr, curl_off_t dltotal,
 				}
 		}
 
-		return RETZ;
+		return __RETZ;
 }
 
 /*
@@ -62,15 +62,15 @@ size_t write_memory_callback(void *contents, size_t size,
 		char *ptr;
 
 		if (!contents || !mem)
-			return RETZ;
+			return __RETZ;
 
-		ptr = wdrealloc(mem->memory, mem->size + realsize + 1);
+		ptr = wd_realloc(mem->memory, mem->size + realsize + 1);
 		if (!ptr) {
 #if defined(_DBG_PRINT)
 			pr_error(stdout,
 				   "Out of memory detected in %s\n", __func__);
 #endif
-			return RETZ;
+			return __RETZ;
 		}
 
 		mem->memory = ptr;
@@ -111,7 +111,7 @@ static int extract_archive(const char *filename)
 				return wd_extract_zip(filename, output_path);
 		} else {
 				pr_info(stdout, "Unknown archive type, skipping extraction: %s\n", filename);
-				return -RETN;
+				return -__RETN;
 		}
 }
 
@@ -157,10 +157,10 @@ static const char *get_compiler_directory(void)
 						dir_path = "pawno";
 		}
 		if (stat("pawno/include", &st) != 0 && errno == ENOENT) {
-			mkdir_recursive("pawno/include");
+			mkdir_recusrs("pawno/include");
 		} 
 		else if (stat("qawno/include", &st) != 0 && errno == ENOENT) {
-			mkdir_recursive("qawno/include");
+			mkdir_recusrs("qawno/include");
 		}
 
 		return dir_path;
@@ -220,7 +220,7 @@ static void update_library_environment(const char *lib_path)
 static int setup_linux_library(void)
 {
 #ifdef _WIN32
-		return RETZ; /* Not applicable on Windows */
+		return __RETZ; /* Not applicable on Windows */
 #else
 		const char *selected_path = NULL;
 		char libpawnc_src[PATH_MAX];
@@ -240,12 +240,12 @@ static int setup_linux_library(void)
 
 		if (!strcmp(wcfg.wd_toml_os_type, OS_SIGNAL_WINDOWS) ||
 			!strcmp(wcfg.wd_toml_os_type, OS_SIGNAL_UNKNOWN))
-				return RETZ;
+				return __RETZ;
 
 		/* Find libpawnc.so */
 		found_lib = wd_sef_fdir(".", "libpawnc.so", NULL);
 		if (!found_lib)
-				return RETZ;
+				return __RETZ;
 
 		/* Get source path */
 		for (i = 0; i < wcfg.wd_sef_count; i++) {
@@ -265,7 +265,7 @@ static int setup_linux_library(void)
 
 		if (!selected_path) {
 				fprintf(stderr, "No valid library path found!\n");
-				return -RETN;
+				return -__RETN;
 		}
 
 		/* Copy library */
@@ -275,7 +275,7 @@ static int setup_linux_library(void)
 		/* Update library cache and environment */
 		update_library_environment(selected_path);
 
-		return RETZ;
+		return __RETZ;
 #endif
 }
 
@@ -375,22 +375,22 @@ static int prompt_apply_pawncc(void)
 		fflush(stdout);
 		if (!confirm) {
 			fprintf(stderr, "Error reading input\n");
-			wdfree(confirm);
+			wd_free(confirm);
 			goto done;
 		}
 		if (strlen(confirm) == 0) {
-			wdfree(confirm);
+			wd_free(confirm);
 			confirm = readline(" >>> [y/n]: ");
 		}
 		if (confirm) {
 			if (strcmp(confirm, "Y") == 0 || strcmp(confirm, "y") == 0) {
-				wdfree(confirm);
-				return RETN;
+				wd_free(confirm);
+				return __RETN;
 			}
 		}
 
 done:
-		return RETZ;
+		return __RETZ;
 }
 
 /**
@@ -400,7 +400,7 @@ done:
  */
 static int prompt_apply_depends(void)
 {
-		return RETN;
+		return __RETN;
 }
 
 /**
@@ -434,7 +434,7 @@ int is_archive_file(const char *filename)
  * @url: URL to download from
  * @filename: Local filename to save as
  *
- * Return: 0 on success, -RETN on failure
+ * Return: 0 on success, -__RETN on failure
  */
 int wd_download_file(const char *url, const char *filename)
 {
@@ -451,14 +451,14 @@ int wd_download_file(const char *url, const char *filename)
 			file = fopen(filename, "wb");
 			if (!file) {
 				pr_color(stdout, FCOLOUR_RED, "Failed to open file: %s\n", filename);
-				return -RETN;
+				return -__RETN;
 			}
 
 			curl = curl_easy_init();
 			if (!curl) {
 				pr_color(stdout, FCOLOUR_RED, "Failed to initialize CURL\n");
 				fclose(file);
-				return -RETN;
+				return -__RETN;
 			}
 			
 			struct curl_slist *headers = NULL;
@@ -532,7 +532,7 @@ int wd_download_file(const char *url, const char *filename)
 										filename);
 								system(rm_cmd);
 							}
-							wdfree(confirm);
+							wd_free(confirm);
 						}
 					} else {
 						printf("File is not an archive, skipping extraction.\n");
@@ -544,7 +544,7 @@ int wd_download_file(const char *url, const char *filename)
 					if (wcfg.wd_idepends && prompt_apply_depends())
 						wd_apply_depends(filename);
 
-					return RETZ;
+					return __RETZ;
 				} else {
 					pr_color(stdout, FCOLOUR_RED, "Downloaded file is empty or missing\n");
 				}
@@ -557,5 +557,5 @@ int wd_download_file(const char *url, const char *filename)
 		} while (retry_count < 5);
 
 		pr_color(stdout, FCOLOUR_RED, "Download failed after 5 retries\n");
-		return -RETN;
+		return -__RETN;
 }

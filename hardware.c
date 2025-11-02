@@ -83,7 +83,7 @@ void hardware_display_field(unsigned int field_id, const char* format, ...) {
 #ifdef _WIN32
 
 int hardware_cpu_info(HardwareCPU* cpu) {
-        if (!cpu) return RETZ;
+        if (!cpu) return __RETZ;
         
         memset(cpu, 0, sizeof(HardwareCPU));
         
@@ -120,11 +120,11 @@ int hardware_cpu_info(HardwareCPU* cpu) {
                 strcpy(cpu->architecture, "Unknown");
         }
         
-        return RETN;
+        return __RETN;
 }
 
 int hardware_memory_info(HardwareMemory* mem) {
-        if (!mem) return RETZ;
+        if (!mem) return __RETZ;
         
         memset(mem, 0, sizeof(HardwareMemory));
         
@@ -135,14 +135,14 @@ int hardware_memory_info(HardwareMemory* mem) {
                 mem->avail_phys = memInfo.ullAvailPhys;
                 mem->total_virt = memInfo.ullTotalVirtual;
                 mem->avail_virt = memInfo.ullAvailVirtual;
-                return RETN;
+                return __RETN;
         }
         
-        return RETZ;
+        return __RETZ;
 }
 
 int hardware_disk_info(HardwareDisk* disk, const char* drive) {
-        if (!disk || !drive) return RETZ;
+        if (!disk || !drive) return __RETZ;
         
         memset(disk, 0, sizeof(HardwareDisk));
         strncpy(disk->mount_point, drive, sizeof(disk->mount_point)-1);
@@ -166,21 +166,21 @@ int hardware_disk_info(HardwareDisk* disk, const char* drive) {
                         strcpy(disk->filesystem, "Unknown");
                 }
                 
-                return RETN;
+                return __RETN;
         }
         
-        return RETZ;
+        return __RETZ;
 }
 
 #else
 
 int hardware_cpu_info(HardwareCPU* cpu) {
-        if (!cpu) return RETZ;
+        if (!cpu) return __RETZ;
         
         memset(cpu, 0, sizeof(HardwareCPU));
         
         FILE *f = fopen("/proc/cpuinfo", "r");
-        if (!f) return RETZ;
+        if (!f) return __RETZ;
         
         char line[256];
         int cores = 0;
@@ -226,16 +226,16 @@ int hardware_cpu_info(HardwareCPU* cpu) {
                 strncpy(cpu->architecture, uts.machine, sizeof(cpu->architecture)-1);
         }
         
-        return RETN;
+        return __RETN;
 }
 
 int hardware_memory_info(HardwareMemory* mem) {
-        if (!mem) return RETZ;
+        if (!mem) return __RETZ;
         
         memset(mem, 0, sizeof(HardwareMemory));
         
         FILE *f = fopen("/proc/meminfo", "r");
-        if (!f) return RETZ;
+        if (!f) return __RETZ;
         
         char key[64], unit[64];
         unsigned long val;
@@ -250,11 +250,11 @@ int hardware_memory_info(HardwareMemory* mem) {
         }
         
         fclose(f);
-        return RETN;
+        return __RETN;
 }
 
 int hardware_disk_info(HardwareDisk* disk, const char* mount_point) {
-        if (!disk || !mount_point) return RETZ;
+        if (!disk || !mount_point) return __RETZ;
         
         memset(disk, 0, sizeof(HardwareDisk));
         strncpy(disk->mount_point, mount_point, sizeof(disk->mount_point)-1);
@@ -271,10 +271,10 @@ int hardware_disk_info(HardwareDisk* disk, const char* mount_point) {
                 
                 strncpy(disk->filesystem, "Unknown", sizeof(disk->filesystem)-1);
                 
-                return RETN;
+                return __RETN;
         }
         
-        return RETZ;
+        return __RETZ;
 }
 
 #endif

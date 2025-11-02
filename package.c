@@ -34,7 +34,7 @@ struct utsname {
  * uname - Get system information (Windows implementation)
  * @name: utsname structure to fill
  *
- * Return: RETZ on success, -RETN on failure
+ * Return: __RETZ on success, -__RETN on failure
  */
 int uname(struct utsname *name)
 {
@@ -45,7 +45,7 @@ int uname(struct utsname *name)
 		osvi.dwOSVersionInfoSize = sizeof(OSVERSIONINFOEX);
 
 		if (!GetVersionEx((OSVERSIONINFO*)&osvi))
-				return -RETN;
+				return -__RETN;
 
 		GetSystemInfo(&si);
 
@@ -73,7 +73,7 @@ int uname(struct utsname *name)
 					break;
 		}
 
-		return RETZ;
+		return __RETZ;
 }
 #else
 #include <sys/utsname.h>
@@ -116,17 +116,17 @@ static int get_termux_architecture(char *out_arch, size_t buf_size)
 
 		if (uname(&uname_data) != 0) {
 				pr_error(stdout, "Failed to get system information");
-				return -RETN;
+				return -__RETN;
 		}
 
 		/* Auto-detect architecture */
 		if (strcmp(uname_data.machine, "aarch64") == 0) {
 				strncpy(out_arch, "arm64", buf_size);
-				return RETZ;
+				return __RETZ;
 		} else if (strcmp(uname_data.machine, "armv7l") == 0 || 
 				   strcmp(uname_data.machine, "armv8l") == 0) {
 				strncpy(out_arch, "arm32", buf_size);
-				return RETZ;
+				return __RETZ;
 		}
 
 		/* Manual selection for unknown architectures */
@@ -141,18 +141,18 @@ static int get_termux_architecture(char *out_arch, size_t buf_size)
 		if (strfind(selection, "A"))
 		{
 			strncpy(out_arch, "arm32", buf_size);
-			wdfree(selection);
-			return RETZ;
+			wd_free(selection);
+			return __RETZ;
 		} else if (strfind(selection, "B")) {
 			strncpy(out_arch, "arm64", buf_size);
-			wdfree(selection);
-			return RETZ;
+			wd_free(selection);
+			return __RETZ;
 		} else {
 			pr_error(stdout, "Invalid architecture selection");
 			if (wcfg.wd_sel_stat == 0)
-				return RETZ;
-			wdfree(selection);
-			return -RETN;
+				return __RETZ;
+			wd_free(selection);
+			return -__RETN;
 		}
 }
 
@@ -202,14 +202,14 @@ static int handle_termux_installation(void)
 				version_selection,
 				'A' + (int)version_count - 1,
 				'a' + (int)version_count - 1);
-			wdfree(__version__);
-			return -RETN;;
+			wd_free(__version__);
+			return -__RETN;;
     	}
 
 		/* Get architecture */
 		int ret = get_termux_architecture(architecture, sizeof(architecture) != 0);
-		if (ret == RETZ)
-			return RETZ;
+		if (ret == __RETZ)
+			return __RETZ;
 
 		/* Build download URL and filename */
 		snprintf(url, sizeof(url),
@@ -223,7 +223,7 @@ static int handle_termux_installation(void)
 		wcfg.wd_ipackage = 1;
 		wd_download_file(url, filename);
 
-		return RETZ;
+		return __RETZ;
 }
 
 /**
@@ -249,7 +249,7 @@ static int handle_standard_installation(const char *platform)
 		/* Validate platform */
 		if (strcmp(platform, "linux") != 0 && strcmp(platform, "windows") != 0) {
 				pr_error(stdout, "Unsupported platform: %s", platform);
-				return -RETN;
+				return -__RETN;
 		}
 
 		/* Display version selection */
@@ -271,10 +271,10 @@ static int handle_standard_installation(const char *platform)
 			version_index = version_selection - 'a';
 		} else {
 			if (wcfg.wd_sel_stat == 0)
-				return RETZ;
+				return __RETZ;
 			pr_error(stdout, "Invalid version selection");
-			wdfree(__version__);
-			return -RETN;
+			wd_free(__version__);
+			return -__RETN;
 		}
 
 		/* Determine repository and archive extension */
@@ -299,7 +299,7 @@ static int handle_standard_installation(const char *platform)
 		wcfg.wd_ipackage = 1;
 		wd_download_file(url, filename);
 
-		return RETZ;
+		return __RETZ;
 }
 
 /**
@@ -313,26 +313,26 @@ int wd_install_pawncc(const char *platform)
 		if (!platform) {
 				pr_error(stdout, "Platform parameter is NULL");
 				if (wcfg.wd_sel_stat == 0)
-					return RETZ;
-				return -RETN;
+					return __RETZ;
+				return -__RETN;
 		}
 		if (strcmp(platform, "termux") == 0) {
 			int ret = handle_termux_installation();
 loop_ipcc:
-			if (ret == -RETN && wcfg.wd_sel_stat != 0)
+			if (ret == -__RETN && wcfg.wd_sel_stat != 0)
 				goto loop_ipcc;
-			else if (ret == RETZ)
-				return RETZ;
+			else if (ret == __RETZ)
+				return __RETZ;
 		} else {
 			int ret = handle_standard_installation(platform);
 loop_ipcc2:
-			if (ret == -RETN && wcfg.wd_sel_stat != 0)
+			if (ret == -__RETN && wcfg.wd_sel_stat != 0)
 				goto loop_ipcc2;
-			else if (ret == RETZ)
-				return RETZ;
+			else if (ret == __RETZ)
+				return __RETZ;
 		}
 
-		return RETZ;
+		return __RETZ;
 }
 
 /**
@@ -411,8 +411,8 @@ int wd_install_server(const char *platform)
 		if (strcmp(platform, "linux") != 0 && strcmp(platform, "windows") != 0) {
 				pr_error(stdout, "Unsupported platform: %s", platform);
 				if (wcfg.wd_sel_stat == 0)
-					return RETZ;
-				return -RETN;
+					return __RETZ;
+				return -__RETN;
 		}
 
 		/* Display version selection */
@@ -436,9 +436,9 @@ int wd_install_server(const char *platform)
 		if (!chosen) {
 				pr_error(stdout, "Invalid selection");
 				if (wcfg.wd_sel_stat == 0)
-					return RETZ;
-				wdfree(__selection__);
-				return -RETN;
+					return __RETZ;
+				wd_free(__selection__);
+				return -__RETN;
 		}
 
 		/* Download selected version */
@@ -449,5 +449,5 @@ int wd_install_server(const char *platform)
 
 		wd_download_file(url, filename);
 
-		return RETZ;
+		return __RETZ;
 }

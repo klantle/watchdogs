@@ -70,7 +70,7 @@ int __command__(void)
 		size_t __sz_cwd = sizeof(__cwd);
         if (!getcwd(__cwd, __sz_cwd)) {
             perror("getcwd");
-            return RETW;
+            return __RETW;
         }
         char ptr_prompt[PATH_MAX + 56];
         size_t __sz_ptrp = sizeof(ptr_prompt);
@@ -281,7 +281,7 @@ _reexecute_command:
             CURLcode res;
             struct memory_struct chunk = { 0 };
 
-            chunk.memory = wdmalloc(1);
+            chunk.memory = wd_malloc(1);
             chunk.size = 0;
 
             curl_global_init(CURL_GLOBAL_DEFAULT);
@@ -289,7 +289,7 @@ _reexecute_command:
 
             if (!curl_handle) {
                 fprintf(stderr, "Failed to initialize curl\n");
-                return RETN;
+                return __RETN;
             }
 
             curl_easy_setopt(curl_handle, CURLOPT_URL,
@@ -364,7 +364,7 @@ _reexecute_command:
                             putchar('-'); 
                     printf("+%s\n", RST);
 
-                    wdfree(pretty);
+                    wd_free(pretty);
                     cJSON_Delete(output_array);
                     cJSON_Delete(root);
                 }
@@ -372,7 +372,7 @@ _reexecute_command:
 
             curl_easy_cleanup(curl_handle);
             curl_global_cleanup();
-            wdfree(chunk.memory);
+            wd_free(chunk.memory);
             
             goto done;
         } else if (strcmp(ptr_command, "hardware") == 0) {
@@ -407,7 +407,7 @@ _reexecute_command:
 
                 if (!_toml_config) {
                     pr_error(stdout, "parsing TOML: %s", errbuf);
-                    return RETZ;
+                    return __RETZ;
                 }
 
                 toml_table_t *wd_depends;
@@ -431,7 +431,7 @@ _reexecute_command:
                             continue;
 
                     if (!merged) {
-                            merged = wdrealloc(NULL, strlen(val.u.s) + 1);
+                            merged = wd_realloc(NULL, strlen(val.u.s) + 1);
                             if (!merged)
                                     goto free_val;
 
@@ -441,7 +441,7 @@ _reexecute_command:
                             size_t old_len = strlen(merged);
                             size_t new_len = old_len + strlen(val.u.s) + 2;
 
-                            tmp = wdrealloc(merged, new_len);
+                            tmp = wd_realloc(merged, new_len);
                             if (!tmp)
                                     goto free_val;
 
@@ -450,7 +450,7 @@ _reexecute_command:
                     }
 
 free_val:
-                    wdfree(val.u.s);
+                    wd_free(val.u.s);
                     val.u.s = NULL;
                 }
 
@@ -479,30 +479,30 @@ ret_ptr:
             char *platform = readline("==> ");
 
             if (strfind(platform, "L")) {
-                wdfree(ptr_command);
-                wdfree(platform);
+                wd_free(ptr_command);
+                wd_free(platform);
                 int ret = wd_install_server("linux");
 loop_igm:
-                if (ret == -RETN && wcfg.wd_sel_stat != 0)
+                if (ret == -__RETN && wcfg.wd_sel_stat != 0)
                     goto loop_igm;
-                else if (ret == RETZ)
+                else if (ret == __RETZ)
                     goto _ptr_command;
             } else if (strfind(platform, "W")) {
-                wdfree(ptr_command);
-                wdfree(platform);
+                wd_free(ptr_command);
+                wd_free(platform);
                 int ret = wd_install_server("windows");
 loop_igm2:
-                if (ret == -RETN && wcfg.wd_sel_stat != 0)
+                if (ret == -__RETN && wcfg.wd_sel_stat != 0)
                     goto loop_igm2;
-                else if (ret == RETZ)
+                else if (ret == __RETZ)
                     goto _ptr_command;
             } else if (strfind(platform, "E")) {
-                wdfree(ptr_command);
-                wdfree(platform);
+                wd_free(ptr_command);
+                wd_free(platform);
                 goto _ptr_command;
             } else {
                 pr_error(stdout, "Invalid platform selection. Input 'E/e' to exit");
-                wdfree(platform);
+                wd_free(platform);
                 goto ret_ptr;
             }
 
@@ -522,38 +522,38 @@ ret_ptr2:
             char *platform = readline("==> ");
 
             if (strfind(platform, "L")) {
-                wdfree(ptr_command);
-                wdfree(platform);
+                wd_free(ptr_command);
+                wd_free(platform);
                 ptr_command = NULL;
                 int ret = wd_install_pawncc("linux");
 loop_ipcc:
-                if (ret == -RETN && wcfg.wd_sel_stat != 0)
+                if (ret == -__RETN && wcfg.wd_sel_stat != 0)
                     goto loop_ipcc;
-                else if (ret == RETZ)
+                else if (ret == __RETZ)
                     goto _ptr_command;
             } else if (strfind(platform, "W")) {
-                wdfree(ptr_command);
-                wdfree(platform);
+                wd_free(ptr_command);
+                wd_free(platform);
                 ptr_command = NULL;
                 int ret = wd_install_pawncc("windows");
 loop_ipcc2:
-                if (ret == -RETN && wcfg.wd_sel_stat != 0)
+                if (ret == -__RETN && wcfg.wd_sel_stat != 0)
                     goto loop_ipcc2;
-                else if (ret == RETZ)
+                else if (ret == __RETZ)
                     goto _ptr_command;
             } else if (strfind(platform, "T")) {
-                wdfree(ptr_command);
-                wdfree(platform);
+                wd_free(ptr_command);
+                wd_free(platform);
                 ptr_command = NULL;
                 int ret = wd_install_pawncc("termux");
 loop_ipcc3:
-                if (ret == -RETN && wcfg.wd_sel_stat != 0)
+                if (ret == -__RETN && wcfg.wd_sel_stat != 0)
                     goto loop_ipcc3;
-                else if (ret == RETZ)
+                else if (ret == __RETZ)
                     goto _ptr_command;
             } else if (strfind(platform, "E")) {
-                wdfree(ptr_command);
-                wdfree(platform);
+                wd_free(ptr_command);
+                wd_free(platform);
                 goto _ptr_command;
             } else {
                 pr_error(stdout, "Invalid platform selection. Input 'E/e' to exit");
@@ -591,14 +591,14 @@ _runners_:
 		        size_t needed = snprintf(NULL, 0, "Watchdogs | @ running | args: %s | %s",
 									              arg1,
 									              wcfg.wd_toml_config) + 1;
-		        char *title_running_info = wdmalloc(needed);
-		        if (!title_running_info) { return RETN; }
+		        char *title_running_info = wd_malloc(needed);
+		        if (!title_running_info) { return __RETN; }
 		        snprintf(title_running_info, needed, "Watchdogs | @ running | args: %s | %s",
 									                  arg1,
 									                  wcfg.wd_toml_config);
 		        if (title_running_info) {
 			        wd_set_title(title_running_info);
-			        wdfree(title_running_info);
+			        wd_free(title_running_info);
 			        title_running_info = NULL;
 		        }
 
@@ -611,22 +611,22 @@ _runners_:
 
                 pr_color(stdout, FCOLOUR_YELLOW, "running..\n");
                 char* msys2_env = getenv("MSYSTEM");
-		        int is_native = RETZ;
-		        int is_win32 = RETZ;
-                int is_linux = RETZ;
+		        int is_native = __RETZ;
+		        int is_win32 = __RETZ;
+                int is_linux = __RETZ;
 #ifdef _WIN32
-		        is_win32 = RETN;
+		        is_win32 = __RETN;
 #endif
 #ifdef __linux__
-                is_linux = RETN;
+                is_linux = __RETN;
 #endif
                 printf(" kkkkkkkkkkkkkkkkkkkk %d %d %d", is_native, is_win32, is_linux);
-                if (msys2_env == NULL && is_win32 == RETN) {
-                    is_native = RETN;
+                if (msys2_env == NULL && is_win32 == __RETN) {
+                    is_native = __RETN;
                 } else if (msys2_env == NULL && is_linux == 1) {
-                    is_native = RETW;
+                    is_native = __RETW;
                 }
-                if (is_native == RETZ) {
+                if (is_native == __RETZ) {
 #ifdef _WIN32
                     FILE *fp;
                     fp = popen("powershell \"Get-Process mintty -ErrorAction SilentlyContinue | "
@@ -644,7 +644,7 @@ _runners_:
                         pclose(fp);
                     }
 #endif
-                } else if (is_native == RETW) {
+                } else if (is_native == __RETW) {
                     if (is_termux_environment())
                         pr_error(stdout, "xterm not supported in termux!");
                     else {
@@ -757,25 +757,25 @@ ret_ptr3:
 
                     while (1) {
                         if (strcmp(ptr_sigA, "Y") == 0 || strcmp(ptr_sigA, "y") == 0) {
-                            wdfree(ptr_sigA);
+                            wd_free(ptr_sigA);
                             if (!strcmp(wcfg.wd_os_type, OS_SIGNAL_WINDOWS)) {
                                 int ret = wd_install_server("windows");
 n_loop_igm:
-                                if (ret == -RETN && wcfg.wd_sel_stat != 0)
+                                if (ret == -__RETN && wcfg.wd_sel_stat != 0)
                                     goto n_loop_igm;
                             } else if (!strcmp(wcfg.wd_os_type, OS_SIGNAL_LINUX)) {
                                 int ret = wd_install_server("linux");
 n_loop_igm2:
-                                if (ret == -RETN && wcfg.wd_sel_stat != 0)
+                                if (ret == -__RETN && wcfg.wd_sel_stat != 0)
                                     goto n_loop_igm2;
                             }
                             break;
                         } else if (strcmp(ptr_sigA, "N") == 0 || strcmp(ptr_sigA, "n") == 0) {
-                            wdfree(ptr_sigA);
+                            wd_free(ptr_sigA);
                             break;
                         } else {
                             pr_error(stdout, "Invalid input. Please type Y/y to install or N/n to cancel.");
-                            wdfree(ptr_sigA);
+                            wd_free(ptr_sigA);
                             goto ret_ptr3;
                         }
                     }
@@ -805,7 +805,7 @@ n_loop_igm2:
                         if (toml_gm_i.ok) 
                         {
                             wcfg.wd_toml_gm_input = strdup(toml_gm_i.u.s);
-                            wdfree(toml_gm_i.u.s);
+                            wd_free(toml_gm_i.u.s);
                             toml_gm_i.u.s = NULL;
                         }
                 }
@@ -911,27 +911,27 @@ L"\t\t   W   A   T   C   H   D   O   G   S\n");
             char *confirm = readline("");
             if (!confirm) {
                 fprintf(stderr, "Error reading input\n");
-                wdfree(confirm);
+                wd_free(confirm);
                 goto done;
             }
             if (strlen(confirm) == 0) {
-                wdfree(confirm);
+                wd_free(confirm);
                 confirm = readline(" >>> [y/n]: ");
             }
             if (confirm) {
                 if (strcmp(confirm, "Y") == 0 || strcmp(confirm, "y") == 0) {
-                    wdfree(confirm);
+                    wd_free(confirm);
                     ptr_command = strdup(_dist_command);
                     goto _reexecute_command;
                 } else if (strcmp(confirm, "N") == 0 || strcmp(confirm, "n") == 0) {
-                    wdfree(confirm);
+                    wd_free(confirm);
                     goto done;
                 } else {
-                    wdfree(confirm);
+                    wd_free(confirm);
                     goto done;
                 }
             } else {
-                wdfree(confirm);
+                wd_free(confirm);
                 goto done;
             }
         } else {
@@ -951,25 +951,25 @@ L"\t\t   W   A   T   C   H   D   O   G   S\n");
             int ret = wd_run_command(_p_command);
             if (ret)
                 wd_set_title("Watchdogs | @ command not found");
-            return -RETW;
+            return -__RETW;
         }
 
 done:
         if (ptr_command) {
-            wdfree(ptr_command);
+            wd_free(ptr_command);
             ptr_command = NULL;
         }
 
-        return -RETN;
+        return -__RETN;
 }
 
 void __main(int sig_unused) {
         (void)sig_unused;
         wd_set_title(NULL);
-        int ret = -RETW;
+        int ret = -__RETW;
 loop_main:
         ret = __command__();
-        if (ret == -RETN || ret == RETZ || ret == RETN) {
+        if (ret == -__RETN || ret == __RETZ || ret == __RETN) {
             clock_gettime(CLOCK_MONOTONIC, &cmd_end);
             command_dur = (cmd_end.tv_sec - cmd_start.tv_sec) +
                           (cmd_end.tv_nsec - cmd_start.tv_nsec) / 1e9;
@@ -978,10 +978,10 @@ loop_main:
                          " ==> [C]Finished in %.3fs\n",
                          command_dur);
             goto loop_main;
-        } else if (ret == RETW) {
+        } else if (ret == __RETW) {
             clock_gettime(CLOCK_MONOTONIC, &cmd_end);
             exit(1);
-        } else if (ret == -RETW) {
+        } else if (ret == -__RETW) {
             clock_gettime(CLOCK_MONOTONIC, &cmd_end);
             goto loop_main;
         } else {
@@ -992,5 +992,5 @@ loop_main:
 
 int main(void) {
         __main(0);
-        return RETZ;
+        return __RETZ;
 }

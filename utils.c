@@ -141,11 +141,11 @@ void wd_sef_fdir_reset(void)
 }
 
 /*
- * mkdir_recursive
+ * mkdir_recusrs
  *
  * mkdir with parent directory
  */
-int mkdir_recursive(const char *path) {
+int mkdir_recusrs(const char *path) {
 		char tmp[PATH_MAX];
 		size_t __sz_tmp = sizeof(tmp);
 		char *p = NULL;
@@ -162,7 +162,7 @@ int mkdir_recursive(const char *path) {
 				*p = 0;
 				if (MKDIR(tmp) != 0 && errno != EEXIST) {
 					perror("mkdir");
-					return -RETN;
+					return -__RETN;
 				}
 				*p = '/';
 			}
@@ -170,9 +170,9 @@ int mkdir_recursive(const char *path) {
 
 		if (MKDIR(tmp) != 0 && errno != EEXIST) {
 			perror("mkdir");
-			return -RETN;
+			return -__RETN;
 		}
-		return RETZ;
+		return __RETZ;
 }
 
 /**
@@ -183,7 +183,7 @@ int mkdir_recursive(const char *path) {
  * @pos: Pointer to store position of invalid character
  * @i: Current position index
  *
- * Return: RETN if invalid, RETZ if valid
+ * Return: __RETN if invalid, __RETZ if valid
  */
 static int __regex_validate_char(unsigned char c, const char *forbidden,
 								 char *badch, size_t *pos, size_t i)
@@ -194,7 +194,7 @@ static int __regex_validate_char(unsigned char c, const char *forbidden,
 						*badch = c;
 				if (pos)
 						*pos = i;
-				return RETN;
+				return __RETN;
 		}
 
 		/* Check for whitespace */
@@ -203,7 +203,7 @@ static int __regex_validate_char(unsigned char c, const char *forbidden,
 						*badch = c;
 				if (pos)
 						*pos = i;
-				return RETN;
+				return __RETN;
 		}
 
 		/* Check against forbidden characters */
@@ -212,10 +212,10 @@ static int __regex_validate_char(unsigned char c, const char *forbidden,
 						*badch = c;
 				if (pos)
 						*pos = i;
-				return RETN;
+				return __RETN;
 		}
 
-		return RETZ;
+		return __RETZ;
 }
 
 /**
@@ -224,7 +224,7 @@ static int __regex_validate_char(unsigned char c, const char *forbidden,
  * @badch: Pointer to store invalid character found
  * @pos: Pointer to store position of invalid character
  *
- * Return: RETZ if valid, RETN if invalid character found
+ * Return: __RETZ if valid, __RETN if invalid character found
  */
 #ifndef _WIN32
 static int __regex_v_unix(const char *s, char *badch, size_t *pos)
@@ -237,8 +237,8 @@ static int __regex_v_unix(const char *s, char *badch, size_t *pos)
 				c = (unsigned char)*s;
 
 				/* Common character validation */
-				if (__regex_validate_char(c, forbidden, badch, pos, i) == RETN)
-						return RETN;
+				if (__regex_validate_char(c, forbidden, badch, pos, i) == __RETN)
+						return __RETN;
 
 				/* Unix-specific additional checks */
 				if (c == '(' || c == ')' ||
@@ -250,11 +250,11 @@ static int __regex_v_unix(const char *s, char *badch, size_t *pos)
 								*badch = c;
 						if (pos)
 								*pos = i;
-						return RETN;
+						return __RETN;
 				}
 		}
 
-		return RETZ;
+		return __RETZ;
 }
 #endif
 
@@ -264,7 +264,7 @@ static int __regex_v_unix(const char *s, char *badch, size_t *pos)
  * @badch: Pointer to store invalid character found
  * @pos: Pointer to store position of invalid character
  *
- * Return: RETZ if valid, RETN if invalid character found
+ * Return: __RETZ if valid, __RETN if invalid character found
  */
 static int __regex_v_win(const char *s, char *badch, size_t *pos)
 {
@@ -276,8 +276,8 @@ static int __regex_v_win(const char *s, char *badch, size_t *pos)
 				c = (unsigned char)*s;
 
 				/* Common character validation */
-				if (__regex_validate_char(c, forbidden, badch, pos, i) == RETN)
-						return RETN;
+				if (__regex_validate_char(c, forbidden, badch, pos, i) == __RETN)
+						return __RETN;
 
 				/* Windows-specific additional checks */
 				if (c == '%' || c == '!' || c == ',' || c == ';' || 
@@ -286,11 +286,11 @@ static int __regex_v_win(const char *s, char *badch, size_t *pos)
 								*badch = c;
 						if (pos)
 								*pos = i;
-						return RETN;
+						return __RETN;
 				}
 		}
 
-		return RETZ;
+		return __RETZ;
 }
 
 static int __regex_check__(const char *cmd, char *badch, size_t *pos) {
@@ -326,13 +326,13 @@ static int wd_confirm_dangerous_command(const char *cmd, char badch, size_t pos)
 		if (!confirm)
 				goto done;
 		if (strcmp(confirm, "Y") == 0 || strcmp(confirm, "y") == 0) {
-				wdfree(confirm);
-				return RETN;
+				wd_free(confirm);
+				return __RETN;
 		}
 
 done:
-		wdfree(confirm);
-		return RETZ;
+		wd_free(confirm);
+		return __RETZ;
 }
 
 /**
@@ -342,7 +342,7 @@ done:
  * Validates command for dangerous characters and executes via system().
  * Includes debug mode with user confirmation for suspicious commands.
  *
- * Return: System call return value, or -RETN on error
+ * Return: System call return value, or -__RETN on error
  */
 int wd_run_command(const char *cmd)
 {
@@ -351,13 +351,13 @@ int wd_run_command(const char *cmd)
 		int ret;
 
 		if (!cmd || !*cmd)
-				return -RETN;
+				return -__RETN;
 
 		/* Validate command for safety */
 		if (__regex_check__(cmd, &badch, &pos)) {
 #if defined(_DBG_PRINT)
 				if (!wd_confirm_dangerous_command(cmd, badch, pos))
-						return -RETN;
+						return -__RETN;
 #endif
 		}
 
@@ -373,9 +373,9 @@ int wd_run_command(const char *cmd)
 int is_termux_environment(void)
 {
 		struct stat st;
-		int is_termux = RETZ;
+		int is_termux = __RETZ;
 #if defined(__ANDROID__)
-		is_termux = RETN;
+		is_termux = __RETN;
 #endif
 		if (stat("/data/data/com.termux/files/usr/local/lib/", &st) == 0 ||
 			stat("/data/data/com.termux/files/usr/lib/", &st) == 0 ||
@@ -384,7 +384,7 @@ int is_termux_environment(void)
 			stat("/data/data/com.termux/amd32/usr/lib", &st) == 0 ||
 			stat("/data/data/com.termux/amd64/usr/lib", &st) == 0)
 		{
-			is_termux = RETN;
+			is_termux = __RETN;
 		}
 		return is_termux;
 }
@@ -397,13 +397,13 @@ int is_termux_environment(void)
 int is_native_windows(void)
 {
 		char* msys2_env = getenv("MSYSTEM");
-		int is_win32 = RETZ;
-		int is_native = RETZ;
+		int is_win32 = __RETZ;
+		int is_native = __RETZ;
 #ifdef _WIN32
-		is_win32 = RETN;
+		is_win32 = __RETN;
 #endif
-		if (msys2_env == NULL && is_win32 == RETN) {
-			is_native = RETN;
+		if (msys2_env == NULL && is_win32 == __RETN) {
+			is_native = __RETN;
 		}
 		return is_native;
 }
@@ -443,30 +443,30 @@ void print_file_to_terminal(const char *path) {
  * @src: Source file path to copy permissions from  
  * @dst: Destination file path to apply permissions to
  *
- * Return: RETZ on success, RETN on error
+ * Return: __RETZ on success, __RETN on error
  */
 int wd_set_permission(const char *src, const char *dst)
 {
 		struct stat st;
 
 		if (!src || !dst)
-				return RETN;
+				return __RETN;
 
 		/* Get source file permissions */
 		if (stat(src, &st) != 0)
-				return RETN;
+				return __RETN;
 
 #ifdef _WIN32
 		/* Windows: set basic read/write permissions */
 		if (_chmod(dst, _S_IREAD | _S_IWRITE) != 0)
-				return RETN;
+				return __RETN;
 #else
 		/* Unix: copy exact permission bits */
 		if (chmod(dst, st.st_mode & 07777) != 0)
-				return RETN;
+				return __RETN;
 #endif
 
-		return RETZ;
+		return __RETZ;
 }
 
 /**
@@ -490,7 +490,7 @@ int wd_set_title(const char *title)
 		/* Use ANSI escape sequence to set window title */
 		printf("\033]0;%s\007", new_title);
 		
-		return RETZ;
+		return __RETZ;
 }
 
 /**
@@ -753,74 +753,74 @@ const char *wd_detect_os(void)
  * dir_exists - Check if directory exists
  * @path: Directory path to check
  *
- * Return: RETN if exists, RETZ if not
+ * Return: __RETN if exists, __RETZ if not
  */
 int dir_exists(const char *path)
 {
 		struct stat st;
 
 		if (stat(path, &st) == 0 && S_ISDIR(st.st_mode))
-				return RETN;
+				return __RETN;
 
-		return RETZ;
+		return __RETZ;
 }
 
 /**
  * path_exists - Check if path exists
  * @path: Path to check
  *
- * Return: RETN if exists, RETZ if not
+ * Return: __RETN if exists, __RETZ if not
  */
 int path_exists(const char *path)
 {
 		struct stat st;
 
 		if (stat(path, &st) == 0)
-				return RETN;
+				return __RETN;
 
-		return RETZ;
+		return __RETZ;
 }
 
 /**
  * dir_writable - Check if directory is writable
  * @path: Directory path to check
  *
- * Return: RETN if writable, RETZ if not
+ * Return: __RETN if writable, __RETZ if not
  */
 int dir_writable(const char *path)
 {
 		if (access(path, W_OK) == 0)
-				return RETN;
+				return __RETN;
 
-		return RETZ;
+		return __RETZ;
 }
 
 /**
  * path_acces - Check if path is accessible
  * @path: Path to check
  *
- * Return: RETN if accessible, RETZ if not
+ * Return: __RETN if accessible, __RETZ if not
  */
 int path_acces(const char *path)
 {
 		if (access(path, F_OK) == 0)
-				return RETN;
+				return __RETN;
 
-		return RETZ;
+		return __RETZ;
 }
 
 /**
  * file_regular - Check if path is a regular file
  * @path: Path to check
  *
- * Return: RETN if regular file, RETZ if not
+ * Return: __RETN if regular file, __RETZ if not
  */
 int file_regular(const char *path)
 {
 		struct stat st;
 
 		if (stat(path, &st) != 0)
-				return RETZ;
+				return __RETZ;
 
 		return S_ISREG(st.st_mode);
 }
@@ -830,16 +830,16 @@ int file_regular(const char *path)
  * @a: First path
  * @b: Second path
  *
- * Return: RETN if same file, RETZ if not
+ * Return: __RETN if same file, __RETZ if not
  */
 int file_same_file(const char *a, const char *b)
 {
 		struct stat sa, sb;
 
 		if (stat(a, &sa) != 0)
-				return RETZ;
+				return __RETZ;
 		if (stat(b, &sb) != 0)
-				return RETZ;
+				return __RETZ;
 
 		return (sa.st_ino == sb.st_ino && sa.st_dev == sb.st_dev);
 }
@@ -850,7 +850,7 @@ int file_same_file(const char *a, const char *b)
  * @n: Output buffer size
  * @dest: Destination path
  *
- * Return: RETZ on success, -RETN on error
+ * Return: __RETZ on success, -__RETN on error
  */
 int ensure_parent_dir(char *out_parent, size_t n, const char *dest)
 {
@@ -858,19 +858,19 @@ int ensure_parent_dir(char *out_parent, size_t n, const char *dest)
 		char *parent;
 
 		if (strlen(dest) >= sizeof(tmp))
-				return -RETN;
+				return -__RETN;
 
 		strncpy(tmp, dest, sizeof(tmp));
 		tmp[sizeof(tmp)-1] = '\0';
 
 		parent = dirname(tmp);
 		if (!parent)
-				return -RETN;
+				return -__RETN;
 
 		strncpy(out_parent, parent, n);
 		out_parent[n-1] = '\0';
 
-		return RETZ;
+		return __RETZ;
 }
 
 /**
@@ -885,7 +885,7 @@ int kill_process(const char *name)
 			char cmd[256];
 
 			if (!name)
-					return -RETN;
+					return -__RETN;
 
 #ifndef _WIN32
 			snprintf(cmd, sizeof(cmd), "pkill -9 -f \"%s\" > /dev/null 2>&1", name);
@@ -894,7 +894,7 @@ int kill_process(const char *name)
 #endif
 			return system(cmd);
 		} else {
-			return RETZ;
+			return __RETZ;
 		}
 }
 
@@ -1052,7 +1052,7 @@ static int wd_is_special_dir(const char *name)
 static int wd_should_ignore_dir(const char *name, const char *ignore_dir)
 {
 		if (!ignore_dir)
-				return RETZ;
+				return __RETZ;
 
 #ifdef _WIN32
 		return (_stricmp(name, ignore_dir) == 0);
@@ -1083,7 +1083,7 @@ static void wd_add_found_path(const char *path)
  * Recursively searches for files matching @sef_name pattern. Supports
  * wildcards (*, ?) and can ignore specific directories.
  *
- * Return: RETN if found, RETZ if not found
+ * Return: __RETN if found, __RETZ if not found
  */
 int wd_sef_fdir(const char *sef_path, const char *sef_name, const char *ignore_dir)
 {
@@ -1103,7 +1103,7 @@ int wd_sef_fdir(const char *sef_path, const char *sef_name, const char *ignore_d
 
 		find_handle = FindFirstFile(search_path, &find_data);
 		if (find_handle == INVALID_HANDLE_VALUE)
-				return RETZ;
+				return __RETZ;
 
 		do {
 				name = find_data.cFileName;
@@ -1117,13 +1117,13 @@ int wd_sef_fdir(const char *sef_path, const char *sef_name, const char *ignore_d
 								continue;
 						if (wd_sef_fdir(path_buff, sef_name, ignore_dir)) {
 								FindClose(find_handle);
-								return RETN;
+								return __RETN;
 						}
 				} else {
 						if (wd_match_filename(name, sef_name)) {
 								wd_add_found_path(path_buff);
 								FindClose(find_handle);
-								return RETN;
+								return __RETN;
 						}
 				}
 		} while (FindNextFile(find_handle, &find_data));
@@ -1137,7 +1137,7 @@ int wd_sef_fdir(const char *sef_path, const char *sef_name, const char *ignore_d
 
 		dir = opendir(sef_path);
 		if (!dir)
-				return RETZ;
+				return __RETZ;
 
 		while ((item = readdir(dir)) != NULL) {
 				name = item->d_name;
@@ -1151,13 +1151,13 @@ int wd_sef_fdir(const char *sef_path, const char *sef_name, const char *ignore_d
 								continue;
 						if (wd_sef_fdir(path_buff, sef_name, ignore_dir)) {
 								closedir(dir);
-								return RETN;
+								return __RETN;
 						}
 				} else if (item->d_type == DT_REG) {
 						if (wd_match_filename(name, sef_name)) {
 								wd_add_found_path(path_buff);
 								closedir(dir);
-								return RETN;
+								return __RETN;
 						}
 				} else {
 						/* Handle file types that need stat */
@@ -1169,13 +1169,13 @@ int wd_sef_fdir(const char *sef_path, const char *sef_name, const char *ignore_d
 										continue;
 								if (wd_sef_fdir(path_buff, sef_name, ignore_dir)) {
 										closedir(dir);
-										return RETN;
+										return __RETN;
 								}
 						} else if (S_ISREG(statbuf.st_mode)) {
 								if (wd_match_filename(name, sef_name)) {
 										wd_add_found_path(path_buff);
 										closedir(dir);
-										return RETN;
+										return __RETN;
 								}
 						}
 				}
@@ -1184,7 +1184,7 @@ int wd_sef_fdir(const char *sef_path, const char *sef_name, const char *ignore_d
 		closedir(dir);
 #endif
 
-		return RETZ;
+		return __RETZ;
 }
 
 /**
@@ -1262,7 +1262,7 @@ static int wd_parse_toml_config(void)
 		proc_file = fopen("watchdogs.toml", "r");
 		if (!proc_file) {
 				pr_error(stdout, "Cannot read file %s", "watchdogs.toml");
-				return RETZ;
+				return __RETZ;
 		}
 
 		toml_config = toml_parse_file(proc_file, errbuf, sizeof(errbuf));
@@ -1270,7 +1270,7 @@ static int wd_parse_toml_config(void)
 
 		if (!toml_config) {
 				pr_error(stdout, "Parsing TOML: %s", errbuf);
-				return RETZ;
+				return __RETZ;
 		}
 
 		/* Extract OS configuration */
@@ -1279,12 +1279,12 @@ static int wd_parse_toml_config(void)
 				toml_datum_t os_val = toml_string_in(general_table, "os");
 				if (os_val.ok) {
 						wcfg.wd_toml_os_type = strdup(os_val.u.s);
-						wdfree(os_val.u.s);
+						wd_free(os_val.u.s);
 				}
 		}
 
 		toml_free(toml_config);
-		return RETN;
+		return __RETN;
 }
 
 /**
@@ -1523,7 +1523,7 @@ static void wd_generate_toml_content(FILE *file, const char *wd_os_type,
  * Detects environment, finds compiler and gamemodes, generates
  * appropriate TOML configuration file.
  *
- * Return: RETZ on success, RETN on error
+ * Return: __RETZ on success, __RETN on error
  */
 int wd_set_toml(void)
 {
@@ -1562,7 +1562,7 @@ int wd_set_toml(void)
 				toml_file = fopen("watchdogs.toml", "w");
 				if (!toml_file) {
 						pr_error(stdout, "Failed to create watchdogs.toml");
-						return RETN;
+						return __RETN;
 				}
 
                 if (find_pawncc)
@@ -1577,7 +1577,7 @@ int wd_set_toml(void)
 		/* Parse and load TOML configuration */
 		if (!wd_parse_toml_config()) {
 				pr_error(stdout, "Failed to parse TOML configuration");
-				return RETN;
+				return __RETN;
 		}
 
 		char errbuf[256];
@@ -1597,7 +1597,7 @@ int wd_set_toml(void)
 				if (toml_gh_tokens.ok) 
 				{
 					wcfg.wd_toml_github_tokens = strdup(toml_gh_tokens.u.s);
-					wdfree(toml_gh_tokens.u.s);
+					wd_free(toml_gh_tokens.u.s);
 					toml_gh_tokens.u.s = NULL;
 				}
 		}
@@ -1612,12 +1612,12 @@ int wd_set_toml(void)
 							wcfg.wd_ptr_omp = strdup(bin_val.u.s);
 						else
 							wcfg.wd_ptr_samp = strdup(bin_val.u.s);
-						wdfree(bin_val.u.s);
+						wd_free(bin_val.u.s);
 				}
 				toml_datum_t conf_val = toml_string_in(general_table, "config");
 				if (conf_val.ok) {
 						wcfg.wd_toml_config = strdup(conf_val.u.s);
-						wdfree(conf_val.u.s);
+						wd_free(conf_val.u.s);
 				}
 		}
 
@@ -1653,31 +1653,31 @@ ret_ptr:
 
 			while (1) {
 				if (strcmp(ptr_sigA, "Y") == 0 || strcmp(ptr_sigA, "y") == 0) {
-					wdfree(ptr_sigA);
+					wd_free(ptr_sigA);
 					if (!strcmp(wcfg.wd_os_type, OS_SIGNAL_WINDOWS)) {
 						int ret = wd_install_server("windows");
 n_loop_igm:
-						if (ret == -RETN && wcfg.wd_sel_stat != 0)
+						if (ret == -__RETN && wcfg.wd_sel_stat != 0)
 							goto n_loop_igm;
 					} else if (!strcmp(wcfg.wd_os_type, OS_SIGNAL_LINUX)) {
 						int ret = wd_install_server("linux");
 n_loop_igm2:
-						if (ret == -RETN && wcfg.wd_sel_stat != 0)
+						if (ret == -__RETN && wcfg.wd_sel_stat != 0)
 							goto n_loop_igm2;
 					}
 					break;
 				} else if (strcmp(ptr_sigA, "N") == 0 || strcmp(ptr_sigA, "n") == 0) {
-					wdfree(ptr_sigA);
+					wd_free(ptr_sigA);
 					break;
 				} else {
 					pr_error(stdout, "Invalid input. Please type Y/y to install or N/n to cancel.");
-					wdfree(ptr_sigA);
+					wd_free(ptr_sigA);
 					goto ret_ptr;
 				}
 			}
         }
 
-		return RETZ;
+		return __RETZ;
 }
 
 /**
@@ -1737,7 +1737,7 @@ static int __cp_with_sudo(const char *src, const char *dest) {
  * @c_src: Source file path
  * @c_dest: Destination file path
  *
- * Return: RETN if validation passed, RETZ if same file
+ * Return: __RETN if validation passed, __RETZ if same file
  */
 static int __wd_sef_safety(const char *c_src, const char *c_dest)
 {
@@ -1772,7 +1772,7 @@ static int __wd_sef_safety(const char *c_src, const char *c_dest)
 		if (!S_ISDIR(st.st_mode))
 				pr_error(stdout, "destination parent is not a dir: %s", parent);
 
-		return RETN;
+		return __RETN;
 }
 
 /**
@@ -1803,7 +1803,7 @@ static void __wd_sef_set_permissions(const char *c_dest)
  * @c_src: Source file path
  * @c_dest: Destination file path
  *
- * Return: RETZ on success, RETN on failure
+ * Return: __RETZ on success, __RETN on failure
  */
  
 int wd_sef_wmv(const char *c_src, const char *c_dest)
@@ -1811,8 +1811,8 @@ int wd_sef_wmv(const char *c_src, const char *c_dest)
 		int ret, mv_ret;
 
 		ret = __wd_sef_safety(c_src, c_dest);
-		if (ret != RETN)
-				return RETN;
+		if (ret != __RETN)
+				return __RETN;
 
 		int is_not_sudo = 0;
 		if (is_native_windows())
@@ -1825,33 +1825,33 @@ int wd_sef_wmv(const char *c_src, const char *c_dest)
 			if (!mv_ret) {
 					__wd_sef_set_permissions(c_dest);
 					pr_info(stdout, "moved without sudo: %s -> %s", c_src, c_dest);
-					return RETZ;
+					return __RETZ;
 			}
 		} else {
 			mv_ret = __mv_with_sudo(c_src, c_dest);
 			if (!mv_ret) {
 					__wd_sef_set_permissions(c_dest);
 					pr_info(stdout, "moved with sudo: %s -> %s", c_src, c_dest);
-					return RETZ;
+					return __RETZ;
 			}
 		}
 
-		return RETN;
+		return __RETN;
 }
 /**
  * wd_sef_wcopy - Copy file with safety checks and sudo fallback
  * @c_src: Source file path
  * @c_dest: Destination file path
  *
- * Return: RETZ on success, RETN on failure
+ * Return: __RETZ on success, __RETN on failure
  */
 int wd_sef_wcopy(const char *c_src, const char *c_dest)
 {
 		int ret, cp_ret;
 
 		ret = __wd_sef_safety(c_src, c_dest);
-		if (ret != RETN)
-				return RETN;
+		if (ret != __RETN)
+				return __RETN;
 
 		int is_not_sudo = 0;
 		if (is_native_windows())
@@ -1864,16 +1864,16 @@ int wd_sef_wcopy(const char *c_src, const char *c_dest)
 			if (!cp_ret) {
 					__wd_sef_set_permissions(c_dest);
 					pr_info(stdout, "copying without sudo: %s -> %s", c_src, c_dest);
-					return RETZ;
+					return __RETZ;
 			}
 		} else {
 			cp_ret = __cp_with_sudo(c_src, c_dest);
 			if (!cp_ret) {
 					__wd_sef_set_permissions(c_dest);
 					pr_info(stdout, "copying with sudo: %s -> %s", c_src, c_dest);
-					return RETZ;
+					return __RETZ;
 			}
 		}
 
-		return RETN;
+		return __RETN;
 }

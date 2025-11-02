@@ -71,14 +71,14 @@ static int update_server_config(const char *gamemode)
                                 __sz_config);
         if (system(__sz_mv) != 0) {
                 pr_error(stdout, "Failed to create backup file");
-                return -RETN;
+                return -__RETN;
         }
 
         /* Open backup config for reading */
         config_in = fopen(__sz_config, "r");
         if (!config_in) {
                 pr_error(stdout, "Failed to open backup config");
-                return -RETN;
+                return -__RETN;
         }
         
         /* Create new config file */
@@ -86,7 +86,7 @@ static int update_server_config(const char *gamemode)
         if (!config_out) {
                 pr_error(stdout, "Failed to write new config");
                 fclose(config_in);
-                return -RETN;
+                return -__RETN;
         }
 
         /* Process gamemode filename - remove extension if present */
@@ -114,7 +114,7 @@ static int update_server_config(const char *gamemode)
         fclose(config_in);
         fclose(config_out);
 
-        return RETZ;
+        return __RETZ;
 }
 
 /*
@@ -231,7 +231,7 @@ void wd_run_samp_server(const char *gamemode, const char *server_bin)
         ret = system(command);
         
         /* Handle execution results */
-        if (ret == RETZ) {
+        if (ret == __RETZ) {
                 if (!strcmp(wcfg.wd_os_type, OS_SIGNAL_LINUX)) {
                         sleep(2);
                         wd_display_server_logs(0);
@@ -258,7 +258,7 @@ static int update_omp_config(const char *gamemode)
         struct stat st;
         char gamemode_buf[256];
         char _gamemode[256];
-        int ret = -RETN;
+        int ret = -__RETN;
 
         /* Create backup filename */
         char __sz_config[PATH_MAX];
@@ -278,24 +278,24 @@ static int update_omp_config(const char *gamemode)
                                 __sz_config);
         if (system(__sz_mv) != 0) {
                 pr_error(stdout, "Failed to create backup file");
-                return -RETN;
+                return -__RETN;
         }
 
         /* Get file statistics for memory allocation */
         if (stat(__sz_config, &st) != 0) {
                 pr_error(stdout, "Failed to get file status");
-                return -RETN;
+                return -__RETN;
         }
 
         /* Open backup config for reading */
         config_in = fopen(__sz_config, "rb");
         if (!config_in) {
                 pr_error(stdout, "Failed to open %s", __sz_config);
-                return -RETN;
+                return -__RETN;
         }
 
         /* Allocate memory for JSON data */
-        __cJSON_Data = wdmalloc(st.st_size + 1);
+        __cJSON_Data = wd_malloc(st.st_size + 1);
         if (!__cJSON_Data) {
                 pr_error(stdout, "Memory allocation failed");
                 goto done;
@@ -359,7 +359,7 @@ static int update_omp_config(const char *gamemode)
                 goto done;
         }
 
-        ret = RETZ;
+        ret = __RETZ;
 
 /* Cleanup section with goto labels for error handling */
 done:
@@ -368,11 +368,11 @@ done:
         if (config_in)
                 fclose(config_in);
         if (__cJSON_Printed)
-                wdfree(__cJSON_Printed);
+                wd_free(__cJSON_Printed);
         if (root)
                 cJSON_Delete(root);
         if (__cJSON_Data)
-                wdfree(__cJSON_Data);
+                wd_free(__cJSON_Data);
 
         return ret;
 }
@@ -464,7 +464,7 @@ void wd_run_omp_server(const char *gamemode, const char *server_bin)
 
         /* Execute server binary */
         ret = system(command);
-        if (ret == RETZ) {
+        if (ret == __RETZ) {
                 sleep(2);
                 wd_display_server_logs(1);
         } else {

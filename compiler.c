@@ -442,14 +442,14 @@ int wd_run_compiler(const char *arg, const char *compile_args)
         {
             /* Allocate memory for compiler command string */
             size_t format_size_compiler = 1024;
-            char *_compiler_ = wdmalloc(format_size_compiler);
+            char *_compiler_ = wd_malloc(format_size_compiler);
             if (!_compiler_) 
             {
 #if defined(_DBG_PRINT)
                 /* Debug print for memory allocation failure */
                 pr_error(stdout, "memory allocation failed for _compiler_!");
 #endif
-                return RETZ;
+                return __RETZ;
             }
 
             /* Open and parse the TOML configuration file */
@@ -461,10 +461,10 @@ int wd_run_compiler(const char *arg, const char *compile_args)
                 if (_compiler_) 
                 {
                     /* Clean up allocated memory */
-                    wdfree(_compiler_);
+                    wd_free(_compiler_);
                     _compiler_ = NULL;
                 }
-                return RETZ;
+                return __RETZ;
             }
             
             /* Parse TOML configuration */
@@ -486,10 +486,10 @@ int wd_run_compiler(const char *arg, const char *compile_args)
                 if (_compiler_) 
                 {
                     /* Clean up allocated memory */
-                    wdfree(_compiler_);
+                    wd_free(_compiler_);
                     _compiler_ = NULL;
                 }
-                return RETZ;
+                return __RETZ;
             }
             
             /* Extract compiler configuration from TOML */
@@ -517,12 +517,12 @@ int wd_run_compiler(const char *arg, const char *compile_args)
                         size_t old_len = merged ? strlen(merged) : 0,
                                new_len = old_len + strlen(val.u.s) + 2;
 
-                        char *tmp = wdrealloc(merged, new_len);
+                        char *tmp = wd_realloc(merged, new_len);
                         if (!tmp) 
                         {
                             /* Handle memory reallocation failure */
-                            wdfree(merged);
-                            wdfree(val.u.s);
+                            wd_free(merged);
+                            wd_free(val.u.s);
                             merged = NULL;
                             break;
                         }
@@ -539,7 +539,7 @@ int wd_run_compiler(const char *arg, const char *compile_args)
                         }
 
                         /* Free temporary string */
-                        wdfree(val.u.s);
+                        wd_free(val.u.s);
                         val.u.s = NULL;
                     }
 
@@ -598,7 +598,7 @@ int wd_run_compiler(const char *arg, const char *compile_args)
                                             "-i\"%s\"",
                                             __procc);
                             }
-                            wdfree(path_val.u.s);
+                            wd_free(path_val.u.s);
                         }
                     }
                 }
@@ -611,7 +611,7 @@ int wd_run_compiler(const char *arg, const char *compile_args)
                     if (toml_gm_i.ok) 
                     {
                         wcfg.wd_toml_gm_input = strdup(toml_gm_i.u.s);
-                        wdfree(toml_gm_i.u.s);
+                        wd_free(toml_gm_i.u.s);
                         toml_gm_i.u.s = NULL;
                     }
                     
@@ -620,7 +620,7 @@ int wd_run_compiler(const char *arg, const char *compile_args)
                     if (toml_gm_o.ok) 
                     {
                         wcfg.wd_toml_gm_output = strdup(toml_gm_o.u.s);
-                        wdfree(toml_gm_o.u.s);
+                        wd_free(toml_gm_o.u.s);
                         toml_gm_o.u.s = NULL;
                     }
 
@@ -663,10 +663,10 @@ int wd_run_compiler(const char *arg, const char *compile_args)
                                                       wcfg.wd_sef_found_list[0],
                                                       wcfg.wd_toml_gm_input,
                                                       wcfg.wd_toml_gm_output) + 1;
-                    char *title_compiler_info = wdmalloc(needed);
+                    char *title_compiler_info = wd_malloc(needed);
                     if (!title_compiler_info) 
                     { 
-                        return RETN; 
+                        return __RETN; 
                     }
                     snprintf(title_compiler_info, needed, "Watchdogs | @ compile | %s | %s | %s",
                                                           wcfg.wd_sef_found_list[0],
@@ -676,7 +676,7 @@ int wd_run_compiler(const char *arg, const char *compile_args)
                     {
                         /* Set window/tab title */
                         wd_set_title(title_compiler_info);
-                        wdfree(title_compiler_info);
+                        wd_free(title_compiler_info);
                         title_compiler_info = NULL;
                     }
 
@@ -964,10 +964,10 @@ int wd_run_compiler(const char *arg, const char *compile_args)
                                                           wcfg.wd_sef_found_list[0],
                                                           wcfg.wd_sef_found_list[1],
                                                           container_output) + 1;
-                        char *title_compiler_info = wdmalloc(needed);
+                        char *title_compiler_info = wd_malloc(needed);
                         if (!title_compiler_info) 
                         { 
-                            return RETN; 
+                            return __RETN; 
                         }
                         snprintf(title_compiler_info, needed, "Watchdogs | @ compile | %s | %s | %s.amx",
                                                               wcfg.wd_sef_found_list[0],
@@ -977,7 +977,7 @@ int wd_run_compiler(const char *arg, const char *compile_args)
                         {
                             /* Set window/tab title */
                             wd_set_title(title_compiler_info);
-                            wdfree(title_compiler_info);
+                            wd_free(title_compiler_info);
                             title_compiler_info = NULL;
                         }
 
@@ -1053,7 +1053,7 @@ int wd_run_compiler(const char *arg, const char *compile_args)
                         /* Handle case where file cannot be located */
                         pr_error(stdout, "Cannnot locate:");
                         printf("\t%s\n", compile_args);
-                        return RETZ;
+                        return __RETZ;
                     }
                 }
 
@@ -1062,11 +1062,11 @@ int wd_run_compiler(const char *arg, const char *compile_args)
                 if (_compiler_) 
                 {
                     /* Free compiler command buffer */
-                    wdfree(_compiler_);
+                    wd_free(_compiler_);
                     _compiler_ = NULL;
                 }
                 
-                return RETZ;
+                return __RETZ;
             }
         } 
         else 
@@ -1082,7 +1082,7 @@ int wd_run_compiler(const char *arg, const char *compile_args)
             {
                 if (strcmp(ptr_sigA, "Y") == 0 || strcmp(ptr_sigA, "y") == 0) 
                 {
-                    wdfree(ptr_sigA);
+                    wd_free(ptr_sigA);
                     /* User wants to install compiler - select platform */
 ret_ptr:
                     println(stdout, "Select platform:");
@@ -1100,8 +1100,8 @@ ret_ptr:
                         /* Install for Linux */
                         int ret = wd_install_pawncc("linux");
 loop_ipcc:
-                        wdfree(platform);
-                        if (ret == -RETN && wcfg.wd_sel_stat != 0)
+                        wd_free(platform);
+                        if (ret == -__RETN && wcfg.wd_sel_stat != 0)
                             goto loop_ipcc;
                     }
                     if (strfind(platform, "W"))
@@ -1109,8 +1109,8 @@ loop_ipcc:
                         /* Install for Windows */
                         int ret = wd_install_pawncc("windows");
 loop_ipcc2:
-                        wdfree(platform);
-                        if (ret == -RETN && wcfg.wd_sel_stat != 0)
+                        wd_free(platform);
+                        if (ret == -__RETN && wcfg.wd_sel_stat != 0)
                             goto loop_ipcc2;
                     }
                     if (strfind(platform, "T"))
@@ -1118,19 +1118,19 @@ loop_ipcc2:
                         /* Install for Termux */
                         int ret = wd_install_pawncc("termux");
 loop_ipcc3:
-                        wdfree(platform);
-                        if (ret == -RETN && wcfg.wd_sel_stat != 0)
+                        wd_free(platform);
+                        if (ret == -__RETN && wcfg.wd_sel_stat != 0)
                             goto loop_ipcc3;
                     }
                     if (strfind(platform, "E")) {
-                        wdfree(platform);
+                        wd_free(platform);
                         goto done;
                     }
                     else
                     {
                         /* Invalid platform selection */
                         pr_error(stdout, "Invalid platform selection. Input 'E/e' to exit");
-                        wdfree(platform);
+                        wd_free(platform);
                         goto ret_ptr;
                     }
 
@@ -1141,18 +1141,18 @@ done:
                 else if (strcmp(ptr_sigA, "N") == 0 || strcmp(ptr_sigA, "n") == 0) 
                 {
                     /* User declined installation */
-                    wdfree(ptr_sigA);
+                    wd_free(ptr_sigA);
                     break;
                 } 
                 else 
                 {
                     /* Invalid input - prompt again */
                     pr_error(stdout, "Invalid input. Please type Y/y to install or N/n to cancel.");
-                    wdfree(ptr_sigA);
+                    wd_free(ptr_sigA);
                     goto ret_ptr;
                 }
             }
         }
 
-        return RETN;
+        return __RETN;
 }

@@ -45,7 +45,7 @@ static int arch_copy_data(struct archive *ar, struct archive *aw)
  * wd_extract_tar - Extract TAR archive
  * @tar_file: Path to TAR file
  *
- * Return: 0 on success, -RETN on failure
+ * Return: 0 on success, -__RETN on failure
  */
 int wd_extract_tar(const char *tar_file)
 {
@@ -117,14 +117,14 @@ int wd_extract_tar(const char *tar_file)
 		archive_read_free(archive_read);
 		archive_write_free(archive_write);
 
-		return (ret == ARCHIVE_EOF) ? 0 : -RETN;
+		return (ret == ARCHIVE_EOF) ? 0 : -__RETN;
 
 error:
 		if (archive_read)
 				archive_read_free(archive_read);
 		if (archive_write)
 				archive_write_free(archive_write);
-		return -RETN;
+		return -__RETN;
 }
 
 /**
@@ -169,7 +169,7 @@ static int extract_zip_entry(struct archive *archive_read,
 		ret = archive_write_header(archive_write, item);
 		if (ret != ARCHIVE_OK) {
 				pr_error(stdout, "Write header error: %s", archive_error_string(archive_write));
-				return -RETN;
+				return -__RETN;
 		}
 
 		/* Copy item data */
@@ -179,17 +179,17 @@ static int extract_zip_entry(struct archive *archive_read,
 						break;
 				if (ret < ARCHIVE_OK) {
 						pr_error(stdout, "Read data error: %s", archive_error_string(archive_read));
-						return -RETW;
+						return -__RETW;
 				}
 
 				ret = archive_write_data_block(archive_write, buffer, size, offset);
 				if (ret < ARCHIVE_OK) {
 						pr_error(stdout, "Write data error: %s", archive_error_string(archive_write));
-						return -RETH;
+						return -__RETH;
 				}
 		}
 
-		return RETZ;
+		return __RETZ;
 }
 
 /**
@@ -197,7 +197,7 @@ static int extract_zip_entry(struct archive *archive_read,
  * @zip_file: Path to ZIP file
  * @dest_path: Destination directory (NULL for current directory)
  *
- * Return: 0 on success, -RETN on failure
+ * Return: 0 on success, -__RETN on failure
  */
 int wd_extract_zip(const char *zip_file, const char *dest_path)
 {
@@ -253,12 +253,12 @@ int wd_extract_zip(const char *zip_file, const char *dest_path)
 		archive_read_free(archive_read);
 		archive_write_free(archive_write);
 
-		return error_occurred ? -RETN : 0;
+		return error_occurred ? -__RETN : 0;
 
 error:
 		if (archive_read)
 				archive_read_free(archive_read);
 		if (archive_write)
 				archive_write_free(archive_write);
-		return -RETN;
+		return -__RETN;
 }

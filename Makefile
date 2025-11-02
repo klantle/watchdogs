@@ -15,7 +15,7 @@ CC       	 ?= clang
 STRIP        ?= llvm-strip
 
 CFLAGS   = -Os -pipe -s -fdata-sections -ffunction-sections
-LDFLAGS  = -Wl,-O0,--gc-sections -lm -lcurl -lreadline -lncursesw -larchive -lssl -lcrypto
+LDFLAGS  = -Wl,-O0,--gc-sections -lm -lcurl -lreadline -lncursesw -larchive
 
 SRCS = color.c curl.c chain.c utils.c depends.c hardware.c compiler.c archive.c package.c server.c crypto.c \
        include/tomlc/toml.c include/cJSON/cJSON.c
@@ -33,7 +33,7 @@ init:
 		$(MAKE) windows; \
 	elif echo "$$UNAME_S" | grep -qi "Linux" && [ -d "/data/data/com.termux" ]; then \
 		echo "$(YELLOW)==>$(RESET) Detected: Termux environment"; \
-		pkg update -y && pkg install -y unstable-repo coreutils procps clang openssl curl libarchive ncurses readline; \
+		pkg update -y && pkg install -y unstable-repo coreutils procps clang curl libarchive ncurses readline; \
 		$(MAKE) termux; \
 	elif echo "$$UNAME_S" | grep -qi "MINGW64_NT"; then \
 		echo "$(YELLOW)==>$(RESET) Detected: MSYS2 MinGW UCRT64 environment"; \
@@ -48,7 +48,6 @@ init:
 			mingw-w64-ucrt-x86_64-readline \
 			mingw-w64-ucrt-x86_64-ncurses \
 			mingw-w64-ucrt-x86_64-libarchive \
-			mingw-w64-ucrt-x86_64-openssl \
 			mingw-w64-ucrt-x86_64-upx; \
 		$(MAKE) windows; \
 	elif echo "$$UNAME_S" | grep -qi "Linux"; then \
@@ -63,7 +62,6 @@ init:
 				make \
 				libssl-dev \
 				libncursesw5-dev \
-				libcurl4-openssl-dev \
 				libreadline-dev \
 				libarchive-dev \
 				zlib1g-dev \
@@ -71,13 +69,13 @@ init:
 				xterm; \
 		elif command -v yum >/dev/null 2>&1; then \
 			yum groupinstall -y "Development Tools" && \
-			yum install -y clang lld libcxx-devel openssl-devel ncurses-devel curl-devel readline-devel libarchive-devel zlib-devel oniguruma-devel xterm; \
+			yum install -y clang lld libcxx-devel-devel ncurses-devel curl-devel readline-devel libarchive-devel zlib-devel oniguruma-devel xterm; \
 		elif command -v dnf >/dev/null 2>&1; then \
 			dnf groupinstall -y "Development Tools" && \
-			dnf install -y clang lld libcxx-devel openssl-devel ncurses-devel curl-devel readline-devel libarchive-devel zlib-devel oniguruma-devel xterm; \
+			dnf install -y clang lld libcxx-devel-devel ncurses-devel curl-devel readline-devel libarchive-devel zlib-devel oniguruma-devel xterm; \
 		elif command -v pacman >/dev/null 2>&1; then \
 			pacman -Sy --noconfirm && \
-			pacman -S --needed --noconfirm base-devel clang lld libc++ openssl ncurses curl readline libarchive zlib oniguruma xterm; \
+			pacman -S --needed --noconfirm base-devel clang lld libc++ ncurses curl readline libarchive zlib oniguruma xterm; \
 		else \
 			echo "$(RED)==>$(RESET) Cannot install dependencies: package manager not found"; \
 			echo "$(YELLOW)==>$(RESET) Please install dependencies manually"; \

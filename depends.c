@@ -14,6 +14,26 @@
 #include "chain.h"
 #include "depends.h"
 
+cJSON *root, *depends, *_e_root = NULL;
+FILE *e_file, *fp_cache;
+char dp_fp[PATH_MAX], dp_fc[PATH_MAX], dp_inc[PATH_MAX];
+char cwd[PATH_MAX], *dep_inc_path = NULL;
+char cp_cmd[MAX_PATH * 2];
+char d_b[MAX_PATH];
+char rm_cmd[PATH_MAX];
+int wd_log_acces, i, __inc_legacyplug_r;
+long fp_cache_sz;
+char *file_content;
+char working[512];
+char *tag_ptr, *path, *first_slash;
+char *user, *repo_slash, *repo, *git_ext;
+DIR *dir;
+struct dirent *item;
+struct stat st;
+char cmd[MAX_PATH * 3], fpath[PATH_MAX * 2], 
+		parent[PATH_MAX], dest[PATH_MAX];
+char *dname, *ext;
+
 /**
  * struct dep_curl_buffer - Buffer for CURL response data
  * @data: Pointer to allocated data
@@ -65,9 +85,9 @@ static size_t dep_curl_write_cb (void *contents, size_t size, size_t nmemb, void
 		size_t realsize = size * nmemb;
 		char *ptr;
 
-		ptr = wdrealloc(mem->data, mem->size + realsize + 1);
+		ptr = wd_realloc(mem->data, mem->size + realsize + 1);
 		if (!ptr)
-				return RETZ;
+				return __RETZ;
 
 		mem->data = ptr;
 		memcpy(&mem->data[mem->size], contents, realsize);
@@ -165,7 +185,7 @@ int dep_http_get_content (const char *url, char **out_html)
 
 		curl = curl_easy_init();
 		if (!curl)
-				return RETZ;
+				return __RETZ;
 
 		curl_easy_setopt(curl, CURLOPT_URL, url);
 		curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, dep_curl_write_cb);
@@ -188,12 +208,12 @@ int dep_http_get_content (const char *url, char **out_html)
 		curl_easy_cleanup(curl);
 
 		if (res != CURLE_OK || buffer.size == 0) {
-				wdfree(buffer.data);
-				return RETZ;
+				wd_free(buffer.data);
+				return __RETZ;
 		}
 
 		*out_html = buffer.data;
-		return RETN;
+		return __RETN;
 }
 
 /**
@@ -246,10 +266,6 @@ static char *dep_get_assets (char **deps_assets, int count, const char *preferre
 static int
 dep_parse_repo(const char *input, struct dep_repo_info *__deps_data)
 {
-		char working[512];
-		char *tag_ptr, *path, *first_slash;
-		char *user, *repo_slash, *repo, *git_ext;
-
 		memset(__deps_data, 0, sizeof(*__deps_data));
 
 		/* Default host/domain values */
@@ -332,7 +348,7 @@ dep_parse_repo(const char *input, struct dep_repo_info *__deps_data)
 		user = path;
 		repo_slash = strchr(path, '/');
 		if (!repo_slash)
-			return RETZ;
+			return __RETZ;
 
 		*repo_slash = '\0';
 		repo = repo_slash + 1;
@@ -355,7 +371,7 @@ dep_parse_repo(const char *input, struct dep_repo_info *__deps_data)
 
 		/* Validate required fields */
 		if (strlen(__deps_data->user) == 0 || strlen(__deps_data->repo) == 0)
-			return RETZ;
+			return __RETZ;
 
 #if defined(_DBG_PRINT)
 		pr_info(stdout, "repo: host=%s, domain=%s, user=%s, repo=%s, tag=%s",
@@ -366,7 +382,7 @@ dep_parse_repo(const char *input, struct dep_repo_info *__deps_data)
 			__deps_data->tag[0] ? __deps_data->tag : "(none)");
 #endif
 
-		return RETN;
+		return __RETN;
 }
 
 /**
@@ -392,7 +408,7 @@ static int dep_gh_release_assets (const char *user, const char *repo,
 				 "https://", user, repo, tag);
 
 		if (!dep_http_get_content(api_url, &json_data))
-				return RETZ;
+				return __RETZ;
 
 		p = json_data;
 		while (url_count < max_urls && (p = strstr(p, "\"browser_download_url\"")) != NULL) {
@@ -410,7 +426,7 @@ static int dep_gh_release_assets (const char *user, const char *repo,
 						break;
 
 				url_len = url_end - p;
-				out_urls[url_count] = wdmalloc(url_len + 1);
+				out_urls[url_count] = wd_malloc(url_len + 1);
 				strncpy(out_urls[url_count], p, url_len);
 				out_urls[url_count][url_len] = '\0';
 
@@ -418,7 +434,7 @@ static int dep_gh_release_assets (const char *user, const char *repo,
 				p = url_end + 1;
 		}
 
-		wdfree(json_data);
+		wd_free(json_data);
 		return url_count;
 }
 /**
@@ -626,7 +642,7 @@ static int dep_gh_latest_tag (const char *user, const char *repo,
 				"https://", user, repo);
 
 		if (!dep_http_get_content(api_url, &json_data))
-			return RETZ;
+			return __RETZ;
 
 		/* Parse tag_name from JSON response */
 		p = strstr(json_data, "\"tag_name\"");
@@ -657,7 +673,7 @@ static int dep_gh_latest_tag (const char *user, const char *repo,
 			}
 		}
 
-		wdfree(json_data);
+		wd_free(json_data);
 		return ret;
 }
 
@@ -752,12 +768,12 @@ static int dep_handle_repo (const struct dep_repo_info *dep_repo_info,
 					/// Mark return value as success
 					strncpy(deps_put_url, deps_best_asset, deps_put_size - 1);
 					ret = 1;
-					wdfree(deps_best_asset);
+					wd_free(deps_best_asset);
 					/// Free memory allocated for best asset string
 				}
 
 				for (int j = 0; j < deps_asset_count; j++)
-					wdfree(deps_assets[j]);
+					wd_free(deps_assets[j]);
 				/// Free memory for all other asset strings
 				/// Prevent memory leaks
 			}
@@ -871,7 +887,7 @@ dep_add_ncheck_hash(cJSON *depends, const char *_FP, const char *_JP)
 		pr_info(stdout, "\tHashing convert path: %s\n", convert_f_path);
 
 		/* Calculate SHA256 hash of the file */
-		if (sha256_hash(convert_f_path, hash) == RETN) {
+		if (sha256_hash(convert_f_path, hash) == __RETN) {
 			to_hex(hash, 32, &hex);
 
 			/* Check if hash already exists in the JSON array */
@@ -899,7 +915,7 @@ dep_add_ncheck_hash(cJSON *depends, const char *_FP, const char *_JP)
 				pr_color(stdout, FCOLOUR_GREEN, "\t\t%s\n", hex);
 			}
 
-			wdfree(hex);
+			wd_free(hex);
 		} else {
 			pr_error(stdout,
 				"Failed to hash: %s (convert: %s)\n",
@@ -1081,14 +1097,14 @@ void dep_add_include (const char *modes,
 		long fileSize = ftell(file);
 		fseek(file, 0, SEEK_SET);
 		
-		char *ct_modes = wdmalloc(fileSize + 1);
+		char *ct_modes = wd_malloc(fileSize + 1);
 		fread(ct_modes, 1, fileSize, file);
 		ct_modes[fileSize] = '\0';
 		fclose(file);
 
 		if (strstr(ct_modes, dep_name) != NULL &&
 			strstr(ct_modes, dep_after) != NULL) {
-			wdfree(ct_modes);
+			wd_free(ct_modes);
 			return;
 		}
 		
@@ -1097,7 +1113,7 @@ void dep_add_include (const char *modes,
 		
 		FILE *n_file = fopen(modes, "w");
 		if (n_file == NULL) {
-			wdfree(ct_modes);
+			wd_free(ct_modes);
 			return;
 		}
 		
@@ -1124,7 +1140,7 @@ void dep_add_include (const char *modes,
 		}
 		
 		fclose(n_file);
-		wdfree(ct_modes);
+		wd_free(ct_modes);
 }
 #define DEP_ADD_INCLUDES(x, y, z) dep_add_include(x, y, z)
 
@@ -1201,7 +1217,7 @@ static void dep_pr_include_directive (const char *deps_include)
 			toml_datum_t toml_gm_i = toml_string_in(wd_compiler, "input");
 			if (toml_gm_i.ok) {
 				wcfg.wd_toml_gm_input = strdup(toml_gm_i.u.s);
-				wdfree(toml_gm_i.u.s);
+				wd_free(toml_gm_i.u.s);
 			}
 		}
 		toml_free(_toml_config);
@@ -1234,13 +1250,6 @@ static void dep_pr_include_directive (const char *deps_include)
  */
 void dep_pr_include_files (cJSON *depends, const char *bp, const char *db)
 {
-		DIR *dir;
-		struct dirent *item;
-		struct stat st;
-		char cmd[MAX_PATH * 3], fpath[PATH_MAX * 2], 
-			 parent[PATH_MAX], dest[PATH_MAX];
-		char *dname, *ext;
-
 		dir = opendir(bp);
 		if (!dir)
 			return;
@@ -1381,17 +1390,6 @@ void dep_cjson_additem (cJSON *p1, int p2, cJSON *p3)
 
 void dep_move_files (const char *dep_dir)
 {
-		cJSON *root, *depends, *_e_root = NULL;
-		FILE *e_file, *fp_cache;
-		char dp_fp[PATH_MAX], dp_fc[PATH_MAX], dp_inc[PATH_MAX];
-		char cwd[PATH_MAX], *dep_inc_path = NULL;
-		char cp_cmd[MAX_PATH * 2];
-		char d_b[MAX_PATH];
-		char rm_cmd[PATH_MAX];
-		int wd_log_acces, i, __inc_legacyplug_r;
-		long fp_cache_sz;
-		char *file_content;
-
 		/* Check or create cache file */
 		wd_log_acces = path_acces("wd_depends.json");
 		if (!wd_log_acces) {
@@ -1418,7 +1416,7 @@ void dep_move_files (const char *dep_dir)
 		if (fp_cache_sz <= 0)
 			goto out_close;
 
-		file_content = wdmalloc(fp_cache_sz + 1);
+		file_content = wd_malloc(fp_cache_sz + 1);
 		if (!file_content)
 			goto out_close;
 
@@ -1442,7 +1440,7 @@ void dep_move_files (const char *dep_dir)
 		}
 
 out_free:
-		wdfree(file_content);
+		wd_free(file_content);
 out_close:
 		fclose(e_file);
 
@@ -1579,7 +1577,7 @@ void wd_apply_depends (const char *depends_name)
 		struct stat st;
 		/// Structure used for filesystem status checks
 		/// Used with stat() to check existence of directories
-		/// Helps decide if mkdir_recursive is needed
+		/// Helps decide if mkdir_recusrs is needed
 
 		char *__dot_ext;
 		/// Pointer to locate the last dot in dependency name
@@ -1613,13 +1611,13 @@ void wd_apply_depends (const char *depends_name)
 			/// Check and create required folders
 
 			if (stat("pawno/include", &st) != 0 && errno == ENOENT)
-				mkdir_recursive("pawno/include");
+				mkdir_recusrs("pawno/include");
 			/// If "pawno/include" does not exist
 			/// Create directory recursively
 			/// Ensures header files can be placed
 
 			if (stat("plugins", &st) != 0 && errno == ENOENT)
-				mkdir_recursive("plugins");
+				mkdir_recusrs("plugins");
 			/// If "plugins" folder does not exist
 			/// Create it recursively
 			/// Ensures plugin files can be placed
@@ -1629,19 +1627,19 @@ void wd_apply_depends (const char *depends_name)
 			/// Check and create required folders
 
 			if (stat("qawno/include", &st) != 0 && errno == ENOENT)
-				mkdir_recursive("qawno/include");
+				mkdir_recusrs("qawno/include");
 			/// If "qawno/include" does not exist
 			/// Create recursively
 			/// Ensures OMP headers can be placed
 
 			if (stat("components", &st) != 0 && errno == ENOENT)
-				mkdir_recursive("components");
+				mkdir_recusrs("components");
 			/// If "components" folder does not exist
 			/// Create recursively
 			/// Used for modular OMP components
 
 			if (stat("plugins", &st) != 0 && errno == ENOENT)
-				mkdir_recursive("plugins");
+				mkdir_recusrs("plugins");
 			/// If "plugins" folder does not exist
 			/// Create recursively
 			/// OMP plugins go here
@@ -1807,7 +1805,7 @@ void wd_install_depends (const char *deps_str)
 				/// Ensures a valid local filename
 			}
 
-			if (wd_download_file(dep_url, dep_repo_name) == RETZ)
+			if (wd_download_file(dep_url, dep_repo_name) == __RETZ)
 				depends_files[file_count++] = strdup(dep_repo_name);
 			/// Download dependency file
 			/// If successful, store copy of filename in depends_files
@@ -1824,7 +1822,7 @@ void wd_install_depends (const char *deps_str)
 			/// Apply each downloaded dependency
 			/// This may extract, compile, or copy files
 
-			wdfree(depends_files[i]);
+			wd_free(depends_files[i]);
 			/// Free memory allocated by strdup
 			/// Avoid memory leaks
 		}

@@ -18,7 +18,7 @@ typedef struct {
         char *cause_trigger;
         char *cause_info;
 } causeExplanation;
-causeExplanation compiler_cause_list[] =
+causeExplanation cause_list[] =
 {
         {"expected token", "A required token is missing from the code."},
         {"only a single statement", "`case` can only contain one statement; use `{}` for multiple."},
@@ -121,105 +121,91 @@ causeExplanation compiler_cause_list[] =
 };
 
 /**
- * cp_find_error_explanation - Find error explanation for a given line
- * @sz_line: The line to search for error patterns
+ * find_error_description - Look up an error/warning explanation from compiler output
+ * @line: A line of text from compiler output
  *
- * Returns: Pointer to explanation string or NULL if not found
+ * Return: Pointer to explanation string if found, NULL otherwise
  */
-const char *cp_find_error_explanation(const char *sz_line) {
-        static int hash_init = 0;
-        static uint32_t cause_hash[256];
+static const char *find_error_description(const char *line)
+{
+        int index;
 
-        if (!hash_init) {
-            for (int i = 0;
-                compiler_cause_list[i].cause_trigger;
-                i++)
-                cause_hash[i] = hash_str(compiler_cause_list[i].cause_trigger);
-            hash_init = 1;
+        /* Iterate over the list of compiler causes */
+        for (index = 0;
+            cause_list[index].cause_trigger;
+            index++) {
+                if (strstr(line,
+                           cause_list[index].cause_trigger))
+                        return cause_list[index].cause_info;
         }
 
-        for (int i = 0;
-            compiler_cause_list[i].cause_trigger;
-            i++) {
-            if (hash_str(sz_line) == cause_hash[i])
-                return compiler_cause_list[i].cause_info;
-        }
+        /* No matching trigger found */
         return NULL;
 }
 
 /**
- * print_file_with_explanations - Print compiler output with error explanations
- * @filename: The file to read and print
+ * print_file_with_annotations - Print file contents with error/warning annotations
+ * @filename: Compiler output file name
  *
- * Reads compiler output file and displays error/warning messages with
- * explanatory text below each one.
+ * Marks lines containing errors or warnings and prints explanations from cause_list
  */
-void print_file_with_explanations(const char *filename)
+void print_file_with_annotations(const char *filename)
 {
         FILE *file;
-        char _l_explanation[1024],
-             _pl_explanation[1024] = "";
-        int line_number = 0;
-        const char *warning_ptr;
-        const char *error_ptr;
-        const char *explanation;
-        int warning_pos;
-        int error_pos;
-        int target_pos;
-        int i;
+        char buffer[1024];        /* Buffer to read each line */
+        int warning_count = 0;
+        int error_count = 0;
 
-        /* Open the file for reading */
         file = fopen(filename, "r");
         if (!file) {
-            printf("Cannot open file: %s\n", filename);
-            return;
+                printf("Cannot open file: %s\n", filename);
+                return;
         }
 
-        /* Read the file line by line */
-        while (fgets(_l_explanation, sizeof(_l_explanation), file)) {
-            ++line_number;
+        /* Read file line by line until EOF */
+        while (fgets(buffer, sizeof(buffer), file)) {
+                const char *description = NULL;
+                const char *trigger_pos = NULL;
+                int marker_pos = 0;
+                int i;
 
-            /* Print the current line */
-            printf("%s", _l_explanation);
+                /* Print the original compiler line */
+                printf("%s", buffer);
 
-            /* Initialize variables for error/warning detection */
-            explanation = NULL;
-            warning_pos = -1;
-            error_pos = -1;
+                /* Count warnings and errors */
+                if (strstr(buffer, "warning"))
+                        warning_count++;
+                if (strstr(buffer, "error"))
+                        error_count++;
 
-            /* Check if line contains "warning" or "error" */
-            warning_ptr = strstr(_l_explanation, "warning");
-            error_ptr = strstr(_l_explanation, "error");
+                /* Look up explanation for this line */
+                description = find_error_description(buffer);
+                if (description) {
 
-            /* If warning found, get its position and explanation */
-            if (warning_ptr) {
-                warning_pos = warning_ptr - _l_explanation;
-                explanation = cp_find_error_explanation(_l_explanation);
-            } else if (error_ptr) {
-                /* If error found, get its position and explanation */
-                error_pos = error_ptr - _l_explanation;
-                explanation = cp_find_error_explanation(_l_explanation);
-            }
+                        /* Find trigger position to place '^' marker */
+                        for (i = 0;
+                            cause_list[i].cause_trigger; i++)
+                        {
+                                trigger_pos = strstr(buffer, cause_list[i].cause_trigger);
+                                if (trigger_pos) {
+                                        marker_pos = trigger_pos - buffer;
+                                        break;
+                                }
+                        }
 
-            /* If we have an explanation and found either warning or error */
-            if (explanation && (warning_pos != -1 || error_pos != -1)) {
-                /* Determine the target position for the caret */
-                target_pos = (warning_pos != -1) ? warning_pos : error_pos;
+                        /* Print spaces up to trigger position */
+                        for (i = 0; i < marker_pos; i++)
+                                printf(" ");
 
-                /* Print spaces to align the caret with the warning/error */
-                for (i = 0; i < target_pos; i++)
-                    printf(" ");
-
-                /* Print colored explanation with caret */
-                pr_color(stdout, FCOLOUR_CYAN, "^ %s :(\n", explanation);
-            }
-
-            /* Save current line as previous line for next iteration */
-            strncpy(_pl_explanation, _l_explanation, sizeof(_pl_explanation) - 1);
-            _pl_explanation[sizeof(_pl_explanation) - 1] = '\0';
+                        /* Print marker and explanation */
+                        pr_color(stdout, FCOLOUR_BLUE, "^ %s :(", description);
+                }
         }
 
-        /* Close the file */
+        /* Print compile summary */
+        printf("\nCOMPILE COMPLETE | WITH %d ERROR | %d WARNING\n",
+               error_count, warning_count);
+
         fclose(file);
 }
 
@@ -521,7 +507,7 @@ int wd_run_compiler(const char *arg, const char *compile_args)
                     /* Display compiler output with explanations if log file exists */
                     if (procc_f) 
                     {
-                        print_file_with_explanations(".wd_compiler.log");
+                        print_file_with_annotations(".wd_compiler.log");
                     }
 
                     /* Construct output file path */
@@ -579,21 +565,21 @@ int wd_run_compiler(const char *arg, const char *compile_args)
                 else 
                 {
                     /* Handle compilation with specific file argument */
-                    char __cp_direct_path[PATH_MAX] = { 0 };
-                    char __cp_file_name[PATH_MAX] = { 0 };
-                    char __cp_input_path[PATH_MAX] = { 0 };
-                    char __cp_any_tmp[PATH_MAX] = { 0 };
+                    char __wcp_direct_path[PATH_MAX] = { 0 };
+                    char __wcp_file_name[PATH_MAX] = { 0 };
+                    char __wcp_input_path[PATH_MAX] = { 0 };
+                    char __wcp_any_tmp[PATH_MAX] = { 0 };
 
                     /* Copy and parse the compile arguments */
-                    strncpy(__cp_any_tmp, compile_args, sizeof(__cp_any_tmp) - 1);
-                    __cp_any_tmp[sizeof(__cp_any_tmp) - 1] = '\0';
+                    strncpy(__wcp_any_tmp, compile_args, sizeof(__wcp_any_tmp) - 1);
+                    __wcp_any_tmp[sizeof(__wcp_any_tmp) - 1] = '\0';
 
                     /* Extract directory and filename from path */
                     char *compiler_last_slash = NULL;
-                    compiler_last_slash = strrchr(__cp_any_tmp, '/');
+                    compiler_last_slash = strrchr(__wcp_any_tmp, '/');
 
                     char *compiler_back_slash = NULL;
-                    compiler_back_slash = strrchr(__cp_any_tmp, '\\');
+                    compiler_back_slash = strrchr(__wcp_any_tmp, '\\');
 
                     /* Handle Windows backslashes */
                     if (compiler_back_slash &&
@@ -605,137 +591,137 @@ int wd_run_compiler(const char *arg, const char *compile_args)
                     /* Process path with directory separator */
                     if (compiler_last_slash) 
                     {
-                        size_t __dir_len = (size_t)(compiler_last_slash - __cp_any_tmp);
+                        size_t __dir_len = (size_t)(compiler_last_slash - __wcp_any_tmp);
 
                         /* Ensure directory path doesn't exceed buffer */
-                        if (__dir_len >= sizeof(__cp_direct_path))
+                        if (__dir_len >= sizeof(__wcp_direct_path))
                         {
-                            __dir_len = sizeof(__cp_direct_path) - 1;
+                            __dir_len = sizeof(__wcp_direct_path) - 1;
                         }
 
-                        memcpy(__cp_direct_path, __cp_any_tmp, __dir_len);
-                        __cp_direct_path[__dir_len] = '\0';
+                        memcpy(__wcp_direct_path, __wcp_any_tmp, __dir_len);
+                        __wcp_direct_path[__dir_len] = '\0';
 
                         /* Extract filename from path */
-                        const char *__cp_filename_start = compiler_last_slash + 1;
-                        size_t __cp_filename_len = strlen(__cp_filename_start);
+                        const char *__wcp_filename_start = compiler_last_slash + 1;
+                        size_t __wcp_filename_len = strlen(__wcp_filename_start);
 
                         /* Ensure filename doesn't exceed buffer */
-                        if (__cp_filename_len >= sizeof(__cp_file_name))
+                        if (__wcp_filename_len >= sizeof(__wcp_file_name))
                         {
-                            __cp_filename_len = sizeof(__cp_file_name) - 1;
+                            __wcp_filename_len = sizeof(__wcp_file_name) - 1;
                         }
 
-                        memcpy(__cp_file_name, __cp_filename_start, __cp_filename_len);
-                        __cp_file_name[__cp_filename_len] = '\0';
+                        memcpy(__wcp_file_name, __wcp_filename_start, __wcp_filename_len);
+                        __wcp_file_name[__wcp_filename_len] = '\0';
 
                         /* Reconstruct full input path */
-                        size_t total_needed = strlen(__cp_direct_path) + 1 +
-                                    strlen(__cp_file_name) + 1;
+                        size_t total_needed = strlen(__wcp_direct_path) + 1 +
+                                    strlen(__wcp_file_name) + 1;
 
-                        if (total_needed > sizeof(__cp_input_path)) 
+                        if (total_needed > sizeof(__wcp_input_path)) 
                         {
                             /* Fallback to gamemodes directory if path is too long */
-                            strncpy(__cp_direct_path, "gamemodes",
-                                sizeof(__cp_direct_path) - 1);
-                            __cp_direct_path[sizeof(__cp_direct_path) - 1] = '\0';
+                            strncpy(__wcp_direct_path, "gamemodes",
+                                sizeof(__wcp_direct_path) - 1);
+                            __wcp_direct_path[sizeof(__wcp_direct_path) - 1] = '\0';
 
-                            size_t __cp_max_file_name = sizeof(__cp_file_name) - 1;
+                            size_t __wcp_max_file_name = sizeof(__wcp_file_name) - 1;
 
-                            if (__cp_filename_len > __cp_max_file_name) 
+                            if (__wcp_filename_len > __wcp_max_file_name) 
                             {
-                                memcpy(__cp_file_name, __cp_filename_start,
-                                    __cp_max_file_name);
-                                __cp_file_name[__cp_max_file_name] = '\0';
+                                memcpy(__wcp_file_name, __wcp_filename_start,
+                                    __wcp_max_file_name);
+                                __wcp_file_name[__wcp_max_file_name] = '\0';
                             }
                         }
 
                         /* Build the full input path */
-                        if (snprintf(__cp_input_path, sizeof(__cp_input_path),
-                                "%s/%s", __cp_direct_path, __cp_file_name) >=
-                            (int)sizeof(__cp_input_path))
+                        if (snprintf(__wcp_input_path, sizeof(__wcp_input_path),
+                                "%s/%s", __wcp_direct_path, __wcp_file_name) >=
+                            (int)sizeof(__wcp_input_path))
                         {
-                            __cp_input_path[sizeof(__cp_input_path) - 1] = '\0';
+                            __wcp_input_path[sizeof(__wcp_input_path) - 1] = '\0';
                         }
 
                     } 
                     else 
                     {
                         /* Handle filename without directory path */
-                        strncpy(__cp_file_name, __cp_any_tmp,
-                            sizeof(__cp_file_name) - 1);
-                        __cp_file_name[sizeof(__cp_file_name) - 1] = '\0';
+                        strncpy(__wcp_file_name, __wcp_any_tmp,
+                            sizeof(__wcp_file_name) - 1);
+                        __wcp_file_name[sizeof(__wcp_file_name) - 1] = '\0';
 
-                        strncpy(__cp_direct_path, ".", sizeof(__cp_direct_path) - 1);
-                        __cp_direct_path[sizeof(__cp_direct_path) - 1] = '\0';
+                        strncpy(__wcp_direct_path, ".", sizeof(__wcp_direct_path) - 1);
+                        __wcp_direct_path[sizeof(__wcp_direct_path) - 1] = '\0';
 
-                        if (snprintf(__cp_input_path, sizeof(__cp_input_path),
-                                "./%s", __cp_file_name) >=
-                            (int)sizeof(__cp_input_path))
+                        if (snprintf(__wcp_input_path, sizeof(__wcp_input_path),
+                                "./%s", __wcp_file_name) >=
+                            (int)sizeof(__wcp_input_path))
                         {
-                            __cp_input_path[sizeof(__cp_input_path) - 1] = '\0';
+                            __wcp_input_path[sizeof(__wcp_input_path) - 1] = '\0';
                         }
                     }
 
                     /* Search for the file in specified directory */
                     int __find_gamemodes_args = 0;
-                    __find_gamemodes_args = wd_sef_fdir(__cp_direct_path,
-                                        __cp_file_name, NULL);
+                    __find_gamemodes_args = wd_sef_fdir(__wcp_direct_path,
+                                        __wcp_file_name, NULL);
 
                     /* Fallback search in gamemodes directory */
                     if (!__find_gamemodes_args &&
-                        strcmp(__cp_direct_path, "gamemodes") != 0) 
+                        strcmp(__wcp_direct_path, "gamemodes") != 0) 
                     {
                         __find_gamemodes_args = wd_sef_fdir("gamemodes",
-                                            __cp_file_name, NULL);
+                                            __wcp_file_name, NULL);
                         if (__find_gamemodes_args) 
                         {
                             /* Update paths to use gamemodes directory */
-                            strncpy(__cp_direct_path, "gamemodes",
-                                sizeof(__cp_direct_path) - 1);
-                            __cp_direct_path[sizeof(__cp_direct_path) - 1] = '\0';
+                            strncpy(__wcp_direct_path, "gamemodes",
+                                sizeof(__wcp_direct_path) - 1);
+                            __wcp_direct_path[sizeof(__wcp_direct_path) - 1] = '\0';
 
-                            if (snprintf(__cp_input_path, sizeof(__cp_input_path),
-                                    "gamemodes/%s", __cp_file_name) >=
-                                (int)sizeof(__cp_input_path))
+                            if (snprintf(__wcp_input_path, sizeof(__wcp_input_path),
+                                    "gamemodes/%s", __wcp_file_name) >=
+                                (int)sizeof(__wcp_input_path))
                             {
-                                __cp_input_path[sizeof(__cp_input_path) - 1] = '\0';
+                                __wcp_input_path[sizeof(__wcp_input_path) - 1] = '\0';
                             }
 
                             /* Update search results */
                             if (wcfg.wd_sef_count > 0)
                             {
                                 strncpy(wcfg.wd_sef_found_list[wcfg.wd_sef_count - 1],
-                                    __cp_input_path, MAX_SEF_PATH_SIZE);
+                                    __wcp_input_path, MAX_SEF_PATH_SIZE);
                             }
                         }
                     }
 
                     /* Additional fallback for current directory files */
                     if (!__find_gamemodes_args &&
-                        strcmp(__cp_direct_path, ".") == 0) 
+                        strcmp(__wcp_direct_path, ".") == 0) 
                     {
                         __find_gamemodes_args = wd_sef_fdir("gamemodes",
-                                            __cp_file_name, NULL);
+                                            __wcp_file_name, NULL);
                         if (__find_gamemodes_args) 
                         {
                             /* Update paths to use gamemodes directory */
-                            strncpy(__cp_direct_path, "gamemodes",
-                                sizeof(__cp_direct_path) - 1);
-                            __cp_direct_path[sizeof(__cp_direct_path) - 1] = '\0';
+                            strncpy(__wcp_direct_path, "gamemodes",
+                                sizeof(__wcp_direct_path) - 1);
+                            __wcp_direct_path[sizeof(__wcp_direct_path) - 1] = '\0';
 
-                            if (snprintf(__cp_input_path, sizeof(__cp_input_path),
-                                    "gamemodes/%s", __cp_file_name) >=
-                                (int)sizeof(__cp_input_path))
+                            if (snprintf(__wcp_input_path, sizeof(__wcp_input_path),
+                                    "gamemodes/%s", __wcp_file_name) >=
+                                (int)sizeof(__wcp_input_path))
                             {
-                                __cp_input_path[sizeof(__cp_input_path) - 1] = '\0';
+                                __wcp_input_path[sizeof(__wcp_input_path) - 1] = '\0';
                             }
 
                             /* Update search results */
                             if (wcfg.wd_sef_count > 0)
                             {
                                 strncpy(wcfg.wd_sef_found_list[wcfg.wd_sef_count - 1],
-                                    __cp_input_path, MAX_SEF_PATH_SIZE);
+                                    __wcp_input_path, MAX_SEF_PATH_SIZE);
                             }
                         }
                     }
@@ -822,7 +808,7 @@ int wd_run_compiler(const char *arg, const char *compile_args)
                         /* Display compiler output with explanations if log file exists */
                         if (procc_f) 
                         {
-                            print_file_with_explanations(".wd_compiler.log");
+                            print_file_with_annotations(".wd_compiler.log");
                         }
 
                         /* Construct output file path */

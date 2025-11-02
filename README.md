@@ -456,15 +456,43 @@ alias watch='./watchdogs'
 > There may be instances where the -i"path/" option does not reliably detect include files located in subdirectories within the specified path. To address this, Watchdogs implements its own detection mechanism to recursively scan and add all folders within pawno-qawno/include and gamemodes/.
 > By default, Watchdogs disables the automatic `-i` flag for folders under `gamemodes/` or `pawno-qawno/include/` https://github.com/klantle/watchdogs/blob/main/utils.c#L1390 https://github.com/klantle/watchdogs/blob/main/utils.c#L1374 because the compiler can still handle includes correctly even if the flag is not explicitly set. Users can manually enable it by adding a trailing / to the target folder, allowing the compiler to automatically include all subdirectories under that path.
 
-### General Options
-
-Based on PAWN Compiler [3.10.11](https://github.com/openmultiplayer/compiler/releases/tag/v3.10.11)/[3.10.10](https://github.com/pawn-lang/compiler/releases/tag/v3.10.10)
-
 ### Example Usage
 
 ```bash
 pawncc "input" -o"output.amx" -O1 -d3 -i"include/" sym=DEBUG
 ```
+
+### VSCode Tasks
+
+```json
+{
+  "version": "2.0.0",
+  "tasks": [
+    {
+      "label": "Compile Pawn Script",
+      "type": "shell",
+      "command": "${workspaceFolder}/pawno/pawncc.exe",
+      "args": [
+        "${file}",
+        "-o${fileDirname}/${fileBasenameNoExtension}.amx",
+        "-ipawno/include/",
+        "-igamemodes/",
+        "-iinclude/",
+        "-d2"
+      ],
+      "group": {
+        "kind": "build",
+        "isDefault": true
+      },
+      "problemMatcher": []
+    }
+  ]
+}
+```
+
+### Compiler Options
+
+Based on PAWN Compiler [3.10.11](https://github.com/openmultiplayer/compiler/releases/tag/v3.10.11)/[3.10.10](https://github.com/pawn-lang/compiler/releases/tag/v3.10.10)
 
 | Option | Description | Default |
 |--------|-------------|---------|

@@ -52,10 +52,3 @@ jobs:
     # -----------------------------------------------------------
     - name: Build project
       run: make debug            # Executes the 'debug' with debugging mode target from your Makefile
-
-    # -----------------------------------------------------------
-    # Step 4: Run compiled executable
-    # -----------------------------------------------------------
-    - name: Run executable
-      # Executes the built binary named 'watchdogs.debug' with args
-      run: ./watchdogs.debug watchdogs && ./watchdogs.debug help

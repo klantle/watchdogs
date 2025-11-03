@@ -331,10 +331,7 @@ void hardware_display_disk_comprehensive(const char* drive) {
 void hardware_query_specific(unsigned int* fields, int count) {
         for (int i = 0; i < count; i++) {
                 switch (fields[i]) {
-                        case FIELD_CPU_NAME:
-                        case FIELD_CPU_VENDOR:
-                        case FIELD_CPU_CORES:
-                        case FIELD_CPU_THREADS:
+                        case FIELD_CPU_NAME: case FIELD_CPU_VENDOR: case FIELD_CPU_CORES: case FIELD_CPU_THREADS:
                         case FIELD_CPU_ARCH:
                                 {
                                         static int cpu_loaded = 0;
@@ -363,9 +360,7 @@ void hardware_query_specific(unsigned int* fields, int count) {
                                         }
                                 }
                                 break;
-                                
-                        case FIELD_MEM_TOTAL:
-                        case FIELD_MEM_AVAIL:
+                        case FIELD_MEM_TOTAL: case FIELD_MEM_AVAIL:
                                 {
                                         static int mem_loaded = 0;
                                         static HardwareMemory mem;
@@ -387,8 +382,7 @@ void hardware_query_specific(unsigned int* fields, int count) {
                                 }
                                 break;
                                 
-                        case FIELD_DISK_FREE:
-                        case FIELD_DISK_TOTAL:
+                        case FIELD_DISK_FREE: case FIELD_DISK_TOTAL:
                                 {
                                         static int disk_loaded = 0;
                                         static HardwareDisk disk;

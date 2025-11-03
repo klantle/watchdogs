@@ -42,25 +42,25 @@
  *
  */
 const char* __command[]={
-							"help",
-							"clear",
-							"exit",
-							"kill",
-							"title",
-							"time",
-							"stopwatch",
-							"toml",
-							"install",
-							"upstream",
-							"hardware",
-							"gamemode",
-							"pawncc",
-							"compile",
-							"running",
-							"crunn",
-							"stop",
-							"restart"
-						};
+				"help",
+				"clear",
+				"exit",
+				"kill",
+				"title",
+				"time",
+				"stopwatch",
+				"toml",
+				"install",
+				"upstream",
+				"hardware",
+				"gamemode",
+				"pawncc",
+				"compile",
+				"running",
+				"crunn",
+				"stop",
+				"restart"
+			};
 
 /** 
  * __command_len - Number of commands in __command array.
@@ -123,15 +123,16 @@ WatchdogConfig wcfg = {
  * Clears all entries in the wd_sef_found_list array and resets the count.
  * Uses both iterative clearing and memset for completeness.
  */
-void wd_sef_fdir_reset(void)
-{
-		size_t max_entries = sizeof(wcfg.wd_sef_found_list) / 
-						     sizeof(wcfg.wd_sef_found_list[0]);
+void wd_sef_fdir_reset(void) {
+		size_t max_entries;
+		max_entries = sizeof(wcfg.wd_sef_found_list) / 
+			      sizeof(wcfg.wd_sef_found_list[0]);
+		
 		size_t i;
 
 		/* Clear each string individually */
 		for (i = 0; i < max_entries; i++)
-				wcfg.wd_sef_found_list[i][0] = '\0';
+			wcfg.wd_sef_found_list[i][0] = '\0';
 
 		/* Ensure complete memory clearance */
 		memset(wcfg.wd_sef_found_list, 0, sizeof(wcfg.wd_sef_found_list));
@@ -313,11 +314,13 @@ static int wd_confirm_dangerous_command(const char *cmd, char badch, size_t pos)
 {
 		if (isprint((unsigned char)badch)) {
 				pr_warning(stdout,
-							"Symbol detected in command - char='%c' (0x%02X) at pos=%zu; cmd=\"%s\"",
+							"Symbol detected in command - "
+							"char='%c' (0x%02X) at pos=%zu; cmd=\"%s\"",
 							badch, (unsigned char)badch, pos, cmd);
 		} else {
 				pr_warning(stdout,
-							"Control symbol detected in command - char=0x%02X at pos=%zu; cmd=\"%s\"",
+							"Control symbol detected in command - "
+							"char=0x%02X at pos=%zu; cmd=\"%s\"",
 							(unsigned char)badch, pos, cmd);
 		}
 
@@ -1525,6 +1528,7 @@ static void wd_generate_toml_content(FILE *file, const char *wd_os_type,
  *
  * Return: __RETZ on success, __RETN on error
  */
+static int notice_not_found = 0;
 int wd_set_toml(void)
 {
 		int find_pawncc = 0;
@@ -1644,7 +1648,10 @@ int wd_set_toml(void)
 		} else {
 			wcfg.wd_is_samp = CRC32_FALSE;
 			wcfg.wd_is_omp  = CRC32_FALSE;
-			pr_crit(stdout, "samp-server/open.mp server not found!");
+			if (notice_not_found == 0) {
+				notice_not_found = 1;
+				pr_crit(stdout, "samp-server/open.mp server not found!");
+			}
 		}
 
 		return __RETZ;

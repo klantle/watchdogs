@@ -23,7 +23,6 @@ SRCS = color.c curl.c chain.c utils.c depends.c hardware.c compiler.c archive.c 
 OBJS = $(SRCS:.c=.o)
 
 .PHONY: init all clean linux termux windows compress strip debug termux-debug windows-debug
-
 init:
 	@echo "$(YELLOW)==>$(RESET) Detecting system environment..."
 	@UNAME_S=$$(uname -s); \
@@ -55,36 +54,40 @@ init:
 		echo "$(YELLOW)==>$(RESET) Installing dependencies without sudo..."; \
 		if command -v apt >/dev/null 2>&1; then \
 			apt update -y && \
-			apt install -y build-essential \
-				procps \
-				clang \
-				lld \
-				make \
-				libncursesw5-dev \
-				libreadline-dev \
-				libarchive-dev \
-				zlib1g-dev \
-				libonig-dev \
+			apt install -y build-essential procps clang lld make \
+				libcurl4-openssl-dev libncursesw5-dev libreadline-dev \
+				libarchive-dev zlib1g-dev libonig-dev xterm; \
+		elif command -v dnf >/dev/null 2>&1; then \
+			dnf groupinstall -y "Development Tools" && \
+			dnf install -y clang lld libcxx-devel ncurses-devel \
+				curl-devel readline-devel libarchive-devel zlib-devel \
 				xterm; \
 		elif command -v yum >/dev/null 2>&1; then \
 			yum groupinstall -y "Development Tools" && \
-			yum install -y clang lld libcxx-devel-devel ncurses-devel curl-devel readline-devel libarchive-devel zlib-devel oniguruma-devel xterm; \
-		elif command -v dnf >/dev/null 2>&1; then \
-			dnf groupinstall -y "Development Tools" && \
-			dnf install -y clang lld libcxx-devel-devel ncurses-devel curl-devel readline-devel libarchive-devel zlib-devel oniguruma-devel xterm; \
+			yum install -y clang lld libcxx-devel ncurses-devel \
+				curl-devel readline-devel libarchive-devel zlib-devel \
+				xterm; \
+		elif command -v zypper >/dev/null 2>&1; then \
+			zypper refresh && \
+			zypper install -y -t pattern devel_basis && \
+			zypper install -y clang lld libc++-devel ncurses-devel \
+				libcurl-devel readline-devel libarchive-devel zlib-devel \
+				xterm; \
 		elif command -v pacman >/dev/null 2>&1; then \
 			pacman -Sy --noconfirm && \
-			pacman -S --needed --noconfirm base-devel clang lld libc++ ncurses curl readline libarchive zlib oniguruma xterm; \
+			pacman -S --needed --noconfirm base-devel clang lld libc++ ncurses \
+				curl readline libarchive zlib xterm; \
 		else \
 			echo "$(RED)==>$(RESET) Cannot install dependencies: package manager not found"; \
-			echo "$(YELLOW)==>$(RESET) Please install dependencies manually"; \
+			echo "$(YELLOW)==>$(RESET) Please install dependencies manually."; \
+			exit 1; \
 		fi; \
 		$(MAKE) linux; \
 	else \
 		echo "$(YELLOW)==>$(RESET) Unknown or unsupported environment."; \
 		exit 1; \
 	fi
-	
+
 all: $(TARGET)
 	@printf "$(YELLOW)==>$(RESET) Building $(TARGET) Version $(VERSION) Full Version $(FULL_VERSION)\n"
 	@printf "$(YELLOW)==>$(RESET) Build complete: $(TARGET) Version $(VERSION) Full Version $(FULL_VERSION)\n"

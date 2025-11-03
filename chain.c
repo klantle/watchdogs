@@ -635,14 +635,16 @@ _runners_:
                     FILE *fp;
                     fp = popen("powershell \"Get-Process mintty -ErrorAction SilentlyContinue | "
                                "Where-Object {$_.MainWindowTitle -like '*watchdogs*'} | "
-                               "Measure-Object | Select-Object -Expand Count\"", "r");
+                               "Measure-Object | "
+                               "Select-Object -Expand Count\"", "r");
                     if (fp) {
                         char buffer[128];
                         if (fgets(buffer, sizeof(buffer), fp)) {
                             int count = atoi(buffer);
                             if (count < 2) {
                                 system("start \"\" \"C:\\\\msys64\\\\usr\\\\bin\\\\mintty.exe\" "
-                                    "-e /bin/bash -lc \"echo here is your watchdogs!...; pwd; ./watchdogs.win; bash &\"");
+                                    "-e /bin/bash -lc \"echo here is your watchdogs!...; "
+                                    "pwd; ./watchdogs.win; bash &\"");
                             }
                         }
                         pclose(fp);
@@ -655,7 +657,8 @@ _runners_:
 #ifndef _WIN32
                         int result = system("pgrep -c watchdogs > /dev/null");
                         if (result != -1 && WEXITSTATUS(result) < 2)
-                            system("xterm -hold -e bash -c 'echo \"here is your watchdogs!..\"; ./watchdogs; bash' &");
+                            system("xterm -hold -e bash -c 'echo \"here is your watchdogs!..\"; "
+                                   "./watchdogs; bash' &");
 #endif
                     }
                 }

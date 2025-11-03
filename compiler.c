@@ -13,6 +13,7 @@
 #include "chain.h"
 #include "package.h"
 #include "compiler.h"
+
 int wd_run_compiler(const char *arg, const char *compile_args)
 {
         /* Determine the compiler binary name based on operating system */

@@ -1,0 +1,35 @@
+name: C/C++ CI
+
+on:
+  push:
+    branches: [ "main" ]
+  pull_request:
+    branches: [ "main" ]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Install build dependencies
+      run: |
+        sudo apt update -y
+        sudo apt install -y \
+          build-essential \
+          clang \
+          lld \
+          libcurl4-openssl-dev \
+          libreadline-dev \
+          libncursesw5-dev \
+          libarchive-dev \
+          zlib1g-dev \
+          libonig-dev \
+          xterm
+
+    - name: Build project
+      run: make linux
+
+    - name: Run executable
+      run: ./watchdogs || true

@@ -625,7 +625,6 @@ _runners_:
 #ifdef __linux__
                 is_linux = __RETN;
 #endif
-                printf(" kkkkkkkkkkkkkkkkkkkk %d %d %d", is_native, is_win32, is_linux);
                 if (msys2_env == NULL && is_win32 == __RETN) {
                     is_native = __RETN;
                 } else if (msys2_env == NULL && is_linux == 1) {

@@ -20,12 +20,6 @@
 
 ---
 
-## [A.I Agent](https://aiagentslist.com/)
-If you are confused about this project, you can use an A.I. Agent that can help provide available information to be filtered according to the given prompt. Alternatively, you can also create an issue to ask questions in this Repository.
-![img](https://raw.githubusercontent.com/klantle/watchdogs/main/MANUS.png)
-
----
-
 ## Page
 
 1. [Introduction](#introduction)
@@ -43,6 +37,12 @@ If you are confused about this project, you can use an A.I. Agent that can help 
 ---
 
 ## Introduction
+
+---
+
+### [A.I Agent](https://aiagentslist.com/)
+If you are confused about this project, you can use an A.I. Agent that can help provide available information to be filtered according to the given prompt. Alternatively, you can also create an issue to ask questions in this Repository.
+![img](https://raw.githubusercontent.com/klantle/watchdogs/main/MANUS.png)
 
 ### Supported Platforms
 - [x] Linux (Debian/Ubuntu based distributions)
@@ -231,11 +231,7 @@ Server = https://mirror.msys2.org/msys/$arch
 Server = https://mirror.selfnet.de/msys2/msys/$arch
 ```
 
-Save & Exit
-```yaml
-CTRL + X
-Y & ENTER
-```
+Save & Exit: **CTRL + X & Y + ENTER**
 
 ### Linux (Bash)
 
@@ -351,8 +347,14 @@ For Windows Native:
 ### Basic Operations
 
 Get help:
-```bash
+```yaml
 Usage: help | help [<command>]
+```
+Watchdogs also directly supports running commands when executing the program and, of course, supports running commands with arguments like
+```yaml
+./watchdogs help
+./watchdogs help compile
+./watcdhgos compile main.pwn
 ```
 
 ### Compilation Commands

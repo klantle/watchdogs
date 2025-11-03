@@ -133,8 +133,8 @@ static int get_termux_architecture(char *out_arch, size_t buf_size)
 		printf("Unknown or unsupported architecture: %s\n", uname_data.machine);
 		
 		printf("Select architecture for Termux:\n");
-		printf("[A/a] arm32\n");
-		printf("[B/b] arm64\n");
+		printf("-> [A/a] arm32\n");
+		printf("-> [B/b] arm64\n");
 		
 		char *selection = readline("==> ");
 
@@ -182,7 +182,7 @@ static int handle_termux_installation(void)
 		/* Display version selection */
 		printf("Select the PawnCC version to download:\n");
 		for (size_t i = 0; i < version_count; i++) {
-			printf("[%c/%c] PawnCC %s (mxp96)\n",
+			printf("-> [%c/%c] PawnCC %s (mxp96)\n",
 				(int)('A' + i),
 				(int)('a' + i),
 				termux_versions[i]);
@@ -255,7 +255,7 @@ static int handle_standard_installation(const char *platform)
 		/* Display version selection */
 		printf("Select the PawnCC version to download:\n");
 		for (size_t i = 0; i < version_count; i++) {
-			printf("[%c/%c] PawnCC %s\n",
+			printf("-> [%c/%c] PawnCC %s\n",
 				(int)('A' + i),
 				(int)('a' + i),
 				versions[i]);
@@ -418,7 +418,7 @@ int wd_install_server(const char *platform)
 		/* Display version selection */
 		printf("Select the SA-MP version to download:\n");
 		for (i = 0; i < version_count; i++) {
-				printf("[%c/%c] %s\n", versions[i].key, versions[i].key + 32, 
+				printf("-> [%c/%c] %s\n", versions[i].key, versions[i].key + 32, 
 				       versions[i].name);
 		}
 

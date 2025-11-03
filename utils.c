@@ -1588,7 +1588,7 @@ int wd_set_toml(void)
 
 		if (!_toml_config) {
 			pr_error(stdout, "parsing TOML: %s", errbuf);
-			__main(0);
+			wd_main(NULL);
 		}
 
 		toml_table_t *wd_toml_depends = toml_table_in(_toml_config, "depends");
@@ -1629,53 +1629,23 @@ int wd_set_toml(void)
 			wcfg.wd_os_type = OS_SIGNAL_LINUX;
 		}
 
-        FILE *file_s = fopen(wcfg.wd_ptr_samp, "r");
-        FILE *file_m = fopen(wcfg.wd_ptr_omp, "r");
+		FILE *file_s = fopen(wcfg.wd_ptr_samp, "r");
+		FILE *file_m = fopen(wcfg.wd_ptr_omp, "r");
 
-        if (file_s != NULL && file_m != NULL) {
-            wcfg.wd_is_samp = CRC32_TRUE;
-            wcfg.wd_is_omp  = CRC32_FALSE;
-        } else if (file_s != NULL) {
-            wcfg.wd_is_samp = CRC32_TRUE;
-            wcfg.wd_is_omp  = CRC32_FALSE;
-        } else if (file_m != NULL) {
-            wcfg.wd_is_samp = CRC32_FALSE;
-            wcfg.wd_is_omp  = CRC32_TRUE;
-        } else {
-            wcfg.wd_is_samp = CRC32_FALSE;
-            wcfg.wd_is_omp  = CRC32_FALSE;
-
+		if (file_s != NULL && file_m != NULL) {
+			wcfg.wd_is_samp = CRC32_TRUE;
+			wcfg.wd_is_omp  = CRC32_FALSE;
+		} else if (file_s != NULL) {
+			wcfg.wd_is_samp = CRC32_TRUE;
+			wcfg.wd_is_omp  = CRC32_FALSE;
+		} else if (file_m != NULL) {
+			wcfg.wd_is_samp = CRC32_FALSE;
+			wcfg.wd_is_omp  = CRC32_TRUE;
+		} else {
+			wcfg.wd_is_samp = CRC32_FALSE;
+			wcfg.wd_is_omp  = CRC32_FALSE;
 			pr_crit(stdout, "samp-server/open.mp server not found!");
-
-			char *ptr_sigA;
-ret_ptr:
-			ptr_sigA = readline("install now? [Y/n]: ");
-
-			while (1) {
-				if (strcmp(ptr_sigA, "Y") == 0 || strcmp(ptr_sigA, "y") == 0) {
-					wd_free(ptr_sigA);
-					if (!strcmp(wcfg.wd_os_type, OS_SIGNAL_WINDOWS)) {
-						int ret = wd_install_server("windows");
-n_loop_igm:
-						if (ret == -__RETN && wcfg.wd_sel_stat != 0)
-							goto n_loop_igm;
-					} else if (!strcmp(wcfg.wd_os_type, OS_SIGNAL_LINUX)) {
-						int ret = wd_install_server("linux");
-n_loop_igm2:
-						if (ret == -__RETN && wcfg.wd_sel_stat != 0)
-							goto n_loop_igm2;
-					}
-					break;
-				} else if (strcmp(ptr_sigA, "N") == 0 || strcmp(ptr_sigA, "n") == 0) {
-					wd_free(ptr_sigA);
-					break;
-				} else {
-					pr_error(stdout, "Invalid input. Please type Y/y to install or N/n to cancel.");
-					wd_free(ptr_sigA);
-					goto ret_ptr;
-				}
-			}
-        }
+		}
 
 		return __RETZ;
 }

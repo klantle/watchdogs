@@ -173,12 +173,12 @@ void wd_run_samp_server(const char *gamemode, const char *server_bin)
         wd_sef_fdir_reset();
         if (wd_sef_fdir(".", gamemode, NULL) != 1) {
                 pr_error(stdout, "Cannot locate gamemode: %s", gamemode);
-                __main(0);
+                wd_main(NULL);
         }
 
         /* Update server configuration */
         if (update_server_config(gamemode) != 0)
-                __main(0);
+                wd_main(NULL);
 
         /* Set executable permissions */
         CHMOD(server_bin, FILE_MODE);
@@ -243,7 +243,7 @@ void wd_run_samp_server(const char *gamemode, const char *server_bin)
         /* Restore original configuration */
         restore_samp_config();
 
-        __main(0);
+        wd_main(NULL);
 }
 
 /*
@@ -408,7 +408,7 @@ void wd_run_omp_server(const char *gamemode, const char *server_bin)
         wd_sef_fdir_reset();
         if (wd_sef_fdir(".", gamemode, NULL) != 1) {
                 pr_error(stdout, "Cannot locate gamemode: %s", gamemode);
-                __main(0);
+                wd_main(NULL);
         }
 
         /* Update OpenMP configuration */
@@ -474,5 +474,5 @@ void wd_run_omp_server(const char *gamemode, const char *server_bin)
         /* Restore original configuration */
         restore_omp_config();
 
-        __main(0);
+        wd_main(NULL);
 }

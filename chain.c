@@ -61,13 +61,12 @@ void __function__(void) {
 #endif
         return;
 }
-
-int __command__(void)
+int __command__(char *pre_command)
 {
         wcfg.wd_sel_stat = 0;
         setlocale(LC_ALL, "en_US.UTF-8");
         char __cwd[PATH_MAX];
-		size_t __sz_cwd = sizeof(__cwd);
+        size_t __sz_cwd = sizeof(__cwd);
         if (!getcwd(__cwd, __sz_cwd)) {
             perror("getcwd");
             return __RETW;
@@ -80,12 +79,18 @@ int __command__(void)
 
 _ptr_command:
         __function__();
-        snprintf(ptr_prompt, __sz_ptrp,
-                 "[" FCOLOUR_CYAN "watchdogs ~ %s" FCOLOUR_DEFAULT "]$ ", __cwd);
-        ptr_command = readline(ptr_prompt);
+        
+        if (pre_command && pre_command[0] != '\0') {
+            ptr_command = strdup(pre_command);
+            printf("[" FCOLOUR_CYAN "watchdogs ~ %s" FCOLOUR_DEFAULT "]$ %s\n", __cwd, ptr_command);
+        } else {
+            snprintf(ptr_prompt, __sz_ptrp,
+                     "[" FCOLOUR_CYAN "watchdogs ~ %s" FCOLOUR_DEFAULT "]$ ", __cwd);
+            ptr_command = readline(ptr_prompt);
 
-        if (ptr_command == NULL || ptr_command[0] == '\0')
-            goto _ptr_command;
+            if (ptr_command == NULL || ptr_command[0] == '\0')
+                goto _ptr_command;
+        }
         
         wd_a_history(ptr_command);
         
@@ -796,7 +801,7 @@ n_loop_igm2:
 
                 if (!_toml_config) {
                     pr_error(stdout, "parsing TOML: %s", errbuf);
-                    __main(0);
+                    wd_main(NULL);
                 }
 
                 toml_table_t *wd_compiler = toml_table_in(_toml_config, "compiler");
@@ -963,12 +968,26 @@ done:
         return -__RETN;
 }
 
-void __main(int sig_unused) {
-        (void)sig_unused;
+void wd_main(void *pre_command) {
         wd_set_title(NULL);
         int ret = -__RETW;
+        
+        if (pre_command != NULL) {
+            char *cmd_from_argv = (char*)pre_command;
+            ret = __command__(cmd_from_argv);
+            
+            clock_gettime(CLOCK_MONOTONIC, &cmd_end);
+            command_dur = (cmd_end.tv_sec - cmd_start.tv_sec) +
+                          (cmd_end.tv_nsec - cmd_start.tv_nsec) / 1e9;
+            pr_color(stdout,
+                         FCOLOUR_GREEN,
+                         " ==> [C]Finished in %.3fs\n",
+                         command_dur);
+            return;
+        }
+        
 loop_main:
-        ret = __command__();
+        ret = __command__(NULL);
         if (ret == -__RETN || ret == __RETZ || ret == __RETN) {
             clock_gettime(CLOCK_MONOTONIC, &cmd_end);
             command_dur = (cmd_end.tv_sec - cmd_start.tv_sec) +
@@ -990,7 +1009,32 @@ loop_main:
         }
 }
 
-int main(void) {
-        __main(0);
+int main(int argc, char *argv[]) {
+    if (argc > 1) {
+        size_t total_len = 0;
+        for (int i = 1; i < argc; i++) {
+            total_len += strlen(argv[i]) + 1;
+        }
+        
+        char *sz_command = wd_malloc(total_len);
+        if (!sz_command) {
+            pr_error(stdout, "Failed to allocate memory for command");
+            return __RETN;
+        }
+        
+        sz_command[0] = '\0';
+        for (int i = 1; i < argc; i++) {
+            if (i > 1)
+                strcat(sz_command, " ");
+            strcat(sz_command, argv[i]);
+        }
+        
+        wd_main(sz_command);
+        wd_free(sz_command);
         return __RETZ;
+    } else {
+        wd_main(NULL);
+    }
+
+    return __RETZ;
 }

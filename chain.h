@@ -1,6 +1,6 @@
 #ifndef WATCHDOGS
 #define WATCHDOGS
 
-void __main(int sig_unused);
+void wd_main(void *prefilled_command);
 
 #endif

@@ -358,7 +358,7 @@ void wd_apply_pawncc(void)
 		pr_info(stdout, "Compiler installed successfully!");
 
 done:
-		__main(0);
+		wd_main(NULL);
 }
 
 /**

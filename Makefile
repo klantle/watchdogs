@@ -61,6 +61,7 @@ init:
 				lld \
 				make \
 				libssl-dev \
+				libcurl4-openssl-dev \
 				libncursesw5-dev \
 				libreadline-dev \
 				libarchive-dev \

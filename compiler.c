@@ -1136,7 +1136,7 @@ loop_ipcc3:
 
                     /* goto main function after installation */
 done:
-                    __main(0);
+                    wd_main(NULL);
                 } 
                 else if (strcmp(ptr_sigA, "N") == 0 || strcmp(ptr_sigA, "n") == 0) 
                 {

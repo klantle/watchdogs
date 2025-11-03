@@ -1,35 +1,61 @@
-name: C/C++ CI
+# ---------------------------------------------------------------
+# Workflow Name: C/C++ Continuous Integration (CI)
+# ---------------------------------------------------------------
+# This workflow automatically builds and runs a C/C++ project
+# whenever code is pushed or a pull request is opened on 'main'.
+# It ensures that the project compiles successfully and executes
+# correctly on a clean Ubuntu environment.
+# ---------------------------------------------------------------
+
+name: C/C++ CI  # The workflow name as it appears in GitHub Actions UI
 
 on:
   push:
-    branches: [ "main" ]
+    branches: [ "main" ]      # Trigger workflow when code is pushed to main
   pull_request:
-    branches: [ "main" ]
+    branches: [ "main" ]      # Also trigger when PRs target the main branch
 
 jobs:
-  build:
-    runs-on: ubuntu-latest
+  build:                      # Job ID 'build' (can be referenced by other jobs)
+    runs-on: ubuntu-latest    # The job runs on GitHub's latest Ubuntu runner
 
     steps:
-    - uses: actions/checkout@v4
+    # -----------------------------------------------------------
+    # Step 1: Checkout repository
+    # -----------------------------------------------------------
+    - uses: actions/checkout@v4  # Clones your repository code into the runner
+                                 # so that subsequent steps can access it
 
+    # -----------------------------------------------------------
+    # Step 2: Install dependencies and compilers
+    # -----------------------------------------------------------
     - name: Install build dependencies
       run: |
-        sudo apt update -y
-        sudo apt install -y \
+        sudo apt-get update -y
+        sudo apt-get install -y --no-install-recommends \
           build-essential \
+          procps \
           clang \
           lld \
+          make \
+          libssl-dev \
           libcurl4-openssl-dev \
-          libreadline-dev \
           libncursesw5-dev \
+          libreadline-dev \
           libarchive-dev \
           zlib1g-dev \
           libonig-dev \
           xterm
 
+    # -----------------------------------------------------------
+    # Step 3: Build the project
+    # -----------------------------------------------------------
     - name: Build project
-      run: make linux
+      run: make debug            # Executes the 'debug' with debugging mode target from your Makefile
 
+    # -----------------------------------------------------------
+    # Step 4: Run compiled executable
+    # -----------------------------------------------------------
     - name: Run executable
-      run: ./watchdogs || true
+      # Executes the built binary named 'watchdogs.debug' with args
+      run: ./watchdogs.debug watchdogs && ./watchdogs.debug help

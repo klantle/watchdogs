@@ -463,17 +463,19 @@ int wd_download_file(const char *url, const char *filename)
 			
 			struct curl_slist *headers = NULL;
 
-			if (strfind(wcfg.wd_toml_github_tokens, "DO_HERE")) {
-				pr_color(stdout, FCOLOUR_GREEN, "CURL: Can't read Github token.. skipping\n");
-				sleep(2);
-			} else { 
-				if (wcfg.wd_toml_github_tokens && strlen(wcfg.wd_toml_github_tokens) > 0) {
-					char auth_header[512];
-					snprintf(auth_header, sizeof(auth_header), "Authorization: token %s", wcfg.wd_toml_github_tokens);
-					headers = curl_slist_append(headers, auth_header);
+			if (wcfg.wd_idepends == 1) {
+				if (strfind(wcfg.wd_toml_github_tokens, "DO_HERE")) {
+					pr_color(stdout, FCOLOUR_GREEN, "CURL: Can't read Github token.. skipping\n");
+					sleep(2);
+				} else { 
+					if (wcfg.wd_toml_github_tokens && strlen(wcfg.wd_toml_github_tokens) > 0) {
+						char auth_header[512];
+						snprintf(auth_header, sizeof(auth_header), "Authorization: token %s", wcfg.wd_toml_github_tokens);
+						headers = curl_slist_append(headers, auth_header);
+					}
 				}
 			}
-
+			
 			headers = curl_slist_append(headers, "User-Agent: watchdogs/1.0");
 			headers = curl_slist_append(headers, "Accept: application/vnd.github.v3.raw");
 

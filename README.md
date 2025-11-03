@@ -294,6 +294,7 @@ output = "gamemodes/bare.amx"
 
 [depends]
 # Personal access tokens (classic) - https://github.com/settings/tokens
+# Access tokens to create installation dependencies can download files from private GitHub repositories without making them public.
 github_tokens = "DO_HERE"
 # Dependency repositories (max 101)
 aio_repo = [

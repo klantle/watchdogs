@@ -577,32 +577,34 @@ loop_ipcc3:
         } if (strncmp(ptr_command, "running", 7) == 0) {
 _runners_:
                 wd_stop_server_tasks();
+
                 server_mode = 0;
-                int _wd_log_acces = path_acces(".server_log.txt");
+
+                int _wd_log_acces = path_acces("server_log.txt");
                 if (_wd_log_acces)
-                    remove(".server_log.txt");
-                _wd_log_acces = path_acces(".log.txt");
+                  remove("server_log.txt");
+                _wd_log_acces = path_acces("log.txt");
                 if (_wd_log_acces)
-                    remove(".log.txt");
+                  remove("log.txt");
 
                 size_t cmd_len = 7;
                 char *arg = ptr_command + cmd_len;
                 while (*arg == ' ') ++arg;
                 char *arg1 = strtok(arg, " ");
 
-		        size_t needed = snprintf(NULL, 0, "Watchdogs | @ running | args: %s | %s | CTRL + C to stop.",
-									              arg1,
-									              wcfg.wd_toml_config) + 1;
-		        char *title_running_info = wd_malloc(needed);
-		        if (!title_running_info) { return __RETN; }
-		        snprintf(title_running_info, needed, "Watchdogs | @ running | args: %s | %s | CTRL + C to stop.",
-									                  arg1,
-									                  wcfg.wd_toml_config);
-		        if (title_running_info) {
-			        wd_set_title(title_running_info);
-			        wd_free(title_running_info);
-			        title_running_info = NULL;
-		        }
+    		        size_t needed = snprintf(NULL, 0, "Watchdogs | @ running | args: %s | %s | CTRL + C to stop.",
+    									              arg1,
+    									              wcfg.wd_toml_config) + 1;
+    		        char *title_running_info = wd_malloc(needed);
+    		        if (!title_running_info) { return __RETN; }
+    		        snprintf(title_running_info, needed, "Watchdogs | @ running | args: %s | %s | CTRL + C to stop.",
+    									                  arg1,
+    									                  wcfg.wd_toml_config);
+    		        if (title_running_info) {
+    			        wd_set_title(title_running_info);
+    			        wd_free(title_running_info);
+    			        title_running_info = NULL;
+    		        }
 
                 int _wd_config_acces = path_acces(wcfg.wd_toml_config);
                 if (!_wd_config_acces)
@@ -627,12 +629,21 @@ _runners_:
                                 exit(EXIT_FAILURE);
                         }
 
+                        time_t start, end;
+                        double elapsed;
+
+                        int ret_serv = 0;
+
+                        back_start:
+                        start = time(NULL);
 #ifdef _WIN32
                         snprintf(__sz_run, sizeof(__sz_run), "%s", wcfg.wd_ptr_samp);
 #else
                         chmod(wcfg.wd_ptr_samp, 0777);
                         snprintf(__sz_run, sizeof(__sz_run), "./%s", wcfg.wd_ptr_samp);
 #endif
+                        end = time(NULL);
+
                         int running_FAIL = system(__sz_run);
                         if (running_FAIL == 0) {
                             if (!strcmp(wcfg.wd_os_type, OS_SIGNAL_LINUX)) {
@@ -640,7 +651,16 @@ _runners_:
                                 wd_display_server_logs(0);
                             }
                         } else {
-                            pr_color(stdout, FCOLOUR_RED, "running failed!\n");
+                            pr_color(stdout, FCOLOUR_RED, "Server startup failed!\n");
+                            elapsed = difftime(end, start);
+                            if (elapsed <= 5.0)
+                            {
+                              if (ret_serv == 0) {
+                                ret_serv = 1;
+                                printf("\ttry starting again..");
+                                goto back_start;
+                              }
+                            }
                         }
                     } else {
                         server_mode = 1;
@@ -649,7 +669,7 @@ _runners_:
                 } else if (!strcmp(wcfg.wd_is_omp, CRC32_TRUE)) {
                     if (arg == NULL || *arg == '\0' || (arg[0] == '.' && arg[1] == '\0')) {
                         char __sz_run[128];
-                        
+
                         struct sigaction sa;
 
                         sa.sa_handler = unit_handle_sigint;
@@ -661,18 +681,36 @@ _runners_:
                                 exit(EXIT_FAILURE);
                         }
 
+                        time_t start, end;
+                        double elapsed;
+
+                        int ret_serv = 0;
+
+back_start2:
+                        start = time(NULL);
 #ifdef _WIN32
                         snprintf(__sz_run, sizeof(__sz_run), "%s", wcfg.wd_ptr_omp);
 #else
                         chmod(wcfg.wd_ptr_samp, 0777);
                         snprintf(__sz_run, sizeof(__sz_run), "./%s", wcfg.wd_ptr_omp);
 #endif
+                        end = time(NULL);
+
                         int running_FAIL = system(__sz_run);
                         if (running_FAIL == 0) {
                             sleep(2);
                             wd_display_server_logs(1);
                         } else {
-                            pr_color(stdout, FCOLOUR_RED, "running failed!\n");
+                            pr_color(stdout, FCOLOUR_RED, "Server startup failed!\n");
+                            elapsed = difftime(end, start);
+                            if (elapsed <= 5.0)
+                            {
+                              if (ret_serv == 0) {
+                                ret_serv = 1;
+                                printf("\ttry starting again..\n");
+                                goto back_start2;
+                              }
+                            }
                         }
                     } else {
                         server_mode = 1;

@@ -5,6 +5,7 @@
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <limits.h>
+#include <time.h>
 #include <signal.h>
 
 #include "wd_unit.h"
@@ -171,11 +172,18 @@ void wd_run_samp_server(const char *gamemode, const char *server_bin)
                 exit(EXIT_FAILURE);
         }
 
+        time_t start, end;
+        double elapsed;
+
+        int ret_serv = 0;
+
+back_start:
 #ifdef _WIN32
         snprintf(command, sizeof(command), "%s", server_bin);
 #else
         snprintf(command, sizeof(command), "./%s", server_bin);
 #endif
+        end = time(NULL);
 
         ret = system(command);
         if (ret == __RETZ) {
@@ -185,6 +193,16 @@ void wd_run_samp_server(const char *gamemode, const char *server_bin)
                 }
         } else {
                 pr_color(stdout, FCOLOUR_RED, "Server startup failed!\n");
+                elapsed = difftime(end, start);
+                if (elapsed <= 5.0)
+                {
+                  if (ret_serv == 0) {
+                    ret_serv = 1;
+                    printf("\ttry starting again..");
+                    goto back_start;
+                  }
+                }
+
         }
         restore_samp_config();
 
@@ -344,11 +362,19 @@ void wd_run_omp_server(const char *gamemode, const char *server_bin)
                 exit(EXIT_FAILURE);
         }
 
+        time_t start, end;
+        double elapsed;
+
+        int ret_serv = 0;
+
+back_start:
+        start = time(NULL);
 #ifdef _WIN32
         snprintf(command, sizeof(command), "%s", server_bin);
 #else
         snprintf(command, sizeof(command), "./%s", server_bin);
 #endif
+        end = time(NULL);
 
         ret = system(command);
         if (ret == __RETZ) {
@@ -356,6 +382,15 @@ void wd_run_omp_server(const char *gamemode, const char *server_bin)
                 wd_display_server_logs(1);
         } else {
                 pr_color(stdout, FCOLOUR_RED, "Server startup failed!\n");
+                elapsed = difftime(end, start);
+                if (elapsed <= 5.0)
+                {
+                  if (ret_serv == 0) {
+                    ret_serv = 1;
+                    printf("\ttry starting again..");
+                    goto back_start;
+                  }
+                }
         }
         restore_omp_config();
 

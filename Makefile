@@ -117,7 +117,7 @@ compress:
 	fi
 
 clean:
-	rm -f $(OBJS) watchdogs watchdogs.tmux watchdogs.win watchdogs.debug watchdogs.debug.win
+	rm -rf $(OBJS) watchdogs watchdogs.tmux watchdogs.win watchdogs.debug watchdogs.debug.tmux watchdogs.debug.win
 	@printf "\n$(YELLOW)==>$(RESET) Clean done.\n"
 
 linux:

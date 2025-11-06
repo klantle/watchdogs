@@ -61,7 +61,7 @@ sizeof(__command) / sizeof(__command[0]);
  *   wd_toml_os_type       - OS type string from TOML config (default NULL)
  *   wd_toml_binary        - SA-MP/Open.MP Binary File
  *   wd_toml_config        - SA-MP/Open.MP Config File
- *   wd_ipackage           - Package index counter
+ *   wd_ipawncc           - Package index counter
  *   wd_idepends           - Dependency counter
  *   wd_os_type            - OS type flag (CRC32_FALSE by default)
  *   wd_sel_stat           - Selection Status - anti redundancy
@@ -82,7 +82,7 @@ WatchdogConfig wcfg = {
 		.wd_toml_os_type = NULL,
 		.wd_toml_binary = NULL,
 		.wd_toml_config = NULL,
-		.wd_ipackage = 0,
+		.wd_ipawncc = 0,
 		.wd_idepends = 0,
 		.wd_os_type = CRC32_FALSE,
 		.wd_sel_stat = 0,
@@ -295,6 +295,16 @@ done:
 		return __RETZ;
 }
 
+int wd_server_env(void)
+{
+		int ret = 0;
+		if (!strcmp(wcfg.wd_is_samp, CRC32_TRUE))
+			ret = SAMP_TRUE;
+		else if (!strcmp(wcfg.wd_is_omp, CRC32_TRUE))
+			ret = OMP_TRUE;
+		return ret;
+}
+
 int wd_run_command(const char *cmd)
 {
 		char badch = 0;
@@ -438,28 +448,25 @@ void wd_strip_dot_fns(char *dst, size_t dst_sz, const char *src)
 
 bool strfind(const char *text, const char *pattern)
 {
-		size_t pat_len = strlen(pattern);
-		size_t i, j;
+		size_t n = strlen(text);
+		size_t m = strlen(pattern);
+		if (m == 0 || n < m) return false;
 
-		if (!text || !pattern)
-				return false;
+		unsigned char skip[256];
+		for (size_t i = 0; i < 256; i++)
+			skip[i] = (unsigned char)m;
+		for (size_t i = 0; i < m - 1; i++)
+			skip[(unsigned char)tolower((unsigned char)pattern[i])] = (unsigned char)(m - 1 - i);
 
-		for (i = 0; text[i]; i++) {
-				j = 0;
-				while (text[i + j] &&
-				       tolower((unsigned char)text[i + j]) ==
-				       tolower((unsigned char)pattern[j]))
-						++j;
-
-				if (j == pat_len) {
-						bool left_ok = (i == 0 ||
-										!isalnum((unsigned char)text[i - 1]));
-						bool right_ok = !isalnum((unsigned char)text[i + j]);
-						if (left_ok && right_ok)
-								return true;
-				}
+		size_t i = 0;
+		while (i <= n - m) {
+			size_t j = m;
+			while (j > 0 && tolower((unsigned char)pattern[j - 1]) == tolower((unsigned char)text[i + j - 1]))
+				j--;
+			if (j == 0)
+				return true;
+			i += skip[(unsigned char)tolower((unsigned char)text[i + m - 1])];
 		}
-
 		return false;
 }
 
@@ -680,10 +687,10 @@ int kill_process(const char *name)
 					return -__RETN;
 
 #ifndef _WIN32
-			snprintf(cmd, sizeof(cmd), "pkill -9 -f \"%s\" > /dev/null 2>&1", name);
+			snprintf(cmd, sizeof(cmd), "pkill -SIGTERM \"%s\" > /dev/null 2>&1", name);
 #else
 			snprintf(cmd, sizeof(cmd), "C:\\Windows\\System32\\taskkill.exe "
-									   "/F /IM \"%s\" >nul 2>&1", name);
+									   "/IM \"%s\" >nul 2>&1", name);
 #endif
 			return system(cmd);
 		} else {
@@ -708,7 +715,7 @@ static int wd_is_special_dir(const char *name)
 {
 		return (name[0] == '.' &&
 		       (name[1] == '\0' ||
-			   (name[1] == '.' && name[2] == '\0')));
+					 (name[1] == '.' && name[2] == '\0')));
 }
 
 static int wd_should_ignore_dir(const char *name,
@@ -839,7 +846,8 @@ int wd_sef_fdir(const char *sef_path,
 		return __RETZ;
 }
 
-static void __toml_add_directory_path(FILE *toml_file, int *first, const char *path)
+static void
+__toml_add_directory_path(FILE *toml_file, int *first, const char *path)
 {
 		if (!*first)
 				fprintf(toml_file, ",\n        ");
@@ -859,6 +867,7 @@ static void wd_check_compiler_options(int *compatibility, int *optimized_lt)
 			char run_cmd[PATH_MAX + 258];
 			FILE *proc_file;
 			char log_line[1024];
+
 			snprintf(run_cmd, sizeof(run_cmd),
 					"%s -___DDDDDDDDDDDDDDDDD "
 					"-___DDDDDDDDDDDDDDDDD"
@@ -866,8 +875,10 @@ static void wd_check_compiler_options(int *compatibility, int *optimized_lt)
 					"___DDDDDDDDDDDDDDDDD > .__CP.log 2>&1",
 						wcfg.wd_sef_found_list[0]);
 			system(run_cmd);
+
 			int found_Z = 0, found_ver = 0;
 			proc_file = fopen(".__CP.log", "r");
+
 			if (proc_file) {
 				while (fgets(log_line, sizeof(log_line), proc_file) != NULL) {
 					if (!found_Z && strstr(log_line, "-Z"))
@@ -875,11 +886,11 @@ static void wd_check_compiler_options(int *compatibility, int *optimized_lt)
 					if (!found_ver && strstr(log_line, "3.10.11"))
 						found_ver = 1;
 				}
-				fclose(proc_file);
 				if (found_Z)
 					*compatibility = 1;
 				if (found_ver)
 					*optimized_lt = 1;
+				fclose(proc_file);
 			} else {
 				pr_error(stdout, "Failed to open .__CP.log");
 			}
@@ -928,9 +939,9 @@ static int wd_find_compiler(const char *wd_os_type)
 		int is_windows = (strcmp(wd_os_type, "windows") == 0);
 		const char *compiler_name = is_windows ? "pawncc.exe" : "pawncc";
 
-		if (!strcmp(wcfg.wd_is_samp, CRC32_TRUE)) {
+		if (wd_server_env() == SAMP_TRUE) {
 				return wd_sef_fdir("pawno", compiler_name, NULL);
-		} else if (!strcmp(wcfg.wd_is_omp, CRC32_TRUE)) {
+		} else if (wd_server_env() == OMP_TRUE) {
 				return wd_sef_fdir("qawno", compiler_name, NULL);
 		} else {
 				return wd_sef_fdir("pawno", compiler_name, NULL);
@@ -1023,13 +1034,12 @@ static void wd_add_include_paths(FILE *file, int *first_item)
 				//__toml_base_subdirs("gamemodes", file, first_item);
 		}
 
-		if (!strcmp(wcfg.wd_is_samp, CRC32_TRUE)) {
+		if (wd_server_env() == SAMP_TRUE)
 				wd_add_compiler_path(file, "pawno/include/", first_item);
-		} else if (!strcmp(wcfg.wd_is_omp, CRC32_TRUE)) {
+		else if (wd_server_env() == OMP_TRUE)
 				wd_add_compiler_path(file, "qawno/include/", first_item);
-		} else {
+		else
 				wd_add_compiler_path(file, "pawno/include/", first_item);
-		}
 }
 
 static int _is_samp_ = 0;

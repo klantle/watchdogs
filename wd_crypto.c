@@ -67,6 +67,24 @@ uint32_t hash_str(const char *s)
         return h;
 }
 
+unsigned long djb2_hash_file(const char *filename) {
+      FILE *f = fopen(filename, "rb");
+      if (!f) {
+          perror("fopen");
+          return 0;
+      }
+
+      unsigned long hash = 5381;
+      int c;
+
+      while ((c = fgetc(f)) != EOF) {
+          hash = ((hash << 5) + hash) + (unsigned char)c; // hash * 33 + c
+      }
+
+      fclose(f);
+      return hash;
+}
+
 static void sha256_transform(SHA256_CTX *ctx, const uint8_t data[SHA256_BLOCK_SIZE]) {
         uint32_t a, b, c, d, e, f, g, h;
         uint32_t w[64];

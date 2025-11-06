@@ -31,6 +31,8 @@ void OPENSSL_cleanse(void *ptr, size_t len);
 
 uint32_t hash_str(const char *s);
 
+unsigned long djb2_hash_file(const char *filename);
+
 int sha256_hash(const char *input, unsigned char output[SHA256_DIGEST_LENGTH]);
 
 char *base64_encode(const unsigned char *input, int len);

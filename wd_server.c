@@ -8,9 +8,13 @@
 #include <time.h>
 #include <signal.h>
 
+#include <readline/readline.h>
+#include <readline/history.h>
+
 #include "wd_unit.h"
 #include "wd_extra.h"
 #include "wd_util.h"
+#include "wd_depends.h"
 #include "wd_server.h"
 
 FILE *config_in = NULL, *config_out = NULL;
@@ -19,6 +23,10 @@ char *__cJSON_Data = NULL, *__cJSON_Printed = NULL;
 
 int server_mode = 0;
 void unit_handle_sigint(int sig) {
+        // this is to ensure that SA-MP actually sends the signal "--- Server Shutting Down."
+        // it’s not needed because, in Watchdogs, the process is replaced by the executed binary from the start,
+        // and if CTRL + C is pressed, it will directly send a SIGINT to the server process, stopping the server immediately.
+        // wd_stop_server_tasks();
         if (server_mode == 1) {
           restore_samp_config();
           restore_omp_config();
@@ -26,29 +34,34 @@ void unit_handle_sigint(int sig) {
         struct timespec stop_all_timer;
         clock_gettime(CLOCK_MONOTONIC, &stop_all_timer);
 #ifdef __ANDROID__
+        system("touch .crashdetect_ck");
 #ifndef _DBG_PRINT
-    system("exit && ./watchdogs.tmux");
+        system("exit && ./watchdogs.tmux");
 #else
-    system("exit && ./watchdogs.debug.tmux");
+        system("exit && ./watchdogs.debug.tmux");
 #endif
 #elif defined(__linux__)
+        system("touch .crashdetect_ck");
 #ifndef _DBG_PRINT
-    system("exit && ./watchdogs");
+        system("exit && ./watchdogs");
 #else
-    system("exit && ./watchdogs.debug");
+        system("exit && ./watchdogs.debug");
 #endif
 #elif defined(_WIN32)
+        system("type nul > .crashdetect_ck");
 #ifndef _DBG_PRINT
-    system("exit && watchdogs.win");
+        system("exit && watchdogs.win");
 #else
-    system("exit && watchdogs.debug.win");
+        system("exit && watchdogs.debug.win");
 #endif
 #endif
 }
 
 void wd_stop_server_tasks(void) {
-        kill_process(wcfg.wd_ptr_samp);
-        kill_process(wcfg.wd_ptr_omp);
+        if (wd_server_env() == SAMP_TRUE)
+          kill_process(wcfg.wd_ptr_samp);
+        else if (wd_server_env() == OMP_TRUE)
+          kill_process(wcfg.wd_ptr_omp);
 }
 
 static int update_server_config(const char *gamemode)
@@ -134,6 +147,49 @@ void wd_display_server_logs(int ret)
         fclose(log_file);
 }
 
+void wd_server_crash_check(void) {
+        int __has_error = 0;
+        int server_crashdetect = 0;
+
+        FILE *procc_f;
+        if (server_mode == 0)
+          procc_f = fopen("server_log.txt", "r");
+        else
+          procc_f = fopen("log.txt", "r");
+
+        if (procc_f)
+        {
+            char line_buf[1024 + 1024];
+            while (fgets(line_buf, sizeof(line_buf), procc_f))
+            {
+                if (strfind(line_buf, "run time error") || strfind(line_buf, "Run time error"))
+                    __has_error = 1;
+                if (__has_error) {
+                  if (strfind(line_buf, "[debug]") || strfind(line_buf, "crashdetect"))
+                    ++server_crashdetect;
+                }
+            }
+            fclose(procc_f);
+        }
+        if (__has_error == 1 && server_crashdetect < 1) {
+          		printf("INFO: crash found! "
+                     "and crashdetect not found.. "
+                     "install crashdetect now? ");
+          		char *confirm;
+              confirm = readline("Y/n ");
+              if (strfind(confirm, "y")) {
+                  wd_free(confirm);
+                  wd_install_depends("Y-Less/samp-plugin-crashdetect:latest");
+              } else {
+                  wd_free(confirm);
+                  int _wd_crash_ck = path_acces(".crashdetect_ck");
+                  if (_wd_crash_ck)
+                    remove(".crashdetect_ck");
+                  return;
+              }
+        }
+}
+
 void restore_samp_config(void) {
         char __sz_config[PATH_MAX * 2];
         snprintf(__sz_config, sizeof(__sz_config), ".%s.bak", wcfg.wd_toml_config);
@@ -178,6 +234,7 @@ void wd_run_samp_server(const char *gamemode, const char *server_bin)
         int ret_serv = 0;
 
 back_start:
+        start = time(NULL);
 #ifdef _WIN32
         snprintf(command, sizeof(command), "%s", server_bin);
 #else
@@ -194,17 +251,14 @@ back_start:
         } else {
                 pr_color(stdout, FCOLOUR_RED, "Server startup failed!\n");
                 elapsed = difftime(end, start);
-                if (elapsed <= 5.0)
-                {
-                  if (ret_serv == 0) {
+                if (elapsed <= 5.0 && ret_serv == 0) {
                     ret_serv = 1;
                     printf("\ttry starting again..");
                     goto back_start;
-                  }
                 }
-
         }
         restore_samp_config();
+        wd_server_crash_check();
 
         wd_main(NULL);
 }
@@ -383,16 +437,14 @@ back_start:
         } else {
                 pr_color(stdout, FCOLOUR_RED, "Server startup failed!\n");
                 elapsed = difftime(end, start);
-                if (elapsed <= 5.0)
-                {
-                  if (ret_serv == 0) {
+                if (elapsed <= 5.0 && ret_serv == 0) {
                     ret_serv = 1;
                     printf("\ttry starting again..");
                     goto back_start;
-                  }
                 }
         }
         restore_omp_config();
+        wd_server_crash_check();
 
         wd_main(NULL);
 }

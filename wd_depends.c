@@ -1005,11 +1005,11 @@ static void dep_pr_include_directive (const char *deps_include)
 		snprintf(idirective, sizeof(idirective),
 				"#include <%s>", direct_bnames);
 
-		if (!strcmp(wcfg.wd_is_samp, CRC32_TRUE)) {
+		if (wd_server_env() == SAMP_TRUE) {
 			DEP_ADD_INCLUDES(wcfg.wd_toml_gm_input,
 							 idirective,
 							 "#include <a_samp>");
-		} else if (!strcmp(wcfg.wd_is_omp, CRC32_TRUE)) {
+		} else if (wd_server_env() == OMP_TRUE) {
 			DEP_ADD_INCLUDES(wcfg.wd_toml_gm_input,
 							 idirective,
 							 "#include <open.mp>");
@@ -1086,7 +1086,7 @@ void dep_pr_include_files (cJSON *depends, const char *bp, const char *db)
 		return;
 }
 
-static void dep_pr_file_type (const char *path, const char *pattern,
+static void deps_print_file_type (const char *path, const char *pattern,
                               const char *exclude, const char *cwd,
                               cJSON *depends, const char *target_dir, int droot)
 {
@@ -1125,13 +1125,16 @@ static void dep_pr_file_type (const char *path, const char *pattern,
 				snprintf(json_item, sizeof(json_item), "%s", deps_names);
 				dep_add_ncheck_hash(depends, json_item, json_item);
 
-				if (droot != 1) goto done;
+				if (droot != 1)
+					goto done;
 
-				if (!strcmp(wcfg.wd_is_omp, CRC32_TRUE) && strfind(wcfg.wd_toml_config, "cfg"))
+				if (wd_server_env() == SAMP_TRUE &&
+					  strfind(wcfg.wd_toml_config, "cfg"))
 samp_label:
 					M_ADD_PLUGIN(wcfg.wd_toml_config,
 								 deps_bnames);
-				else if (!strcmp(wcfg.wd_is_omp, CRC32_TRUE) && strfind(wcfg.wd_toml_config, "json"))
+				else if (wd_server_env() == OMP_TRUE &&
+									strfind(wcfg.wd_toml_config, "json"))
 					S_ADD_PLUGIN(wcfg.wd_toml_config,
 								"plugins", deps_bnames);
 				else
@@ -1208,10 +1211,10 @@ out_close:
 		snprintf(dp_fp, sizeof(dp_fp), "%s/plugins", dep_dir);
 		snprintf(dp_fc, sizeof(dp_fc), "%s/components", dep_dir);
 
-		if (!strcmp(wcfg.wd_is_samp, CRC32_TRUE)) {
+		if (wd_server_env() == SAMP_TRUE) {
 			dep_inc_path = "pawno/include";
 			snprintf(dp_inc, sizeof(dp_inc), "%s/pawno/include", dep_dir);
-		} else if (!strcmp(wcfg.wd_is_omp, CRC32_TRUE)) {
+		} else if (wd_server_env() == OMP_TRUE) {
 			dep_inc_path = "qawno/include";
 			snprintf(dp_inc, sizeof(dp_inc), "%s/qawno/include", dep_dir);
 		} else {
@@ -1221,16 +1224,16 @@ out_close:
 
 		char *cwd = wd_get_cwd();
 
-		dep_pr_file_type(dp_fp, "*.dll", NULL, cwd, depends, "plugins", 1);
-		dep_pr_file_type(dp_fp, "*.so", NULL, cwd, depends, "plugins", 1);
-		dep_pr_file_type(dep_dir, "*.dll", "plugins", cwd, depends, "", 0);
-		dep_pr_file_type(dep_dir, "*.so", "plugins", cwd, depends, "", 0);
+		deps_print_file_type(dp_fp, "*.dll", NULL, cwd, depends, "plugins", 1);
+		deps_print_file_type(dp_fp, "*.so", NULL, cwd, depends, "plugins", 1);
+		deps_print_file_type(dep_dir, "*.dll", "plugins", cwd, depends, "", 0);
+		deps_print_file_type(dep_dir, "*.so", "plugins", cwd, depends, "", 0);
 
-		if (!strcmp(wcfg.wd_is_omp, CRC32_TRUE)) {
-			dep_pr_file_type(dp_fc, "*.dll", NULL, cwd, depends, "components", 1);
-			dep_pr_file_type(dp_fc, "*.so", NULL, cwd, depends, "components", 1);
-			dep_pr_file_type(dep_dir, "*.dll", "components", cwd, depends, "", 0);
-			dep_pr_file_type(dep_dir, "*.so", "components", cwd, depends, "", 0);
+		if (wd_server_env() == OMP_TRUE) {
+			deps_print_file_type(dp_fc, "*.dll", NULL, cwd, depends, "components", 1);
+			deps_print_file_type(dp_fc, "*.so", NULL, cwd, depends, "components", 1);
+			deps_print_file_type(dep_dir, "*.dll", "components", cwd, depends, "", 0);
+			deps_print_file_type(dep_dir, "*.so", "components", cwd, depends, "", 0);
 		}
 
 		snprintf(d_b, sizeof(d_b), "%s/include",
@@ -1292,7 +1295,6 @@ out_close:
 			pr_info(stdout, "Saved %d unique hashes", array_size);
 		}
 
-cleanup:
 		cJSON_Delete(droot);
 		if (_e_root)
 			cJSON_Delete(_e_root);
@@ -1324,12 +1326,12 @@ void wd_apply_depends (const char *depends_name)
 
 		snprintf(dep_dir, sizeof(dep_dir), "%s", _depends);
 
-		if (!strcmp(wcfg.wd_is_samp, CRC32_TRUE)) {
+		if (wd_server_env() == SAMP_TRUE) {
 			if (stat("pawno/include", &st) != 0 && errno == ENOENT)
 				mkdir_recusrs("pawno/include");
 			if (stat("plugins", &st) != 0 && errno == ENOENT)
 				mkdir_recusrs("plugins");
-		} else if (!strcmp(wcfg.wd_is_omp, CRC32_TRUE)) {
+		} else if (wd_server_env() == OMP_TRUE) {
 			if (stat("qawno/include", &st) != 0 && errno == ENOENT)
 				mkdir_recusrs("qawno/include");
 
@@ -1351,7 +1353,7 @@ void wd_install_depends (const char *deps_str)
 		const char *depends[MAX_DEPENDS];
 		char *depends_files[MAX_DEPENDS];
 		char *token;
-		int DEP_CNT = 0;
+		int DEPS_COUNT = 0;
 		int file_count = 0;
 
 		if (!deps_str || !*deps_str) {
@@ -1364,19 +1366,18 @@ void wd_install_depends (const char *deps_str)
 		snprintf(buffer, sizeof(buffer), "%s", deps_str);
 		token = strtok(buffer, " ");
 
-		while (token && DEP_CNT < MAX_DEPENDS) {
-			depends[DEP_CNT++] = token;
-
+		while (token && DEPS_COUNT < MAX_DEPENDS) {
+			depends[DEPS_COUNT++] = token;
 			token = strtok(NULL, " ");
 		}
 
-		if (DEP_CNT == 0) {
+		if (DEPS_COUNT == 0) {
 			pr_info(stdout, "No valid dependencies to install");
 			return;
 		}
 
 		int i;
-		for (i = 0; i < DEP_CNT; i++) {
+		for (i = 0; i < DEPS_COUNT; i++) {
 			int dep_item_found = 0;
 
 			struct dep_repo_info dep_repo_info;

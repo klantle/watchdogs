@@ -202,15 +202,19 @@ git clone https://github.com/klantle/libwatchdogs watch && cd watch && [ -d "/c/
 > Download Git first in https://git-scm.com/install/windows
 > Run Git Bash
 
+> cd to your_project directory
 ```bash
-# cd to your_project directory
 cd /c/users/desktop_name/downloads/your_project
-# Download stable binary
-curl -L -o watchdogs.win "https://gitlab.com/mywatchdogs/watchdogs/-/releases/WD-251101"
-# Install library
-git clone https://github.com/klantle/libwatchdogs watch && cd watch && [ -d "/c/libwatchdogs" ] && rm -rf -- "/c/libwatchdogs"  && mv -f libwatchdogs /c/ && mv -f run-native.bat .. && cd .. && rm -rf watch
-# Exit from Git Bash and run '.bat' in your your_project on Windows File Explorer.
 ```
+> Download stable binary
+```bash
+curl -L -o watchdogs.win "https://gitlab.com/mywatchdogs/watchdogs/-/releases/WD-251101"
+```
+> Install library
+```bash
+bash -c '[ -d "watch" ] && rm -rf -- "watch" && git clone https://github.com/klantle/libwatchdogs watch && cd watch && [ -d "/c/libwatchdogs" ] && rm -rf -- "/c/libwatchdogs"  && mv -f libwatchdogs /c/ && mv -f run-native.bat .. && cd .. && rm -rf watch'
+```
+> Exit from Git Bash and run '.bat' in your_project on Windows File Explorer.
 
 #### Mirror Configuration (if needed)
 Edit mirror lists:
@@ -272,7 +276,7 @@ config = "server.cfg"
 
 [compiler]
 # Compiler options
-option = ["-Z+", "-O2", "-d2", "-;+", "-(+"]
+option = ["-Z+", "-O2", "-d2", "-;+", "-(+", "-\\"]
 
 # Include paths for compiler
 include_path = [
@@ -294,7 +298,8 @@ output = "gamemodes/bare.amx"
 
 [depends]
 # Personal access tokens (classic) - https://github.com/settings/tokens
-# Access tokens to create installation dependencies can download files from private GitHub repositories without making them public.
+# Access tokens to create installation dependencies,
+# to can download files from private GitHub repositories without making them public.
 github_tokens = "DO_HERE"
 # Dependency repositories (max 101)
 aio_repo = [
@@ -400,7 +405,9 @@ crunn
 ### Dependency Management
 
 * **Algorithm**
-<br>Serves as an assistant for installing various files required by SA-MP/Open.MP. When installing dependencies that contain a `plugins/` folder and include files, it will install them into the `plugins/` and `/pawno-qawno/include` directories, respectively. It also handles gamemode components (root watchdogs). Watchdogs will automatically add the include names to the gamemode based on the main gamemode filename specified in the `input` key within `watchdogs.toml`. Furthermore, Watchdogs assists in installing the plugin names and their respective formats into `config.json` (from watchdogs.toml) - (for Open.MP) or `server.cfg` (from watchdogs.toml) - (for SA-MP). Note that the `components/` directory is not required for Open.MP.
+<br>You no longer need to use regex just to detect files available in the tag you provided as a depends link. The existing files will now be automatically detected through HTML web interaction by watchdogs-depends, which scans for available files from the fallback URL `user/repo:tag`. Additionally, if you are in a Windows watchdogs environment, it will automatically search for and target only archives containing “windows” in their name - and do the opposite for Linux.
+<br><br>
+Serves as an assistant for installing various files required by SA-MP/Open.MP. When installing dependencies that contain a `plugins/` folder and include files, it will install them into the `plugins/` and `/pawno-qawno/include` directories, respectively. It also handles gamemode components (root watchdogs). Watchdogs will automatically add the include names to the gamemode based on the main gamemode filename specified in the `input` key within `watchdogs.toml`. Furthermore, Watchdogs assists in installing the plugin names and their respective formats into `config.json` (from watchdogs.toml) - (for Open.MP) or `server.cfg` (from watchdogs.toml) - (for SA-MP). Note that the `components/` directory is not required for Open.MP.
 <br><br>
 For plugin or include files located in the root directory of the dependency archive (for both Linux and Windows), their installation paths will be adjusted accordingly. Plugins found in the root folder will be placed directly into the server's root directory, rather than in specific subdirectories like `plugins/` or `components/`.
 <br><br>
@@ -458,6 +465,12 @@ alias watch='./watchdogs'
 ```
 
 ## Compiler Reference
+
+* **Historical Background of Pawn Code**  
+Pawn originated in the early 1990s as a small, fast, and embeddable scripting language developed by **ITB CompuPhase**, primarily by **Frank Peelen** and **Johan Bosman**. Its design was inspired by C but with simpler syntax and a lightweight virtual machine that executes *Abstract Machine eXecutable (.amx)* bytecode.  
+Initially called **Small**, the language evolved into **Pawn** around 1998, when it became part of CompuPhase’s toolset for embedded systems and game engines. Its purpose was to allow rapid scripting within constrained environments, where resources like memory and processing power were limited.  
+Later, the **SA-MP (San Andreas Multiplayer)** community adopted Pawn as its scripting backbone due to its lightweight structure and flexibility. Over time, community forks like **PawnCC (PCC)** emerged to modernize the compiler, add better platform support (Windows/Linux/macOS), UTF-8 encoding, path handling, and maintain active development after CompuPhase’s version became static.
+<br>
 
 * **Pawncc/PawnCC/Pawn Code/Pawno/Qawno**
 <br>Pawncc is essentially an extension for converting .pwn files into .amx files (a converter). The primary language for SA-MP/Open.MP is [Pawn Code](https://www.compuphase.com/pawn/pawn.htm), and pawno/qawno are Pawn Editors designed to facilitate the integration of Pawncc itself. PawnCC refers to a modified version of Pawncc from pawn-lang - https://github.com/pawn-lang/compiler, which means Pawn Community Compiler (PawnCC or PCC).

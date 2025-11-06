@@ -66,6 +66,11 @@ int __command__(char *pre_command)
 {
         wcfg.wd_sel_stat = 0;
         setlocale(LC_ALL, "en_US.UTF-8");
+        int _wd_crash_ck = path_acces(".crashdetect_ck");
+        if (_wd_crash_ck) {
+          remove(".crashdetect_ck");
+          wd_server_crash_check();
+        }
         char ptr_prompt[PATH_MAX + 56];
         size_t __sz_ptrp = sizeof(ptr_prompt);
         char *ptr_command;
@@ -73,8 +78,6 @@ int __command__(char *pre_command)
         const char *_dist_command;
 
 _ptr_command:
-        __function__();
-
         if (pre_command && pre_command[0] != '\0') {
             ptr_command = strdup(pre_command);
             printf("[" FCOLOUR_CYAN
@@ -98,6 +101,7 @@ _ptr_command:
 
 _reexecute_command:
         clock_gettime(CLOCK_MONOTONIC, &cmd_start);
+        __function__();
         if (strncmp(ptr_command, "help", 4) == 0) {
             wd_set_title("Watchdogs | @ help");
 
@@ -127,8 +131,10 @@ _reexecute_command:
             } else if (strcmp(arg, "crunn") == 0) { println(stdout, "crunn: compile & running your project. | Usage: \"crunn\" | [<args>]");
             } else if (strcmp(arg, "stop") == 0) { println(stdout, "stop: stopped server task. | Usage: \"stop\"");
             } else if (strcmp(arg, "restart") == 0) { println(stdout, "restart: restart server task. | Usage: \"restart\"");
-            } else println(stdout, "help not found for: '%s'", arg);
-
+            } else {
+              printf("help not found for: ");
+              pr_color(stdout, "'%s'\n", arg);
+            }
             goto done;
         } else if (strcmp(ptr_command, "clear") == 0) {
             wd_set_title("Watchdogs | @ clear");
@@ -614,7 +620,7 @@ _runners_:
                 }
 
                 pr_color(stdout, FCOLOUR_YELLOW, "running..\n");
-                if (!strcmp(wcfg.wd_is_samp, CRC32_TRUE)) {
+                if (wd_server_env() == SAMP_TRUE) {
                     if (arg == NULL || *arg == '\0' || (arg[0] == '.' && arg[1] == '\0')) {
                         char __sz_run[128];
 
@@ -653,20 +659,19 @@ _runners_:
                         } else {
                             pr_color(stdout, FCOLOUR_RED, "Server startup failed!\n");
                             elapsed = difftime(end, start);
-                            if (elapsed <= 5.0)
-                            {
-                              if (ret_serv == 0) {
+                            if (elapsed <= 5.0 && ret_serv == 0) {
                                 ret_serv = 1;
                                 printf("\ttry starting again..");
                                 goto back_start;
-                              }
                             }
                         }
+
+                        wd_server_crash_check();
                     } else {
                         server_mode = 1;
                         wd_run_samp_server(arg1, wcfg.wd_ptr_samp);
                     }
-                } else if (!strcmp(wcfg.wd_is_omp, CRC32_TRUE)) {
+                } else if (wd_server_env() == OMP_TRUE) {
                     if (arg == NULL || *arg == '\0' || (arg[0] == '.' && arg[1] == '\0')) {
                         char __sz_run[128];
 
@@ -703,20 +708,19 @@ back_start2:
                         } else {
                             pr_color(stdout, FCOLOUR_RED, "Server startup failed!\n");
                             elapsed = difftime(end, start);
-                            if (elapsed <= 5.0)
-                            {
-                              if (ret_serv == 0) {
+                            if (elapsed <= 5.0 && ret_serv == 0) {
                                 ret_serv = 1;
-                                printf("\ttry starting again..\n");
+                                printf("\ttry starting again..");
                                 goto back_start2;
-                              }
                             }
                         }
+
+                        wd_server_crash_check();
                     } else {
                         server_mode = 1;
                         wd_run_omp_server(arg1, wcfg.wd_ptr_omp);
                     }
-                } else if (!strcmp(wcfg.wd_is_samp, CRC32_FALSE) || !strcmp(wcfg.wd_is_omp, CRC32_FALSE)) {
+                } else {
                     pr_crit(stdout, "samp-server/open.mp server not found!");
 
                     char *ptr_sigA;
@@ -789,10 +793,10 @@ n_loop_igm2:
                     memmove(pos, pos + strlen("gamemodes/"),
                                     strlen(pos + strlen("gamemodes/")) + 1);
                 }
-                if (!strcmp(wcfg.wd_is_samp, CRC32_TRUE)) {
+                if (wd_server_env() == SAMP_TRUE) {
                     pr_color(stdout, FCOLOUR_YELLOW, "running..\n");
                     wd_run_samp_server(__sz_gm_input, wcfg.wd_ptr_samp);
-                } else if (!strcmp(wcfg.wd_is_omp, CRC32_TRUE)) {
+                } else if (wd_server_env() == OMP_TRUE) {
                     pr_color(stdout, FCOLOUR_YELLOW, "running..\n");
                     wd_run_samp_server(__sz_gm_input, wcfg.wd_ptr_omp);
                 }

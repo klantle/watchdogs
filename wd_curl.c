@@ -18,6 +18,11 @@
 #include "wd_depends.h"
 #include "wd_curl.h"
 
+// This is a string variable used to statically store the PawnCC folder name,
+// ensuring that PawnCC is applied from the correct directory and not from an incorrect extraction folder.
+static char
+	pawncc_dir_src[PATH_MAX];
+
 static int progress_callback(void *ptr, curl_off_t dltotal,
 						     curl_off_t dlnow, curl_off_t ultotal,
 						     curl_off_t ulnow)
@@ -101,14 +106,15 @@ static void find_compiler_tools(int compiler_type,
 								int *found_pawndisasm_exe, int *found_pawndisasm,
 								int *found_pawnc_dll, int *found_PAWNC_DLL)
 {
-		const char *ignore_dir = (compiler_type == COMPILER_SAMP) ? "pawno" : "qawno";
-
-		*found_pawncc_exe = wd_sef_fdir(".", "pawncc.exe", ignore_dir);
-		*found_pawncc = wd_sef_fdir(".", "pawncc", ignore_dir);
-		*found_pawndisasm_exe = wd_sef_fdir(".", "pawndisasm.exe", ignore_dir);
-		*found_pawndisasm = wd_sef_fdir(".", "pawndisasm", ignore_dir);
-		*found_pawnc_dll = wd_sef_fdir(".", "pawnc.dll", ignore_dir);
-		*found_PAWNC_DLL = wd_sef_fdir(".", "PAWNC.dll", ignore_dir);
+		const char *ignore_dir = NULL;
+		char __sz_pf[PATH_MAX + 56];
+		snprintf(__sz_pf, sizeof(__sz_pf), "%s/bin", pawncc_dir_src);
+		*found_pawncc_exe = wd_sef_fdir(__sz_pf, "pawncc.exe", ignore_dir);
+		*found_pawncc = wd_sef_fdir(__sz_pf, "pawncc", ignore_dir);
+		*found_pawndisasm_exe = wd_sef_fdir(__sz_pf, "pawndisasm.exe", ignore_dir);
+		*found_pawndisasm = wd_sef_fdir(__sz_pf, "pawndisasm", ignore_dir);
+		*found_pawnc_dll = wd_sef_fdir(__sz_pf, "pawnc.dll", ignore_dir);
+		*found_PAWNC_DLL = wd_sef_fdir(__sz_pf, "PAWNC.dll", ignore_dir);
 }
 
 static const char *get_compiler_directory(void)
@@ -193,7 +199,9 @@ static int setup_linux_library(void)
 			!strcmp(wcfg.wd_toml_os_type, OS_SIGNAL_UNKNOWN))
 				return __RETZ;
 
-		found_lib = wd_sef_fdir(".", "libpawnc.so", NULL);
+		char __sz_pf[PATH_MAX + 56];
+		snprintf(__sz_pf, sizeof(__sz_pf), "%s/lib", pawncc_dir_src);
+		found_lib = wd_sef_fdir(__sz_pf, "libpawnc.so", NULL);
 		if (!found_lib)
 				return __RETZ;
 
@@ -293,6 +301,18 @@ void wd_apply_pawncc(void)
 
 		setup_linux_library();
 
+		char rm_cmd[PATH_MAX + 56];
+		if (is_native_windows())
+			snprintf(rm_cmd, sizeof(rm_cmd),
+				"rmdir /s /q \"%s\"",
+				pawncc_dir_src);
+		else
+			snprintf(rm_cmd, sizeof(rm_cmd),
+				"rm -rf %s",
+				pawncc_dir_src);
+		system(rm_cmd);
+		pawncc_dir_src[0] = '\0';
+
 		pr_info(stdout, "Compiler installed successfully!");
 
 done:
@@ -301,7 +321,7 @@ done:
 
 static int prompt_apply_pawncc(void)
 {
-		wcfg.wd_ipackage = 0;
+		wcfg.wd_ipawncc = 0;
 
 		pr_color(stdout, FCOLOUR_YELLOW, "Apply pawncc?");
 		char *confirm = readline(" [y/n]: ");
@@ -382,7 +402,11 @@ int wd_download_file(const char *url, const char *filename)
 						char auth_header[512];
 						snprintf(auth_header, sizeof(auth_header), "Authorization: token %s", wcfg.wd_toml_github_tokens);
 						headers = curl_slist_append(headers, auth_header);
-						pr_color(stdout, FCOLOUR_GREEN, "\t[DEPS]: Using token: %s...\n", get_masked_text(8, wcfg.wd_toml_github_tokens));
+						pr_color(stdout,
+								 FCOLOUR_GREEN,
+								 "\t[DEPS]: Using token: %s...\n",
+								 get_masked_text(8,
+												 wcfg.wd_toml_github_tokens));
 				}
 			}
 
@@ -429,6 +453,8 @@ int wd_download_file(const char *url, const char *filename)
 						printf("Checking file type for extraction...\n");
 						extract_archive(filename);
 
+						sleep(1);
+
 						pr_color(stdout, FCOLOUR_GREEN, "Remove the archive '%s'? ", filename);
 						char *confirm = readline(" [y/n]: ");
 						if (confirm) {
@@ -436,7 +462,8 @@ int wd_download_file(const char *url, const char *filename)
 								char rm_cmd[PATH_MAX];
 								if (is_native_windows())
 									snprintf(rm_cmd, sizeof(rm_cmd),
-										"if exist \"%s\" (del /f /q \"%s\" 2>nul || rmdir /s /q \"%s\" 2>nul)",
+										"if exist \"%s\" (del /f /q \"%s\" 2>nul || "
+										"rmdir /s /q \"%s\" 2>nul)",
 										filename, filename, filename);
 								else
 									snprintf(rm_cmd, sizeof(rm_cmd),
@@ -450,15 +477,25 @@ int wd_download_file(const char *url, const char *filename)
 						printf("File is not an archive, skipping extraction.\n");
 					}
 
-					if (wcfg.wd_ipackage && prompt_apply_pawncc())
+					if (wcfg.wd_ipawncc && prompt_apply_pawncc()) {
+						char __sz_filename[PATH_MAX];
+						snprintf(__sz_filename, sizeof(__sz_filename), "%s", filename);
+						char *__dot_ext = strrchr(__sz_filename, '.');
+						if (__dot_ext)
+								*__dot_ext = '\0';
+						snprintf(pawncc_dir_src, sizeof(pawncc_dir_src), "%s", __sz_filename);
 						wd_apply_pawncc();
+					}
 
 					return __RETZ;
 				} else {
 					pr_color(stdout, FCOLOUR_RED, "Downloaded file is empty or missing\n");
 				}
 			} else {
-				pr_color(stdout, FCOLOUR_RED, "Download failed - HTTP: %ld, CURL: %d, retrying...\n", response_code, res);
+				pr_color(stdout, FCOLOUR_RED, "Download failed - "
+						 "HTTP: %ld, "
+						 "CURL: %d, "
+						 "retrying...\n", response_code, res);
 			}
 
 			++retry_count;

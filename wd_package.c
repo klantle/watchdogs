@@ -78,9 +78,9 @@ static int get_termux_architecture(char *out_arch, size_t buf_size)
 static int handle_termux_installation(void)
 {
 		const char *termux_versions[] = {
-																				"3.10.11",
-																				"3.10.10"
-																		};
+												"3.10.11",
+												"3.10.10"
+										};
 		const size_t version_count = sizeof(termux_versions) / sizeof(termux_versions[0]);
 		char version_selection;
 		char architecture[16];
@@ -126,7 +126,7 @@ static int handle_termux_installation(void)
 		snprintf(filename, sizeof(filename), "pawncc-%s-%s.zip",
 				 termux_versions[version_index], architecture);
 
-		wcfg.wd_ipackage = 1;
+		wcfg.wd_ipawncc = 1;
 		wd_download_file(url, filename);
 
 		return __RETZ;
@@ -189,7 +189,7 @@ static int handle_standard_installation(const char *platform)
 		snprintf(filename, sizeof(filename), "pawnc-%s-%s.%s",
 				 versions[version_index], platform, archive_ext);
 
-		wcfg.wd_ipackage = 1;
+		wcfg.wd_ipawncc = 1;
 		wd_download_file(url, filename);
 
 		return __RETZ;

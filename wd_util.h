@@ -117,6 +117,10 @@ win32_chmod(const char *path) {
 #define COMPILER_OPENMP  0x02
 #define COMPILER_DEFAULT 0x00
 
+/** SA-MP / Open.MP Env define **/
+#define SAMP_TRUE 1
+#define OMP_TRUE 2
+
 /** CRC32 strings representing OS signals **/
 #define CRC32_TRUE              "fdfc4c8d"
 #define CRC32_FALSE             "2bcd6830"
@@ -135,8 +139,8 @@ typedef struct {
     char *wd_toml_os_type;       /** OS type from TOML **/
     char *wd_toml_binary;        /** Path to binary **/
     char *wd_toml_config;        /** Config file path **/
-    int wd_ipackage;             /** Package index **/
-    int wd_idepends;             /** Dependency count **/
+    int wd_ipawncc;             /** Pawncc index **/
+    int wd_idepends;             /** Dependency index **/
     char *wd_os_type;            /** Detected OS type **/
     int wd_sel_stat;             /** Selection status **/
     char *wd_is_samp;            /** Samp compiler flag **/
@@ -165,6 +169,7 @@ extern const size_t __command_len; /** Command count **/
 char* wd_get_cwd(); /** CWD **/
 char* get_masked_text(int reveal, const char *text); /** masked text **/
 int mkdir_recusrs(const char *path); /** Recursive mkdir **/
+int wd_server_env(void); /** get server env **/
 int wd_run_command(const char *cmd); /** Run shell command **/
 int is_termux_environment(void); /** Detect Termux **/
 int is_native_windows(void); /** Detect Windows **/

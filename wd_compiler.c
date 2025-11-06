@@ -12,6 +12,7 @@
 #include "wd_util.h"
 #include "wd_unit.h"
 #include "wd_package.h"
+#include "wd_crypto.h"
 #include "wd_compiler.h"
 
 int wd_run_compiler(const char *arg, const char *compile_args)
@@ -25,9 +26,9 @@ int wd_run_compiler(const char *arg, const char *compile_args)
             ptr_pawncc = "pawncc";
 
         char *path_include = NULL;
-        if (!strcmp(wcfg.wd_is_omp, CRC32_TRUE))
+        if (wd_server_env() == SAMP_TRUE)
             path_include="pawno/include";
-        else if (!strcmp(wcfg.wd_is_omp, CRC32_TRUE))
+        else if (wd_server_env() == OMP_TRUE)
             path_include="qawno/include";
 
         int _wd_log_acces = path_acces(".wd_compiler.log");
@@ -86,6 +87,23 @@ int wd_run_compiler(const char *arg, const char *compile_args)
                 return __RETZ;
             }
 
+            char run_cmd[PATH_MAX + 258];
+            FILE *proc_file;
+            char log_line[1024];
+
+            snprintf(run_cmd, sizeof(run_cmd),
+                "%s -___DDDDDDDDDDDDDDDDD "
+                "-___DDDDDDDDDDDDDDDDD"
+                "-___DDDDDDDDDDDDDDDDD-"
+                "___DDDDDDDDDDDDDDDDD > .__CP.log 2>&1",
+                  wcfg.wd_sef_found_list[0]);
+            system(run_cmd);
+
+            proc_file = fopen(".__CP.log", "r");
+            if (!proc_file) {
+                pr_error(stdout, "Failed to open .__CP.log");
+            }
+
             toml_table_t *wd_compiler = toml_table_in(_toml_config, "compiler");
             if (wd_compiler)
             {
@@ -97,30 +115,69 @@ int wd_run_compiler(const char *arg, const char *compile_args)
 
                     for (size_t i = 0; i < arr_sz; i++)
                     {
-                        toml_datum_t val = toml_string_at(option_arr, i);
-                        if (!val.ok)
+                        toml_datum_t opt_val = toml_string_at(option_arr, i);
+                        if (!opt_val.ok)
                             continue;
 
+                        int valid_flag = 0;
+
+                        char flag_to_search[3] = {0};
+                        if (strlen(opt_val.u.s) >= 2) {
+                            snprintf(flag_to_search, sizeof(flag_to_search), "%.2s", opt_val.u.s);
+                        } else {
+                            strncpy(flag_to_search, opt_val.u.s, sizeof(flag_to_search) - 1);
+                        }
+
+                        if (proc_file) {
+                            rewind(proc_file);
+                            while (fgets(log_line,
+                                   sizeof(log_line),
+                                   proc_file) != NULL) {
+                                if (strstr(log_line, flag_to_search)) {
+                                    valid_flag = 1;
+                                    break;
+                                }
+                            }
+                        }
+
+                        if (valid_flag == 0)
+                            goto n_valid_flag;
+
+                        if (opt_val.u.s[0] != '-') {
+n_valid_flag:
+                            printf("[WARN]: compiler option ");
+                            pr_color(stdout, FCOLOUR_GREEN, "\"%s\" ", opt_val.u.s);
+                            println(stdout, "not valid flag!");
+                            if (valid_flag == 0)
+                              return __RETZ;
+                        }
+
                         size_t old_len = merged ? strlen(merged) : 0,
-                               new_len = old_len + strlen(val.u.s) + 2;
+                               new_len = old_len + strlen(opt_val.u.s) + 2;
 
                         char *tmp = wd_realloc(merged, new_len);
                         if (!tmp)
                         {
                             wd_free(merged);
-                            wd_free(val.u.s);
+                            wd_free(opt_val.u.s);
                             merged = NULL;
                             break;
                         }
                         merged = tmp;
 
                         if (!old_len)
-                            snprintf(merged, new_len, "%s", val.u.s);
+                            snprintf(merged, new_len, "%s", opt_val.u.s);
                         else
-                            snprintf(merged + old_len, new_len - old_len, " %s", val.u.s);
+                            snprintf(merged + old_len, new_len - old_len, " %s", opt_val.u.s);
 
-                        wd_free(val.u.s);
-                        val.u.s = NULL;
+                        wd_free(opt_val.u.s);
+                        opt_val.u.s = NULL;
+                    }
+
+                    if (proc_file) {
+                        fclose(proc_file);
+                        if (path_acces(".__CP.log"))
+                            remove(".__CP.log");
                     }
 
                     if (merged) {
@@ -225,10 +282,6 @@ int wd_run_compiler(const char *arg, const char *compile_args)
                                                       wcfg.wd_toml_gm_input,
                                                       wcfg.wd_toml_gm_output) + 1;
                     char *title_compiler_info = wd_malloc(needed);
-                    if (!title_compiler_info)
-                    {
-                        return __RETN;
-                    }
                     snprintf(title_compiler_info, needed, "Watchdogs | @ compile | %s | %s | %s",
                                                           wcfg.wd_sef_found_list[0],
                                                           wcfg.wd_toml_gm_input,
@@ -244,7 +297,7 @@ int wd_run_compiler(const char *arg, const char *compile_args)
                     double compiler_dur;
 
                     clock_gettime(CLOCK_MONOTONIC, &start);
-                        wd_run_command(_compiler_);
+                        system(_compiler_);
                     clock_gettime(CLOCK_MONOTONIC, &end);
 
                     if (procc_f) {
@@ -252,7 +305,15 @@ int wd_run_compiler(const char *arg, const char *compile_args)
                     }
 
                     char _container_output[PATH_MAX + 128];
-                    snprintf(_container_output, sizeof(_container_output), "%s.amx", container_output);
+                    snprintf(_container_output, sizeof(_container_output), "%s", wcfg.wd_toml_gm_output);
+
+                    int amx_access = path_acces(_container_output);
+                    if (amx_access) {
+                      char __sz_sha256_file[PATH_MAX * 2];
+                      snprintf(__sz_sha256_file, sizeof(__sz_sha256_file), "%lu (0x%lx)",
+                          djb2_hash_file(wcfg.wd_toml_gm_output), djb2_hash_file(wcfg.wd_toml_gm_output));
+                      printf("djb2 hash %s: %s\n", wcfg.wd_toml_gm_output, __sz_sha256_file);
+                    }
 
                     procc_f = fopen(".wd_compiler.log", "r");
                     if (procc_f)
@@ -261,7 +322,7 @@ int wd_run_compiler(const char *arg, const char *compile_args)
                         int __has_error = 0;
                         while (fgets(line_buf, sizeof(line_buf), procc_f))
                         {
-                            if (strstr(line_buf, "error") || strstr(line_buf, "Error"))
+                            if (strstr(line_buf, "error"))
                                 __has_error = 1;
                         }
                         fclose(procc_f);
@@ -475,10 +536,6 @@ int wd_run_compiler(const char *arg, const char *compile_args)
                                                           wcfg.wd_sef_found_list[1],
                                                           container_output) + 1;
                         char *title_compiler_info = wd_malloc(needed);
-                        if (!title_compiler_info)
-                        {
-                            return __RETN;
-                        }
                         snprintf(title_compiler_info, needed, "Watchdogs | @ compile | %s | %s | %s.amx",
                                                               wcfg.wd_sef_found_list[0],
                                                               wcfg.wd_sef_found_list[1],
@@ -494,7 +551,7 @@ int wd_run_compiler(const char *arg, const char *compile_args)
                         double compiler_dur;
 
                         clock_gettime(CLOCK_MONOTONIC, &start);
-                            wd_run_command(_compiler_);
+                            system(_compiler_);
                         clock_gettime(CLOCK_MONOTONIC, &end);
 
                         if (procc_f) {
@@ -504,6 +561,14 @@ int wd_run_compiler(const char *arg, const char *compile_args)
                         char _container_output[PATH_MAX + 128];
                         snprintf(_container_output, sizeof(_container_output), "%s.amx", container_output);
 
+                        int amx_access = path_acces(_container_output);
+                        if (amx_access) {
+                          char __sz_sha256_file[PATH_MAX * 2];
+                          snprintf(__sz_sha256_file, sizeof(__sz_sha256_file), "%lu (0x%lx)",
+                                  djb2_hash_file(_container_output), djb2_hash_file(_container_output));
+                          printf("djb2 hash %s: %s\n", _container_output, __sz_sha256_file);
+                        }
+
                         procc_f = fopen(".wd_compiler.log", "r");
                         if (procc_f)
                         {
@@ -511,7 +576,7 @@ int wd_run_compiler(const char *arg, const char *compile_args)
                             int __has_error = 0;
                             while (fgets(line_buf, sizeof(line_buf), procc_f))
                             {
-                                if (strstr(line_buf, "error") || strstr(line_buf, "Error"))
+                                if (strstr(line_buf, "error"))
                                     __has_error = 1;
                             }
                             fclose(procc_f);

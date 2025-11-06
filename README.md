@@ -206,7 +206,7 @@ git clone https://github.com/klantle/libwatchdogs watch && cd watch && [ -d "/c/
 # cd to your_project directory
 cd /c/users/desktop_name/downloads/your_project
 # Download stable binary
-curl -L -o watchdogs.win "https://github.com/klantle/watchdogs/releases/download/WD-251101/watchdogs.win"
+curl -L -o watchdogs.win "https://gitlab.com/mywatchdogs/watchdogs/-/releases/WD-251101"
 # Install library
 git clone https://github.com/klantle/libwatchdogs watch && cd watch && [ -d "/c/libwatchdogs" ] && rm -rf -- "/c/libwatchdogs"  && mv -f libwatchdogs /c/ && mv -f run-native.bat .. && cd .. && rm -rf watch
 # Exit from Git Bash and run '.bat' in your your_project on Windows File Explorer.
@@ -277,9 +277,9 @@ option = ["-Z+", "-O2", "-d2", "-;+", "-(+"]
 # Include paths for compiler
 include_path = [
     "gamemodes",
-    "gamemodes/x", 
-    "gamemodes/y", 
-    "gamemodes/z", 
+    "gamemodes/x",
+    "gamemodes/y",
+    "gamemodes/z",
     "pawno/include",
     "pawno/include/x",
     "pawno/include/y",
@@ -459,7 +459,7 @@ alias watch='./watchdogs'
 
 ## Compiler Reference
 
-* **Pawncc/PawnCC/Pawn Code/Pawno/Qawno** 
+* **Pawncc/PawnCC/Pawn Code/Pawno/Qawno**
 <br>Pawncc is essentially an extension for converting .pwn files into .amx files (a converter). The primary language for SA-MP/Open.MP is [Pawn Code](https://www.compuphase.com/pawn/pawn.htm), and pawno/qawno are Pawn Editors designed to facilitate the integration of Pawncc itself. PawnCC refers to a modified version of Pawncc from pawn-lang - https://github.com/pawn-lang/compiler, which means Pawn Community Compiler (PawnCC or PCC).
 <br>
 

@@ -3,24 +3,12 @@
 #include <string.h>
 #include <stdint.h>
 
-#include "utils.h"
+#include "wd_util.h"
+#include "wd_crypto.h"
 
-/* Constants for SHA-256 */
-#define SHA256_BLOCK_SIZE 64
-#define SHA256_DIGEST_SIZE 32
-
-/* SHA-256 context structure */
-typedef struct {
-        uint32_t state[8];
-        uint64_t count;
-        uint8_t buffer[SHA256_BLOCK_SIZE];
-} SHA256_CTX;
-
-/* Base64 encoding/decoding functions */
-static const char base64_table[] = 
+static const char base64_table[] =
         "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
 
-/* SHA-256 functions */
 static uint32_t rotr(uint32_t x, int n) {
         return (x >> n) | (x << (32 - n));
 }
@@ -49,7 +37,6 @@ static uint32_t gamma1(uint32_t x) {
         return rotr(x, 17) ^ rotr(x, 19) ^ (x >> 10);
 }
 
-/* SHA-256 constants */
 static const uint32_t k[64] = {
         0x428a2f98, 0x71374491, 0xb5c0fbcf, 0xe9b5dba5,
         0x3956c25b, 0x59f111f1, 0x923f82a4, 0xab1c5ed5,
@@ -69,12 +56,22 @@ static const uint32_t k[64] = {
         0x90befffa, 0xa4506ceb, 0xbef9a3f7, 0xc67178f2
 };
 
+uint32_t hash_str(const char *s)
+{
+        uint32_t h = 5381;
+        int c;
+
+        while ((c = *s++))
+          h = ((h << 5) + h) + (uint32_t)c; /* h * 33 + c */
+
+        return h;
+}
+
 static void sha256_transform(SHA256_CTX *ctx, const uint8_t data[SHA256_BLOCK_SIZE]) {
         uint32_t a, b, c, d, e, f, g, h;
         uint32_t w[64];
         int i;
 
-        /* Copy data to w array */
         for (i = 0; i < 16; i++) {
                 w[i] = ((uint32_t)data[i * 4] << 24) |
                            ((uint32_t)data[i * 4 + 1] << 16) |
@@ -136,14 +133,12 @@ static void sha256_update(SHA256_CTX *ctx, const uint8_t *data, size_t len) {
 
         ctx->count += len;
 
-        /* Process available complete blocks */
         for (i = 0; i + SHA256_BLOCK_SIZE <= len; i += SHA256_BLOCK_SIZE) {
                 memcpy(ctx->buffer + index, data + i, SHA256_BLOCK_SIZE - index);
                 sha256_transform(ctx, ctx->buffer);
                 index = 0;
         }
 
-        /* Store remaining data in buffer */
         if (i < len) {
                 memcpy(ctx->buffer + index, data + i, len - i);
         }
@@ -154,9 +149,8 @@ static void sha256_final(SHA256_CTX *ctx, uint8_t digest[SHA256_DIGEST_SIZE]) {
         size_t index = ctx->count % SHA256_BLOCK_SIZE;
         int i;
 
-        /* Append padding */
         ctx->buffer[index++] = 0x80;
-        
+
         if (index > 56) {
                 memset(ctx->buffer + index, 0, SHA256_BLOCK_SIZE - index);
                 sha256_transform(ctx, ctx->buffer);
@@ -164,15 +158,13 @@ static void sha256_final(SHA256_CTX *ctx, uint8_t digest[SHA256_DIGEST_SIZE]) {
         }
 
         memset(ctx->buffer + index, 0, 56 - index);
-        
-        /* Append length */
+
         for (i = 0; i < 8; i++) {
                 ctx->buffer[63 - i] = (bit_count >> (i * 8)) & 0xff;
         }
-        
+
         sha256_transform(ctx, ctx->buffer);
 
-        /* Output digest */
         for (i = 0; i < 8; i++) {
                 digest[i * 4] = (ctx->state[i] >> 24) & 0xff;
                 digest[i * 4 + 1] = (ctx->state[i] >> 16) & 0xff;
@@ -181,7 +173,6 @@ static void sha256_final(SHA256_CTX *ctx, uint8_t digest[SHA256_DIGEST_SIZE]) {
         }
 }
 
-/* Simple random number generator for demonstration */
 static uint32_t simple_rand(void) {
         static uint32_t seed = 0;
         seed = seed * 1103515245 + 12345;
@@ -195,7 +186,6 @@ static void simple_rand_bytes(uint8_t *buf, size_t len) {
         }
 }
 
-/* PBKDF2 implementation */
 static void hmac_sha256(const uint8_t *key, size_t key_len,
                                            const uint8_t *data, size_t data_len,
                                            uint8_t digest[SHA256_DIGEST_SIZE]) {
@@ -224,47 +214,29 @@ static void hmac_sha256(const uint8_t *key, size_t key_len,
                 k_opad[i] ^= 0x5c;
         }
 
-        /* Inner hash */
         sha256_init(&ctx);
         sha256_update(&ctx, k_ipad, SHA256_BLOCK_SIZE);
         sha256_update(&ctx, data, data_len);
         sha256_final(&ctx, tmp);
 
-        /* Outer hash */
         sha256_init(&ctx);
         sha256_update(&ctx, k_opad, SHA256_BLOCK_SIZE);
         sha256_update(&ctx, tmp, SHA256_DIGEST_SIZE);
         sha256_final(&ctx, digest);
 }
 
-/* AES implementation (simplified - for demonstration) */
-#define AES_BLOCK_SIZE 16
-
-typedef struct {
-        uint32_t rd_key[60];
-        int rounds;
-} AES_KEY;
-
-/* Simplified AES - in real implementation you'd need full AES */
-static void aes_encrypt(const uint8_t in[AES_BLOCK_SIZE], 
-                                           uint8_t out[AES_BLOCK_SIZE], 
+void aes_encrypt(const uint8_t in[AES_BLOCK_SIZE],
+                                           uint8_t out[AES_BLOCK_SIZE],
                                            const AES_KEY *key) {
-        /* Simplified - replace with proper AES implementation */
         memcpy(out, in, AES_BLOCK_SIZE);
 }
 
-static void aes_decrypt(const uint8_t in[AES_BLOCK_SIZE], 
-                                           uint8_t out[AES_BLOCK_SIZE], 
+void aes_decrypt(const uint8_t in[AES_BLOCK_SIZE],
+                                           uint8_t out[AES_BLOCK_SIZE],
                                            const AES_KEY *key) {
-        /* Simplified - replace with proper AES implementation */
         memcpy(out, in, AES_BLOCK_SIZE);
 }
 
-/* Main functions implementation */
-
-/**
- * sha256_hash - Compute SHA-256 hash of input string
- */
 int sha256_hash(const char *input, unsigned char output[32])
 {
         SHA256_CTX ctx;
@@ -279,9 +251,6 @@ int sha256_hash(const char *input, unsigned char output[32])
         return __RETN;
 }
 
-/**
- * base64_encode - Base64 encode binary data
- */
 char *base64_encode(const unsigned char *input, int len)
 {
         char *buffer;
@@ -312,9 +281,6 @@ char *base64_encode(const unsigned char *input, int len)
         return buffer;
 }
 
-/**
- * base64_decode - Base64 decode string to binary data
- */
 unsigned char *base64_decode(const char *input, int *out_len)
 {
         unsigned char *buffer;
@@ -340,11 +306,11 @@ unsigned char *base64_decode(const char *input, int *out_len)
 
         for (i = 0, j = 0; i < input_len; i += 4, j += 3) {
                 sextet = 0;
-                
+
                 for (int k = 0; k < 4; k++) {
                         char c = input[i + k];
                         val = 0;
-                        
+
                         if (c >= 'A' && c <= 'Z') val = c - 'A';
                         else if (c >= 'a' && c <= 'z') val = c - 'a' + 26;
                         else if (c >= '0' && c <= '9') val = c - '0' + 52;
@@ -355,7 +321,7 @@ unsigned char *base64_decode(const char *input, int *out_len)
                                 wd_free(buffer);
                                 return NULL;
                         }
-                        
+
                         sextet = (sextet << 6) | val;
                 }
 
@@ -370,9 +336,6 @@ unsigned char *base64_decode(const char *input, int *out_len)
         return buffer;
 }
 
-/**
- * derive_key_pbkdf2 - Derive key using PBKDF2 with SHA-256
- */
 int derive_key_pbkdf2(const char *passphrase, const unsigned char *salt,
 					  int salt_len, unsigned char *key, int key_len)
 {
@@ -389,19 +352,16 @@ int derive_key_pbkdf2(const char *passphrase, const unsigned char *salt,
         blocks = (key_len + SHA256_DIGEST_SIZE - 1) / SHA256_DIGEST_SIZE;
 
         for (i = 1; i <= blocks; i++) {
-                /* Prepare salt + block counter */
                 memcpy(salt_buffer, salt, salt_len);
                 block_counter = i;
                 for (j = 0; j < 4; j++) {
                         salt_buffer[salt_len + 3 - j] = (block_counter >> (j * 8)) & 0xff;
                 }
 
-                /* First iteration */
                 hmac_sha256((const uint8_t *)passphrase, strlen(passphrase),
                                    salt_buffer, salt_len + 4, u);
                 memcpy(t, u, SHA256_DIGEST_SIZE);
 
-                /* Subsequent iterations */
                 for (j = 1; j < iterations; j++) {
                         hmac_sha256((const uint8_t *)passphrase, strlen(passphrase),
                                            u, SHA256_DIGEST_SIZE, u);
@@ -410,8 +370,7 @@ int derive_key_pbkdf2(const char *passphrase, const unsigned char *salt,
                         }
                 }
 
-                /* Copy to key */
-                int copy_len = (i == blocks) ? 
+                int copy_len = (i == blocks) ?
                         key_len - (i - 1) * SHA256_DIGEST_SIZE : SHA256_DIGEST_SIZE;
                 memcpy(key + (i - 1) * SHA256_DIGEST_SIZE, t, copy_len);
         }
@@ -419,19 +378,10 @@ int derive_key_pbkdf2(const char *passphrase, const unsigned char *salt,
         return __RETN;
 }
 
-/**
- * encrypt_with_password - Simplified encryption (needs proper AES implementation)
- */
 int encrypt_with_password(const unsigned char *plain, int plaintext_len,
 						  const char *passphrase, unsigned char **out_blob,
 						  int *out_blob_len)
 {
-        /* This is a simplified version - you'd need to implement:
-         * 1. Full AES-256-CBC encryption
-         * 2. Proper padding (PKCS#7)
-         * 3. Complete cryptographic routines
-         */
-        
         const int salt_len = 16;
         const int iv_len = 16;
         unsigned char salt[salt_len];
@@ -442,11 +392,9 @@ int encrypt_with_password(const unsigned char *plain, int plaintext_len,
                 !out_blob || !out_blob_len)
                 return __RETZ;
 
-        /* Generate random salt and IV */
         simple_rand_bytes(salt, salt_len);
         simple_rand_bytes(iv, iv_len);
 
-        /* For demonstration - just copy plain */
         total_len = salt_len + iv_len + plaintext_len;
         unsigned char *blob = wd_malloc(total_len);
         if (!blob)
@@ -462,9 +410,6 @@ int encrypt_with_password(const unsigned char *plain, int plaintext_len,
         return __RETN;
 }
 
-/**
- * decrypt_with_password - Simplified decryption (needs proper AES implementation)
- */
 int decrypt_with_password(const unsigned char *in_blob, int in_blob_len,
 						  const char *passphrase, unsigned char **out_plain,
 						  int *out_plain_len)
@@ -479,7 +424,6 @@ int decrypt_with_password(const unsigned char *in_blob, int in_blob_len,
         if (in_blob_len <= salt_len + iv_len)
                 return __RETZ;
 
-        /* For demonstration - just extract plain */
         int plaintext_len = in_blob_len - salt_len - iv_len;
         unsigned char *plain = wd_malloc(plaintext_len);
         if (!plain)
@@ -493,9 +437,6 @@ int decrypt_with_password(const unsigned char *in_blob, int in_blob_len,
         return __RETN;
 }
 
-/**
- * to_hex - Convert binary data to hexadecimal string
- */
 int to_hex(const unsigned char *in, int in_len, char **out)
 {
         char *buffer;

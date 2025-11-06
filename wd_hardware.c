@@ -2,10 +2,50 @@
 #include <stdlib.h>
 #include <string.h>
 #include <stdarg.h>
+#include "wd_hardware.h"
 #ifdef _WIN32
 #include <windows.h>
 #include <iphlpapi.h>
 #include <intrin.h>
+int uname(struct utsname *name)
+{
+		OSVERSIONINFOEX osvi;
+		SYSTEM_INFO si;
+
+		ZeroMemory(&osvi, sizeof(OSVERSIONINFOEX));
+		osvi.dwOSVersionInfoSize = sizeof(OSVERSIONINFOEX);
+
+		if (!GetVersionEx((OSVERSIONINFO*)&osvi))
+				return -1;
+
+		GetSystemInfo(&si);
+
+		snprintf(name->sysname, sizeof(name->sysname), "Windows");
+		snprintf(name->release, sizeof(name->release), "%lu.%lu",
+				 osvi.dwMajorVersion, osvi.dwMinorVersion);
+		snprintf(name->version, sizeof(name->version), "Build %lu",
+				 osvi.dwBuildNumber);
+
+		switch (si.wProcessorArchitecture) {
+			case PROCESSOR_ARCHITECTURE_AMD64:
+					snprintf(name->machine, sizeof(name->machine), "x86_64");
+					break;
+			case PROCESSOR_ARCHITECTURE_INTEL:
+					snprintf(name->machine, sizeof(name->machine), "x86");
+					break;
+			case PROCESSOR_ARCHITECTURE_ARM:
+					snprintf(name->machine, sizeof(name->machine), "ARM");
+					break;
+			case PROCESSOR_ARCHITECTURE_ARM64:
+					snprintf(name->machine, sizeof(name->machine), "ARM64");
+					break;
+			default:
+					snprintf(name->machine, sizeof(name->machine), "Unknown");
+					break;
+		}
+
+		return 0;
+}
 #else
 #include <sys/statvfs.h>
 #include <sys/utsname.h>
@@ -14,8 +54,7 @@
 #include <unistd.h>
 #endif
 
-#include "hardware.h"
-#include "utils.h"
+#include "wd_util.h"
 
 // ============================
 // DISPLAY FUNCTIONS
@@ -24,10 +63,10 @@
 void hardware_display_field(unsigned int field_id, const char* format, ...) {
         va_list args;
         va_start(args, format);
-        
+
         const char* field_name = "";
         char prefix[32] = "";
-        
+
         // Determine field category and name
         switch (field_id & 0xFF00) {
                 case 0x0000: // CPU fields
@@ -42,7 +81,7 @@ void hardware_display_field(unsigned int field_id, const char* format, ...) {
                                 case FIELD_CPU_ARCH: field_name = "Architecture"; break;
                         }
                         break;
-                        
+
                 case 0x0100: // Memory fields
                         strcpy(prefix, "MEM->");
                         switch (field_id) {
@@ -52,7 +91,7 @@ void hardware_display_field(unsigned int field_id, const char* format, ...) {
                                 case FIELD_MEM_TYPE: field_name = "Type"; break;
                         }
                         break;
-                        
+
                 case 0x0200: // Disk fields
                         strcpy(prefix, "DISK->");
                         switch (field_id) {
@@ -63,16 +102,16 @@ void hardware_display_field(unsigned int field_id, const char* format, ...) {
                                 case FIELD_DISK_FS: field_name = "File System"; break;
                         }
                         break;
-                        
+
                 default:
                         field_name = "Unknown";
                         break;
         }
-        
+
         printf("%-8s%-20s: ", prefix, field_name);
         vprintf(format, args);
         printf("\n");
-        
+
         va_end(args);
 }
 
@@ -84,33 +123,33 @@ void hardware_display_field(unsigned int field_id, const char* format, ...) {
 
 int hardware_cpu_info(HardwareCPU* cpu) {
         if (!cpu) return __RETZ;
-        
+
         memset(cpu, 0, sizeof(HardwareCPU));
-        
+
         // Get CPU brand
         int cpuInfo[4] = { 0 };
         char brand[64] = { 0 };
         __cpuid(cpuInfo, 0x80000000);
         unsigned int maxId = cpuInfo[0];
-        
+
         if (maxId >= 0x80000004) {
                 __cpuid((int*)(brand), 0x80000002);
                 __cpuid((int*)(brand+16), 0x80000003);
                 __cpuid((int*)(brand+32), 0x80000004);
                 strncpy(cpu->name, brand, sizeof(cpu->name)-1);
         }
-        
+
         // Get vendor
         __cpuid(cpuInfo, 0);
         int vendor[4] = {cpuInfo[1], cpuInfo[3], cpuInfo[2], 0};
         strncpy(cpu->vendor, (char*)vendor, sizeof(cpu->vendor)-1);
-        
+
         // Get core info
         SYSTEM_INFO si;
         GetSystemInfo(&si);
         cpu->cores = si.dwNumberOfProcessors;
         cpu->threads = si.dwNumberOfProcessors; // Simplified
-        
+
         // Get architecture
         if (si.wProcessorArchitecture == PROCESSOR_ARCHITECTURE_AMD64) {
                 strcpy(cpu->architecture, "x86_64");
@@ -119,15 +158,15 @@ int hardware_cpu_info(HardwareCPU* cpu) {
         } else {
                 strcpy(cpu->architecture, "Unknown");
         }
-        
+
         return __RETN;
 }
 
 int hardware_memory_info(HardwareMemory* mem) {
         if (!mem) return __RETZ;
-        
+
         memset(mem, 0, sizeof(HardwareMemory));
-        
+
         MEMORYSTATUSEX memInfo;
         memInfo.dwLength = sizeof(memInfo);
         if (GlobalMemoryStatusEx(&memInfo)) {
@@ -137,26 +176,26 @@ int hardware_memory_info(HardwareMemory* mem) {
                 mem->avail_virt = memInfo.ullAvailVirtual;
                 return __RETN;
         }
-        
+
         return __RETZ;
 }
 
 int hardware_disk_info(HardwareDisk* disk, const char* drive) {
         if (!disk || !drive) return __RETZ;
-        
+
         memset(disk, 0, sizeof(HardwareDisk));
         strncpy(disk->mount_point, drive, sizeof(disk->mount_point)-1);
-        
+
         ULARGE_INTEGER freeBytes, totalBytes, totalFree;
         if (GetDiskFreeSpaceEx(drive, &freeBytes, &totalBytes, &totalFree)) {
                 disk->total_bytes = totalBytes.QuadPart;
                 disk->free_bytes = freeBytes.QuadPart;
                 disk->used_bytes = totalBytes.QuadPart - freeBytes.QuadPart;
-                
+
                 disk->total_gb = totalBytes.QuadPart / (1024.0 * 1024 * 1024);
                 disk->free_gb = freeBytes.QuadPart / (1024.0 * 1024 * 1024);
                 disk->used_gb = disk->used_bytes / (1024.0 * 1024 * 1024);
-                
+
                 // Get filesystem type
                 char fsName[32];
                 DWORD maxCompLen, fsFlags;
@@ -165,10 +204,10 @@ int hardware_disk_info(HardwareDisk* disk, const char* drive) {
                 } else {
                         strcpy(disk->filesystem, "Unknown");
                 }
-                
+
                 return __RETN;
         }
-        
+
         return __RETZ;
 }
 
@@ -176,15 +215,15 @@ int hardware_disk_info(HardwareDisk* disk, const char* drive) {
 
 int hardware_cpu_info(HardwareCPU* cpu) {
         if (!cpu) return __RETZ;
-        
+
         memset(cpu, 0, sizeof(HardwareCPU));
-        
+
         FILE *f = fopen("/proc/cpuinfo", "r");
         if (!f) return __RETZ;
-        
+
         char line[256];
         int cores = 0;
-        
+
         while (fgets(line, sizeof(line), f)) {
                 if (strncmp(line, "model name", 10) == 0) {
                         char *colon = strchr(line, ':');
@@ -217,29 +256,29 @@ int hardware_cpu_info(HardwareCPU* cpu) {
                         }
                 }
         }
-        
+
         fclose(f);
-        
+
         // Get architecture
         struct utsname uts;
         if (uname(&uts) == 0) {
                 strncpy(cpu->architecture, uts.machine, sizeof(cpu->architecture)-1);
         }
-        
+
         return __RETN;
 }
 
 int hardware_memory_info(HardwareMemory* mem) {
         if (!mem) return __RETZ;
-        
+
         memset(mem, 0, sizeof(HardwareMemory));
-        
+
         FILE *f = fopen("/proc/meminfo", "r");
         if (!f) return __RETZ;
-        
+
         char key[64], unit[64];
         unsigned long val;
-        
+
         while (fscanf(f, "%63s %lu %63s", key, &val, unit) == 3) {
                 if (strcmp(key, "MemTotal:") == 0) {
                         mem->total_phys = val * 1024; // Convert KB to bytes
@@ -248,32 +287,32 @@ int hardware_memory_info(HardwareMemory* mem) {
                         mem->avail_phys = val * 1024;
                 }
         }
-        
+
         fclose(f);
         return __RETN;
 }
 
 int hardware_disk_info(HardwareDisk* disk, const char* mount_point) {
         if (!disk || !mount_point) return __RETZ;
-        
+
         memset(disk, 0, sizeof(HardwareDisk));
         strncpy(disk->mount_point, mount_point, sizeof(disk->mount_point)-1);
-        
+
         struct statvfs stat;
         if (statvfs(mount_point, &stat) == 0) {
                 disk->total_bytes = (unsigned long long)stat.f_blocks * stat.f_frsize;
                 disk->free_bytes = (unsigned long long)stat.f_bfree * stat.f_frsize;
                 disk->used_bytes = disk->total_bytes - disk->free_bytes;
-                
+
                 disk->total_gb = disk->total_bytes / (1024.0 * 1024 * 1024);
                 disk->free_gb = disk->free_bytes / (1024.0 * 1024 * 1024);
                 disk->used_gb = disk->used_bytes / (1024.0 * 1024 * 1024);
-                
+
                 strncpy(disk->filesystem, "Unknown", sizeof(disk->filesystem)-1);
-                
+
                 return __RETN;
         }
-        
+
         return __RETZ;
 }
 
@@ -300,9 +339,9 @@ void hardware_display_cpu_comprehensive() {
 void hardware_display_memory_comprehensive() {
         HardwareMemory mem;
         if (hardware_memory_info(&mem)) {
-                hardware_display_field(FIELD_MEM_TOTAL, "%.2f GB", 
+                hardware_display_field(FIELD_MEM_TOTAL, "%.2f GB",
                                                           mem.total_phys / (1024.0 * 1024 * 1024));
-                hardware_display_field(FIELD_MEM_AVAIL, "%.2f GB", 
+                hardware_display_field(FIELD_MEM_AVAIL, "%.2f GB",
                                                           mem.avail_phys / (1024.0 * 1024 * 1024));
                 if (mem.speed > 0) {
                         hardware_display_field(FIELD_MEM_SPEED, "%u MHz", mem.speed);
@@ -340,7 +379,7 @@ void hardware_query_specific(unsigned int* fields, int count) {
                                                 hardware_cpu_info(&cpu);
                                                 cpu_loaded = 1;
                                         }
-                                        
+
                                         switch (fields[i]) {
                                                 case FIELD_CPU_NAME:
                                                         hardware_display_field(FIELD_CPU_NAME, "%s", cpu.name);
@@ -368,20 +407,20 @@ void hardware_query_specific(unsigned int* fields, int count) {
                                                 hardware_memory_info(&mem);
                                                 mem_loaded = 1;
                                         }
-                                        
+
                                         switch (fields[i]) {
                                                 case FIELD_MEM_TOTAL:
-                                                        hardware_display_field(FIELD_MEM_TOTAL, "%.2f GB", 
+                                                        hardware_display_field(FIELD_MEM_TOTAL, "%.2f GB",
                                                                                                   mem.total_phys / (1024.0 * 1024 * 1024));
                                                         break;
                                                 case FIELD_MEM_AVAIL:
-                                                        hardware_display_field(FIELD_MEM_AVAIL, "%.2f GB", 
+                                                        hardware_display_field(FIELD_MEM_AVAIL, "%.2f GB",
                                                                                                   mem.avail_phys / (1024.0 * 1024 * 1024));
                                                         break;
                                         }
                                 }
                                 break;
-                                
+
                         case FIELD_DISK_FREE: case FIELD_DISK_TOTAL:
                                 {
                                         static int disk_loaded = 0;
@@ -394,7 +433,7 @@ void hardware_query_specific(unsigned int* fields, int count) {
 #endif
                                                 disk_loaded = 1;
                                         }
-                                        
+
                                         switch (fields[i]) {
                                                 case FIELD_DISK_TOTAL:
                                                         hardware_display_field(FIELD_DISK_TOTAL, "%.2f GB", disk.total_gb);
@@ -417,27 +456,27 @@ void hardware_show_summary() {
         printf("=== HARDWARE SUMMARY ===\n");
         hardware_display_cpu_comprehensive();
         hardware_display_memory_comprehensive();
-        
+
 #ifdef _WIN32
         hardware_display_disk_comprehensive("C:\\");
 #else
         hardware_display_disk_comprehensive("/");
 #endif
-        
+
         printf("\n");
 }
 
 void hardware_show_detailed() {
         printf("=== DETAILED HARDWARE INFORMATION ===\n");
-        
+
         // CPU Section
         printf("\n[CPU Information]\n");
         hardware_display_cpu_comprehensive();
-        
+
         // Memory Section
         printf("\n[Memory Information]\n");
         hardware_display_memory_comprehensive();
-        
+
         // Disk Section
         printf("\n[Disk Information]\n");
 #ifdef _WIN32

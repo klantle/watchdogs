@@ -1,4 +1,4 @@
-// hardware.h
+// wd_hardware.h
 #ifndef HARDWARE_INFO_H
 #define HARDWARE_INFO_H
 
@@ -115,6 +115,18 @@ typedef struct {
 // ============================
 // FUNCTION DECLARATIONS
 // ============================
+
+// uname for Windows
+#ifdef _WIN32
+struct utsname {
+		char sysname[256];
+		char nodename[256];
+		char release[256];
+		char version[256];
+		char machine[256];
+};
+int uname(struct utsname *name);
+#endif
 
 // Core information retrieval functions
 int hardware_cpu_info(HardwareCPU* cpu);

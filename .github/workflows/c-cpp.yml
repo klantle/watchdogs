@@ -44,8 +44,7 @@ jobs:
           libreadline-dev \
           libarchive-dev \
           zlib1g-dev \
-          libonig-dev \
-          xterm
+          libonig-dev
 
     # -----------------------------------------------------------
     # Step 3: Build the project

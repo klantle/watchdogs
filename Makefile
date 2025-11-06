@@ -17,7 +17,7 @@ STRIP        ?= llvm-strip
 CFLAGS   = -Os -pipe -s -fdata-sections -ffunction-sections
 LDFLAGS  = -Wl,-O0,--gc-sections -lm -lcurl -lreadline -lncursesw -larchive
 
-SRCS = color.c curl.c chain.c utils.c depends.c hardware.c compiler.c archive.c package.c server.c crypto.c \
+SRCS = wd_extra.c wd_curl.c wd_unit.c wd_util.c wd_depends.c wd_hardware.c wd_compiler.c wd_archive.c wd_package.c wd_server.c wd_crypto.c \
        include/tomlc/toml.c include/cJSON/cJSON.c
 
 OBJS = $(SRCS:.c=.o)
@@ -38,6 +38,7 @@ init:
 		echo "$(YELLOW)==>$(RESET) Detected: MSYS2 MinGW UCRT64 environment"; \
 		pacman -Sy --noconfirm && \
 		pacman -S --needed --noconfirm \
+			curl \
 			clang \
 			base-devel \
 			mingw-w64-ucrt-x86_64-gcc \
@@ -54,29 +55,26 @@ init:
 		echo "$(YELLOW)==>$(RESET) Installing dependencies without sudo..."; \
 		if command -v apt >/dev/null 2>&1; then \
 			apt update -y && \
-			apt install -y build-essential procps clang lld make \
+			apt install -y build-essential curl procps clang lld make \
 				libcurl4-openssl-dev libncursesw5-dev libreadline-dev \
-				libarchive-dev zlib1g-dev libonig-dev xterm; \
+				libarchive-dev zlib1g-dev libonig-dev; \
 		elif command -v dnf >/dev/null 2>&1; then \
 			dnf groupinstall -y "Development Tools" && \
 			dnf install -y clang lld libcxx-devel ncurses-devel \
-				curl-devel readline-devel libarchive-devel zlib-devel \
-				xterm; \
+				curl-devel readline-devel libarchive-devel zlib-devel; \
 		elif command -v yum >/dev/null 2>&1; then \
 			yum groupinstall -y "Development Tools" && \
 			yum install -y clang lld libcxx-devel ncurses-devel \
-				curl-devel readline-devel libarchive-devel zlib-devel \
-				xterm; \
+				curl-devel readline-devel libarchive-devel zlib-devel; \
 		elif command -v zypper >/dev/null 2>&1; then \
 			zypper refresh && \
 			zypper install -y -t pattern devel_basis && \
-			zypper install -y clang lld libc++-devel ncurses-devel \
-				libcurl-devel readline-devel libarchive-devel zlib-devel \
-				xterm; \
+			zypper install -y curl clang lld libc++-devel ncurses-devel \
+				libcurl-devel readline-devel libarchive-devel zlib-devel; \
 		elif command -v pacman >/dev/null 2>&1; then \
 			pacman -Sy --noconfirm && \
 			pacman -S --needed --noconfirm base-devel clang lld libc++ ncurses \
-				curl readline libarchive zlib xterm; \
+				curl readline libarchive zlib; \
 		else \
 			echo "$(RED)==>$(RESET) Cannot install dependencies: package manager not found"; \
 			echo "$(YELLOW)==>$(RESET) Please install dependencies manually."; \

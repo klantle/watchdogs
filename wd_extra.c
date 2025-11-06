@@ -3,20 +3,13 @@
 #include <string.h>
 #include <stdarg.h>
 
-#include "color.h"
+#include "wd_extra.h"
 
-// Borders Colors
 char *BG = "\x1b[48;5;235m";
 char *FG = "\x1b[97m";
 char *BORD = "\x1b[33m";
 char *RST = "\x1b[0m";
 
-/**
- * println - Print formatted string with newline
- * @stream : Stream Output
- * @format: Format string
- * @...: Format arguments
- */
 void println(FILE *stream, const char *format, ...)
 {
 		va_list args;
@@ -29,13 +22,6 @@ void println(FILE *stream, const char *format, ...)
 		fflush(stream);
 }
 
-/**
- * printf_color - Print colored formatted text
- * @stream : Stream Output
- * @color: Color
- * @format: Format string
- * @...: Format arguments
- */
 void printf_color(FILE *stream, const char *color, const char *format, ...)
 {
 		va_list args;
@@ -49,18 +35,12 @@ void printf_color(FILE *stream, const char *color, const char *format, ...)
 		fflush(stream);
 }
 
-
-/**
- * printf_info - Print info message
- * @format: Format string
- * @...: Format arguments
- */
 void printf_info(FILE *stream, const char *format, ...)
 {
 		va_list args;
 
 		va_start(args, format);
-		pr_color(stdout, FCOLOUR_YELLOW, "info: ");
+		printf("[INFO]: ");
 		vprintf(format, args);
 		printf("\n");
 		va_end(args);
@@ -68,17 +48,12 @@ void printf_info(FILE *stream, const char *format, ...)
 		fflush(stream);
 }
 
-/**
- * printf_warning - Print warning message
- * @format: Format string
- * @...: Format arguments
- */
 void printf_warning(FILE *stream, const char *format, ...)
 {
 		va_list args;
 
 		va_start(args, format);
-		pr_color(stdout, FCOLOUR_GREEN, "warning: ");
+		printf("[WARNING]: ");
 		vprintf(format, args);
 		printf("\n");
 		va_end(args);
@@ -86,17 +61,12 @@ void printf_warning(FILE *stream, const char *format, ...)
 		fflush(stream);
 }
 
-/**
- * printf_error - Print error message
- * @format: Format string
- * @...: Format arguments
- */
 void printf_error(FILE *stream, const char *format, ...)
 {
 		va_list args;
 
 		va_start(args, format);
-		pr_color(stdout, FCOLOUR_RED, "error: ");
+		printf("[ERROR]: ");
 		vprintf(format, args);
 		printf("\n");
 		va_end(args);
@@ -104,17 +74,12 @@ void printf_error(FILE *stream, const char *format, ...)
 		fflush(stream);
 }
 
-/**
- * printf_crit - Print critical error message
- * @format: Format string
- * @...: Format arguments
- */
 void printf_crit(FILE *stream, const char *format, ...)
 {
 		va_list args;
 
 		va_start(args, format);
-		pr_color(stdout, FCOLOUR_RED, "crit: ");
+		printf("[CRIT]: ");
 		vprintf(format, args);
 		printf("\n");
 		va_end(args);

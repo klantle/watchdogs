@@ -4,19 +4,12 @@
 #include <archive.h>
 #include <archive_entry.h>
 
-#include "color.h"
-#include "utils.h"
-#include "archive.h"
-#include "curl.h"
-#include "chain.h"
+#include "wd_extra.h"
+#include "wd_util.h"
+#include "wd_archive.h"
+#include "wd_curl.h"
+#include "wd_unit.h"
 
-/**
- * arch_copy_data - Copy data between archive handles
- * @ar: Source archive
- * @aw: Destination archive
- *
- * Return: ARCHIVE_OK on success, archive error code on failure
- */
 static int arch_copy_data(struct archive *ar, struct archive *aw)
 {
 		int ret;
@@ -41,12 +34,6 @@ static int arch_copy_data(struct archive *ar, struct archive *aw)
 		}
 }
 
-/**
- * wd_extract_tar - Extract TAR archive
- * @tar_file: Path to TAR file
- *
- * Return: 0 on success, -__RETN on failure
- */
 int wd_extract_tar(const char *tar_file)
 {
 		struct archive *archive_read;
@@ -62,11 +49,9 @@ int wd_extract_tar(const char *tar_file)
 				goto error;
 		}
 
-		/* Configure archive readers */
 		archive_read_support_format_all(archive_read);
 		archive_read_support_filter_all(archive_read);
 
-		/* Configure disk writer options */
 		archive_write_disk_set_options(archive_write,
 								       ARCHIVE_EXTRACT_TIME |
 								       ARCHIVE_EXTRACT_PERM |
@@ -77,14 +62,12 @@ int wd_extract_tar(const char *tar_file)
 								       ARCHIVE_EXTRACT_SECURE_NODOTDOT |
 								       ARCHIVE_EXTRACT_NO_OVERWRITE_NEWER);
 
-		/* Open archive file */
 		ret = archive_read_open_filename(archive_read, tar_file, 1024 * 1024);
 		if (ret != ARCHIVE_OK) {
 				pr_error(stdout, "Cannot open file: %s", archive_error_string(archive_read));
 				goto error;
 		}
 
-		/* Extract entries */
 		while (1) {
 				ret = archive_read_next_header(archive_read, &item);
 				if (ret == ARCHIVE_EOF)
@@ -100,7 +83,6 @@ int wd_extract_tar(const char *tar_file)
 						break;
 				}
 
-				/* Copy file data if item has content */
 				if (archive_entry_size(item) > 0) {
 						ret = arch_copy_data(archive_read, archive_write);
 						if (ret != ARCHIVE_OK)
@@ -110,7 +92,6 @@ int wd_extract_tar(const char *tar_file)
 				archive_write_finish_entry(archive_write);
 		}
 
-		/* Cleanup */
 		archive_read_close(archive_read);
 		archive_write_close(archive_write);
 
@@ -127,20 +108,12 @@ error:
 		return -__RETN;
 }
 
-/**
- * build_extraction_path - Build full path for extracted file
- * @dest_path: Destination directory
- * @entry_path: Archive item path
- * @out_path: Output buffer for full path
- * @out_size: Size of output buffer
- */
 static void build_extraction_path(const char *dest_path, const char *entry_path,
 								  char *out_path, size_t out_size)
 {
 		if (!dest_path || !strcmp(dest_path, ".")|| *dest_path == '\0') {
 				snprintf(out_path, out_size, "%s", entry_path);
 		} else {
-				/* Check if item path already starts with destination path */
 				if (!strncmp(entry_path, dest_path, strlen(dest_path))) {
 						snprintf(out_path, out_size, "%s", entry_path);
 				} else {
@@ -149,14 +122,6 @@ static void build_extraction_path(const char *dest_path, const char *entry_path,
 		}
 }
 
-/**
- * extract_zip_entry - Extract single ZIP item
- * @archive_read: Source archive
- * @archive_write: Destination archive
- * @item: Archive item
- *
- * Return: 0 on success, error code on failure
- */
 static int extract_zip_entry(struct archive *archive_read,
 						     struct archive *archive_write,
 						     struct archive_entry *item)
@@ -172,7 +137,6 @@ static int extract_zip_entry(struct archive *archive_read,
 				return -__RETN;
 		}
 
-		/* Copy item data */
 		while (1) {
 				ret = archive_read_data_block(archive_read, &buffer, &size, &offset);
 				if (ret == ARCHIVE_EOF)
@@ -192,13 +156,6 @@ static int extract_zip_entry(struct archive *archive_read,
 		return __RETZ;
 }
 
-/**
- * wd_extract_zip - Extract ZIP archive
- * @zip_file: Path to ZIP file
- * @dest_path: Destination directory (NULL for current directory)
- *
- * Return: 0 on success, -__RETN on failure
- */
 int wd_extract_zip(const char *zip_file, const char *dest_path)
 {
 		struct archive *archive_read;
@@ -216,37 +173,30 @@ int wd_extract_zip(const char *zip_file, const char *dest_path)
 				goto error;
 		}
 
-		/* Configure ZIP reader */
 		archive_read_support_format_zip(archive_read);
 		archive_read_support_filter_all(archive_read);
 
-		/* Configure disk writer */
 		archive_write_disk_set_options(archive_write, ARCHIVE_EXTRACT_TIME);
 		archive_write_disk_set_standard_lookup(archive_write);
 
-		/* Open ZIP file */
 		ret = archive_read_open_filename(archive_read, zip_file, 1024 * 1024);
 		if (ret != ARCHIVE_OK) {
 				pr_error(stdout, "Cannot open file: %s", archive_error_string(archive_read));
 				goto error;
 		}
 
-		/* Extract all entries */
 		while (archive_read_next_header(archive_read, &item) == ARCHIVE_OK) {
 				const char *entry_path = archive_entry_pathname(item);
 
-				/* Build full extraction path */
 				build_extraction_path(dest_path, entry_path, full_path, sizeof(full_path));
 				archive_entry_set_pathname(item, full_path);
 
-				/* Extract current item */
 				if (extract_zip_entry(archive_read, archive_write, item) != 0) {
 						error_occurred = 1;
 						break;
 				}
 		}
 
-		/* Cleanup */
 		archive_read_close(archive_read);
 		archive_write_close(archive_write);
 

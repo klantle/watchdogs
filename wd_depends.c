@@ -1127,12 +1127,15 @@ static void dep_pr_file_type (const char *path, const char *pattern,
 
 				if (droot != 1) goto done;
 
-				if (!strcmp(wcfg.wd_is_omp, CRC32_TRUE))
+				if (!strcmp(wcfg.wd_is_omp, CRC32_TRUE) && strfind(wcfg.wd_toml_config, "cfg"))
+samp_label:
 					M_ADD_PLUGIN(wcfg.wd_toml_config,
 								 deps_bnames);
-				else
+				else if (!strcmp(wcfg.wd_is_omp, CRC32_TRUE) && strfind(wcfg.wd_toml_config, "json"))
 					S_ADD_PLUGIN(wcfg.wd_toml_config,
 								"plugins", deps_bnames);
+				else
+						goto samp_label;
 			}
 		}
 

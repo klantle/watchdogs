@@ -61,6 +61,21 @@ If you are confused about this project, you can use an A.I. Agent that can help 
 - Git
 - Bash shell environment
 
+### Roadmap
+| File              | Description                                                                                           |
+| ----------------- | ----------------------------------------------------------------------------------------------------- |
+| **wd_unit**     | This is the main Watchdogs file.                                                                      |
+| **wd_util**     | This file contains utility functions for Watchdogs.                                                   |
+| **wd_hardware** | This file contains hardware-related information for Watchdogs.                                        |
+| **wd_crypto**   | This file handles cryptographic operations such as hashing, encryption, and decryption for Watchdogs. |
+| **wd_curl**     | This file manages cURL connections, file installations, and Pawncc integration for Watchdogs.         |
+| **wd_archive**  | This file handles archive management, including extraction for Watchdogs.                             |
+| **wd_compiler** | This file handles the Pawncc compiler integration for Watchdogs.                                      |
+| **wd_extra**    | This file contains additional (extra) functions for Watchdogs.                                        |
+| **wd_depends**  | This file manages dependencies for Watchdogs.                                                         |
+| **wd_package**  | This file handles the installation process for SA-MP/Open.MP and Pawncc within Watchdogs.             |
+| **wd_server**   | This file manages the SA-MP/Open.MP server operations for Watchdogs.                                  |
+
 ## Quick Installation
 
 ### One-Line Installation (Linux/Debian)

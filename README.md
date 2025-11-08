@@ -223,7 +223,7 @@ cd /c/users/desktop_name/downloads/your_project
 ```
 > Download stable binary
 ```bash
-curl -L -o watchdogs.win "https://gitlab.com/mywatchdogs/watchdogs/-/releases/WD-251101/evidences/16365878.json"
+curl -L -o watchdogs.win "https://gitlab.com/mywatchdogs/watchdogs/-/releases/WD-251101/evidences/16380750.json"
 ```
 > Install library
 ```bash

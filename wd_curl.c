@@ -436,6 +436,7 @@ int wd_download_file(const char *url, const char *filename)
 					pr_color(stdout, FCOLOUR_YELLOW, "Warning: No CA file found. SSL verification may fail.\n");
 			}
 
+			fflush(stdout);
 			res = curl_easy_perform(curl);
 			curl_easy_getinfo(curl, CURLINFO_RESPONSE_CODE, &response_code);
 

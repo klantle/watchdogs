@@ -3,6 +3,12 @@
 #include <string.h>
 #include <unistd.h>
 #include <limits.h>
+#ifdef __linux__
+#include <fcntl.h>
+#include <sys/types.h>
+#include <sys/wait.h>
+#endif
+
 #include <time.h>
 
 #include <readline/readline.h>
@@ -12,7 +18,6 @@
 #include "wd_util.h"
 #include "wd_unit.h"
 #include "wd_package.h"
-#include "wd_crypto.h"
 #include "wd_compiler.h"
 
 int wd_run_compiler(const char *arg, const char *compile_args)
@@ -104,6 +109,8 @@ int wd_run_compiler(const char *arg, const char *compile_args)
                 pr_error(stdout, "Failed to open .__CP.log");
             }
 
+            int compiler_debugging = 0;
+
             toml_table_t *wd_compiler = toml_table_in(_toml_config, "compiler");
             if (wd_compiler)
             {
@@ -151,6 +158,9 @@ n_valid_flag:
                             if (valid_flag == 0)
                               return __RETZ;
                         }
+
+                        if (strfind(opt_val.u.s, "-d"))
+                          ++compiler_debugging;
 
                         size_t old_len = merged ? strlen(merged) : 0,
                                new_len = old_len + strlen(opt_val.u.s) + 2;
@@ -246,73 +256,111 @@ n_valid_flag:
                         toml_gm_o.u.s = NULL;
                     }
 
-#ifdef _WIN32
-                    int ret_compiler = snprintf(
-                        _compiler_,
-                        format_size_compiler,
-                        "%s %s -o%s %s %s -i%s > .wd_compiler.log 2>&1",
-                        wcfg.wd_sef_found_list[0],                      // compiler binary
-                        wcfg.wd_toml_gm_input,                          // input file
-                        wcfg.wd_toml_gm_output,                         // output file
-                        wcfg.wd_toml_aio_opt,                           // additional options
-                        include_aio_path,                               // include search path
-                        path_include                                    // include directory
-                    );
-#else
-                    int ret_compiler = snprintf(
-                        _compiler_,
-                        format_size_compiler,
-                        "\"%s\" \"%s\" -o\"%s\" \"%s\" %s -i\"%s\" > .wd_compiler.log 2>&1",
-                        wcfg.wd_sef_found_list[0],                      // compiler binary
-                        wcfg.wd_toml_gm_input,                          // input file
-                        wcfg.wd_toml_gm_output,                         // output file
-                        wcfg.wd_toml_aio_opt,                           // additional options
-                        include_aio_path,                               // include search path
-                        path_include                                    // include directory
-                    );
-#endif
-
-                    if (ret_compiler < 0 || (size_t)ret_compiler >= (size_t)format_size_compiler)
-                    {
-                        pr_error(stdout, "snprintf() failed or buffer too small (needed %d bytes)", ret_compiler);
-                    }
-
-                    size_t needed = snprintf(NULL, 0, "Watchdogs | @ compile | %s | %s | %s",
-                                                      wcfg.wd_sef_found_list[0],
-                                                      wcfg.wd_toml_gm_input,
-                                                      wcfg.wd_toml_gm_output) + 1;
-                    char *title_compiler_info = wd_malloc(needed);
-                    snprintf(title_compiler_info, needed, "Watchdogs | @ compile | %s | %s | %s",
-                                                          wcfg.wd_sef_found_list[0],
-                                                          wcfg.wd_toml_gm_input,
-                                                          wcfg.wd_toml_gm_output);
-                    if (title_compiler_info)
-                    {
-                        wd_set_title(title_compiler_info);
-                        wd_free(title_compiler_info);
-                        title_compiler_info = NULL;
-                    }
-
                     struct timespec start, end;
                     double compiler_dur;
+#ifdef _WIN32
+                    PROCESS_INFORMATION pi;
+                    STARTUPINFO si = { sizeof(si) };
+                    SECURITY_ATTRIBUTES sa = { sizeof(sa) };
 
-                    clock_gettime(CLOCK_MONOTONIC, &start);
-                        system(_compiler_);
-                    clock_gettime(CLOCK_MONOTONIC, &end);
+                    sa.bInheritHandle = TRUE;
+                    HANDLE hFile = CreateFileA(
+                        ".wd_compiler.log",
+                        GENERIC_WRITE,
+                        FILE_SHARE_READ,
+                        &sa,
+                        CREATE_ALWAYS,
+                        FILE_ATTRIBUTE_NORMAL,
+                        NULL
+                    );
 
-                    if (procc_f) {
-                        print_file_with_annotations(".wd_compiler.log");
+                    si.dwFlags = STARTF_USESTDHANDLES | STARTF_USESHOWWINDOW;
+                    si.wShowWindow = SW_HIDE;
+
+                    if (hFile != INVALID_HANDLE_VALUE) {
+                        si.hStdOutput = hFile;
+                        si.hStdError = hFile;
                     }
 
+                    char cmd_line[4096];
+                    int ret_cmd = snprintf(
+                        cmd_line,
+                        sizeof(cmd_line),
+                        "%s %s -o%s %s %s -i%s",
+                        wcfg.wd_sef_found_list[0],                      // compiler binary
+                        wcfg.wd_toml_gm_input,                          // input file
+                        wcfg.wd_toml_gm_output,                         // output file
+                        wcfg.wd_toml_aio_opt,                           // additional options
+                        include_aio_path,                               // include search path
+                        path_include                                    // include directory
+                    );
+
+                    clock_gettime(CLOCK_MONOTONIC, &start);
+                    if (ret_cmd > 0 && ret_cmd < (int)sizeof(cmd_line)) {
+                        BOOL success = CreateProcessA(
+                            NULL,           // No module name
+                            cmd_line,       // Command line
+                            NULL,           // Process handle not inheritable
+                            NULL,           // Thread handle not inheritable
+                            TRUE,           // Set handle inheritance to TRUE
+                            CREATE_NO_WINDOW, // Creation flags
+                            NULL,           // Use parent's environment block
+                            NULL,           // Use parent's starting directory
+                            &si,            // Pointer to STARTUPINFO structure
+                            &pi             // Pointer to PROCESS_INFORMATION structure
+                        );
+                        if (success) {
+                            WaitForSingleObject(pi.hProcess, INFINITE);
+
+                            DWORD exit_code;
+                            GetExitCodeProcess(pi.hProcess, &exit_code);
+
+                            CloseHandle(pi.hProcess);
+                            CloseHandle(pi.hThread);
+                        } else {
+                            pr_error(stdout, "CreateProcess failed (%lu)", GetLastError());
+                        }
+                    }
+                    clock_gettime(CLOCK_MONOTONIC, &end);
+
+                    if (hFile != INVALID_HANDLE_VALUE) {
+                        CloseHandle(hFile);
+                    }
+#else
+                    pid_t pid = fork();
+
+                    if (pid == 0) {
+                        int fd = open(".wd_compiler.log", O_WRONLY | O_CREAT | O_TRUNC, 0644);
+                        if (fd != -1) {
+                            dup2(fd, STDOUT_FILENO);
+                            dup2(fd, STDERR_FILENO);
+                            close(fd);
+                        }
+
+                        char *args[] = {
+                            wcfg.wd_sef_found_list[0],     // compiler binary
+                            wcfg.wd_toml_gm_input,         // input file
+                            "-o", wcfg.wd_toml_gm_output,  // output file dengan option terpisah
+                            wcfg.wd_toml_aio_opt,          // additional options
+                            include_aio_path,              // include search path
+                            "-i", path_include,            // include directory dengan option terpisah
+                            NULL  // Sentinel
+                        };
+
+                        execvp(args[0], args);
+                        exit(127);
+                    } else if (pid > 0) {
+                        int status;
+                        waitpid(pid, &status, 0);
+                    } else {
+                        pr_error(stdout, "fork() failed");
+                    }
+#endif
                     char _container_output[PATH_MAX + 128];
                     snprintf(_container_output, sizeof(_container_output), "%s", wcfg.wd_toml_gm_output);
 
-                    int amx_access = path_acces(_container_output);
-                    if (amx_access) {
-                      char __sz_sha256_file[PATH_MAX * 2];
-                      snprintf(__sz_sha256_file, sizeof(__sz_sha256_file), "%lu (0x%lx)",
-                          djb2_hash_file(wcfg.wd_toml_gm_output), djb2_hash_file(wcfg.wd_toml_gm_output));
-                      printf("djb2 hash %s: %s\n", wcfg.wd_toml_gm_output, __sz_sha256_file);
+                    if (procc_f) {
+                        annotations_compiler(".wd_compiler.log", _container_output, compiler_debugging);
                     }
 
                     procc_f = fopen(".wd_compiler.log", "r");
@@ -500,73 +548,110 @@ n_valid_flag:
 
                         snprintf(container_output, sizeof(container_output), "%s", __sef_path_sz);
 
-#ifdef _WIN32
-                        int ret_compiler = snprintf(
-                            _compiler_,
-                            format_size_compiler,
-                            "%s %s -o%s.amx %s %s -i%s > .wd_compiler.log 2>&1",
-                            wcfg.wd_sef_found_list[0],                      // compiler binary
-                            wcfg.wd_sef_found_list[1],                      // input file
-                            container_output,                               // output file
-                            wcfg.wd_toml_aio_opt,                           // additional options
-                            include_aio_path,                               // include search path
-                            path_include                                    // include directory
-                        );
-#else
-                        int ret_compiler = snprintf(
-                            _compiler_,
-                            format_size_compiler,
-                            "\"%s\" \"%s\" -o\"%s.amx\" \"%s\" %s -i\"%s\" > .wd_compiler.log 2>&1",
-                            wcfg.wd_sef_found_list[0],                      // compiler binary
-                            wcfg.wd_sef_found_list[1],                      // input file
-                            container_output,                               // output file
-                            wcfg.wd_toml_aio_opt,                           // additional options
-                            include_aio_path,                               // include search path
-                            path_include                                    // include directory
-                        );
-#endif
-
-                        if (ret_compiler < 0 || (size_t)ret_compiler >= (size_t)format_size_compiler)
-                        {
-                            pr_error(stdout, "snprintf() failed or buffer too small (needed %d bytes)", ret_compiler);
-                        }
-
-                        size_t needed = snprintf(NULL, 0, "Watchdogs | @ compile | %s | %s | %s.amx",
-                                                          wcfg.wd_sef_found_list[0],
-                                                          wcfg.wd_sef_found_list[1],
-                                                          container_output) + 1;
-                        char *title_compiler_info = wd_malloc(needed);
-                        snprintf(title_compiler_info, needed, "Watchdogs | @ compile | %s | %s | %s.amx",
-                                                              wcfg.wd_sef_found_list[0],
-                                                              wcfg.wd_sef_found_list[1],
-                                                              container_output);
-                        if (title_compiler_info)
-                        {
-                            wd_set_title(title_compiler_info);
-                            wd_free(title_compiler_info);
-                            title_compiler_info = NULL;
-                        }
-
                         struct timespec start, end;
                         double compiler_dur;
 
+#ifdef _WIN32
+                        PROCESS_INFORMATION pi;
+                        STARTUPINFO si = { sizeof(si) };
+                        SECURITY_ATTRIBUTES sa = { sizeof(sa) };
+
+                        sa.bInheritHandle = TRUE;
+                        HANDLE hFile = CreateFileA(
+                            ".wd_compiler.log",
+                            GENERIC_WRITE,
+                            FILE_SHARE_READ,
+                            &sa,
+                            CREATE_ALWAYS,
+                            FILE_ATTRIBUTE_NORMAL,
+                            NULL
+                        );
+
+                        si.dwFlags = STARTF_USESTDHANDLES | STARTF_USESHOWWINDOW;
+                        si.wShowWindow = SW_HIDE;
+
+                        if (hFile != INVALID_HANDLE_VALUE) {
+                            si.hStdOutput = hFile;
+                            si.hStdError = hFile;
+                        }
+
+                        char cmd_line[4096];
+                        int ret_cmd = snprintf(
+                            cmd_line,
+                            sizeof(cmd_line),
+                            "%s %s -o%s.amx %s %s -i%s",
+                            wcfg.wd_sef_found_list[0],
+                            wcfg.wd_sef_found_list[1],
+                            container_output,
+                            wcfg.wd_toml_aio_opt,
+                            include_aio_path,
+                            path_include
+                        );
+
                         clock_gettime(CLOCK_MONOTONIC, &start);
-                            system(_compiler_);
+                        if (ret_cmd > 0 && ret_cmd < (int)sizeof(cmd_line)) {
+                            BOOL success = CreateProcessA(
+                                NULL,            // No module name
+                                cmd_line,        // Command line
+                                NULL,            // Process handle not inheritable
+                                NULL,            // Thread handle not inheritable
+                                TRUE,            // Set handle inheritance to TRUE
+                                CREATE_NO_WINDOW,// Creation flags
+                                NULL,            // Use parent's environment block
+                                NULL,            // Use parent's starting directory
+                                &si,             // Pointer to STARTUPINFO structure
+                                &pi              // Pointer to PROCESS_INFORMATION structure
+                            );
+                            if (success) {
+                                WaitForSingleObject(pi.hProcess, INFINITE);
+
+                                DWORD exit_code;
+                                GetExitCodeProcess(pi.hProcess, &exit_code);
+
+                                CloseHandle(pi.hProcess);
+                                CloseHandle(pi.hThread);
+                            } else {
+                                pr_error(stdout, "CreateProcess failed (%lu)", GetLastError());
+                            }
+                        }
                         clock_gettime(CLOCK_MONOTONIC, &end);
 
-                        if (procc_f) {
-                            print_file_with_annotations(".wd_compiler.log");
+                        if (hFile != INVALID_HANDLE_VALUE) {
+                            CloseHandle(hFile);
                         }
+#else
+                        pid_t pid = fork();
+
+                        if (pid == 0) {
+                            int fd = open(".wd_compiler.log", O_WRONLY | O_CREAT | O_TRUNC, 0644);
+                            if (fd != -1) {
+                                dup2(fd, STDOUT_FILENO);
+                                dup2(fd, STDERR_FILENO);
+                                close(fd);
+                            }
+
+                            execlp(wcfg.wd_sef_found_list[0],
+                                   wcfg.wd_sef_found_list[0],
+                                   wcfg.wd_sef_found_list[1],
+                                   "-o", container_output,
+                                   wcfg.wd_toml_aio_opt,
+                                   include_aio_path,
+                                   "-i", path_include,
+                                   NULL);
+                            exit(127);
+                        } else if (pid > 0) {
+                            int status;
+                            waitpid(pid, &status, 0);
+                        } else {
+                            pr_error(stdout, "fork() failed");
+                        }
+#endif
 
                         char _container_output[PATH_MAX + 128];
                         snprintf(_container_output, sizeof(_container_output), "%s.amx", container_output);
 
-                        int amx_access = path_acces(_container_output);
-                        if (amx_access) {
-                          char __sz_sha256_file[PATH_MAX * 2];
-                          snprintf(__sz_sha256_file, sizeof(__sz_sha256_file), "%lu (0x%lx)",
-                                  djb2_hash_file(_container_output), djb2_hash_file(_container_output));
-                          printf("djb2 hash %s: %s\n", _container_output, __sz_sha256_file);
+                        if (procc_f) {
+                            annotations_compiler(".wd_compiler.log", _container_output, compiler_debugging);
                         }
 
                         procc_f = fopen(".wd_compiler.log", "r");
@@ -604,8 +689,8 @@ n_valid_flag:
                     }
                     else
                     {
-                        pr_error(stdout, "Cannnot locate:");
-                        printf("\t%s\n", compile_args);
+                        printf("Cannot locate input: ");
+                        pr_color(stdout, FCOLOUR_CYAN, "%s\n", compile_args);
                         return __RETZ;
                     }
                 }

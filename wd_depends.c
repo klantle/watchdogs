@@ -82,6 +82,7 @@ int dep_check_url (const char *url, const char *github_token)
 		curl_easy_setopt(curl, CURLOPT_TIMEOUT, 30L);
 
 		printf("   Connecting... ");
+		fflush(stdout);
 		res = curl_easy_perform(curl);
 		curl_easy_getinfo(curl, CURLINFO_RESPONSE_CODE, &response_code);
 
@@ -96,6 +97,7 @@ int dep_check_url (const char *url, const char *github_token)
 				pr_color(stdout, FCOLOUR_YELLOW, "Warning: No CA file found. SSL verification may fail.\n");
 		}
 
+		fflush(stdout);
 		res = curl_easy_perform(curl);
 		curl_easy_getinfo(curl, CURLINFO_RESPONSE_CODE, &response_code);
 
@@ -138,6 +140,7 @@ int dep_http_get_content (const char *url, char **out_html)
 				pr_color(stdout, FCOLOUR_YELLOW, "Warning: No CA file found. SSL verification may fail.\n");
 		}
 
+		fflush(stdout);
 		res = curl_easy_perform(curl);
 		curl_easy_cleanup(curl);
 

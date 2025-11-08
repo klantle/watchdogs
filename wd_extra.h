@@ -1,6 +1,9 @@
 #ifndef EXTRA_H
 #define EXTRA_H
 
+#include <stdint.h>
+#include <time.h>
+
 // Foreground Colors (Standard)
 #define FCOLOUR_BLACK      "\033[0;30m"
 #define FCOLOUR_RED        "\033[0;31m"
@@ -59,6 +62,42 @@ extern char *BG;   /* Background color: RGB(35,35,35) - dark gray */
 extern char *FG;   /* Foreground color: ANSI 97 - bright white */
 extern char *BORD; /* Border color: ANSI 33 - yellow/orange */
 extern char *RST;  /* Reset color: ANSI 0 - default terminal colors */
+
+/* Portable structure: fields commonly useful */
+typedef struct {
+        uint64_t st_size;     /* file size in bytes */
+        uint64_t st_ino;      /* inode (0 if not available) */
+        uint64_t st_dev;      /* device id (0 if not available) */
+        unsigned int st_mode; /* file type & permission bits (emulated on Windows) */
+        time_t st_latime;     /* last access time */
+        time_t st_lmtime;     /* last modification time */
+        time_t st_mctime;     /* metadata change time (POSIX) or creation/metadata time on Windows */
+} portable_stat_t;
+
+typedef struct {
+        char *cs_t; /* Cause trigger */
+        char *cs_i; /* Cause Description */
+} causeExplanation;
+
+/* Mode bits we will populate (subset of POSIX) */
+#ifndef S_IFREG
+  #define S_IFREG 0100000
+#endif
+#ifndef S_IFDIR
+  #define S_IFDIR 0040000
+#endif
+#ifndef S_IFLNK
+  #define S_IFLNK 0120000
+#endif
+
+#ifndef S_IRUSR
+  #define S_IRUSR 0400
+  #define S_IWUSR 0200
+  #define S_IXUSR 0100
+#endif
+
+int portable_stat(const char *path, portable_stat_t *out);
+void annotations_compiler(const char *log_file, const char *pawn_output, int debug);
 
 #define pr_color printf_color
 #define pr_info printf_info

@@ -59,7 +59,10 @@ win32_chmod(const char *path) {
 #endif
 
 /** Max path constants **/
-#ifndef PATH_MAX
+#ifdef PATH_MAX
+#undef PATH_MAX
+#define PATH_MAX 260
+#else
 #define PATH_MAX 260
 #endif
 #ifndef MAX_PATH
@@ -197,7 +200,6 @@ int wd_sef_fdir(const char *sef_path, const char *sef_name, const char *ignore_d
 int wd_set_toml(void); /** Load TOML config **/
 int wd_sef_wcopy(const char *c_src, const char *c_dest); /** Copy SEF file **/
 int wd_sef_wmv(const char *c_src, const char *c_dest); /** Move SEF file **/
-void print_file_with_annotations(const char *pawn_output); /** Compiler Cause **/
 
 #endif
 #endif

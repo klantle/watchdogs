@@ -306,15 +306,16 @@ _reexecute_command:
             curl_easy_setopt(curl_handle, CURLOPT_WRITEDATA, (void *)&chunk);
             curl_easy_setopt(curl_handle, CURLOPT_USERAGENT, "libcurl-agent/1.0");
 
-			if (is_native_windows()) {
-				if (access("cacert.pem", F_OK) == 0)
-					curl_easy_setopt(curl_handle, CURLOPT_CAINFO, "cacert.pem");
-				else if (access("C:/libwatchdogs/cacert.pem", F_OK) == 0)
-        			curl_easy_setopt(curl_handle, CURLOPT_CAINFO, "C:/libwatchdogs/cacert.pem");
-				else
-					pr_color(stdout, FCOLOUR_YELLOW, "Warning: No CA file found. SSL verification may fail.\n");
-			}
+            if (is_native_windows()) {
+              if (access("cacert.pem", F_OK) == 0)
+                curl_easy_setopt(curl_handle, CURLOPT_CAINFO, "cacert.pem");
+              else if (access("C:/libwatchdogs/cacert.pem", F_OK) == 0)
+                curl_easy_setopt(curl_handle, CURLOPT_CAINFO, "C:/libwatchdogs/cacert.pem");
+              else
+                pr_color(stdout, FCOLOUR_YELLOW, "Warning: No CA file found. SSL verification may fail.\n");
+            }
 
+            fflush(stdout);
             res = curl_easy_perform(curl_handle);
             if (res != CURLE_OK) {
                 fprintf(stderr, "curl_easy_perform() failed: %s\n",
@@ -598,13 +599,17 @@ _runners_:
                 while (*arg == ' ') ++arg;
                 char *arg1 = strtok(arg, " ");
 
+                char *__sz_arg1 = NULL;
+                if (arg1 == NULL || *arg1 == '\0')
+                  __sz_arg1 = "none";
+
     		        size_t needed = snprintf(NULL, 0, "Watchdogs | @ running | args: %s | %s | CTRL + C to stop.",
-    									              arg1,
+    									              __sz_arg1,
     									              wcfg.wd_toml_config) + 1;
     		        char *title_running_info = wd_malloc(needed);
     		        if (!title_running_info) { return __RETN; }
     		        snprintf(title_running_info, needed, "Watchdogs | @ running | args: %s | %s | CTRL + C to stop.",
-    									                  arg1,
+    									                  __sz_arg1,
     									                  wcfg.wd_toml_config);
     		        if (title_running_info) {
     			        wd_set_title(title_running_info);

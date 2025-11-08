@@ -208,7 +208,8 @@ void wd_run_samp_server(const char *gamemode, const char *server_bin)
 
         wd_sef_fdir_reset();
         if (wd_sef_fdir(".", gamemode, NULL) != 1) {
-                pr_error(stdout, "Cannot locate gamemode: %s", gamemode);
+                printf("Cannot locate gamemode: ");
+                pr_color(stdout, FCOLOUR_CYAN, "%s\n", gamemode);
                 wd_main(NULL);
         }
 
@@ -396,7 +397,8 @@ void wd_run_omp_server(const char *gamemode, const char *server_bin)
 
         wd_sef_fdir_reset();
         if (wd_sef_fdir(".", gamemode, NULL) != 1) {
-                pr_error(stdout, "Cannot locate gamemode: %s", gamemode);
+                printf("Cannot locate gamemode: ");
+                pr_color(stdout, FCOLOUR_CYAN, "%s\n", gamemode);
                 wd_main(NULL);
         }
 

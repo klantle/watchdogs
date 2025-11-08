@@ -97,7 +97,7 @@ typedef struct {
 #endif
 
 int portable_stat(const char *path, portable_stat_t *out);
-void annotations_compiler(const char *log_file, const char *pawn_output, int debug);
+void cause_compiler_expl(const char *log_file, const char *pawn_output, int debug);
 
 #define pr_color printf_color
 #define pr_info printf_info

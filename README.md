@@ -28,7 +28,7 @@
    - [Docker](#docker)
    - [Termux](#termux)
    - [MSYS2](#msys2)
-   - [Windows Native](#Native)
+   - [Windows native](#Native)
    - [Linux (Bash)](#linux-bash)
 4. [Configuration](#configuration)
 6. [Usage Guide](#usage-guide)
@@ -121,6 +121,31 @@ docker stop <container-name>               # Stop a container
 docker rm -f <container-name>              # Remove a container
 ```
 
+### Linux (Bash)
+
+#### Installation Steps
+```bash
+# 1. Update package lists
+apt update
+
+# 2. Install required packages
+apt install make git
+
+# 3. Clone repository
+git clone https://gitlab.com/mywatchdogs/watchdogs watch
+
+# 4. Navigate to directory
+cd watch
+
+# 5. Installing Library & Build from source
+make init
+
+# 6. Set Mod, Move executable and run
+chmod +x watchdogs && \
+mv -f watchdogs .. && cd .. && \
+./watchdogs
+```
+
 ### Termux
 
 > We highly recommend using the Termux distribution directly from GitHub instead of the Google Play Store to ensure compatibility with the latest Termux features and to enjoy the freedom offered outside the Play Store. https://github.com/termux/termux-app/releases
@@ -151,8 +176,9 @@ cd watch
 # 8. Installing Library & Build from source
 make init
 
-# 9. Move executable and run
-mv -f watchdogs.tmux .. && cd ..
+# 0. Set Mod, Move executable and run
+chmod +x watchdogs.tmux && \
+mv -f watchdogs.tmux .. && cd .. && \
 ./watchdogs.tmux
 ```
 
@@ -176,8 +202,9 @@ cd watch
 # 5. Installing Library & Build from source
 make init
 
-# 6. Move executable and run
-mv -f watchdogs.win .. && cd ..
+# 6. Set Mod, Move executable and run
+chmod +x watchdogs.win && \
+mv -f watchdogs.win .. && cd .. && \
 ./watchdogs.win
 ```
 
@@ -252,30 +279,6 @@ Server = https://mirror.selfnet.de/msys2/msys/$arch
 
 Save & Exit: **CTRL + X & Y + ENTER**
 
-### Linux (Bash)
-
-#### Installation Steps
-```bash
-# 1. Update package lists
-apt update
-
-# 2. Install required packages
-apt install make git
-
-# 3. Clone repository
-git clone https://gitlab.com/mywatchdogs/watchdogs watch
-
-# 4. Navigate to directory
-cd watch
-
-# 5. Installing Library & Build from source
-make init
-
-# 6. Move executable and run
-mv -f watchdogs .. && cd ..
-./watchdogs
-```
-
 ## Configuration
 
 ### watchdogs.toml Structure
@@ -324,8 +327,8 @@ aio_repo = [
 ```
 
 ### VS Code Integration
-
-Add to `.vscode/tasks.json`:
+1. Create folder ".vscode"
+2. Create file "tasks.json" in .vscode
 
 ```json
 {
@@ -343,9 +346,7 @@ Add to `.vscode/tasks.json`:
   ]
 }
 ```
-
-For Windows Native:
-
+For Windows native:
 ```json
 {
   "version": "2.0.0",
@@ -362,6 +363,37 @@ For Windows Native:
   ]
 }
 ```
+
+### Sublime Text
+> ANSI (Optional) https://github.com/aziz/SublimeANSI
+1. Go to Tools > Build System > New Build System
+2. Replace the code with:
+
+> Windows native
+```json
+{
+    "cmd": ["path/to/run-native.bat", "arg1", "arg2"]
+}
+```
+```json
+{
+    "cmd": ["C:///", "compile", "bare.pwn"]
+}
+```
+> Linux
+```json
+{
+    "cmd": ["path/to/watchdogs", "arg1", "arg2"]
+}
+```
+```json
+{
+    "cmd": ["/home///", "compile", "bare.pwn"]
+}
+```
+
+3. Save - **CTRL + S**
+4. Run: **CTRL + SHIFT & B**
 
 ## Usage Guide
 

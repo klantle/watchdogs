@@ -12,16 +12,33 @@
 
 #include "wd_extra.h"
 #include "wd_crypto.h"
-#include "wd_util.h"
 #include "wd_archive.h"
-#include "wd_unit.h"
 #include "wd_depends.h"
+#include "wd_util.h"
+#include "wd_unit.h"
 #include "wd_curl.h"
 
 // This is a string variable used to statically store the PawnCC folder name,
 // ensuring that PawnCC is applied from the correct directory and not from an incorrect extraction folder.
 static char
 	pawncc_dir_src[PATH_MAX];
+
+int cacert_pem(CURL *curl) {
+		int ret = -__RETN;
+		if (is_native_windows()) {
+				if (access("cacert.pem", F_OK) == 0)
+					curl_easy_setopt(curl, CURLOPT_CAINFO, "cacert.pem");
+				else if (access("C:/libwatchdogs/cacert.pem", F_OK) == 0)
+					curl_easy_setopt(curl, CURLOPT_CAINFO, "C:/libwatchdogs/cacert.pem");
+				else {
+					pr_color(stdout,
+							 FCOLOUR_YELLOW,
+							 "Warning: No CA file found. SSL verification may fail.\n");
+					ret = __RETZ;
+				}
+		}
+		return ret;
+}
 
 static int progress_callback(void *ptr, curl_off_t dltotal,
 						     curl_off_t dlnow, curl_off_t ultotal,
@@ -371,7 +388,7 @@ int is_archive_file(const char *filename)
 int wd_download_file(const char *url, const char *filename)
 {
 		CURL *curl;
-		FILE *file;
+		FILE *c_fp;
 		CURLcode res;
 		long response_code = 0;
 		int retry_count = 0;
@@ -380,8 +397,8 @@ int wd_download_file(const char *url, const char *filename)
 		pr_color(stdout, FCOLOUR_GREEN, "Downloading: %s\n", filename);
 
 		do {
-			file = fopen(filename, "wb");
-			if (!file) {
+			c_fp = fopen(filename, "wb");
+			if (!c_fp) {
 				pr_color(stdout, FCOLOUR_RED, "Failed to open file: %s\n", filename);
 				return -__RETN;
 			}
@@ -389,7 +406,7 @@ int wd_download_file(const char *url, const char *filename)
 			curl = curl_easy_init();
 			if (!curl) {
 				pr_color(stdout, FCOLOUR_RED, "Failed to initialize CURL\n");
-				fclose(file);
+				fclose(c_fp);
 				return -__RETN;
 			}
 
@@ -415,7 +432,7 @@ int wd_download_file(const char *url, const char *filename)
 			headers = curl_slist_append(headers, "Accept: application/vnd.github.v3.raw");
 
 			curl_easy_setopt(curl, CURLOPT_URL, url);
-			curl_easy_setopt(curl, CURLOPT_WRITEDATA, file);
+			curl_easy_setopt(curl, CURLOPT_WRITEDATA, c_fp);
 			curl_easy_setopt(curl, CURLOPT_FAILONERROR, 1L);
 			curl_easy_setopt(curl, CURLOPT_HTTPHEADER, headers);
 			curl_easy_setopt(curl, CURLOPT_CONNECTTIMEOUT, 15L);
@@ -428,14 +445,7 @@ int wd_download_file(const char *url, const char *filename)
 			curl_easy_setopt(curl, CURLOPT_XFERINFOFUNCTION, progress_callback);
 			curl_easy_setopt(curl, CURLOPT_XFERINFODATA, NULL);
 
-			if (is_native_windows()) {
-				if (access("cacert.pem", F_OK) == 0)
-					curl_easy_setopt(curl, CURLOPT_CAINFO, "cacert.pem");
-				else if (access("C:/libwatchdogs/cacert.pem", F_OK) == 0)
-        			curl_easy_setopt(curl, CURLOPT_CAINFO, "C:/libwatchdogs/cacert.pem");
-				else
-					pr_color(stdout, FCOLOUR_YELLOW, "Warning: No CA file found. SSL verification may fail.\n");
-			}
+			cacert_pem(curl);
 
 			fflush(stdout);
 			res = curl_easy_perform(curl);
@@ -444,8 +454,8 @@ int wd_download_file(const char *url, const char *filename)
 			curl_easy_cleanup(curl);
 			curl_slist_free_all(headers);
 
-			if (file)
-				fclose(file);
+			if (c_fp)
+				fclose(c_fp);
 
 			if (res == CURLE_OK && response_code == 200) {
 				if (stat(filename, &file_stat) == 0 && file_stat.st_size > 0) {

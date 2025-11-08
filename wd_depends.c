@@ -49,9 +49,9 @@ int dep_check_url (const char *url, const char *github_token)
 		struct curl_slist *headers = NULL;
 		char error_buffer[CURL_ERROR_SIZE] = { 0 };
 
-		printf("\t[DEPS]: Using URL: %s...\n", url);
+		printf("\t[DEPS] Using URL: %s...\n", url);
 		if (strstr(wcfg.wd_toml_github_tokens, "DO_HERE")) {
-			pr_color(stdout, FCOLOUR_GREEN, "[DEPS]: Can't read Github token.. skipping\n");
+			pr_color(stdout, FCOLOUR_GREEN, "[DEPS] Can't read Github token.. skipping\n");
 			sleep(2);
 		} else {
 				char auth_header[512];
@@ -75,14 +75,7 @@ int dep_check_url (const char *url, const char *github_token)
 
 		curl_easy_setopt(curl, CURLOPT_ERRORBUFFER, error_buffer);
 
-		if (is_native_windows()) {
-			if (access("cacert.pem", F_OK) == 0)
-				curl_easy_setopt(curl, CURLOPT_CAINFO, "cacert.pem");
-			else if (access("C:/libwatchdogs/cacert.pem", F_OK) == 0)
-				curl_easy_setopt(curl, CURLOPT_CAINFO, "C:/libwatchdogs/cacert.pem");
-			else
-				pr_color(stdout, FCOLOUR_YELLOW, "Warning: No CA file found. SSL verification may fail.\n");
-		}
+		cacert_pem(curl);
 
 		fflush(stdout);
 		res = curl_easy_perform(curl);
@@ -118,14 +111,7 @@ int dep_http_get_content (const char *url, char **out_html)
 		curl_easy_setopt(curl, CURLOPT_CONNECTTIMEOUT, 15L);
 		curl_easy_setopt(curl, CURLOPT_TIMEOUT, 60L);
 
-		if (is_native_windows()) {
-			if (access("cacert.pem", F_OK) == 0)
-				curl_easy_setopt(curl, CURLOPT_CAINFO, "cacert.pem");
-			else if (access("C:/libwatchdogs/cacert.pem", F_OK) == 0)
-				curl_easy_setopt(curl, CURLOPT_CAINFO, "C:/libwatchdogs/cacert.pem");
-			else
-				pr_color(stdout, FCOLOUR_YELLOW, "Warning: No CA file found. SSL verification may fail.\n");
-		}
+		cacert_pem(curl);
 
 		fflush(stdout);
 		res = curl_easy_perform(curl);
@@ -187,7 +173,7 @@ dep_parse_repo(const char *input, struct dep_repo_info *__deps_data)
 			strncpy(__deps_data->tag, tag_ptr + 1, sizeof(__deps_data->tag) - 1);
 
 			if (!strcmp(__deps_data->tag, "latest")) {
-				printf("[DEPS]: Latest ");
+				printf("[DEPS] Latest ");
 				pr_color(stdout, FCOLOUR_GREEN, "(:latest) ");
 				printf("tag detected, will use latest release\n");
 			}
@@ -561,7 +547,7 @@ static int dep_handle_repo (const struct dep_repo_info *dep_repo_info,
 								dep_repo_info->repo,
 								deps_actual_tag,
 								sizeof(deps_actual_tag))) {
-									printf("[DEPS]: Using latest tag: %s"
+									printf("[DEPS] Using latest tag: %s"
 												 "(instead of latest)\n", deps_actual_tag);
 			} else {
 				pr_error(stdout, "Failed to get latest tag for %s/%s,"
@@ -625,7 +611,7 @@ static int dep_handle_repo (const struct dep_repo_info *dep_repo_info,
 				if (dep_check_url(deps_put_url, wcfg.wd_toml_github_tokens)) {
 					ret = 1;
 					if (j == 1)
-						printf("[DEPS]: Using master branch (main branch not found)\n");
+						printf("[DEPS] Using master branch (main branch not found)\n");
 				}
 			}
 		}
@@ -684,15 +670,15 @@ dep_add_ncheck_hash(const char *_H_file_path, const char *_H_json_path)
 		if (crc32_fpath) {
 				pr_color(stdout,
 						 FCOLOUR_GREEN,
-						 "[DEPS]: Create hash (CRC32) for '%s': '%s'\n",
+						 "[DEPS] Create hash (CRC32) for '%s': '%s'\n",
 						 convert_j_path,
 					     crc_str);
 		} else {
-			pr_error(stdout,
-				"Failed to hash: %s (convert: %s)",
-				convert_j_path,
-				convert_f_path);
-			return 0;
+				pr_error(stdout,
+						"Failed to hash: %s (convert: %s)",
+						convert_j_path,
+						convert_f_path);
+				return 0;
 		}
 
 		return 1;
@@ -704,7 +690,7 @@ void dep_implementation_samp_conf (depConfig config) {
 
 		pr_color(stdout,
 				 FCOLOUR_GREEN,
-				 "[DEPS]: Create Depends '%s' into '%s'\n",
+				 "[DEPS] Create Depends '%s' into '%s'\n",
 				 config.dep_added, config.dep_config);
 
 		FILE* c_file = fopen(config.dep_config, "r");
@@ -779,7 +765,7 @@ void dep_implementation_omp_conf (const char* config_name, const char* deps_name
 
 		pr_color(stdout,
 				 FCOLOUR_GREEN,
-				 "[DEPS]: Create Depends '%s' into '%s'\n",
+				 "[DEPS] Create Depends '%s' into '%s'\n",
 				 deps_name, config_name);
 
 		FILE* c_file = fopen(config_name, "r");
@@ -869,7 +855,7 @@ void dep_add_include (const char *modes,
 					  char *dep_after) {
 		pr_color(stdout,
 				 FCOLOUR_GREEN,
-				 "[DEPS]: Create include '%s' into '%s' after '%s'\n",
+				 "[DEPS] Create include '%s' into '%s' after '%s'\n",
 				 dep_name, modes, dep_after);
 
 		FILE *m_file = fopen(modes, "r");
@@ -932,6 +918,7 @@ void dep_add_include (const char *modes,
 
 const char *dep_get_fname (const char *path)
 {
+		/* file name */
 		const char *depends = strrchr(path, '/');
 		if (!depends)
 				depends = strrchr(path, '\\');
@@ -940,6 +927,7 @@ const char *dep_get_fname (const char *path)
 
 static const char *dep_get_bname (const char *path)
 {
+		/* base name */
 		const char *p1 = strrchr(path, '/'),
 				   *p2 = strrchr(path, '\\'),
 				   *p = NULL;
@@ -1175,8 +1163,9 @@ void dep_move_files (const char *dep_dir)
 						if (rename(parent, dest)) {
 								if (is_native_windows()) {
 										snprintf(cmd, sizeof(cmd),
-												"xcopy \"%s\" \"%s\" /E /I /H /Y && rmdir /S /Q \"%s\"",
-												parent, dest, parent);
+											    "xcopy \"%s\" \"%s\" /E /I /H /Y >nul 2>&1 && "
+											    "rmdir /S /Q \"%s\" >nul 2>&1",
+											    parent, dest, parent);
 								} else {
 										snprintf(cmd, sizeof(cmd),
 												"cp -r \"%s\" \"%s\" && rm -rf \"%s\"",
@@ -1291,7 +1280,8 @@ void wd_install_depends (const char *depends_string)
 		wcfg.wd_idepends = 0;
 
 		if (!depends_string || !*depends_string) {
-			pr_info(stdout, "No valid dependencies to install");
+			pr_color(stdout, FCOLOUR_RED, "[DEPS] ");
+			printf("no valid dependencies to install!");
 			goto done;
 		}
 
@@ -1303,14 +1293,14 @@ void wd_install_depends (const char *depends_string)
 			token = strtok(NULL, " ");
 		}
 		if (DEPS_COUNT == 0) {
-			pr_color(stdout, FCOLOUR_RED, "[DEPS]: ");
-			printf("not valid depends to install!");
+			pr_color(stdout, FCOLOUR_RED, "[DEPS] ");
+			printf("no valid depends to install!");
 			goto done;
 		}
 		int i;
 		for (i = 0; i < DEPS_COUNT; i++) {
 			if (!dep_parse_repo(depends[i], &dep_repo_info)) {
-				pr_color(stdout, FCOLOUR_RED, "[DEPS]: ");
+				pr_color(stdout, FCOLOUR_RED, "[DEPS] ");
 				printf("invalid repo format: %s\n", depends[i]);
 				continue;
 			}
@@ -1323,7 +1313,7 @@ void wd_install_depends (const char *depends_string)
 				dep_item_found = dep_check_url(dep_url, wcfg.wd_toml_github_tokens);
 			}
 			if (!dep_item_found) {
-				pr_color(stdout, FCOLOUR_RED, "[DEPS]: ");
+				pr_color(stdout, FCOLOUR_RED, "[DEPS] ");
 				printf("repo not found: %s\n", depends[i]);
 				continue;
 			}

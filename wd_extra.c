@@ -57,7 +57,7 @@ void printf_info(FILE *stream, const char *format, ...)
 		va_list args;
 
 		va_start(args, format);
-		printf("[INFO]: ");
+		printf("[INFO] ");
 		vprintf(format, args);
 		printf("\n");
 		va_end(args);
@@ -70,7 +70,7 @@ void printf_warning(FILE *stream, const char *format, ...)
 		va_list args;
 
 		va_start(args, format);
-		printf("[WARNING]: ");
+		printf("[WARNING] ");
 		vprintf(format, args);
 		printf("\n");
 		va_end(args);
@@ -83,7 +83,7 @@ void printf_error(FILE *stream, const char *format, ...)
 		va_list args;
 
 		va_start(args, format);
-		printf("[ERROR]: ");
+		printf("[ERROR] ");
 		vprintf(format, args);
 		printf("\n");
 		va_end(args);
@@ -96,7 +96,7 @@ void printf_crit(FILE *stream, const char *format, ...)
 		va_list args;
 
 		va_start(args, format);
-		printf("[CRIT]: ");
+		printf("[CRIT] ");
 		vprintf(format, args);
 		printf("\n");
 		va_end(args);
@@ -166,7 +166,9 @@ int portable_stat(const char *path, portable_stat_t *out) {
         }
         /* executable bit: heuristic by extension (common on Windows) */
         const char *ext = strrchr(path, '.');
-        if (ext && (_stricmp(ext, ".exe") == 0 || _stricmp(ext, ".bat") == 0 || _stricmp(ext, ".com") == 0)) {
+        if (ext && (_stricmp(ext, ".exe") == 0 ||
+                    _stricmp(ext, ".bat") == 0 ||
+                    _stricmp(ext, ".com") == 0)) {
                 out->st_mode |= S_IXUSR;
         }
 
@@ -308,6 +310,9 @@ causeExplanation ccs[] =
 
 /* An assignment is used in a boolean context, which might be a mistake for '=='. */
 {"possibly unintended assignment", "An assignment operator `=` was used in a context where a comparison operator `==` is typically used (e.g., in an `if` condition)."},
+
+/* nvalid function or declaration */
+{"invalid function or ", "You need to make sure that the area around the error line follows the proper syntax, structure, and rules typical of Pawn code."},
 
 /* There is a type mismatch between two expressions. */
 {"tag mismatch", "The type (or 'tag') of the expression does not match the type expected by the context. Check variable types and function signatures."},
@@ -473,132 +478,143 @@ causeExplanation ccs[] =
 };
 
 static const char
-*find_warning_error(const char *line)
+*wd_find_warn_err(const char *line)
 {
-        int index;
-        for (index = 0;
-            ccs[index].cs_t;
-            index++) {
-                if (strstr(line,
-                           ccs[index].cs_t))
-                        return ccs[index].cs_i;
-        }
-        return NULL;
+      int cindex = 0;
+      for (cindex; ccs[cindex].cs_t; ++cindex) {
+        if (strstr(line, ccs[cindex].cs_t))
+          return ccs[cindex].cs_i;
+      }
+      return NULL;
+}
+
+void compiler_detailed(const char *pawn_output, int debug,
+					 int wcnt, int ecnt, const char *compiler_ver,
+					 int header_size, int code_size, int data_size,
+					 int stack_size, int total_size)
+{
+      char size_compiler[256];
+      snprintf(size_compiler, sizeof(size_compiler),
+               "COMPILE COMPLETE :) | WITH ~%d ERROR | ~%d WARNING",
+               ecnt, wcnt);
+      wd_set_title(size_compiler);
+
+      int amx_access = path_acces(pawn_output);
+      if (amx_access && debug != 0) {
+  			portable_stat_t st;
+  			if (portable_stat(pawn_output, &st) == 0) {
+      			unsigned long hash = djb2_hash_file(pawn_output);
+
+      			printf("Header: %dB | Code: %dB\nData: %dB |"
+      				   "Stack: %dB\nTotal: %dB | djb2: 0x%lx\n",
+      				   header_size, code_size, data_size, stack_size, total_size, hash);
+
+      			portable_stat_t st;
+      			if (portable_stat(pawn_output, &st) == 0) {
+						printf("File: %lluB | ino:%llu\ndev:%llu | mode:%020o\nRead:%s | Write:%s | Execute:%s\n"
+								"atime:%u | mtime:%u | ctime:%u\n",
+								(unsigned long long)st.st_size,
+								(unsigned long long)st.st_ino,
+								(unsigned long long)st.st_dev,
+								st.st_mode,
+								(st.st_mode & S_IRUSR) ? "Y" : "N",
+								(st.st_mode & S_IWUSR) ? "Y" : "N",
+								(st.st_mode & S_IXUSR) ? "Y" : "N"),
+								(long long)st.st_latime,
+								(long long)st.st_lmtime,
+								(long long)st.st_mctime
+						;
+					}
+    			}
+      }
+      printf("\n");
+      printf("* Pawn Compiler %s - Copyright (c) 1997-2006, ITB CompuPhase\n", compiler_ver);
+
+      return;
 }
 
 void
-annotations_compiler(const char *log_file, const char *pawn_output, int debug)
+cause_compiler_expl(const char *log_file, const char *pawn_output, int debug)
 {
-	    FILE *pf;
-	    char buffer[MAX_PATH];
-	    int wcnt = 0, ecnt = 0;
-	    int header_size = 0, code_size = 0, data_size = 0;
-	    int stack_size = 0, total_size = 0;
-			char compiler_ver[64] = {0};
+      FILE *plog;
+      char size_buff[MAX_PATH];
+      int wcnt = 0, ecnt = 0;
+      int header_size = 0, code_size = 0, data_size = 0;
+      int stack_size = 0, total_size = 0;
+      char compiler_ver[64] = {0};
 
-	    pf = fopen(log_file, "r");
-	    if (!pf) {
-	        printf("Cannot open file: %s\n", log_file);
-	        return;
-	    }
+      plog = fopen(log_file, "r");
 
-	    while (fgets(buffer, sizeof(buffer), pf)) {
-	        const char *description = NULL;
-	        const char *t_pos = NULL;
-	        int mk_pos = 0;
-	        int i;
+      while (fgets(size_buff, sizeof(size_buff), plog)) {
+      	const char *description = NULL, *t_pos = NULL;
+      	int i, mk_pos = 0;
 
-	        if (strstr(buffer, "Warnings.") || strstr(buffer, "Warning.") ||
-	            strstr(buffer, "Errors.") || strstr(buffer, "Error."))
-	            continue;
+      	if (strstr(size_buff, "Warnings.") ||
+            strstr(size_buff, "Warning.") ||
+            strstr(size_buff, "Errors.") ||
+            strstr(size_buff, "Error."))
+            continue;
+      	if (strstr(size_buff, "Header size:"))
+        	{
+              sscanf(size_buff, "Header size: %d bytes", &header_size);
+              continue;
+        	}
+      	else if (strstr(size_buff, "Code size:"))
+        	{
+              sscanf(size_buff, "Code size: %d bytes", &code_size);
+              continue;
+        	}
+      	else if (strstr(size_buff, "Data size:"))
+        	{
+              sscanf(size_buff, "Data size: %d bytes", &data_size);
+              continue;
+        	}
+      	else if (strstr(size_buff, "Stack/heap size:"))
+        	{
+              sscanf(size_buff, "Stack/heap size: %d bytes", &stack_size);
+              continue;
+        	}
+      	else if (strstr(size_buff, "Total requirements:"))
+        	{
+              sscanf(size_buff, "Total requirements: %d bytes", &total_size);
+              continue;
+        	}
+      	if (strstr(size_buff, "Pawn compiler "))
+        	{
+              sscanf(size_buff, "Pawn compiler %63s", compiler_ver);
+              continue;
+        	}
 
-	        if (strstr(buffer, "Header size:")) {
-	            sscanf(buffer,
-										"Header size: %d bytes", &header_size);
-	            continue;
-	        } else if (strstr(buffer, "Code size:")) {
-	            sscanf(buffer,
-										"Code size: %d bytes", &code_size);
-	            continue;
-	        } else if (strstr(buffer, "Data size:")) {
-	            sscanf(buffer,
-										"Data size: %d bytes", &data_size);
-	            continue;
-	        } else if (strstr(buffer, "Stack/heap size:")) {
-	            sscanf(buffer,
-										"Stack/heap size: %d bytes", &stack_size);
-	            continue;
-	        } else if (strstr(buffer, "Total requirements:")) {
-	            sscanf(buffer,
-										"Total requirements: %d bytes", &total_size);
-	            continue;
-	        }
-					if (strstr(buffer, "Pawn compiler ")) {
-							sscanf(buffer,
-										"Pawn compiler %63s", compiler_ver);
-							continue;
-					}
+      	printf("%s", size_buff);
 
-	        printf("%s", buffer);
+      	if (strstr(size_buff, "warning"))
+            ++wcnt;
+      	if (strstr(size_buff, "error"))
+            ++ecnt;
 
-	        if (strstr(buffer, "warning"))
-	            wcnt++;
-	        if (strstr(buffer, "error"))
-	            ecnt++;
+      	description = wd_find_warn_err(size_buff);
+      	if (description) {
+            for (i = 0; ccs[i].cs_t; ++i) {
+            	t_pos = strstr(size_buff, ccs[i].cs_t);
+            	if (t_pos) {
+                  mk_pos = t_pos - size_buff;
+                  break;
+            	}
+            }
 
-	        description = find_warning_error(buffer);
-	        if (description) {
-	            for (i = 0; ccs[i].cs_t; i++) {
-	                t_pos = strstr(buffer, ccs[i].cs_t);
-	                if (t_pos) {
-	                    mk_pos = t_pos - buffer;
-	                    break;
-	                }
-	            }
+            for (i = 0; i < mk_pos; i++)
+            	printf(" ");
 
-	            for (i = 0; i < mk_pos; i++)
-	                printf(" ");
+            pr_color(stdout,
+					 FCOLOUR_BLUE,
+					 "^ %s :(\n", description);
+      	}
+      }
 
-	            pr_color(stdout,
-	                     FCOLOUR_BLUE,
-	                     "^ %s :(\n", description);
-	        }
-	    }
+      fclose(plog);
 
-	    fclose(pf);
-
-	    char size_compiler[256];
-	    snprintf(size_compiler, sizeof(size_compiler),
-	             "COMPILE COMPLETE | WITH %d ERROR | %d WARNING",
-	             ecnt, wcnt);
-	    wd_set_title(size_compiler);
-
-			int amx_access = path_acces(pawn_output);
-			if (amx_access && debug != 0) {
-				printf("%-18s: %d bytes\n", "Header size", header_size);
-				printf("%-18s: %d bytes\n", "Code size", code_size);
-				printf("%-18s: %d bytes\n", "Data size", data_size);
-				printf("%-18s: %d bytes\n", "Stack/heap size", stack_size);
-				printf("%-18s: %d bytes\n", "Total requirements", total_size);
-
-				unsigned long hash = djb2_hash_file(pawn_output);
-				printf("%-18s: %lu (0x%lx)\n", "djb2 hash", hash, hash);
-
-				portable_stat_t st;
-				if (portable_stat(pawn_output, &st) == 0) {
-					printf("%-18s: %llu bytes\n", "size", (unsigned long long)st.st_size);
-					printf("%-18s: %llu\n", "ino", (unsigned long long)st.st_ino);
-					printf("%-18s: %llu\n", "dev", (unsigned long long)st.st_dev);
-					printf("%-18s: %020o\n", "mode", st.st_mode);
-					printf("%-18s: %lld\n", "atime", (long long)st.st_latime);
-					printf("%-18s: %lld\n", "mtime", (long long)st.st_lmtime);
-					printf("%-18s: %lld\n", "ctime", (long long)st.st_mctime);
-					printf("%-18s: %s\n", "isdir", (st.st_mode & S_IFDIR) ? "yes" : "no");
-					printf("%-18s: %s\n", "isreg", (st.st_mode & S_IFREG) ? "yes" : "no");
-					printf("%-18s: %s\n", "readable", (st.st_mode & S_IRUSR) ? "yes" : "no");
-					printf("%-18s: %s\n", "writable", (st.st_mode & S_IWUSR) ? "yes" : "no");
-					printf("%-18s: %s\n", "executable", (st.st_mode & S_IXUSR) ? "yes" : "no");
-				}
-			}
-			printf("* Pawn Compiler %s - Copyright (c) 1997-2006, ITB CompuPhase\n", compiler_ver);
+      compiler_detailed(pawn_output, debug, wcnt, ecnt,
+						compiler_ver, header_size, code_size,
+						data_size, stack_size, total_size);
+      return;
 }

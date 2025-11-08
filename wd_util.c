@@ -17,6 +17,9 @@
 #include <inttypes.h>
 #include <stddef.h>
 #include <libgen.h>
+#ifdef __linux__
+#include <termios.h>
+#endif
 
 #include <ncursesw/curses.h>
 #include <readline/readline.h>
@@ -123,12 +126,12 @@ void wd_init_cwd(void) {
 	    }
 }
 char* wd_get_cwd(void) {
-			static int __init_getcwd = 0;
-			if (__init_getcwd == 0) {
-				__init_getcwd = 1;
-				wd_init_cwd();
-			}
-    	return cwd;
+	    static int __init_getcwd = 0;
+	    if (__init_getcwd == 0) {
+	    	__init_getcwd = 1;
+	    	wd_init_cwd();
+	    }
+	    return cwd;
 }
 
 char* get_masked_text(int reveal, const char *text) {
@@ -421,11 +424,11 @@ int wd_set_title(const char *title)
 		else
 				new_title = title;
 
-#ifndef __linux__
-		if (is_native_windows())
-			SetConsoleTitleA(new_title);
+#ifdef _WIN32
+		SetConsoleTitleA(new_title);
 #else
-			printf("\033]0;%s\007", new_title);
+    if (isatty(STDOUT_FILENO))
+        printf("\033]0;%s\007", title);
 #endif
 
 		return __RETZ;
@@ -475,7 +478,8 @@ bool strfind(const char *text, const char *pattern)
 		size_t i = 0;
 		while (i <= n - m) {
 			size_t j = m;
-			while (j > 0 && tolower((unsigned char)pattern[j - 1]) == tolower((unsigned char)text[i + j - 1]))
+			while (j > 0 &&
+				tolower((unsigned char)pattern[j - 1]) == tolower((unsigned char)text[i + j - 1]))
 				j--;
 			if (j == 0)
 				return true;
@@ -764,17 +768,17 @@ int wd_sef_fdir(const char *sef_path,
 #ifdef _WIN32
 		WIN32_FIND_DATA find_data;
 		HANDLE find_handle;
-		char search_path[MAX_PATH];
+		char sp[MAX_PATH];
 		const char *name;
 
 		if (sef_path[strlen(sef_path) - 1] == '\\')
-				snprintf(search_path,
-						 sizeof(search_path), "%s*", sef_path);
+				snprintf(sp,
+						 sizeof(sp), "%s*", sef_path);
 		else
-				snprintf(search_path,
-						 sizeof(search_path), "%s\\*", sef_path);
+				snprintf(sp,
+						 sizeof(sp), "%s\\*", sef_path);
 
-		find_handle = FindFirstFile(search_path, &find_data);
+		find_handle = FindFirstFile(sp, &find_data);
 		if (find_handle == INVALID_HANDLE_VALUE)
 				return __RETZ;
 
@@ -962,36 +966,35 @@ static int wd_find_compiler(const char *wd_os_type)
 		}
 }
 
-static void __attribute__((unused)) __toml_base_subdirs(const char *base_path, FILE *toml_file, int *first)
+static void __attribute__((unused)) __toml_base_subdirs(const char *base_path,
+														FILE *toml_file, int *first)
 {
 #ifdef _WIN32
 		WIN32_FIND_DATAA find_data;
 		HANDLE find_handle;
-		char search_path[MAX_PATH];
-		char full_path[MAX_PATH * 4];
-
-		snprintf(search_path, sizeof(search_path), "%s\\*", base_path);
-		find_handle = FindFirstFileA(search_path, &find_data);
+		char sp[MAX_PATH], fp[MAX_PATH * 4];
+		snprintf(sp, sizeof(sp), "%s\\*", base_path);
+		find_handle = FindFirstFileA(sp, &find_data);
 		if (find_handle == INVALID_HANDLE_VALUE)
 			return;
 
 		do {
-			if (find_data.dwFileAttributes &
-					FILE_ATTRIBUTE_DIRECTORY) {
-				if (strcmp(find_data.cFileName, ".") == 0 ||
-					strcmp(find_data.cFileName, "..") == 0)
-					continue;
+				if (find_data.dwFileAttributes &
+						FILE_ATTRIBUTE_DIRECTORY) {
+					if (strcmp(find_data.cFileName, ".") == 0 ||
+						strcmp(find_data.cFileName, "..") == 0)
+						continue;
 
-				const char *last_slash = strrchr(base_path, '\\');
-				if (last_slash && strcmp(last_slash + 1, find_data.cFileName) == 0)
-					continue;
+					const char *last_slash = strrchr(base_path, '\\');
+					if (last_slash && strcmp(last_slash + 1, find_data.cFileName) == 0)
+						continue;
 
-				snprintf(full_path, sizeof(full_path), "%s/%s",
-						base_path, find_data.cFileName);
+					snprintf(fp, sizeof(fp), "%s/%s",
+							base_path, find_data.cFileName);
 
-				__toml_add_directory_path(toml_file, first, full_path);
-				__toml_base_subdirs(full_path, toml_file, first);
-			}
+					__toml_add_directory_path(toml_file, first, fp);
+					__toml_base_subdirs(fp, toml_file, first);
+				}
 		} while (FindNextFileA(find_handle, &find_data) != 0);
 
 		FindClose(find_handle);
@@ -999,28 +1002,28 @@ static void __attribute__((unused)) __toml_base_subdirs(const char *base_path, F
 #else
 		DIR *dir;
 		struct dirent *item;
-		char full_path[MAX_PATH * 4];
+		char fp[MAX_PATH * 4];
 
 		dir = opendir(base_path);
 		if (!dir)
 			return;
 
 		while ((item = readdir(dir)) != NULL) {
-			if (item->d_type == DT_DIR) {
-				if (strcmp(item->d_name, ".") == 0 ||
-					strcmp(item->d_name, "..") == 0)
-					continue;
+				if (item->d_type == DT_DIR) {
+					if (strcmp(item->d_name, ".") == 0 ||
+						strcmp(item->d_name, "..") == 0)
+						continue;
 
-				const char *last_slash = strrchr(base_path, '/');
-				if (last_slash && strcmp(last_slash + 1, item->d_name) == 0)
-					continue;
+					const char *last_slash = strrchr(base_path, '/');
+					if (last_slash && strcmp(last_slash + 1, item->d_name) == 0)
+						continue;
 
-				snprintf(full_path, sizeof(full_path), "%s/%s",
-						base_path, item->d_name);
+					snprintf(fp, sizeof(fp), "%s/%s",
+							base_path, item->d_name);
 
-				__toml_add_directory_path(toml_file, first, full_path);
-				__toml_base_subdirs(full_path, toml_file, first);
-			}
+					__toml_add_directory_path(toml_file, first, fp);
+					__toml_base_subdirs(fp, toml_file, first);
+				}
 		}
 
 		closedir(dir);
@@ -1062,13 +1065,12 @@ static void wd_generate_toml_content(FILE *file, const char *wd_os_type,
 								    int optimized_lt, char *sef_path)
 {
 		int first_item = 1;
-
 		if (sef_path[0]) {
-				char *f_EXT = strrchr(sef_path, '.');
-				if (f_EXT)
-						*f_EXT = '\0';
+			char *f_EXT = strrchr(sef_path, '.');
+			if (f_EXT)
+					*f_EXT = '\0';
 		}
-
+		
 		char *ptr_samp = NULL, *ptr_omp = NULL;
 		if (!strcmp(wd_os_type, "windows")) {
 			ptr_samp = "samp-server.exe";

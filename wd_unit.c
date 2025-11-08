@@ -306,14 +306,7 @@ _reexecute_command:
             curl_easy_setopt(curl_handle, CURLOPT_WRITEDATA, (void *)&chunk);
             curl_easy_setopt(curl_handle, CURLOPT_USERAGENT, "libcurl-agent/1.0");
 
-            if (is_native_windows()) {
-              if (access("cacert.pem", F_OK) == 0)
-                curl_easy_setopt(curl_handle, CURLOPT_CAINFO, "cacert.pem");
-              else if (access("C:/libwatchdogs/cacert.pem", F_OK) == 0)
-                curl_easy_setopt(curl_handle, CURLOPT_CAINFO, "C:/libwatchdogs/cacert.pem");
-              else
-                pr_color(stdout, FCOLOUR_YELLOW, "Warning: No CA file found. SSL verification may fail.\n");
-            }
+            cacert_pem(curl_handle);
 
             fflush(stdout);
             res = curl_easy_perform(curl_handle);
@@ -603,19 +596,19 @@ _runners_:
                 if (arg1 == NULL || *arg1 == '\0')
                   size_arg1 = "none";
 
-    		        size_t needed = snprintf(NULL, 0, "Watchdogs | @ running | args: %s | %s | CTRL + C to stop.",
-    									              size_arg1,
-    									              wcfg.wd_toml_config) + 1;
-    		        char *title_running_info = wd_malloc(needed);
-    		        if (!title_running_info) { return __RETN; }
-    		        snprintf(title_running_info, needed, "Watchdogs | @ running | args: %s | %s | CTRL + C to stop.",
-    									                  size_arg1,
-    									                  wcfg.wd_toml_config);
-    		        if (title_running_info) {
-    			        wd_set_title(title_running_info);
-    			        wd_free(title_running_info);
-    			        title_running_info = NULL;
-    		        }
+                size_t needed = snprintf(NULL, 0, "Watchdogs | @ running | args: %s | %s | CTRL + C to stop.",
+                                                size_arg1,
+                                                wcfg.wd_toml_config) + 1;
+                char *title_running_info = wd_malloc(needed);
+                if (!title_running_info) { return __RETN; }
+                snprintf(title_running_info, needed, "Watchdogs | @ running | args: %s | %s | CTRL + C to stop.",
+                                                size_arg1,
+                                                wcfg.wd_toml_config);
+                if (title_running_info) {
+                		wd_set_title(title_running_info);
+                    wd_free(title_running_info);
+                    title_running_info = NULL;
+                }
 
                 int _wd_config_acces = path_acces(wcfg.wd_toml_config);
                 if (!_wd_config_acces)
@@ -952,8 +945,8 @@ void wd_main(void *pre_command) {
             command_dur = (cmd_end.tv_sec - cmd_start.tv_sec) +
                           (cmd_end.tv_nsec - cmd_start.tv_nsec) / 1e9;
             pr_color(stdout,
-                         FCOLOUR_GREEN,
-                         " ==> [C]Finished in %.3fs\n",
+                         FCOLOUR_CYAN,
+                         " <T> [C]Finished at %.3fs\n",
                          command_dur);
             return;
         }
@@ -965,8 +958,8 @@ loop_main:
             command_dur = (cmd_end.tv_sec - cmd_start.tv_sec) +
                           (cmd_end.tv_nsec - cmd_start.tv_nsec) / 1e9;
             pr_color(stdout,
-                         FCOLOUR_GREEN,
-                         " ==> [C]Finished in %.3fs\n",
+                         FCOLOUR_CYAN,
+                         " <T> [C]Finished at %.3fs\n",
                          command_dur);
             goto loop_main;
         } else if (ret == __RETW) {

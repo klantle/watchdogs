@@ -20,9 +20,19 @@
 #include "wd_package.h"
 #include "wd_compiler.h"
 
+static char container_output[PATH_MAX] = { 0 },
+            __wcp_direct_path[PATH_MAX] = { 0 },
+            __wcp_file_name[PATH_MAX] = { 0 },
+            __wcp_input_path[PATH_MAX] = { 0 },
+            __wcp_any_tmp[PATH_MAX] = { 0 };
+
 int wd_run_compiler(const char *arg, const char *compile_args)
 {
         wcfg.wd_compiler_stat = 0;
+
+        char run_cmd[PATH_MAX + 258];
+        FILE *proc_file;
+        char log_line[1024];
 
         const char *ptr_pawncc = NULL;
         if (!strcmp(wcfg.wd_os_type, OS_SIGNAL_WINDOWS))
@@ -40,13 +50,13 @@ int wd_run_compiler(const char *arg, const char *compile_args)
         if (_wd_log_acces)
             remove(".wd_compiler.log");
 
-        char container_output[PATH_MAX] = { 0 };
-        char __wcp_direct_path[PATH_MAX] = { 0 };
-        char __wcp_file_name[PATH_MAX] = { 0 };
-        char __wcp_input_path[PATH_MAX] = { 0 };
-        char __wcp_any_tmp[PATH_MAX] = { 0 };
-
         wd_sef_fdir_reset();
+
+        memset(container_output, 0, sizeof(container_output));
+        memset(__wcp_direct_path, 0, sizeof(__wcp_direct_path));
+        memset(__wcp_file_name, 0, sizeof(__wcp_file_name));
+        memset(__wcp_input_path, 0, sizeof(__wcp_input_path));
+        memset(__wcp_any_tmp, 0, sizeof(__wcp_any_tmp));
 
         int __find_pawncc = wd_sef_fdir(".", ptr_pawncc, NULL);
         if (__find_pawncc)
@@ -91,10 +101,6 @@ int wd_run_compiler(const char *arg, const char *compile_args)
                 }
                 return __RETZ;
             }
-
-            char run_cmd[PATH_MAX + 258];
-            FILE *proc_file;
-            char log_line[1024];
 
             snprintf(run_cmd, sizeof(run_cmd),
                 "%s -___DDDDDDDDDDDDDDDDD "
@@ -256,7 +262,7 @@ n_valid_flag:
                         toml_gm_o.u.s = NULL;
                     }
 
-                    struct timespec start, end;
+                    struct timespec start = {0}, end = {0};
                     double compiler_dur;
 #ifdef _WIN32
                     PROCESS_INFORMATION pi;
@@ -310,6 +316,7 @@ n_valid_flag:
                             &pi             // Pointer to PROCESS_INFORMATION structure
                         );
                         if (success) {
+                            clock_gettime(CLOCK_MONOTONIC, &end);
                             WaitForSingleObject(pi.hProcess, INFINITE);
 
                             DWORD exit_code;
@@ -318,17 +325,18 @@ n_valid_flag:
                             CloseHandle(pi.hProcess);
                             CloseHandle(pi.hThread);
                         } else {
+                            clock_gettime(CLOCK_MONOTONIC, &end);
                             pr_error(stdout, "CreateProcess failed (%lu)", GetLastError());
                         }
+                    } else {
+                          clock_gettime(CLOCK_MONOTONIC, &end);
                     }
-                    clock_gettime(CLOCK_MONOTONIC, &end);
 
                     if (hFile != INVALID_HANDLE_VALUE) {
                         CloseHandle(hFile);
                     }
 #else
                     pid_t pid = fork();
-
                     if (pid == 0) {
                         int fd = open(".wd_compiler.log", O_WRONLY | O_CREAT | O_TRUNC, 0644);
                         if (fd != -1) {
@@ -336,18 +344,18 @@ n_valid_flag:
                             dup2(fd, STDERR_FILENO);
                             close(fd);
                         }
-
                         char *args[] = {
-                            wcfg.wd_sef_found_list[0],     // compiler binary
-                            wcfg.wd_toml_gm_input,         // input file
-                            "-o", wcfg.wd_toml_gm_output,  // output file dengan option terpisah
-                            wcfg.wd_toml_aio_opt,          // additional options
-                            include_aio_path,              // include search path
-                            "-i", path_include,            // include directory dengan option terpisah
-                            NULL  // Sentinel
-                        };
-
+                                          wcfg.wd_sef_found_list[0],     // compiler binary
+                                          wcfg.wd_toml_gm_input,         // input file
+                                          "-o", wcfg.wd_toml_gm_output,  // output file dengan option terpisah
+                                          wcfg.wd_toml_aio_opt,          // additional options
+                                          include_aio_path,              // include search path
+                                          "-i", path_include,            // include directory dengan option terpisah
+                                          NULL  // Sentinel
+                                       };
+                        clock_gettime(CLOCK_MONOTONIC, &start);
                         execvp(args[0], args);
+                        clock_gettime(CLOCK_MONOTONIC, &end);
                         exit(127);
                     } else if (pid > 0) {
                         int status;
@@ -360,7 +368,7 @@ n_valid_flag:
                     snprintf(_container_output, sizeof(_container_output), "%s", wcfg.wd_toml_gm_output);
 
                     if (procc_f) {
-                        annotations_compiler(".wd_compiler.log", _container_output, compiler_debugging);
+                        cause_compiler_expl(".wd_compiler.log", _container_output, compiler_debugging);
                     }
 
                     procc_f = fopen(".wd_compiler.log", "r");
@@ -388,8 +396,8 @@ n_valid_flag:
                     compiler_dur = (end.tv_sec - start.tv_sec)
                                         + (end.tv_nsec - start.tv_nsec) / 1e9;
 
-                    pr_color(stdout, FCOLOUR_GREEN,
-                        " ==> [P]Finished in %.3fs (%.0f ms)\n",
+                    pr_color(stdout, FCOLOUR_CYAN,
+                        " <T> [P]Finished at %.3fs (%.0f ms)\n",
                         compiler_dur, compiler_dur * 1000.0);
 #if defined(_DBG_PRINT)
                     pr_color(stdout, FCOLOUR_YELLOW, "-DEBUGGING\n");
@@ -548,9 +556,8 @@ n_valid_flag:
 
                         snprintf(container_output, sizeof(container_output), "%s", __sef_path_sz);
 
-                        struct timespec start, end;
+                        struct timespec start = {0}, end = {0};
                         double compiler_dur;
-
 #ifdef _WIN32
                         PROCESS_INFORMATION pi;
                         STARTUPINFO si = { sizeof(si) };
@@ -603,6 +610,7 @@ n_valid_flag:
                                 &pi              // Pointer to PROCESS_INFORMATION structure
                             );
                             if (success) {
+                                clock_gettime(CLOCK_MONOTONIC, &end);
                                 WaitForSingleObject(pi.hProcess, INFINITE);
 
                                 DWORD exit_code;
@@ -611,17 +619,18 @@ n_valid_flag:
                                 CloseHandle(pi.hProcess);
                                 CloseHandle(pi.hThread);
                             } else {
+                                clock_gettime(CLOCK_MONOTONIC, &end);
                                 pr_error(stdout, "CreateProcess failed (%lu)", GetLastError());
                             }
+                        } else {
+                              clock_gettime(CLOCK_MONOTONIC, &end);
                         }
-                        clock_gettime(CLOCK_MONOTONIC, &end);
 
                         if (hFile != INVALID_HANDLE_VALUE) {
                             CloseHandle(hFile);
                         }
 #else
                         pid_t pid = fork();
-
                         if (pid == 0) {
                             int fd = open(".wd_compiler.log", O_WRONLY | O_CREAT | O_TRUNC, 0644);
                             if (fd != -1) {
@@ -629,15 +638,20 @@ n_valid_flag:
                                 dup2(fd, STDERR_FILENO);
                                 close(fd);
                             }
-
-                            execlp(wcfg.wd_sef_found_list[0],
-                                   wcfg.wd_sef_found_list[0],
-                                   wcfg.wd_sef_found_list[1],
-                                   "-o", container_output,
-                                   wcfg.wd_toml_aio_opt,
-                                   include_aio_path,
-                                   "-i", path_include,
-                                   NULL);
+                            char *args[] = {
+                                              wcfg.wd_sef_found_list[0],  // compiler binary
+                                              wcfg.wd_sef_found_list[1],  // input file
+                                              "-o",
+                                              container_output,           // output file
+                                              wcfg.wd_toml_aio_opt,       // additional options
+                                              include_aio_path,           // include search path
+                                              "-i",
+                                              path_include,               // include directory
+                                              NULL                        // sentinel
+                                           };
+                            clock_gettime(CLOCK_MONOTONIC, &start);
+                            execvp(args[0], args);
+                            clock_gettime(CLOCK_MONOTONIC, &end);
                             exit(127);
                         } else if (pid > 0) {
                             int status;
@@ -646,12 +660,11 @@ n_valid_flag:
                             pr_error(stdout, "fork() failed");
                         }
 #endif
-
                         char _container_output[PATH_MAX + 128];
                         snprintf(_container_output, sizeof(_container_output), "%s.amx", container_output);
 
                         if (procc_f) {
-                            annotations_compiler(".wd_compiler.log", _container_output, compiler_debugging);
+                            cause_compiler_expl(".wd_compiler.log", _container_output, compiler_debugging);
                         }
 
                         procc_f = fopen(".wd_compiler.log", "r");
@@ -679,8 +692,8 @@ n_valid_flag:
                         compiler_dur = (end.tv_sec - start.tv_sec)
                                             + (end.tv_nsec - start.tv_nsec) / 1e9;
 
-                        pr_color(stdout, FCOLOUR_GREEN,
-                            " ==> [P]Finished in %.3fs (%.0f ms)\n",
+                        pr_color(stdout, FCOLOUR_CYAN,
+                            " <T> [P]Finished at %.3fs (%.0f ms)\n",
                             compiler_dur, compiler_dur * 1000.0);
 #if defined(_DBG_PRINT)
                         pr_color(stdout, FCOLOUR_YELLOW, "-DEBUGGING\n");
@@ -761,7 +774,6 @@ loop_ipcc3:
                         wd_free(platform);
                         goto ret_ptr;
                     }
-
 done:
                     wd_main(NULL);
                 }

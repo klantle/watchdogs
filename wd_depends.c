@@ -14,22 +14,9 @@
 #include "wd_unit.h"
 #include "wd_depends.h"
 
-cJSON *droot, *depends, *_e_root = NULL;
-FILE *e_file, *fp_cache;
-char dp_fp[PATH_MAX], dp_fc[PATH_MAX], dp_inc[PATH_MAX];
-char *dep_inc_path = NULL;
-char cp_cmd[MAX_PATH * 2];
-char d_b[MAX_PATH];
-char rm_cmd[PATH_MAX];
-int wd_log_acces, i, __inc_legacyplug_r;
-long fp_cache_sz;
-char *file_content;
 char working[512];
 char *tag_ptr, *path, *first_slash;
 char *user, *repo_slash, *repo, *git_ext;
-DIR *dir;
-struct dirent *item;
-struct stat st;
 char cmd[MAX_PATH * 3], fpath[PATH_MAX * 2],
 		parent[PATH_MAX], dest[PATH_MAX];
 char *dname, *ext;
@@ -62,7 +49,7 @@ int dep_check_url (const char *url, const char *github_token)
 		struct curl_slist *headers = NULL;
 		char error_buffer[CURL_ERROR_SIZE] = { 0 };
 
-		printf("\t[DEPS] Using URL: %s...\n", url);
+		printf("\t[DEPS]: Using URL: %s...\n", url);
 		if (strstr(wcfg.wd_toml_github_tokens, "DO_HERE")) {
 			pr_color(stdout, FCOLOUR_GREEN, "[DEPS]: Can't read Github token.. skipping\n");
 			sleep(2);
@@ -200,7 +187,9 @@ dep_parse_repo(const char *input, struct dep_repo_info *__deps_data)
 			strncpy(__deps_data->tag, tag_ptr + 1, sizeof(__deps_data->tag) - 1);
 
 			if (!strcmp(__deps_data->tag, "latest")) {
-				pr_info(stdout, "Latest (:latest) tag detected, will use latest release");
+				printf("[DEPS]: Latest ");
+				pr_color(stdout, FCOLOUR_GREEN, "(:latest) ");
+				printf("tag detected, will use latest release\n");
 			}
 		}
 
@@ -572,7 +561,7 @@ static int dep_handle_repo (const struct dep_repo_info *dep_repo_info,
 								dep_repo_info->repo,
 								deps_actual_tag,
 								sizeof(deps_actual_tag))) {
-									printf("[DEPS] Using latest tag: %s"
+									printf("[DEPS]: Using latest tag: %s"
 												 "(instead of latest)\n", deps_actual_tag);
 			} else {
 				pr_error(stdout, "Failed to get latest tag for %s/%s,"
@@ -636,8 +625,7 @@ static int dep_handle_repo (const struct dep_repo_info *dep_repo_info,
 				if (dep_check_url(deps_put_url, wcfg.wd_toml_github_tokens)) {
 					ret = 1;
 					if (j == 1)
-						printf(
-								"[DEPS] Using master branch (main branch not found)\n");
+						printf("[DEPS]: Using master branch (main branch not found)\n");
 				}
 			}
 		}
@@ -655,88 +643,78 @@ void dep_sym_convert (char *path)
 		}
 }
 
-void
-dep_add_ncheck_hash(cJSON *depends, const char *_FP, const char *_JP)
+int
+dep_add_ncheck_hash(const char *_H_file_path, const char *_H_json_path)
 {
 		char convert_f_path[PATH_MAX];
 		char convert_j_path[PATH_MAX];
-		unsigned char hash[SHA256_DIGEST_LENGTH];
-		char *hex;
-		int h_exists = 0;
 		int array_size;
 		int j;
 
-		char *pos;
-		while ((pos = strstr(_FP, "include/")) != NULL) {
-			memmove(pos, pos + strlen("include/"),
-				strlen(pos + strlen("include/")) + 1);
+		char *path_pos;
+		while ((path_pos = strstr(_H_file_path, "include/")) != NULL)
+		{
+			memmove(path_pos, path_pos + strlen("include/"),
+				strlen(path_pos + strlen("include/")) + 1);
 		}
-		while ((pos = strstr(_JP, "include/")) != NULL) {
-			memmove(pos, pos + strlen("include/"),
-				strlen(pos + strlen("include/")) + 1);
+		while ((path_pos = strstr(_H_json_path, "include/")) != NULL)
+		{
+			memmove(path_pos, path_pos + strlen("include/"),
+				strlen(path_pos + strlen("include/")) + 1);
 		}
-
-		strncpy(convert_f_path, _FP, sizeof(convert_f_path));
-		convert_f_path[sizeof(convert_f_path) - 1] = '\0';
+		strncpy(convert_f_path, _H_file_path, sizeof(convert_f_path));
+			convert_f_path[sizeof(convert_f_path) - 1] = '\0';
 		dep_sym_convert(convert_f_path);
-
-		strncpy(convert_j_path, _JP, sizeof(convert_j_path));
-		convert_j_path[sizeof(convert_j_path) - 1] = '\0';
+		strncpy(convert_j_path, _H_json_path, sizeof(convert_j_path));
+			convert_j_path[sizeof(convert_j_path) - 1] = '\0';
 		dep_sym_convert(convert_j_path);
 
-		printf("\tHashing convert path: %s\n", convert_f_path);
-
-		if (sha256_hash(convert_f_path, hash) == __RETN) {
-			to_hex(hash, 32, &hex);
-
-			array_size = cJSON_GetArraySize(depends);
-			for (j = 0; j < array_size; j++) {
-				cJSON *_e_item = cJSON_GetArrayItem(depends, j);
-				if (cJSON_IsString(_e_item) &&
-					strcmp(_e_item->valuestring, hex) == 0) {
-					h_exists = 1;
-					break;
-				}
-			}
-
-			if (!h_exists) {
-				cJSON_AddItemToArray(depends, cJSON_CreateString(hex));
-				pr_info(stdout,
-					"\tAdded hash for: %s to wd_depends.json\n",
-					convert_j_path);
-			} else {
-				pr_info(stdout,
-					"\tHash already exists for: %s in wd_depends.json\n",
-					convert_j_path);
-				pr_info(stdout, "\tHash:");
-				pr_color(stdout, FCOLOUR_GREEN, "\t\t%s\n", hex);
-			}
-
-			wd_free(hex);
-		} else {
-			pr_error(stdout,
-				"Failed to hash: %s (convert: %s)\n",
-				convert_j_path,
-				convert_f_path);
+		static int init_crc32 = 0;
+		if (init_crc32 != 1) {
+			init_crc32 = 1;
+			init_crc32_table();
 		}
 
-		return;
+		uint32_t crc32_fpath;
+		crc32_fpath = crc32(convert_f_path,
+												sizeof(convert_f_path)-1);
+		char crc_str[9];
+		sprintf(crc_str, "%08X", crc32_fpath);
+
+		if (crc32_fpath) {
+				pr_color(stdout,
+						 FCOLOUR_GREEN,
+						 "[DEPS]: Create hash (CRC32) for '%s': '%s'\n",
+						 convert_j_path,
+					     crc_str);
+		} else {
+			pr_error(stdout,
+				"Failed to hash: %s (convert: %s)",
+				convert_j_path,
+				convert_f_path);
+			return 0;
+		}
+
+		return 1;
 }
 
 void dep_implementation_samp_conf (depConfig config) {
+		if (wd_server_env() != 1)
+			return;
+
 		pr_color(stdout,
 				 FCOLOUR_GREEN,
-				 "[DEPS]: Adding Depends '%s'\n",
-				 config.dep_added);
+				 "[DEPS]: Create Depends '%s' into '%s'\n",
+				 config.dep_added, config.dep_config);
 
-		FILE* file = fopen(config.dep_config, "r");
-		if (file) {
+		FILE* c_file = fopen(config.dep_config, "r");
+		if (c_file) {
 			char line[256];
 			int t_exist = 0;
 			int tr_exist = 0;
 			int tr_ln_has_tx = 0;
 
-			while (fgets(line, sizeof(line), file)) {
+			while (fgets(line, sizeof(line), c_file)) {
 				line[strcspn(line, "\n")] = 0;
 				if (strstr(line, config.dep_added) != NULL) {
 					t_exist = 1;
@@ -748,7 +726,7 @@ void dep_implementation_samp_conf (depConfig config) {
 					}
 				}
 			}
-			fclose(file);
+			fclose(c_file);
 
 			if (t_exist) {
 				return;
@@ -756,9 +734,9 @@ void dep_implementation_samp_conf (depConfig config) {
 
 			if (tr_exist && !tr_ln_has_tx) {
 				FILE* temp_file = fopen(".deps_tmp", "w");
-				file = fopen(config.dep_config, "r");
+				c_file = fopen(config.dep_config, "r");
 
-				while (fgets(line, sizeof(line), file)) {
+				while (fgets(line, sizeof(line), c_file)) {
 					char clean_line[256];
 					strcpy(clean_line, line);
 					clean_line[strcspn(clean_line, "\n")] = 0;
@@ -771,23 +749,23 @@ void dep_implementation_samp_conf (depConfig config) {
 					}
 				}
 
-				fclose(file);
+				fclose(c_file);
 				fclose(temp_file);
 
 				remove(config.dep_config);
 				rename(".deps_tmp", config.dep_config);
 			} else if (!tr_exist) {
-				file = fopen(config.dep_config, "a");
-				fprintf(file, "%s %s\n", config.dep_target, config.dep_added);
-				fclose(file);
+				c_file = fopen(config.dep_config, "a");
+				fprintf(c_file, "%s %s\n", config.dep_target, config.dep_added);
+				fclose(c_file);
 			}
 
 		} else {
-			file = fopen(config.dep_config, "w");
-			fprintf(file, "%s %s\n",
+			c_file = fopen(config.dep_config, "w");
+			fprintf(c_file, "%s %s\n",
 					config.dep_target,
 					config.dep_added);
-			fclose(file);
+			fclose(c_file);
 		}
 
 		return;
@@ -796,22 +774,25 @@ void dep_implementation_samp_conf (depConfig config) {
     dep_implementation_samp_conf((depConfig){x, y, z})
 
 void dep_implementation_omp_conf (const char* config_name, const char* deps_name) {
+		if (wd_server_env() != 2)
+			return;
+
 		pr_color(stdout,
 				 FCOLOUR_GREEN,
-				 "[DEPS]: Adding Depends '%s'\n",
-				 deps_name);
+				 "[DEPS]: Create Depends '%s' into '%s'\n",
+				 deps_name, config_name);
 
 		FILE* c_file = fopen(config_name, "r");
-		cJSON* droot = NULL;
+		cJSON* s_root = NULL;
 
 		if (!c_file) {
-			droot = cJSON_CreateObject();
+			s_root = cJSON_CreateObject();
 		} else {
 			fseek(c_file, 0, SEEK_END);
 			long file_size = ftell(c_file);
 			fseek(c_file, 0, SEEK_SET);
 
-			char* buffer = (char*)malloc(file_size + 1);
+			char* buffer = (char*)wd_malloc(file_size + 1);
 			if (!buffer) {
 				pr_error(stdout, "Memory allocation failed!");
 				fclose(c_file);
@@ -822,21 +803,22 @@ void dep_implementation_omp_conf (const char* config_name, const char* deps_name
 			buffer[file_size] = '\0';
 			fclose(c_file);
 
-			droot = cJSON_Parse(buffer);
-			free(buffer);
+			s_root = cJSON_Parse(buffer);
+			wd_free(buffer);
 
-			if (!droot) {
-				droot = cJSON_CreateObject();
+			if (!s_root) {
+				s_root = cJSON_CreateObject();
 			}
 		}
 
-		cJSON* pawn = cJSON_GetObjectItem(droot, "pawn");
+		cJSON* pawn = cJSON_GetObjectItem(s_root, "pawn");
 		if (!pawn) {
 			pawn = cJSON_CreateObject();
-			cJSON_AddItemToObject(droot, "pawn", pawn);
+			cJSON_AddItemToObject(s_root, "pawn", pawn);
 		}
 
-		cJSON* legacy_plugins = cJSON_GetObjectItem(pawn, "legacy_plugins");
+		cJSON* legacy_plugins;
+		legacy_plugins = cJSON_GetObjectItem(pawn, "legacy_plugins");
 		if (!legacy_plugins) {
 			legacy_plugins = cJSON_CreateArray();
 			cJSON_AddItemToObject(pawn,
@@ -864,18 +846,19 @@ void dep_implementation_omp_conf (const char* config_name, const char* deps_name
 		}
 
 		if (!p_exist) {
-			cJSON_AddItemToArray(legacy_plugins, cJSON_CreateString(deps_name));
+			cJSON *size_deps_name = cJSON_CreateString(deps_name);
+			cJSON_AddItemToArray(legacy_plugins, size_deps_name);
 		}
 
-		char* __cJSON_Printed = cJSON_Print(droot);
+		char* __cJSON_Printed = cJSON_Print(s_root);
 		c_file = fopen(config_name, "w");
 		if (c_file) {
 			fputs(__cJSON_Printed, c_file);
 			fclose(c_file);
 		}
 
-		cJSON_Delete(droot);
-		free(__cJSON_Printed);
+		cJSON_Delete(s_root);
+		wd_free(__cJSON_Printed);
 
 		return;
 }
@@ -886,22 +869,22 @@ void dep_add_include (const char *modes,
 					  char *dep_after) {
 		pr_color(stdout,
 				 FCOLOUR_GREEN,
-				 "[DEPS]: Adding Include: '%s'\n",
-				 dep_name);
+				 "[DEPS]: Create include '%s' into '%s' after '%s'\n",
+				 dep_name, modes, dep_after);
 
-		FILE *file = fopen(modes, "r");
-		if (file == NULL) {
+		FILE *m_file = fopen(modes, "r");
+		if (m_file == NULL) {
 			return;
 		}
 
-		fseek(file, 0, SEEK_END);
-		long fileSize = ftell(file);
-		fseek(file, 0, SEEK_SET);
+		fseek(m_file, 0, SEEK_END);
+		long fileSize = ftell(m_file);
+		fseek(m_file, 0, SEEK_SET);
 
 		char *ct_modes = wd_malloc(fileSize + 1);
-		fread(ct_modes, 1, fileSize, file);
+		fread(ct_modes, 1, fileSize, m_file);
 		ct_modes[fileSize] = '\0';
-		fclose(file);
+		fclose(m_file);
 
 		if (strstr(ct_modes, dep_name) != NULL &&
 			strstr(ct_modes, dep_after) != NULL) {
@@ -949,19 +932,17 @@ void dep_add_include (const char *modes,
 
 const char *dep_get_fname (const char *path)
 {
-		const char *depends;
-		depends = strrchr(path, '/');
-		if (!depends) {
+		const char *depends = strrchr(path, '/');
+		if (!depends)
 				depends = strrchr(path, '\\');
-		}
 		return depends ? depends + 1 : path;
 }
 
 static const char *dep_get_bname (const char *path)
 {
-		const char *p1 = strrchr(path, '/');
-		const char *p2 = strrchr(path, '\\');
-		const char *p = NULL;
+		const char *p1 = strrchr(path, '/'),
+				   *p2 = strrchr(path, '\\'),
+				   *p = NULL;
 
 		if (p1 && p2) {
 			p = (p1 > p2) ? p1 : p2;
@@ -984,7 +965,8 @@ static void dep_pr_include_directive (const char *deps_include)
 		const char *dep_n = dep_get_fname(deps_include);
 		snprintf(depends_name, sizeof(depends_name), "%s", dep_n);
 
-		const char *direct_bnames = dep_get_bname(depends_name);
+		const char
+			*direct_bnames = dep_get_bname(depends_name);
 
 		FILE *procc_f = fopen("watchdogs.toml", "r");
 		_toml_config = toml_parse_file(procc_f, errbuf, sizeof(errbuf));
@@ -1008,11 +990,11 @@ static void dep_pr_include_directive (const char *deps_include)
 		snprintf(idirective, sizeof(idirective),
 				"#include <%s>", direct_bnames);
 
-		if (wd_server_env() == SAMP_TRUE) {
+		if (wd_server_env() == 1) {
 			DEP_ADD_INCLUDES(wcfg.wd_toml_gm_input,
 							 idirective,
 							 "#include <a_samp>");
-		} else if (wd_server_env() == OMP_TRUE) {
+		} else if (wd_server_env() == 2) {
 			DEP_ADD_INCLUDES(wcfg.wd_toml_gm_input,
 							 idirective,
 							 "#include <open.mp>");
@@ -1023,80 +1005,15 @@ static void dep_pr_include_directive (const char *deps_include)
 		}
 }
 
-void dep_pr_include_files (cJSON *depends, const char *bp, const char *db)
-{
-		dir = opendir(bp);
-		if (!dir)
-			return;
-
-		while ((item = readdir(dir)) != NULL) {
-			if (!strcmp(item->d_name, ".") || !strcmp(item->d_name, ".."))
-				continue;
-
-			snprintf(fpath, sizeof(fpath), "%s/%s", bp, item->d_name);
-
-			if (stat(fpath, &st) != 0)
-				continue;
-
-			if (S_ISDIR(st.st_mode)) {
-				dep_pr_include_files(depends, fpath, db);
-				continue;
-			}
-
-			if (!S_ISREG(st.st_mode))
-				continue;
-
-			ext = strrchr(item->d_name, '.');
-			if (!ext || strcmp(ext, ".inc"))
-				continue;
-
-			snprintf(parent, sizeof(parent), "%s", bp);
-			dname = strrchr(parent, '/');
-			if (!dname)
-				continue;
-
-			++dname; /* skip '/' */
-
-			snprintf(dest, sizeof(dest), "%s/%s", db, dname);
-
-			if (rename(parent, dest)) {
-				if (is_native_windows()) {
-					snprintf(cmd, sizeof(cmd),
-						"xcopy \"%s\" \"%s\" /E /I /H /Y && rmdir /S /Q \"%s\"",
-						parent, dest, parent);
-				} else {
-					snprintf(cmd, sizeof(cmd),
-						"cp -r \"%s\" \"%s\" && rm -rf \"%s\"",
-						parent, dest, parent);
-				}
-				if (system(cmd)) {
-					pr_error(stdout, "Failed to move folder: %s\n", parent);
-					continue;
-				}
-			}
-
-			dep_add_ncheck_hash(depends, dest, dest);
-
-			pr_info(stdout, "\tmoved folder: %s to %s/\n",
-				dname, !strcmp(wcfg.wd_is_omp, CRC32_TRUE) ?
-				"qawno/include" : "pawno/include");
-
-			break;
-		}
-
-		closedir(dir);
-
-		return;
-}
-
-static void deps_print_file_type (const char *path, const char *pattern,
-                              const char *exclude, const char *cwd,
-                              cJSON *depends, const char *target_dir, int droot)
+void deps_print_file_type (const char *path, const char *pattern,
+						   const char *exclude, const char *cwd,
+						   const char *target_dir, int root)
 {
 		char cp_cmd[MAX_PATH * 2];
 		char json_item[PATH_MAX];
 
 		wd_sef_fdir_reset();
+
 		int found = wd_sef_fdir(path, pattern, exclude);
 
 		if (found) {
@@ -1126,28 +1043,27 @@ static void deps_print_file_type (const char *path, const char *pattern,
 				system(cp_cmd);
 
 				snprintf(json_item, sizeof(json_item), "%s", deps_names);
-				dep_add_ncheck_hash(depends, json_item, json_item);
+				dep_add_ncheck_hash(json_item, json_item);
 
-				if (droot != 1)
+				if (root == 1)
 					goto done;
 
-				if (wd_server_env() == SAMP_TRUE &&
+				if (wd_server_env() == 1 &&
 					  strfind(wcfg.wd_toml_config, "cfg"))
 samp_label:
-					M_ADD_PLUGIN(wcfg.wd_toml_config,
-								 deps_bnames);
-				else if (wd_server_env() == OMP_TRUE &&
-									strfind(wcfg.wd_toml_config, "json"))
-					S_ADD_PLUGIN(wcfg.wd_toml_config,
-								"plugins", deps_bnames);
+						S_ADD_PLUGIN(wcfg.wd_toml_config,
+							"plugins", deps_bnames);
+				else if (wd_server_env() == 2 &&
+								strfind(wcfg.wd_toml_config, "json"))
+								M_ADD_PLUGIN(wcfg.wd_toml_config,
+											 deps_bnames);
 				else
 						goto samp_label;
 			}
 		}
 
 done:
-		wd_main(NULL)
-		;
+		return;
 }
 
 void dep_cjson_additem (cJSON *p1, int p2, cJSON *p3)
@@ -1160,64 +1076,26 @@ void dep_cjson_additem (cJSON *p1, int p2, cJSON *p3)
 
 void dep_move_files (const char *dep_dir)
 {
-		wd_log_acces = path_acces("wd_depends.json");
-		if (!wd_log_acces) {
-			if (is_native_windows())
-				system("type nul > wd_depends.json");
-			else
-				system("touch wd_depends.json");
-		}
-
-		droot = cJSON_CreateObject();
-		depends = cJSON_CreateArray();
-		cJSON_AddStringToObject(droot, "comment", " -- cache file");
-
-		e_file = fopen("wd_depends.json", "r");
-		if (!e_file)
-			return;
-
-		fseek(e_file, 0, SEEK_END);
-		fp_cache_sz = ftell(e_file);
-		fseek(e_file, 0, SEEK_SET);
-
-		if (fp_cache_sz <= 0)
-			goto out_close;
-
-		file_content = wd_malloc(fp_cache_sz + 1);
-		if (!file_content)
-			goto out_close;
-
-		fread(file_content, 1, fp_cache_sz, e_file);
-		file_content[fp_cache_sz] = '\0';
-
-		_e_root = cJSON_Parse(file_content);
-		if (!_e_root)
-			goto out_free;
-
-		cJSON *_e_depends;
-		_e_depends = cJSON_GetObjectItem(_e_root, "depends");
-		if (_e_depends && cJSON_IsArray(_e_depends)) {
-			int cnt = cJSON_GetArraySize(_e_depends);
-			int i;
-
-			for (i = 0; i < cnt; i++)
-				dep_cjson_additem(_e_depends, i, depends);
-
-			pr_info(stdout, "Loaded %d existing hashes", cnt);
-		}
-
-out_free:
-		wd_free(file_content);
-out_close:
-		fclose(e_file);
+		DIR *dir;
+		struct dirent *item;
+		struct stat st;
+		FILE* jfile = NULL;
+		FILE *e_file, *fp_cache;
+		char dp_fp[PATH_MAX], dp_fc[PATH_MAX], dp_inc[PATH_MAX];
+		char *dep_inc_path = NULL;
+		char cp_cmd[MAX_PATH * 2];
+		char d_b[MAX_PATH];
+		char rm_cmd[PATH_MAX];
+		int i, _include_search = 0;
+		long fp_cache_sz;
 
 		snprintf(dp_fp, sizeof(dp_fp), "%s/plugins", dep_dir);
 		snprintf(dp_fc, sizeof(dp_fc), "%s/components", dep_dir);
 
-		if (wd_server_env() == SAMP_TRUE) {
+		if (wd_server_env() == 1) {
 			dep_inc_path = "pawno/include";
 			snprintf(dp_inc, sizeof(dp_inc), "%s/pawno/include", dep_dir);
-		} else if (wd_server_env() == OMP_TRUE) {
+		} else if (wd_server_env() == 2) {
 			dep_inc_path = "qawno/include";
 			snprintf(dp_inc, sizeof(dp_inc), "%s/qawno/include", dep_dir);
 		} else {
@@ -1227,26 +1105,108 @@ out_close:
 
 		char *cwd = wd_get_cwd();
 
-		deps_print_file_type(dp_fp, "*.dll", NULL, cwd, depends, "plugins", 1);
-		deps_print_file_type(dp_fp, "*.so", NULL, cwd, depends, "plugins", 1);
-		deps_print_file_type(dep_dir, "*.dll", "plugins", cwd, depends, "", 0);
-		deps_print_file_type(dep_dir, "*.so", "plugins", cwd, depends, "", 0);
+		deps_print_file_type(dp_fp, "*.dll", NULL, cwd, "plugins", 0);
+		deps_print_file_type(dp_fp, "*.so", NULL, cwd, "plugins", 0);
+		deps_print_file_type(dep_dir, "*.dll", "plugins", cwd, "", 1);
+		deps_print_file_type(dep_dir, "*.so", "plugins", cwd, "", 1);
 
-		if (wd_server_env() == OMP_TRUE) {
-			deps_print_file_type(dp_fc, "*.dll", NULL, cwd, depends, "components", 1);
-			deps_print_file_type(dp_fc, "*.so", NULL, cwd, depends, "components", 1);
-			deps_print_file_type(dep_dir, "*.dll", "components", cwd, depends, "", 0);
-			deps_print_file_type(dep_dir, "*.so", "components", cwd, depends, "", 0);
+		if (wd_server_env() == 2) {
+			snprintf(d_b, sizeof(d_b), "qawno/include");
+			deps_print_file_type(dp_fc, "*.dll", NULL, cwd, "components", 0);
+			deps_print_file_type(dp_fc, "*.so", NULL, cwd, "components", 0);
+		} else {
+			snprintf(d_b, sizeof(d_b), "pawno/include");
 		}
 
-		snprintf(d_b, sizeof(d_b), "%s/include",
-			!strcmp(wcfg.wd_is_omp, CRC32_TRUE) ? "qawno" : "pawno");
+		int stack_size = 500;
+		int stack_top = -1;
+		char **dir_stack = wd_malloc(stack_size * sizeof(char*));
 
-		dep_pr_include_files(depends, dep_dir, d_b);
+		for (int i = 0; i < stack_size; i++) {
+		    dir_stack[i] = wd_malloc(PATH_MAX);
+		}
+
+		stack_top++;
+		snprintf(dir_stack[stack_top], PATH_MAX, "%s", dep_dir);
+
+		while (stack_top >= 0) {
+		    char current_dir[PATH_MAX];
+		    snprintf(current_dir, sizeof(current_dir), "%s",
+						dir_stack[stack_top]);
+		    stack_top--;
+
+		    DIR *dir = opendir(current_dir);
+		    if (!dir) continue;
+
+		    struct dirent *item;
+		    struct stat st;
+		    char fpath[PATH_MAX];
+
+			while ((item = readdir(dir)) != NULL) {
+				if (!strcmp(item->d_name, ".") || !strcmp(item->d_name, ".."))
+					continue;
+
+					snprintf(fpath, sizeof(fpath), "%s/%s", current_dir,
+													item->d_name);
+
+					if (stat(fpath, &st) != 0) continue;
+
+					if (S_ISDIR(st.st_mode)) {
+						if (stack_top < stack_size - 1) {
+							stack_top++;
+							snprintf(dir_stack[stack_top], PATH_MAX, "%s", fpath);
+						}
+						continue;
+					}
+
+					ext = strrchr(item->d_name, '.');
+					if (!ext || strcmp(ext, ".inc"))
+							continue;
+
+						snprintf(parent, sizeof(parent), "%s", current_dir);
+						dname = strrchr(parent, '/');
+						if (!dname)
+								continue;
+
+						++dname; /* skip '/' */
+
+						snprintf(dest, sizeof(dest), "%s/%s", d_b, dname);
+
+						if (rename(parent, dest)) {
+								if (is_native_windows()) {
+										snprintf(cmd, sizeof(cmd),
+												"xcopy \"%s\" \"%s\" /E /I /H /Y && rmdir /S /Q \"%s\"",
+												parent, dest, parent);
+								} else {
+										snprintf(cmd, sizeof(cmd),
+												"cp -r \"%s\" \"%s\" && rm -rf \"%s\"",
+												parent, dest, parent);
+								}
+								if (system(cmd)) {
+										pr_error(stdout, "Failed to move folder: %s\n", parent);
+										continue;
+								}
+						}
+
+						dep_add_ncheck_hash(dest, dest);
+
+						pr_info(stdout, "\tmoved folder: %s to %s/\n",
+								dname, !strcmp(wcfg.wd_is_omp, CRC32_TRUE) ?
+								"qawno/include" : "pawno/include");
+				}
+
+		    closedir(dir);
+		}
+
+		for (int i = 0; i < stack_size; i++) {
+		    wd_free(dir_stack[i]);
+		}
+		wd_free(dir_stack);
 
 		wd_sef_fdir_reset();
-		__inc_legacyplug_r = wd_sef_fdir(dep_dir, "*.inc", dep_inc_path);
-		if (__inc_legacyplug_r) {
+
+		_include_search = wd_sef_fdir(dp_inc, "*.inc", NULL);
+		if (_include_search) {
 			for (i = 0; i < wcfg.wd_sef_count; ++i) {
 				const char *fi_depends_name;
 				fi_depends_name = dep_get_fname(wcfg.wd_sef_found_list[i]);
@@ -1262,45 +1222,10 @@ out_close:
 
 				system(cp_cmd);
 
-				dep_add_ncheck_hash(depends, fi_depends_name, fi_depends_name);
+				dep_add_ncheck_hash(fi_depends_name, fi_depends_name);
 				dep_pr_include_directive(fi_depends_name);
 			}
 		}
-
-		cJSON_AddItemToObject(droot, "depends", depends);
-
-		fp_cache = fopen("wd_depends.json", "w");
-		if (fp_cache) {
-			int array_size = cJSON_GetArraySize(depends);
-
-			fprintf(fp_cache, "{\n");
-			fprintf(fp_cache, "\t\"comment\":\t\" -- this is for cache.\",\n");
-			fprintf(fp_cache, "\t\"depends\":\t[");
-
-			if (array_size > 0) {
-				fprintf(fp_cache, "\n");
-				for (i = 0; i < array_size; i++) {
-					cJSON *item = cJSON_GetArrayItem(depends, i);
-
-					if (cJSON_IsString(item)) {
-						fprintf(fp_cache, "\t\t\"%s\"", item->valuestring);
-						if (i < array_size - 1)
-							fprintf(fp_cache, ",");
-						fprintf(fp_cache, "\n");
-					}
-				}
-				fprintf(fp_cache, "\t");
-			}
-
-			fprintf(fp_cache, "]\n}\n");
-			fclose(fp_cache);
-
-			pr_info(stdout, "Saved %d unique hashes", array_size);
-		}
-
-		cJSON_Delete(droot);
-		if (_e_root)
-			cJSON_Delete(_e_root);
 
 		if (is_native_windows())
 			snprintf(rm_cmd, sizeof(rm_cmd),
@@ -1312,7 +1237,7 @@ out_close:
 				dep_dir);
 		system(rm_cmd);
 
-		return;
+		wd_main(NULL);
 }
 
 void wd_apply_depends (const char *depends_name)
@@ -1320,21 +1245,21 @@ void wd_apply_depends (const char *depends_name)
 		char _depends[PATH_MAX];
 		char dep_dir[PATH_MAX];
 		struct stat st;
-		char *__dot_ext;
+		char *f_EXT;
 
 		snprintf(_depends, PATH_MAX, "%s", depends_name);
-		__dot_ext = strrchr(_depends, '.');
-		if (__dot_ext)
-			*__dot_ext = '\0';
+		f_EXT = strrchr(_depends, '.');
+		if (f_EXT)
+			*f_EXT = '\0';
 
 		snprintf(dep_dir, sizeof(dep_dir), "%s", _depends);
 
-		if (wd_server_env() == SAMP_TRUE) {
+		if (wd_server_env() == 1) {
 			if (stat("pawno/include", &st) != 0 && errno == ENOENT)
 				mkdir_recusrs("pawno/include");
 			if (stat("plugins", &st) != 0 && errno == ENOENT)
 				mkdir_recusrs("plugins");
-		} else if (wd_server_env() == OMP_TRUE) {
+		} else if (wd_server_env() == 2) {
 			if (stat("qawno/include", &st) != 0 && errno == ENOENT)
 				mkdir_recusrs("qawno/include");
 
@@ -1350,51 +1275,45 @@ void wd_apply_depends (const char *depends_name)
 		return;
 }
 
-void wd_install_depends (const char *deps_str)
+void wd_install_depends (const char *depends_string)
 {
 		char buffer[1024];
 		const char *depends[MAX_DEPENDS];
 		char *depends_files[MAX_DEPENDS];
+		int dep_item_found = 0;
+		char dep_url[1024] = { 0 };
+		char dep_repo_name[256] = { 0 };
+		struct dep_repo_info dep_repo_info;
+		const char *chr_last_slash;
 		char *token;
 		int DEPS_COUNT = 0;
 		int file_count = 0;
-
-		if (!deps_str || !*deps_str) {
-			pr_info(stdout, "No valid dependencies to install");
-			return;
-		}
-
 		wcfg.wd_idepends = 0;
 
-		snprintf(buffer, sizeof(buffer), "%s", deps_str);
+		if (!depends_string || !*depends_string) {
+			pr_info(stdout, "No valid dependencies to install");
+			goto done;
+		}
+
+		snprintf(buffer, sizeof(buffer), "%s", depends_string);
 		token = strtok(buffer, " ");
 
 		while (token && DEPS_COUNT < MAX_DEPENDS) {
 			depends[DEPS_COUNT++] = token;
 			token = strtok(NULL, " ");
 		}
-
 		if (DEPS_COUNT == 0) {
-			pr_info(stdout, "No valid dependencies to install");
-			return;
+			pr_color(stdout, FCOLOUR_RED, "[DEPS]: ");
+			printf("not valid depends to install!");
+			goto done;
 		}
-
 		int i;
 		for (i = 0; i < DEPS_COUNT; i++) {
-			int dep_item_found = 0;
-
-			struct dep_repo_info dep_repo_info;
-
-			char dep_url[1024] = { 0 };
-
-			char dep_repo_name[256] = { 0 };
-			const char *chr_last_slash;
-
 			if (!dep_parse_repo(depends[i], &dep_repo_info)) {
-				pr_error(stdout, "Invalid repo format: %s", depends[i]);
+				pr_color(stdout, FCOLOUR_RED, "[DEPS]: ");
+				printf("invalid repo format: %s\n", depends[i]);
 				continue;
 			}
-
 			if (!strcmp(dep_repo_info.host, "github")) {
 				dep_item_found = dep_handle_repo(&dep_repo_info,
 												dep_url,
@@ -1403,21 +1322,20 @@ void wd_install_depends (const char *deps_str)
 				dep_build_repo_url(&dep_repo_info, 0, dep_url, sizeof(dep_url));
 				dep_item_found = dep_check_url(dep_url, wcfg.wd_toml_github_tokens);
 			}
-
 			if (!dep_item_found) {
-				pr_error(stdout, "Repository not found: %s", depends[i]);
+				pr_color(stdout, FCOLOUR_RED, "[DEPS]: ");
+				printf("repo not found: %s\n", depends[i]);
 				continue;
 			}
 
 			chr_last_slash = strrchr(dep_url, '/');
-
-			if (chr_last_slash && *(chr_last_slash + 1)) {
+			if (chr_last_slash &&
+				*(chr_last_slash + 1))
 				snprintf(dep_repo_name, sizeof(dep_repo_name), "%s",
 						chr_last_slash + 1);
-			} else {
+			else
 				snprintf(dep_repo_name, sizeof(dep_repo_name), "%s.zip",
 						dep_repo_info.repo);
-			}
 
 			wcfg.wd_idepends = 1;
 
@@ -1429,4 +1347,7 @@ void wd_install_depends (const char *deps_str)
 			wd_apply_depends(depends_files[i]);
 			wd_free(depends_files[i]);
 		}
+
+done:
+		wd_main(NULL);
 }

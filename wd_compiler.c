@@ -31,9 +31,9 @@ int wd_run_compiler(const char *arg, const char *compile_args)
             ptr_pawncc = "pawncc";
 
         char *path_include = NULL;
-        if (wd_server_env() == SAMP_TRUE)
+        if (wd_server_env() == 1)
             path_include="pawno/include";
-        else if (wd_server_env() == OMP_TRUE)
+        else if (wd_server_env() == 2)
             path_include="qawno/include";
 
         int _wd_log_acces = path_acces(".wd_compiler.log");

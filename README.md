@@ -41,7 +41,7 @@
 ---
 
 ### [A.I Agent](https://aiagentslist.com/)
-If you are confused about this project, you can use an A.I. Agent that can help provide available information to be filtered according to the given prompt. Alternatively, you can also create an issue to ask questions in this Repository.
+__If you are confused about this project, you can use an A.I. Agent that can help provide available information to be filtered according to the given prompt. Alternatively, you can also create an issue to ask questions in this Repository.__
 ![img](https://raw.githubusercontent.com/klantle/watchdogs/main/MANUS.png)
 
 ### Supported Platforms
@@ -427,9 +427,9 @@ Serves as an assistant for installing various files required by SA-MP/Open.MP. W
 For plugin or include files located in the root directory of the dependency archive (for both Linux and Windows), their installation paths will be adjusted accordingly. Plugins found in the root folder will be placed directly into the server's root directory, rather than in specific subdirectories like `plugins/` or `components/`.
 <br><br>
 The handling of YSI includes differs due to their structure containing multiple nested folders of include files. In this case, the entire folder containing these includes is moved directly to the target path (e.g., `pawno/include` or `qawno/include`), streamlining the process.
-<br><br>
-Upon completion of the file transfers, all affected paths are hashed using the SHA256 algorithm in hexadecimal format via the OpenSSL/Crypto library. The resulting hash is then stored in `wd_depends.json`.
 <br>
+
+![img](https://raw.githubusercontent.com/klantle/watchdogs/main/DEPS.png)
 
 **Install dependencies from configuration:**
 ```bash

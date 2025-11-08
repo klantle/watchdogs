@@ -79,10 +79,10 @@ static int extract_archive(const char *filename)
 		size_t name_len;
 
 		if (strstr(filename, ".tar") || strstr(filename, ".tar.gz")) {
-				printf(" Extracting TAR archive: %s\n", filename);
+				printf(" Try Extracting TAR archive: %s\n", filename);
 				return wd_extract_tar(filename);
 		} else if (strstr(filename, ".zip")) {
-				printf(" Extracting ZIP archive: %s\n", filename);
+				printf(" Try Extracting ZIP archive: %s\n", filename);
 
 				name_len = strlen(filename);
 				if (name_len > 4 &&
@@ -107,14 +107,14 @@ static void find_compiler_tools(int compiler_type,
 								int *found_pawnc_dll, int *found_PAWNC_DLL)
 {
 		const char *ignore_dir = NULL;
-		char __sz_pf[PATH_MAX + 56];
-		snprintf(__sz_pf, sizeof(__sz_pf), "%s/bin", pawncc_dir_src);
-		*found_pawncc_exe = wd_sef_fdir(__sz_pf, "pawncc.exe", ignore_dir);
-		*found_pawncc = wd_sef_fdir(__sz_pf, "pawncc", ignore_dir);
-		*found_pawndisasm_exe = wd_sef_fdir(__sz_pf, "pawndisasm.exe", ignore_dir);
-		*found_pawndisasm = wd_sef_fdir(__sz_pf, "pawndisasm", ignore_dir);
-		*found_pawnc_dll = wd_sef_fdir(__sz_pf, "pawnc.dll", ignore_dir);
-		*found_PAWNC_DLL = wd_sef_fdir(__sz_pf, "PAWNC.dll", ignore_dir);
+		char size_pf[PATH_MAX + 56];
+		snprintf(size_pf, sizeof(size_pf), "%s/bin", pawncc_dir_src);
+		*found_pawncc_exe = wd_sef_fdir(size_pf, "pawncc.exe", ignore_dir);
+		*found_pawncc = wd_sef_fdir(size_pf, "pawncc", ignore_dir);
+		*found_pawndisasm_exe = wd_sef_fdir(size_pf, "pawndisasm.exe", ignore_dir);
+		*found_pawndisasm = wd_sef_fdir(size_pf, "pawndisasm", ignore_dir);
+		*found_pawnc_dll = wd_sef_fdir(size_pf, "pawnc.dll", ignore_dir);
+		*found_PAWNC_DLL = wd_sef_fdir(size_pf, "PAWNC.dll", ignore_dir);
 }
 
 static const char *get_compiler_directory(void)
@@ -199,9 +199,9 @@ static int setup_linux_library(void)
 			!strcmp(wcfg.wd_toml_os_type, OS_SIGNAL_UNKNOWN))
 				return __RETZ;
 
-		char __sz_pf[PATH_MAX + 56];
-		snprintf(__sz_pf, sizeof(__sz_pf), "%s/lib", pawncc_dir_src);
-		found_lib = wd_sef_fdir(__sz_pf, "libpawnc.so", NULL);
+		char size_pf[PATH_MAX + 56];
+		snprintf(size_pf, sizeof(size_pf), "%s/lib", pawncc_dir_src);
+		found_lib = wd_sef_fdir(size_pf, "libpawnc.so", NULL);
 		if (!found_lib)
 				return __RETZ;
 
@@ -311,7 +311,8 @@ void wd_apply_pawncc(void)
 				"rm -rf %s",
 				pawncc_dir_src);
 		system(rm_cmd);
-		pawncc_dir_src[0] = '\0';
+
+		memset(pawncc_dir_src, 0, sizeof(pawncc_dir_src));
 
 		pr_info(stdout, "Compiler installed successfully!");
 
@@ -396,15 +397,15 @@ int wd_download_file(const char *url, const char *filename)
 
 			if (wcfg.wd_idepends == 1) {
 				if (strstr(wcfg.wd_toml_github_tokens, "DO_HERE")) {
-					pr_color(stdout, FCOLOUR_GREEN, "\t[DEPS]: Can't read Github token.. skipping\n");
-					sleep(2);
+						pr_color(stdout, FCOLOUR_GREEN, "\tcan't read github token...\n");
+						sleep(1);
 				} else {
 						char auth_header[512];
 						snprintf(auth_header, sizeof(auth_header), "Authorization: token %s", wcfg.wd_toml_github_tokens);
 						headers = curl_slist_append(headers, auth_header);
 						pr_color(stdout,
 								 FCOLOUR_GREEN,
-								 "\t[DEPS]: Using token: %s...\n",
+								 "\tusing token: %s...\n",
 								 get_masked_text(8,
 												 wcfg.wd_toml_github_tokens));
 				}
@@ -449,18 +450,37 @@ int wd_download_file(const char *url, const char *filename)
 			if (res == CURLE_OK && response_code == 200) {
 				if (stat(filename, &file_stat) == 0 && file_stat.st_size > 0) {
 					printf("Download successful: %" PRIdMAX " bytes\n", (intmax_t)file_stat.st_size);
+					fflush(stdout);
 
 					if (is_archive_file(filename)) {
 						printf("Checking file type for extraction...\n");
+						fflush(stdout);
 						extract_archive(filename);
 
-						sleep(1);
-
-						pr_color(stdout, FCOLOUR_GREEN, "Remove the archive '%s'? ", filename);
-						char *confirm = readline(" [y/n]: ");
-						if (confirm) {
-							if (confirm[0] == 'Y' || confirm[0] == 'y') {
-								char rm_cmd[PATH_MAX];
+						char rm_cmd[PATH_MAX];
+						if (wcfg.wd_idepends == 1) {
+							static int rm_deps = 0;
+							if (rm_deps == 0) {
+								pr_color(stdout, FCOLOUR_GREEN, "* remove archive '%s'? ", filename);
+								fflush(stdout);
+								char *confirm = readline(" [y/n]: ");
+								if (confirm) {
+									if (confirm[0] == 'Y' || confirm[0] == 'y') {
+										rm_deps = 1;
+										if (is_native_windows())
+											snprintf(rm_cmd, sizeof(rm_cmd),
+												"if exist \"%s\" (del /f /q \"%s\" 2>nul || "
+												"rmdir /s /q \"%s\" 2>nul)",
+												filename, filename, filename);
+										else
+											snprintf(rm_cmd, sizeof(rm_cmd),
+												"rm -rf %s",
+												filename);
+										system(rm_cmd);
+									}
+									wd_free(confirm);
+								}
+							} else {
 								if (is_native_windows())
 									snprintf(rm_cmd, sizeof(rm_cmd),
 										"if exist \"%s\" (del /f /q \"%s\" 2>nul || "
@@ -472,25 +492,46 @@ int wd_download_file(const char *url, const char *filename)
 										filename);
 								system(rm_cmd);
 							}
-							wd_free(confirm);
+						} else {
+							pr_color(stdout, FCOLOUR_GREEN, "remove archive '%s'? ", filename);
+							fflush(stdout);
+							char *confirm = readline(" [y/n]: ");
+							if (confirm) {
+								if (confirm[0] == 'Y' || confirm[0] == 'y') {
+									char rm_cmd[PATH_MAX];
+									if (is_native_windows())
+										snprintf(rm_cmd, sizeof(rm_cmd),
+											"if exist \"%s\" (del /f /q \"%s\" 2>nul || "
+											"rmdir /s /q \"%s\" 2>nul)",
+											filename, filename, filename);
+									else
+										snprintf(rm_cmd, sizeof(rm_cmd),
+											"rm -rf %s",
+											filename);
+									system(rm_cmd);
+								}
+								wd_free(confirm);
+							}
 						}
 					} else {
 						printf("File is not an archive, skipping extraction.\n");
+						fflush(stdout);
 					}
 
 					if (wcfg.wd_ipawncc && prompt_apply_pawncc()) {
-						char __sz_filename[PATH_MAX];
-						snprintf(__sz_filename, sizeof(__sz_filename), "%s", filename);
-						char *__dot_ext = strrchr(__sz_filename, '.');
-						if (__dot_ext)
-								*__dot_ext = '\0';
-						snprintf(pawncc_dir_src, sizeof(pawncc_dir_src), "%s", __sz_filename);
+						char size_filename[PATH_MAX];
+						snprintf(size_filename, sizeof(size_filename), "%s", filename);
+						char *f_EXT = strrchr(size_filename, '.');
+						if (f_EXT)
+								*f_EXT = '\0';
+						snprintf(pawncc_dir_src, sizeof(pawncc_dir_src), "%s", size_filename);
 						wd_apply_pawncc();
 					}
 
 					return __RETZ;
 				} else {
 					pr_color(stdout, FCOLOUR_RED, "Downloaded file is empty or missing\n");
+					fflush(stdout);
 				}
 			} else {
 				pr_color(stdout, FCOLOUR_RED, "Download failed - "

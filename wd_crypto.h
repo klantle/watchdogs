@@ -29,6 +29,10 @@ typedef struct {
 
 void OPENSSL_cleanse(void *ptr, size_t len);
 
+uint32_t crc32(const void *data, size_t length);
+
+void init_crc32_table();
+
 uint32_t hash_str(const char *s);
 
 unsigned long djb2_hash_file(const char *filename);

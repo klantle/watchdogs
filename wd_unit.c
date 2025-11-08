@@ -72,7 +72,7 @@ int __command__(char *pre_command)
           wd_server_crash_check();
         }
         char ptr_prompt[PATH_MAX + 56];
-        size_t __sz_ptrp = sizeof(ptr_prompt);
+        size_t size_ptrp = sizeof(ptr_prompt);
         char *ptr_command;
         int c_distance = INT_MAX;
         const char *_dist_command;
@@ -83,7 +83,7 @@ _ptr_command:
             printf("[" FCOLOUR_CYAN
                    "watchdogs ~ %s" FCOLOUR_DEFAULT "]$ %s\n", wd_get_cwd(), ptr_command);
         } else {
-            snprintf(ptr_prompt, __sz_ptrp,
+            snprintf(ptr_prompt, size_ptrp,
                      "[" FCOLOUR_CYAN
                      "watchdogs ~ %s" FCOLOUR_DEFAULT "]$ ", wd_get_cwd());
             ptr_command = readline(ptr_prompt);
@@ -599,17 +599,17 @@ _runners_:
                 while (*arg == ' ') ++arg;
                 char *arg1 = strtok(arg, " ");
 
-                char *__sz_arg1 = NULL;
+                char *size_arg1 = NULL;
                 if (arg1 == NULL || *arg1 == '\0')
-                  __sz_arg1 = "none";
+                  size_arg1 = "none";
 
     		        size_t needed = snprintf(NULL, 0, "Watchdogs | @ running | args: %s | %s | CTRL + C to stop.",
-    									              __sz_arg1,
+    									              size_arg1,
     									              wcfg.wd_toml_config) + 1;
     		        char *title_running_info = wd_malloc(needed);
     		        if (!title_running_info) { return __RETN; }
     		        snprintf(title_running_info, needed, "Watchdogs | @ running | args: %s | %s | CTRL + C to stop.",
-    									                  __sz_arg1,
+    									                  size_arg1,
     									                  wcfg.wd_toml_config);
     		        if (title_running_info) {
     			        wd_set_title(title_running_info);
@@ -625,9 +625,9 @@ _runners_:
                 }
 
                 pr_color(stdout, FCOLOUR_YELLOW, "running..\n");
-                if (wd_server_env() == SAMP_TRUE) {
+                if (wd_server_env() == 1) {
                     if (arg == NULL || *arg == '\0' || (arg[0] == '.' && arg[1] == '\0')) {
-                        char __sz_run[128];
+                        char size_run[128];
 
                         struct sigaction sa;
 
@@ -648,14 +648,14 @@ _runners_:
                         back_start:
                         start = time(NULL);
 #ifdef _WIN32
-                        snprintf(__sz_run, sizeof(__sz_run), "%s", wcfg.wd_ptr_samp);
+                        snprintf(size_run, sizeof(size_run), "%s", wcfg.wd_ptr_samp);
 #else
                         chmod(wcfg.wd_ptr_samp, 0777);
-                        snprintf(__sz_run, sizeof(__sz_run), "./%s", wcfg.wd_ptr_samp);
+                        snprintf(size_run, sizeof(size_run), "./%s", wcfg.wd_ptr_samp);
 #endif
                         end = time(NULL);
 
-                        int running_FAIL = system(__sz_run);
+                        int running_FAIL = system(size_run);
                         if (running_FAIL == 0) {
                             if (!strcmp(wcfg.wd_os_type, OS_SIGNAL_LINUX)) {
                                 sleep(2);
@@ -676,9 +676,9 @@ _runners_:
                         server_mode = 1;
                         wd_run_samp_server(arg1, wcfg.wd_ptr_samp);
                     }
-                } else if (wd_server_env() == OMP_TRUE) {
+                } else if (wd_server_env() == 2) {
                     if (arg == NULL || *arg == '\0' || (arg[0] == '.' && arg[1] == '\0')) {
-                        char __sz_run[128];
+                        char size_run[128];
 
                         struct sigaction sa;
 
@@ -699,14 +699,14 @@ _runners_:
 back_start2:
                         start = time(NULL);
 #ifdef _WIN32
-                        snprintf(__sz_run, sizeof(__sz_run), "%s", wcfg.wd_ptr_omp);
+                        snprintf(size_run, sizeof(size_run), "%s", wcfg.wd_ptr_omp);
 #else
                         chmod(wcfg.wd_ptr_samp, 0777);
-                        snprintf(__sz_run, sizeof(__sz_run), "./%s", wcfg.wd_ptr_omp);
+                        snprintf(size_run, sizeof(size_run), "./%s", wcfg.wd_ptr_omp);
 #endif
                         end = time(NULL);
 
-                        int running_FAIL = system(__sz_run);
+                        int running_FAIL = system(size_run);
                         if (running_FAIL == 0) {
                             sleep(2);
                             wd_display_server_logs(1);
@@ -788,22 +788,22 @@ n_loop_igm2:
                 }
                 toml_free(_toml_config);
 
-                char __sz_gm_input[PATH_MAX];
-                snprintf(__sz_gm_input, sizeof(__sz_gm_input), "%s", wcfg.wd_toml_gm_input);
-                char *f_EXT = strrchr(__sz_gm_input, '.');
+                char size_gm_input[PATH_MAX];
+                snprintf(size_gm_input, sizeof(size_gm_input), "%s", wcfg.wd_toml_gm_input);
+                char *f_EXT = strrchr(size_gm_input, '.');
                 if (f_EXT)
                     *f_EXT = '\0';
-                char *pos = strstr(__sz_gm_input, "gamemodes/");
+                char *pos = strstr(size_gm_input, "gamemodes/");
                 if (pos) {
                     memmove(pos, pos + strlen("gamemodes/"),
                                     strlen(pos + strlen("gamemodes/")) + 1);
                 }
-                if (wd_server_env() == SAMP_TRUE) {
+                if (wd_server_env() == 1) {
                     pr_color(stdout, FCOLOUR_YELLOW, "running..\n");
-                    wd_run_samp_server(__sz_gm_input, wcfg.wd_ptr_samp);
-                } else if (wd_server_env() == OMP_TRUE) {
+                    wd_run_samp_server(size_gm_input, wcfg.wd_ptr_samp);
+                } else if (wd_server_env() == 2) {
                     pr_color(stdout, FCOLOUR_YELLOW, "running..\n");
-                    wd_run_samp_server(__sz_gm_input, wcfg.wd_ptr_omp);
+                    wd_run_samp_server(size_gm_input, wcfg.wd_ptr_omp);
                 }
             }
 

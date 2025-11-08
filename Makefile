@@ -121,37 +121,37 @@ clean:
 	@printf "\n$(YELLOW)==>$(RESET) Clean done.\n"
 
 linux:
-	@echo "-> LANG = $$LANG"
+	@echo "-> [LANG = $$LANG]"
 	@printf "$(YELLOW)==>$(RESET) Building $(TARGET) Version $(VERSION) Full Version $(FULL_VERSION)\n"
 	$(CC) $(CFLAGS) -I/usr/include/ $(SRCS) -o $(TARGET) $(LDFLAGS)
 	@printf "$(YELLOW)==>$(RESET) Build complete: $(TARGET) Version $(VERSION) Full Version $(FULL_VERSION)\n"
 
 termux:
-	@echo "-> LANG = $$LANG"
+	@echo "-> [LANG = $$LANG]"
 	@printf "$(YELLOW)==>$(RESET) Building Termux target with clang...\n"
 	$(CC) $(CFLAGS) -I/data/data/com.termux/files/usr/include -I$PREFIX/include -I$PREFIX/lib -I$PREFIX/bin -D__ANDROID__ -fPIE $(SRCS) -o watchdogs.tmux $(LDFLAGS) -pie
 	@printf "$(YELLOW)==>$(RESET) Build complete: watchdogs.tmux Version $(VERSION) Full Version $(FULL_VERSION)\n"
 
 windows:
-	@echo "-> LANG = $$LANG"
+	@echo "-> [LANG = $$LANG]"
 	@printf "$(YELLOW)==>$(RESET) Building Windows target (MinGW)...\n"
 	$(CC) $(CFLAGS) -I/ucrt64/include $(SRCS) -o watchdogs.win $(LDFLAGS) -liphlpapi -lshlwapi
 	@printf "$(YELLOW)==>$(RESET) Build complete: watchdogs.win Version $(VERSION) Full Version $(FULL_VERSION)\n"
 
 debug:
-	@echo "-> LANG = $$LANG"
+	@echo "-> [LANG = $$LANG]"
 	@printf "$(YELLOW)==>$(RESET) Building DEBUG Version $(VERSION) Full Version $(FULL_VERSION)\n"
 	$(CC) $(CFLAGS) -I/usr/include/ $(SRCS) -g -O0 -D_DBG_PRINT -Wall -o watchdogs.debug $(LDFLAGS)
 	@printf "$(YELLOW)==>$(RESET) Build complete: watchdogs.debug Version $(VERSION) Full Version $(FULL_VERSION)\n"
 
 termux-debug:
-	@echo "-> LANG = $$LANG"
+	@echo "-> [LANG = $$LANG]"
 	@printf "$(YELLOW)==>$(RESET) Building DEBUG Version $(VERSION) Full Version $(FULL_VERSION)\n"
 	$(CC) -g -O0 -Wall -fno-omit-frame-pointer -fno-inline -I/data/data/com.termux/files/usr/include -I$PREFIX/include -I$PREFIX/lib -I$PREFIX/bin -D__ANDROID__ $(SRCS) -o watchdogs.debug.tmux $(LDFLAGS)
 	@printf "$(YELLOW)==>$(RESET) Build complete: watchdogs.debug.tmux Version $(VERSION) Full Version $(FULL_VERSION)\n"
 
 windows-debug:
-	@echo "-> LANG = $$LANG"
+	@echo "-> [LANG = $$LANG]"
 	@printf "$(YELLOW)==>$(RESET) Building DEBUG Version $(VERSION) Full Version $(FULL_VERSION)\n"
 	$(CC) $(CFLAGS) -I/ucrt64/include $(SRCS) -g -O0 -D_DBG_PRINT -Wall -o watchdogs.debug.win $(LDFLAGS) -liphlpapi -lshlwapi
 	@printf "$(YELLOW)==>$(RESET) Debug build complete: ./watchdogs.debug.win\n"

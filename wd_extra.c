@@ -567,11 +567,11 @@ annotations_compiler(const char *log_file, const char *pawn_output, int debug)
 
 	    fclose(pf);
 
-	    char __sz_compiler[256];
-	    snprintf(__sz_compiler, sizeof(__sz_compiler),
+	    char size_compiler[256];
+	    snprintf(size_compiler, sizeof(size_compiler),
 	             "COMPILE COMPLETE | WITH %d ERROR | %d WARNING",
 	             ecnt, wcnt);
-	    wd_set_title(__sz_compiler);
+	    wd_set_title(size_compiler);
 
 			int amx_access = path_acces(pawn_output);
 			if (amx_access && debug != 0) {

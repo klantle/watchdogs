@@ -120,10 +120,6 @@ win32_chmod(const char *path) {
 #define COMPILER_OPENMP  0x02
 #define COMPILER_DEFAULT 0x00
 
-/** SA-MP / Open.MP Env define **/
-#define SAMP_TRUE 1
-#define OMP_TRUE 2
-
 /** CRC32 strings representing OS signals **/
 #define CRC32_TRUE              "fdfc4c8d"
 #define CRC32_FALSE             "2bcd6830"

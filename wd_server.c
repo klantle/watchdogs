@@ -58,9 +58,9 @@ void unit_handle_sigint(int sig) {
 }
 
 void wd_stop_server_tasks(void) {
-        if (wd_server_env() == SAMP_TRUE)
+        if (wd_server_env() == 1)
           kill_process(wcfg.wd_ptr_samp);
-        else if (wd_server_env() == OMP_TRUE)
+        else if (wd_server_env() == 2)
           kill_process(wcfg.wd_ptr_omp);
 }
 
@@ -70,27 +70,27 @@ static int update_server_config(const char *gamemode)
         char line[1024];
         int gamemode_updated = 0;
 
-        char __sz_config[PATH_MAX];
-        snprintf(__sz_config, sizeof(__sz_config), ".%s.bak", wcfg.wd_toml_config);
+        char size_config[PATH_MAX];
+        snprintf(size_config, sizeof(size_config), ".%s.bak", wcfg.wd_toml_config);
 
-        char __sz_mv[MAX_PATH];
+        char size_mv[MAX_PATH];
         if (is_native_windows())
-            snprintf(__sz_mv, sizeof(__sz_mv),
+            snprintf(size_mv, sizeof(size_mv),
                     "ren %s %s",
                     wcfg.wd_toml_config,
-                    __sz_config);
+                    size_config);
         else
-            snprintf(__sz_mv, sizeof(__sz_mv),
+            snprintf(size_mv, sizeof(size_mv),
                     "mv -f %s %s",
                     wcfg.wd_toml_config,
-                    __sz_config);
+                    size_config);
 
-        if (system(__sz_mv) != 0) {
+        if (system(size_mv) != 0) {
                 pr_error(stdout, "Failed to create backup file");
                 return -__RETN;
         }
 
-        config_in = fopen(__sz_config, "r");
+        config_in = fopen(size_config, "r");
         if (!config_in) {
                 pr_error(stdout, "Failed to open backup config");
                 return -__RETN;
@@ -104,8 +104,8 @@ static int update_server_config(const char *gamemode)
 
         char _gamemode[256];
         snprintf(_gamemode, sizeof(_gamemode), "%s", gamemode);
-        char *__dot_ext = strrchr(_gamemode, '.');
-        if (__dot_ext) *__dot_ext = '\0';
+        char *f_EXT = strrchr(_gamemode, '.');
+        if (f_EXT) *f_EXT = '\0';
         gamemode = _gamemode;
 
         while (fgets(line, sizeof(line), config_in)) {
@@ -191,8 +191,8 @@ void wd_server_crash_check(void) {
 }
 
 void restore_samp_config(void) {
-        char __sz_config[PATH_MAX * 2];
-        snprintf(__sz_config, sizeof(__sz_config), ".%s.bak", wcfg.wd_toml_config);
+        char size_config[PATH_MAX * 2];
+        snprintf(size_config, sizeof(size_config), ".%s.bak", wcfg.wd_toml_config);
         remove(wcfg.wd_toml_config);
 }
 
@@ -203,8 +203,8 @@ void wd_run_samp_server(const char *gamemode, const char *server_bin)
 
         char _gamemode[256];
         snprintf(_gamemode, sizeof(_gamemode), "%s.amx", gamemode);
-        char *__dot_ext = strrchr(gamemode, '.');
-        if (!__dot_ext) gamemode = _gamemode;
+        char *f_EXT = strrchr(gamemode, '.');
+        if (!f_EXT) gamemode = _gamemode;
 
         wd_sef_fdir_reset();
         if (wd_sef_fdir(".", gamemode, NULL) != 1) {
@@ -271,34 +271,34 @@ static int update_omp_config(const char *gamemode)
         char _gamemode[256];
         int ret = -__RETN;
 
-        char __sz_config[PATH_MAX];
-        snprintf(__sz_config, sizeof(__sz_config), ".%s.bak", wcfg.wd_toml_config);
+        char size_config[PATH_MAX];
+        snprintf(size_config, sizeof(size_config), ".%s.bak", wcfg.wd_toml_config);
 
-        char __sz_mv[MAX_PATH];
+        char size_mv[MAX_PATH];
         if (is_native_windows())
-            snprintf(__sz_mv, sizeof(__sz_mv),
+            snprintf(size_mv, sizeof(size_mv),
                     "ren %s %s",
                     wcfg.wd_toml_config,
-                    __sz_config);
+                    size_config);
         else
-            snprintf(__sz_mv, sizeof(__sz_mv),
+            snprintf(size_mv, sizeof(size_mv),
                     "mv -f %s %s",
                     wcfg.wd_toml_config,
-                    __sz_config);
+                    size_config);
 
-        if (system(__sz_mv) != 0) {
+        if (system(size_mv) != 0) {
                 pr_error(stdout, "Failed to create backup file");
                 return -__RETN;
         }
 
-        if (stat(__sz_config, &st) != 0) {
+        if (stat(size_config, &st) != 0) {
                 pr_error(stdout, "Failed to get file status");
                 return -__RETN;
         }
 
-        config_in = fopen(__sz_config, "rb");
+        config_in = fopen(size_config, "rb");
         if (!config_in) {
-                pr_error(stdout, "Failed to open %s", __sz_config);
+                pr_error(stdout, "Failed to open %s", size_config);
                 return -__RETN;
         }
 
@@ -333,8 +333,8 @@ static int update_omp_config(const char *gamemode)
         }
 
         snprintf(_gamemode, sizeof(_gamemode), "%s", gamemode);
-        char *__dot_ext = strrchr(_gamemode, '.');
-        if (__dot_ext) *__dot_ext = '\0';
+        char *f_EXT = strrchr(_gamemode, '.');
+        if (f_EXT) *f_EXT = '\0';
 
         cJSON_DeleteItemFromObject(pawn, "main_scripts");
 
@@ -378,11 +378,11 @@ done:
 }
 
 void restore_omp_config(void) {
-        char __sz_config[PATH_MAX];
-        snprintf(__sz_config, sizeof(__sz_config), ".%s.bak", wcfg.wd_toml_config);
+        char size_config[PATH_MAX];
+        snprintf(size_config, sizeof(size_config), ".%s.bak", wcfg.wd_toml_config);
 
         remove(wcfg.wd_toml_config);
-        rename(__sz_config, wcfg.wd_toml_config);
+        rename(size_config, wcfg.wd_toml_config);
 }
 
 void wd_run_omp_server(const char *gamemode, const char *server_bin)
@@ -392,8 +392,8 @@ void wd_run_omp_server(const char *gamemode, const char *server_bin)
 
         char _gamemode[256];
         snprintf(_gamemode, sizeof(_gamemode), "%s.amx", gamemode);
-        char *__dot_ext = strrchr(gamemode, '.');
-        if (!__dot_ext) gamemode = _gamemode;
+        char *f_EXT = strrchr(gamemode, '.');
+        if (!f_EXT) gamemode = _gamemode;
 
         wd_sef_fdir_reset();
         if (wd_sef_fdir(".", gamemode, NULL) != 1) {

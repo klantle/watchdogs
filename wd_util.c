@@ -115,14 +115,20 @@ void wd_sef_fdir_reset(void) {
 		wcfg.wd_sef_count = 0;
 }
 
+static char cwd[PATH_MAX];
+void wd_init_cwd(void) {
+	    if (getcwd(cwd, sizeof(cwd)) == NULL) {
+	        perror("getcwd failed");
+	        cwd[0] = '\0';
+	    }
+}
 char* wd_get_cwd(void) {
-		static
-		char cwd[PATH_MAX];
-		if (getcwd(cwd, sizeof(cwd)) == NULL) {
-			perror("getcwd failed");
-			return NULL;
-		}
-		return cwd;
+			static int __init_getcwd = 0;
+			if (__init_getcwd == 0) {
+				__init_getcwd = 1;
+				wd_init_cwd();
+			}
+    	return cwd;
 }
 
 char* get_masked_text(int reveal, const char *text) {
@@ -144,11 +150,11 @@ char* get_masked_text(int reveal, const char *text) {
 
 int mkdir_recusrs(const char *path) {
 		char tmp[PATH_MAX];
-		size_t __sz_tmp = sizeof(tmp);
+		size_t size_tmp = sizeof(tmp);
 		char *p = NULL;
 		size_t len;
 
-		snprintf(tmp, __sz_tmp, "%s", path);
+		snprintf(tmp, size_tmp, "%s", path);
 		len = strlen(tmp);
 		if (tmp[len - 1] == '/' ||
 			tmp[len - 1] == '\\')
@@ -235,6 +241,7 @@ static int __regex_v_unix(const char *s, char *badch, size_t *pos)
 }
 #endif
 
+#ifdef _WIN32
 static int __regex_v_win(const char *s, char *badch, size_t *pos)
 {
 		const char *forbidden = "&|<>^\"'`\\";
@@ -259,6 +266,7 @@ static int __regex_v_win(const char *s, char *badch, size_t *pos)
 
 		return __RETZ;
 }
+#endif
 
 static int __regex_check__(const char *cmd, char *badch, size_t *pos) {
 #ifdef _WIN32
@@ -298,12 +306,12 @@ done:
 
 int wd_server_env(void)
 {
-		int ret = 0;
 		if (!strcmp(wcfg.wd_is_samp, CRC32_TRUE))
-			ret = SAMP_TRUE;
+			return 1;
 		else if (!strcmp(wcfg.wd_is_omp, CRC32_TRUE))
-			ret = OMP_TRUE;
-		return ret;
+			return 2;
+		else
+			return 0;
 }
 
 int wd_run_command(const char *cmd)
@@ -945,16 +953,16 @@ static int wd_find_compiler(const char *wd_os_type)
 		int is_windows = (strcmp(wd_os_type, "windows") == 0);
 		const char *compiler_name = is_windows ? "pawncc.exe" : "pawncc";
 
-		if (wd_server_env() == SAMP_TRUE) {
+		if (wd_server_env() == 1) {
 				return wd_sef_fdir("pawno", compiler_name, NULL);
-		} else if (wd_server_env() == OMP_TRUE) {
+		} else if (wd_server_env() == 2) {
 				return wd_sef_fdir("qawno", compiler_name, NULL);
 		} else {
 				return wd_sef_fdir("pawno", compiler_name, NULL);
 		}
 }
 
-static void __toml_base_subdirs(const char *base_path, FILE *toml_file, int *first)
+static void __attribute__((unused)) __toml_base_subdirs(const char *base_path, FILE *toml_file, int *first)
 {
 #ifdef _WIN32
 		WIN32_FIND_DATAA find_data;
@@ -1040,15 +1048,15 @@ static void wd_add_include_paths(FILE *file, int *first_item)
 				//__toml_base_subdirs("gamemodes", file, first_item);
 		}
 
-		if (wd_server_env() == SAMP_TRUE)
+		if (wd_server_env() == 1)
 				wd_add_compiler_path(file, "pawno/include/", first_item);
-		else if (wd_server_env() == OMP_TRUE)
+		else if (wd_server_env() == 2)
 				wd_add_compiler_path(file, "qawno/include/", first_item);
 		else
 				wd_add_compiler_path(file, "pawno/include/", first_item);
 }
 
-static int _is_samp_ = 0;
+static int _is_samp_ = -1;
 static void wd_generate_toml_content(FILE *file, const char *wd_os_type,
 								    int has_gamemodes, int compatible,
 								    int optimized_lt, char *sef_path)
@@ -1056,14 +1064,12 @@ static void wd_generate_toml_content(FILE *file, const char *wd_os_type,
 		int first_item = 1;
 
 		if (sef_path[0]) {
-				char *__dot_ext = strrchr(sef_path, '.');
-				if (__dot_ext)
-						*__dot_ext = '\0';
+				char *f_EXT = strrchr(sef_path, '.');
+				if (f_EXT)
+						*f_EXT = '\0';
 		}
 
-		char *ptr_samp = NULL;
-		char *ptr_omp = NULL;
-
+		char *ptr_samp = NULL, *ptr_omp = NULL;
 		if (!strcmp(wd_os_type, "windows")) {
 			ptr_samp = "samp-server.exe";
 			ptr_omp = "omp-server.exe";
@@ -1071,12 +1077,9 @@ static void wd_generate_toml_content(FILE *file, const char *wd_os_type,
 			ptr_samp = "samp03svr";
 			ptr_omp = "omp-server";
 		}
-
-		FILE *file_s = fopen(ptr_samp, "r");
-		FILE *file_m = fopen(ptr_omp, "r");
-
+		FILE *file_s = fopen(ptr_samp, "r"), *file_m = fopen(ptr_omp, "r");
 		if (file_s != NULL && file_m != NULL) {
-			_is_samp_ = 0;
+			_is_samp_ = 1;
 		} else if (file_s != NULL) {
 			_is_samp_ = 1;
 		} else if (file_m != NULL) {
@@ -1084,7 +1087,6 @@ static void wd_generate_toml_content(FILE *file, const char *wd_os_type,
 		} else {
 			_is_samp_ = 1;
 		}
-
 		if (file_s) fclose(file_s);
 		if (file_m) fclose(file_m);
 
@@ -1250,42 +1252,42 @@ int wd_set_toml(void)
 }
 
 static int _try_mv_without_sudo(const char *src, const char *dest) {
-		char __sz_mv[PATH_MAX];
+		char size_mv[PATH_MAX];
 		if (is_native_windows())
-			snprintf(__sz_mv, sizeof(__sz_mv), "move /-Y %s %s", src, dest);
+			snprintf(size_mv, sizeof(size_mv), "move /-Y %s %s", src, dest);
 		else
-			snprintf(__sz_mv, sizeof(__sz_mv), "mv -i %s %s", src, dest);
-		int ret = wd_run_command(__sz_mv);
+			snprintf(size_mv, sizeof(size_mv), "mv -i %s %s", src, dest);
+		int ret = wd_run_command(size_mv);
 		return ret;
 }
 
 static int __mv_with_sudo(const char *src, const char *dest) {
-		char __sz_mv[PATH_MAX];
+		char size_mv[PATH_MAX];
 		if (is_native_windows())
-			snprintf(__sz_mv, sizeof(__sz_mv), "move /-Y %s %s", src, dest);
+			snprintf(size_mv, sizeof(size_mv), "move /-Y %s %s", src, dest);
 		else
-			snprintf(__sz_mv, sizeof(__sz_mv), "sudo mv -i %s %s", src, dest);
-		int ret = wd_run_command(__sz_mv);
+			snprintf(size_mv, sizeof(size_mv), "sudo mv -i %s %s", src, dest);
+		int ret = wd_run_command(size_mv);
 		return ret;
 }
 
 static int _try_cp_without_sudo(const char *src, const char *dest) {
-		char __sz_cp[PATH_MAX];
+		char size_cp[PATH_MAX];
 		if (is_native_windows())
-			snprintf(__sz_cp, sizeof(__sz_cp), "xcopy /-Y %s %s", src, dest);
+			snprintf(size_cp, sizeof(size_cp), "xcopy /-Y %s %s", src, dest);
 		else
-			snprintf(__sz_cp, sizeof(__sz_cp), "cp -i %s %s", src, dest);
-		int ret = wd_run_command(__sz_cp);
+			snprintf(size_cp, sizeof(size_cp), "cp -i %s %s", src, dest);
+		int ret = wd_run_command(size_cp);
 		return ret;
 }
 
 static int __cp_with_sudo(const char *src, const char *dest) {
-		char __sz_cp[PATH_MAX];
+		char size_cp[PATH_MAX];
 		if (is_native_windows())
-			snprintf(__sz_cp, sizeof(__sz_cp), "xcopy /-Y %s %s", src, dest);
+			snprintf(size_cp, sizeof(size_cp), "xcopy /-Y %s %s", src, dest);
 		else
-			snprintf(__sz_cp, sizeof(__sz_cp), "sudo cp -i %s %s", src, dest);
-		int ret = wd_run_command(__sz_cp);
+			snprintf(size_cp, sizeof(size_cp), "sudo cp -i %s %s", src, dest);
+		int ret = wd_run_command(size_cp);
 		return ret;
 }
 

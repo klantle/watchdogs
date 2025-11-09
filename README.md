@@ -49,6 +49,7 @@ __If you are confused about this project, you can use an A.I. Agent that can hel
 - [x] Windows (via Native, MSYS2, WSL, or Docker)
 - [x] macOS (via Docker)
 - [x] Android (via Termux)
+- [x] Github Actions/VPS
 
 ### Supported Architectures
 - [x] Qualcomm Snapdragon

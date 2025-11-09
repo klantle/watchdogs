@@ -26,13 +26,22 @@ static char container_output[PATH_MAX] = { 0 },
             __wcp_input_path[PATH_MAX] = { 0 },
             __wcp_any_tmp[PATH_MAX] = { 0 };
 
+void compiler_memory_clean(void) {
+        memset(container_output, 0, sizeof(container_output));
+        memset(__wcp_direct_path, 0, sizeof(__wcp_direct_path));
+        memset(__wcp_file_name, 0, sizeof(__wcp_file_name));
+        memset(__wcp_input_path, 0, sizeof(__wcp_input_path));
+        memset(__wcp_any_tmp, 0, sizeof(__wcp_any_tmp));
+        return;
+}
+
 int wd_run_compiler(const char *arg, const char *compile_args)
 {
         wcfg.wd_compiler_stat = 0;
 
         char run_cmd[PATH_MAX + 258];
         FILE *proc_file;
-        char log_line[1024];
+        char size_log[1024];
 
         const char *ptr_pawncc = NULL;
         if (!strcmp(wcfg.wd_os_type, OS_SIGNAL_WINDOWS))
@@ -51,12 +60,7 @@ int wd_run_compiler(const char *arg, const char *compile_args)
             remove(".wd_compiler.log");
 
         wd_sef_fdir_reset();
-
-        memset(container_output, 0, sizeof(container_output));
-        memset(__wcp_direct_path, 0, sizeof(__wcp_direct_path));
-        memset(__wcp_file_name, 0, sizeof(__wcp_file_name));
-        memset(__wcp_input_path, 0, sizeof(__wcp_input_path));
-        memset(__wcp_any_tmp, 0, sizeof(__wcp_any_tmp));
+        compiler_memory_clean();
 
         int __find_pawncc = wd_sef_fdir(".", ptr_pawncc, NULL);
         if (__find_pawncc)
@@ -103,10 +107,7 @@ int wd_run_compiler(const char *arg, const char *compile_args)
             }
 
             snprintf(run_cmd, sizeof(run_cmd),
-                "%s -___DDDDDDDDDDDDDDDDD "
-                "-___DDDDDDDDDDDDDDDDD"
-                "-___DDDDDDDDDDDDDDDDD-"
-                "___DDDDDDDDDDDDDDDDD > .__CP.log 2>&1",
+                "%s -DDD > .__CP.log 2>&1",
                   wcfg.wd_sef_found_list[0]);
             system(run_cmd);
 
@@ -132,28 +133,30 @@ int wd_run_compiler(const char *arg, const char *compile_args)
                         if (!opt_val.ok)
                             continue;
 
-                        int valid_flag = 0;
+                        int rate_valid_flag = 0;
 
                         char flag_to_search[3] = {0};
+                        size_t size_flag_to_search = sizeof(flag_to_search);
                         if (strlen(opt_val.u.s) >= 2) {
-                            snprintf(flag_to_search, sizeof(flag_to_search), "%.2s", opt_val.u.s);
+                            snprintf(flag_to_search,
+                                     size_flag_to_search,
+                                     "%.2s",
+                                     opt_val.u.s);
                         } else {
-                            strncpy(flag_to_search, opt_val.u.s, sizeof(flag_to_search) - 1);
+                            strncpy(flag_to_search, opt_val.u.s, size_flag_to_search - 1);
                         }
 
                         if (proc_file) {
                             rewind(proc_file);
-                            while (fgets(log_line,
-                                   sizeof(log_line),
-                                   proc_file) != NULL) {
-                                if (strstr(log_line, flag_to_search)) {
-                                    valid_flag = 1;
+                            while (fgets(size_log, sizeof(size_log), proc_file) != NULL) {
+                                if (strstr(size_log, flag_to_search)) {
+                                    rate_valid_flag = 1;
                                     break;
                                 }
                             }
                         }
 
-                        if (valid_flag == 0)
+                        if (rate_valid_flag == 0)
                             goto n_valid_flag;
 
                         if (opt_val.u.s[0] != '-') {
@@ -161,7 +164,7 @@ n_valid_flag:
                             printf("[WARN]: compiler option ");
                             pr_color(stdout, FCOLOUR_GREEN, "\"%s\" ", opt_val.u.s);
                             println(stdout, "not valid flag!");
-                            if (valid_flag == 0)
+                            if (rate_valid_flag == 0)
                               return __RETZ;
                         }
 
@@ -172,8 +175,7 @@ n_valid_flag:
                                new_len = old_len + strlen(opt_val.u.s) + 2;
 
                         char *tmp = wd_realloc(merged, new_len);
-                        if (!tmp)
-                        {
+                        if (!tmp) {
                             wd_free(merged);
                             wd_free(opt_val.u.s);
                             merged = NULL;
@@ -184,7 +186,9 @@ n_valid_flag:
                         if (!old_len)
                             snprintf(merged, new_len, "%s", opt_val.u.s);
                         else
-                            snprintf(merged + old_len, new_len - old_len, " %s", opt_val.u.s);
+                            snprintf(merged + old_len,
+                                     new_len - old_len,
+                                     " %s", opt_val.u.s);
 
                         wd_free(opt_val.u.s);
                         opt_val.u.s = NULL;
@@ -304,16 +308,16 @@ n_valid_flag:
                     clock_gettime(CLOCK_MONOTONIC, &start);
                     if (ret_cmd > 0 && ret_cmd < (int)sizeof(cmd_line)) {
                         BOOL success = CreateProcessA(
-                            NULL,           // No module name
-                            cmd_line,       // Command line
-                            NULL,           // Process handle not inheritable
-                            NULL,           // Thread handle not inheritable
-                            TRUE,           // Set handle inheritance to TRUE
-                            CREATE_NO_WINDOW, // Creation flags
-                            NULL,           // Use parent's environment block
-                            NULL,           // Use parent's starting directory
-                            &si,            // Pointer to STARTUPINFO structure
-                            &pi             // Pointer to PROCESS_INFORMATION structure
+                            NULL,            // No module name
+                            cmd_line,        // Command line
+                            NULL,            // Process handle not inheritable
+                            NULL,            // Thread handle not inheritable
+                            TRUE,            // Set handle inheritance to TRUE
+                            CREATE_NO_WINDOW,// Creation flags
+                            NULL,            // Use parent's environment block
+                            NULL,            // Use parent's starting directory
+                            &si,             // Pointer to STARTUPINFO structure
+                            &pi              // Pointer to PROCESS_INFORMATION structure
                         );
                         if (success) {
                             clock_gettime(CLOCK_MONOTONIC, &end);
@@ -550,9 +554,7 @@ n_valid_flag:
                         snprintf(__sef_path_sz, sizeof(__sef_path_sz), "%s", wcfg.wd_sef_found_list[1]);
                         char *f_EXT = strrchr(__sef_path_sz, '.');
                         if (f_EXT)
-                        {
                             *f_EXT = '\0';
-                        }
 
                         snprintf(container_output, sizeof(container_output), "%s", __sef_path_sz);
 

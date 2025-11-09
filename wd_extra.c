@@ -512,7 +512,7 @@ void compiler_detailed(const char *pawn_output, int debug,
       			portable_stat_t st;
       			if (portable_stat(pawn_output, &st) == 0) {
 						printf("File: %lluB | ino:%llu\ndev:%llu | mode:%020o\nRead:%s | Write:%s | Execute:%s\n"
-								"atime:%llu | mtime:%llu | ctime:%llu\n",
+								"atime:%llu\nmtime:%llu\nctime:%llu\n",
 								(unsigned long long)st.st_size,
 								(unsigned long long)st.st_ino,
 								(unsigned long long)st.st_dev,

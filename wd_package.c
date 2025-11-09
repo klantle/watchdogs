@@ -48,8 +48,8 @@ static int get_termux_architecture(char *out_arch, size_t buf_size)
 				strncpy(out_arch, "arm32", buf_size);
 				return __RETZ;
 		}
-
-		printf("Unknown or unsupported architecture: %s\n", uname_data.machine);
+		
+		printf("Unknown arch: %s\n", uname_data.machine);
 
 		printf("Select architecture for Termux:\n");
 		printf("-> [A/a] arm32\n");
@@ -81,17 +81,18 @@ static int handle_termux_installation(void)
 												"3.10.11",
 												"3.10.10"
 										};
-		const size_t version_count = sizeof(termux_versions) / sizeof(termux_versions[0]);
+		size_t version_count;
+		version_count = sizeof(termux_versions) / sizeof(termux_versions[0]);
 		char version_selection;
 		char architecture[16];
 		char url[526];
 		char filename[128];
 		int version_index;
 
-		if (!is_termux_environment()) {
-				pr_warning(stdout, "Currently not in Termux!");
-		}
+		if (!is_termux_environment())
+				pr_info(stdout, "Currently not in Termux!");
 
+ret_pawncc:
 		printf("Select the PawnCC version to download:\n");
 		for (size_t i = 0; i < version_count; i++) {
 			printf("-> [%c/%c] PawnCC %s (mxp96)\n",
@@ -102,26 +103,37 @@ static int handle_termux_installation(void)
 
 		char *__version__ = readline("==> ");
 		version_selection = __version__[0];
-		if (version_selection >= 'A' && version_selection < 'A' + (char)version_count) {
+		if (version_selection >= 'A' &&
+			version_selection < 'A' + (char)version_count) {
 			version_index = version_selection - 'A';
-		} else if (version_selection >= 'a' && version_selection < 'a' + (char)version_count) {
+		} else if (version_selection >= 'a' &&
+			version_selection < 'a' + (char)version_count) {
 			version_index = version_selection - 'a';
 		} else {
-			printf("error: Invalid version selection '%c'. Input must be A..%c or a..%c\n",
+			pr_error(stdout, "Invalid version selection '%c'. "
+							 "Input must be A..%c or a..%c\n",
 				version_selection,
 				'A' + (int)version_count - 1,
 				'a' + (int)version_count - 1);
 			wd_free(__version__);
-			return -__RETN;;
+			goto ret_pawncc;
     	}
 
-		int ret = get_termux_architecture(architecture, sizeof(architecture) != 0);
-		if (ret == __RETZ)
-			return __RETZ;
+		int ret;
+		ret = get_termux_architecture(architecture,
+									  sizeof(architecture) != 0);
 
 		snprintf(url, sizeof(url),
-				 "https://github.com/mxp96/compiler/releases/download/%s/pawnc-%s-%s.zip",
-				 termux_versions[version_index], termux_versions[version_index], architecture);
+				 "https://github.com/"
+				 "mxp96/"
+				 "compiler/"
+				 "releases/"
+				 "download/"
+				 "%s/"
+				 "pawnc-%s-%s.zip",
+				 termux_versions[version_index],
+				 termux_versions[version_index],
+				 architecture);
 
 		snprintf(filename, sizeof(filename), "pawncc-%s-%s.zip",
 				 termux_versions[version_index], architecture);
@@ -142,7 +154,7 @@ static int handle_standard_installation(const char *platform)
 		char version_selection;
 		char url[526];
 		char filename[128];
-		const char *repo_base;
+		const char *pkg_repo_base;
 		const char *archive_ext;
 		int version_index;
 
@@ -161,9 +173,11 @@ static int handle_standard_installation(const char *platform)
 
 		char *__version__ = readline("==> ");
 		version_selection = __version__[0];
-		if (version_selection >= 'A' && version_selection <= 'J') {
+		if (version_selection >= 'A' &&
+			version_selection <= 'J') {
 			version_index = version_selection - 'A';
-		} else if (version_selection >= 'a' && version_selection <= 'j') {
+		} else if (version_selection >= 'a' &&
+			version_selection <= 'j') {
 			version_index = version_selection - 'a';
 		} else {
 			if (wcfg.wd_sel_stat == 0)
@@ -173,17 +187,20 @@ static int handle_standard_installation(const char *platform)
 			return -__RETN;
 		}
 
-		if (strcmp(versions[version_index], "3.10.11") == 0) {
-				repo_base = "https://github.com/openmultiplayer/compiler";
-		} else {
-				repo_base = "https://github.com/pawn-lang/compiler";
-		}
+		if (strcmp(versions[version_index], "3.10.11") == 0)
+				pkg_repo_base = "https://github.com/"
+								"openmultiplayer/"
+								"compiler";
+		else
+				pkg_repo_base = "https://github.com/"
+								"pawn-lang/"
+								"compiler";
 
 		archive_ext = (strcmp(platform, "linux") == 0) ? "tar.gz" : "zip";
 
 		snprintf(url, sizeof(url),
 				 "%s/releases/download/v%s/pawnc-%s-%s.%s",
-				 repo_base, versions[version_index], versions[version_index],
+				 pkg_repo_base, versions[version_index], versions[version_index],
 				 platform, archive_ext);
 
 		snprintf(filename, sizeof(filename), "pawnc-%s-%s.%s",
@@ -227,58 +244,90 @@ int wd_install_server(const char *platform)
 		struct version_info versions[] = {
 				{
 						'A', "SA-MP 0.3.DL R1",
-						"https://github.com/KrustyKoyle/files.sa-mp.com-Archive/raw/refs/heads/master/samp03DLsvr_R1.tar.gz",
+						"https://github.com/"
+						"KrustyKoyle/"
+						"files.sa-mp.com-Archive/raw/refs/heads/master/samp03DLsvr_R1.tar.gz",
 						"samp03DLsvr_R1.tar.gz",
-						"https://github.com/KrustyKoyle/files.sa-mp.com-Archive/raw/refs/heads/master/samp03DL_svr_R1_win32.zip",
+						"https://github.com/"
+						"KrustyKoyle/"
+						"files.sa-mp.com-Archive/raw/refs/heads/master/samp03DL_svr_R1_win32.zip",
 						"samp03DL_svr_R1_win32.zip"
 				},
 				{
 						'B', "SA-MP 0.3.7 R3",
-						"https://github.com/KrustyKoyle/files.sa-mp.com-Archive/raw/refs/heads/master/samp037svr_R3.tar.gz",
+						"https://github.com/"
+						"KrustyKoyle/"
+						"files.sa-mp.com-Archive/raw/refs/heads/master/samp037svr_R3.tar.gz",
 						"samp037svr_R3.tar.gz",
-						"https://github.com/KrustyKoyle/files.sa-mp.com-Archive/raw/refs/heads/master/samp037_svr_R3_win32.zip",
+						"https://github.com/"
+						"KrustyKoyle/"
+						"files.sa-mp.com-Archive/raw/refs/heads/master/samp037_svr_R3_win32.zip",
 						"samp037_svr_R3_win32.zip"
 				},
 				{
 						'C', "SA-MP 0.3.7 R2-2-1",
-						"https://github.com/KrustyKoyle/files.sa-mp.com-Archive/raw/refs/heads/master/samp037svr_R2-2-1.tar.gz",
+						"https://github.com/"
+						"KrustyKoyle/"
+						"files.sa-mp.com-Archive/raw/refs/heads/master/samp037svr_R2-2-1.tar.gz",
 						"samp037svr_R2-2-1.tar.gz",
-						"https://github.com/KrustyKoyle/files.sa-mp.com-Archive/raw/refs/heads/master/samp037_svr_R2-1-1_win32.zip",
+						"https://github.com/"
+						"KrustyKoyle/"
+						"files.sa-mp.com-Archive/raw/refs/heads/master/samp037_svr_R2-1-1_win32.zip",
 						"samp037_svr_R2-2-1_win32.zip"
 				},
 				{
 						'D', "SA-MP 0.3.7 R2-1-1",
-						"https://github.com/KrustyKoyle/files.sa-mp.com-Archive/raw/refs/heads/master/samp037svr_R2-1.tar.gz",
+						"https://github.com/"
+						"KrustyKoyle/"
+						"files.sa-mp.com-Archive/raw/refs/heads/master/samp037svr_R2-1.tar.gz",
 						"samp037svr_R2-1.tar.gz",
-						"https://github.com/KrustyKoyle/files.sa-mp.com-Archive/raw/refs/heads/master/samp037_svr_R2-1-1_win32.zip",
+						"https://github.com/"
+						"KrustyKoyle/"
+						"files.sa-mp.com-Archive/raw/refs/heads/master/samp037_svr_R2-1-1_win32.zip",
 						"samp037_svr_R2-1-1_win32.zip"
 				},
 				{
 						'E', "OPEN.MP v1.4.0.2779",
-						"https://github.com/openmultiplayer/open.mp/releases/download/v1.4.0.2779/open.mp-linux-x86.tar.gz",
+						"https://github.com/"
+						"openmultiplayer/"
+						"open.mp/releases/download/v1.4.0.2779/open.mp-linux-x86.tar.gz",
 						"open.mp-linux-x86.tar.gz",
-						"https://github.com/openmultiplayer/open.mp/releases/download/v1.4.0.2779/open.mp-win-x86.zip",
+						"https://github.com/"
+						"openmultiplayer/"
+						"open.mp/releases/download/v1.4.0.2779/open.mp-win-x86.zip",
 						"open.mp-win-x86.zip"
 				},
 				{
 						'F', "OPEN.MP v1.3.1.2748",
-						"https://github.com/openmultiplayer/open.mp/releases/download/v1.3.1.2748/open.mp-linux-x86.tar.gz",
+						"https://github.com/"
+						"openmultiplayer/"
+						"open.mp/releases/download/v1.3.1.2748/open.mp-linux-x86.tar.gz",
 						"open.mp-linux-x86.tar.gz",
-						"https://github.com/openmultiplayer/open.mp/releases/download/v1.3.1.2748/open.mp-win-x86.zip",
+						"https://github.com/"
+						"openmultiplayer/"
+						"open.mp/releases/download/v1.3.1.2748/open.mp-win-x86.zip",
 						"open.mp-win-x86.zip"
 				},
 				{
 						'G', "OPEN.MP v1.2.0.2670",
-						"https://github.com/openmultiplayer/open.mp/releases/download/v1.2.0.2670/open.mp-linux-x86.tar.gz",
+						"https://github.com/"
+						"openmultiplayer/"
+						"open.mp/releases/download/v1.2.0.2670/open.mp-linux-x86.tar.gz",
 						"open.mp-linux-x86.tar.gz",
-						"https://github.com/openmultiplayer/open.mp/releases/download/v1.2.0.2670/open.mp-win-x86.zip",
+						"https://github.com/"
+						"openmultiplayer/"
+						"open.mp/releases/download/v1.2.0.2670/open.mp-win-x86.zip",
 						"open.mp-win-x86.zip"
 				},
 				{
 						'H', "OPEN.MP v1.1.0.2612",
-						"https://github.com/openmultiplayer/open.mp/releases/download/v1.1.0.2612/open.mp-linux-x86.tar.gz",
+						"https://github.com/"
+						"openmultiplayer/"
+						"open.mp/releases/download/v1.1.0.2612/open.mp-linux-x86.tar.gz",
 						"open.mp-linux-x86.tar.gz",
-						"https://github.com/openmultiplayer/open.mp/releases/download/v1.1.0.2612/open.mp-win-x86.zip",
+						"https://github.com/"
+						"openmultiplayer/"
+						"open.mp/releases/download/v1.1.0.2612/open.mp-win-x86.zip",
 						"open.mp-win-x86.zip"
 				}
 		};
@@ -305,7 +354,8 @@ int wd_install_server(const char *platform)
 
 		selection = __selection__[0];
 		for (i = 0; i < version_count; i++) {
-				if (selection == versions[i].key || selection == versions[i].key + 32) {
+				if (selection == versions[i].key ||
+					selection == versions[i].key + 32) {
 						chosen = &versions[i];
 						break;
 				}

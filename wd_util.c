@@ -420,7 +420,7 @@ int wd_set_title(const char *title)
 		const char *new_title;
 
 		if (!title)
-				new_title = "Watchdogs";
+				new_title = watchdogs_release;
 		else
 				new_title = title;
 

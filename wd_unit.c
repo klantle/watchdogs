@@ -1,3 +1,5 @@
+#define WATCHDOGS_RELEASE "WD-251101"
+const char *watchdogs_release = WATCHDOGS_RELEASE;
 #ifndef _GNU_SOURCE
 #define _GNU_SOURCE
 #endif
@@ -505,6 +507,7 @@ loop_igm2:
             } else {
                 pr_error(stdout, "Invalid platform selection. Input 'E/e' to exit");
                 wd_free(platform);
+                platform = NULL;
                 goto ret_ptr;
             }
 
@@ -559,6 +562,8 @@ loop_ipcc3:
                 goto _ptr_command;
             } else {
                 pr_error(stdout, "Invalid platform selection. Input 'E/e' to exit");
+                wd_free(platform);
+                platform = NULL;
                 goto ret_ptr2;
             }
 

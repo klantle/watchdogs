@@ -24,8 +24,10 @@ char *__cJSON_Data = NULL, *__cJSON_Printed = NULL;
 int server_mode = 0;
 void unit_handle_sigint(int sig) {
         // this is to ensure that SA-MP actually sends the signal "--- Server Shutting Down."
-        // it’s not needed because, in Watchdogs, the process is replaced by the executed binary from the start,
-        // and if CTRL + C is pressed, it will directly send a SIGINT to the server process, stopping the server immediately.
+        // it’s not needed because, in Watchdogs,
+        // the process is replaced by the executed binary from the start,
+        // and if CTRL + C is pressed, it will directly send a SIGINT to the server process,
+        // stopping the server immediately.
         // wd_stop_server_tasks();
         if (server_mode == 1) {
           restore_samp_config();

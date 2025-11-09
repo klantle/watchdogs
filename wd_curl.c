@@ -21,10 +21,22 @@
 // This is a string variable used to statically store the PawnCC folder name,
 // ensuring that PawnCC is applied from the correct directory and not from an incorrect extraction folder.
 static char
-	pawncc_dir_src[PATH_MAX];
+	pawncc_dir_src[WD_PATH_MAX];
 
 void verify_cacert_pem(CURL *curl) {
-		if (is_native_windows()) {
+		int is_win32 = 0;
+#ifdef _WIN32
+		is_win32 = 1;
+#endif
+		int is_android = 0;
+#ifdef __ANDROID__
+		is_android = 2;
+#endif
+		int is_linux = 0;
+#ifdef __linux__
+		is_linux = 3;
+#endif
+		if (is_win32) {
 				if (access("cacert.pem", F_OK) == 0)
 					curl_easy_setopt(curl, CURLOPT_CAINFO, "cacert.pem");
 				else if (access("C:/libwatchdogs/cacert.pem", F_OK) == 0)
@@ -34,21 +46,30 @@ void verify_cacert_pem(CURL *curl) {
 							 FCOLOUR_YELLOW,
 							 "Warning: No CA file found. SSL verification may fail.\n");
 				}
-		} else if (is_termux_environment) {
-					const char *env_home = getenv("HOME");
-					char size_env_home[PATH_MAX + 6];
-					snprintf(size_env_home, sizeof(size_env_home), "%s/cacert.pem", env_home);
-					if (access("cacert.pem", F_OK) == 0)
-						curl_easy_setopt(curl, CURLOPT_CAINFO, "cacert.pem");
-					else if (access(size_env_home, F_OK) == 0)
-						curl_easy_setopt(curl, CURLOPT_CAINFO, size_env_home);
-					else {
-						pr_color(stdout,
-								 FCOLOUR_YELLOW,
-								 "Warning: No CA file found. SSL verification may fail.\n");
-					}
-		} else
-			return;
+		} else if (is_android) {
+				const char *env_home = getenv("HOME");
+				char size_env_home[WD_PATH_MAX + 6];
+				snprintf(size_env_home, sizeof(size_env_home), "%s/cacert.pem", env_home);
+				if (access("cacert.pem", F_OK) == 0)
+					curl_easy_setopt(curl, CURLOPT_CAINFO, "cacert.pem");
+				else if (access(size_env_home, F_OK) == 0)
+					curl_easy_setopt(curl, CURLOPT_CAINFO, size_env_home);
+				else {
+					pr_color(stdout,
+							 FCOLOUR_YELLOW,
+							 "Warning: No CA file found. SSL verification may fail.\n");
+				}
+		} else if (is_linux) {
+				if (access("cacert.pem", F_OK) == 0)
+					curl_easy_setopt(curl, CURLOPT_CAINFO, "cacert.pem");
+				else if (access("/etc/ssl/certs/cacert.pem", F_OK) == 0)
+					curl_easy_setopt(curl, CURLOPT_CAINFO, "/etc/ssl/certs/cacert.pem");
+				else {
+					pr_color(stdout,
+							 FCOLOUR_YELLOW,
+							 "Warning: No CA file found. SSL verification may fail.\n");
+				}
+		}
 }
 
 static int progress_callback(void *ptr, curl_off_t dltotal,
@@ -103,7 +124,7 @@ size_t write_memory_callback(void *contents, size_t size,
 
 static int extract_archive(const char *filename)
 {
-		char output_path[PATH_MAX];
+		char output_path[WD_PATH_MAX];
 		size_t name_len;
 
 		if (strstr(filename, ".tar") || strstr(filename, ".tar.gz")) {
@@ -135,7 +156,7 @@ static void find_compiler_tools(int compiler_type,
 								int *found_pawnc_dll, int *found_PAWNC_DLL)
 {
 		const char *ignore_dir = NULL;
-		char size_pf[PATH_MAX + 56];
+		char size_pf[WD_PATH_MAX + 56];
 		snprintf(size_pf, sizeof(size_pf), "%s/bin", pawncc_dir_src);
 		*found_pawncc_exe = wd_sef_fdir(size_pf, "pawncc.exe", ignore_dir);
 		*found_pawncc = wd_sef_fdir(size_pf, "pawncc", ignore_dir);
@@ -171,7 +192,7 @@ static const char *get_compiler_directory(void)
 static void copy_compiler_tool(const char *src_path, const char *tool_name,
 						       const char *dest_dir)
 {
-		char dest_path[PATH_MAX];
+		char dest_path[WD_PATH_MAX];
 
 		snprintf(dest_path, sizeof(dest_path), "%s/%s", dest_dir, tool_name);
 		wd_sef_wmv(src_path, dest_path);
@@ -208,8 +229,8 @@ static int setup_linux_library(void)
 		return __RETZ;
 #else
 		const char *selected_path = NULL;
-		char libpawnc_src[PATH_MAX];
-		char dest_path[PATH_MAX];
+		char libpawnc_src[WD_PATH_MAX];
+		char dest_path[WD_PATH_MAX];
 		struct stat st;
 		int i, found_lib;
 		const char *lib_paths[] =	{
@@ -227,7 +248,7 @@ static int setup_linux_library(void)
 			!strcmp(wcfg.wd_toml_os_type, OS_SIGNAL_UNKNOWN))
 				return __RETZ;
 
-		char size_pf[PATH_MAX + 56];
+		char size_pf[WD_PATH_MAX + 56];
 		snprintf(size_pf, sizeof(size_pf), "%s/lib", pawncc_dir_src);
 		found_lib = wd_sef_fdir(size_pf, "libpawnc.so", NULL);
 		if (!found_lib)
@@ -267,12 +288,12 @@ void wd_apply_pawncc(void)
 		int found_pawndisasm_exe, found_pawndisasm;
 		int found_pawnc_dll, found_PAWNC_DLL;
 		const char *dest_dir;
-		char pawncc_src[PATH_MAX] = { 0 },
-			 pawncc_exe_src[PATH_MAX] = { 0 },
-			 pawndisasm_src[PATH_MAX] = { 0 },
-			 pawndisasm_exe_src[PATH_MAX] = { 0 },
-			 pawnc_dll_src[PATH_MAX] = { 0 },
-			 PAWNC_DLL_src[PATH_MAX] = { 0 };
+		char pawncc_src[WD_PATH_MAX] = { 0 },
+			 pawncc_exe_src[WD_PATH_MAX] = { 0 },
+			 pawndisasm_src[WD_PATH_MAX] = { 0 },
+			 pawndisasm_exe_src[WD_PATH_MAX] = { 0 },
+			 pawnc_dll_src[WD_PATH_MAX] = { 0 },
+			 PAWNC_DLL_src[WD_PATH_MAX] = { 0 };
 
 		int i;
 
@@ -329,7 +350,7 @@ void wd_apply_pawncc(void)
 
 		setup_linux_library();
 
-		char rm_cmd[PATH_MAX + 56];
+		char rm_cmd[WD_PATH_MAX + 56];
 		if (is_native_windows())
 			snprintf(rm_cmd, sizeof(rm_cmd),
 				"rmdir /s /q \"%s\"",
@@ -338,7 +359,7 @@ void wd_apply_pawncc(void)
 			snprintf(rm_cmd, sizeof(rm_cmd),
 				"rm -rf %s",
 				pawncc_dir_src);
-		system(rm_cmd);
+		wd_run_command(rm_cmd);
 
 		memset(pawncc_dir_src, 0, sizeof(pawncc_dir_src));
 
@@ -434,7 +455,7 @@ int wd_download_file(const char *url, const char *filename)
 						pr_color(stdout,
 								 FCOLOUR_GREEN,
 								 "\tusing token: %s...\n",
-								 get_masked_text(8,
+								 wd_masked_text(8,
 												 wcfg.wd_toml_github_tokens));
 				}
 			}
@@ -478,7 +499,7 @@ int wd_download_file(const char *url, const char *filename)
 						fflush(stdout);
 						extract_archive(filename);
 
-						char rm_cmd[PATH_MAX];
+						char rm_cmd[WD_PATH_MAX];
 						if (wcfg.wd_idepends == 1) {
 							static int rm_deps = 0;
 							if (rm_deps == 0) {
@@ -497,7 +518,7 @@ int wd_download_file(const char *url, const char *filename)
 											snprintf(rm_cmd, sizeof(rm_cmd),
 												"rm -rf %s",
 												filename);
-										system(rm_cmd);
+										wd_run_command(rm_cmd);
 									}
 									wd_free(confirm);
 								}
@@ -511,7 +532,7 @@ int wd_download_file(const char *url, const char *filename)
 									snprintf(rm_cmd, sizeof(rm_cmd),
 										"rm -rf %s",
 										filename);
-								system(rm_cmd);
+								wd_run_command(rm_cmd);
 							}
 						} else {
 							pr_color(stdout, FCOLOUR_GREEN, "remove archive '%s'? ", filename);
@@ -519,7 +540,7 @@ int wd_download_file(const char *url, const char *filename)
 							char *confirm = readline(" [y/n]: ");
 							if (confirm) {
 								if (confirm[0] == 'Y' || confirm[0] == 'y') {
-									char rm_cmd[PATH_MAX];
+									char rm_cmd[WD_PATH_MAX];
 									if (is_native_windows())
 										snprintf(rm_cmd, sizeof(rm_cmd),
 											"if exist \"%s\" (del /f /q \"%s\" 2>nul || "
@@ -529,7 +550,7 @@ int wd_download_file(const char *url, const char *filename)
 										snprintf(rm_cmd, sizeof(rm_cmd),
 											"rm -rf %s",
 											filename);
-									system(rm_cmd);
+									wd_run_command(rm_cmd);
 								}
 								wd_free(confirm);
 							}
@@ -540,7 +561,7 @@ int wd_download_file(const char *url, const char *filename)
 					}
 
 					if (wcfg.wd_ipawncc && prompt_apply_pawncc()) {
-						char size_filename[PATH_MAX];
+						char size_filename[WD_PATH_MAX];
 						snprintf(size_filename, sizeof(size_filename), "%s", filename);
 						char *f_EXT = strrchr(size_filename, '.');
 						if (f_EXT)

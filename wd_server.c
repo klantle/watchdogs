@@ -36,25 +36,25 @@ void unit_handle_sigint(int sig) {
         struct timespec stop_all_timer;
         clock_gettime(CLOCK_MONOTONIC, &stop_all_timer);
 #ifdef __ANDROID__
-        system("touch .crashdetect_ck");
+        wd_run_command("touch .crashdetect_ck");
 #ifndef _DBG_PRINT
-        system("exit && ./watchdogs.tmux");
+        wd_run_command("exit && ./watchdogs.tmux");
 #else
-        system("exit && ./watchdogs.debug.tmux");
+        wd_run_command("exit && ./watchdogs.debug.tmux");
 #endif
 #elif defined(__linux__)
-        system("touch .crashdetect_ck");
+        wd_run_command("touch .crashdetect_ck");
 #ifndef _DBG_PRINT
-        system("exit && ./watchdogs");
+        wd_run_command("exit && ./watchdogs");
 #else
-        system("exit && ./watchdogs.debug");
+        wd_run_command("exit && ./watchdogs.debug");
 #endif
 #elif defined(_WIN32)
-        system("type nul > .crashdetect_ck");
+        wd_run_command("type nul > .crashdetect_ck");
 #ifndef _DBG_PRINT
-        system("exit && watchdogs.win");
+        wd_run_command("exit && watchdogs.win");
 #else
-        system("exit && watchdogs.debug.win");
+        wd_run_command("exit && watchdogs.debug.win");
 #endif
 #endif
 }
@@ -72,10 +72,10 @@ static int update_server_config(const char *gamemode)
         char line[1024];
         int gamemode_updated = 0;
 
-        char size_config[PATH_MAX];
+        char size_config[WD_PATH_MAX];
         snprintf(size_config, sizeof(size_config), ".%s.bak", wcfg.wd_toml_config);
 
-        char size_mv[MAX_PATH];
+        char size_mv[WD_MAX_PATH];
         if (is_native_windows())
             snprintf(size_mv, sizeof(size_mv),
                     "ren %s %s",
@@ -87,7 +87,7 @@ static int update_server_config(const char *gamemode)
                     wcfg.wd_toml_config,
                     size_config);
 
-        if (system(size_mv) != 0) {
+        if (wd_run_command(size_mv) != 0) {
                 pr_error(stdout, "Failed to create backup file");
                 return -__RETN;
         }
@@ -104,11 +104,11 @@ static int update_server_config(const char *gamemode)
                 return -__RETN;
         }
 
-        char _gamemode[256];
-        snprintf(_gamemode, sizeof(_gamemode), "%s", gamemode);
-        char *f_EXT = strrchr(_gamemode, '.');
+        char put_gamemode[256];
+        snprintf(put_gamemode, sizeof(put_gamemode), "%s", gamemode);
+        char *f_EXT = strrchr(put_gamemode, '.');
         if (f_EXT) *f_EXT = '\0';
-        gamemode = _gamemode;
+        gamemode = put_gamemode;
 
         while (fgets(line, sizeof(line), config_in)) {
                 if (strncmp(line, "gamemode0 ", 10) == 0) {
@@ -174,10 +174,10 @@ void wd_server_crash_check(void) {
             fclose(procc_f);
         }
         if (__has_error == 1 && server_crashdetect < 1) {
-          		printf("INFO: crash found! "
+              printf("INFO: crash found! "
                      "and crashdetect not found.. "
                      "install crashdetect now? ");
-          		char *confirm;
+              char *confirm;
               confirm = readline("Y/n ");
               if (strfind(confirm, "y")) {
                   wd_free(confirm);
@@ -193,20 +193,36 @@ void wd_server_crash_check(void) {
 }
 
 void restore_samp_config(void) {
-        char size_config[PATH_MAX * 2];
+        char size_config[WD_PATH_MAX * 2];
         snprintf(size_config, sizeof(size_config), ".%s.bak", wcfg.wd_toml_config);
-        remove(wcfg.wd_toml_config);
+        return;
 }
 
 void wd_run_samp_server(const char *gamemode, const char *server_bin)
 {
+        if (strfind(wcfg.wd_toml_config, ".json"))
+                return;
+
         char command[256];
         int ret;
 
-        char _gamemode[256];
-        snprintf(_gamemode, sizeof(_gamemode), "%s.amx", gamemode);
+        char put_gamemode[256];
         char *f_EXT = strrchr(gamemode, '.');
-        if (!f_EXT) gamemode = _gamemode;
+        if (f_EXT) {
+            size_t len = f_EXT - gamemode;
+            snprintf(put_gamemode,
+                     sizeof(put_gamemode),
+                     "%.*s.amx",
+                     (int)len,
+                     gamemode);
+        } else {
+            snprintf(put_gamemode,
+                     sizeof(put_gamemode),
+                     "%s.amx",
+                     gamemode);
+        }
+
+        gamemode = put_gamemode;
 
         wd_sef_fdir_reset();
         if (wd_sef_fdir(".", gamemode, NULL) != 1) {
@@ -245,7 +261,7 @@ back_start:
 #endif
         end = time(NULL);
 
-        ret = system(command);
+        ret = wd_run_command(command);
         if (ret == __RETZ) {
                 if (!strcmp(wcfg.wd_os_type, OS_SIGNAL_LINUX)) {
                         sleep(2);
@@ -270,13 +286,13 @@ static int update_omp_config(const char *gamemode)
 {
         struct stat st;
         char gamemode_buf[256];
-        char _gamemode[256];
+        char put_gamemode[256];
         int ret = -__RETN;
 
-        char size_config[PATH_MAX];
+        char size_config[WD_PATH_MAX];
         snprintf(size_config, sizeof(size_config), ".%s.bak", wcfg.wd_toml_config);
 
-        char size_mv[MAX_PATH];
+        char size_mv[WD_MAX_PATH];
         if (is_native_windows())
             snprintf(size_mv, sizeof(size_mv),
                     "ren %s %s",
@@ -288,7 +304,7 @@ static int update_omp_config(const char *gamemode)
                     wcfg.wd_toml_config,
                     size_config);
 
-        if (system(size_mv) != 0) {
+        if (wd_run_command(size_mv) != 0) {
                 pr_error(stdout, "Failed to create backup file");
                 return -__RETN;
         }
@@ -334,14 +350,14 @@ static int update_omp_config(const char *gamemode)
                 goto done;
         }
 
-        snprintf(_gamemode, sizeof(_gamemode), "%s", gamemode);
-        char *f_EXT = strrchr(_gamemode, '.');
+        snprintf(put_gamemode, sizeof(put_gamemode), "%s", gamemode);
+        char *f_EXT = strrchr(put_gamemode, '.');
         if (f_EXT) *f_EXT = '\0';
 
         cJSON_DeleteItemFromObject(pawn, "main_scripts");
 
         main_scripts = cJSON_CreateArray();
-        snprintf(gamemode_buf, sizeof(gamemode_buf), "%s", _gamemode);
+        snprintf(gamemode_buf, sizeof(gamemode_buf), "%s", put_gamemode);
         cJSON_AddItemToArray(main_scripts, cJSON_CreateString(gamemode_buf));
         cJSON_AddItemToObject(pawn, "main_scripts", main_scripts);
 
@@ -380,22 +396,36 @@ done:
 }
 
 void restore_omp_config(void) {
-        char size_config[PATH_MAX];
+        char size_config[WD_PATH_MAX];
         snprintf(size_config, sizeof(size_config), ".%s.bak", wcfg.wd_toml_config);
-
-        remove(wcfg.wd_toml_config);
-        rename(size_config, wcfg.wd_toml_config);
+        return;
 }
 
 void wd_run_omp_server(const char *gamemode, const char *server_bin)
 {
+        if (strfind(wcfg.wd_toml_config, ".cfg"))
+                return;
+
         char command[256];
         int ret;
 
-        char _gamemode[256];
-        snprintf(_gamemode, sizeof(_gamemode), "%s.amx", gamemode);
+        char put_gamemode[256];
         char *f_EXT = strrchr(gamemode, '.');
-        if (!f_EXT) gamemode = _gamemode;
+        if (f_EXT) {
+            size_t len = f_EXT - gamemode;
+            snprintf(put_gamemode,
+                     sizeof(put_gamemode),
+                     "%.*s.amx",
+                     (int)len,
+                     gamemode);
+        } else {
+            snprintf(put_gamemode,
+                     sizeof(put_gamemode),
+                     "%s.amx",
+                     gamemode);
+        }
+
+        gamemode = put_gamemode;
 
         wd_sef_fdir_reset();
         if (wd_sef_fdir(".", gamemode, NULL) != 1) {
@@ -434,7 +464,7 @@ back_start:
 #endif
         end = time(NULL);
 
-        ret = system(command);
+        ret = wd_run_command(command);
         if (ret == __RETZ) {
                 sleep(2);
                 wd_display_server_logs(1);

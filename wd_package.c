@@ -119,9 +119,8 @@ ret_pawncc:
 			goto ret_pawncc;
     	}
 
-		int ret;
-		ret = get_termux_architecture(architecture,
-									  sizeof(architecture) != 0);
+		get_termux_architecture(architecture,
+							    sizeof(architecture) != 0);
 
 		snprintf(url, sizeof(url),
 				 "https://github.com/"

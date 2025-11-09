@@ -7,7 +7,10 @@
 #include "wd_crypto.h"
 
 static const char base64_table[] =
-        "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
+        "ABCDEFGHIJKLMNOPQRSTUVWXYZ"
+        "abcdefghijklmnopqrstuvwxyz"
+        "0123456789"
+        "+/";
 
 static uint32_t rotr(uint32_t x, int n) {
         return (x >> n) | (x << (32 - n));
@@ -113,7 +116,8 @@ unsigned long djb2_hash_file(const char *filename) {
       return hash;
 }
 
-static void sha256_transform(SHA256_CTX *ctx, const uint8_t data[SHA256_BLOCK_SIZE]) {
+static void sha256_transform(SHA256_CTX *ctx,
+                             const uint8_t data[SHA256_BLOCK_SIZE]) {
         uint32_t a, b, c, d, e, f, g, h;
         uint32_t w[64];
         int i;

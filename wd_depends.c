@@ -17,8 +17,35 @@
 char working[512];
 char *tag_ptr, *path, *first_slash;
 char *user, *repo_slash, *repo, *git_ext;
-char cmd[MAX_PATH * 4], rm_cmd[PATH_MAX];
+char cmd[WD_MAX_PATH * 4], rm_cmd[WD_PATH_MAX];
 char *dname, *ext;
+
+const char *dep_get_fname (const char *path)
+{
+		/* file name */
+		const char *depends;
+		depends = strrchr(path, '/');
+		if (!depends)
+				depends = strrchr(path, '\\');
+		return depends ? depends + 1 : path;
+}
+
+static const char *dep_get_bname (const char *path)
+{
+		/* base name */
+		const char *p1 = strrchr(path, '/'),
+				   *p2 = strrchr(path, '\\'),
+				   *p = NULL;
+
+		if (p1 && p2)
+			p = (p1 > p2) ? p1 : p2;
+		else if (p1)
+			p = p1;
+		else if (p2)
+			p = p2;
+
+		return p ? p + 1 : path;
+}
 
 static size_t dep_curl_write_cb (void *contents, size_t size, size_t nmemb, void *userp)
 {
@@ -272,7 +299,7 @@ dep_parse_repo(const char *input, struct dep_repo_info *__deps_data)
 static int dep_gh_release_assets (const char *user, const char *repo,
 								  const char *tag, char **out_urls, int max_urls)
 {
-		char api_url[PATH_MAX];
+		char api_url[WD_PATH_MAX];
 		char *json_data = NULL;
 		const char *p;
 		int url_count = 0;
@@ -484,7 +511,7 @@ dep_build_repo_url(const struct dep_repo_info *__deps_data, int is_tag_page,
 static int dep_gh_latest_tag (const char *user, const char *repo,
                               		  char *out_tag, size_t deps_put_size)
 {
-		char api_url[PATH_MAX];
+		char api_url[WD_PATH_MAX];
 		char *json_data = NULL;
 		const char *p;
 		int ret = 0;
@@ -584,8 +611,10 @@ static int dep_handle_repo (const struct dep_repo_info *dep_repo_info,
 
 			if (!ret) {
 				const char *deps_arch_format[] = {
-					"https://github.com/%s/%s/archive/refs/tags/%s.tar.gz",
-					"https://github.com/%s/%s/archive/refs/tags/%s.zip"
+					"https://github.com/"
+					"%s/%s/archive/refs/tags/%s.tar.gz",
+					"https://github.com/"
+					"%s/%s/archive/refs/tags/%s.zip"
 				};
 
 				for (int j = 0; j < 2 && !ret; j++) {
@@ -610,7 +639,7 @@ static int dep_handle_repo (const struct dep_repo_info *dep_repo_info,
 				if (dep_check_url(deps_put_url, wcfg.wd_toml_github_tokens)) {
 					ret = 1;
 					if (j == 1)
-						printf("[DEPS] Using master branch (main branch not found)\n");
+						printf("[DEPS] selected master branch (main branch not found)\n");
 				}
 			}
 		}
@@ -631,8 +660,8 @@ void dep_sym_convert (char *path)
 int
 dep_add_ncheck_hash(const char *_H_file_path, const char *_H_json_path)
 {
-		char convert_f_path[PATH_MAX];
-		char convert_j_path[PATH_MAX];
+		char convert_f_path[WD_PATH_MAX];
+		char convert_j_path[WD_PATH_MAX];
 
 		char *path_pos;
 		while ((path_pos = strstr(_H_file_path, "include/")) != NULL)
@@ -913,39 +942,12 @@ void dep_add_include (const char *modes,
 }
 #define DEP_ADD_INCLUDES(x, y, z) dep_add_include(x, y, z)
 
-const char *dep_get_fname (const char *path)
-{
-		/* file name */
-		const char *depends = strrchr(path, '/');
-		if (!depends)
-				depends = strrchr(path, '\\');
-		return depends ? depends + 1 : path;
-}
-
-static const char *dep_get_bname (const char *path)
-{
-		/* base name */
-		const char *p1 = strrchr(path, '/'),
-				   *p2 = strrchr(path, '\\'),
-				   *p = NULL;
-
-		if (p1 && p2) {
-			p = (p1 > p2) ? p1 : p2;
-		} else if (p1) {
-			p = p1;
-		} else if (p2) {
-			p = p2;
-		}
-
-		return p ? p + 1 : path;
-}
-
 static void dep_pr_include_directive (const char *deps_include)
 {
-		char errbuf[256];
+		char error_buffer[256];
 		toml_table_t *_toml_config;
-		char depends_name[PATH_MAX];
-		char idirective[MAX_PATH];
+		char depends_name[WD_PATH_MAX];
+		char idirective[WD_MAX_PATH];
 
 		const char *dep_n = dep_get_fname(deps_include);
 		snprintf(depends_name, sizeof(depends_name), "%s", dep_n);
@@ -954,11 +956,11 @@ static void dep_pr_include_directive (const char *deps_include)
 			*direct_bnames = dep_get_bname(depends_name);
 
 		FILE *procc_f = fopen("watchdogs.toml", "r");
-		_toml_config = toml_parse_file(procc_f, errbuf, sizeof(errbuf));
+		_toml_config = toml_parse_file(procc_f, error_buffer, sizeof(error_buffer));
 		if (procc_f) fclose(procc_f);
 
 		if (!_toml_config) {
-			pr_error(stdout, "parsing TOML: %s", errbuf);
+			pr_error(stdout, "parsing TOML: %s", error_buffer);
 			return;
 		}
 
@@ -994,8 +996,8 @@ void deps_print_file_type (const char *path, const char *pattern,
 						   const char *exclude, const char *cwd,
 						   const char *target_dir, int root)
 {
-		char cp_cmd[MAX_PATH * 2];
-		char json_item[PATH_MAX];
+		char size_deps_copy[WD_MAX_PATH * 2];
+		char json_item[WD_PATH_MAX];
 
 		wd_sef_fdir_reset();
 
@@ -1008,24 +1010,24 @@ void deps_print_file_type (const char *path, const char *pattern,
 
 				if (target_dir[0] != '\0') {
 					if (is_native_windows())
-						snprintf(cp_cmd, sizeof(cp_cmd),
+						snprintf(size_deps_copy, sizeof(size_deps_copy),
 							"move /Y \"%s\" \"%s\\%s\\\"",
 							wcfg.wd_sef_found_list[i], cwd, target_dir);
 					else
-						snprintf(cp_cmd, sizeof(cp_cmd), "mv -f \"%s\" \"%s/%s/\"",
+						snprintf(size_deps_copy, sizeof(size_deps_copy), "mv -f \"%s\" \"%s/%s/\"",
 							wcfg.wd_sef_found_list[i], cwd, target_dir);
 				} else {
 					if (is_native_windows())
-						snprintf(cp_cmd, sizeof(cp_cmd),
+						snprintf(size_deps_copy, sizeof(size_deps_copy),
 							"move /Y \"%s\" \"%s\"",
 							wcfg.wd_sef_found_list[i], cwd);
 					else
-						snprintf(cp_cmd, sizeof(cp_cmd),
+						snprintf(size_deps_copy, sizeof(size_deps_copy),
 							"mv -f \"%s\" \"%s\"",
 							wcfg.wd_sef_found_list[i], cwd);
 				}
 
-				system(cp_cmd);
+				wd_run_command(size_deps_copy);
 
 				snprintf(json_item, sizeof(json_item), "%s", deps_names);
 				dep_add_ncheck_hash(json_item, json_item);
@@ -1061,63 +1063,70 @@ void dep_cjson_additem (cJSON *p1, int p2, cJSON *p3)
 
 void dep_move_files (const char *dep_dir)
 {
-		DIR *dir;
-		struct dirent *item;
-		struct stat st;
-		FILE* jfile = NULL;
-		FILE *e_file, *fp_cache;
-		char *dep_inc_path = NULL;
-		char cp_cmd[MAX_PATH * 2];
-		char d_b[MAX_PATH];
-		int i, _include_search = 0;
-		long fp_cache_sz;
-		char dp_fp[PATH_MAX], dp_fc[PATH_MAX], dp_inc[PATH_MAX],
-			 fpath[PATH_MAX * 2], parent[PATH_MAX], dest[MAX_PATH * 2];
+		char *deps_include_path = NULL;
+		char size_deps_copy[WD_MAX_PATH * 2];
+		char deps_base_include_path[WD_MAX_PATH];
+		int i, deps_include_search = 0;
+		char deps_base_plugins_path[WD_PATH_MAX],
+			 deps_base_components_path[WD_PATH_MAX],
+			 deps_include_full_path[WD_PATH_MAX],
+			 fpath[WD_PATH_MAX * 2],
+			 parent[WD_PATH_MAX],
+			 dest[WD_MAX_PATH * 2];
 
-		snprintf(dp_fp, sizeof(dp_fp), "%s/plugins", dep_dir);
-		snprintf(dp_fc, sizeof(dp_fc), "%s/components", dep_dir);
+		snprintf(deps_base_plugins_path,
+				 sizeof(deps_base_plugins_path),
+				 "%s/plugins",
+				 dep_dir);
+		snprintf(deps_base_components_path,
+				 sizeof(deps_base_components_path),
+				 "%s/components",
+				 dep_dir);
 
 		if (wd_server_env() == 1) {
-			dep_inc_path = "pawno/include";
-			snprintf(dp_inc, sizeof(dp_inc), "%s/pawno/include", dep_dir);
+			deps_include_path = "pawno/include";
+			snprintf(deps_include_full_path,
+					sizeof(deps_include_full_path), "%s/pawno/include", dep_dir);
 		} else if (wd_server_env() == 2) {
-			dep_inc_path = "qawno/include";
-			snprintf(dp_inc, sizeof(dp_inc), "%s/qawno/include", dep_dir);
+			deps_include_path = "qawno/include";
+			snprintf(deps_include_full_path,
+					sizeof(deps_include_full_path), "%s/qawno/include", dep_dir);
 		} else {
-			dep_inc_path = "pawno/include";
-			snprintf(dp_inc, sizeof(dp_inc), "%s/pawno/include", dep_dir);
+			deps_include_path = "pawno/include";
+			snprintf(deps_include_full_path,
+					sizeof(deps_include_full_path), "%s/pawno/include", dep_dir);
 		}
 
-		char *cwd = wd_get_cwd();
+		const char *cwd = wd_get_cwd();
 
-		deps_print_file_type(dp_fp, "*.dll", NULL, cwd, "plugins", 0);
-		deps_print_file_type(dp_fp, "*.so", NULL, cwd, "plugins", 0);
+		deps_print_file_type(deps_base_plugins_path, "*.dll", NULL, cwd, "plugins", 0);
+		deps_print_file_type(deps_base_plugins_path, "*.so", NULL, cwd, "plugins", 0);
 		deps_print_file_type(dep_dir, "*.dll", "plugins", cwd, "", 1);
 		deps_print_file_type(dep_dir, "*.so", "plugins", cwd, "", 1);
 
 		if (wd_server_env() == 2) {
-			snprintf(d_b, sizeof(d_b), "qawno/include");
-			deps_print_file_type(dp_fc, "*.dll", NULL, cwd, "components", 0);
-			deps_print_file_type(dp_fc, "*.so", NULL, cwd, "components", 0);
+			snprintf(deps_base_include_path, sizeof(deps_base_include_path), "qawno/include");
+			deps_print_file_type(deps_base_components_path, "*.dll", NULL, cwd, "components", 0);
+			deps_print_file_type(deps_base_components_path, "*.so", NULL, cwd, "components", 0);
 		} else {
-			snprintf(d_b, sizeof(d_b), "pawno/include");
+			snprintf(deps_base_include_path, sizeof(deps_base_include_path), "pawno/include");
 		}
 
-		int stack_size = MAX_PATH;
+		int stack_size = WD_MAX_PATH;
 		int stack_top = -1;
 		char **dir_stack = wd_malloc(stack_size * sizeof(char*));
 
 		for (int i = 0; i < stack_size; i++) {
-		    dir_stack[i] = wd_malloc(PATH_MAX);
+		    dir_stack[i] = wd_malloc(WD_PATH_MAX);
 		}
 
 		stack_top++;
-		snprintf(dir_stack[stack_top], PATH_MAX, "%s", dep_dir);
+		snprintf(dir_stack[stack_top], WD_PATH_MAX, "%s", dep_dir);
 
 		while (stack_top >= 0) {
-		    char current_dir[PATH_MAX];
+		    char current_dir[WD_PATH_MAX];
 		    snprintf(current_dir, sizeof(current_dir), "%s",
-						dir_stack[stack_top]);
+													   dir_stack[stack_top]);
 		    stack_top--;
 
 		    DIR *dir = opendir(current_dir);
@@ -1127,7 +1136,8 @@ void dep_move_files (const char *dep_dir)
 		    struct stat st;
 
 			while ((item = readdir(dir)) != NULL) {
-					if (!strcmp(item->d_name, ".") || !strcmp(item->d_name, "..")) { continue; }
+					if (wd_is_special_dir(item->d_name))
+						continue;
 
 					snprintf(fpath, sizeof(fpath), "%s/%s", current_dir,
 													item->d_name);
@@ -1138,7 +1148,7 @@ void dep_move_files (const char *dep_dir)
 					if (S_ISDIR(st.st_mode)) {
 						if (stack_top < stack_size - 1) {
 							++stack_top;
-							snprintf(dir_stack[stack_top], MAX_PATH,
+							snprintf(dir_stack[stack_top], WD_MAX_PATH,
 									"%s", fpath);
 						}
 						continue;
@@ -1155,7 +1165,7 @@ void dep_move_files (const char *dep_dir)
 
 						++dname; /* skip '/' */
 
-						snprintf(dest, sizeof(dest), "%s/%s", d_b, dname);
+						snprintf(dest, sizeof(dest), "%s/%s", deps_base_include_path, dname);
 
 						if (rename(parent, dest)) {
 								if (is_native_windows()) {
@@ -1168,7 +1178,7 @@ void dep_move_files (const char *dep_dir)
 												"cp -r \"%s\" \"%s\" && rm -rf \"%s\"",
 												parent, dest, parent);
 								}
-								if (system(cmd)) {
+								if (wd_run_command(cmd)) {
 										pr_error(stdout, "Failed to move folder: %s\n", parent);
 										continue;
 								}
@@ -1191,22 +1201,22 @@ void dep_move_files (const char *dep_dir)
 
 		wd_sef_fdir_reset();
 
-		_include_search = wd_sef_fdir(dp_inc, "*.inc", NULL);
-		if (_include_search) {
+		deps_include_search = wd_sef_fdir(deps_include_full_path, "*.inc", NULL);
+		if (deps_include_search) {
 			for (i = 0; i < wcfg.wd_sef_count; ++i) {
 				const char *fi_depends_name;
 				fi_depends_name = dep_get_fname(wcfg.wd_sef_found_list[i]);
 
 				if (is_native_windows())
-					snprintf(cp_cmd, sizeof(cp_cmd),
+					snprintf(size_deps_copy, sizeof(size_deps_copy),
 						"move /Y \"%s\" \"%s\\%s\\\"",
-						wcfg.wd_sef_found_list[i], cwd, dep_inc_path);
+						wcfg.wd_sef_found_list[i], cwd, deps_include_path);
 				else
-					snprintf(cp_cmd, sizeof(cp_cmd),
+					snprintf(size_deps_copy, sizeof(size_deps_copy),
 						"mv -f \"%s\" \"%s/%s/\"",
-						wcfg.wd_sef_found_list[i], cwd, dep_inc_path);
+						wcfg.wd_sef_found_list[i], cwd, deps_include_path);
 
-				system(cp_cmd);
+				wd_run_command(size_deps_copy);
 
 				dep_add_ncheck_hash(fi_depends_name, fi_depends_name);
 				dep_pr_include_directive(fi_depends_name);
@@ -1221,19 +1231,19 @@ void dep_move_files (const char *dep_dir)
 			snprintf(rm_cmd, sizeof(rm_cmd),
 				"rm -rf %s",
 				dep_dir);
-		system(rm_cmd);
+		wd_run_command(rm_cmd);
 
 		wd_main(NULL);
 }
 
 void wd_apply_depends (const char *depends_name)
 {
-		char _depends[PATH_MAX];
-		char dep_dir[PATH_MAX];
+		char _depends[WD_PATH_MAX];
+		char dep_dir[WD_PATH_MAX];
 		struct stat st;
 		char *f_EXT;
 
-		snprintf(_depends, PATH_MAX, "%s", depends_name);
+		snprintf(_depends, WD_PATH_MAX, "%s", depends_name);
 		f_EXT = strrchr(_depends, '.');
 		if (f_EXT)
 			*f_EXT = '\0';

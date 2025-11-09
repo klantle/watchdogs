@@ -123,13 +123,13 @@ int portable_stat(const char *path, portable_stat_t *out) {
 
 #ifdef _WIN32
         /* Use wide APIs for Unicode paths */
-        wchar_t wpath[MAX_PATH];
+        wchar_t wpath[WD_MAX_PATH];
         int len = MultiByteToWideChar(CP_UTF8, 0, path, -1, NULL, 0);
-        if (len == 0 || len > MAX_PATH) {
+        if (len == 0 || len > WD_MAX_PATH) {
                 /* fallback: try ANSI conversion */
-                if (!MultiByteToWideChar(CP_ACP, 0, path, -1, wpath, MAX_PATH)) return -1;
+                if (!MultiByteToWideChar(CP_ACP, 0, path, -1, wpath, WD_MAX_PATH)) return -1;
         } else {
-                MultiByteToWideChar(CP_UTF8, 0, path, -1, wpath, MAX_PATH);
+                MultiByteToWideChar(CP_UTF8, 0, path, -1, wpath, WD_MAX_PATH);
         }
 
         WIN32_FILE_ATTRIBUTE_DATA fad;
@@ -501,31 +501,34 @@ void compiler_detailed(const char *pawn_output, int debug,
 
       int amx_access = path_acces(pawn_output);
       if (amx_access && debug != 0) {
-  			portable_stat_t st;
-  			if (portable_stat(pawn_output, &st) == 0) {
-      			unsigned long hash = djb2_hash_file(pawn_output);
-
-      			printf("Header: %dB | Code: %dB\nData: %dB |"
-      				   "Stack: %dB\nTotal: %dB | djb2: 0x%lx\n",
-      				   header_size, code_size, data_size, stack_size, total_size, hash);
-
-      			portable_stat_t st;
-      			if (portable_stat(pawn_output, &st) == 0) {
-						printf("File: %lluB | ino:%llu\ndev:%llu | mode:%020o\nRead:%s | Write:%s | Execute:%s\n"
-								"atime:%llu\nmtime:%llu\nctime:%llu\n",
-								(unsigned long long)st.st_size,
-								(unsigned long long)st.st_ino,
-								(unsigned long long)st.st_dev,
-								st.st_mode,
-								(st.st_mode & S_IRUSR) ? "Y" : "N",
-								(st.st_mode & S_IWUSR) ? "Y" : "N",
-								(st.st_mode & S_IXUSR) ? "Y" : "N",
-								(unsigned long long)st.st_latime,
-								(unsigned long long)st.st_lmtime,
-								(unsigned long long)st.st_mctime
-						);
-					}
-    			}
+                unsigned long hash = djb2_hash_file(pawn_output);
+                printf("Header : %dB  |  Total        : %dB\n"
+                       "Code   : %dB  |  hash (djb2)  : %dB\n"
+                       "Data   : %dB\n"
+                       "Stack  : %dB\n",
+                       header_size, total_size, code_size,
+                       hash, data_size, stack_size);
+                portable_stat_t st;
+                if (portable_stat(pawn_output, &st) == 0) {
+                        printf("ino    : %llu   |  File   : %lluB\n"
+                               "dev    : %llu\n"
+                               "read   : %s   |  write  : %s\n"
+                               "execute: %s   |  mode   : %020o\n"
+                               "atime  : %llu\n"
+                               "mtime  : %llu\n"
+                               "ctime  : %llu\n",
+                               (unsigned long long)st.st_ino,
+                               (unsigned long long)st.st_size,
+                               (unsigned long long)st.st_dev,
+                               (st.st_mode & S_IRUSR) ? "Y" : "N",
+                               (st.st_mode & S_IWUSR) ? "Y" : "N",
+                               (st.st_mode & S_IXUSR) ? "Y" : "N",
+                               st.st_mode,
+                               (unsigned long long)st.st_latime,
+                               (unsigned long long)st.st_lmtime,
+                               (unsigned long long)st.st_mctime
+                        );
+                }
       }
       printf("\n");
       printf("* Pawn Compiler %s - Copyright (c) 1997-2006, ITB CompuPhase\n", compiler_ver);
@@ -537,7 +540,7 @@ void
 cause_compiler_expl(const char *log_file, const char *pawn_output, int debug)
 {
       FILE *plog;
-      char size_buff[MAX_PATH];
+      char size_buff[WD_MAX_PATH];
       int wcnt = 0, ecnt = 0;
       int header_size = 0, code_size = 0, data_size = 0;
       int stack_size = 0, total_size = 0;
@@ -606,15 +609,15 @@ cause_compiler_expl(const char *log_file, const char *pawn_output, int debug)
             	printf(" ");
 
             pr_color(stdout,
-					 FCOLOUR_BLUE,
-					 "^ %s :(\n", description);
+                     FCOLOUR_BLUE,
+                     "^ %s :(\n", description);
       	}
       }
 
       fclose(plog);
 
       compiler_detailed(pawn_output, debug, wcnt, ecnt,
-						compiler_ver, header_size, code_size,
-						data_size, stack_size, total_size);
+                        compiler_ver, header_size, code_size,
+                        data_size, stack_size, total_size);
       return;
 }

@@ -3,13 +3,12 @@
 #include <string.h>
 #include <unistd.h>
 #include <limits.h>
+#include <time.h>
 #ifdef __linux__
 #include <fcntl.h>
 #include <sys/types.h>
 #include <sys/wait.h>
 #endif
-
-#include <time.h>
 
 #include <readline/readline.h>
 #include <readline/history.h>
@@ -20,11 +19,11 @@
 #include "wd_package.h"
 #include "wd_compiler.h"
 
-static char container_output[PATH_MAX] = { 0 },
-            __wcp_direct_path[PATH_MAX] = { 0 },
-            __wcp_file_name[PATH_MAX] = { 0 },
-            __wcp_input_path[PATH_MAX] = { 0 },
-            __wcp_any_tmp[PATH_MAX] = { 0 };
+static char container_output[WD_PATH_MAX] = { 0 },
+            __wcp_direct_path[WD_PATH_MAX] = { 0 },
+            __wcp_file_name[WD_PATH_MAX] = { 0 },
+            __wcp_input_path[WD_PATH_MAX] = { 0 },
+            __wcp_any_tmp[WD_PATH_MAX] = { 0 };
 
 void compiler_memory_clean(void) {
         memset(container_output, 0, sizeof(container_output));
@@ -35,13 +34,14 @@ void compiler_memory_clean(void) {
         return;
 }
 
-int wd_run_compiler(const char *arg, const char *compile_args)
+int wd_run_compiler(const char *arg, const char *compile_args, const char *second_arg)
 {
         wcfg.wd_compiler_stat = 0;
 
-        char run_cmd[PATH_MAX + 258];
         FILE *proc_file;
         char size_log[1024];
+        char run_cmd[WD_PATH_MAX + 258];
+        char include_aio_path[WD_PATH_MAX] = { 0 };
 
         const char *ptr_pawncc = NULL;
         if (!strcmp(wcfg.wd_os_type, OS_SIGNAL_WINDOWS))
@@ -66,7 +66,8 @@ int wd_run_compiler(const char *arg, const char *compile_args)
         if (__find_pawncc)
         {
             size_t format_size_compiler = 1024;
-            char *_compiler_ = wd_malloc(format_size_compiler);
+            char *_compiler_;
+            _compiler_ = wd_malloc(format_size_compiler);
             if (!_compiler_)
             {
 #if defined(_DBG_PRINT)
@@ -87,9 +88,9 @@ int wd_run_compiler(const char *arg, const char *compile_args)
                 return __RETZ;
             }
 
-            char errbuf[256];
+            char error_buffer[256];
             toml_table_t *_toml_config;
-            _toml_config = toml_parse_file(procc_f, errbuf, sizeof(errbuf));
+            _toml_config = toml_parse_file(procc_f, error_buffer, sizeof(error_buffer));
 
             if (procc_f) {
                 fclose(procc_f);
@@ -97,7 +98,7 @@ int wd_run_compiler(const char *arg, const char *compile_args)
 
             if (!_toml_config)
             {
-                pr_error(stdout, "parsing TOML: %s", errbuf);
+                pr_error(stdout, "parsing TOML: %s", error_buffer);
                 if (_compiler_)
                 {
                     wd_free(_compiler_);
@@ -109,7 +110,7 @@ int wd_run_compiler(const char *arg, const char *compile_args)
             snprintf(run_cmd, sizeof(run_cmd),
                 "%s -DDD > .__CP.log 2>&1",
                   wcfg.wd_sef_found_list[0]);
-            system(run_cmd);
+            wd_run_command(run_cmd);
 
             proc_file = fopen(".__CP.log", "r");
             if (!proc_file) {
@@ -208,7 +209,6 @@ n_valid_flag:
                     }
                 }
 
-                char include_aio_path[PATH_MAX] = { 0 };
                 toml_array_t *include_paths = toml_array_in(wd_compiler, "include_path");
                 if (include_paths)
                 {
@@ -292,18 +292,18 @@ n_valid_flag:
                         si.hStdError = hFile;
                     }
 
-                    char cmd_line[4096];
+                    char cmd_line[MAX_PATH];
                     int ret_cmd = snprintf(
-                        cmd_line,
-                        sizeof(cmd_line),
-                        "%s %s -o%s %s %s -i%s",
-                        wcfg.wd_sef_found_list[0],                      // compiler binary
-                        wcfg.wd_toml_gm_input,                          // input file
-                        wcfg.wd_toml_gm_output,                         // output file
-                        wcfg.wd_toml_aio_opt,                           // additional options
-                        include_aio_path,                               // include search path
-                        path_include                                    // include directory
-                    );
+                                                cmd_line,
+                                                sizeof(cmd_line),
+                                                    "%s %s -o%s %s %s -i%s",
+                                                    wcfg.wd_sef_found_list[0],
+                                                    wcfg.wd_toml_gm_input,
+                                                    wcfg.wd_toml_gm_output,
+                                                    wcfg.wd_toml_aio_opt,
+                                                    include_aio_path,
+                                                    path_include
+                                           );
 
                     clock_gettime(CLOCK_MONOTONIC, &start);
                     if (ret_cmd > 0 && ret_cmd < (int)sizeof(cmd_line)) {
@@ -320,6 +320,17 @@ n_valid_flag:
                             &pi              // Pointer to PROCESS_INFORMATION structure
                         );
                         if (success) {
+                            HMODULE hKernel32 = GetModuleHandle("kernel32.dll");
+                            if (hKernel32) {
+                                typedef BOOL (WINAPI *PSETPROCESSIOPRIORITY)(HANDLE, INT);
+                                PSETPROCESSIOPRIORITY SetProcessIoPriority = 
+                                    (PSETPROCESSIOPRIORITY)GetProcAddress(hKernel32, "SetProcessIoPriority");
+                                
+                                if (SetProcessIoPriority) {
+                                    SetProcessIoPriority(pi.hProcess, 1);
+                                }
+                            }
+
                             clock_gettime(CLOCK_MONOTONIC, &end);
                             WaitForSingleObject(pi.hProcess, INFINITE);
 
@@ -342,39 +353,103 @@ n_valid_flag:
 #else
                     pid_t pid = fork();
                     if (pid == 0) {
-                        int fd = open(".wd_compiler.log", O_WRONLY | O_CREAT | O_TRUNC, 0644);
+                        struct sched_param param = {.sched_priority = 50};
+                        
+                        if (sched_setscheduler(0, SCHED_FIFO, &param) == -1) {
+                            param.sched_priority = 30;
+                            if (sched_setscheduler(0, SCHED_RR, &param) == -1) {
+                                struct sched_param low_param = {.sched_priority = 0};
+                                sched_setscheduler(0, SCHED_BATCH, &low_param);
+                            }
+                        }
+                        
+                        int fd = open(".wd_compiler.log", O_WRONLY | O_CREAT | O_TRUNC | O_SYNC, 0644);
                         if (fd != -1) {
                             dup2(fd, STDOUT_FILENO);
                             dup2(fd, STDERR_FILENO);
                             close(fd);
                         }
+                        
                         char *args[] = {
-                                          wcfg.wd_sef_found_list[0],     // compiler binary
-                                          wcfg.wd_toml_gm_input,         // input file
-                                          "-o", wcfg.wd_toml_gm_output,  // output file dengan option terpisah
-                                          wcfg.wd_toml_aio_opt,          // additional options
-                                          include_aio_path,              // include search path
-                                          "-i", path_include,            // include directory dengan option terpisah
-                                          NULL  // Sentinel
+                                            wcfg.wd_sef_found_list[0],
+                                            wcfg.wd_toml_gm_input,
+                                            "-o", wcfg.wd_toml_gm_output,
+                                            wcfg.wd_toml_aio_opt,
+                                            include_aio_path,
+                                            "-i", path_include,
+                                            NULL
                                        };
+                        
                         clock_gettime(CLOCK_MONOTONIC, &start);
                         execvp(args[0], args);
                         clock_gettime(CLOCK_MONOTONIC, &end);
                         exit(127);
                     } else if (pid > 0) {
                         int status;
-                        waitpid(pid, &status, 0);
+                        const int TIMEOUT = 30;
+                        for (int i = 0; i < TIMEOUT; i++) {
+                            int result = waitpid(pid, &status, WNOHANG);
+                            if (result == 0) {
+                                sleep(1);
+                            } else if (result == pid) {
+                                break;
+                            } else {
+                                pr_error(stdout, "waitpid error");
+                                break;
+                            }
+                            
+                            if (i == TIMEOUT - 1) {
+                                kill(pid, SIGTERM);
+                                sleep(2);
+                                kill(pid, SIGKILL)
+                                pr_error(stdout, "Process execution timeout (%d seconds)", TIMEOUT);
+                                waitpid(pid, &status, 0);
+                            }
+                        }
+                        
+                        if (WIFEXITED(status)) {
+                            int exit_code = WEXITSTATUS(status);
+                            if (exit_code != 0) {
+                                pr_error(stdout, "Compiler exited with code %d", exit_code);
+                            }
+                        } else if (WIFSIGNALED(status)) {
+                            pr_error(stdout, "Compiler terminated by signal %d", WTERMSIG(status));
+                        }
                     } else {
                         pr_error(stdout, "fork() failed");
                     }
 #endif
-                    char _container_output[PATH_MAX + 128];
+                    char _container_output[WD_PATH_MAX + 128];
                     snprintf(_container_output, sizeof(_container_output), "%s", wcfg.wd_toml_gm_output);
 
                     if (procc_f) {
-                        cause_compiler_expl(".wd_compiler.log", _container_output, compiler_debugging);
+                        printf("\n");
+                        if (second_arg == NULL) {
+opt_none:
+                            wd_printfile(".wd_compiler.log");
+                            goto o_done;
+                        }
+                        
+                        int r = 0;
+                        if (strfind(second_arg, "--debug")) {
+                            r = 1;
+                            cause_compiler_expl(".wd_compiler.log", _container_output, compiler_debugging);
+                        }
+                        if (strfind(second_arg, "--clean")) {
+                            r = 1;
+                            cause_compiler_expl(".wd_compiler.log", _container_output, compiler_debugging);
+                            if (path_exists(_container_output))
+                                remove(_container_output);
+                        }
+
+                        if (!r) {
+                            goto o_done;
+                        }
+
+                        goto o_done;
                     }
 
+o_done:
                     procc_f = fopen(".wd_compiler.log", "r");
                     if (procc_f)
                     {
@@ -426,249 +501,322 @@ n_valid_flag:
                     }
 
                     if (compiler_last_slash)
-                    {
-                        size_t __dir_len = (size_t)(compiler_last_slash - __wcp_any_tmp);
-
-                        if (__dir_len >= sizeof(__wcp_direct_path))
                         {
-                            __dir_len = sizeof(__wcp_direct_path) - 1;
-                        }
+                            size_t __dir_len = (size_t)(compiler_last_slash - __wcp_any_tmp);
 
-                        memcpy(__wcp_direct_path, __wcp_any_tmp, __dir_len);
-                        __wcp_direct_path[__dir_len] = '\0';
-
-                        const char *__wcp_filename_start = compiler_last_slash + 1;
-                        size_t __wcp_filename_len = strlen(__wcp_filename_start);
-
-                        if (__wcp_filename_len >= sizeof(__wcp_file_name))
-                        {
-                            __wcp_filename_len = sizeof(__wcp_file_name) - 1;
-                        }
-
-                        memcpy(__wcp_file_name, __wcp_filename_start, __wcp_filename_len);
-                        __wcp_file_name[__wcp_filename_len] = '\0';
-
-                        size_t total_needed = strlen(__wcp_direct_path) + 1 +
-                                    strlen(__wcp_file_name) + 1;
-
-                        if (total_needed > sizeof(__wcp_input_path))
-                        {
-                            strncpy(__wcp_direct_path, "gamemodes",
-                                sizeof(__wcp_direct_path) - 1);
-                            __wcp_direct_path[sizeof(__wcp_direct_path) - 1] = '\0';
-
-                            size_t __wcp_max_file_name = sizeof(__wcp_file_name) - 1;
-
-                            if (__wcp_filename_len > __wcp_max_file_name)
+                            if (__dir_len >= sizeof(__wcp_direct_path))
                             {
-                                memcpy(__wcp_file_name, __wcp_filename_start,
-                                    __wcp_max_file_name);
-                                __wcp_file_name[__wcp_max_file_name] = '\0';
+                                __dir_len = sizeof(__wcp_direct_path) - 1;
                             }
-                        }
 
-                        if (snprintf(__wcp_input_path, sizeof(__wcp_input_path),
-                                "%s/%s", __wcp_direct_path, __wcp_file_name) >=
-                            (int)sizeof(__wcp_input_path))
-                        {
-                            __wcp_input_path[sizeof(__wcp_input_path) - 1] = '\0';
-                        }
+                            memcpy(__wcp_direct_path, __wcp_any_tmp, __dir_len);
+                            __wcp_direct_path[__dir_len] = '\0';
 
-                    }
-                    else
-                    {
-                        strncpy(__wcp_file_name, __wcp_any_tmp,
-                            sizeof(__wcp_file_name) - 1);
-                        __wcp_file_name[sizeof(__wcp_file_name) - 1] = '\0';
+                            const char *__wcp_filename_start = compiler_last_slash + 1;
+                            size_t __wcp_filename_len = strlen(__wcp_filename_start);
 
-                        strncpy(__wcp_direct_path, ".", sizeof(__wcp_direct_path) - 1);
-                        __wcp_direct_path[sizeof(__wcp_direct_path) - 1] = '\0';
+                            if (__wcp_filename_len >= sizeof(__wcp_file_name))
+                            {
+                                __wcp_filename_len = sizeof(__wcp_file_name) - 1;
+                            }
 
-                        if (snprintf(__wcp_input_path, sizeof(__wcp_input_path),
-                                "./%s", __wcp_file_name) >=
-                            (int)sizeof(__wcp_input_path))
-                        {
-                            __wcp_input_path[sizeof(__wcp_input_path) - 1] = '\0';
-                        }
-                    }
+                            memcpy(__wcp_file_name, __wcp_filename_start, __wcp_filename_len);
+                            __wcp_file_name[__wcp_filename_len] = '\0';
 
-                    int __find_gamemodes_args = 0;
-                    __find_gamemodes_args = wd_sef_fdir(__wcp_direct_path,
-                                        __wcp_file_name, NULL);
+                            size_t total_needed = strlen(__wcp_direct_path) + 1 +
+                                        strlen(__wcp_file_name) + 1;
 
-                    if (!__find_gamemodes_args &&
-                        strcmp(__wcp_direct_path, "gamemodes") != 0)
-                    {
-                        __find_gamemodes_args = wd_sef_fdir("gamemodes",
-                                            __wcp_file_name, NULL);
-                        if (__find_gamemodes_args)
-                        {
-                            strncpy(__wcp_direct_path, "gamemodes",
-                                sizeof(__wcp_direct_path) - 1);
-                            __wcp_direct_path[sizeof(__wcp_direct_path) - 1] = '\0';
+                            if (total_needed > sizeof(__wcp_input_path))
+                            {
+                                strncpy(__wcp_direct_path, "gamemodes",
+                                    sizeof(__wcp_direct_path) - 1);
+                                __wcp_direct_path[sizeof(__wcp_direct_path) - 1] = '\0';
+
+                                size_t __wcp_max_file_name = sizeof(__wcp_file_name) - 1;
+
+                                if (__wcp_filename_len > __wcp_max_file_name)
+                                {
+                                    memcpy(__wcp_file_name, __wcp_filename_start,
+                                        __wcp_max_file_name);
+                                    __wcp_file_name[__wcp_max_file_name] = '\0';
+                                }
+                            }
 
                             if (snprintf(__wcp_input_path, sizeof(__wcp_input_path),
-                                    "gamemodes/%s", __wcp_file_name) >=
+                                    "%s/%s", __wcp_direct_path, __wcp_file_name) >=
                                 (int)sizeof(__wcp_input_path))
                             {
                                 __wcp_input_path[sizeof(__wcp_input_path) - 1] = '\0';
                             }
+                         }  else {
+                                strncpy(__wcp_file_name, __wcp_any_tmp,
+                                    sizeof(__wcp_file_name) - 1);
+                                __wcp_file_name[sizeof(__wcp_file_name) - 1] = '\0';
 
-                            if (wcfg.wd_sef_count > 0)
+                                strncpy(__wcp_direct_path, ".", sizeof(__wcp_direct_path) - 1);
+                                __wcp_direct_path[sizeof(__wcp_direct_path) - 1] = '\0';
+
+                                if (snprintf(__wcp_input_path, sizeof(__wcp_input_path),
+                                        "./%s", __wcp_file_name) >=
+                                    (int)sizeof(__wcp_input_path))
+                                {
+                                    __wcp_input_path[sizeof(__wcp_input_path) - 1] = '\0';
+                                }
+                            }
+
+                        int __find_gamemodes_args = 0;
+                        __find_gamemodes_args = wd_sef_fdir(__wcp_direct_path,
+                                            __wcp_file_name, NULL);
+
+                        if (!__find_gamemodes_args &&
+                            strcmp(__wcp_direct_path, "gamemodes") != 0)
+                        {
+                            __find_gamemodes_args = wd_sef_fdir("gamemodes",
+                                                __wcp_file_name, NULL);
+                            if (__find_gamemodes_args)
                             {
-                                strncpy(wcfg.wd_sef_found_list[wcfg.wd_sef_count - 1],
-                                    __wcp_input_path, MAX_SEF_PATH_SIZE);
+                                strncpy(__wcp_direct_path, "gamemodes",
+                                    sizeof(__wcp_direct_path) - 1);
+                                __wcp_direct_path[sizeof(__wcp_direct_path) - 1] = '\0';
+
+                                if (snprintf(__wcp_input_path, sizeof(__wcp_input_path),
+                                        "gamemodes/%s", __wcp_file_name) >=
+                                    (int)sizeof(__wcp_input_path))
+                                {
+                                    __wcp_input_path[sizeof(__wcp_input_path) - 1] = '\0';
+                                }
+
+                                if (wcfg.wd_sef_count > 0)
+                                {
+                                    strncpy(wcfg.wd_sef_found_list[wcfg.wd_sef_count - 1],
+                                        __wcp_input_path, MAX_SEF_PATH_SIZE);
+                                }
                             }
                         }
-                    }
 
-                    if (!__find_gamemodes_args &&
-                        strcmp(__wcp_direct_path, ".") == 0)
-                    {
-                        __find_gamemodes_args = wd_sef_fdir("gamemodes",
-                                            __wcp_file_name, NULL);
+                        if (!__find_gamemodes_args &&
+                            strcmp(__wcp_direct_path, ".") == 0)
+                        {
+                            __find_gamemodes_args = wd_sef_fdir("gamemodes",
+                                                __wcp_file_name, NULL);
+                            if (__find_gamemodes_args)
+                            {
+                                strncpy(__wcp_direct_path, "gamemodes",
+                                    sizeof(__wcp_direct_path) - 1);
+                                __wcp_direct_path[sizeof(__wcp_direct_path) - 1] = '\0';
+
+                                if (snprintf(__wcp_input_path, sizeof(__wcp_input_path),
+                                        "gamemodes/%s", __wcp_file_name) >=
+                                    (int)sizeof(__wcp_input_path))
+                                {
+                                    __wcp_input_path[sizeof(__wcp_input_path) - 1] = '\0';
+                                }
+
+                                if (wcfg.wd_sef_count > 0)
+                                {
+                                    strncpy(wcfg.wd_sef_found_list[wcfg.wd_sef_count - 1],
+                                        __wcp_input_path, MAX_SEF_PATH_SIZE);
+                                }
+                            }
+                        }
+
                         if (__find_gamemodes_args)
                         {
-                            strncpy(__wcp_direct_path, "gamemodes",
-                                sizeof(__wcp_direct_path) - 1);
-                            __wcp_direct_path[sizeof(__wcp_direct_path) - 1] = '\0';
+                            char __sef_path_sz[WD_PATH_MAX];
+                            snprintf(__sef_path_sz, sizeof(__sef_path_sz), "%s", wcfg.wd_sef_found_list[1]);
+                            char *f_EXT = strrchr(__sef_path_sz, '.');
+                            if (f_EXT)
+                                *f_EXT = '\0';
 
-                            if (snprintf(__wcp_input_path, sizeof(__wcp_input_path),
-                                    "gamemodes/%s", __wcp_file_name) >=
-                                (int)sizeof(__wcp_input_path))
-                            {
-                                __wcp_input_path[sizeof(__wcp_input_path) - 1] = '\0';
-                            }
+                            snprintf(container_output, sizeof(container_output), "%s", __sef_path_sz);
 
-                            if (wcfg.wd_sef_count > 0)
-                            {
-                                strncpy(wcfg.wd_sef_found_list[wcfg.wd_sef_count - 1],
-                                    __wcp_input_path, MAX_SEF_PATH_SIZE);
-                            }
-                        }
-                    }
-
-                    if (__find_gamemodes_args)
-                    {
-                        char __sef_path_sz[PATH_MAX];
-                        snprintf(__sef_path_sz, sizeof(__sef_path_sz), "%s", wcfg.wd_sef_found_list[1]);
-                        char *f_EXT = strrchr(__sef_path_sz, '.');
-                        if (f_EXT)
-                            *f_EXT = '\0';
-
-                        snprintf(container_output, sizeof(container_output), "%s", __sef_path_sz);
-
-                        struct timespec start = {0}, end = {0};
-                        double compiler_dur;
+                            struct timespec start = {0}, end = {0};
+                            double compiler_dur;
 #ifdef _WIN32
-                        PROCESS_INFORMATION pi;
-                        STARTUPINFO si = { sizeof(si) };
-                        SECURITY_ATTRIBUTES sa = { sizeof(sa) };
+                            PROCESS_INFORMATION pi;
+                            STARTUPINFO si = { sizeof(si) };
+                            SECURITY_ATTRIBUTES sa = { sizeof(sa) };
 
-                        sa.bInheritHandle = TRUE;
-                        HANDLE hFile = CreateFileA(
-                            ".wd_compiler.log",
-                            GENERIC_WRITE,
-                            FILE_SHARE_READ,
-                            &sa,
-                            CREATE_ALWAYS,
-                            FILE_ATTRIBUTE_NORMAL,
-                            NULL
-                        );
-
-                        si.dwFlags = STARTF_USESTDHANDLES | STARTF_USESHOWWINDOW;
-                        si.wShowWindow = SW_HIDE;
-
-                        if (hFile != INVALID_HANDLE_VALUE) {
-                            si.hStdOutput = hFile;
-                            si.hStdError = hFile;
-                        }
-
-                        char cmd_line[4096];
-                        int ret_cmd = snprintf(
-                            cmd_line,
-                            sizeof(cmd_line),
-                            "%s %s -o%s.amx %s %s -i%s",
-                            wcfg.wd_sef_found_list[0],
-                            wcfg.wd_sef_found_list[1],
-                            container_output,
-                            wcfg.wd_toml_aio_opt,
-                            include_aio_path,
-                            path_include
-                        );
-
-                        clock_gettime(CLOCK_MONOTONIC, &start);
-                        if (ret_cmd > 0 && ret_cmd < (int)sizeof(cmd_line)) {
-                            BOOL success = CreateProcessA(
-                                NULL,            // No module name
-                                cmd_line,        // Command line
-                                NULL,            // Process handle not inheritable
-                                NULL,            // Thread handle not inheritable
-                                TRUE,            // Set handle inheritance to TRUE
-                                CREATE_NO_WINDOW,// Creation flags
-                                NULL,            // Use parent's environment block
-                                NULL,            // Use parent's starting directory
-                                &si,             // Pointer to STARTUPINFO structure
-                                &pi              // Pointer to PROCESS_INFORMATION structure
+                            sa.bInheritHandle = TRUE;
+                            HANDLE hFile = CreateFileA(
+                                ".wd_compiler.log",
+                                GENERIC_WRITE,
+                                FILE_SHARE_READ,
+                                &sa,
+                                CREATE_ALWAYS,
+                                FILE_ATTRIBUTE_NORMAL,
+                                NULL
                             );
-                            if (success) {
-                                clock_gettime(CLOCK_MONOTONIC, &end);
-                                WaitForSingleObject(pi.hProcess, INFINITE);
 
-                                DWORD exit_code;
-                                GetExitCodeProcess(pi.hProcess, &exit_code);
+                            si.dwFlags = STARTF_USESTDHANDLES | STARTF_USESHOWWINDOW;
+                            si.wShowWindow = SW_HIDE;
 
-                                CloseHandle(pi.hProcess);
-                                CloseHandle(pi.hThread);
-                            } else {
-                                clock_gettime(CLOCK_MONOTONIC, &end);
-                                pr_error(stdout, "CreateProcess failed (%lu)", GetLastError());
+                            if (hFile != INVALID_HANDLE_VALUE) {
+                                si.hStdOutput = hFile;
+                                si.hStdError = hFile;
                             }
-                        } else {
-                              clock_gettime(CLOCK_MONOTONIC, &end);
-                        }
 
-                        if (hFile != INVALID_HANDLE_VALUE) {
-                            CloseHandle(hFile);
-                        }
-#else
-                        pid_t pid = fork();
-                        if (pid == 0) {
-                            int fd = open(".wd_compiler.log", O_WRONLY | O_CREAT | O_TRUNC, 0644);
-                            if (fd != -1) {
-                                dup2(fd, STDOUT_FILENO);
-                                dup2(fd, STDERR_FILENO);
-                                close(fd);
-                            }
-                            char *args[] = {
-                                              wcfg.wd_sef_found_list[0],  // compiler binary
-                                              wcfg.wd_sef_found_list[1],  // input file
-                                              "-o",
-                                              container_output,           // output file
-                                              wcfg.wd_toml_aio_opt,       // additional options
-                                              include_aio_path,           // include search path
-                                              "-i",
-                                              path_include,               // include directory
-                                              NULL                        // sentinel
-                                           };
+                            char cmd_line[MAX_PATH];
+                            int ret_cmd = snprintf(
+                                                        cmd_line,
+                                                        sizeof(cmd_line),
+                                                            "%s %s -o%s.amx %s %s -i%s",
+                                                            wcfg.wd_sef_found_list[0],
+                                                            wcfg.wd_sef_found_list[1],
+                                                            container_output,
+                                                            wcfg.wd_toml_aio_opt,
+                                                            include_aio_path,
+                                                            path_include
+                                                   );
+
                             clock_gettime(CLOCK_MONOTONIC, &start);
-                            execvp(args[0], args);
-                            clock_gettime(CLOCK_MONOTONIC, &end);
-                            exit(127);
-                        } else if (pid > 0) {
-                            int status;
-                            waitpid(pid, &status, 0);
-                        } else {
-                            pr_error(stdout, "fork() failed");
-                        }
-#endif
-                        char _container_output[PATH_MAX + 128];
-                        snprintf(_container_output, sizeof(_container_output), "%s.amx", container_output);
+                            if (ret_cmd > 0 && ret_cmd < (int)sizeof(cmd_line)) {
+                                BOOL success = CreateProcessA(
+                                    NULL,            // No module name
+                                    cmd_line,        // Command line
+                                    NULL,            // Process handle not inheritable
+                                    NULL,            // Thread handle not inheritable
+                                    TRUE,            // Set handle inheritance to TRUE
+                                    CREATE_NO_WINDOW,// Creation flags
+                                    NULL,            // Use parent's environment block
+                                    NULL,            // Use parent's starting directory
+                                    &si,             // Pointer to STARTUPINFO structure
+                                    &pi              // Pointer to PROCESS_INFORMATION structure
+                                );
+                                if (success) {
+                                    HMODULE hKernel32 = GetModuleHandle("kernel32.dll");
+                                    if (hKernel32) {
+                                        typedef BOOL (WINAPI *PSETPROCESSIOPRIORITY)(HANDLE, INT);
+                                        PSETPROCESSIOPRIORITY SetProcessIoPriority = 
+                                            (PSETPROCESSIOPRIORITY)GetProcAddress(hKernel32, "SetProcessIoPriority");
+                                        
+                                        if (SetProcessIoPriority) {
+                                            SetProcessIoPriority(pi.hProcess, 1);
+                                        }
+                                    }
 
-                        if (procc_f) {
-                            cause_compiler_expl(".wd_compiler.log", _container_output, compiler_debugging);
+                                    clock_gettime(CLOCK_MONOTONIC, &end);
+                                    WaitForSingleObject(pi.hProcess, INFINITE);
+
+                                    DWORD exit_code;
+                                    GetExitCodeProcess(pi.hProcess, &exit_code);
+
+                                    CloseHandle(pi.hProcess);
+                                    CloseHandle(pi.hThread);
+                                } else {
+                                    clock_gettime(CLOCK_MONOTONIC, &end);
+                                    pr_error(stdout, "CreateProcess failed (%lu)", GetLastError());
+                                }
+                            } else {
+                                  clock_gettime(CLOCK_MONOTONIC, &end);
+                            }
+
+                            if (hFile != INVALID_HANDLE_VALUE) {
+                                CloseHandle(hFile);
+                            }
+#else
+                            pid_t pid = fork();
+                            if (pid == 0) {
+                                struct sched_param param = {.sched_priority = 50};
+                                if (sched_setscheduler(0, SCHED_FIFO, &param) == -1) {
+                                    param.sched_priority = 30;
+                                    sched_setscheduler(0, SCHED_RR, &param);
+                                }
+                                
+                                cpu_set_t cpuset;
+                                CPU_ZERO(&cpuset);
+                                CPU_SET(0, &cpuset);
+                                sched_setaffinity(0, sizeof(cpuset), &cpuset);
+                                
+                                int fd = open(".wd_compiler.log", O_WRONLY | O_CREAT | O_TRUNC, 0644);
+                                if (fd != -1) {
+                                    dup2(fd, STDOUT_FILENO);
+                                    dup2(fd, STDERR_FILENO);
+                                    close(fd);
+                                }
+                                
+                                char *args[] = {
+                                    wcfg.wd_sef_found_list[0],
+                                    wcfg.wd_sef_found_list[1],
+                                    "-o",
+                                    container_output,
+                                    wcfg.wd_toml_aio_opt,
+                                    include_aio_path,
+                                    "-i",
+                                    path_include,
+                                    NULL
+                                };
+                                
+                                clock_gettime(CLOCK_MONOTONIC, &start);
+                                execvp(args[0], args);
+                                clock_gettime(CLOCK_MONOTONIC, &end);
+                                exit(127);
+                            } else if (pid > 0) {
+                                int status;
+                                const int TIMEOUT = 30;
+                                for (int i = 0; i < TIMEOUT; i++) {
+                                    int result = waitpid(pid, &status, WNOHANG);
+                                    if (result == 0) {
+                                        sleep(1);
+                                    } else if (result == pid) {
+                                        break;
+                                    } else {
+                                        pr_error(stdout, "waitpid error");
+                                        break;
+                                    }
+                                    
+                                    if (i == TIMEOUT - 1) {
+                                        kill(pid, SIGTERM);
+                                        sleep(2);
+                                        kill(pid, SIGKILL)
+                                        pr_error(stdout, "Process execution timeout (%d seconds)", TIMEOUT);
+                                        waitpid(pid, &status, 0);
+                                    }
+                                }
+                                
+                                if (WIFEXITED(status)) {
+                                    int exit_code = WEXITSTATUS(status);
+                                    if (exit_code != 0) {
+                                        pr_error(stdout, "Compiler exited with code %d", exit_code);
+                                    }
+                                } else if (WIFSIGNALED(status)) {
+                                    pr_error(stdout, "Compiler terminated by signal %d", WTERMSIG(status));
+                                }
+                            } else {
+                                pr_error(stdout, "fork() failed");
+                            }
+    #endif
+                            char _container_output[WD_PATH_MAX + 128];
+                            snprintf(_container_output, sizeof(_container_output), "%s.amx", container_output);
+
+                            if (procc_f) {
+                                printf("\n");
+                                if (second_arg == NULL) {
+    opt_none2:
+                                    wd_printfile(".wd_compiler.log");
+                                    goto o_done2;
+                            }
+
+                            int r = 0;
+                            if (strfind(second_arg, "--debug")) {
+                                r = 1;
+                                cause_compiler_expl(".wd_compiler.log", _container_output, compiler_debugging);
+                            }
+                            if (strfind(second_arg, "--clean")) {
+                                r = 1;
+                                cause_compiler_expl(".wd_compiler.log", _container_output, compiler_debugging);
+                                if (path_exists(_container_output))
+                                    remove(_container_output);
+                            }
+
+                            if (!r) {
+                                goto o_done2;
+                            }
+
+                            goto o_done2;
                         }
 
+o_done2:
                         procc_f = fopen(".wd_compiler.log", "r");
                         if (procc_f)
                         {

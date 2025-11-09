@@ -40,9 +40,9 @@ struct timespec cmd_start, cmd_end;
 double command_dur;
 
 void __function__(void) {
+        wd_set_toml();
         wd_sef_fdir_reset();
         wd_u_history();
-        wd_set_toml();
 #if defined(_DBG_PRINT)
         pr_color(stdout,
                 FCOLOUR_YELLOW,
@@ -73,7 +73,7 @@ int __command__(char *pre_command)
           remove(".crashdetect_ck");
           wd_server_crash_check();
         }
-        char ptr_prompt[PATH_MAX + 56];
+        char ptr_prompt[WD_PATH_MAX + 56];
         size_t size_ptrp = sizeof(ptr_prompt);
         char *ptr_command;
         int c_distance = INT_MAX;
@@ -102,8 +102,8 @@ _ptr_command:
                                              &c_distance);
 
 _reexecute_command:
-        clock_gettime(CLOCK_MONOTONIC, &cmd_start);
         __function__();
+        clock_gettime(CLOCK_MONOTONIC, &cmd_start);
         if (strncmp(ptr_command, "help", 4) == 0) {
             wd_set_title("Watchdogs | @ help");
 
@@ -201,8 +201,9 @@ _reexecute_command:
             if (*arg == '\0') {
                 println(stdout, "Usage: stopwatch [<sec>]");
             } else {
-                int ts = atoi(arg);
-                if (ts <= 0) {
+                int ts;
+                ts = atoi(arg);
+                if ( ts <= 0 ) {
                     println(stdout, "Usage: stopwatch [<sec>]");
                     goto done;
                 }
@@ -216,17 +217,20 @@ _reexecute_command:
                             + (now.tv_nsec - start.tv_nsec) / 1e9;
 
                     if (stw_elp >= ts) {
-                        wd_set_title("S T O P W A T C H : DONE");
+                        wd_set_title(
+                            "S T O P W A T C H : DONE");
                         break;
                     }
 
-                    int hh = (int)(stw_elp / 3600),
-                        mm = (int)((stw_elp - hh*3600)/60),
-                        ss = (int)(stw_elp) % 60;
+                    int hh, mm, ss;
+                    hh = (int)(stw_elp / 3600),
+                    mm = (int)((stw_elp - hh*3600)/60),
+                    ss = (int)(stw_elp) % 60;
 
                     char title_set[128];
                     snprintf(title_set, sizeof(title_set),
-                            "S T O P W A T C H : %02d:%02d:%02d / %d sec",
+                            "S T O P W A T C H : "
+                            "%02d:%02d:%02d / %d sec",
                             hh, mm, ss, ts);
                     wd_set_title(title_set);
 
@@ -263,7 +267,7 @@ _reexecute_command:
                         putchar('-');
                 printf("+%s\n", RST);
 
-                char line[MAX_PATH * 4];
+                char line[WD_MAX_PATH * 4];
 
                 while (fgets(line, sizeof(line), procc_f))
                 {
@@ -272,7 +276,11 @@ _reexecute_command:
                                     line[len - 1] == '\r'))
                                 line[--len] = '\0';
 
-                        printf("%s%s|%s %-40s %s|%s\n",
+                        printf("%s%s|"
+                               "%s "
+                               "%-40s "
+                               "%s|"
+                               "%s\n",
                                 BORD, FG, BG,
                                 line, BORD, RST);
                 }
@@ -317,10 +325,12 @@ _reexecute_command:
                         curl_easy_strerror(res));
             } else {
                 cJSON *root = cJSON_Parse(chunk.memory);
+                cJSON *output_array, *id,
+                      *title, *author, *date, *commit_obj;
                 if (!root) {
                     fprintf(stderr, "JSON parsing failed\n");
                 } else {
-                    cJSON *output_array = cJSON_CreateArray();
+                    output_array = cJSON_CreateArray();
                     int array_size = cJSON_GetArraySize(root);
 
                     for (int i = 0; i < array_size; i++) {
@@ -328,21 +338,16 @@ _reexecute_command:
                         if (!item)
                             continue;
 
-                        cJSON *id = cJSON_GetObjectItem(item, "id");
-                        cJSON *title = cJSON_GetObjectItem(item, "title");
-                        cJSON *author = cJSON_GetObjectItem(item, "author_name");
-                        cJSON *date = cJSON_GetObjectItem(item, "created_at");
+                        id = cJSON_GetObjectItem(item, "id");
+                        title = cJSON_GetObjectItem(item, "title");
+                        author = cJSON_GetObjectItem(item, "author_name");
+                        date = cJSON_GetObjectItem(item, "created_at");
 
-                        cJSON *commit_obj = cJSON_CreateObject();
-                        cJSON_AddStringToObject(commit_obj, "id",
-                                                id ? id->valuestring : "");
-                        cJSON_AddStringToObject(commit_obj, "title",
-                                                title ? title->valuestring : "");
-                        cJSON_AddStringToObject(commit_obj, "author",
-                                                author ? author->valuestring : "");
-                        cJSON_AddStringToObject(commit_obj, "date",
-                                                date ? date->valuestring : "");
-
+                        commit_obj = cJSON_CreateObject();
+                        cJSON_AddStringToObject(commit_obj, "id", id ? id->valuestring : "");
+                        cJSON_AddStringToObject(commit_obj, "title", title ? title->valuestring : "");
+                        cJSON_AddStringToObject(commit_obj, "author", author ? author->valuestring : "");
+                        cJSON_AddStringToObject(commit_obj, "date", date ? date->valuestring : "");
                         cJSON_AddItemToArray(output_array, commit_obj);
                     }
 
@@ -351,12 +356,17 @@ _reexecute_command:
                             putchar('-');
                     printf("+%s\n", RST);
 
-                    char *line, *pretty = cJSON_Print(output_array);
+                    char *line, *pretty;
+                    pretty = cJSON_Print(output_array);
 
                     line = strtok(pretty, "\n");
                     while (line)
                     {
-                            printf("%s%s|%s %-40.40s %s|%s\n",
+                            printf("%s%s|"
+                                   "%s "
+                                   "%-40.40s "
+                                   "%s|"
+                                   "%s\n",
                                     BORD, FG, BG,
                                     line, BORD, RST);
 
@@ -570,18 +580,26 @@ loop_ipcc3:
             goto done;
         } else if (strncmp(ptr_command, "compile", 7) == 0) {
             wd_set_title("Watchdogs | @ compile");
+            
             char *arg;
             arg = ptr_command + 7;
             while (*arg == ' ') ++arg;
             char *compile_args;
             compile_args = strtok(arg, " ");
+            char *second_arg = NULL;
+            second_arg = strtok(NULL, " ");
 
-            wd_run_compiler(arg, compile_args);
+            wd_run_compiler(arg, compile_args, second_arg);
 
             goto done;
         } if (strncmp(ptr_command, "running", 7) == 0) {
 _runners_:
                 wd_stop_server_tasks();
+
+                if (!path_exists(wcfg.wd_toml_binary)) {
+                    pr_error(stdout, "Can't locate sa-mp/open.mp binary file!");
+                    goto done;
+                }
 
                 server_mode = 0;
 
@@ -599,15 +617,37 @@ _runners_:
 
                 char *size_arg1 = NULL;
                 if (arg1 == NULL || *arg1 == '\0')
-                  size_arg1 = "none";
+                  size_arg1 = wcfg.wd_toml_gm_input;
+                else
+                  size_arg1 = arg1;
+                char *gamemode = size_arg1;
+                if (gamemode) {
+                    char *f_EXT = strrchr(gamemode, '.');
+                    if (f_EXT)
+                            *f_EXT = '\0';
+                } else {
+                    gamemode = wcfg.wd_toml_gm_output;
+                }
 
-                size_t needed = snprintf(NULL, 0, "Watchdogs | @ running | args: %s | %s | CTRL + C to stop.",
+                size_t needed = snprintf(NULL, 0, "Watchdogs | "
+                                                  "@ running | "
+                                                  "args: %s | "
+                                                  "gamemode: %s | "
+                                                  "config: %s | "
+                                                  "CTRL + C to stop.",
                                                 size_arg1,
+                                                gamemode,
                                                 wcfg.wd_toml_config) + 1;
                 char *title_running_info = wd_malloc(needed);
                 if (!title_running_info) { return __RETN; }
-                snprintf(title_running_info, needed, "Watchdogs | @ running | args: %s | %s | CTRL + C to stop.",
+                snprintf(title_running_info, needed, "Watchdogs | "
+                                                     "@ running | "
+                                                     "args: %s | "
+                                                     "gamemode: %s | "
+                                                     "config: %s | "
+                                                     "CTRL + C to stop.",
                                                 size_arg1,
+                                                gamemode,
                                                 wcfg.wd_toml_config);
                 if (title_running_info) {
                 		wd_set_title(title_running_info);
@@ -653,7 +693,7 @@ _runners_:
 #endif
                         end = time(NULL);
 
-                        int running_FAIL = system(size_run);
+                        int running_FAIL = wd_run_command(size_run);
                         if (running_FAIL == 0) {
                             if (!strcmp(wcfg.wd_os_type, OS_SIGNAL_LINUX)) {
                                 sleep(2);
@@ -704,7 +744,7 @@ back_start2:
 #endif
                         end = time(NULL);
 
-                        int running_FAIL = system(size_run);
+                        int running_FAIL = wd_run_command(size_run);
                         if (running_FAIL == 0) {
                             sleep(2);
                             wd_display_server_logs(1);
@@ -760,49 +800,14 @@ n_loop_igm2:
         } else if (strncmp(ptr_command, "crunn", 7) == 0) {
             wd_set_title("Watchdogs | @ crunn");
             const char *arg = NULL;
+            /* target */
             const char *compile_args = NULL;
-            wd_run_compiler(arg, compile_args);
+            /* options */
+            const char *second_arg = NULL;
+
+            wd_run_compiler(arg, compile_args, second_arg);
             if (wcfg.wd_compiler_stat < 1) {
-                char errbuf[256];
-                toml_table_t *_toml_config;
-                FILE *procc_f = fopen("watchdogs.toml", "r");
-                _toml_config = toml_parse_file(procc_f, errbuf, sizeof(errbuf));
-                if (procc_f) fclose(procc_f);
-
-                if (!_toml_config) {
-                    pr_error(stdout, "parsing TOML: %s", errbuf);
-                    wd_main(NULL);
-                }
-
-                toml_table_t *wd_compiler = toml_table_in(_toml_config, "compiler");
-                if (wd_compiler) {
-                        toml_datum_t toml_gm_i = toml_string_in(wd_compiler, "input");
-                        if (toml_gm_i.ok)
-                        {
-                            wcfg.wd_toml_gm_input = strdup(toml_gm_i.u.s);
-                            wd_free(toml_gm_i.u.s);
-                            toml_gm_i.u.s = NULL;
-                        }
-                }
-                toml_free(_toml_config);
-
-                char size_gm_input[PATH_MAX];
-                snprintf(size_gm_input, sizeof(size_gm_input), "%s", wcfg.wd_toml_gm_input);
-                char *f_EXT = strrchr(size_gm_input, '.');
-                if (f_EXT)
-                    *f_EXT = '\0';
-                char *pos = strstr(size_gm_input, "gamemodes/");
-                if (pos) {
-                    memmove(pos, pos + strlen("gamemodes/"),
-                                    strlen(pos + strlen("gamemodes/")) + 1);
-                }
-                if (wd_server_env() == 1) {
-                    pr_color(stdout, FCOLOUR_YELLOW, "running..\n");
-                    wd_run_samp_server(size_gm_input, wcfg.wd_ptr_samp);
-                } else if (wd_server_env() == 2) {
-                    pr_color(stdout, FCOLOUR_YELLOW, "running..\n");
-                    wd_run_samp_server(size_gm_input, wcfg.wd_ptr_omp);
-                }
+                goto _runners_;
             }
 
             goto done;
@@ -939,6 +944,7 @@ done:
 }
 
 void wd_main(void *pre_command) {
+        __function__();
         wd_set_title(NULL);
         int ret = -__RETW;
 

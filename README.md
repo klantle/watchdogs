@@ -16,7 +16,7 @@
 </div>
 <!-- markdownlint-enable MD033 -->
 
-![img](https://raw.githubusercontent.com/klantle/watchdogs/main/WD.png)
+![img](https://raw.githubusercontent.com/klantle/watchdogs/refs/heads/main/__WATCH.png)
 
 ---
 
@@ -42,7 +42,7 @@
 
 ### [A.I Agent](https://aiagentslist.com/)
 __If you are confused about this project, you can use an A.I. Agent that can help provide available information to be filtered according to the given prompt. Alternatively, you can also create an issue to ask questions in this Repository.__
-![img](https://raw.githubusercontent.com/klantle/watchdogs/main/MANUS.png)
+![img](https://raw.githubusercontent.com/klantle/watchdogs/refs/heads/main/__AGENT.png)
 
 ### Supported Platforms
 - [x] Linux (Debian/Ubuntu based distributions)
@@ -130,18 +130,21 @@ docker rm -f <container-name>              # Remove a container
 apt update
 
 # 2. Install required packages
-apt install make git
+apt install curl make git
 
-# 3. Clone repository
+# 3. Installing cURL cacert.pem
+curl -L -o /etc/ssl/certs/cacert.pem "https://github.com/klantle/libwatchdogs/raw/refs/heads/main/libwatchdogs/cacert.pem"
+
+# 4. Clone repository
 git clone https://gitlab.com/mywatchdogs/watchdogs watch
 
-# 4. Navigate to directory
+# 5. Navigate to directory
 cd watch
 
-# 5. Installing Library & Build from source
+# 6. Installing Library & Build from source
 make init && make linux
 
-# 6. Set Mod, Move executable and run
+# 7. Set Mod, Move executable and run
 chmod +x watchdogs && \
 mv -f watchdogs .. && cd .. && \
 ./watchdogs
@@ -168,7 +171,7 @@ apt upgrade
 # 5. Install required packages
 pkg install curl make git
 
-# 6. Installing Curl Cacert
+# 6. Installing cURL cacert.pem
 curl -L -o $HOME/cacert.pem "https://github.com/klantle/libwatchdogs/raw/refs/heads/main/libwatchdogs/cacert.pem"
 
 # 7. Clone repository
@@ -195,18 +198,22 @@ mv -f watchdogs.tmux .. && cd .. && \
 pacman -Sy
 
 # 2. Install required packages
-pacman -S make git
+pacman -S curl make git
 
 # 3. Clone repository
 git clone https://gitlab.com/mywatchdogs/watchdogs watch
 
-# 4. Navigate to directory
+# 4. Installing cURL cacert.pem
+mkdir C:/libwatchdogs # Create if not exist
+curl -L -o C:/libwatchdogs/cacert.pem "https://github.com/klantle/libwatchdogs/raw/refs/heads/main/libwatchdogs/cacert.pem"
+
+# 5. Navigate to directory
 cd watch
 
-# 5. Installing Library & Build from source
+# 6. Installing Library & Build from source
 make init && make windows
 
-# 6. Set Mod, Move executable and run
+# 7. Set Mod, Move executable and run
 chmod +x watchdogs.win && \
 mv -f watchdogs.win .. && cd .. && \
 ./watchdogs.win
@@ -235,7 +242,9 @@ cd watch
 make init && make windows
 
 # 6. Installing .dll library
-git clone https://github.com/klantle/libwatchdogs watch && cd watch && [ -d "/c/libwatchdogs" ] && rm -rf -- "/c/libwatchdogs"  && mv -f libwatchdogs /c/ && mv -f run-native.bat .. && cd .. && rm -rf watch
+git clone https://github.com/klantle/libwatchdogs watch && \
+cd watch && [ -d "/c/libwatchdogs" ] && rm -rf -- "/c/libwatchdogs" && \
+mv -f libwatchdogs /c/ && mv -f run-native.bat .. && cd .. && rm -rf watch
 
 # 7. You can run '.bat' (out of msys2, where .bat & watchdogs.win)
 ~
@@ -251,7 +260,7 @@ cd /c/users/desktop_name/downloads/your_project
 ```
 > Download stable binary
 ```bash
-curl -L -o watchdogs.win "https://gitlab.com/mywatchdogs/watchdogs/-/releases/WD-251101/evidences/16380750.json"
+curl -L -o watchdogs.win "https://gitlab.com/mywatchdogs/watchdogs/-/releases/WD-251101/evidences/16385285.json"
 ```
 > Install library
 ```bash
@@ -428,6 +437,22 @@ compile yourmode.pwn
 compile path/to/yourmode.pwn
 ```
 
+**Compile specific options (not needed to be combined):**
+> Extend compiler detail & cause
+```bash
+compile . --debug
+```
+```bash
+compile path/to/yourmode.pwn --debug
+```
+> Clean '.amx' after compile
+```bash
+compile . --clean
+```
+```bash
+compile path/to/yourmode --clean
+```
+
 ### Server Management
 
 * **Algorithm**
@@ -462,7 +487,7 @@ For plugin or include files located in the root directory of the dependency arch
 The handling of YSI includes differs due to their structure containing multiple nested folders of include files. In this case, the entire folder containing these includes is moved directly to the target path (e.g., `pawno/include` or `qawno/include`), streamlining the process.
 <br>
 
-![img](https://raw.githubusercontent.com/klantle/watchdogs/main/DEPS.png)
+![img](https://raw.githubusercontent.com/klantle/watchdogs/refs/heads/main/__DEPS.png)
 
 **Install dependencies from configuration:**
 ```bash

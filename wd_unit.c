@@ -308,7 +308,7 @@ _reexecute_command:
             curl_easy_setopt(curl_handle, CURLOPT_WRITEDATA, (void *)&chunk);
             curl_easy_setopt(curl_handle, CURLOPT_USERAGENT, "libcurl-agent/1.0");
 
-            cacert_pem(curl_handle);
+            verify_cacert_pem(curl_handle);
 
             fflush(stdout);
             res = curl_easy_perform(curl_handle);

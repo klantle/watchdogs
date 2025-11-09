@@ -23,8 +23,7 @@
 static char
 	pawncc_dir_src[PATH_MAX];
 
-int cacert_pem(CURL *curl) {
-		int ret = -__RETN;
+void verify_cacert_pem(CURL *curl) {
 		if (is_native_windows()) {
 				if (access("cacert.pem", F_OK) == 0)
 					curl_easy_setopt(curl, CURLOPT_CAINFO, "cacert.pem");
@@ -34,10 +33,22 @@ int cacert_pem(CURL *curl) {
 					pr_color(stdout,
 							 FCOLOUR_YELLOW,
 							 "Warning: No CA file found. SSL verification may fail.\n");
-					ret = __RETZ;
 				}
-		}
-		return ret;
+		} else if (is_termux_environment) {
+					const char *env_home = getenv("HOME");
+					char size_env_home[PATH_MAX + 6];
+					snprintf(size_env_home, sizeof(size_env_home), "%s/cacert.pem", env_home);
+					if (access("cacert.pem", F_OK) == 0)
+						curl_easy_setopt(curl, CURLOPT_CAINFO, "cacert.pem");
+					else if (access(size_env_home, F_OK) == 0)
+						curl_easy_setopt(curl, CURLOPT_CAINFO, size_env_home);
+					else {
+						pr_color(stdout,
+								 FCOLOUR_YELLOW,
+								 "Warning: No CA file found. SSL verification may fail.\n");
+					}
+		} else
+			return;
 }
 
 static int progress_callback(void *ptr, curl_off_t dltotal,
@@ -445,7 +456,7 @@ int wd_download_file(const char *url, const char *filename)
 			curl_easy_setopt(curl, CURLOPT_XFERINFOFUNCTION, progress_callback);
 			curl_easy_setopt(curl, CURLOPT_XFERINFODATA, NULL);
 
-			cacert_pem(curl);
+			verify_cacert_pem(curl);
 
 			fflush(stdout);
 			res = curl_easy_perform(curl);

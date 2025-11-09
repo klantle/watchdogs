@@ -166,18 +166,21 @@ apt update
 apt upgrade
 
 # 5. Install required packages
-pkg install make git
+pkg install curl make git
 
-# 6. Clone repository
+# 6. Installing Curl Cacert
+curl -L -o $HOME/cacert.pem "https://github.com/klantle/libwatchdogs/raw/refs/heads/main/libwatchdogs/cacert.pem"
+
+# 7. Clone repository
 git clone https://gitlab.com/mywatchdogs/watchdogs watch
 
-# 7. Navigate to directory
+# 8. Navigate to directory
 cd watch
 
-# 8. Installing Library & Build from source
+# 9. Installing Library & Build from source
 make init && make termux
 
-# 9. Set Mod, Move executable and run
+# 10. Set Mod, Move executable and run
 chmod +x watchdogs.tmux && \
 mv -f watchdogs.tmux .. && cd .. && \
 ./watchdogs.tmux

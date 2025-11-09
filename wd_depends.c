@@ -74,7 +74,7 @@ int dep_check_url (const char *url, const char *github_token)
 
 		curl_easy_setopt(curl, CURLOPT_ERRORBUFFER, error_buffer);
 
-		cacert_pem(curl);
+		verify_cacert_pem(curl);
 
 		fflush(stdout);
 		res = curl_easy_perform(curl);
@@ -110,7 +110,7 @@ int dep_http_get_content (const char *url, char **out_html)
 		curl_easy_setopt(curl, CURLOPT_CONNECTTIMEOUT, 15L);
 		curl_easy_setopt(curl, CURLOPT_TIMEOUT, 60L);
 
-		cacert_pem(curl);
+		verify_cacert_pem(curl);
 
 		fflush(stdout);
 		res = curl_easy_perform(curl);

@@ -8,7 +8,7 @@ struct memory_struct {
 		size_t size;
 };
 
-int cacert_pem(CURL *curl);
+void verify_cacert_pem(CURL *curl);
 size_t write_memory_callback(void *contents, size_t size, size_t nmemb, void *userp);
 int wd_download_file(const char *url, const char *fname);
 

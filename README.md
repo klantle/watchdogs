@@ -139,7 +139,7 @@ git clone https://gitlab.com/mywatchdogs/watchdogs watch
 cd watch
 
 # 5. Installing Library & Build from source
-make init
+make init && make linux
 
 # 6. Set Mod, Move executable and run
 chmod +x watchdogs && \
@@ -175,9 +175,9 @@ git clone https://gitlab.com/mywatchdogs/watchdogs watch
 cd watch
 
 # 8. Installing Library & Build from source
-make init
+make init && make termux
 
-# 0. Set Mod, Move executable and run
+# 9. Set Mod, Move executable and run
 chmod +x watchdogs.tmux && \
 mv -f watchdogs.tmux .. && cd .. && \
 ./watchdogs.tmux
@@ -201,7 +201,7 @@ git clone https://gitlab.com/mywatchdogs/watchdogs watch
 cd watch
 
 # 5. Installing Library & Build from source
-make init
+make init && make windows
 
 # 6. Set Mod, Move executable and run
 chmod +x watchdogs.win && \
@@ -229,15 +229,12 @@ git clone https://gitlab.com/mywatchdogs/watchdogs watch
 cd watch
 
 # 5. Installing Library & Build from source
-make init
+make init && make windows
 
-# 6. Exiting Watchdogs
-exit
-
-# 7. Installing .dll library
+# 6. Installing .dll library
 git clone https://github.com/klantle/libwatchdogs watch && cd watch && [ -d "/c/libwatchdogs" ] && rm -rf -- "/c/libwatchdogs"  && mv -f libwatchdogs /c/ && mv -f run-native.bat .. && cd .. && rm -rf watch
 
-# 8. You can run '.bat' (out of msys2, where .bat & watchdogs.win)
+# 7. You can run '.bat' (out of msys2, where .bat & watchdogs.win)
 ~
 ```
 

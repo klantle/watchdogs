@@ -480,8 +480,8 @@ causeExplanation ccs[] =
 static const char
 *wd_find_warn_err(const char *line)
 {
-      int cindex = 0;
-      for (cindex; ccs[cindex].cs_t; ++cindex) {
+      int cindex;
+      for (cindex = 0; ccs[cindex].cs_t; ++cindex) {
         if (strstr(line, ccs[cindex].cs_t))
           return ccs[cindex].cs_i;
       }
@@ -512,18 +512,18 @@ void compiler_detailed(const char *pawn_output, int debug,
       			portable_stat_t st;
       			if (portable_stat(pawn_output, &st) == 0) {
 						printf("File: %lluB | ino:%llu\ndev:%llu | mode:%020o\nRead:%s | Write:%s | Execute:%s\n"
-								"atime:%u | mtime:%u | ctime:%u\n",
+								"atime:%llu | mtime:%llu | ctime:%llu\n",
 								(unsigned long long)st.st_size,
 								(unsigned long long)st.st_ino,
 								(unsigned long long)st.st_dev,
 								st.st_mode,
 								(st.st_mode & S_IRUSR) ? "Y" : "N",
 								(st.st_mode & S_IWUSR) ? "Y" : "N",
-								(st.st_mode & S_IXUSR) ? "Y" : "N"),
-								(long long)st.st_latime,
-								(long long)st.st_lmtime,
-								(long long)st.st_mctime
-						;
+								(st.st_mode & S_IXUSR) ? "Y" : "N",
+								(unsigned long long)st.st_latime,
+								(unsigned long long)st.st_lmtime,
+								(unsigned long long)st.st_mctime
+						);
 					}
     			}
       }

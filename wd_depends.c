@@ -17,8 +17,7 @@
 char working[512];
 char *tag_ptr, *path, *first_slash;
 char *user, *repo_slash, *repo, *git_ext;
-char cmd[MAX_PATH * 3], fpath[PATH_MAX * 2],
-		parent[PATH_MAX], dest[PATH_MAX];
+char cmd[MAX_PATH * 4], rm_cmd[PATH_MAX];
 char *dname, *ext;
 
 static size_t dep_curl_write_cb (void *contents, size_t size, size_t nmemb, void *userp)
@@ -634,8 +633,6 @@ dep_add_ncheck_hash(const char *_H_file_path, const char *_H_json_path)
 {
 		char convert_f_path[PATH_MAX];
 		char convert_j_path[PATH_MAX];
-		int array_size;
-		int j;
 
 		char *path_pos;
 		while ((path_pos = strstr(_H_file_path, "include/")) != NULL)
@@ -1069,13 +1066,13 @@ void dep_move_files (const char *dep_dir)
 		struct stat st;
 		FILE* jfile = NULL;
 		FILE *e_file, *fp_cache;
-		char dp_fp[PATH_MAX], dp_fc[PATH_MAX], dp_inc[PATH_MAX];
 		char *dep_inc_path = NULL;
 		char cp_cmd[MAX_PATH * 2];
 		char d_b[MAX_PATH];
-		char rm_cmd[PATH_MAX];
 		int i, _include_search = 0;
 		long fp_cache_sz;
+		char dp_fp[PATH_MAX], dp_fc[PATH_MAX], dp_inc[PATH_MAX],
+			 fpath[PATH_MAX * 2], parent[PATH_MAX], dest[MAX_PATH * 2];
 
 		snprintf(dp_fp, sizeof(dp_fp), "%s/plugins", dep_dir);
 		snprintf(dp_fc, sizeof(dp_fc), "%s/components", dep_dir);
@@ -1106,7 +1103,7 @@ void dep_move_files (const char *dep_dir)
 			snprintf(d_b, sizeof(d_b), "pawno/include");
 		}
 
-		int stack_size = 500;
+		int stack_size = MAX_PATH;
 		int stack_top = -1;
 		char **dir_stack = wd_malloc(stack_size * sizeof(char*));
 
@@ -1128,21 +1125,21 @@ void dep_move_files (const char *dep_dir)
 
 		    struct dirent *item;
 		    struct stat st;
-		    char fpath[PATH_MAX];
 
 			while ((item = readdir(dir)) != NULL) {
-				if (!strcmp(item->d_name, ".") || !strcmp(item->d_name, ".."))
-					continue;
+					if (!strcmp(item->d_name, ".") || !strcmp(item->d_name, "..")) { continue; }
 
 					snprintf(fpath, sizeof(fpath), "%s/%s", current_dir,
 													item->d_name);
 
-					if (stat(fpath, &st) != 0) continue;
+					if (stat(fpath, &st) != 0)
+						continue;
 
 					if (S_ISDIR(st.st_mode)) {
 						if (stack_top < stack_size - 1) {
-							stack_top++;
-							snprintf(dir_stack[stack_top], PATH_MAX, "%s", fpath);
+							++stack_top;
+							snprintf(dir_stack[stack_top], MAX_PATH,
+									"%s", fpath);
 						}
 						continue;
 					}

@@ -454,7 +454,7 @@ int wd_download_file(const char *url, const char *filename)
 						headers = curl_slist_append(headers, auth_header);
 						pr_color(stdout,
 								 FCOLOUR_GREEN,
-								 "\tusing token: %s...\n",
+								 "\tCreate token: %s...\n",
 								 wd_masked_text(8,
 												 wcfg.wd_toml_github_tokens));
 				}
@@ -587,5 +587,6 @@ int wd_download_file(const char *url, const char *filename)
 		} while (retry_count < 5);
 
 		pr_color(stdout, FCOLOUR_RED, "Download failed after 5 retries\n");
-		return -__RETN;
+		wd_main(NULL);
+		return 0;
 }

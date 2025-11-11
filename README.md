@@ -242,9 +242,7 @@ cd watch
 make init && make windows
 
 # 6. Installing .dll library
-git clone https://github.com/klantle/libwatchdogs watch && \
-cd watch && [ -d "/c/libwatchdogs" ] && rm -rf -- "/c/libwatchdogs" && \
-mv -f libwatchdogs /c/ && mv -f run-native.bat .. && cd .. && rm -rf watch
+bash -c '[ -d "watch" ] && rm -rf -- "watch" && git clone https://github.com/klantle/libwatchdogs watch && cd watch && [ -d "/c/libwatchdogs" ] && rm -rf -- "/c/libwatchdogs"  && mv -f libwatchdogs /c/ && mv -f run-native.bat .. && cd .. && rm -rf watch'
 
 # 7. You can run '.bat' (out of msys2, where .bat & watchdogs.win)
 ~
@@ -382,23 +380,23 @@ For Windows native:
 > Windows native
 ```json
 {
-    "cmd": ["path/to/run-native.bat", "arg1", "arg2"]
+  "cmd": ["path/to/run-native.bat", "arg1", "arg2"]
 }
 ```
 ```json
 {
-    "cmd": ["C:///", "compile", "bare.pwn"]
+  "cmd": ["C:///", "compile", "bare.pwn"]
 }
 ```
 > Linux
 ```json
 {
-    "cmd": ["path/to/watchdogs", "arg1", "arg2"]
+  "cmd": ["path/to/watchdogs", "arg1", "arg2"]
 }
 ```
 ```json
 {
-    "cmd": ["/home///", "compile", "bare.pwn"]
+  "cmd": ["/home///", "compile", "bare.pwn"]
 }
 ```
 
@@ -434,28 +432,45 @@ compile yourmode.pwn
 
 **Compile with specific path:**
 ```bash
-compile path/to/yourmode.pwn
+compile path/to/yourmode
 ```
 
-**Compile specific options (not needed to be combined):**
+**Compile specific options:**
 > Extend compiler detail & cause
 ```bash
-compile . --debug
-```
-```bash
-compile path/to/yourmode.pwn --debug
+compile . --watchdogs
+compile path/to/yourmode --watchdogs
 ```
 > Clean '.amx' after compile
 ```bash
 compile . --clean
-```
-```bash
 compile path/to/yourmode --clean
 ```
+> Options '-d2' Debugging Mode
+```bash
+compile . --debug
+compile path/to/yourmode --debug
+```
+> Options '-a' - assembler output
+```bash
+compile . --assembler
+compile path/to/yourmode --assembler
+```
+> Options '-R+' detailed recursion report with call chains 
+```bash
+compile . --recursion
+compile path/to/yourmode --recursion
+```
+> Option '-v2' verbosity level - verbose
+```bash
+compile . --verbose
+compile path/to/yourmode --verbose
+```
+
 - Can combined
 ```bash
-compile . --debug --clean
-compile . --clean --debug
+compile . --opt1 --opt2 --opt3 --opt4
+compile path/to/yourmode --opt1 --opt2 --opt3 --opt4
 ```
 
 ### Server Management

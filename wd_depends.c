@@ -20,6 +20,16 @@ char *user, *repo_slash, *repo, *git_ext;
 char cmd[WD_MAX_PATH * 4], rm_cmd[WD_PATH_MAX];
 char *dname, *ext;
 
+void dep_sym_convert (char *path)
+{
+		char *p;
+
+		for (p = path; *p; p++) {
+				if (*p == '\\')
+						*p = '/';
+		}
+}
+
 const char *dep_get_fname (const char *path)
 {
 		/* file name */
@@ -75,7 +85,7 @@ int dep_check_url (const char *url, const char *github_token)
 		struct curl_slist *headers = NULL;
 		char error_buffer[CURL_ERROR_SIZE] = { 0 };
 
-		printf("\t[DEPS] Using URL: %s...\n", url);
+		printf("\t[DEPS] Create URL: %s...\n", url);
 		if (strstr(wcfg.wd_toml_github_tokens, "DO_HERE")) {
 			pr_color(stdout, FCOLOUR_GREEN, "[DEPS] Can't read Github token.. skipping\n");
 			sleep(2);
@@ -305,8 +315,8 @@ static int dep_gh_release_assets (const char *user, const char *repo,
 		int url_count = 0;
 
 		wd_snprintf(api_url, sizeof(api_url),
-				    "%sapi.github.com/repos/%s/%s/releases/tags/%s",
-				    "https://", user, repo, tag);
+				 "%sapi.github.com/repos/%s/%s/releases/tags/%s",
+				 "https://", user, repo, tag);
 
 		if (!dep_http_get_content(api_url, &json_data))
 				return __RETZ;
@@ -517,8 +527,8 @@ static int dep_gh_latest_tag (const char *user, const char *repo,
 		int ret = 0;
 
 		wd_snprintf(api_url, sizeof(api_url),
-				    "%sapi.github.com/repos/%s/%s/releases/latest",
-				    "https://", user, repo);
+				"%sapi.github.com/repos/%s/%s/releases/latest",
+				"https://", user, repo);
 
 		if (!dep_http_get_content(api_url, &json_data))
 			return __RETZ;
@@ -573,7 +583,7 @@ static int dep_handle_repo (const struct dep_repo_info *dep_repo_info,
 								dep_repo_info->repo,
 								deps_actual_tag,
 								sizeof(deps_actual_tag))) {
-									printf("[DEPS] Using latest tag: %s"
+									printf("[DEPS] Create latest tag: %s"
 												 "(instead of latest)\n", deps_actual_tag);
 			} else {
 				pr_error(stdout, "Failed to get latest tag for %s/%s,"
@@ -600,8 +610,8 @@ static int dep_handle_repo (const struct dep_repo_info *dep_repo_info,
 					deps_best_asset = dep_get_assets(deps_assets, deps_asset_count, NULL);
 
 				if (deps_best_asset) {
-					ret = 1;
 					wd_strncpy(deps_put_url, deps_best_asset, deps_put_size - 1);
+					ret = 1;
 					wd_free(deps_best_asset);
 				}
 
@@ -611,17 +621,15 @@ static int dep_handle_repo (const struct dep_repo_info *dep_repo_info,
 
 			if (!ret) {
 				const char *deps_arch_format[] = {
-					"https://github.com/"
-					"%s/%s/archive/refs/tags/%s.tar.gz",
-					"https://github.com/"
-					"%s/%s/archive/refs/tags/%s.zip"
+					"https://github.com/%s/%s/archive/refs/tags/%s.tar.gz",
+					"https://github.com/%s/%s/archive/refs/tags/%s.zip"
 				};
 
 				for (int j = 0; j < 2 && !ret; j++) {
 					wd_snprintf(deps_put_url, deps_put_size, deps_arch_format[j],
-							    dep_repo_info->user,
-							    dep_repo_info->repo,
-							    deps_actual_tag);
+							 dep_repo_info->user,
+							 dep_repo_info->repo,
+							 deps_actual_tag);
 
 					if (dep_check_url(deps_put_url, wcfg.wd_toml_github_tokens))
 						ret = 1;
@@ -630,31 +638,21 @@ static int dep_handle_repo (const struct dep_repo_info *dep_repo_info,
 		} else {
 			for (int j = 0; j < 2 && !ret; j++) {
 				wd_snprintf(deps_put_url, deps_put_size,
-						    "%s%s/%s/archive/refs/heads/%s.zip",
-						    "https://github.com/",
-						    dep_repo_info->user,
-						    dep_repo_info->repo,
-						    deps_repo_branch[j]);
+						"%s%s/%s/archive/refs/heads/%s.zip",
+						"https://github.com/",
+						dep_repo_info->user,
+						dep_repo_info->repo,
+						deps_repo_branch[j]);
 
 				if (dep_check_url(deps_put_url, wcfg.wd_toml_github_tokens)) {
 					ret = 1;
 					if (j == 1)
-						printf("[DEPS] selected master branch (main branch not found)\n");
+						printf("[DEPS] Create master branch (main branch not found)\n");
 				}
 			}
 		}
 
 		return ret;
-}
-
-void dep_sym_convert (char *path)
-{
-		char *p;
-
-		for (p = path; *p; p++) {
-				if (*p == '\\')
-						*p = '/';
-		}
 }
 
 int
@@ -997,7 +995,7 @@ void deps_print_file_type (const char *path, const char *pattern,
 						   const char *exclude, const char *cwd,
 						   const char *target_dir, int root)
 {
-		char size_deps_copy[WD_MAX_PATH * 2];
+		char cp_cmd[WD_MAX_PATH * 2];
 		char json_item[WD_PATH_MAX];
 
 		wd_sef_fdir_reset();
@@ -1010,25 +1008,33 @@ void deps_print_file_type (const char *path, const char *pattern,
 						   *deps_bnames = dep_get_bname(wcfg.wd_sef_found_list[i]);
 
 				if (target_dir[0] != '\0') {
-					if (is_native_windows())
-						wd_snprintf(size_deps_copy, sizeof(size_deps_copy),
+				int _is_win32 = 0;
+#ifdef _WIN32
+				_is_win32 = 1;
+#endif
+				if (_is_win32)
+						wd_snprintf(cp_cmd, sizeof(cp_cmd),
 							"move /Y \"%s\" \"%s\\%s\\\"",
 							wcfg.wd_sef_found_list[i], cwd, target_dir);
 					else
-						wd_snprintf(size_deps_copy, sizeof(size_deps_copy), "mv -f \"%s\" \"%s/%s/\"",
+						wd_snprintf(cp_cmd, sizeof(cp_cmd), "mv -f \"%s\" \"%s/%s/\"",
 							wcfg.wd_sef_found_list[i], cwd, target_dir);
 				} else {
-					if (is_native_windows())
-						wd_snprintf(size_deps_copy, sizeof(size_deps_copy),
+				int _is_win32 = 0;
+#ifdef _WIN32
+				_is_win32 = 1;
+#endif
+				if (_is_win32)
+						wd_snprintf(cp_cmd, sizeof(cp_cmd),
 							"move /Y \"%s\" \"%s\"",
 							wcfg.wd_sef_found_list[i], cwd);
 					else
-						wd_snprintf(size_deps_copy, sizeof(size_deps_copy),
+						wd_snprintf(cp_cmd, sizeof(cp_cmd),
 							"mv -f \"%s\" \"%s\"",
 							wcfg.wd_sef_found_list[i], cwd);
 				}
 
-				wd_run_command(size_deps_copy);
+				system(cp_cmd);
 
 				wd_snprintf(json_item, sizeof(json_item), "%s", deps_names);
 				dep_add_ncheck_hash(json_item, json_item);
@@ -1169,7 +1175,11 @@ void dep_move_files (const char *dep_dir)
 						wd_snprintf(dest, sizeof(dest), "%s/%s", deps_base_include_path, dname);
 
 						if (rename(parent, dest)) {
-								if (is_native_windows()) {
+								int _is_win32 = 0;
+#ifdef _WIN32
+								_is_win32 = 1;
+#endif
+								if (_is_win32) {
 										wd_snprintf(cmd, sizeof(cmd),
 											    "xcopy \"%s\" \"%s\" /E /I /H /Y >nul 2>&1 && "
 											    "rmdir /S /Q \"%s\" >nul 2>&1",
@@ -1208,7 +1218,11 @@ void dep_move_files (const char *dep_dir)
 				const char *fi_depends_name;
 				fi_depends_name = dep_get_fname(wcfg.wd_sef_found_list[i]);
 
-				if (is_native_windows())
+				int _is_win32 = 0;
+#ifdef _WIN32
+				_is_win32 = 1;
+#endif
+				if (_is_win32)
 					wd_snprintf(size_deps_copy, sizeof(size_deps_copy),
 						"move /Y \"%s\" \"%s\\%s\\\"",
 						wcfg.wd_sef_found_list[i], cwd, deps_include_path);
@@ -1224,7 +1238,11 @@ void dep_move_files (const char *dep_dir)
 			}
 		}
 
-		if (is_native_windows())
+		int _is_win32 = 0;
+#ifdef _WIN32
+		_is_win32 = 1;
+#endif
+		if (_is_win32)
 			wd_snprintf(rm_cmd, sizeof(rm_cmd),
 				"rmdir /s /q \"%s\"",
 				dep_dir);

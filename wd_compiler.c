@@ -34,18 +34,39 @@ void compiler_memory_clean(void) {
         return;
 }
 
-int wd_run_compiler(const char *arg, const char *compile_args, const char *second_arg, const char *four_arg)
+int wd_run_compiler(const char *arg,
+                    const char *compile_args,
+                    const char *second_arg,
+                    const char *four_arg,
+                    const char *five_arg,
+                    const char *six_arg,
+                    const char *seven_arg,
+                    const char *eight_arg)
 {
         wcfg.wd_compiler_stat = 0;
 
         FILE *proc_file;
+        char _compiler_[WD_PATH_MAX];
         char size_log[1024];
-        char rm_cmd[WD_PATH_MAX * 2];
         char run_cmd[WD_PATH_MAX + 258];
         char include_aio_path[WD_PATH_MAX] = { 0 };
 
         char *compiler_last_slash = NULL;
         char *compiler_back_slash = NULL;
+
+        int compiler_debugging = 0;
+        int compiler_has_watchdogs, compiler_has_debug = 0;
+        int compiler_has_clean = 0, compiler_has_assembler = 0;
+        int compiler_has_recursion = 0, compiler_has_verbose = 0;
+
+        const char* compiler_args[] = {
+                                            second_arg,
+                                            four_arg,
+                                            five_arg,
+                                            six_arg,
+                                            seven_arg,
+                                            eight_arg
+                                      };
 
         const char *ptr_pawncc = NULL;
         if (!strcmp(wcfg.wd_os_type, OS_SIGNAL_WINDOWS))
@@ -69,33 +90,19 @@ int wd_run_compiler(const char *arg, const char *compile_args, const char *secon
         int __find_pawncc = wd_sef_fdir(".", ptr_pawncc, NULL);
         if (__find_pawncc)
         {
-            size_t format_size_compiler = 1024;
-            char *_compiler_;
-            _compiler_ = wd_malloc(format_size_compiler);
-            if (!_compiler_)
-            {
-#if defined(_DBG_PRINT)
-                pr_error(stdout, "memory allocation failed for _compiler_!");
-#endif
-                return __RETZ;
-            }
-
             FILE *procc_f;
             procc_f = fopen("watchdogs.toml", "r");
             if (!procc_f)
             {
                 pr_error(stdout, "Can't read file %s", "watchdogs.toml");
-                if (_compiler_)
-                {
-                    wd_free(_compiler_);
-                    _compiler_ = NULL;
-                }
                 return __RETZ;
             }
 
             char error_buffer[256];
             toml_table_t *_toml_config;
-            _toml_config = toml_parse_file(procc_f, error_buffer, sizeof(error_buffer));
+            _toml_config = toml_parse_file(procc_f,
+                                           error_buffer,
+                                           sizeof(error_buffer));
 
             if (procc_f) {
                 fclose(procc_f);
@@ -104,11 +111,6 @@ int wd_run_compiler(const char *arg, const char *compile_args, const char *secon
             if (!_toml_config)
             {
                 pr_error(stdout, "parsing TOML: %s", error_buffer);
-                if (_compiler_)
-                {
-                    wd_free(_compiler_);
-                    _compiler_ = NULL;
-                }
                 return __RETZ;
             }
 
@@ -122,7 +124,22 @@ int wd_run_compiler(const char *arg, const char *compile_args, const char *secon
                 pr_error(stdout, "Failed to open .__CP.log");
             }
 
-            int compiler_debugging = 0;
+            for (int i = 0; i < 5; i++) {
+                if (compiler_args[i] != NULL) {
+                    if (strfind(compiler_args[i], "--watch"))
+                        ++compiler_has_watchdogs;
+                    if(strfind(compiler_args[i], "--debug"))
+                        ++compiler_has_debug;
+                    if (strfind(compiler_args[i], "--clean"))
+                        ++compiler_has_clean;
+                    if (strfind(compiler_args[i], "--assembler"))
+                        ++compiler_has_assembler;
+                    if (strfind(compiler_args[i], "--recursion"))
+                        ++compiler_has_recursion;
+                    if (strfind(compiler_args[i], "--verbose"))
+                        ++compiler_has_verbose;
+                }
+            }
 
             toml_table_t *wd_compiler = toml_table_in(_toml_config, "compiler");
             if (wd_compiler)
@@ -214,6 +231,65 @@ n_valid_flag:
                     }
                 }
 
+                char size_aio_option[PATH_MAX];
+                if (compiler_has_debug && compiler_has_assembler && compiler_has_recursion && compiler_has_verbose) {
+                    if (compiler_debugging) {
+                        const char *mem_target[] =  {
+                                                        "-d1",
+                                                        "-d2",
+                                                        "-d3"
+                                                    };
+                        size_t n_mem_target= sizeof(mem_target) / sizeof(mem_target[0]);
+                        for (size_t i = 0; i < n_mem_target; i++) {
+                            const char *debug_opt = mem_target[i];
+                            size_t len = strlen(debug_opt);
+                            char *pos;
+                            while ((pos = strstr(wcfg.wd_toml_aio_opt, debug_opt)) != NULL) {
+                                memmove(pos, pos + len, strlen(pos + len) + 1);
+                            }
+                        }
+                    }
+                    snprintf(size_aio_option, sizeof(size_aio_option), "%s -d2 -a -R+ -v2", wcfg.wd_toml_aio_opt);
+                    strncpy(wcfg.wd_toml_aio_opt, size_aio_option, sizeof(wcfg.wd_toml_aio_opt) - 1);
+                    wcfg.wd_toml_aio_opt[sizeof(wcfg.wd_toml_aio_opt) - 1] = '\0';
+                }
+                else if (compiler_has_debug) {
+                    if (compiler_debugging) {
+                        const char *mem_target[] =  {
+                                                        "-d1",
+                                                        "-d2",
+                                                        "-d3"
+                                                    };
+                        size_t n_mem_target= sizeof(mem_target) / sizeof(mem_target[0]);
+                        for (size_t i = 0; i < n_mem_target; i++) {
+                            const char *debug_opt = mem_target[i];
+                            size_t len = strlen(debug_opt);
+                            char *pos;
+                            while ((pos = strstr(wcfg.wd_toml_aio_opt, debug_opt)) != NULL) {
+                                memmove(pos, pos + len, strlen(pos + len) + 1);
+                            }
+                        }
+                    }
+                    snprintf(size_aio_option, sizeof(size_aio_option), "%s -d2", wcfg.wd_toml_aio_opt);
+                    strncpy(wcfg.wd_toml_aio_opt, size_aio_option, sizeof(wcfg.wd_toml_aio_opt) - 1);
+                    wcfg.wd_toml_aio_opt[sizeof(wcfg.wd_toml_aio_opt) - 1] = '\0';
+                }
+                else if (compiler_has_assembler) {
+                    snprintf(size_aio_option, sizeof(size_aio_option), "%s -a", wcfg.wd_toml_aio_opt);
+                    strncpy(wcfg.wd_toml_aio_opt, size_aio_option, sizeof(wcfg.wd_toml_aio_opt) - 1);
+                    wcfg.wd_toml_aio_opt[sizeof(wcfg.wd_toml_aio_opt) - 1] = '\0';
+                }
+                else if (compiler_has_recursion) {
+                    snprintf(size_aio_option, sizeof(size_aio_option), "%s -R+", wcfg.wd_toml_aio_opt);
+                    strncpy(wcfg.wd_toml_aio_opt, size_aio_option, sizeof(wcfg.wd_toml_aio_opt) - 1);
+                    wcfg.wd_toml_aio_opt[sizeof(wcfg.wd_toml_aio_opt) - 1] = '\0';
+                }
+                else if (compiler_has_verbose) {
+                    snprintf(size_aio_option, sizeof(size_aio_option), "%s -v2", wcfg.wd_toml_aio_opt);
+                    strncpy(wcfg.wd_toml_aio_opt, size_aio_option, sizeof(wcfg.wd_toml_aio_opt) - 1);
+                    wcfg.wd_toml_aio_opt[sizeof(wcfg.wd_toml_aio_opt) - 1] = '\0';
+                }
+
                 toml_array_t *include_paths = toml_array_in(wd_compiler, "include_path");
                 if (include_paths)
                 {
@@ -297,10 +373,9 @@ n_valid_flag:
                         si.hStdError = hFile;
                     }
 
-                    char cmd_line[MAX_PATH];
                     int ret_cmd = wd_snprintf(
-                                                cmd_line,
-                                                sizeof(cmd_line),
+                                                _compiler_,
+                                                sizeof(_compiler_),
                                                     "%s %s -o%s %s %s -i%s",
                                                     wcfg.wd_sef_found_list[0],
                                                     wcfg.wd_toml_gm_input,
@@ -311,10 +386,10 @@ n_valid_flag:
                                              );
 
                     clock_gettime(CLOCK_MONOTONIC, &start);
-                    if (ret_cmd > 0 && ret_cmd < (int)sizeof(cmd_line)) {
+                    if (ret_cmd > 0 && ret_cmd < (int)sizeof(_compiler_)) {
                         BOOL success = CreateProcessA(
                             NULL,            // No module name
-                            cmd_line,        // Command line
+                            _compiler_,        // Command line
                             NULL,            // Process handle not inheritable
                             NULL,            // Thread handle not inheritable
                             TRUE,            // Set handle inheritance to TRUE
@@ -366,14 +441,21 @@ n_valid_flag:
                         }
                         
                         char *args[] = {
-                                            wcfg.wd_sef_found_list[0],
-                                            wcfg.wd_toml_gm_input,
-                                            "-o", wcfg.wd_toml_gm_output,
-                                            wcfg.wd_toml_aio_opt,
-                                            include_aio_path,
-                                            "-i", path_include,
-                                            NULL
-                                       };
+                            wcfg.wd_sef_found_list[0],
+                            wcfg.wd_toml_gm_input,
+                            "-o",
+                            wcfg.wd_toml_gm_output,
+                            wcfg.wd_toml_aio_opt,
+                            include_aio_path,
+                            "-i",
+                            path_include,
+                            NULL
+                       };
+
+                        for (int i = 0; args[i] != NULL; i++) {
+                            strcat(_compiler_, args[i]);
+                            strcat(_compiler_, " ");
+                        }
                         
                         clock_gettime(CLOCK_MONOTONIC, &start);
                         execvp(args[0], args);
@@ -419,48 +501,27 @@ n_valid_flag:
 
                     if (path_exists(".wd_compiler.log")) {
                         printf("\n");
-                        int has_debug = 0;
-                        int has_clean = 0;
-
-                        const char* args[] = {
-                                                second_arg,
-                                                four_arg
-                                             };
-                        for (int i = 0; i < 2; i++) {
-                            if (args[i] != NULL) {
-                                if (strfind(args[i], "--debug"))
-                                    has_debug = 1;
-                                if (strfind(args[i], "--clean"))
-                                    has_clean = 1;
-                            }
-                        }
-
-                        if (has_debug && has_clean) {
+                        if (compiler_has_watchdogs && compiler_has_clean) {
                             cause_compiler_expl(".wd_compiler.log", _container_output, compiler_debugging);
                             if (path_exists(_container_output)) {
-                                if (is_native_windows())
-                                        wd_snprintf(rm_cmd, sizeof(rm_cmd),
-                                            "if exist \"%s\" (del /f /q \"%s\" 2>nul || "
-                                            "rmdir /s /q \"%s\" 2>nul)",
-                                            _container_output, _container_output, _container_output);
-                                else
-                                        wd_snprintf(rm_cmd, sizeof(rm_cmd),
-                                            "rm -rf %s",
-                                            _container_output);
+                                    remove(_container_output);
                             }
-                        } else if (has_debug) {
+                            goto compiler_done;
+                        } else if (compiler_has_watchdogs) {
                             cause_compiler_expl(".wd_compiler.log", _container_output, compiler_debugging);
-                        } else if (has_clean) {
+                            goto compiler_done;
+                        } else if (compiler_has_clean) {
                             wd_printfile(".wd_compiler.log");
-                            if (path_exists(_container_output))
-                                remove(_container_output);
+                            if (path_exists(_container_output)) {
+                                    remove(_container_output);
+                            }
+                            goto compiler_done;
                         }
 
-                        if (!has_clean && !has_debug) {
-                            wd_printfile(".wd_compiler.log");
-                        }
+                        wd_printfile(".wd_compiler.log");
                     }
 
+compiler_done:
                     procc_f = fopen(".wd_compiler.log", "r");
                     if (procc_f)
                     {
@@ -492,8 +553,8 @@ n_valid_flag:
                         " <T> [P]Finished at %.3fs (%.0f ms)\n",
                         compiler_dur, compiler_dur * 1000.0);
 #if defined(_DBG_PRINT)
-                    pr_color(stdout, FCOLOUR_YELLOW, "-DEBUGGING\n");
-                    printf("[COMPILER]:\n\t%s\n", _compiler_);
+                        pr_color(stdout, FCOLOUR_YELLOW, "-DEBUGGING\n");
+                        printf("[COMPILER]:\n\t%s\n", _compiler_);
 #endif
                 }
                 else
@@ -661,10 +722,9 @@ n_valid_flag:
                             si.hStdError = hFile;
                         }
 
-                        char cmd_line[MAX_PATH];
                         int ret_cmd = wd_snprintf(
-                                                    cmd_line,
-                                                    sizeof(cmd_line),
+                                                    _compiler_,
+                                                    sizeof(_compiler_),
                                                         "%s %s -o%s.amx %s %s -i%s",
                                                         wcfg.wd_sef_found_list[0],
                                                         wcfg.wd_sef_found_list[1],
@@ -675,10 +735,10 @@ n_valid_flag:
                                                  );
 
                         clock_gettime(CLOCK_MONOTONIC, &start);
-                        if (ret_cmd > 0 && ret_cmd < (int)sizeof(cmd_line)) {
+                        if (ret_cmd > 0 && ret_cmd < (int)sizeof(_compiler_)) {
                             BOOL success = CreateProcessA(
                                 NULL,            // No module name
-                                cmd_line,        // Command line
+                                _compiler_,        // Command line
                                 NULL,            // Process handle not inheritable
                                 NULL,            // Thread handle not inheritable
                                 TRUE,            // Set handle inheritance to TRUE
@@ -740,6 +800,11 @@ n_valid_flag:
                                 path_include,
                                 NULL
                             };
+
+                            for (int i = 0; args[i] != NULL; i++) {
+                                strcat(_compiler_, args[i]);
+                                strcat(_compiler_, " ");
+                            }
                             
                             clock_gettime(CLOCK_MONOTONIC, &start);
                             execvp(args[0], args);
@@ -785,48 +850,27 @@ n_valid_flag:
 
                         if (path_exists(".wd_compiler.log")) {
                             printf("\n");
-                            int has_debug = 0;
-                            int has_clean = 0;
-
-                            const char* args[] = {
-                                                    second_arg,
-                                                    four_arg
-                                                 };
-                            for (int i = 0; i < 2; i++) {
-                                if (args[i] != NULL) {
-                                    if (strfind(args[i], "--debug"))
-                                        has_debug = 1;
-                                    if (strfind(args[i], "--clean"))
-                                        has_clean = 1;
-                                }
-                            }
-
-                            if (has_debug && has_clean) {
+                            if (compiler_has_watchdogs && compiler_has_clean) {
                                 cause_compiler_expl(".wd_compiler.log", _container_output, compiler_debugging);
                                 if (path_exists(_container_output)) {
-                                    if (is_native_windows())
-                                            wd_snprintf(rm_cmd, sizeof(rm_cmd),
-                                                "if exist \"%s\" (del /f /q \"%s\" 2>nul || "
-                                                "rmdir /s /q \"%s\" 2>nul)",
-                                                _container_output, _container_output, _container_output);
-                                    else
-                                            wd_snprintf(rm_cmd, sizeof(rm_cmd),
-                                                "rm -rf %s",
-                                                _container_output);
+                                        remove(_container_output);
                                 }
-                            } else if (has_debug) {
+                                goto compiler_done2;
+                            } else if (compiler_has_watchdogs) {
                                 cause_compiler_expl(".wd_compiler.log", _container_output, compiler_debugging);
-                            } else if (has_clean) {
+                                goto compiler_done2;
+                            } else if (compiler_has_clean) {
                                 wd_printfile(".wd_compiler.log");
-                                if (path_exists(_container_output))
-                                    remove(_container_output);
+                                if (path_exists(_container_output)) {
+                                        remove(_container_output);
+                                }
+                                goto compiler_done2;
                             }
 
-                            if (!has_clean && !has_debug) {
-                                wd_printfile(".wd_compiler.log");
-                            }
+                            wd_printfile(".wd_compiler.log");
                         }
 
+compiler_done2:
                         procc_f = fopen(".wd_compiler.log", "r");
                         if (procc_f)
                         {
@@ -871,11 +915,6 @@ n_valid_flag:
                 }
 
                 toml_free(_toml_config);
-                if (_compiler_)
-                {
-                    wd_free(_compiler_);
-                    _compiler_ = NULL;
-                }
 
                 return __RETZ;
             }

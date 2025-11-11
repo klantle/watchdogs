@@ -1136,6 +1136,7 @@ int wd_set_toml(void)
 						}
 						else
 							wcfg.wd_ptr_samp = strdup(bin_val.u.s);
+						wcfg.wd_toml_binary = strdup(bin_val.u.s);
 						wd_free(bin_val.u.s);
 				}
 				toml_datum_t conf_val = toml_string_in(general_table, "config");

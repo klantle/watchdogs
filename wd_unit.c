@@ -73,6 +73,7 @@ int __command__(char *pre_command)
           remove(".crashdetect_ck");
           wd_server_crash_check();
         }
+        int wd_compile_running = 0;
         char ptr_prompt[WD_PATH_MAX + 56];
         size_t size_ptrp = sizeof(ptr_prompt);
         char *ptr_command;
@@ -590,8 +591,23 @@ loop_ipcc3:
             second_arg = strtok(NULL, " ");
             char *four_arg = NULL;
             four_arg = strtok(NULL, " ");
+            char *five_arg = NULL;
+            five_arg = strtok(NULL, " ");
+            char *six_arg = NULL;
+            six_arg = strtok(NULL, " ");
+            char *seven_arg = NULL;
+            seven_arg = strtok(NULL, " ");
+            char *eight_arg;
+            eight_arg = strtok(NULL, " ");
 
-            wd_run_compiler(arg, compile_args, second_arg, four_arg);
+            wd_run_compiler(arg,
+                            compile_args,
+                            second_arg,
+                            four_arg,
+                            five_arg,
+                            six_arg,
+                            seven_arg,
+                            eight_arg);
 
             goto done;
         } if (strncmp(ptr_command, "running", 7) == 0) {
@@ -667,6 +683,7 @@ _runners_:
                 pr_color(stdout, FCOLOUR_YELLOW, "running..\n");
                 if (wd_server_env() == 1) {
                     if (arg == NULL || *arg == '\0' || (arg[0] == '.' && arg[1] == '\0')) {
+start_main:
                         char size_run[128];
 
                         struct sigaction sa;
@@ -713,11 +730,16 @@ _runners_:
 
                         wd_server_crash_check();
                     } else {
+                        if (wd_compile_running == 1) {
+                            wd_compile_running = 0;
+                            goto start_main;
+                        }
                         server_mode = 1;
                         wd_run_samp_server(arg1, wcfg.wd_ptr_samp);
                     }
                 } else if (wd_server_env() == 2) {
                     if (arg == NULL || *arg == '\0' || (arg[0] == '.' && arg[1] == '\0')) {
+start_main2:
                         char size_run[128];
 
                         struct sigaction sa;
@@ -762,6 +784,10 @@ back_start2:
 
                         wd_server_crash_check();
                     } else {
+                        if (wd_compile_running == 1) {
+                            wd_compile_running = 0;
+                            goto start_main2;
+                        }
                         server_mode = 1;
                         wd_run_omp_server(arg1, wcfg.wd_ptr_omp);
                     }
@@ -807,8 +833,22 @@ n_loop_igm2:
             /* options */
             const char *second_arg = NULL;
             const char *four_arg = NULL;
+            const char *five_arg = NULL;
+            const char *six_arg = NULL;
+            const char *seven_arg = NULL;
+            const char *eight_arg = NULL;
 
-            wd_run_compiler(arg, compile_args, second_arg, four_arg);
+            wd_compile_running = 1;
+
+            wd_run_compiler(arg,
+                            compile_args,
+                            second_arg,
+                            four_arg,
+                            five_arg,
+                            six_arg,
+                            seven_arg,
+                            eight_arg);
+
             if (wcfg.wd_compiler_stat < 1) {
                 goto _runners_;
             }

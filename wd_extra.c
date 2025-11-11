@@ -503,7 +503,7 @@ void compiler_detailed(const char *pawn_output, int debug,
       if (amx_access && debug != 0) {
                 unsigned long hash = djb2_hash_file(pawn_output);
                 printf("Header : %dB  |  Total        : %dB\n"
-                       "Code   : %dB  |  hash (djb2)  : %lu\n"
+                       "Code   : %dB  |  hash (djb2)  : %#lx\n"
                        "Data   : %dB\n"
                        "Stack  : %dB\n",
                        header_size, total_size, code_size,

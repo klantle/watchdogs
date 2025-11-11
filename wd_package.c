@@ -41,11 +41,11 @@ static int get_termux_architecture(char *out_arch, size_t buf_size)
 		}
 
 		if (strcmp(uname_data.machine, "aarch64") == 0) {
-				strncpy(out_arch, "arm64", buf_size);
+				wd_strncpy(out_arch, "arm64", buf_size);
 				return __RETZ;
 		} else if (strcmp(uname_data.machine, "armv7l") == 0 ||
 				   strcmp(uname_data.machine, "armv8l") == 0) {
-				strncpy(out_arch, "arm32", buf_size);
+				wd_strncpy(out_arch, "arm32", buf_size);
 				return __RETZ;
 		}
 		
@@ -59,11 +59,11 @@ static int get_termux_architecture(char *out_arch, size_t buf_size)
 
 		if (strfind(selection, "A"))
 		{
-			strncpy(out_arch, "arm32", buf_size);
+			wd_strncpy(out_arch, "arm32", buf_size);
 			wd_free(selection);
 			return __RETZ;
 		} else if (strfind(selection, "B")) {
-			strncpy(out_arch, "arm64", buf_size);
+			wd_strncpy(out_arch, "arm64", buf_size);
 			wd_free(selection);
 			return __RETZ;
 		} else {
@@ -122,20 +122,20 @@ ret_pawncc:
 		get_termux_architecture(architecture,
 							    sizeof(architecture) != 0);
 
-		snprintf(url, sizeof(url),
-				 "https://github.com/"
-				 "mxp96/"
-				 "compiler/"
-				 "releases/"
-				 "download/"
-				 "%s/"
-				 "pawnc-%s-%s.zip",
-				 termux_versions[version_index],
-				 termux_versions[version_index],
-				 architecture);
+		wd_snprintf(url, sizeof(url),
+			 "https://github.com/"
+			 "mxp96/"
+			 "compiler/"
+			 "releases/"
+			 "download/"
+			 "%s/"
+			 "pawnc-%s-%s.zip",
+			 termux_versions[version_index],
+			 termux_versions[version_index],
+			 architecture);
 
-		snprintf(filename, sizeof(filename), "pawncc-%s-%s.zip",
-				 termux_versions[version_index], architecture);
+		wd_snprintf(filename, sizeof(filename), "pawncc-%s-%s.zip",
+				    termux_versions[version_index], architecture);
 
 		wcfg.wd_ipawncc = 1;
 		wd_download_file(url, filename);
@@ -197,13 +197,13 @@ static int handle_standard_installation(const char *platform)
 
 		archive_ext = (strcmp(platform, "linux") == 0) ? "tar.gz" : "zip";
 
-		snprintf(url, sizeof(url),
-				 "%s/releases/download/v%s/pawnc-%s-%s.%s",
-				 pkg_repo_base, versions[version_index], versions[version_index],
-				 platform, archive_ext);
+		wd_snprintf(url, sizeof(url),
+			 "%s/releases/download/v%s/pawnc-%s-%s.%s",
+			 pkg_repo_base, versions[version_index], versions[version_index],
+			 platform, archive_ext);
 
-		snprintf(filename, sizeof(filename), "pawnc-%s-%s.%s",
-				 versions[version_index], platform, archive_ext);
+		wd_snprintf(filename, sizeof(filename), "pawnc-%s-%s.%s",
+				    versions[version_index], platform, archive_ext);
 
 		wcfg.wd_ipawncc = 1;
 		wd_download_file(url, filename);

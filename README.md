@@ -452,6 +452,11 @@ compile . --clean
 ```bash
 compile path/to/yourmode --clean
 ```
+- Can combined
+```bash
+compile . --debug --clean
+compile . --clean --debug
+```
 
 ### Server Management
 

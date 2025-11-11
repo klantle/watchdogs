@@ -112,12 +112,12 @@ static void build_extraction_path(const char *dest_path, const char *entry_path,
 								  char *out_path, size_t out_size)
 {
 		if (!dest_path || !strcmp(dest_path, ".")|| *dest_path == '\0') {
-				snprintf(out_path, out_size, "%s", entry_path);
+				wd_snprintf(out_path, out_size, "%s", entry_path);
 		} else {
 				if (!strncmp(entry_path, dest_path, strlen(dest_path))) {
-						snprintf(out_path, out_size, "%s", entry_path);
+						wd_snprintf(out_path, out_size, "%s", entry_path);
 				} else {
-						snprintf(out_path, out_size, "%s/%s", dest_path, entry_path);
+						wd_snprintf(out_path, out_size, "%s/%s", dest_path, entry_path);
 				}
 		}
 }

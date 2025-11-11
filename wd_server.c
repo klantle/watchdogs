@@ -73,19 +73,19 @@ static int update_server_config(const char *gamemode)
         int gamemode_updated = 0;
 
         char size_config[WD_PATH_MAX];
-        snprintf(size_config, sizeof(size_config), ".%s.bak", wcfg.wd_toml_config);
+        wd_snprintf(size_config, sizeof(size_config), ".%s.bak", wcfg.wd_toml_config);
 
         char size_mv[WD_MAX_PATH];
         if (is_native_windows())
-            snprintf(size_mv, sizeof(size_mv),
-                    "ren %s %s",
-                    wcfg.wd_toml_config,
-                    size_config);
+            wd_snprintf(size_mv, sizeof(size_mv),
+                        "ren %s %s",
+                        wcfg.wd_toml_config,
+                        size_config);
         else
-            snprintf(size_mv, sizeof(size_mv),
-                    "mv -f %s %s",
-                    wcfg.wd_toml_config,
-                    size_config);
+            wd_snprintf(size_mv, sizeof(size_mv),
+                        "mv -f %s %s",
+                        wcfg.wd_toml_config,
+                        size_config);
 
         if (wd_run_command(size_mv) != 0) {
                 pr_error(stdout, "Failed to create backup file");
@@ -105,7 +105,7 @@ static int update_server_config(const char *gamemode)
         }
 
         char put_gamemode[256];
-        snprintf(put_gamemode, sizeof(put_gamemode), "%s", gamemode);
+        wd_snprintf(put_gamemode, sizeof(put_gamemode), "%s", gamemode);
         char *f_EXT = strrchr(put_gamemode, '.');
         if (f_EXT) *f_EXT = '\0';
         gamemode = put_gamemode;
@@ -193,8 +193,6 @@ void wd_server_crash_check(void) {
 }
 
 void restore_samp_config(void) {
-        char size_config[WD_PATH_MAX * 2];
-        snprintf(size_config, sizeof(size_config), ".%s.bak", wcfg.wd_toml_config);
         return;
 }
 
@@ -210,13 +208,13 @@ void wd_run_samp_server(const char *gamemode, const char *server_bin)
         char *f_EXT = strrchr(gamemode, '.');
         if (f_EXT) {
             size_t len = f_EXT - gamemode;
-            snprintf(put_gamemode,
+            wd_snprintf(put_gamemode,
                      sizeof(put_gamemode),
                      "%.*s.amx",
                      (int)len,
                      gamemode);
         } else {
-            snprintf(put_gamemode,
+            wd_snprintf(put_gamemode,
                      sizeof(put_gamemode),
                      "%s.amx",
                      gamemode);
@@ -255,9 +253,9 @@ void wd_run_samp_server(const char *gamemode, const char *server_bin)
 back_start:
         start = time(NULL);
 #ifdef _WIN32
-        snprintf(command, sizeof(command), "%s", server_bin);
+        wd_snprintf(command, sizeof(command), "%s", server_bin);
 #else
-        snprintf(command, sizeof(command), "./%s", server_bin);
+        wd_snprintf(command, sizeof(command), "./%s", server_bin);
 #endif
         end = time(NULL);
 
@@ -290,19 +288,19 @@ static int update_omp_config(const char *gamemode)
         int ret = -__RETN;
 
         char size_config[WD_PATH_MAX];
-        snprintf(size_config, sizeof(size_config), ".%s.bak", wcfg.wd_toml_config);
+        wd_snprintf(size_config, sizeof(size_config), ".%s.bak", wcfg.wd_toml_config);
 
         char size_mv[WD_MAX_PATH];
         if (is_native_windows())
-            snprintf(size_mv, sizeof(size_mv),
-                    "ren %s %s",
-                    wcfg.wd_toml_config,
-                    size_config);
+            wd_snprintf(size_mv, sizeof(size_mv),
+                        "ren %s %s",
+                        wcfg.wd_toml_config,
+                        size_config);
         else
-            snprintf(size_mv, sizeof(size_mv),
-                    "mv -f %s %s",
-                    wcfg.wd_toml_config,
-                    size_config);
+            wd_snprintf(size_mv, sizeof(size_mv),
+                        "mv -f %s %s",
+                        wcfg.wd_toml_config,
+                        size_config);
 
         if (wd_run_command(size_mv) != 0) {
                 pr_error(stdout, "Failed to create backup file");
@@ -350,14 +348,14 @@ static int update_omp_config(const char *gamemode)
                 goto done;
         }
 
-        snprintf(put_gamemode, sizeof(put_gamemode), "%s", gamemode);
+        wd_snprintf(put_gamemode, sizeof(put_gamemode), "%s", gamemode);
         char *f_EXT = strrchr(put_gamemode, '.');
         if (f_EXT) *f_EXT = '\0';
 
         cJSON_DeleteItemFromObject(pawn, "main_scripts");
 
         main_scripts = cJSON_CreateArray();
-        snprintf(gamemode_buf, sizeof(gamemode_buf), "%s", put_gamemode);
+        wd_snprintf(gamemode_buf, sizeof(gamemode_buf), "%s", put_gamemode);
         cJSON_AddItemToArray(main_scripts, cJSON_CreateString(gamemode_buf));
         cJSON_AddItemToObject(pawn, "main_scripts", main_scripts);
 
@@ -396,8 +394,6 @@ done:
 }
 
 void restore_omp_config(void) {
-        char size_config[WD_PATH_MAX];
-        snprintf(size_config, sizeof(size_config), ".%s.bak", wcfg.wd_toml_config);
         return;
 }
 
@@ -413,16 +409,16 @@ void wd_run_omp_server(const char *gamemode, const char *server_bin)
         char *f_EXT = strrchr(gamemode, '.');
         if (f_EXT) {
             size_t len = f_EXT - gamemode;
-            snprintf(put_gamemode,
-                     sizeof(put_gamemode),
-                     "%.*s.amx",
-                     (int)len,
-                     gamemode);
+            wd_snprintf(put_gamemode,
+                        sizeof(put_gamemode),
+                        "%.*s.amx",
+                        (int)len,
+                        gamemode);
         } else {
-            snprintf(put_gamemode,
-                     sizeof(put_gamemode),
-                     "%s.amx",
-                     gamemode);
+            wd_snprintf(put_gamemode,
+                        sizeof(put_gamemode),
+                        "%s.amx",
+                        gamemode);
         }
 
         gamemode = put_gamemode;
@@ -458,9 +454,9 @@ void wd_run_omp_server(const char *gamemode, const char *server_bin)
 back_start:
         start = time(NULL);
 #ifdef _WIN32
-        snprintf(command, sizeof(command), "%s", server_bin);
+        wd_snprintf(command, sizeof(command), "%s", server_bin);
 #else
-        snprintf(command, sizeof(command), "./%s", server_bin);
+        wd_snprintf(command, sizeof(command), "./%s", server_bin);
 #endif
         end = time(NULL);
 

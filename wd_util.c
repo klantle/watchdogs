@@ -71,8 +71,8 @@ WatchdogConfig wcfg = {
 		.wd_ptr_samp = NULL,
 		.wd_ptr_omp = NULL,
 		.wd_compiler_stat = 0,
-		.wd_sef_count = 0,
-		.wd_sef_found_list = { { 0 } },
+		.wd_sef_count = MAX_SEF_EMPTY,
+		.wd_sef_found_list = { { MAX_SEF_EMPTY } },
 		.wd_toml_aio_opt = NULL,
 		.wd_toml_aio_repo = NULL,
 		.wd_toml_gm_input = NULL,
@@ -87,8 +87,8 @@ void wd_sef_fdir_reset(void) {
 		for (i = 0; i < sef_max_entries; i++)
 			wcfg.wd_sef_found_list[i][0] = '\0';
 
-		wcfg.wd_sef_count = 0;
-		memset(wcfg.wd_sef_found_list, 0, sizeof(wcfg.wd_sef_found_list));
+		wcfg.wd_sef_count = MAX_SEF_EMPTY;
+		memset(wcfg.wd_sef_found_list, MAX_SEF_EMPTY, sizeof(wcfg.wd_sef_found_list));
 }
 
 static char cwd_cache[WD_PATH_MAX] = { 0 };
@@ -119,7 +119,7 @@ const char *wd_get_cwd(void) {
 	    return cwd_cache;
 }
 
-size_t wd_strcnpy(char *dest, const char *src, size_t size) {
+size_t wd_strcpys(char *dest, const char *src, size_t size) {
 	    if (size == 0)
 	    	return 0;
 
@@ -129,11 +129,11 @@ size_t wd_strcnpy(char *dest, const char *src, size_t size) {
 
 	    memcpy(dest, src, len);
 	    dest[len] = '\0';
-
+	    
 	    return len;
 }
 
-size_t wd_strcpy(char *dest, const char *src, size_t size) {
+size_t wd_strncpys(char *dest, const char *src, size_t size) {
 	    if (size == 0)
 	    	return 0;
 
@@ -143,6 +143,7 @@ size_t wd_strcpy(char *dest, const char *src, size_t size) {
 
 	    memcpy(dest, src, len);
 	    dest[len] = '\0';
+
 	    return len;
 }
 
@@ -424,11 +425,11 @@ static void __set_path_syms(char *out, size_t out_sz, const char *dir, const cha
 		has_led_sep = IS_PATH_SYM(name[0]);
 
 		if (dir_has_sep) {
-				if (has_led_sep) snprintf(out, out_sz, "%s%s", dir, name + 1);
-				else snprintf(out, out_sz, "%s%s", dir, name);
+				if (has_led_sep) wd_snprintf(out, out_sz, "%s%s", dir, name + 1);
+				else wd_snprintf(out, out_sz, "%s%s", dir, name);
 		} else {
-				if (has_led_sep) snprintf(out, out_sz, "%s%s", dir, name);
-				else snprintf(out, out_sz, "%s%s%s", dir, __PATH_SYM, name);
+				if (has_led_sep) wd_snprintf(out, out_sz, "%s%s", dir, name);
+				else wd_snprintf(out, out_sz, "%s%s%s", dir, __PATH_SYM, name);
 		}
 
 		out[out_sz - 1] = '\0';
@@ -506,25 +507,25 @@ const char *wd_detect_os(void)
     	static char os[64] = "unknown";
 
 #ifdef _WIN32
-    	strncpy(os, "windows", sizeof(os));
+    	wd_strncpy(os, "windows", sizeof(os));
 #else
 		if (access("/.dockerenv", F_OK) == 0) {
-			strncpy(os, "linux", sizeof(os));
+			wd_strncpy(os, "linux", sizeof(os));
 		}
 		else if ((getenv("WSL_INTEROP") || getenv("WSL_DISTRO_NAME")) &&
 				wd_run_command("which docker > /dev/null 2>&1") == 0) {
 			if (getenv("WD_USE_DOCKER") || access("Dockerfile", F_OK) == 0) {
-				strncpy(os, "linux", sizeof(os));
+				wd_strncpy(os, "linux", sizeof(os));
 			} else {
-				strncpy(os, "windows", sizeof(os));
+				wd_strncpy(os, "windows", sizeof(os));
 			}
 		} else {
 			struct utsname sys_info;
 			if (uname(&sys_info) == 0) {
 				if (strstr(sys_info.sysname, "Linux"))
-					strncpy(os, "linux", sizeof(os));
+					wd_strncpy(os, "linux", sizeof(os));
 				else
-					strncpy(os, sys_info.sysname, sizeof(os));
+					wd_strncpy(os, sys_info.sysname, sizeof(os));
 			}
 		}
 #endif
@@ -602,14 +603,14 @@ ensure_parent_dir(char *out_parent, size_t n, const char *dest)
 		if (strlen(dest) >= sizeof(tmp))
 				return -__RETN;
 
-		strncpy(tmp, dest, sizeof(tmp));
+		wd_strncpy(tmp, dest, sizeof(tmp));
 		tmp[sizeof(tmp)-1] = '\0';
 
 		parent = dirname(tmp);
 		if (!parent)
 				return -__RETN;
 
-		strncpy(out_parent, parent, n);
+		wd_strncpy(out_parent, parent, n);
 		out_parent[n-1] = '\0';
 
 		return __RETZ;
@@ -621,10 +622,10 @@ int kill_process(const char *name)
 			return -__RETN;
 		char cmd[PATH_MAX];
 #ifndef _WIN32
-		snprintf(cmd, sizeof(cmd), "pkill -SIGTERM \"%s\" > /dev/null 2>&1", name);
+		wd_snprintf(cmd, sizeof(cmd), "pkill -SIGTERM \"%s\" > /dev/null 2>&1", name);
 #else
-		snprintf(cmd, sizeof(cmd), "C:\\Windows\\System32\\taskkill.exe "
-									   "/IM \"%s\" >nul 2>&1", name);
+		wd_snprintf(cmd, sizeof(cmd), "C:\\Windows\\System32\\taskkill.exe "
+									  "/IM \"%s\" >nul 2>&1", name);
 #endif
 		return wd_run_command(cmd);
 }
@@ -666,11 +667,11 @@ static void wd_add_found_path(const char *path)
 {
 		if (wcfg.wd_sef_count < (sizeof(wcfg.wd_sef_found_list) /
 								 sizeof(wcfg.wd_sef_found_list[0]))) {
-				strncpy(
-							wcfg.wd_sef_found_list[wcfg.wd_sef_count],
-							path,
-							MAX_SEF_PATH_SIZE
-						);
+				wd_strncpy(
+								wcfg.wd_sef_found_list[wcfg.wd_sef_count],
+								path,
+								MAX_SEF_PATH_SIZE
+						   );
 				wcfg.wd_sef_found_list[wcfg.wd_sef_count][MAX_SEF_PATH_SIZE - 1] = '\0';
 				++wcfg.wd_sef_count;
 		}
@@ -800,11 +801,11 @@ static void wd_check_compiler_options(int *compatibility, int *optimized_lt)
 			FILE *proc_file;
 			char log_line[1024];
 
-			snprintf(run_cmd, sizeof(run_cmd),
-					"%s -___DDDDDDDDDDDDDDDDD "
-					"-___DDDDDDDDDDDDDDDDD"
-					"-___DDDDDDDDDDDDDDDDD-"
-					"___DDDDDDDDDDDDDDDDD > .__CP.log 2>&1",
+			wd_snprintf(run_cmd, sizeof(run_cmd),
+						"%s -___DDDDDDDDDDDDDDDDD "
+						"-___DDDDDDDDDDDDDDDDD"
+						"-___DDDDDDDDDDDDDDDDD-"
+						"___DDDDDDDDDDDDDDDDD > .__CP.log 2>&1",
 						wcfg.wd_sef_found_list[0]);
 			wd_run_command(run_cmd);
 
@@ -904,8 +905,8 @@ static void __attribute__((unused)) __toml_base_subdirs(const char *base_path,
 							   find_data.cFileName) == 0)
 						continue;
 
-					snprintf(fp, sizeof(fp), "%s/%s",
-							base_path, find_data.cFileName);
+					wd_snprintf(fp, sizeof(fp), "%s/%s",
+								base_path, find_data.cFileName);
 
 					__toml_add_directory_path(toml_file, first, fp);
 					__toml_base_subdirs(fp, toml_file, first);
@@ -933,8 +934,8 @@ static void __attribute__((unused)) __toml_base_subdirs(const char *base_path,
 							   item->d_name) == 0)
 						continue;
 
-					snprintf(fp, sizeof(fp), "%s/%s",
-							base_path, item->d_name);
+					wd_snprintf(fp, sizeof(fp), "%s/%s",
+								base_path, item->d_name);
 
 					__toml_add_directory_path(toml_file, first, fp);
 					__toml_base_subdirs(fp, toml_file, first);
@@ -1166,9 +1167,9 @@ int wd_set_toml(void)
 static int _try_mv_without_sudo(const char *src, const char *dest) {
 		char size_mv[WD_PATH_MAX];
 		if (is_native_windows())
-			snprintf(size_mv, sizeof(size_mv), "move /-Y %s %s", src, dest);
+			wd_snprintf(size_mv, sizeof(size_mv), "move /-Y %s %s", src, dest);
 		else
-			snprintf(size_mv, sizeof(size_mv), "mv -i %s %s", src, dest);
+			wd_snprintf(size_mv, sizeof(size_mv), "mv -i %s %s", src, dest);
 		int ret = wd_run_command(size_mv);
 		return ret;
 }
@@ -1176,9 +1177,9 @@ static int _try_mv_without_sudo(const char *src, const char *dest) {
 static int __mv_with_sudo(const char *src, const char *dest) {
 		char size_mv[WD_PATH_MAX];
 		if (is_native_windows())
-			snprintf(size_mv, sizeof(size_mv), "move /-Y %s %s", src, dest);
+			wd_snprintf(size_mv, sizeof(size_mv), "move /-Y %s %s", src, dest);
 		else
-			snprintf(size_mv, sizeof(size_mv), "sudo mv -i %s %s", src, dest);
+			wd_snprintf(size_mv, sizeof(size_mv), "sudo mv -i %s %s", src, dest);
 		int ret = wd_run_command(size_mv);
 		return ret;
 }
@@ -1186,9 +1187,9 @@ static int __mv_with_sudo(const char *src, const char *dest) {
 static int _try_cp_without_sudo(const char *src, const char *dest) {
 		char size_cp[WD_PATH_MAX];
 		if (is_native_windows())
-			snprintf(size_cp, sizeof(size_cp), "xcopy /-Y %s %s", src, dest);
+			wd_snprintf(size_cp, sizeof(size_cp), "xcopy /-Y %s %s", src, dest);
 		else
-			snprintf(size_cp, sizeof(size_cp), "cp -i %s %s", src, dest);
+			wd_snprintf(size_cp, sizeof(size_cp), "cp -i %s %s", src, dest);
 		int ret = wd_run_command(size_cp);
 		return ret;
 }
@@ -1196,9 +1197,9 @@ static int _try_cp_without_sudo(const char *src, const char *dest) {
 static int __cp_with_sudo(const char *src, const char *dest) {
 		char size_cp[WD_PATH_MAX];
 		if (is_native_windows())
-			snprintf(size_cp, sizeof(size_cp), "xcopy /-Y %s %s", src, dest);
+			wd_snprintf(size_cp, sizeof(size_cp), "xcopy /-Y %s %s", src, dest);
 		else
-			snprintf(size_cp, sizeof(size_cp), "sudo cp -i %s %s", src, dest);
+			wd_snprintf(size_cp, sizeof(size_cp), "sudo cp -i %s %s", src, dest);
 		int ret = wd_run_command(size_cp);
 		return ret;
 }

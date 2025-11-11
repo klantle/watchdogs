@@ -85,9 +85,9 @@ _ptr_command:
             printf("[" FCOLOUR_CYAN
                    "watchdogs ~ %s" FCOLOUR_DEFAULT "]$ %s\n", wd_get_cwd(), ptr_command);
         } else {
-            snprintf(ptr_prompt, size_ptrp,
-                     "[" FCOLOUR_CYAN
-                     "watchdogs ~ %s" FCOLOUR_DEFAULT "]$ ", wd_get_cwd());
+            wd_snprintf(ptr_prompt, size_ptrp,
+                        "[" FCOLOUR_CYAN
+                        "watchdogs ~ %s" FCOLOUR_DEFAULT "]$ ", wd_get_cwd());
             ptr_command = readline(ptr_prompt);
 
             if (ptr_command == NULL || ptr_command[0] == '\0')
@@ -172,7 +172,7 @@ _reexecute_command:
                 println(stdout, "Usage: title [<title>]");
             } else {
                 char title_set[128];
-                snprintf(title_set, sizeof(title_set), "%s", arg);
+                wd_snprintf(title_set, sizeof(title_set), "%s", arg);
                 wd_set_title(title_set);
             }
 
@@ -228,10 +228,10 @@ _reexecute_command:
                     ss = (int)(stw_elp) % 60;
 
                     char title_set[128];
-                    snprintf(title_set, sizeof(title_set),
-                            "S T O P W A T C H : "
-                            "%02d:%02d:%02d / %d sec",
-                            hh, mm, ss, ts);
+                    wd_snprintf(title_set, sizeof(title_set),
+                                "S T O P W A T C H : "
+                                "%02d:%02d:%02d / %d sec",
+                                hh, mm, ss, ts);
                     wd_set_title(title_set);
 
                     struct timespec ts = {0, 10000000};
@@ -449,7 +449,7 @@ _reexecute_command:
                             if (!merged)
                                     goto free_val;
 
-                            snprintf(merged, strlen(val.u.s) + 1, "%s", val.u.s);
+                            wd_snprintf(merged, strlen(val.u.s) + 1, "%s", val.u.s);
                     } else {
                             char *tmp;
                             size_t old_len = strlen(merged);
@@ -460,7 +460,7 @@ _reexecute_command:
                                     goto free_val;
 
                             merged = tmp;
-                            snprintf(merged + old_len, new_len - old_len, " %s", val.u.s);
+                            wd_snprintf(merged + old_len, new_len - old_len, " %s", val.u.s);
                     }
 
 free_val:
@@ -588,8 +588,10 @@ loop_ipcc3:
             compile_args = strtok(arg, " ");
             char *second_arg = NULL;
             second_arg = strtok(NULL, " ");
+            char *four_arg = NULL;
+            four_arg = strtok(NULL, " ");
 
-            wd_run_compiler(arg, compile_args, second_arg);
+            wd_run_compiler(arg, compile_args, second_arg, four_arg);
 
             goto done;
         } if (strncmp(ptr_command, "running", 7) == 0) {
@@ -629,26 +631,26 @@ _runners_:
                     gamemode = wcfg.wd_toml_gm_output;
                 }
 
-                size_t needed = snprintf(NULL, 0, "Watchdogs | "
-                                                  "@ running | "
-                                                  "args: %s | "
-                                                  "gamemode: %s | "
-                                                  "config: %s | "
-                                                  "CTRL + C to stop.",
-                                                size_arg1,
-                                                gamemode,
-                                                wcfg.wd_toml_config) + 1;
+                size_t needed = wd_snprintf(NULL, 0, "Watchdogs | "
+                                                      "@ running | "
+                                                      "args: %s | "
+                                                      "gamemode: %s | "
+                                                      "config: %s | "
+                                                      "CTRL + C to stop.",
+                                                      size_arg1,
+                                                      gamemode,
+                                                      wcfg.wd_toml_config) + 1;
                 char *title_running_info = wd_malloc(needed);
                 if (!title_running_info) { return __RETN; }
-                snprintf(title_running_info, needed, "Watchdogs | "
-                                                     "@ running | "
-                                                     "args: %s | "
-                                                     "gamemode: %s | "
-                                                     "config: %s | "
-                                                     "CTRL + C to stop.",
-                                                size_arg1,
-                                                gamemode,
-                                                wcfg.wd_toml_config);
+                wd_snprintf(title_running_info, needed, "Watchdogs | "
+                                                         "@ running | "
+                                                         "args: %s | "
+                                                         "gamemode: %s | "
+                                                         "config: %s | "
+                                                         "CTRL + C to stop.",
+                                                         size_arg1,
+                                                         gamemode,
+                                                         wcfg.wd_toml_config);
                 if (title_running_info) {
                 		wd_set_title(title_running_info);
                     wd_free(title_running_info);
@@ -686,10 +688,10 @@ _runners_:
                         back_start:
                         start = time(NULL);
 #ifdef _WIN32
-                        snprintf(size_run, sizeof(size_run), "%s", wcfg.wd_ptr_samp);
+                        wd_snprintf(size_run, sizeof(size_run), "%s", wcfg.wd_ptr_samp);
 #else
                         chmod(wcfg.wd_ptr_samp, 0777);
-                        snprintf(size_run, sizeof(size_run), "./%s", wcfg.wd_ptr_samp);
+                        wd_snprintf(size_run, sizeof(size_run), "./%s", wcfg.wd_ptr_samp);
 #endif
                         end = time(NULL);
 
@@ -737,10 +739,10 @@ _runners_:
 back_start2:
                         start = time(NULL);
 #ifdef _WIN32
-                        snprintf(size_run, sizeof(size_run), "%s", wcfg.wd_ptr_omp);
+                        wd_snprintf(size_run, sizeof(size_run), "%s", wcfg.wd_ptr_omp);
 #else
                         chmod(wcfg.wd_ptr_samp, 0777);
-                        snprintf(size_run, sizeof(size_run), "./%s", wcfg.wd_ptr_omp);
+                        wd_snprintf(size_run, sizeof(size_run), "./%s", wcfg.wd_ptr_omp);
 #endif
                         end = time(NULL);
 
@@ -804,8 +806,9 @@ n_loop_igm2:
             const char *compile_args = NULL;
             /* options */
             const char *second_arg = NULL;
+            const char *four_arg = NULL;
 
-            wd_run_compiler(arg, compile_args, second_arg);
+            wd_run_compiler(arg, compile_args, second_arg, four_arg);
             if (wcfg.wd_compiler_stat < 1) {
                 goto _runners_;
             }
@@ -927,7 +930,7 @@ L"\t\t   W   A   T   C   H   D   O   G   S\n");
                     goto _ptr_command;
             }
             char _p_command[256];
-            snprintf(_p_command, 256, "%s", ptr_command);
+            wd_snprintf(_p_command, 256, "%s", ptr_command);
             int ret = wd_run_command(_p_command);
             if (ret)
                 wd_set_title("Watchdogs | @ command not found");

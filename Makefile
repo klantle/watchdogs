@@ -1,8 +1,6 @@
 UNAME_S := $(shell uname -s)
 
 export TERM
-YELLOW := $(shell if command -v tput >/dev/null 2>&1; then tput setaf 3; else printf '\033[1;33m'; fi)
-RESET  := $(shell if command -v tput >/dev/null 2>&1; then tput sgr0; else printf '\033[0m'; fi)
 MAKE_TERMOUT := 1
 
 export LANG := C.UTF-8
@@ -15,8 +13,8 @@ CC       	   ?= clang
 STRIP          ?= llvm-strip
 WINDRES        ?= windres
 
-CFLAGS   = -Os -pipe -s -fdata-sections -ffunction-sections
-LDFLAGS  = -Wl,-O2,--gc-sections -lm -lcurl -lreadline -lncursesw -larchive
+CFLAGS   = -O2 -pipe -fdata-sections -ffunction-sections
+LDFLAGS  =  -lm -lcurl -lreadline -lncursesw -larchive
 
 SRCS = wd_extra.c wd_curl.c wd_unit.c wd_util.c wd_depends.c wd_hardware.c \
 	wd_compiler.c wd_archive.c wd_package.c wd_server.c wd_crypto.c \
@@ -29,10 +27,10 @@ RESFILE = version.res
 .PHONY: init all clean linux termux windows compress strip debug termux-debug windows-debug
 
 init:
-	@echo "$(YELLOW)==>$(RESET) Detecting system environment..."
+	@echo "==> Detecting system environment..."
 	@UNAME_S=$$(uname -s); \
 	if echo "$$UNAME_S" | grep -qi "MINGW64_NT"; then \
-		echo "$(YELLOW)==>$(RESET) Detected: MSYS2 MinGW UCRT64 environment"; \
+		echo "==> Detected: MSYS2 MinGW UCRT64 environment"; \
 		pacman -Sy --noconfirm && \
 		pacman -S --needed --noconfirm \
 			curl \
@@ -47,11 +45,11 @@ init:
 			mingw-w64-ucrt-x86_64-libarchive \
 			mingw-w64-ucrt-x86_64-upx; \
 	elif echo "$$UNAME_S" | grep -qi "Linux" && [ -d "/data/data/com.termux" ]; then \
-		echo "$(YELLOW)==>$(RESET) Detected: Termux environment"; \
+		echo "==> Detected: Termux environment"; \
 		pkg update -y && pkg install -y unstable-repo coreutils procps clang curl libarchive ncurses readline; \
 	elif echo "$$UNAME_S" | grep -qi "Linux"; then \
-		echo "$(YELLOW)==>$(RESET) Detected: Native Linux environment"; \
-		echo "$(YELLOW)==>$(RESET) Installing dependencies without sudo..."; \
+		echo "==> Detected: Native Linux environment"; \
+		echo "==> Installing dependencies without sudo..."; \
 		if command -v apt >/dev/null 2>&1; then \
 			apt update -y && \
 			apt install -y build-essential curl procps clang lld make \
@@ -75,85 +73,85 @@ init:
 			pacman -S --needed --noconfirm base-devel clang lld libc++ ncurses \
 				curl readline libarchive zlib; \
 		else \
-			echo "$(RED)==>$(RESET) Cannot install dependencies: package manager not found"; \
-			echo "$(YELLOW)==>$(RESET) Please install dependencies manually."; \
+			echo "==> Cannot install dependencies: package manager not found"; \
+			echo "==> Please install dependencies manually."; \
 			exit 1; \
 		fi; \
 	else \
-		echo "$(YELLOW)==>$(RESET) Unknown environment."; \
+		echo "==> Unknown environment."; \
 		exit 1; \
 	fi
 
 all: $(TARGET)
-	@printf "$(YELLOW)==>$(RESET) Building $(TARGET) Version $(VERSION) Full Version $(FULL_VERSION)\n"
-	@printf "$(YELLOW)==>$(RESET) Build complete: $(TARGET) Version $(VERSION) Full Version $(FULL_VERSION)\n"
+	@echo "==> Building $(TARGET) Version $(VERSION) Full Version $(FULL_VERSION)"
+	@echo "==> Build complete: $(TARGET) Version $(VERSION) Full Version $(FULL_VERSION)"
 	@$(MAKE) compress
 
 $(TARGET): $(OBJS) $(RESFILE)
-	@printf "$(YELLOW)==>$(RESET) Linking $(TARGET)\n"
+	@echo "==> Linking $(TARGET)"
 	$(CC) $(CFLAGS) $(OBJS) $(RESFILE) -o $(TARGET) $(LDFLAGS)
 	@$(MAKE) strip
 
 %.o: %.c
-	@printf "$(YELLOW)==>$(RESET) Compiling $<\n"
+	@echo "==> Compiling $<"
 	$(CC) $(CFLAGS) -c $< -o $@
 
 $(RESFILE): $(RCFILE)
-	@printf "$(YELLOW)==>$(RESET) Compiling resource file...\n"
+	@echo "==> Compiling resource file..."
 	$(WINDRES) $(RCFILE) -O coff -o $(RESFILE)
 
 strip:
 	@if [ -f "$(TARGET)" ]; then \
-		printf "$(YELLOW)==>$(RESET) Stripping binary...\n"; \
+		echo "==> Stripping binary..."; \
 		$(STRIP) --strip-all $(TARGET) || true; \
 	else \
-		printf "$(YELLOW)==>$(RESET) Nothing to strip\n"; \
+		echo "==> Nothing to strip"; \
 	fi
 
 compress:
 	@if command -v upx >/dev/null 2>&1; then \
-		printf "$(YELLOW)==>$(RESET) Compressing with UPX...\n"; \
+		echo "==> Compressing with UPX..."; \
 		upx --best --lzma $(TARGET) || true; \
 	else \
-		printf "$(YELLOW)==>$(RESET) UPX not found, skipping compression.\n"; \
+		echo "==> UPX not found, skipping compression."; \
 	fi
 
 clean:
 	rm -rf $(OBJS) $(RESFILE) watchdogs watchdogs.tmux watchdogs.win watchdogs.debug watchdogs.debug.tmux watchdogs.debug.win
-	@printf "\n$(YELLOW)==>$(RESET) Clean done.\n"
+	@echo "==> Clean done."
 
 linux:
 	@echo "-> [LANG = $$LANG]"
-	@printf "$(YELLOW)==>$(RESET) Building $(TARGET) Version $(VERSION) Full Version $(FULL_VERSION)\n"
+	@echo "==> Building $(TARGET) Version $(VERSION) Full Version $(FULL_VERSION)"
 	$(CC) $(CFLAGS) -I/usr/include/ $(SRCS) -o $(TARGET) $(LDFLAGS)
-	@printf "$(YELLOW)==>$(RESET) Build complete: $(TARGET) Version $(VERSION) Full Version $(FULL_VERSION)\n"
+	@echo "==> Build complete: $(TARGET) Version $(VERSION) Full Version $(FULL_VERSION)"
 
 termux:
 	@echo "-> [LANG = $$LANG]"
-	@printf "$(YELLOW)==>$(RESET) Building Termux target with clang...\n"
+	@echo "==> Building Termux target with clang..."
 	$(CC) $(CFLAGS) -I/data/data/com.termux/files/usr/include -I$PREFIX/include -I$PREFIX/lib -I$PREFIX/bin -D__ANDROID__ -fPIE $(SRCS) -o watchdogs.tmux $(LDFLAGS) -pie
-	@printf "$(YELLOW)==>$(RESET) Build complete: watchdogs.tmux Version $(VERSION) Full Version $(FULL_VERSION)\n"
+	@echo "==> Build complete: watchdogs.tmux Version $(VERSION) Full Version $(FULL_VERSION)"
 
 windows: $(RESFILE)
 	@echo "-> [LANG = $$LANG]"
-	@printf "$(YELLOW)==>$(RESET) Building Windows target (MinGW)...\n"
+	@echo "==> Building Windows target (MinGW)..."
 	$(CC) $(CFLAGS) -I/ucrt64/include $(SRCS) $(RESFILE) -o watchdogs.win $(LDFLAGS) -liphlpapi -lshlwapi
-	@printf "$(YELLOW)==>$(RESET) Build complete: watchdogs.win Version $(VERSION) Full Version $(FULL_VERSION)\n"
+	@echo "==> Build complete: watchdogs.win Version $(VERSION) Full Version $(FULL_VERSION)"
 
 debug:
 	@echo "-> [LANG = $$LANG]"
-	@printf "$(YELLOW)==>$(RESET) Building DEBUG Version $(VERSION) Full Version $(FULL_VERSION)\n"
+	@echo "==> Building DEBUG Version $(VERSION) Full Version $(FULL_VERSION)"
 	$(CC) $(CFLAGS) -I/usr/include/ $(SRCS) -g -O0 -D_DBG_PRINT -Wall -o watchdogs.debug $(LDFLAGS)
-	@printf "$(YELLOW)==>$(RESET) Build complete: watchdogs.debug Version $(VERSION) Full Version $(FULL_VERSION)\n"
+	@echo "==> Build complete: watchdogs.debug Version $(VERSION) Full Version $(FULL_VERSION)"
 
 termux-debug:
 	@echo "-> [LANG = $$LANG]"
-	@printf "$(YELLOW)==>$(RESET) Building DEBUG Version $(VERSION) Full Version $(FULL_VERSION)\n"
+	@echo "==> Building DEBUG Version $(VERSION) Full Version $(FULL_VERSION)"
 	$(CC) -g -O0 -Wall -fno-omit-frame-pointer -fno-inline -I/data/data/com.termux/files/usr/include -I$PREFIX/include -I$PREFIX/lib -I$PREFIX/bin -D__ANDROID__ $(SRCS) -o watchdogs.debug.tmux $(LDFLAGS)
-	@printf "$(YELLOW)==>$(RESET) Build complete: watchdogs.debug.tmux Version $(VERSION) Full Version $(FULL_VERSION)\n"
+	@echo "==> Build complete: watchdogs.debug.tmux Version $(VERSION) Full Version $(FULL_VERSION)"
 
 windows-debug: $(RESFILE)
 	@echo "-> [LANG = $$LANG]"
-	@printf "$(YELLOW)==>$(RESET) Building DEBUG Version $(VERSION) Full Version $(FULL_VERSION)\n"
+	@echo "==> Building DEBUG Version $(VERSION) Full Version $(FULL_VERSION)"
 	$(CC) $(CFLAGS) -I/ucrt64/include $(SRCS) $(RESFILE) -g -O0 -D_DBG_PRINT -Wall -o watchdogs.debug.win $(LDFLAGS) -liphlpapi -lshlwapi
-	@printf "$(YELLOW)==>$(RESET) Debug build complete: ./watchdogs.debug.win\n"
+	@echo "==> Debug build complete: ./watchdogs.debug.win"

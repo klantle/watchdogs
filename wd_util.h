@@ -106,6 +106,7 @@ win32_chmod(const char *path) {
 #define OS_SIGNAL_LINUX   CRC32_FALSE
 #define OS_SIGNAL_UNKNOWN CRC32_UNKNOWN
 
+#define MAX_SEF_EMPTY 0
 #define MAX_SEF_ENTRIES 28
 #define MAX_SEF_PATH_SIZE WD_PATH_MAX
 
@@ -140,8 +141,10 @@ struct struct_of { int (*title)(const char *); };
 extern const char* __command[];
 extern const size_t __command_len;
 const char *wd_get_cwd(void);
-size_t wd_strcnpy(char *dest, const char *src, size_t size);
-size_t wd_strcpy(char *dest, const char *src, size_t size);
+size_t wd_strcpys(char *dest, const char *src, size_t size);
+size_t wd_strncpys(char *dest, const char *src, size_t size);
+#define wd_strcpy(x, y) wd_strcpys(x, y, sizeof(x))
+#define wd_strncpy(x, y, z) wd_strncpys(x, y, z)
 int wd_snprintf(char *buf, size_t size, const char *fmt, ...);
 char* wd_masked_text(int reveal, const char *text);
 int mkdir_recusrs(const char *path);

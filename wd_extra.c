@@ -494,16 +494,16 @@ void compiler_detailed(const char *pawn_output, int debug,
 					 int stack_size, int total_size)
 {
       char size_compiler[256];
-      snprintf(size_compiler, sizeof(size_compiler),
-               "COMPILE COMPLETE :) | WITH ~%d ERROR | ~%d WARNING",
-               ecnt, wcnt);
+      wd_snprintf(size_compiler, sizeof(size_compiler),
+                  "COMPILE COMPLETE :) | WITH ~%d ERROR | ~%d WARNING",
+                  ecnt, wcnt);
       wd_set_title(size_compiler);
 
       int amx_access = path_acces(pawn_output);
       if (amx_access && debug != 0) {
                 unsigned long hash = djb2_hash_file(pawn_output);
                 printf("Header : %dB  |  Total        : %dB\n"
-                       "Code   : %dB  |  hash (djb2)  : %dB\n"
+                       "Code   : %dB  |  hash (djb2)  : %lu\n"
                        "Data   : %dB\n"
                        "Stack  : %dB\n",
                        header_size, total_size, code_size,

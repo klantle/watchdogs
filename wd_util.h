@@ -141,10 +141,8 @@ struct struct_of { int (*title)(const char *); };
 extern const char* __command[];
 extern const size_t __command_len;
 const char *wd_get_cwd(void);
-size_t wd_strcpys(char *dest, const char *src, size_t size);
-size_t wd_strncpys(char *dest, const char *src, size_t size);
-#define wd_strcpy(x, y) wd_strcpys(x, y, sizeof(x))
-#define wd_strncpy(x, y, z) wd_strncpys(x, y, z)
+char *wd_strcpy(char *dest, const char *src);
+char *wd_strncpy(char *dest, const char *src, size_t n);
 int wd_snprintf(char *buf, size_t size, const char *fmt, ...);
 char* wd_masked_text(int reveal, const char *text);
 int mkdir_recusrs(const char *path);
@@ -155,6 +153,8 @@ int is_native_windows(void);
 void wd_printfile(const char *path);
 int wd_set_title(const char *__title);
 void wd_strip_dot_fns(char *dst, size_t dst_sz, const char *src);
+unsigned char wd_tolower(unsigned char c);
+bool wd_strcase(const char *text, const char *pattern);
 bool strfind(const char *text, const char *pattern);
 void wd_escape_quotes(char *dest, size_t size, const char *src);
 extern const char* wd_find_near_command(

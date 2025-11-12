@@ -91,7 +91,8 @@ void wd_sef_fdir_reset(void) {
 		memset(wcfg.wd_sef_found_list, MAX_SEF_EMPTY, sizeof(wcfg.wd_sef_found_list));
 }
 
-static char cwd_cache[WD_PATH_MAX] = { 0 };
+static char
+cwd_cache[WD_PATH_MAX] = { 0 };
 
 static void __wd_init_cwd(void) {
 #ifdef _WIN32
@@ -119,32 +120,35 @@ const char *wd_get_cwd(void) {
 	    return cwd_cache;
 }
 
-size_t wd_strcpys(char *dest, const char *src, size_t size) {
-	    if (size == 0)
-	    	return 0;
 
-	    size_t len = strlen(src);
-	    if (len >= size)
-	        len = size - 1;
+char *wd_strcpy(char *dest, const char *src) {
+	    if (!dest || !src)
+	        return NULL;
 
-	    memcpy(dest, src, len);
-	    dest[len] = '\0';
-	    
-	    return len;
+	    char *d = dest;
+	    const char *s = src;
+
+	    for (; (*d++ = *s++); )
+	        ;
+
+	    return dest;
 }
 
-size_t wd_strncpys(char *dest, const char *src, size_t size) {
-	    if (size == 0)
-	    	return 0;
+char *wd_strncpy(char *dest, const char *src, size_t n) {
+	    if (!dest || !src || n == 0)
+	        return dest;
 
-	    size_t len = strlen(src);
-	    if (len >= size)
-	        len = size - 1;
+	    char *d = dest;
+	    const char *s = src;
+	    size_t i;
 
-	    memcpy(dest, src, len);
-	    dest[len] = '\0';
+	    for (i = 0; i < n && (*d++ = *s++); i++)
+	        ;
 
-	    return len;
+	    for (; i < n; i++)
+	        *d++ = '\0';
+
+	    return dest;
 }
 
 int wd_snprintf(char *buf, size_t size, const char *fmt, ...) {
@@ -351,38 +355,62 @@ void wd_strip_dot_fns(char *dst, size_t dst_sz, const char *src)
 		wd_snprintf(dst, dst_sz, "%s", src);
 }
 
+unsigned char wd_tolower(unsigned char c) {
+    	return (unsigned char)(c + ((c - 'A') <= ('Z' - 'A') ? 32 : 0));
+}
+
+bool
+wd_strcase(const char *text, const char *pattern) {
+		for (const char *p = text; *p; p++) {
+		    const char *a = p, *b = pattern;
+		    while (*a && *b && (((*a | 32) == (*b | 32))))
+		          a++; b++;
+		    if (!*b) return true;
+		}
+		return false;
+}
 
 bool strfind(const char *text, const char *pattern) {
-	    const size_t n = strlen(text);
-	    const size_t m = strlen(pattern);
-	    if (m == 0 || n < m) return false;
+	    if (!text || !pattern)
+	        return false;
+
+	    size_t n = 0;
+	    while (text[n]) n++;
+	    size_t m = 0;
+	    while (pattern[m]) m++;
+
+	    if (m == 0 || n < m)
+	        return false;
 
 	    unsigned char pat[256];
-	    for (size_t i = 0; i < m; i++)
-	        pat[i] = (unsigned char) \
-	    			tolower((unsigned char)pattern[i]);
-
 	    uint8_t skip[256];
-	    memset(skip, m, sizeof(skip));
+
+	    for (size_t i = 0; i < m; i++)
+	        pat[i] = wd_tolower((unsigned char)pattern[i]);
+
+	    for (size_t i = 0; i < 256; i++)
+	        skip[i] = (uint8_t)m;
+
 	    for (size_t i = 0; i < m - 1; i++)
 	        skip[pat[i]] = (uint8_t)(m - 1 - i);
 
-	    const unsigned char *txt;
-	    txt = (const unsigned char *)text;
+	    const unsigned char *txt = (const unsigned char *)text;
 	    size_t i = 0;
 
 	    while (i <= n - m) {
-	        unsigned char last = tolower(txt[i + m - 1]);
-	        if (pat[m - 1] == last) {
+	        unsigned char c1 = wd_tolower(txt[i + m - 1]);
+	        if (c1 == pat[m - 1]) {
 	            size_t j = m - 1;
-	            while (j > 0 &&
-	            	   pat[j - 1] == tolower(txt[i + j - 1]))
-	                j--;
-	            if (j == 0)
+	            for (; j >= 2; j -= 2) {
+	                if (pat[j - 1] != wd_tolower(txt[i + j - 1])) break;
+	                if (pat[j - 2] != wd_tolower(txt[i + j - 2])) break;
+	            }
+	            if (j < 2 || (j == 1 && pat[0] == wd_tolower(txt[i])))
 	                return true;
 	        }
-	        i += skip[last];
+	        i += skip[c1];
 	    }
+
 	    return false;
 }
 

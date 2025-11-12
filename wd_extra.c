@@ -29,79 +29,79 @@ char *RST = "\x1b[0m";
 
 void println(FILE *stream, const char *format, ...)
 {
-		va_list args;
+	va_list args;
 
-		va_start(args, format);
-		vprintf(format, args);
-		printf("\n");
-		va_end(args);
+	va_start(args, format);
+	vprintf(format, args);
+	printf("\n");
+	va_end(args);
 
-		fflush(stream);
+	fflush(stream);
 }
 
 void printf_color(FILE *stream, const char *color, const char *format, ...)
 {
-		va_list args;
+	va_list args;
 
-		va_start(args, format);
-		printf("%s", color);
-		vprintf(format, args);
-		printf("%s", FCOLOUR_DEFAULT);
-		va_end(args);
+	va_start(args, format);
+	printf("%s", color);
+	vprintf(format, args);
+	printf("%s", FCOLOUR_DEFAULT);
+	va_end(args);
 
-		fflush(stream);
+	fflush(stream);
 }
 
 void printf_info(FILE *stream, const char *format, ...)
 {
-		va_list args;
+	va_list args;
 
-		va_start(args, format);
-		printf("[INFO] ");
-		vprintf(format, args);
-		printf("\n");
-		va_end(args);
+	va_start(args, format);
+	printf("[INFO] ");
+	vprintf(format, args);
+	printf("\n");
+	va_end(args);
 
-		fflush(stream);
+	fflush(stream);
 }
 
 void printf_warning(FILE *stream, const char *format, ...)
 {
-		va_list args;
+	va_list args;
 
-		va_start(args, format);
-		printf("[WARNING] ");
-		vprintf(format, args);
-		printf("\n");
-		va_end(args);
+	va_start(args, format);
+	printf("[WARNING] ");
+	vprintf(format, args);
+	printf("\n");
+	va_end(args);
 
-		fflush(stream);
+	fflush(stream);
 }
 
 void printf_error(FILE *stream, const char *format, ...)
 {
-		va_list args;
+	va_list args;
 
-		va_start(args, format);
-		printf("[ERROR] ");
-		vprintf(format, args);
-		printf("\n");
-		va_end(args);
+	va_start(args, format);
+	printf("[ERROR] ");
+	vprintf(format, args);
+	printf("\n");
+	va_end(args);
 
-		fflush(stream);
+	fflush(stream);
 }
 
 void printf_crit(FILE *stream, const char *format, ...)
 {
-		va_list args;
+	va_list args;
 
-		va_start(args, format);
-		printf("[CRIT] ");
-		vprintf(format, args);
-		printf("\n");
-		va_end(args);
+	va_start(args, format);
+	printf("[CRIT] ");
+	vprintf(format, args);
+	printf("\n");
+	va_end(args);
 
-		fflush(stream);
+	fflush(stream);
 }
 
 /* Convert Windows FILETIME to time_t (seconds since UNIX epoch) */
@@ -483,10 +483,21 @@ static const char
       int cindex;
       for (cindex = 0; ccs[cindex].cs_t; ++cindex) {
         if (strstr(line, ccs[cindex].cs_t))
-          return ccs[cindex].cs_i;
+            return ccs[cindex].cs_i;
       }
       return NULL;
 }
+
+static const struct {
+        const char *label;
+        int *target;
+} parse_labels[] = {
+        {"Header size:", NULL},
+        {"Code size:", NULL},
+        {"Data size:", NULL},
+        {"Stack/heap size:", NULL},
+        {"Total requirements:", NULL},
+};
 
 void compiler_detailed(const char *pawn_output, int debug,
 					 int wcnt, int ecnt, const char *compiler_ver,
@@ -536,82 +547,67 @@ void compiler_detailed(const char *pawn_output, int debug,
       return;
 }
 
-void
-cause_compiler_expl(const char *log_file, const char *pawn_output, int debug)
+void cause_compiler_expl(const char *log_file,
+                              const char *pawn_output,
+                              int debug)
 {
-      FILE *plog;
-      char size_buff[WD_MAX_PATH];
+      FILE *plog = fopen(log_file, "r");
+      if (!plog)
+        return;
+
+      char line[WD_MAX_PATH];
       int wcnt = 0, ecnt = 0;
       int header_size = 0, code_size = 0, data_size = 0;
       int stack_size = 0, total_size = 0;
       char compiler_ver[64] = {0};
 
-      plog = fopen(log_file, "r");
-
-      while (fgets(size_buff, sizeof(size_buff), plog)) {
-      	const char *description = NULL, *t_pos = NULL;
-      	int i, mk_pos = 0;
-
-      	if (strstr(size_buff, "Warnings.") ||
-            strstr(size_buff, "Warning.") ||
-            strstr(size_buff, "Errors.") ||
-            strstr(size_buff, "Error."))
+      while (fgets(line, sizeof(line), plog)) {
+        if (wd_strcase(line, "Warnings.") ||
+            wd_strcase(line, "Warning.") ||
+            wd_strcase(line, "Errors.")  ||
+            wd_strcase(line, "Error."))
             continue;
-      	if (strstr(size_buff, "Header size:"))
-        	{
-              sscanf(size_buff, "Header size: %d bytes", &header_size);
-              continue;
-        	}
-      	else if (strstr(size_buff, "Code size:"))
-        	{
-              sscanf(size_buff, "Code size: %d bytes", &code_size);
-              continue;
-        	}
-      	else if (strstr(size_buff, "Data size:"))
-        	{
-              sscanf(size_buff, "Data size: %d bytes", &data_size);
-              continue;
-        	}
-      	else if (strstr(size_buff, "Stack/heap size:"))
-        	{
-              sscanf(size_buff, "Stack/heap size: %d bytes", &stack_size);
-              continue;
-        	}
-      	else if (strstr(size_buff, "Total requirements:"))
-        	{
-              sscanf(size_buff, "Total requirements: %d bytes", &total_size);
-              continue;
-        	}
-      	if (strstr(size_buff, "Pawn compiler "))
-        	{
-              sscanf(size_buff, "Pawn compiler %63s", compiler_ver);
-              continue;
-        	}
 
-      	printf("%s", size_buff);
+        if (wd_strcase(line, "Header size:")) {
+            header_size = strtol(strchr(line, ':') + 1, NULL, 10);
+            continue;
+        } else if (wd_strcase(line, "Code size:")) {
+            code_size = strtol(strchr(line, ':') + 1, NULL, 10);
+            continue;
+        } else if (wd_strcase(line, "Data size:")) {
+            data_size = strtol(strchr(line, ':') + 1, NULL, 10);
+            continue;
+        } else if (wd_strcase(line, "Stack/heap size:")) {
+            stack_size = strtol(strchr(line, ':') + 1, NULL, 10);
+            continue;
+        } else if (wd_strcase(line, "Total requirements:")) {
+            total_size = strtol(strchr(line, ':') + 1, NULL, 10);
+            continue;
+        } else if (wd_strcase(line, "Pawn compiler ")) {
+            const char *p = strstr(line, "Pawn compiler ");
+            if (p) sscanf(p, "Pawn compiler %63s", compiler_ver);
+            continue;
+        }
 
-      	if (strstr(size_buff, "warning"))
-            ++wcnt;
-      	if (strstr(size_buff, "error"))
-            ++ecnt;
+        fputs(line, stdout);
 
-      	description = wd_find_warn_err(size_buff);
-      	if (description) {
-            for (i = 0; ccs[i].cs_t; ++i) {
-            	t_pos = strstr(size_buff, ccs[i].cs_t);
-            	if (t_pos) {
-                  mk_pos = t_pos - size_buff;
-                  break;
-            	}
+        if (wd_strcase(line, "warning")) ++wcnt;
+        if (wd_strcase(line, "error")) ++ecnt;
+
+        const char *description = wd_find_warn_err(line);
+        if (description) {
+            const char *found = NULL;
+            int mk_pos = 0;
+            for (int i = 0; ccs[i].cs_t; ++i) {
+                if ((found = strstr(line, ccs[i].cs_t))) {
+                    mk_pos = found - line;
+                    break;
+                }
             }
-
-            for (i = 0; i < mk_pos; i++)
-            	printf(" ");
-
-            pr_color(stdout,
-                     FCOLOUR_BLUE,
-                     "^ %s :(\n", description);
-      	}
+            for (int i = 0; i < mk_pos; i++)
+                putchar(' ');
+            pr_color(stdout, FCOLOUR_BLUE, "^ %s :(\n", description);
+        }
       }
 
       fclose(plog);
@@ -619,5 +615,4 @@ cause_compiler_expl(const char *log_file, const char *pawn_output, int debug)
       compiler_detailed(pawn_output, debug, wcnt, ecnt,
                         compiler_ver, header_size, code_size,
                         data_size, stack_size, total_size);
-      return;
 }

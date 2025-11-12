@@ -126,7 +126,7 @@ int wd_run_compiler(const char *arg,
 
             for (int i = 0; i < 5; i++) {
                 if (compiler_args[i] != NULL) {
-                    if (strfind(compiler_args[i], "--watch"))
+                    if (strfind(compiler_args[i], "--watchdogs"))
                         ++compiler_has_watchdogs;
                     if(strfind(compiler_args[i], "--debug"))
                         ++compiler_has_debug;

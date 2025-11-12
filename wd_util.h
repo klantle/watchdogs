@@ -134,8 +134,6 @@ typedef struct {
 
 extern WatchdogConfig wcfg;
 
-extern int rate_compiler_check;
-
 void wd_sef_fdir_reset();
 struct struct_of { int (*title)(const char *); };
 extern const char* __command[];

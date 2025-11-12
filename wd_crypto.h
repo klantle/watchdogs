@@ -27,37 +27,37 @@ typedef struct {
         int rounds;
 } AES_KEY;
 
-void OPENSSL_cleanse(void *ptr, size_t len);
+void crypto_crc32_init_table();
 
-uint32_t crc32(const void *data, size_t length);
+uint32_t crypto_generate_crc32(const void *data, size_t length);
 
-void init_crc32_table();
+uint32_t crypto_string_hash(const char *s);
 
-uint32_t hash_str(const char *s);
+unsigned long crypto_djb2_hash_file(const char *filename);
 
-unsigned long djb2_hash_file(const char *filename);
+int crypto_convert_to_hex(const unsigned char *in, int in_len, char **out);
 
-int sha256_hash(const char *input, unsigned char output[SHA256_DIGEST_LENGTH]);
+void crypto_print_hex(const unsigned char *buf, size_t len);
 
-char *base64_encode(const unsigned char *input, int len);
-unsigned char *base64_decode(const char *input, int *out_len);
+int crypto_generate_sha256_hash(const char *input, unsigned char output[SHA256_DIGEST_LENGTH]);
 
-int derive_key_pbkdf2(const char *passphrase, const unsigned char *salt,
+char *crypto_base64_encode(const unsigned char *input, int len);
+unsigned char *crypto_base64_decode(const char *input, int *out_len);
+
+int crypto_derive_key_pbkdf2(const char *passphrase, const unsigned char *salt,
                       int salt_len, unsigned char *key, int key_len);
 
-int encrypt_with_password(const unsigned char *plaintext, int plaintext_len,
+int crypto_encrypt_with_password(const unsigned char *plaintext, int plaintext_len,
                          const char *passphrase, unsigned char **out_blob,
                          int *out_blob_len);
-int decrypt_with_password(const unsigned char *in_blob, int in_blob_len,
+int crypto_decrypt_with_password(const unsigned char *in_blob, int in_blob_len,
                          const char *passphrase, unsigned char **out_plain,
                          int *out_plain_len);
 
-int to_hex(const unsigned char *in, int in_len, char **out);
-
-void aes_encrypt(const uint8_t in[AES_BLOCK_SIZE],
+void crypto_aes_encrypt(const uint8_t in[AES_BLOCK_SIZE],
                  uint8_t out[AES_BLOCK_SIZE],
                  const AES_KEY *key);
-void aes_decrypt(const uint8_t in[AES_BLOCK_SIZE],
+void crypto_aes_decrypt(const uint8_t in[AES_BLOCK_SIZE],
                  uint8_t out[AES_BLOCK_SIZE],
                  const AES_KEY *key);
 

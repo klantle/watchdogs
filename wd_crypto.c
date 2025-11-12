@@ -61,7 +61,7 @@ static const uint32_t k[64] = {
 
 static uint32_t crc32_table[256];
 
-void init_crc32_table() {
+void crypto_crc32_init_table() {
       uint32_t poly = 0xEDB88320;
       for (uint32_t i = 0; i < 256; i++) {
           uint32_t crc = i;
@@ -75,7 +75,7 @@ void init_crc32_table() {
       }
 }
 
-uint32_t crc32(const void *data, size_t length) {
+uint32_t crypto_generate_crc32(const void *data, size_t length) {
       const uint8_t *bytes = (const uint8_t *)data;
       uint32_t crc = 0xFFFFFFFF;
 
@@ -87,7 +87,7 @@ uint32_t crc32(const void *data, size_t length) {
       return crc ^ 0xFFFFFFFF;
 }
 
-uint32_t hash_str(const char *s)
+uint32_t crypto_string_hash(const char *s)
 {
         uint32_t h = 5381;
         int c;
@@ -98,7 +98,7 @@ uint32_t hash_str(const char *s)
         return h;
 }
 
-unsigned long djb2_hash_file(const char *filename) {
+unsigned long crypto_djb2_hash_file(const char *filename) {
       FILE *f = fopen(filename, "rb");
       if (!f) {
           perror("fopen");
@@ -116,8 +116,16 @@ unsigned long djb2_hash_file(const char *filename) {
       return hash;
 }
 
-static void sha256_transform(SHA256_CTX *ctx,
-                             const uint8_t data[SHA256_BLOCK_SIZE]) {
+void crypto_print_hex(const unsigned char *buf, size_t len)
+{
+        for (size_t i = 0; i < len; ++i) {
+            printf("%02x", buf[i]);
+        }
+        putchar('\n');
+}
+
+static void crypto_sha256_transform(SHA256_CTX *ctx,
+                                    const uint8_t data[SHA256_BLOCK_SIZE]) {
         uint32_t a, b, c, d, e, f, g, h;
         uint32_t w[64];
         int i;
@@ -165,7 +173,7 @@ static void sha256_transform(SHA256_CTX *ctx,
         ctx->state[7] += h;
 }
 
-static void sha256_init(SHA256_CTX *ctx) {
+static void crypto_sha256_init(SHA256_CTX *ctx) {
         ctx->state[0] = 0x6a09e667;
         ctx->state[1] = 0xbb67ae85;
         ctx->state[2] = 0x3c6ef372;
@@ -177,7 +185,7 @@ static void sha256_init(SHA256_CTX *ctx) {
         ctx->count = 0;
 }
 
-static void sha256_update(SHA256_CTX *ctx, const uint8_t *data, size_t len) {
+static void crypto_sha256_update(SHA256_CTX *ctx, const uint8_t *data, size_t len) {
         size_t i;
         size_t index = ctx->count % SHA256_BLOCK_SIZE;
 
@@ -185,7 +193,7 @@ static void sha256_update(SHA256_CTX *ctx, const uint8_t *data, size_t len) {
 
         for (i = 0; i + SHA256_BLOCK_SIZE <= len; i += SHA256_BLOCK_SIZE) {
                 memcpy(ctx->buffer + index, data + i, SHA256_BLOCK_SIZE - index);
-                sha256_transform(ctx, ctx->buffer);
+                crypto_sha256_transform(ctx, ctx->buffer);
                 index = 0;
         }
 
@@ -194,7 +202,7 @@ static void sha256_update(SHA256_CTX *ctx, const uint8_t *data, size_t len) {
         }
 }
 
-static void sha256_final(SHA256_CTX *ctx, uint8_t digest[SHA256_DIGEST_SIZE]) {
+static void crypto_sha256_final(SHA256_CTX *ctx, uint8_t digest[SHA256_DIGEST_SIZE]) {
         uint64_t bit_count = ctx->count * 8;
         size_t index = ctx->count % SHA256_BLOCK_SIZE;
         int i;
@@ -203,7 +211,7 @@ static void sha256_final(SHA256_CTX *ctx, uint8_t digest[SHA256_DIGEST_SIZE]) {
 
         if (index > 56) {
                 memset(ctx->buffer + index, 0, SHA256_BLOCK_SIZE - index);
-                sha256_transform(ctx, ctx->buffer);
+                crypto_sha256_transform(ctx, ctx->buffer);
                 index = 0;
         }
 
@@ -213,7 +221,7 @@ static void sha256_final(SHA256_CTX *ctx, uint8_t digest[SHA256_DIGEST_SIZE]) {
                 ctx->buffer[63 - i] = (bit_count >> (i * 8)) & 0xff;
         }
 
-        sha256_transform(ctx, ctx->buffer);
+        crypto_sha256_transform(ctx, ctx->buffer);
 
         for (i = 0; i < 8; i++) {
                 digest[i * 4] = (ctx->state[i] >> 24) & 0xff;
@@ -223,22 +231,22 @@ static void sha256_final(SHA256_CTX *ctx, uint8_t digest[SHA256_DIGEST_SIZE]) {
         }
 }
 
-static uint32_t simple_rand(void) {
+static uint32_t crypto_simple_rand(void) {
         static uint32_t seed = 0;
         seed = seed * 1103515245 + 12345;
         return seed;
 }
 
-static void simple_rand_bytes(uint8_t *buf, size_t len) {
+static void crypto_simple_rand_bytes(uint8_t *buf, size_t len) {
         size_t i;
         for (i = 0; i < len; i++) {
-                buf[i] = simple_rand() & 0xff;
+                buf[i] = crypto_simple_rand() & 0xff;
         }
 }
 
-static void hmac_sha256(const uint8_t *key, size_t key_len,
-                                           const uint8_t *data, size_t data_len,
-                                           uint8_t digest[SHA256_DIGEST_SIZE]) {
+static void crypto_hmac_sha256(const uint8_t *key, size_t key_len,
+                               const uint8_t *data, size_t data_len,
+                               uint8_t digest[SHA256_DIGEST_SIZE]) {
         SHA256_CTX ctx;
         uint8_t k_ipad[SHA256_BLOCK_SIZE];
         uint8_t k_opad[SHA256_BLOCK_SIZE];
@@ -249,9 +257,9 @@ static void hmac_sha256(const uint8_t *key, size_t key_len,
         memset(k_opad, 0, sizeof(k_opad));
 
         if (key_len > SHA256_BLOCK_SIZE) {
-                sha256_init(&ctx);
-                sha256_update(&ctx, key, key_len);
-                sha256_final(&ctx, tmp);
+                crypto_sha256_init(&ctx);
+                crypto_sha256_update(&ctx, key, key_len);
+                crypto_sha256_final(&ctx, tmp);
                 memcpy(k_ipad, tmp, SHA256_DIGEST_SIZE);
                 memcpy(k_opad, tmp, SHA256_DIGEST_SIZE);
         } else {
@@ -264,44 +272,44 @@ static void hmac_sha256(const uint8_t *key, size_t key_len,
                 k_opad[i] ^= 0x5c;
         }
 
-        sha256_init(&ctx);
-        sha256_update(&ctx, k_ipad, SHA256_BLOCK_SIZE);
-        sha256_update(&ctx, data, data_len);
-        sha256_final(&ctx, tmp);
+        crypto_sha256_init(&ctx);
+        crypto_sha256_update(&ctx, k_ipad, SHA256_BLOCK_SIZE);
+        crypto_sha256_update(&ctx, data, data_len);
+        crypto_sha256_final(&ctx, tmp);
 
-        sha256_init(&ctx);
-        sha256_update(&ctx, k_opad, SHA256_BLOCK_SIZE);
-        sha256_update(&ctx, tmp, SHA256_DIGEST_SIZE);
-        sha256_final(&ctx, digest);
+        crypto_sha256_init(&ctx);
+        crypto_sha256_update(&ctx, k_opad, SHA256_BLOCK_SIZE);
+        crypto_sha256_update(&ctx, tmp, SHA256_DIGEST_SIZE);
+        crypto_sha256_final(&ctx, digest);
 }
 
-void aes_encrypt(const uint8_t in[AES_BLOCK_SIZE],
+void crypto_aes_encrypt(const uint8_t in[AES_BLOCK_SIZE],
                                            uint8_t out[AES_BLOCK_SIZE],
                                            const AES_KEY *key) {
         memcpy(out, in, AES_BLOCK_SIZE);
 }
 
-void aes_decrypt(const uint8_t in[AES_BLOCK_SIZE],
+void crypto_aes_decrypt(const uint8_t in[AES_BLOCK_SIZE],
                                            uint8_t out[AES_BLOCK_SIZE],
                                            const AES_KEY *key) {
         memcpy(out, in, AES_BLOCK_SIZE);
 }
 
-int sha256_hash(const char *input, unsigned char output[32])
+int crypto_generate_sha256_hash(const char *input, unsigned char output[32])
 {
         SHA256_CTX ctx;
 
         if (!input || !output)
                 return __RETZ;
 
-        sha256_init(&ctx);
-        sha256_update(&ctx, (const uint8_t *)input, strlen(input));
-        sha256_final(&ctx, output);
+        crypto_sha256_init(&ctx);
+        crypto_sha256_update(&ctx, (const uint8_t *)input, strlen(input));
+        crypto_sha256_final(&ctx, output);
 
         return __RETN;
 }
 
-char *base64_encode(const unsigned char *input, int len)
+char *crypto_base64_encode(const unsigned char *input, int len)
 {
         char *buffer;
         int i, j;
@@ -331,7 +339,7 @@ char *base64_encode(const unsigned char *input, int len)
         return buffer;
 }
 
-unsigned char *base64_decode(const char *input, int *out_len)
+unsigned char *crypto_base64_decode(const char *input, int *out_len)
 {
         unsigned char *buffer;
         int input_len, buffer_len;
@@ -386,8 +394,8 @@ unsigned char *base64_decode(const char *input, int *out_len)
         return buffer;
 }
 
-int derive_key_pbkdf2(const char *passphrase, const unsigned char *salt,
-					  int salt_len, unsigned char *key, int key_len)
+int crypto_derive_key_pbkdf2(const char *passphrase, const unsigned char *salt,
+					         int salt_len, unsigned char *key, int key_len)
 {
         const int iterations = 100000;
         uint8_t u[SHA256_DIGEST_SIZE];
@@ -408,12 +416,12 @@ int derive_key_pbkdf2(const char *passphrase, const unsigned char *salt,
                         salt_buffer[salt_len + 3 - j] = (block_counter >> (j * 8)) & 0xff;
                 }
 
-                hmac_sha256((const uint8_t *)passphrase, strlen(passphrase),
+                crypto_hmac_sha256((const uint8_t *)passphrase, strlen(passphrase),
                                    salt_buffer, salt_len + 4, u);
                 memcpy(t, u, SHA256_DIGEST_SIZE);
 
                 for (j = 1; j < iterations; j++) {
-                        hmac_sha256((const uint8_t *)passphrase, strlen(passphrase),
+                        crypto_hmac_sha256((const uint8_t *)passphrase, strlen(passphrase),
                                            u, SHA256_DIGEST_SIZE, u);
                         for (k = 0; k < SHA256_DIGEST_SIZE; k++) {
                                 t[k] ^= u[k];
@@ -428,7 +436,7 @@ int derive_key_pbkdf2(const char *passphrase, const unsigned char *salt,
         return __RETN;
 }
 
-int encrypt_with_password(const unsigned char *plain, int plaintext_len,
+int crypto_encrypt_with_password(const unsigned char *plain, int plaintext_len,
 						  const char *passphrase, unsigned char **out_blob,
 						  int *out_blob_len)
 {
@@ -442,8 +450,8 @@ int encrypt_with_password(const unsigned char *plain, int plaintext_len,
                 !out_blob || !out_blob_len)
                 return __RETZ;
 
-        simple_rand_bytes(salt, salt_len);
-        simple_rand_bytes(iv, iv_len);
+        crypto_simple_rand_bytes(salt, salt_len);
+        crypto_simple_rand_bytes(iv, iv_len);
 
         total_len = salt_len + iv_len + plaintext_len;
         unsigned char *blob = wd_malloc(total_len);
@@ -460,7 +468,7 @@ int encrypt_with_password(const unsigned char *plain, int plaintext_len,
         return __RETN;
 }
 
-int decrypt_with_password(const unsigned char *in_blob, int in_blob_len,
+int crypto_decrypt_with_password(const unsigned char *in_blob, int in_blob_len,
 						  const char *passphrase, unsigned char **out_plain,
 						  int *out_plain_len)
 {
@@ -487,7 +495,7 @@ int decrypt_with_password(const unsigned char *in_blob, int in_blob_len,
         return __RETN;
 }
 
-int to_hex(const unsigned char *in, int in_len, char **out)
+int crypto_convert_to_hex(const unsigned char *in, int in_len, char **out)
 {
         char *buffer;
         int i;

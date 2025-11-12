@@ -95,6 +95,8 @@ _ptr_command:
                 goto _ptr_command;
         }
 
+        fflush(stdout);
+
         wd_a_history(ptr_command);
 
         _dist_command = wd_find_near_command(ptr_command,
@@ -115,16 +117,22 @@ _reexecute_command:
             if (strlen(arg) == 0) {
                 println(stdout, "Usage: help | help [<command>]");
 
-                for (size_t i = 0; i < __command_len; i++)
-                    printf(" --|> %s\n", __command[i]);
+                for (size_t i = 0; i < __command_len; i++) {
+                    if (strstr(__command[i], "help"))
+                        continue;
+                    printf("\t@ [=| %s\n", __command[i]);
+                }
             } else if (strcmp(arg, "clear") == 0) { println(stdout, "clear: clear screen watchdogs. | Usage: \"clear\"");
             } else if (strcmp(arg, "exit") == 0) { println(stdout, "exit: exit from watchdogs. | Usage: \"exit\"");
             } else if (strcmp(arg, "kill") == 0) { println(stdout, "kill: refresh terminal watchdogs. | Usage: \"kill\"");
             } else if (strcmp(arg, "title") == 0) { println(stdout, "title: set-title terminal watchdogs. | Usage: \"title\" | [<args>]");
+            } else if (strcmp(arg, "sha256") == 0) { println(stdout, "sha256: generate sha256. | Usage: \"sha256\" | [<args>]");
+            } else if (strcmp(arg, "crc32") == 0) { println(stdout, "crc32: generate crc32. | Usage: \"crc32\" | [<args>]");
+            } else if (strcmp(arg, "djb2") == 0) { println(stdout, "djb2: generate djb2 hash file. | Usage: \"djb2\" | [<args>]");
             } else if (strcmp(arg, "time") == 0) { println(stdout, "time: print current time. | Usage: \"time\"");
             } else if (strcmp(arg, "stopwatch") == 0) { println(stdout, "stopwatch: calculating time. Usage: \"stopwatch\" | [<args>]");
             } else if (strcmp(arg, "install") == 0) { println(stdout, "install: download & install depends | Usage: \"install\" |"
-                                                                      "[<args>]\n\t- install github.com/github.com/gitea.com:user/repo:tags");
+                                                                      "[<args>]\n\t- install user/repo:tag (github only)");
             } else if (strcmp(arg, "upstream") == 0) { println(stdout, "upstream: print newer commits from upstream (gitlab). | Usage: \"upstream\"");
             } else if (strcmp(arg, "hardware") == 0) { println(stdout, "hardware: hardware information. | Usage: \"hardware\"");
             } else if (strcmp(arg, "gamemode") == 0) { println(stdout, "gamemode: download sa-mp gamemode. | Usage: \"gamemode\"");
@@ -160,13 +168,11 @@ _reexecute_command:
                 wd_run_command("cls");
             }
 
-            rate_compiler_check = 0;
-
             __function__();
 
             goto _ptr_command;
         } else if (strncmp(ptr_command, "title", 5) == 0) {
-            char *arg = ptr_command + 6;
+            char *arg = ptr_command + 5;
             while (*arg == ' ') ++arg;
 
             if (*arg == '\0') {
@@ -175,6 +181,69 @@ _reexecute_command:
                 char title_set[128];
                 wd_snprintf(title_set, sizeof(title_set), "%s", arg);
                 wd_set_title(title_set);
+            }
+
+            goto done;
+        } else if (strncmp(ptr_command, "sha256", 6) == 0) {
+            char *arg = ptr_command + 6;
+            while (*arg == ' ') ++arg;
+
+            if (*arg == '\0') {
+                println(stdout, "Usage: sha256 [<words>]");
+            } else {
+                unsigned char digest[32];
+
+                if (crypto_generate_sha256_hash(arg, digest) != __RETN) {
+                    goto done;
+                }
+
+                printf("Crypto Input : %s\n", arg);
+                printf("Crypto Output (SHA256) : ");
+                crypto_print_hex(digest, sizeof(digest));
+            }
+
+            goto done;
+        } else if (strncmp(ptr_command, "crc32", 5) == 0) {
+            char *arg = ptr_command + 5;
+            while (*arg == ' ') ++arg;
+
+            if (*arg == '\0') {
+                println(stdout, "Usage: crc32 [<words>]");
+            } else {
+                static int init_crc32 = 0;
+                if (init_crc32 != 1) {
+                    init_crc32 = 1;
+                    crypto_crc32_init_table();
+                }
+
+                uint32_t crc32_generate;
+                crc32_generate = crypto_generate_crc32(arg, sizeof(arg) - 1);
+                char crc_str[9];
+                sprintf(crc_str, "%08X", crc32_generate);
+
+                if (crc32_generate) {
+                    printf("Crypto Input : %s\n", arg);
+                    printf("Crypto Output (CRC32) : ");
+                    printf("%s\n", crc_str);
+                }
+            }
+
+            goto done;
+        } else if (strncmp(ptr_command, "djb2", 4) == 0) {
+            char *arg = ptr_command + 4;
+            while (*arg == ' ') ++arg;
+
+            if (*arg == '\0') {
+                println(stdout, "Usage: djb2 [<file>]");
+            } else {
+                unsigned long djb2_generate;
+                djb2_generate = crypto_djb2_hash_file(arg);
+
+                if (djb2_generate) {
+                    printf("Crypto Input : %s\n", arg);
+                    printf("Crypto Output (DJB2) : ");
+                    printf("%#lx\n", djb2_generate);
+                }
             }
 
             goto done;
@@ -242,11 +311,8 @@ _reexecute_command:
 
             goto done;
         } else if (strcmp(ptr_command, "toml") == 0) {
-            if (access("watchdogs.toml", F_OK) == 0) {
+            if (access("watchdogs.toml", F_OK) == 0)
                 remove("watchdogs.toml");
-            }
-
-            rate_compiler_check = 0;
 
             __function__();
 
@@ -581,23 +647,20 @@ loop_ipcc3:
             goto done;
         } else if (strncmp(ptr_command, "compile", 7) == 0) {
             wd_set_title("Watchdogs | @ compile");
-            
+
             char *arg;
             arg = ptr_command + 7;
             while (*arg == ' ') ++arg;
             char *compile_args;
             compile_args = strtok(arg, " ");
-            char *second_arg = NULL;
+            char *second_arg = NULL, *four_arg = NULL,
+                 *five_arg = NULL, *six_arg = NULL,
+                 *seven_arg = NULL, *eight_arg = NULL;
             second_arg = strtok(NULL, " ");
-            char *four_arg = NULL;
             four_arg = strtok(NULL, " ");
-            char *five_arg = NULL;
             five_arg = strtok(NULL, " ");
-            char *six_arg = NULL;
             six_arg = strtok(NULL, " ");
-            char *seven_arg = NULL;
             seven_arg = strtok(NULL, " ");
-            char *eight_arg;
             eight_arg = strtok(NULL, " ");
 
             wd_run_compiler(arg,
@@ -825,8 +888,9 @@ n_loop_igm2:
                 }
 
                 goto done;
-        } else if (strncmp(ptr_command, "crunn", 7) == 0) {
+        } else if (strcmp(ptr_command, "crunn") == 0) {
             wd_set_title("Watchdogs | @ crunn");
+
             const char *arg = NULL;
             /* target */
             const char *compile_args = NULL;
@@ -958,12 +1022,11 @@ L"\t\t   W   A   T   C   H   D   O   G   S\n");
                 goto done;
             }
         } else {
-            if (
-                strfind(ptr_command, "sh") ||
-                strfind(ptr_command, "bash") ||
-                strfind(ptr_command, "zsh") ||
-                strfind(ptr_command, "make") ||
-                strfind(ptr_command, "cd")
+            if (strstr(ptr_command, "sh") ||
+                strstr(ptr_command, "bash") ||
+                strstr(ptr_command, "zsh") ||
+                strstr(ptr_command, "make") ||
+                strstr(ptr_command, "cd")
                 )
             {
                     pr_error(stdout, "You can't run it!");
@@ -978,6 +1041,7 @@ L"\t\t   W   A   T   C   H   D   O   G   S\n");
         }
 
 done:
+        fflush(stdout);
         if (ptr_command) {
             wd_free(ptr_command);
             ptr_command = NULL;

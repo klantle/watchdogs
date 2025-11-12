@@ -39,6 +39,9 @@ const char* __command[]={
 				"exit",
 				"kill",
 				"title",
+				"sha256",
+				"crc32",
+				"djb2",
 				"time",
 				"stopwatch",
 				"toml",
@@ -820,45 +823,41 @@ __toml_add_directory_path(FILE *toml_file, int *first, const char *path)
 		fprintf(toml_file, "\"%s\"", path);
 }
 
-int rate_compiler_check = 0;
 static void wd_check_compiler_options(int *compatibility, int *optimized_lt)
 {
-		if (rate_compiler_check == 0) {
-			rate_compiler_check = 1;
-			char run_cmd[WD_PATH_MAX + 258];
-			FILE *proc_file;
-			char log_line[1024];
+		char run_cmd[WD_PATH_MAX + 258];
+		FILE *proc_file;
+		char log_line[1024];
 
-			wd_snprintf(run_cmd, sizeof(run_cmd),
-						"%s -___DDDDDDDDDDDDDDDDD "
-						"-___DDDDDDDDDDDDDDDDD"
-						"-___DDDDDDDDDDDDDDDDD-"
-						"___DDDDDDDDDDDDDDDDD > .__CP.log 2>&1",
-						wcfg.wd_sef_found_list[0]);
-			wd_run_command(run_cmd);
+		wd_snprintf(run_cmd, sizeof(run_cmd),
+					"%s -___DDDDDDDDDDDDDDDDD "
+					"-___DDDDDDDDDDDDDDDDD"
+					"-___DDDDDDDDDDDDDDDDD-"
+					"___DDDDDDDDDDDDDDDDD > .__CP.log 2>&1",
+					wcfg.wd_sef_found_list[0]);
+		wd_run_command(run_cmd);
 
-			int found_Z = 0, found_ver = 0;
-			proc_file = fopen(".__CP.log", "r");
+		int found_Z = 0, found_ver = 0;
+		proc_file = fopen(".__CP.log", "r");
 
-			if (proc_file) {
-				while (fgets(log_line, sizeof(log_line), proc_file) != NULL) {
-					if (!found_Z && strstr(log_line, "-Z"))
-						found_Z = 1;
-					if (!found_ver && strstr(log_line, "3.10.11"))
-						found_ver = 1;
-				}
-				if (found_Z)
-					*compatibility = 1;
-				if (found_ver)
-					*optimized_lt = 1;
-				fclose(proc_file);
-			} else {
-				pr_error(stdout, "Failed to open .__CP.log");
+		if (proc_file) {
+			while (fgets(log_line, sizeof(log_line), proc_file) != NULL) {
+				if (!found_Z && strstr(log_line, "-Z"))
+					found_Z = 1;
+				if (!found_ver && strstr(log_line, "3.10.11"))
+					found_ver = 1;
 			}
-
-			if (path_acces(".__CP.log"))
-					remove(".__CP.log");
+			if (found_Z)
+				*compatibility = 1;
+			if (found_ver)
+				*optimized_lt = 1;
+			fclose(proc_file);
+		} else {
+			pr_error(stdout, "Failed to open .__CP.log");
 		}
+
+		if (path_acces(".__CP.log"))
+				remove(".__CP.log");
 }
 
 static int wd_parse_toml_config(void)
@@ -1074,7 +1073,7 @@ int wd_set_toml(void)
 		FILE *toml_file;
 
 		wd_os_type = wd_detect_os();
-		
+
 		if (dir_exists("qawno") &&
 			dir_exists("components"))
 			_is_samp_ = 0;
@@ -1085,7 +1084,7 @@ int wd_set_toml(void)
 			static int crit_nf = 0;
 			if (crit_nf == 0) {
 				crit_nf = 1;
-				pr_crit(stdout, "can't locate sa-mp/open.mp server!");	
+				pr_crit(stdout, "can't locate sa-mp/open.mp server!");
 				return __RETZ;
 			}
 		}

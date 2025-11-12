@@ -129,37 +129,46 @@ int dep_check_url (const char *url, const char *github_token)
 		return (res == CURLE_OK && response_code >= 200 && response_code < 300);
 }
 
-int dep_http_get_content (const char *url, char **out_html)
+int dep_http_get_content (const char *url, const char *github_token, char **out_html)
 {
-		CURL *curl;
-		struct dep_curl_buffer buffer = { 0 };
-		CURLcode res;
+        CURL *curl;
+        struct dep_curl_buffer buffer = { 0 };
+        CURLcode res;
+        struct curl_slist *headers = NULL;
 
-		curl = curl_easy_init();
-		if (!curl)
-				return __RETZ;
+        curl = curl_easy_init();
+        if (!curl)
+            return __RETZ;
 
-		curl_easy_setopt(curl, CURLOPT_URL, url);
-		curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, dep_curl_write_cb);
-		curl_easy_setopt(curl, CURLOPT_WRITEDATA, (void *)&buffer);
-		curl_easy_setopt(curl, CURLOPT_USERAGENT, "watchdogs/1.0");
-		curl_easy_setopt(curl, CURLOPT_FOLLOWLOCATION, 1L);
-		curl_easy_setopt(curl, CURLOPT_CONNECTTIMEOUT, 15L);
-		curl_easy_setopt(curl, CURLOPT_TIMEOUT, 60L);
+        if (github_token && strlen(github_token) > 0 && !strstr(github_token, "DO_HERE")) {
+            char auth_header[512];
+            wd_snprintf(auth_header, sizeof(auth_header), "Authorization: token %s", github_token);
+            headers = curl_slist_append(headers, auth_header);
+        }
 
-		verify_cacert_pem(curl);
+        headers = curl_slist_append(headers, "User-Agent: watchdogs/1.0");
+        curl_easy_setopt(curl, CURLOPT_HTTPHEADER, headers);
 
-		fflush(stdout);
-		res = curl_easy_perform(curl);
-		curl_easy_cleanup(curl);
+        curl_easy_setopt(curl, CURLOPT_URL, url);
+        curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, dep_curl_write_cb);
+        curl_easy_setopt(curl, CURLOPT_WRITEDATA, (void *)&buffer);
+        curl_easy_setopt(curl, CURLOPT_FOLLOWLOCATION, 1L);
+        curl_easy_setopt(curl, CURLOPT_CONNECTTIMEOUT, 15L);
+        curl_easy_setopt(curl, CURLOPT_TIMEOUT, 60L);
 
-		if (res != CURLE_OK || buffer.size == 0) {
-				wd_free(buffer.data);
-				return __RETZ;
-		}
+        verify_cacert_pem(curl);
 
-		*out_html = buffer.data;
-		return __RETN;
+        res = curl_easy_perform(curl);
+        curl_easy_cleanup(curl);
+        curl_slist_free_all(headers);
+
+        if (res != CURLE_OK || buffer.size == 0) {
+            wd_free(buffer.data);
+            return __RETZ;
+        }
+
+        *out_html = buffer.data;
+        return __RETN;
 }
 
 static char *dep_get_assets (char **deps_assets, int count, const char *preferred_os)
@@ -226,18 +235,6 @@ dep_parse_repo(const char *input, struct dep_repo_info *__deps_data)
 			wd_strcpy(__deps_data->host, "github");
 			wd_strcpy(__deps_data->domain, "github.com");
 			path += 7;
-		} else if (!strncmp(path, "gitlab/", 7)) {
-			wd_strcpy(__deps_data->host, "gitlab");
-			wd_strcpy(__deps_data->domain, "gitlab.com");
-			path += 7;
-		} else if (!strncmp(path, "gitea/", 6)) {
-			wd_strcpy(__deps_data->host, "gitea");
-			wd_strcpy(__deps_data->domain, "gitea.com");
-			path += 6;
-		} else if (!strncmp(path, "sourceforge/", 12)) {
-			wd_strcpy(__deps_data->host, "sourceforge");
-			wd_strcpy(__deps_data->domain, "sourceforge.net");
-			path += 12;
 		} else {
 			first_slash = strchr(path, '/');
 			if (first_slash && strchr(path, '.') && strchr(path, '.') < first_slash) {
@@ -249,15 +246,6 @@ dep_parse_repo(const char *input, struct dep_repo_info *__deps_data)
 				if (strstr(domain, "github")) {
 					wd_strcpy(__deps_data->host, "github");
 					wd_strcpy(__deps_data->domain, "github.com");
-				} else if (strstr(domain, "gitlab")) {
-					wd_strcpy(__deps_data->host, "gitlab");
-					wd_strcpy(__deps_data->domain, "gitlab.com");
-				} else if (strstr(domain, "gitea")) {
-					wd_strcpy(__deps_data->host, "gitea");
-					wd_strcpy(__deps_data->domain, "gitea.com");
-				} else if (strstr(domain, "sourceforge")) {
-					wd_strcpy(__deps_data->host, "sourceforge");
-					wd_strcpy(__deps_data->domain, "sourceforge.net");
 				} else {
 					wd_strncpy(__deps_data->domain, domain,
 						sizeof(__deps_data->domain) - 1);
@@ -276,21 +264,13 @@ dep_parse_repo(const char *input, struct dep_repo_info *__deps_data)
 		*repo_slash = '\0';
 		repo = repo_slash + 1;
 
-		if (!strcmp(__deps_data->host, "sourceforge")) {
-			wd_strncpy(__deps_data->user, user, sizeof(__deps_data->user) - 1);
-			wd_strncpy(__deps_data->repo, repo, sizeof(__deps_data->repo) - 1);
+		wd_strncpy(__deps_data->user, user, sizeof(__deps_data->user) - 1);
 
-			if (strlen(__deps_data->user) == 0)
-				wd_strncpy(__deps_data->repo, user, sizeof(__deps_data->repo) - 1);
-		} else {
-			wd_strncpy(__deps_data->user, user, sizeof(__deps_data->user) - 1);
-
-			git_ext = strstr(repo, ".git");
-			if (git_ext)
-				*git_ext = '\0';
-			wd_strncpy(__deps_data->repo, repo, sizeof(__deps_data->repo) - 1);
-		}
-
+		git_ext = strstr(repo, ".git");
+		if (git_ext)
+			*git_ext = '\0';
+		wd_strncpy(__deps_data->repo, repo, sizeof(__deps_data->repo) - 1);
+	
 		if (strlen(__deps_data->user) == 0 || strlen(__deps_data->repo) == 0)
 			return __RETZ;
 
@@ -318,7 +298,7 @@ static int dep_gh_release_assets (const char *user, const char *repo,
 				 "%sapi.github.com/repos/%s/%s/releases/tags/%s",
 				 "https://", user, repo, tag);
 
-		if (!dep_http_get_content(api_url, &json_data))
+		if (!dep_http_get_content(api_url, wcfg.wd_toml_github_tokens, &json_data))
 				return __RETZ;
 
 		p = json_data;
@@ -404,111 +384,6 @@ dep_build_repo_url(const struct dep_repo_info *__deps_data, int is_tag_page,
 					__deps_data->user,
 					__deps_data->repo);
 			}
-		} else if (strcmp(__deps_data->host, "gitlab") == 0) {
-			if (is_tag_page && deps_actual_tag[0]) {
-				wd_snprintf(deps_put_url, deps_put_size,
-					"https://%s/%s/%s/-/tags/%s",
-					__deps_data->domain,
-					__deps_data->user,
-					__deps_data->repo,
-					deps_actual_tag);
-			} else if (deps_actual_tag[0]) {
-				if (!strcmp(deps_actual_tag, "latest")) {
-					wd_snprintf(deps_put_url, deps_put_size,
-						"https://%s/%s/%s/-/archive/main/%s-main.zip",
-						__deps_data->domain,
-						__deps_data->user,
-						__deps_data->repo,
-						__deps_data->repo);
-				} else {
-					wd_snprintf(deps_put_url, deps_put_size,
-						"https://%s/%s/%s/-/archive/%s/%s-%s.tar.gz",
-						__deps_data->domain,
-						__deps_data->user,
-						__deps_data->repo,
-						deps_actual_tag,
-						__deps_data->repo,
-						deps_actual_tag);
-				}
-			} else {
-				wd_snprintf(deps_put_url, deps_put_size,
-					"https://%s/%s/%s/-/archive/main/%s-main.zip",
-					__deps_data->domain,
-					__deps_data->user,
-					__deps_data->repo,
-					__deps_data->repo);
-			}
-		} else if (strcmp(__deps_data->host, "gitea") == 0) {
-			if (is_tag_page && deps_actual_tag[0]) {
-				wd_snprintf(deps_put_url, deps_put_size,
-					"https://%s/%s/%s/%s/tags/%s",
-					__deps_data->domain,
-					__deps_data->user,
-					__deps_data->repo,
-					__deps_data->repo,
-					deps_actual_tag);
-			} else if (deps_actual_tag[0]) {
-				if (!strcmp(deps_actual_tag, "latest")) {
-					wd_snprintf(deps_put_url, deps_put_size,
-						"https://%s/%s/%s/%s/archive/main.zip",
-						__deps_data->domain,
-						__deps_data->user,
-						__deps_data->repo,
-						__deps_data->repo);
-				} else {
-					wd_snprintf(deps_put_url, deps_put_size,
-						"https://%s/%s/%s/%s/archive/%s.tar.gz",
-						__deps_data->domain,
-						__deps_data->user,
-						__deps_data->repo,
-						__deps_data->repo,
-						deps_actual_tag);
-				}
-			} else {
-				wd_snprintf(deps_put_url, deps_put_size,
-					"https://%s/%s/%s/%s/archive/main.zip",
-					__deps_data->domain,
-					__deps_data->user,
-					__deps_data->repo,
-					__deps_data->repo);
-			}
-		} else if (strcmp(__deps_data->host, "sourceforge") == 0) {
-			if (deps_actual_tag[0] && strcmp(deps_actual_tag, "latest")) {
-				wd_snprintf(deps_put_url, deps_put_size,
-					"https://%s%s/projects/%s/files/%s/download",
-					"https://",
-					__deps_data->domain,
-					__deps_data->repo,
-					deps_actual_tag);
-			} else {
-				wd_snprintf(deps_put_url, deps_put_size,
-					"https://%s%s/projects/%s/files/latest/download",
-					"https://",
-					__deps_data->domain,
-					__deps_data->repo);
-			}
-		} else {
-			if (is_tag_page && deps_actual_tag[0]) {
-				wd_snprintf(deps_put_url, deps_put_size,
-					"https://%s/%s/%s/releases/tag/%s",
-					__deps_data->domain,
-					__deps_data->user,
-					__deps_data->repo,
-					deps_actual_tag);
-			} else if (deps_actual_tag[0]) {
-				wd_snprintf(deps_put_url, deps_put_size,
-					"https://%s/%s/%s/archive/refs/tags/%s.tar.gz",
-					__deps_data->domain,
-					__deps_data->user,
-					__deps_data->repo,
-					deps_actual_tag);
-			} else {
-				wd_snprintf(deps_put_url, deps_put_size,
-					"https://%s/%s/%s/archive/refs/heads/main.zip",
-					__deps_data->domain,
-					__deps_data->user,
-					__deps_data->repo);
-			}
 		}
 
 #if defined(_DBG_PRINT)
@@ -530,7 +405,7 @@ static int dep_gh_latest_tag (const char *user, const char *repo,
 				"%sapi.github.com/repos/%s/%s/releases/latest",
 				"https://", user, repo);
 
-		if (!dep_http_get_content(api_url, &json_data))
+		if (!dep_http_get_content(api_url, wcfg.wd_toml_github_tokens, &json_data))
 			return __RETZ;
 
 		p = strstr(json_data, "\"tag_name\"");
@@ -679,31 +554,17 @@ dep_add_ncheck_hash(const char *_H_file_path, const char *_H_json_path)
 			convert_j_path[sizeof(convert_j_path) - 1] = '\0';
 		dep_sym_convert(convert_j_path);
 
-		static int init_crc32 = 0;
-		if (init_crc32 != 1) {
-			init_crc32 = 1;
-			init_crc32_table();
-		}
+        unsigned char digest[32];
 
-		uint32_t crc32_fpath;
-		crc32_fpath = crc32(convert_f_path,
-												sizeof(convert_f_path)-1);
-		char crc_str[9];
-		sprintf(crc_str, "%08X", crc32_fpath);
+        if (crypto_generate_sha256_hash(convert_f_path, digest) != __RETN) {
+        	return 1;
+        }
 
-		if (crc32_fpath) {
-				pr_color(stdout,
-						 FCOLOUR_GREEN,
-						 "[DEPS] Create hash (CRC32) for '%s': '%s'\n",
-						 convert_j_path,
-					     crc_str);
-		} else {
-				pr_error(stdout,
-						"Failed to hash: %s (convert: %s)",
-						convert_j_path,
-						convert_f_path);
-				return 0;
-		}
+		pr_color(stdout,
+				 FCOLOUR_GREEN,
+				 "[DEPS] Create hash (CRC32) for '%s':\n",
+				 convert_j_path);
+		crypto_print_hex(digest, sizeof(digest));
 
 		return 1;
 }
@@ -1190,14 +1051,14 @@ void dep_move_files (const char *dep_dir)
 												parent, dest, parent);
 								}
 								if (wd_run_command(cmd)) {
-										pr_error(stdout, "Failed to move folder: %s\n", parent);
+										pr_error(stdout, "failed to move include: %s\n", parent);
 										continue;
 								}
 						}
 
 						dep_add_ncheck_hash(dest, dest);
 
-						pr_info(stdout, "\tmoved folder: %s to %s/\n",
+						pr_info(stdout, "\tmoved include: %s to %s/\n",
 								dname, !strcmp(wcfg.wd_is_omp, CRC32_TRUE) ?
 								"qawno/include" : "pawno/include");
 				}
@@ -1252,7 +1113,7 @@ void dep_move_files (const char *dep_dir)
 				dep_dir);
 		wd_run_command(rm_cmd);
 
-		wd_main(NULL);
+		return;
 }
 
 void wd_apply_depends (const char *depends_name)

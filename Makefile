@@ -13,7 +13,7 @@ CC       	   ?= clang
 STRIP          ?= llvm-strip
 WINDRES        ?= windres
 
-CFLAGS   = -O2 -pipe -fdata-sections -ffunction-sections
+CFLAGS   = -pipe -fdata-sections -ffunction-sections
 LDFLAGS  =  -lm -lcurl -lreadline -lncursesw -larchive
 
 SRCS = wd_extra.c wd_curl.c wd_unit.c wd_util.c wd_depends.c wd_hardware.c \

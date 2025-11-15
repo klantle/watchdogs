@@ -938,8 +938,8 @@ void dep_move_files (const char *dep_dir)
 		char deps_base_plugins_path[WD_PATH_MAX],
 			 deps_base_components_path[WD_PATH_MAX],
 			 deps_include_full_path[WD_PATH_MAX],
-			 fpath[WD_PATH_MAX * 2],
-			 parent[WD_PATH_MAX],
+			 depends_ipath[WD_PATH_MAX * 2],
+			 deps_parent_dir[WD_PATH_MAX],
 			 dest[WD_MAX_PATH * 2];
 
 		wd_snprintf(deps_base_plugins_path,
@@ -980,22 +980,22 @@ void dep_move_files (const char *dep_dir)
 			wd_snprintf(deps_base_include_path, sizeof(deps_base_include_path), "pawno/include");
 		}
 
-		int stack_size = WD_MAX_PATH;
-		int stack_top = -1;
-		char **dir_stack = wd_malloc(stack_size * sizeof(char*));
+		int dep_stack_size = WD_MAX_PATH;
+		int dep_stack_top = -1;
+		char **dir_stack = wd_malloc(dep_stack_size * sizeof(char*));
 
-		for (int i = 0; i < stack_size; i++) {
+		for (int i = 0; i < dep_stack_size; i++) {
 		    dir_stack[i] = wd_malloc(WD_PATH_MAX);
 		}
 
-		stack_top++;
-		wd_snprintf(dir_stack[stack_top], WD_PATH_MAX, "%s", dep_dir);
+		dep_stack_top++;
+		wd_snprintf(dir_stack[dep_stack_top], WD_PATH_MAX, "%s", dep_dir);
 
-		while (stack_top >= 0) {
+		while (dep_stack_top >= 0) {
 		    char current_dir[WD_PATH_MAX];
 		    wd_snprintf(current_dir, sizeof(current_dir), "%s",
-													   dir_stack[stack_top]);
-		    stack_top--;
+													   dir_stack[dep_stack_top]);
+		    dep_stack_top--;
 
 		    DIR *dir = opendir(current_dir);
 		    if (!dir) continue;
@@ -1004,69 +1004,83 @@ void dep_move_files (const char *dep_dir)
 		    struct stat st;
 
 			while ((item = readdir(dir)) != NULL) {
-					if (wd_is_special_dir(item->d_name))
-						continue;
+				if (wd_is_special_dir(item->d_name))
+					{ continue; }
 
-					wd_snprintf(fpath, sizeof(fpath), "%s/%s", current_dir,
-													item->d_name);
+				wd_snprintf(depends_ipath,
+						sizeof(depends_ipath), "%s/%s", current_dir,
+												item->d_name);
 
-					if (stat(fpath, &st) != 0)
-						continue;
+				if (stat(depends_ipath, &st) != 0)
+					{ continue; }
 
-					if (S_ISDIR(st.st_mode)) {
-						if (stack_top < stack_size - 1) {
-							++stack_top;
-							wd_snprintf(dir_stack[stack_top], WD_MAX_PATH,
-									"%s", fpath);
-						}
-						continue;
+				if (S_ISDIR(st.st_mode)) {
+					if (dep_stack_top < dep_stack_size - 1) {
+						++dep_stack_top;
+						wd_snprintf(dir_stack[dep_stack_top], WD_MAX_PATH,
+								"%s", depends_ipath);
 					}
+					continue;
+				}
 
-					ext = strrchr(item->d_name, '.');
-					if (!ext || strcmp(ext, ".inc"))
+				ext = strrchr(item->d_name, '.');
+				if (!ext || strcmp(ext, ".inc"))
+						continue;
+
+					wd_snprintf(deps_parent_dir,
+							sizeof(deps_parent_dir), "%s", current_dir);
+					dname = strrchr(deps_parent_dir,
+									__PATH_CHR_SEP_LINUX);
+					if (!dname)
 							continue;
 
-						wd_snprintf(parent, sizeof(parent), "%s", current_dir);
-						dname = strrchr(parent, __PATH_CHR_SEP_LINUX);
-						if (!dname)
-								continue;
+					++dname; /* skip __PATH_CHR_SEP_LINUX */
 
-						++dname; /* skip __PATH_CHR_SEP_LINUX */
+					wd_snprintf(dest, sizeof(dest), "%s/%s", deps_base_include_path, dname);
 
-						wd_snprintf(dest, sizeof(dest), "%s/%s", deps_base_include_path, dname);
-
-						if (rename(parent, dest)) {
-								int _is_win32 = 0;
+					if (rename(deps_parent_dir, dest)) {
+							int _is_win32 = 0;
 #ifdef WD_WINDOWS
-								_is_win32 = 1;
+							_is_win32 = 1;
 #endif
-								if (_is_win32) {
-										wd_snprintf(cmd, sizeof(cmd),
-											    "xcopy \"%s\" \"%s\" /E /I /H /Y >nul 2>&1 && "
-											    "rmdir /S /Q \"%s\" >nul 2>&1",
-											    parent, dest, parent);
-								} else {
-										wd_snprintf(cmd, sizeof(cmd),
-												"cp -r \"%s\" \"%s\" && rm -rf \"%s\"",
-												parent, dest, parent);
-								}
-								if (wd_run_command(cmd)) {
-										pr_error(stdout, "failed to move include: %s\n", parent);
-										continue;
-								}
-						}
+							if (_is_win32) {
+									wd_snprintf(cmd, sizeof(cmd),
+										    "xcopy \"%s\" \"%s\" /E /I /H /Y >nul 2>&1 && "
+										    "rmdir /S /Q \"%s\" >nul 2>&1",
+										    deps_parent_dir, dest, deps_parent_dir);
+							} else {
+									wd_snprintf(cmd, sizeof(cmd),
+											"cp -r \"%s\" \"%s\" && rm -rf \"%s\"",
+											deps_parent_dir, dest, deps_parent_dir);
+							}
 
-						dep_add_ncheck_hash(dest, dest);
+			                struct timespec start = {0}, end = {0};
+			                double moving_dur;
 
-						pr_info(stdout, "\tmoved include: %s to %s/\n",
-								dname, !strcmp(wcfg.wd_is_omp, CRC32_TRUE) ?
-								"qawno/include" : "pawno/include");
-				}
+			                clock_gettime(CLOCK_MONOTONIC, &start);
+							wd_run_command_depends(cmd);
+			                clock_gettime(CLOCK_MONOTONIC, &end);
+
+			                moving_dur = (end.tv_sec - start.tv_sec)
+	                                   + (end.tv_nsec - start.tv_nsec) / 1e9;
+
+			            	pr_color(stdout,
+			                         FCOLOUR_CYAN,
+			                         " [MOVE] Include Finished at %.3fs\n",
+			                         moving_dur);
+					}
+
+					dep_add_ncheck_hash(dest, dest);
+
+					pr_info(stdout, "\tmoved include: %s to %s/\n",
+							dname, !strcmp(wcfg.wd_is_omp, CRC32_TRUE) ?
+							"qawno/include" : "pawno/include");
+			}
 
 		    closedir(dir);
 		}
 
-		for (int i = 0; i < stack_size; i++) {
+		for (int i = 0; i < dep_stack_size; i++) {
 		    wd_free(dir_stack[i]);
 		}
 		wd_free(dir_stack);
@@ -1092,8 +1106,21 @@ void dep_move_files (const char *dep_dir)
 						"mv -f \"%s\" \"%s/%s/\"",
 						wcfg.wd_sef_found_list[i], cwd, deps_include_path);
 
-				wd_run_command(size_deps_copy);
+                struct timespec start = {0}, end = {0};
+                double moving_dur;
 
+                clock_gettime(CLOCK_MONOTONIC, &start);
+				wd_run_command_depends(size_deps_copy);
+                clock_gettime(CLOCK_MONOTONIC, &end);
+
+                moving_dur = (end.tv_sec - start.tv_sec)
+                           + (end.tv_nsec - start.tv_nsec) / 1e9;
+
+            	pr_color(stdout,
+                         FCOLOUR_CYAN,
+                         " [MOVE] Include Finished at %.3fs\n",
+                         moving_dur);
+            
 				dep_add_ncheck_hash(fi_depends_name, fi_depends_name);
 				dep_pr_include_directive(fi_depends_name);
 			}

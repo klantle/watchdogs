@@ -73,13 +73,11 @@ int __command__(char *pre_command)
         }
         wcfg.wd_sel_stat = 0;
         int wd_compile_running = 0;
-        char ptr_prompt[WD_PATH_MAX + 56];
+        char ptr_prompt[WD_MAX_PATH];
         size_t size_ptrp = sizeof(ptr_prompt);
         char *ptr_command;
         int c_distance = INT_MAX;
         const char *_dist_command;
-        pr_color(stdout, FCOLOUR_CYAN, "%s", "a");
-
 _ptr_command:
         if (pre_command && pre_command[0] != '\0') {
             ptr_command = strdup(pre_command);
@@ -116,15 +114,16 @@ _reexecute_command:
 
             if (strlen(arg) == 0) {
                 println(stdout, "Usage: help | help [<command>]");
-
                 for (size_t i = 0; i < __command_len; i++) {
-                    if (strstr(__command[i], "help")) {
+                    if (strcmp(__command[i], "help") == 0) {
                         printf("-watchdogs\n");
                         continue;
                     }
-                    if (strstr(__command[i], "ls"))
+                    if (strcmp(__command[i], "ls") == 0)
                         printf("-system\n");
                     printf("\t@ [=| %s\n", __command[i]);
+                    if (strcmp(__command[i], "ps") == 0)
+                        printf("\t* %s\n", "innumerable");
                 }
             } else if (strcmp(arg, "exit") == 0) { println(stdout, "exit: exit from watchdogs. | Usage: \"exit\"");
             } else if (strcmp(arg, "kill") == 0) { println(stdout, "kill: refresh terminal watchdogs. | Usage: \"kill\"");
@@ -137,7 +136,7 @@ _reexecute_command:
             } else if (strcmp(arg, "stopwatch") == 0) { println(stdout, "stopwatch: calculating time. Usage: \"stopwatch\" | [<args>]");
             } else if (strcmp(arg, "install") == 0) { println(stdout, "install: download & install depends | Usage: \"install\" |"
                                                                       "[<args>]\n\t- install user/repo:tag (github only)");
-            } else if (strcmp(arg, "upstream") == 0) { println(stdout, "upstream: print newer commits from upstream (gitlab). | Usage: \"upstream\"");
+            } else if (strcmp(arg, "commits") == 0) { println(stdout, "commits: print newer commits from commits (gitlab). | Usage: \"commits\"");
             } else if (strcmp(arg, "hardware") == 0) { println(stdout, "hardware: hardware information. | Usage: \"hardware\"");
             } else if (strcmp(arg, "gamemode") == 0) { println(stdout, "gamemode: download sa-mp gamemode. | Usage: \"gamemode\"");
             } else if (strcmp(arg, "pawncc") == 0) { println(stdout, "pawncc: download sa-mp pawncc. | Usage: \"pawncc\"");
@@ -147,11 +146,13 @@ _reexecute_command:
             } else if (strcmp(arg, "stop") == 0) { println(stdout, "stop: stopped server task. | Usage: \"stop\"");
             } else if (strcmp(arg, "restart") == 0) { println(stdout, "restart: restart server task. | Usage: \"restart\"");
             } else {
-              printf("help not found!");
+                printf("wd-help can't found for: '");
+                printf_color(stdout, FCOLOUR_YELLOW, "%s", arg);
+                printf("'\n");
             }
             goto done;
         } else if (strcmp(ptr_command, "exit") == 0) {
-            exit(1);
+            exit(0);
         } else if (strcmp(ptr_command, "kill") == 0) {
             wd_set_title("Watchdogs | @ kill");
 
@@ -163,7 +164,10 @@ _reexecute_command:
 
             __function__();
 
-            goto _ptr_command;
+           if (pre_command && pre_command[0] != '\0')
+                goto done;
+            else
+                goto _ptr_command;
         } else if (strncmp(ptr_command, "title", 5) == 0) {
             char *arg = ptr_command + 5;
             while (*arg == ' ') ++arg;
@@ -304,6 +308,8 @@ _reexecute_command:
                 fclose(procc_f);
             }
 
+            printf("\n");
+
             goto done;
         } else if (strncmp(ptr_command, "stopwatch", 9) == 0) {
             struct timespec start, now;
@@ -354,7 +360,7 @@ _reexecute_command:
             }
 
             goto done;
-        } else if (strcmp(ptr_command, "upstream") == 0) {
+        } else if (strcmp(ptr_command, "commits") == 0) {
             CURL *curl_handle;
             CURLcode res;
             struct memory_struct chunk = { 0 };
@@ -560,7 +566,12 @@ loop_igm:
                 if (ret == -__RETN && wcfg.wd_sel_stat != 0)
                     goto loop_igm;
                 else if (ret == __RETZ)
-                    goto _ptr_command;
+                {
+                    if (pre_command && pre_command[0] != '\0')
+                        goto done;
+                    else
+                        goto _ptr_command;
+                }
             } else if (strfind(platform, "W")) {
                 wd_free(ptr_command);
                 wd_free(platform);
@@ -569,11 +580,19 @@ loop_igm2:
                 if (ret == -__RETN && wcfg.wd_sel_stat != 0)
                     goto loop_igm2;
                 else if (ret == __RETZ)
-                    goto _ptr_command;
+                {
+                    if (pre_command && pre_command[0] != '\0')
+                        goto done;
+                    else
+                        goto _ptr_command;
+                }
             } else if (strfind(platform, "E")) {
                 wd_free(ptr_command);
                 wd_free(platform);
-                goto _ptr_command;
+                if (pre_command && pre_command[0] != '\0')
+                        goto done;
+                    else
+                        goto _ptr_command;
             } else {
                 pr_error(stdout, "Invalid platform selection. Input 'E/e' to exit");
                 wd_free(platform);
@@ -605,7 +624,12 @@ loop_ipcc:
                 if (ret == -__RETN && wcfg.wd_sel_stat != 0)
                     goto loop_ipcc;
                 else if (ret == __RETZ)
-                    goto _ptr_command;
+                {
+                    if (pre_command && pre_command[0] != '\0')
+                        goto done;
+                    else
+                        goto _ptr_command;
+                }
             } else if (strfind(platform, "W")) {
                 wd_free(ptr_command);
                 wd_free(platform);
@@ -615,7 +639,12 @@ loop_ipcc2:
                 if (ret == -__RETN && wcfg.wd_sel_stat != 0)
                     goto loop_ipcc2;
                 else if (ret == __RETZ)
-                    goto _ptr_command;
+                {
+                    if (pre_command && pre_command[0] != '\0')
+                        goto done;
+                    else
+                        goto _ptr_command;
+                }
             } else if (strfind(platform, "T")) {
                 wd_free(ptr_command);
                 wd_free(platform);
@@ -625,11 +654,19 @@ loop_ipcc3:
                 if (ret == -__RETN && wcfg.wd_sel_stat != 0)
                     goto loop_ipcc3;
                 else if (ret == __RETZ)
-                    goto _ptr_command;
+                {
+                    if (pre_command && pre_command[0] != '\0')
+                        goto done;
+                    else
+                        goto _ptr_command;
+                }
             } else if (strfind(platform, "E")) {
                 wd_free(ptr_command);
                 wd_free(platform);
-                goto _ptr_command;
+                if (pre_command && pre_command[0] != '\0')
+                        goto done;
+                    else
+                        goto _ptr_command;
             } else {
                 pr_error(stdout, "Invalid platform selection. Input 'E/e' to exit");
                 wd_free(platform);
@@ -982,7 +1019,10 @@ L"\t\t   W   A   T   C   H   D   O   G   S\n");
             SetConsoleOutputCP(originalOutputCP);
             SetConsoleCP(originalInputCP);
 #endif
-            goto _ptr_command;
+            if (pre_command && pre_command[0] != '\0')
+                goto done;
+            else
+                goto _ptr_command;
         } else if (strcmp(ptr_command, _dist_command) != 0 && c_distance <= 2) {
             wd_set_title("Watchdogs | @ undefined");
             printf("did you mean '" FCOLOUR_YELLOW "%s" FCOLOUR_DEFAULT "'", _dist_command);
@@ -1015,15 +1055,18 @@ L"\t\t   W   A   T   C   H   D   O   G   S\n");
                 goto done;
             }
         } else {
-            if (strstr(ptr_command, "sh") ||
-                strstr(ptr_command, "bash") ||
-                strstr(ptr_command, "zsh") ||
-                strstr(ptr_command, "make") ||
-                strstr(ptr_command, "cd")
+            if (!strcmp(ptr_command, "sh") ||
+                !strcmp(ptr_command, "bash") ||
+                !strcmp(ptr_command, "zsh") ||
+                !strcmp(ptr_command, "make") ||
+                !strcmp(ptr_command, "cd")
                 )
             {
                     pr_error(stdout, "You can't run it!");
-                    goto _ptr_command;
+                    if (pre_command && pre_command[0] != '\0')
+                        goto done;
+                    else
+                        goto _ptr_command;
             }
             char _p_command[256];
             wd_snprintf(_p_command, 256, "%s", ptr_command);
@@ -1044,7 +1087,6 @@ done:
 }
 
 void wd_main(void *pre_command) {
-        __function__();
         wd_set_title(NULL);
         int ret = -__RETW;
 

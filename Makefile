@@ -9,6 +9,7 @@ export LC_ALL := C.UTF-8
 VERSION  	   = WD-11.01
 FULL_VERSION   = WD-251101
 TARGET   	   ?= watchdogs
+TARGET_NAME    = Watchdogs
 CC       	   ?= clang
 STRIP          ?= llvm-strip
 WINDRES        ?= windres
@@ -28,7 +29,27 @@ RESFILE = version.res
 
 init:
 	@echo "==> Detecting system environment..."
-	@UNAME_S=$$(uname -s); \
+	@if [ -f "/.dockerenv" ]; then \
+	    echo "==> Detected: Docker environment"; \
+	    if ! command -v sudo >/dev/null 2>&1; then \
+	    	echo "==> Can't found sudo.. installing..."; \
+	    	if command -v apt >/dev/null 2>&1; then \
+				apt update -y && \
+				apt install -y sudo; \
+			elif command -v dnf >/dev/null 2>&1; then \
+				dnf install -y sudo; \
+			elif command -v yum >/dev/null 2>&1; then \
+				yum install -y sudo; \
+			elif command -v zypper >/dev/null 2>&1; then \
+				zypper refresh && \
+				zypper install -y -t sudo; \
+			elif command -v pacman >/dev/null 2>&1; then \
+				pacman -Sy --noconfirm && \
+				pacman -S --needed --noconfirm sudo; \
+			fi; \
+	    fi; \
+	fi; \
+	UNAME_S=$$(uname -s); \
 	if echo "$$UNAME_S" | grep -qi "MINGW64_NT"; then \
 		echo "==> Detected: MSYS2 MinGW UCRT64 environment"; \
 		pacman -Sy --noconfirm && \
@@ -80,7 +101,8 @@ init:
 	else \
 		echo "==> Unknown environment."; \
 		exit 1; \
-	fi
+	fi;
+
 
 all: $(TARGET)
 	@echo "==> Building $(TARGET) Version $(VERSION) Full Version $(FULL_VERSION)"
@@ -122,19 +144,19 @@ clean:
 
 linux:
 	@echo "-> [LANG = $$LANG]"
-	@echo "==> Building $(TARGET) Version $(VERSION) Full Version $(FULL_VERSION)"
+	@echo "==> Building $(TARGET_NAME) for GNU/Linux Version $(VERSION) Full Version $(FULL_VERSION)"
 	$(CC) $(CFLAGS) -I/usr/include/ $(SRCS) -o $(TARGET) $(LDFLAGS)
 	@echo "==> Build complete: $(TARGET) Version $(VERSION) Full Version $(FULL_VERSION)"
 
 termux:
 	@echo "-> [LANG = $$LANG]"
-	@echo "==> Building Termux target with clang..."
+	@echo "==> Building $(TARGET_NAME) for Termux (Android) Version $(VERSION) Full Version $(FULL_VERSION)"
 	$(CC) $(CFLAGS) -I/data/data/com.termux/files/usr/include -I$PREFIX/include -I$PREFIX/lib -I$PREFIX/bin -D__ANDROID__ -fPIE $(SRCS) -o watchdogs.tmux $(LDFLAGS) -pie
 	@echo "==> Build complete: watchdogs.tmux Version $(VERSION) Full Version $(FULL_VERSION)"
 
 windows: $(RESFILE)
 	@echo "-> [LANG = $$LANG]"
-	@echo "==> Building Windows target (MinGW)..."
+	@echo "==> Building $(TARGET_NAME) for Windows (MSYS/UCRT) Version $(VERSION) Full Version $(FULL_VERSION)"
 	$(CC) $(CFLAGS) -I/ucrt64/include $(SRCS) $(RESFILE) -o watchdogs.win $(LDFLAGS) -liphlpapi -lshlwapi
 	@echo "==> Build complete: watchdogs.win Version $(VERSION) Full Version $(FULL_VERSION)"
 

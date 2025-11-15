@@ -247,14 +247,6 @@ static const char *get_compiler_directory(void)
 						dir_path = "pawno";
 		}
 		
-		/* Create include directories if they don't exist */
-		if (stat("pawno/include", &st) != 0 && errno == ENOENT) {
-			mkdir_recusrs("pawno/include");  /* Create pawno/include recursively */
-		}
-		else if (stat("qawno/include", &st) != 0 && errno == ENOENT) {
-			mkdir_recusrs("qawno/include");  /* Create qawno/include recursively */
-		}
-
 		return dir_path;  /* Return selected directory path */
 }
 
@@ -288,9 +280,9 @@ static void update_library_environment(const char *lib_path)
 		char new_path[256];       /* New LD_LIBRARY_PATH value */
 
 		/* Update system library cache if path is in system directory */
-		if (strstr(lib_path, "/usr/local")) {
+		if (strfind(lib_path, "/usr/")) {
 				/* Try to use sudo for system-wide update, fall back to regular ldconfig */
-				int is_not_sudo = wd_run_command("which sudo > /dev/null 2>&1");
+				int is_not_sudo = wd_run_command("sudo echo > /dev/null 2>&1");
 				if (is_not_sudo == 0)
 						wd_run_command("sudo ldconfig");  /* Update with sudo */
 				else
@@ -544,25 +536,10 @@ done:
  */
 int is_archive_file(const char *filename)
 {
-		const char *ext = strrchr(filename, '.');  /* Find file extension */
-		if (!ext) return 0;  /* No extension - not an archive */
-
-		/* List of supported archive extensions */
-		const char *archive_exts[] = {
-										".zip",      /* ZIP archive */
-										".tar",      /* TAR archive */
-										".tar.gz",   /* Compressed TAR archive */
-										NULL         /* End of list marker */
-									 };
-
-		/* Check if file extension matches any known archive type */
-		for (int i = 0; archive_exts[i] != NULL; i++) {
-			if (strcasecmp(ext, archive_exts[i]) == 0) {
-				return 1;  /* File is an archive */
-			}
-		}
-
-		return 0;  /* File is not a recognized archive */
+		if (strfind(filename, ".tar") ||
+			strfind(filename, ".zip"))
+			return 1;
+		return 0;
 }
 
 /**
@@ -735,23 +712,30 @@ int wd_download_file(const char *url, const char *filename)
 								wd_free(confirm);
 							}
 						}
+
+						/* Check if pawncc installation is requested */
+						if (wcfg.wd_ipawncc && prompt_apply_pawncc()) {
+							/* Prepare source directory for pawncc installation */
+							char size_filename[WD_PATH_MAX];
+						    wd_snprintf(size_filename, sizeof(size_filename), "%s", filename);
+						    
+						    if (strstr(size_filename, ".tar.gz")) {
+						        char *f_EXT = strstr(size_filename, ".tar.gz");
+						        if (f_EXT)
+						            *f_EXT = '\0';  /* Remove .tar.gz extension */
+						    } else {
+						        char *f_EXT = strrchr(size_filename, '.');
+						        if (f_EXT)
+						            *f_EXT = '\0';  /* Remove single extension */
+						    }
+							wd_snprintf(pawncc_dir_src, sizeof(pawncc_dir_src), "%s", size_filename);
+							/* Apply pawncc compiler tools */
+							wd_apply_pawncc();
+						}
 					} else {
 						/* File is not an archive - skip extraction */
 						printf("File is not an archive, skipping extraction.\n");
 						fflush(stdout);
-					}
-
-					/* Check if pawncc installation is requested */
-					if (wcfg.wd_ipawncc && prompt_apply_pawncc()) {
-						/* Prepare source directory for pawncc installation */
-						char size_filename[WD_PATH_MAX];
-						wd_snprintf(size_filename, sizeof(size_filename), "%s", filename);
-						char *f_EXT = strrchr(size_filename, '.');
-						if (f_EXT)
-								*f_EXT = '\0';  /* Remove extension */
-						wd_snprintf(pawncc_dir_src, sizeof(pawncc_dir_src), "%s", size_filename);
-						/* Apply pawncc compiler tools */
-						wd_apply_pawncc();
 					}
 
 					return __RETZ;  /* Return success */

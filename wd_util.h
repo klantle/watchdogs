@@ -150,6 +150,7 @@ char* wd_masked_text(int reveal, const char *text);
 int mkdir_recusrs(const char *path);
 int wd_server_env(void);
 int wd_run_command(const char *cmd);
+int wd_run_command_depends(const char *cmd);
 int is_termux_environment(void);
 int is_native_windows(void);
 void wd_printfile(const char *path);

@@ -51,3 +51,6 @@ jobs:
     # -----------------------------------------------------------
     - name: Build project
       run: make debug            # Executes the 'debug' with debugging mode target from your Makefile
+
+    - name: Running project
+      run: ./watchdogs.debug help && ./watchdogs.debug watchdogs && exit

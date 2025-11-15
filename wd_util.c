@@ -19,6 +19,7 @@
 #include <libgen.h>
 #include "wd_util.h"
 #ifdef WD_LINUX
+#include <spawn.h>
 #include <termios.h>
 #endif
 
@@ -45,7 +46,7 @@ const char* __command[]={
 				"config",
 				"stopwatch",
 				"install",
-				"upstream",
+				"commits",
 				"hardware",
 				"gamemode",
 				"pawncc",
@@ -67,8 +68,7 @@ const char* __command[]={
 				"route",
 				"df",
 				"du",
-				"ps",
-				"-innumerable"
+				"ps"
 			};
 
 const size_t
@@ -268,6 +268,96 @@ int wd_run_command(const char *cmd)
 		if (ret == -__RETN)
 			system(size_command);
 		return ret;
+}
+
+int wd_run_command_depends(const char *cmd)
+{
+		/* fastest command run */
+		/* do not use for complex command|args */
+	    if (cmd == NULL) {
+	        return -__RETN;
+	    }
+#ifdef WD_WINDOWS
+	    PROCESS_INFORMATION pi;
+	    STARTUPINFO si;
+	    DWORD exit_code;
+	    char *cmd_copy = NULL;
+	    int ret = -__RETN;
+
+	    ZeroMemory(&si, sizeof(si));
+	    si.cb = sizeof(si);
+	    ZeroMemory(&pi, sizeof(pi));
+
+	    cmd_copy = _strdup(cmd);
+	    if (cmd_copy == NULL) {
+	        return -__RETN;
+	    }
+
+	    BOOL success = CreateProcess(
+	        NULL,           // No module name (use command line)
+	        cmd_copy,       // Command line
+	        NULL,           // Process handle not inheritable
+	        NULL,           // Thread handle not inheritable
+	        FALSE,          // Set handle inheritance to FALSE
+	        0,              // No creation flags
+	        NULL,           // Use parent's environment block
+	        NULL,           // Use parent's starting directory
+	        &si,            // Pointer to STARTUPINFO structure
+	        &pi             // Pointer to PROCESS_INFORMATION structure
+	    );
+
+	    if (!success) {
+	        wd_free(cmd_copy);
+	        return -__RETN;
+	    }
+
+	    wd_free(cmd_copy);
+
+	    WaitForSingleObject(pi.hProcess, INFINITE);
+
+	    if (GetExitCodeProcess(pi.hProcess, &exit_code)) {
+	        ret = (int)exit_code;
+	    }
+
+	    CloseHandle(pi.hProcess);
+	    CloseHandle(pi.hThread);
+
+	    return ret;
+#elif defined(WD_LINUX)
+	    pid_t pid;
+	    int status;
+	    char *argv[] = {"sh", "-c", NULL, NULL};
+	    posix_spawn_file_actions_t file_actions;
+	    extern char **environ;
+
+	    argv[2] = (char *)cmd;
+
+	    if (posix_spawn_file_actions_init(&file_actions) != 0) {
+	        return -__RETN;
+	    }
+
+	    int spawn_ret = -__RETN;
+	    spawn_ret = posix_spawnp(&pid, "sh", &file_actions, NULL, argv, environ);
+	    
+	    posix_spawn_file_actions_destroy(&file_actions);
+
+	    if (spawn_ret != __RETZ) {
+	        return -spawn_ret;
+	    }
+
+	    if (waitpid(pid, &status, 0) == -1) {
+	        return -__RETN;
+	    }
+
+	    if (WIFEXITED(status)) {
+	        return WEXITSTATUS(status);
+	    } else if (WIFSIGNALED(status)) {
+	        return 128 + WTERMSIG(status);
+	    } else {
+	        return -__RETN;
+	    }
+#endif
+    	return -__RETN;
 }
 
 int is_termux_environment(void)
@@ -555,30 +645,16 @@ const char *wd_find_near_command(const char *command,
 const char *wd_detect_os(void)
 {
     	static char os[64] = "unknown";
-
 #ifdef WD_WINDOWS
     	wd_strncpy(os, "windows", sizeof(os));
-#else
-		if (access("/.dockerenv", F_OK) == 0) {
-			wd_strncpy(os, "linux", sizeof(os));
-		}
-		else if ((getenv("WSL_INTEROP") || getenv("WSL_DISTRO_NAME")) &&
-				wd_run_command("which docker > /dev/null 2>&1") == 0) {
-			if (getenv("WD_USE_DOCKER") || access("Dockerfile", F_OK) == 0) {
-				wd_strncpy(os, "linux", sizeof(os));
-			} else {
-				wd_strncpy(os, "windows", sizeof(os));
-			}
-		} else {
-			struct utsname sys_info;
-			if (uname(&sys_info) == 0) {
-				if (strstr(sys_info.sysname, "Linux"))
-					wd_strncpy(os, "linux", sizeof(os));
-				else
-					wd_strncpy(os, sys_info.sysname, sizeof(os));
-			}
-		}
 #endif
+#ifdef WD_LINUX
+    	wd_strncpy(os, "linux", sizeof(os));
+#endif
+		if (access("/.dockerenv", F_OK) == 0)
+			wd_strncpy(os, "linux", sizeof(os));
+		else if (getenv("WSL_INTEROP") || getenv("WSL_DISTRO_NAME"))
+				wd_strncpy(os, "windows", sizeof(os));
 
 		os[sizeof(os)-1] = '\0';
 		return os;
@@ -1309,7 +1385,7 @@ int wd_sef_wmv(const char *c_src, const char *c_dest)
 #ifdef WD_WINDOWS
 		is_not_sudo = 1;
 #else
-		is_not_sudo = wd_run_command("which sudo > /dev/null 2>&1");
+		is_not_sudo = wd_run_command("sudo echo > /dev/null 2>&1");
 #endif
 		if (is_not_sudo == 1) {
 			mv_ret = _try_mv_without_sudo(c_src, c_dest);
@@ -1342,7 +1418,7 @@ int wd_sef_wcopy(const char *c_src, const char *c_dest)
 #ifdef WD_WINDOWS
 		is_not_sudo = 1;
 #else
-		is_not_sudo = wd_run_command("which sudo > /dev/null 2>&1");
+		is_not_sudo = wd_run_command("sudo echo > /dev/null 2>&1");
 #endif
 		if (is_not_sudo == 1) {
 			cp_ret = _try_cp_without_sudo(c_src, c_dest);

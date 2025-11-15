@@ -191,6 +191,40 @@ mv -f watchdogs.tmux .. && cd .. && \
 
 ### MSYS2
 
+#### Mirror Configuration (if needed)
+Edit mirror lists:
+```bash
+nano /etc/pacman.d/mirrorlist.mingw64
+nano /etc/pacman.d/mirrorlist.msys
+nano /etc/pacman.d/mirrorlist.ucrt64
+```
+
+Add mirrors:
+```yaml
+## Fast & Reliable
+Server = https://repo.msys2.org/msys/$arch  # Official
+Server = https://mirror.msys2.org/msys/$arch # Official mirror
+
+## Europe
+Server = https://mirrors.bfsu.edu.cn/msys2/msys/$arch
+Server = https://mirror.selfnet.de/msys2/msys/$arch
+Server = https://mirror.clarkson.edu/msys2/msys/$arch
+
+## Indonesia & Southeast Asia
+Server = https://mirror.0x.sg/msys2/msys/$arch
+Server = https://mirrors.tuna.tsinghua.edu.cn/msys2/msys/$arch
+Server = https://mirrors.ustc.edu.cn/msys2/msys/$arch
+Server = https://mirror.nju.edu.cn/msys2/msys/$arch
+
+## Japan
+Server = https://jaist.dl.sourceforge.net/project/msys2/REPOS/msys/$arch
+Server = https://ftp.jaist.ac.jp/pub/msys2/msys/$arch
+
+## Singapore
+Server = https://downloads.sourceforge.net/project/msys2/REPOS/msys/$arch
+```
+> Save and Exit: **CTRL + X & Y + ENTER**
+
 #### Installation Steps
 
 ```bash
@@ -241,7 +275,7 @@ cd watch
 # 5. Installing Library & Build from source
 make init && make windows
 
-# 6. Installing .dll library
+# 6. Installing .dll library - under 20/MB
 bash -c '[ -d "watch" ] && rm -rf -- "watch" && git clone https://github.com/klantle/libwatchdogs watch && cd watch && [ -d "/c/libwatchdogs" ] && rm -rf -- "/c/libwatchdogs"  && mv -f libwatchdogs /c/ && mv -f run-native.bat .. && cd .. && rm -rf watch'
 
 # 7. You can run '.bat' (out of msys2, where .bat & watchdogs.win)
@@ -260,32 +294,11 @@ cd /c/users/desktop_name/downloads/your_project
 ```bash
 curl -L -o watchdogs.win "https://gitlab.com/-/project/75403219/uploads/ab74d6d08c8ba408a97fa300fc7538c4/watchdogs.win"
 ```
-> Install library
+> Install library - under 20/MB
 ```bash
 bash -c '[ -d "watch" ] && rm -rf -- "watch" && git clone https://github.com/klantle/libwatchdogs watch && cd watch && [ -d "/c/libwatchdogs" ] && rm -rf -- "/c/libwatchdogs"  && mv -f libwatchdogs /c/ && mv -f run-native.bat .. && cd .. && rm -rf watch'
 ```
-> Exit from Git Bash and run '.bat' in your_project on Windows File Explorer.
-
-#### Mirror Configuration (if needed)
-Edit mirror lists:
-```bash
-nano /etc/pacman.d/mirrorlist.mingw64
-```
-```bash
-nano /etc/pacman.d/mirrorlist.msys
-```
-```bash
-nano /etc/pacman.d/mirrorlist.ucrt64
-```
-
-Add mirrors:
-```yaml
-Server = https://repo.msys2.org/msys/$arch
-Server = https://mirror.msys2.org/msys/$arch
-Server = https://mirror.selfnet.de/msys2/msys/$arch
-```
-
-Save & Exit: **CTRL + X & Y + ENTER**
+> **Exit from Git Bash and run '.bat' in your_project on Windows File Explorer.**
 
 ## Configuration
 
@@ -492,7 +505,7 @@ running yourmode
 
 **Compile and start in one command:**
 ```bash
-crunn
+compiles
 ```
 
 ### Dependency Management
@@ -509,7 +522,7 @@ The handling of YSI includes differs due to their structure containing multiple 
 
 ![img](https://raw.githubusercontent.com/klantle/watchdogs/refs/heads/main/__DEPS.png)
 
-**Install dependencies from configuration:**
+**Install dependencies from `watchdogs.toml`:**
 ```bash
 install
 ```
@@ -519,7 +532,7 @@ install
 install repo/user
 ```
 
-**Install specific version:**
+**Install specific version (tags):**
 ```bash
 install repo/user:v1.1
 ```
@@ -581,7 +594,7 @@ Later, the **SA-MP (San Andreas Multiplayer)** community adopted Pawn as its scr
 ### Example Usage
 
 ```bash
-pawncc "input" -o"output.amx" -O1 -d3 -i"include/" sym=DEBUG
+pawncc "input" -o"output.amx" -i"include/"
 ```
 
 ### VSCode Tasks

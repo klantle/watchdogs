@@ -16,7 +16,6 @@
 #endif
 
 #include "wd_unit.h"
-#include "wd_util.h"
 #include "wd_archive.h"
 #include "wd_curl.h"
 #include "wd_hardware.h"

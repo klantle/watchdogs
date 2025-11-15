@@ -11,6 +11,9 @@ static const char base64_table[] =
         "abcdefghijklmnopqrstuvwxyz"
         "0123456789"
         "+/";
+#define hex_list \
+        "0123456789" \
+        "abcdef"
 
 static uint32_t rotr(uint32_t x, int n) {
         return (x >> n) | (x << (32 - n));
@@ -499,7 +502,7 @@ int crypto_convert_to_hex(const unsigned char *in, int in_len, char **out)
 {
         char *buffer;
         int i;
-        static const char hex[] = "0123456789abcdef";
+        static const char hex[] = hex_list;
 
         if (!in || in_len < 0 || !out)
                 return __RETZ;

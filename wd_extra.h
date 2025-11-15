@@ -57,6 +57,23 @@
 #define FCOLOUR_DEFAULT    "\033[39m"
 #define BKG_DEFAULT    "\033[49m"
 
+/* Mode bits we will populate (subset of POSIX) */
+#ifndef S_IFREG
+  #define S_IFREG 0100000
+#endif
+#ifndef S_IFDIR
+  #define S_IFDIR 0040000
+#endif
+#ifndef S_IFLNK
+  #define S_IFLNK 0120000
+#endif
+
+#ifndef S_IRUSR
+  #define S_IRUSR 0400
+  #define S_IWUSR 0200
+  #define S_IXUSR 0100
+#endif
+
 /* Global color definitions for terminal UI */
 extern char *BG;   /* Background color: RGB(35,35,35) - dark gray */
 extern char *FG;   /* Foreground color: ANSI 97 - bright white */
@@ -78,23 +95,6 @@ typedef struct {
         char *cs_t; /* Cause trigger */
         char *cs_i; /* Cause Description */
 } causeExplanation;
-
-/* Mode bits we will populate (subset of POSIX) */
-#ifndef S_IFREG
-  #define S_IFREG 0100000
-#endif
-#ifndef S_IFDIR
-  #define S_IFDIR 0040000
-#endif
-#ifndef S_IFLNK
-  #define S_IFLNK 0120000
-#endif
-
-#ifndef S_IRUSR
-  #define S_IRUSR 0400
-  #define S_IWUSR 0200
-  #define S_IXUSR 0100
-#endif
 
 int portable_stat(const char *path, portable_stat_t *out);
 void cause_compiler_expl(const char *log_file, const char *pawn_output, int debug);

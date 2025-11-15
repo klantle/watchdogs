@@ -3,7 +3,6 @@ const char *watchdogs_release = WATCHDOGS_RELEASE;
 #ifndef _GNU_SOURCE
 #define _GNU_SOURCE
 #endif
-#define _POSIX_C_SOURCE 200809L
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -66,13 +65,13 @@ void __function__(void) {
 
 int __command__(char *pre_command)
 {
-        wcfg.wd_sel_stat = 0;
         setlocale(LC_ALL, "en_US.UTF-8");
-        int _wd_crash_ck = path_acces(".crashdetect_ck");
+        int _wd_crash_ck = path_acces(".wd_crashdetect");
         if (_wd_crash_ck) {
-          remove(".crashdetect_ck");
+          remove(".wd_crashdetect");
           wd_server_crash_check();
         }
+        wcfg.wd_sel_stat = 0;
         int wd_compile_running = 0;
         char ptr_prompt[WD_PATH_MAX + 56];
         size_t size_ptrp = sizeof(ptr_prompt);
@@ -119,11 +118,14 @@ _reexecute_command:
                 println(stdout, "Usage: help | help [<command>]");
 
                 for (size_t i = 0; i < __command_len; i++) {
-                    if (strstr(__command[i], "help"))
+                    if (strstr(__command[i], "help")) {
+                        printf("-watchdogs\n");
                         continue;
+                    }
+                    if (strstr(__command[i], "ls"))
+                        printf("-system\n");
                     printf("\t@ [=| %s\n", __command[i]);
                 }
-            } else if (strcmp(arg, "clear") == 0) { println(stdout, "clear: clear screen watchdogs. | Usage: \"clear\"");
             } else if (strcmp(arg, "exit") == 0) { println(stdout, "exit: exit from watchdogs. | Usage: \"exit\"");
             } else if (strcmp(arg, "kill") == 0) { println(stdout, "kill: refresh terminal watchdogs. | Usage: \"kill\"");
             } else if (strcmp(arg, "title") == 0) { println(stdout, "title: set-title terminal watchdogs. | Usage: \"title\" | [<args>]");
@@ -141,23 +143,13 @@ _reexecute_command:
             } else if (strcmp(arg, "pawncc") == 0) { println(stdout, "pawncc: download sa-mp pawncc. | Usage: \"pawncc\"");
             } else if (strcmp(arg, "compile") == 0) { println(stdout, "compile: compile your project. | Usage: \"compile\" | [<args>]");
             } else if (strcmp(arg, "running") == 0) { println(stdout, "running: running your project. | Usage: \"running\" | [<args>]");
-            } else if (strcmp(arg, "crunn") == 0) { println(stdout, "crunn: compile & running your project. | Usage: \"crunn\" | [<args>]");
+            } else if (strcmp(arg, "compiles") == 0) { println(stdout, "compiles: compile & running your project. | Usage: \"compiles\" | [<args>]");
             } else if (strcmp(arg, "stop") == 0) { println(stdout, "stop: stopped server task. | Usage: \"stop\"");
             } else if (strcmp(arg, "restart") == 0) { println(stdout, "restart: restart server task. | Usage: \"restart\"");
             } else {
               printf("help not found!");
             }
             goto done;
-        } else if (strcmp(ptr_command, "clear") == 0) {
-            wd_set_title("Watchdogs | @ clear");
-
-            if (!is_native_windows()) {
-                wd_run_command("clear");
-            } else {
-                wd_run_command("cls");
-            }
-
-            goto _ptr_command;
         } else if (strcmp(ptr_command, "exit") == 0) {
             exit(1);
         } else if (strcmp(ptr_command, "kill") == 0) {
@@ -889,8 +881,8 @@ n_loop_igm2:
                 }
 
                 goto done;
-        } else if (strcmp(ptr_command, "crunn") == 0) {
-            wd_set_title("Watchdogs | @ crunn");
+        } else if (strcmp(ptr_command, "compiles") == 0) {
+            wd_set_title("Watchdogs | @ compiles");
 
             const char *arg = NULL;
             /* target */
@@ -1065,20 +1057,20 @@ void wd_main(void *pre_command) {
                           (cmd_end.tv_nsec - cmd_start.tv_nsec) / 1e9;
             pr_color(stdout,
                          FCOLOUR_CYAN,
-                         " <T> [C]Finished at %.3fs\n",
+                         " <C> Finished at %.3fs\n",
                          command_dur);
             return;
         }
 
 loop_main:
         ret = __command__(NULL);
-        if (ret == -__RETN || ret == __RETZ || ret == __RETN) {
+        if (ret == -__RETN || ret == -__RETN) {
             clock_gettime(CLOCK_MONOTONIC, &cmd_end);
             command_dur = (cmd_end.tv_sec - cmd_start.tv_sec) +
                           (cmd_end.tv_nsec - cmd_start.tv_nsec) / 1e9;
             pr_color(stdout,
                          FCOLOUR_CYAN,
-                         " <T> [C]Finished at %.3fs\n",
+                         " <C> Finished at %.3fs\n",
                          command_dur);
             goto loop_main;
         } else if (ret == __RETW) {

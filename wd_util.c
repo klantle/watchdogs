@@ -17,7 +17,8 @@
 #include <inttypes.h>
 #include <stddef.h>
 #include <libgen.h>
-#ifdef __linux__
+#include "wd_util.h"
+#ifdef WD_LINUX
 #include <termios.h>
 #endif
 
@@ -31,11 +32,9 @@
 #include "wd_unit.h"
 #include "wd_package.h"
 #include "wd_crypto.h"
-#include "wd_util.h"
 
 const char* __command[]={
 				"help",
-				"clear",
 				"exit",
 				"kill",
 				"title",
@@ -52,9 +51,24 @@ const char* __command[]={
 				"pawncc",
 				"compile",
 				"running",
-				"crunn",
+				"compiles",
 				"stop",
-				"restart"
+				"restart",
+				"ls",
+				"ping",
+				"clear",
+				"nslookup",
+				"netstat",
+				"ipconfig",
+				"uname",
+				"hostname",
+				"whoami",
+				"arp",
+				"route",
+				"df",
+				"du",
+				"ps",
+				"-innumerable"
 			};
 
 const size_t
@@ -260,7 +274,7 @@ int is_termux_environment(void)
 {
 		struct stat st;
 		int is_termux = __RETZ;
-#if defined(__ANDROID__)
+#if defined(WD_LINUX)
 		is_termux = __RETN;
 		return is_termux;
 #endif
@@ -278,7 +292,7 @@ int is_termux_environment(void)
 
 int is_native_windows(void)
 {
-#if defined __linux__ || __ANDROID__
+#if defined WD_LINUX || WD_ANDROID
 		return __RETZ;
 #endif
 		char* msys2_env;
@@ -364,10 +378,13 @@ unsigned char wd_tolower(unsigned char c) {
 
 bool
 wd_strcase(const char *text, const char *pattern) {
-		for (const char *p = text; *p; p++) {
+		const char *p;
+		for (p = text; *p; p++) {
 		    const char *a = p, *b = pattern;
-		    while (*a && *b && (((*a | 32) == (*b | 32))))
-		          a++; b++;
+		    while (*a && *b && (((*a | 32) == (*b | 32)))) {
+		          a++;
+		          b++;
+	      	}
 		    if (!*b) return true;
 		}
 		return false;
@@ -382,8 +399,8 @@ bool strfind(const char *text, const char *pattern) {
 	    size_t m = 0;
 	    while (pattern[m]) m++;
 
-	    if (m == 0 || n < m)
-	        return false;
+	    if (m == 0) return true;
+	    if (n < m) return false;
 
 	    unsigned char pat[256];
 	    uint8_t skip[256];
@@ -393,7 +410,7 @@ bool strfind(const char *text, const char *pattern) {
 
 	    for (size_t i = 0; i < 256; i++)
 	        skip[i] = (uint8_t)m;
-
+	    
 	    for (size_t i = 0; i < m - 1; i++)
 	        skip[pat[i]] = (uint8_t)(m - 1 - i);
 
@@ -401,17 +418,19 @@ bool strfind(const char *text, const char *pattern) {
 	    size_t i = 0;
 
 	    while (i <= n - m) {
-	        unsigned char c1 = wd_tolower(txt[i + m - 1]);
-	        if (c1 == pat[m - 1]) {
-	            size_t j = m - 1;
-	            for (; j >= 2; j -= 2) {
-	                if (pat[j - 1] != wd_tolower(txt[i + j - 1])) break;
-	                if (pat[j - 2] != wd_tolower(txt[i + j - 2])) break;
+	        unsigned char current_char = wd_tolower(txt[i + m - 1]);
+	        
+	        if (current_char == pat[m - 1]) {
+	            int j = (int)m - 2;
+	            while (j >= 0 && pat[j] == wd_tolower(txt[i + j])) {
+	                j--;
 	            }
-	            if (j < 2 || (j == 1 && pat[0] == wd_tolower(txt[i])))
+	            if (j < 0) {
 	                return true;
+	            }
 	        }
-	        i += skip[c1];
+	        
+	        i += skip[current_char];
 	    }
 
 	    return false;

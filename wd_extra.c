@@ -5,7 +5,7 @@
 #include <time.h>
 #include <stdarg.h>
 #include <fcntl.h>
-
+#include "wd_util.h"
 #ifdef WD_WINDOWS
   #define WIN32_LEAN_AND_MEAN
   #include <windows.h>
@@ -19,7 +19,6 @@
 #endif
 
 #include "wd_crypto.h"
-#include "wd_util.h"
 #include "wd_extra.h"
 
 char *BG = "\x1b[48;5;235m";
@@ -587,21 +586,6 @@ static const char *wd_find_warn_err(const char *line)
       /* No known warning/error pattern found in this line */
       return NULL;
 }
-
-/**
- * Structure mapping compiler output labels to their target storage variables
- * Used for parsing size information from compiler output
- */
-static const struct {
-        const char *label;  /* Text label to search for in compiler output */
-        int *target;        /* Pointer to variable where value should be stored */
-} parse_labels[] = {
-        {"Header size:", NULL},            /* AMX header section size */
-        {"Code size:", NULL},              /* Compiled code section size */
-        {"Data size:", NULL},              /* Data section size */
-        {"Stack/heap size:", NULL},        /* Stack and heap memory requirements */
-        {"Total requirements:", NULL},     /* Total memory requirements */
-};
 
 /**
  * Displays detailed compilation results and file information

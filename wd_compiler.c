@@ -4,7 +4,8 @@
 #include <unistd.h>
 #include <limits.h>
 #include <time.h>
-#ifdef __linux__
+#include "wd_util.h"
+#ifdef WD_LINUX
 #include <fcntl.h>
 #include <sys/types.h>
 #include <sys/wait.h>
@@ -14,7 +15,6 @@
 #include <readline/history.h>
 
 #include "wd_extra.h"
-#include "wd_util.h"
 #include "wd_unit.h"
 #include "wd_package.h"
 #include "wd_compiler.h"
@@ -79,7 +79,7 @@ int wd_run_compiler(const char *arg,
 
         /* Compiler option flags */
         int compiler_debugging = 0;               /* Debug level flag */
-        int compiler_has_watchdogs, compiler_has_debug = 0;  /* Feature flags */
+        int compiler_has_watchdogs = 0, compiler_has_debug = 0;  /* Feature flags */
         int compiler_has_clean = 0, compiler_has_assembler = 0;
         int compiler_has_recursion = 0, compiler_has_verbose = 0;
 
@@ -641,7 +641,7 @@ compiler_done:
                                         + (end.tv_nsec - start.tv_nsec) / 1e9;
 
                     pr_color(stdout, FCOLOUR_CYAN,
-                        " <T> [P]Finished at %.3fs (%.0f ms)\n",
+                        " <P> Finished at %.3fs (%.0f ms)\n",
                         compiler_dur, compiler_dur * 1000.0);
 
                     /* Debug output if enabled */
@@ -1022,7 +1022,7 @@ compiler_done2:
                                             + (end.tv_nsec - start.tv_nsec) / 1e9;
 
                         pr_color(stdout, FCOLOUR_CYAN,
-                            " <T> [P]Finished at %.3fs (%.0f ms)\n",
+                            " <P> Finished at %.3fs (%.0f ms)\n",
                             compiler_dur, compiler_dur * 1000.0);
 #if defined(_DBG_PRINT)
                         pr_color(stdout, FCOLOUR_YELLOW, "-DEBUGGING\n");

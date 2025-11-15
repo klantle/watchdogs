@@ -35,22 +35,24 @@ void unit_handle_sigint(int sig) {
         }
         struct timespec stop_all_timer;
         clock_gettime(CLOCK_MONOTONIC, &stop_all_timer);
+
+        FILE *crashdetect_file = fopen(".wd_crashdetect", "w");
+        if (crashdetect_file != NULL)
+            fclose(crashdetect_file);
+
 #ifdef __ANDROID__
-        wd_run_command("touch .crashdetect_ck");
 #ifndef _DBG_PRINT
         wd_run_command("exit && ./watchdogs.tmux");
 #else
         wd_run_command("exit && ./watchdogs.debug.tmux");
 #endif
-#elif defined(__linux__)
-        wd_run_command("touch .crashdetect_ck");
+#elif defined(WD_LINUX)
 #ifndef _DBG_PRINT
         wd_run_command("exit && ./watchdogs");
 #else
         wd_run_command("exit && ./watchdogs.debug");
 #endif
 #elif defined(WD_WINDOWS)
-        wd_run_command("type nul > .crashdetect_ck");
 #ifndef _DBG_PRINT
         wd_run_command("exit && watchdogs.win");
 #else
@@ -231,9 +233,9 @@ void wd_server_crash_check(void) {
               } else {
                   wd_free(confirm);  /* Free confirmation string */
                   /* Check for and remove crashdetect check file if it exists */
-                  int _wd_crash_ck = path_acces(".crashdetect_ck");
+                  int _wd_crash_ck = path_acces(".wd_crashdetect");
                   if (_wd_crash_ck)
-                    remove(".crashdetect_ck");
+                    remove(".wd_crashdetect");
                   return;
               }
         }

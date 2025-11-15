@@ -11,7 +11,7 @@
 #include "wd_extra.h"
 #include "wd_util.h"
 
-#ifndef _WIN32
+#ifndef WD_WINDOWS
 #include <sys/utsname.h>
 #endif
 

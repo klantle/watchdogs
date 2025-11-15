@@ -79,6 +79,7 @@ int __command__(char *pre_command)
         char *ptr_command;
         int c_distance = INT_MAX;
         const char *_dist_command;
+        pr_color(stdout, FCOLOUR_CYAN, "%s", "a");
 
 _ptr_command:
         if (pre_command && pre_command[0] != '\0') {
@@ -130,6 +131,7 @@ _reexecute_command:
             } else if (strcmp(arg, "crc32") == 0) { println(stdout, "crc32: generate crc32. | Usage: \"crc32\" | [<args>]");
             } else if (strcmp(arg, "djb2") == 0) { println(stdout, "djb2: generate djb2 hash file. | Usage: \"djb2\" | [<args>]");
             } else if (strcmp(arg, "time") == 0) { println(stdout, "time: print current time. | Usage: \"time\"");
+            } else if (strcmp(arg, "config") == 0) { println(stdout, "config: re-create watchdogs.toml. Usage: \"config\"");
             } else if (strcmp(arg, "stopwatch") == 0) { println(stdout, "stopwatch: calculating time. Usage: \"stopwatch\" | [<args>]");
             } else if (strcmp(arg, "install") == 0) { println(stdout, "install: download & install depends | Usage: \"install\" |"
                                                                       "[<args>]\n\t- install user/repo:tag (github only)");
@@ -143,8 +145,7 @@ _reexecute_command:
             } else if (strcmp(arg, "stop") == 0) { println(stdout, "stop: stopped server task. | Usage: \"stop\"");
             } else if (strcmp(arg, "restart") == 0) { println(stdout, "restart: restart server task. | Usage: \"restart\"");
             } else {
-              printf("help not found for: ");
-              pr_color(stdout, "'%s'\n", arg);
+              printf("help not found!");
             }
             goto done;
         } else if (strcmp(ptr_command, "clear") == 0) {
@@ -261,6 +262,57 @@ _reexecute_command:
             printf("Now: %s\n", time_string);
 
             goto done;
+        } else if (strcmp(ptr_command, "config") == 0) {
+            if (access("watchdogs.toml", F_OK) == 0)
+                remove("watchdogs.toml");
+
+            __function__();
+
+            FILE *procc_f = fopen("watchdogs.toml", "r");
+            if (procc_f) {
+#ifdef WD_WINDOWS
+                HANDLE hOut = GetStdHandle(STD_OUTPUT_HANDLE);
+                if (hOut != INVALID_HANDLE_VALUE) {
+                    DWORD dwMode = 0;
+                    if (GetConsoleMode(hOut, &dwMode))
+                        SetConsoleMode(hOut,
+                                       dwMode |
+                                       ENABLE_VIRTUAL_TERMINAL_PROCESSING);
+                }
+#endif
+                size_t len;
+                printf("%s%s+", BORD, FG);
+                    for (int i = 0; i < 42; ++i)
+                        putchar('-');
+                printf("+%s\n", RST);
+
+                char line[WD_MAX_PATH * 4];
+
+                while (fgets(line, sizeof(line), procc_f))
+                {
+                        len = strlen(line);
+                        if (len && (line[len - 1] == '\n' ||
+                                    line[len - 1] == '\r'))
+                                line[--len] = '\0';
+
+                        printf("%s%s|"
+                               "%s "
+                               "%-40s "
+                               "%s|"
+                               "%s\n",
+                                BORD, FG, BG,
+                                line, BORD, RST);
+                }
+
+                printf("%s%s+", BORD, FG);
+                    for (int i = 0; i < 42; ++i)
+                        putchar('-');
+                printf("+%s\n", RST);
+
+                fclose(procc_f);
+            }
+
+            goto done;
         } else if (strncmp(ptr_command, "stopwatch", 9) == 0) {
             struct timespec start, now;
             double stw_elp;
@@ -307,57 +359,6 @@ _reexecute_command:
                     struct timespec ts = {0, 10000000};
                     nanosleep(&ts, NULL);
                 }
-            }
-
-            goto done;
-        } else if (strcmp(ptr_command, "toml") == 0) {
-            if (access("watchdogs.toml", F_OK) == 0)
-                remove("watchdogs.toml");
-
-            __function__();
-
-            FILE *procc_f = fopen("watchdogs.toml", "r");
-            if (procc_f) {
-#ifdef _WIN32
-                HANDLE hOut = GetStdHandle(STD_OUTPUT_HANDLE);
-                if (hOut != INVALID_HANDLE_VALUE) {
-                    DWORD dwMode = 0;
-                    if (GetConsoleMode(hOut, &dwMode))
-                        SetConsoleMode(hOut,
-                                       dwMode |
-                                       ENABLE_VIRTUAL_TERMINAL_PROCESSING);
-                }
-#endif
-                size_t len;
-                printf("%s%s+", BORD, FG);
-                    for (int i = 0; i < 42; ++i)
-                        putchar('-');
-                printf("+%s\n", RST);
-
-                char line[WD_MAX_PATH * 4];
-
-                while (fgets(line, sizeof(line), procc_f))
-                {
-                        len = strlen(line);
-                        if (len && (line[len - 1] == '\n' ||
-                                    line[len - 1] == '\r'))
-                                line[--len] = '\0';
-
-                        printf("%s%s|"
-                               "%s "
-                               "%-40s "
-                               "%s|"
-                               "%s\n",
-                                BORD, FG, BG,
-                                line, BORD, RST);
-                }
-
-                printf("%s%s+", BORD, FG);
-                    for (int i = 0; i < 42; ++i)
-                        putchar('-');
-                printf("+%s\n", RST);
-
-                fclose(procc_f);
             }
 
             goto done;
@@ -767,7 +768,7 @@ start_main:
 
                         back_start:
                         start = time(NULL);
-#ifdef _WIN32
+#ifdef WD_WINDOWS
                         wd_snprintf(size_run, sizeof(size_run), "%s", wcfg.wd_ptr_samp);
 #else
                         chmod(wcfg.wd_ptr_samp, 0777);
@@ -823,7 +824,7 @@ start_main2:
 
 back_start2:
                         start = time(NULL);
-#ifdef _WIN32
+#ifdef WD_WINDOWS
                         wd_snprintf(size_run, sizeof(size_run), "%s", wcfg.wd_ptr_omp);
 #else
                         chmod(wcfg.wd_ptr_samp, 0777);
@@ -928,7 +929,7 @@ n_loop_igm2:
             sleep(2);
             goto _runners_;
         } else if (strcmp(ptr_command, "watchdogs") == 0) {
-#ifndef _WIN32
+#ifndef WD_WINDOWS
             char *art;
             art = strdup(
 "\t\t⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⣀⣠⣤⣶⣶⣶⣶⣶⣶⣶⣦⣀⠀⠀⠀⠀⢀⣀⣀⠀⠀⠀⠀⠀⠀⠀⠀\n"

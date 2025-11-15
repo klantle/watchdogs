@@ -15,20 +15,27 @@
 #include "include/tomlc/toml.h"
 
 #ifdef _WIN32
+#define WD_WINDOWS
+#elif defined(__ANDROID__)
+#define WD_ANDROID
+#elif defined(__linux__)
+#define WD_LINUX
+#endif
+
+#ifdef WD_WINDOWS
 #include <windows.h>
 #include <direct.h>
 #include <shlwapi.h>
 #include <strings.h>
 #include <io.h>
-
-#define __PATH_SYM "\\"
-#define IS_PATH_SYM(c) ((c) == '/' || (c) == '\\')
+#define __PATH_SEP "\\"
+#define IS_PATH_SEP(c) ((c) == '/' || (c) == '\\')
 #define mkdir(path) _mkdir(path)
 #define MKDIR(path) mkdir(path)
 #define Sleep(sec) Sleep((sec)*1000)
-#define sleep(x) Sleep(x)
-#define setenv(x,y,z) _putenv_s(x,y)
-#define SETEN(x,y,z) setenv(x,y)
+#define sleep(wx) Sleep(wx)
+#define setenv(wx,wy,wz) _putenv_s(wx,wy)
+#define SETEN(wx,wy,wz) setenv(wx,wy)
 static inline int
 win32_chmod(const char *path) {
     int mode = _S_IREAD | _S_IWRITE;
@@ -41,27 +48,24 @@ win32_chmod(const char *path) {
 #define CHMOD(path, mode) _chmod(path, mode)
 #define FILE_MODE _S_IREAD | _S_IWRITE
 #define getcwd _getcwd
-
 #else
 #include <sys/utsname.h>
 #include <sys/wait.h>
 #include <unistd.h>
 #include <fnmatch.h>
-#define __PATH_SYM "/"
-#define IS_PATH_SYM(c) ((c) == '/')
-#define MKDIR(x) mkdir(x,0755)
-#define SETENV(x,y,z) setenv(x,y,z)
-#define CHMOD(x,y) chmod(x,y)
+#define __PATH_SEP "/"
+#define IS_PATH_SEP(c) ((c) == '/')
+#define MKDIR(wx) mkdir(wx,0755)
+#define SETENV(wx,wy,wz) setenv(wx,wy,wz)
+#define CHMOD(wx,wy) chmod(wx,wy)
 #define FILE_MODE 0777
 #endif
 
-#define __PATH_CHR_SYM_LINUX '/'
-#define __PATH_CHR_SYM_WIN32 '\\'
+#define __PATH_CHR_SEP_LINUX '/'
+#define __PATH_CHR_SEP_WIN32 '\\'
 
 #define WD_PATH_MAX 260
 #define WD_MAX_PATH 4096
-
-#define findstr strfind
 
 #if __has_include(<readline/history.h>)
 #include <readline/history.h>

@@ -4,7 +4,7 @@
 #include <stdarg.h>
 #include "wd_util.h"
 #include "wd_hardware.h"
-#ifdef _WIN32
+#ifdef WD_WINDOWS
 #include <windows.h>
 #include <iphlpapi.h>
 #include <intrin.h>
@@ -118,7 +118,7 @@ void hardware_display_field(unsigned int field_id, const char* format, ...) {
 // HARDWARE INFO FUNCTIONS - WINDOWS
 // ============================
 
-#ifdef _WIN32
+#ifdef WD_WINDOWS
 
 int hardware_cpu_info(HardwareCPU* cpu) {
         if (!cpu) return __RETZ;
@@ -425,7 +425,7 @@ void hardware_query_specific(unsigned int* fields, int count) {
                                         static int disk_loaded = 0;
                                         static HardwareDisk disk;
                                         if (!disk_loaded) {
-#ifdef _WIN32
+#ifdef WD_WINDOWS
                                                 hardware_disk_info(&disk, "C:\\");
 #else
                                                 hardware_disk_info(&disk, "/");
@@ -456,7 +456,7 @@ void hardware_show_summary() {
         hardware_display_cpu_comprehensive();
         hardware_display_memory_comprehensive();
 
-#ifdef _WIN32
+#ifdef WD_WINDOWS
         hardware_display_disk_comprehensive("C:\\");
 #else
         hardware_display_disk_comprehensive("/");
@@ -478,7 +478,7 @@ void hardware_show_detailed() {
 
         // Disk Section
         printf("\n[Disk Information]\n");
-#ifdef _WIN32
+#ifdef WD_WINDOWS
         hardware_display_disk_comprehensive("C:\\");
 #else
         hardware_display_disk_comprehensive("/");
@@ -498,7 +498,7 @@ void hardware_memory_info_legacy() {
 }
 
 void hardware_disk_info_legacy() {
-#ifdef _WIN32
+#ifdef WD_WINDOWS
         hardware_display_disk_comprehensive("C:\\");
 #else
         hardware_display_disk_comprehensive("/");
@@ -512,7 +512,7 @@ void hardware_network_info_legacy() {
 
 void hardware_system_info_legacy() {
         // Basic system info implementation
-#ifdef _WIN32
+#ifdef WD_WINDOWS
         printf("%-15s: Windows\n", "OS");
 #else
         struct utsname uts;

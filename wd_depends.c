@@ -25,8 +25,8 @@ void dep_sym_convert (char *path)
 		char *p;
 
 		for (p = path; *p; p++) {
-				if (*p == '\\')
-						*p = '/';
+				if (*p == __PATH_CHR_SEP_WIN32)
+						*p = __PATH_CHR_SEP_LINUX;
 		}
 }
 
@@ -34,17 +34,17 @@ const char *dep_get_fname (const char *path)
 {
 		/* file name */
 		const char *depends;
-		depends = strrchr(path, '/');
+		depends = strrchr(path, __PATH_CHR_SEP_LINUX);
 		if (!depends)
-				depends = strrchr(path, '\\');
+				depends = strrchr(path, __PATH_CHR_SEP_WIN32);
 		return depends ? depends + 1 : path;
 }
 
 static const char *dep_get_bname (const char *path)
 {
 		/* base name */
-		const char *p1 = strrchr(path, '/'),
-				   *p2 = strrchr(path, '\\'),
+		const char *p1 = strrchr(path, __PATH_CHR_SEP_LINUX),
+				   *p2 = strrchr(path, __PATH_CHR_SEP_WIN32),
 				   *p = NULL;
 
 		if (p1 && p2)
@@ -175,7 +175,7 @@ static char *dep_get_assets (char **deps_assets, int count, const char *preferre
 {
 		int i, j;
 		const char *os_patterns[] = {
-#ifdef _WIN32
+#ifdef WD_WINDOWS
 				"windows", "win", ".exe", "msvc", "mingw",
 #elif defined(__APPLE__)
 				"macos", "mac", "darwin", "osx",
@@ -236,7 +236,7 @@ dep_parse_repo(const char *input, struct dep_repo_info *__deps_data)
 			wd_strcpy(__deps_data->domain, "github.com");
 			path += 7;
 		} else {
-			first_slash = strchr(path, '/');
+			first_slash = strchr(path, __PATH_CHR_SEP_LINUX);
 			if (first_slash && strchr(path, '.') && strchr(path, '.') < first_slash) {
 				char domain[128];
 
@@ -257,7 +257,7 @@ dep_parse_repo(const char *input, struct dep_repo_info *__deps_data)
 		}
 
 		user = path;
-		repo_slash = strchr(path, '/');
+		repo_slash = strchr(path, __PATH_CHR_SEP_LINUX);
 		if (!repo_slash)
 			return __RETZ;
 
@@ -870,7 +870,7 @@ void deps_print_file_type (const char *path, const char *pattern,
 
 				if (target_dir[0] != '\0') {
 				int _is_win32 = 0;
-#ifdef _WIN32
+#ifdef WD_WINDOWS
 				_is_win32 = 1;
 #endif
 				if (_is_win32)
@@ -882,7 +882,7 @@ void deps_print_file_type (const char *path, const char *pattern,
 							wcfg.wd_sef_found_list[i], cwd, target_dir);
 				} else {
 				int _is_win32 = 0;
-#ifdef _WIN32
+#ifdef WD_WINDOWS
 				_is_win32 = 1;
 #endif
 				if (_is_win32)
@@ -1027,17 +1027,17 @@ void dep_move_files (const char *dep_dir)
 							continue;
 
 						wd_snprintf(parent, sizeof(parent), "%s", current_dir);
-						dname = strrchr(parent, '/');
+						dname = strrchr(parent, __PATH_CHR_SEP_LINUX);
 						if (!dname)
 								continue;
 
-						++dname; /* skip '/' */
+						++dname; /* skip __PATH_CHR_SEP_LINUX */
 
 						wd_snprintf(dest, sizeof(dest), "%s/%s", deps_base_include_path, dname);
 
 						if (rename(parent, dest)) {
 								int _is_win32 = 0;
-#ifdef _WIN32
+#ifdef WD_WINDOWS
 								_is_win32 = 1;
 #endif
 								if (_is_win32) {
@@ -1080,7 +1080,7 @@ void dep_move_files (const char *dep_dir)
 				fi_depends_name = dep_get_fname(wcfg.wd_sef_found_list[i]);
 
 				int _is_win32 = 0;
-#ifdef _WIN32
+#ifdef WD_WINDOWS
 				_is_win32 = 1;
 #endif
 				if (_is_win32)
@@ -1100,7 +1100,7 @@ void dep_move_files (const char *dep_dir)
 		}
 
 		int _is_win32 = 0;
-#ifdef _WIN32
+#ifdef WD_WINDOWS
 		_is_win32 = 1;
 #endif
 		if (_is_win32)
@@ -1205,7 +1205,7 @@ void wd_install_depends (const char *depends_string)
 				continue;
 			}
 
-			chr_last_slash = strrchr(dep_url, '/');
+			chr_last_slash = strrchr(dep_url, __PATH_CHR_SEP_LINUX);
 			if (chr_last_slash &&
 				*(chr_last_slash + 1))
 				wd_snprintf(dep_repo_name, sizeof(dep_repo_name), "%s",

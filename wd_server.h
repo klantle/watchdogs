@@ -1,10 +1,10 @@
 #ifndef SERVER_H
 #define SERVER_H
 
-#ifdef _WIN32
+#ifdef WD_WINDOWS
 /*
  * Windows compatibility layer for signal handling
- * _WIN32 macro is defined when compiling for Windows systems
+ * WD_WINDOWS macro is defined when compiling for Windows systems
  */
 /* Stub implementation of sigaction for Windows */
 #define sigaction _sigaction_stub

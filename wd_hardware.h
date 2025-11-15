@@ -9,12 +9,13 @@ extern "C" {
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include "wd_util.h"
 
 // ============================
 // PLATFORM DETECTION MACROS
 // ============================
 
-#if defined(_WIN32) || defined(_WIN64)
+#if defined(WD_WINDOWS) || defined(_WIN64)
 #define HARDWARE_WINDOWS 1
 #define HARDWARE_UNIX 0
 #else
@@ -117,7 +118,7 @@ typedef struct {
 // ============================
 
 // uname for Windows
-#ifdef _WIN32
+#ifdef WD_WINDOWS
 struct utsname {
 		char sysname[256];
 		char nodename[256];

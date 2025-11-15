@@ -43,8 +43,8 @@ const char* __command[]={
 				"crc32",
 				"djb2",
 				"time",
+				"config",
 				"stopwatch",
-				"toml",
 				"install",
 				"upstream",
 				"hardware",
@@ -98,7 +98,7 @@ static char
 cwd_cache[WD_PATH_MAX] = { 0 };
 
 static void __wd_init_cwd(void) {
-#ifdef _WIN32
+#ifdef WD_WINDOWS
 	    DWORD len;
 	    len = GetCurrentDirectoryA(sizeof(cwd_cache), cwd_cache);
 	    if (len == 0 ||
@@ -202,20 +202,20 @@ int mkdir_recusrs(const char *path) {
 
 		wd_snprintf(tmp, size_tmp, "%s", path);
 		len = strlen(tmp);
-		if (tmp[len - 1] == __PATH_CHR_SYM_LINUX ||
-			tmp[len - 1] == __PATH_CHR_SYM_WIN32)
+		if (tmp[len - 1] == __PATH_CHR_SEP_LINUX ||
+			tmp[len - 1] == __PATH_CHR_SEP_WIN32)
 			tmp[len - 1] = 0;
 
 		for (p = tmp + 1; *p; p++) {
-			if (*p == __PATH_CHR_SYM_LINUX ||
-				*p == __PATH_CHR_SYM_WIN32)
+			if (*p == __PATH_CHR_SEP_LINUX ||
+				*p == __PATH_CHR_SEP_WIN32)
 			{
 				*p = 0;
 				if (MKDIR(tmp) != 0 && errno != EEXIST) {
 					perror("mkdir");
 					return -__RETN;
 				}
-				*p = __PATH_CHR_SYM_LINUX;
+				*p = __PATH_CHR_SEP_LINUX;
 			}
 		}
 
@@ -320,7 +320,7 @@ int wd_set_title(const char *title)
 				new_title = watchdogs_release;
 		else
 				new_title = title;
-#ifdef _WIN32
+#ifdef WD_WINDOWS
 		SetConsoleTitleA(new_title);
 #else
 	    if (isatty(STDOUT_FILENO))
@@ -337,10 +337,10 @@ void wd_strip_dot_fns(char *dst, size_t dst_sz, const char *src)
 		if (!dst || dst_sz == 0 || !src)
 				return;
 
-		slash = strchr(src, __PATH_CHR_SYM_LINUX);
-#ifdef _WIN32
+		slash = strchr(src, __PATH_CHR_SEP_LINUX);
+#ifdef WD_WINDOWS
 		if (!slash)
-				slash = strchr(src, __PATH_CHR_SYM_WIN32);
+				slash = strchr(src, __PATH_CHR_SEP_WIN32);
 #endif
 
 		if (!slash) {
@@ -434,7 +434,7 @@ void wd_escape_quotes(char *dest, size_t size, const char *src)
 				if (src[i] == '"') {
 						if (j + 2 >= size)
 								break;
-						dest[j++] = __PATH_CHR_SYM_WIN32;
+						dest[j++] = __PATH_CHR_SEP_WIN32;
 						dest[j++] = '"';
 				} else
 						dest[j++] = src[i];
@@ -442,7 +442,7 @@ void wd_escape_quotes(char *dest, size_t size, const char *src)
 		dest[j] = '\0';
 }
 
-static void __set_path_syms(char *out, size_t out_sz, const char *dir, const char *name)
+static void __set_path_sep(char *out, size_t out_sz, const char *dir, const char *name)
 {
 		size_t dir_len;
 		int dir_has_sep, has_led_sep;
@@ -452,15 +452,15 @@ static void __set_path_syms(char *out, size_t out_sz, const char *dir, const cha
 
 		dir_len = strlen(dir);
 		dir_has_sep = (dir_len > 0 &&
-					   IS_PATH_SYM(dir[dir_len - 1]));
-		has_led_sep = IS_PATH_SYM(name[0]);
+					   IS_PATH_SEP(dir[dir_len - 1]));
+		has_led_sep = IS_PATH_SEP(name[0]);
 
 		if (dir_has_sep) {
 				if (has_led_sep) wd_snprintf(out, out_sz, "%s%s", dir, name + 1);
 				else wd_snprintf(out, out_sz, "%s%s", dir, name);
 		} else {
 				if (has_led_sep) wd_snprintf(out, out_sz, "%s%s", dir, name);
-				else wd_snprintf(out, out_sz, "%s%s%s", dir, __PATH_SYM, name);
+				else wd_snprintf(out, out_sz, "%s%s%s", dir, __PATH_SEP, name);
 		}
 
 		out[out_sz - 1] = '\0';
@@ -537,7 +537,7 @@ const char *wd_detect_os(void)
 {
     	static char os[64] = "unknown";
 
-#ifdef _WIN32
+#ifdef WD_WINDOWS
     	wd_strncpy(os, "windows", sizeof(os));
 #else
 		if (access("/.dockerenv", F_OK) == 0) {
@@ -652,7 +652,7 @@ int kill_process(const char *name)
 		if (!name)
 			return -__RETN;
 		char cmd[PATH_MAX];
-#ifndef _WIN32
+#ifndef WD_WINDOWS
 		wd_snprintf(cmd, sizeof(cmd), "pkill -SIGTERM \"%s\" > /dev/null 2>&1", name);
 #else
 		wd_snprintf(cmd, sizeof(cmd), "C:\\Windows\\System32\\taskkill.exe "
@@ -665,7 +665,7 @@ static int
 wd_match_filename(const char *name, const char *pattern)
 {
 		if (strchr(pattern, '*') || strchr(pattern, '?')) {
-#ifdef _WIN32
+#ifdef WD_WINDOWS
 				return PathMatchSpecA(name, pattern);
 #else
 				return (fnmatch(pattern, name, 0) == 0);
@@ -687,7 +687,7 @@ static int wd_should_ignore_dir(const char *name,
 {
 		if (!ignore_dir)
 				return __RETZ;
-#ifdef _WIN32
+#ifdef WD_WINDOWS
 		return (_stricmp(name, ignore_dir) == 0);
 #else
 		return (strcmp(name, ignore_dir) == 0);
@@ -713,12 +713,12 @@ int wd_sef_fdir(const char *sef_path,
 				const char *ignore_dir)
 {
 		char path_buff[MAX_SEF_PATH_SIZE];
-#ifdef _WIN32
+#ifdef WD_WINDOWS
 		WIN32_FIND_DATA find_data;
 		HANDLE find_handle;
 		char sp[WD_MAX_PATH * 2];
 		const char *name;
-		if (sef_path[strlen(sef_path) - 1] == __PATH_CHR_SYM_WIN32)
+		if (sef_path[strlen(sef_path) - 1] == __PATH_CHR_SEP_WIN32)
 				wd_snprintf(sp,
 						    sizeof(sp), "%s*", sef_path);
 		else
@@ -733,7 +733,7 @@ int wd_sef_fdir(const char *sef_path,
 				if (wd_is_special_dir(name))
 						continue;
 
-				__set_path_syms(path_buff, sizeof(path_buff), sef_path, name);
+				__set_path_sep(path_buff, sizeof(path_buff), sef_path, name);
 
 				if (find_data.dwFileAttributes &
 						FILE_ATTRIBUTE_DIRECTORY) {
@@ -768,7 +768,7 @@ int wd_sef_fdir(const char *sef_path,
 				if (wd_is_special_dir(name))
 						continue;
 
-				__set_path_syms(path_buff, sizeof(path_buff), sef_path, name);
+				__set_path_sep(path_buff, sizeof(path_buff), sef_path, name);
 
 				if (item->d_type == DT_DIR) {
 						if (wd_should_ignore_dir(name, ignore_dir))
@@ -911,7 +911,7 @@ static int wd_find_compiler(const char *wd_os_type)
 static void __attribute__((unused)) __toml_base_subdirs(const char *base_path,
 														FILE *toml_file, int *first)
 {
-#ifdef _WIN32
+#ifdef WD_WINDOWS
 		WIN32_FIND_DATAA find_data;
 		HANDLE find_handle;
 		char sp[WD_MAX_PATH], fp[WD_MAX_PATH * 2];
@@ -926,7 +926,7 @@ static void __attribute__((unused)) __toml_base_subdirs(const char *base_path,
 					if (wd_is_special_dir(find_data.cFileName))
 						continue;
 
-					const char *last_slash = strrchr(base_path, __PATH_CHR_SYM_WIN32);
+					const char *last_slash = strrchr(base_path, __PATH_CHR_SEP_WIN32);
 					if (last_slash &&
 						strcmp(last_slash + 1,
 							   find_data.cFileName) == 0)
@@ -955,7 +955,7 @@ static void __attribute__((unused)) __toml_base_subdirs(const char *base_path,
 					if (wd_is_special_dir(item->d_name))
 						continue;
 
-					const char *last_slash = strrchr(base_path, __PATH_CHR_SYM_LINUX);
+					const char *last_slash = strrchr(base_path, __PATH_CHR_SEP_LINUX);
 					if (last_slash &&
 						strcmp(last_slash + 1,
 							   item->d_name) == 0)
@@ -1261,7 +1261,7 @@ static int __wd_sef_safety(const char *c_src, const char *c_dest)
 
 static void __wd_sef_set_permissions(const char *c_dest)
 {
-#ifdef _WIN32
+#ifdef WD_WINDOWS
 		if (win32_chmod(c_dest)) {
 # if defined(_DBG_PRINT)
 				pr_warning(stdout, "chmod failed: %s (errno=%d %s)",
@@ -1287,7 +1287,7 @@ int wd_sef_wmv(const char *c_src, const char *c_dest)
 				return __RETN;
 
 		int is_not_sudo = 0;
-#ifdef _WIN32
+#ifdef WD_WINDOWS
 		is_not_sudo = 1;
 #else
 		is_not_sudo = wd_run_command("which sudo > /dev/null 2>&1");
@@ -1320,7 +1320,7 @@ int wd_sef_wcopy(const char *c_src, const char *c_dest)
 				return __RETN;
 
 		int is_not_sudo = 0;
-#ifdef _WIN32
+#ifdef WD_WINDOWS
 		is_not_sudo = 1;
 #else
 		is_not_sudo = wd_run_command("which sudo > /dev/null 2>&1");

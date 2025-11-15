@@ -19,10 +19,15 @@
 #include <libgen.h>
 #include "wd_util.h"
 #ifdef WD_LINUX
+#include <spawn.h>
 #include <termios.h>
 #endif
 
+#ifndef _NCURSES
 #include <ncursesw/curses.h>
+#else
+#include <ncurses.h>
+#endif
 #include <readline/readline.h>
 #include <readline/history.h>
 
@@ -34,41 +39,23 @@
 #include "wd_crypto.h"
 
 const char* __command[]={
-				"help",
-				"exit",
-				"kill",
-				"title",
-				"sha256",
-				"crc32",
-				"djb2",
-				"time",
-				"config",
-				"stopwatch",
-				"install",
-				"upstream",
-				"hardware",
-				"gamemode",
-				"pawncc",
+				"help", "exit",
+				"kill", "title",
+				"sha256", "crc32",
+				"djb2", "time",
+				"config", "stopwatch",
+				"install", "hardware",
+				"gamemode", "pawncc",
 				"compile",
-				"running",
-				"compiles",
-				"stop",
-				"restart",
-				"ls",
-				"ping",
-				"clear",
-				"nslookup",
-				"netstat",
-				"ipconfig",
-				"uname",
-				"hostname",
-				"whoami",
-				"arp",
-				"route",
-				"df",
-				"du",
-				"ps",
-				"-innumerable"
+				"running", "compiles",
+				"stop", "restart",
+				"ls", "ping",
+				"clear", "nslookup",
+				"netstat", "ipconfig",
+				"uname", "hostname",
+				"whoami", "arp",
+				"route", "df",
+				"du", "ps"
 			};
 
 const size_t
@@ -88,8 +75,8 @@ WatchdogConfig wcfg = {
 		.wd_ptr_samp = NULL,
 		.wd_ptr_omp = NULL,
 		.wd_compiler_stat = 0,
-		.wd_sef_count = MAX_SEF_EMPTY,
-		.wd_sef_found_list = { { MAX_SEF_EMPTY } },
+		.wd_sef_count = RATE_SEF_EMPTY,
+		.wd_sef_found_list = { { RATE_SEF_EMPTY } },
 		.wd_toml_aio_opt = NULL,
 		.wd_toml_aio_repo = NULL,
 		.wd_toml_gm_input = NULL,
@@ -104,83 +91,34 @@ void wd_sef_fdir_reset(void) {
 		for (i = 0; i < sef_max_entries; i++)
 			wcfg.wd_sef_found_list[i][0] = '\0';
 
-		wcfg.wd_sef_count = MAX_SEF_EMPTY;
-		memset(wcfg.wd_sef_found_list, MAX_SEF_EMPTY, sizeof(wcfg.wd_sef_found_list));
+		wcfg.wd_sef_count = RATE_SEF_EMPTY;
+		memset(wcfg.wd_sef_found_list, RATE_SEF_EMPTY, sizeof(wcfg.wd_sef_found_list));
 }
 
-static char
-cwd_cache[WD_PATH_MAX] = { 0 };
-
+static char wd_work_dir[WD_PATH_MAX];
 static void __wd_init_cwd(void) {
 #ifdef WD_WINDOWS
-	    DWORD len;
-	    len = GetCurrentDirectoryA(sizeof(cwd_cache), cwd_cache);
-	    if (len == 0 ||
-	    	len >= sizeof(cwd_cache))
-	        cwd_cache[0] = '\0';
+	    DWORD size_len;
+	    size_len = GetCurrentDirectoryA(sizeof(wd_work_dir), wd_work_dir);
+	    if (size_len == 0 ||
+	    	size_len >= sizeof(wd_work_dir))
+	        wd_work_dir[0] = '\0';
 #else
-	    ssize_t len;
-	    len = readlink("/proc/self/cwd",
-	    		cwd_cache,
-	    		sizeof(cwd_cache) - 1);
-	    if (len < 0)
-	        cwd_cache[0] = '\0';
+	    ssize_t size_len;
+	    size_len = readlink("/proc/self/cwd",
+	    		wd_work_dir,
+	    		sizeof(wd_work_dir) - 1);
+	    if (size_len < 0)
+	        wd_work_dir[0] = '\0';
 	    else
-	        cwd_cache[len] = '\0';
+	        wd_work_dir[size_len] = '\0';
 #endif
 }
 
 const char *wd_get_cwd(void) {
-	    if (cwd_cache[0] == '\0') {
-	    	__wd_init_cwd();
-	    }
-	    return cwd_cache;
-}
-
-
-char *wd_strcpy(char *dest, const char *src) {
-	    if (!dest || !src)
-	        return NULL;
-
-	    char *d = dest;
-	    const char *s = src;
-
-	    for (; (*d++ = *s++); )
-	        ;
-
-	    return dest;
-}
-
-char *wd_strncpy(char *dest, const char *src, size_t n) {
-	    if (!dest || !src || n == 0)
-	        return dest;
-
-	    char *d = dest;
-	    const char *s = src;
-	    size_t i;
-
-	    for (i = 0; i < n && (*d++ = *s++); i++)
-	        ;
-
-	    for (; i < n; i++)
-	        *d++ = '\0';
-
-	    return dest;
-}
-
-int wd_snprintf(char *buf, size_t size, const char *fmt, ...) {
-	    va_list args;
-	    va_start(args, fmt);
-	    int n;
-	    n = vsnprintf(buf, size, fmt, args);
-	    va_end(args);
-
-	    if (n < 0 || (size_t)n >= size) {
-	        if (size > 0)
-	            buf[size - 1] = '\0';
-	        return -1;
-	    }
-	    return n;
+	if (wd_work_dir[0] == '\0')
+		__wd_init_cwd();
+	return wd_work_dir;
 }
 
 char* wd_masked_text(int reveal, const char *text) {
@@ -208,74 +146,144 @@ char* wd_masked_text(int reveal, const char *text) {
 	    return masked;
 }
 
-int mkdir_recusrs(const char *path) {
-		char tmp[WD_PATH_MAX + 56];
-		size_t size_tmp = sizeof(tmp);
-		char *p = NULL;
-		size_t len;
+int wd_mkdir(const char *path) {
+	    char temp[512];
+	    char *p = NULL;
+	    size_t len;
 
-		wd_snprintf(tmp, size_tmp, "%s", path);
-		len = strlen(tmp);
-		if (tmp[len - 1] == __PATH_CHR_SEP_LINUX ||
-			tmp[len - 1] == __PATH_CHR_SEP_WIN32)
-			tmp[len - 1] = 0;
+	    snprintf(temp, sizeof(temp), "%s", path);
+	    len = strlen(temp);
 
-		for (p = tmp + 1; *p; p++) {
-			if (*p == __PATH_CHR_SEP_LINUX ||
-				*p == __PATH_CHR_SEP_WIN32)
-			{
-				*p = 0;
-				if (MKDIR(tmp) != 0 && errno != EEXIST) {
-					perror("mkdir");
-					return -__RETN;
-				}
-				*p = __PATH_CHR_SEP_LINUX;
-			}
-		}
+	    if (len == 0) {
+	        return -WD_RETN;
+	    }
 
-		if (MKDIR(tmp) != 0 && errno != EEXIST) {
-			perror("mkdir");
-			return -__RETN;
-		}
-		return __RETZ;
-}
+	    for (p = temp + 1; *p; p++) {
+	        if (*p == '/') {
+	            *p = '\0';
+	            if (mkdir(temp, S_IRWXU) == -1) {
+	                if (errno != EEXIST) {
+	                    return -WD_RETN;
+	                }
+	            }
+	            *p = '/';
+	        }
+	    }
 
-int wd_server_env(void)
-{
-		int ret = __RETZ;
-		if (ret == __RETZ) {
-			if (!strcmp(wcfg.wd_is_samp, CRC32_TRUE))
-				ret = __RETN;
-			else if (!strcmp(wcfg.wd_is_omp, CRC32_TRUE))
-				ret = __RETW;
-		}
-		return ret;
+	    if (mkdir(temp, S_IRWXU) == -1) {
+	        if (errno != EEXIST) {
+	            return -WD_RETN;
+	        }
+	    }
+
+	    return WD_RETZ;
 }
 
 int wd_run_command(const char *cmd)
 {
-		if (cmd == NULL) {
-			return -__RETN;
-		}
-		static char size_command[WD_MAX_PATH]; /* 4096 */
-		int s_ret = wd_snprintf(size_command,
-						        sizeof(size_command),
-						        "%s",
-						        cmd);
-		if (!s_ret)
-			return -__RETN;
-		int ret = -__RETN;
-		if (ret == -__RETN)
-			system(size_command);
-		return ret;
+		char size_command[WD_MAX_PATH];
+		wd_snprintf(size_command,
+				sizeof(size_command), "%s", cmd);
+		if (cmd[0] == '\0')
+			return WD_RETZ;
+		return system(size_command);
+}
+
+int wd_run_command_depends(const char *cmd)
+{
+		/* fastest command run */
+		/* do not use for complex command|args */
+	    if (cmd == NULL) {
+	        return -WD_RETN;
+	    }
+#ifdef WD_WINDOWS
+	    PROCESS_INFORMATION pi;
+	    STARTUPINFO si;
+	    DWORD exit_code;
+	    char *cmd_copy = NULL;
+	    int ret = -WD_RETN;
+
+	    ZeroMemory(&si, sizeof(si));
+	    si.cb = sizeof(si);
+	    ZeroMemory(&pi, sizeof(pi));
+
+	    cmd_copy = _strdup(cmd);
+	    if (cmd_copy == NULL) {
+	        return -WD_RETN;
+	    }
+
+	    BOOL rate_windows_proc_success = CreateProcess(
+	        NULL,           // No module name (use command line)
+	        cmd_copy,       // Command line
+	        NULL,           // Process handle not inheritable
+	        NULL,           // Thread handle not inheritable
+	        FALSE,          // Set handle inheritance to FALSE
+	        0,              // No creation flags
+	        NULL,           // Use parent's environment block
+	        NULL,           // Use parent's starting directory
+	        &si,            // Pointer to STARTUPINFO structure
+	        &pi             // Pointer to PROCESS_INFORMATION structure
+	    );
+
+	    if (!rate_windows_proc_success) {
+	        wd_free(cmd_copy);
+	        return -WD_RETN;
+	    }
+
+	    wd_free(cmd_copy);
+
+	    WaitForSingleObject(pi.hProcess, INFINITE);
+
+	    if (GetExitCodeProcess(pi.hProcess, &exit_code)) {
+	        ret = (int)exit_code;
+	    }
+
+	    CloseHandle(pi.hProcess);
+	    CloseHandle(pi.hThread);
+
+	    return ret;
+#elif defined(WD_LINUX)
+	    pid_t pid;
+	    int rate_posix_proc_status;
+	    char *argv[] = { "sh", "-c", NULL, NULL };
+	    posix_spawn_file_actions_t posix_f_actions;
+	    extern char **environ;
+
+	    argv[2] = (char *)cmd;
+
+	    if (posix_spawn_file_actions_init(&posix_f_actions) != 0) {
+	        return -WD_RETN;
+	    }
+
+	    int spawn_ret = -WD_RETN;
+	    spawn_ret = posix_spawnp(&pid, "sh", &posix_f_actions, NULL, argv, environ);
+	    
+	    posix_spawn_file_actions_destroy(&posix_f_actions);
+
+	    if (spawn_ret != WD_RETZ) {
+	        return -spawn_ret;
+	    }
+	    if (waitpid(pid, &rate_posix_proc_status, 0) == -1) {
+	        return -WD_RETN;
+	    }
+
+	    if (WIFEXITED(rate_posix_proc_status)) {
+	        return WEXITSTATUS(rate_posix_proc_status);
+	    } else if (WIFSIGNALED(rate_posix_proc_status)) {
+	        return 128 + WTERMSIG(rate_posix_proc_status);
+	    } else {
+	        return -WD_RETN;
+	    }
+#endif
+    	return -WD_RETN;
 }
 
 int is_termux_environment(void)
 {
 		struct stat st;
-		int is_termux = __RETZ;
+		int is_termux = WD_RETZ;
 #if defined(WD_LINUX)
-		is_termux = __RETN;
+		is_termux = WD_RETN;
 		return is_termux;
 #endif
 		if (stat("/data/data/com.termux/files/usr/local/lib/", &st) == 0 ||
@@ -285,7 +293,7 @@ int is_termux_environment(void)
 			stat("/data/data/com.termux/amd32/usr/lib", &st) == 0 ||
 			stat("/data/data/com.termux/amd64/usr/lib", &st) == 0)
 		{
-			is_termux = __RETN;
+			is_termux = WD_RETN;
 		}
 		return is_termux;
 }
@@ -293,14 +301,14 @@ int is_termux_environment(void)
 int is_native_windows(void)
 {
 #if defined WD_LINUX || WD_ANDROID
-		return __RETZ;
+		return WD_RETZ;
 #endif
 		char* msys2_env;
 		msys2_env = getenv("MSYSTEM");
 		if (msys2_env)
-			return __RETZ;
+			return WD_RETZ;
 		else
-			return __RETN;
+			return WD_RETN;
 }
 
 void wd_printfile(const char *path) {
@@ -340,7 +348,7 @@ int wd_set_title(const char *title)
 	    if (isatty(STDOUT_FILENO))
 	        	printf("\033]0;%s\007", new_title);
 #endif
-		return __RETZ;
+		return WD_RETZ;
 }
 
 void wd_strip_dot_fns(char *dst, size_t dst_sz, const char *src)
@@ -372,10 +380,6 @@ void wd_strip_dot_fns(char *dst, size_t dst_sz, const char *src)
 		wd_snprintf(dst, dst_sz, "%s", src);
 }
 
-unsigned char wd_tolower(unsigned char c) {
-    	return (unsigned char)(c + ((c - 'A') <= ('Z' - 'A') ? 32 : 0));
-}
-
 bool
 wd_strcase(const char *text, const char *pattern) {
 		const char *p;
@@ -390,6 +394,9 @@ wd_strcase(const char *text, const char *pattern) {
 		return false;
 }
 
+unsigned char wd_tolower(unsigned char c) {
+    	return (unsigned char)(c + ((c - 'A') <= ('Z' - 'A') ? 32 : 0));
+}
 bool strfind(const char *text, const char *pattern) {
 	    if (!text || !pattern)
 	        return false;
@@ -461,7 +468,8 @@ void wd_escape_quotes(char *dest, size_t size, const char *src)
 		dest[j] = '\0';
 }
 
-static void __set_path_sep(char *out, size_t out_sz, const char *dir, const char *name)
+static void __set_path_sep(char *out, size_t out_sz,
+						   const char *dir, const char *entry_name)
 {
 		size_t dir_len;
 		int dir_has_sep, has_led_sep;
@@ -472,21 +480,19 @@ static void __set_path_sep(char *out, size_t out_sz, const char *dir, const char
 		dir_len = strlen(dir);
 		dir_has_sep = (dir_len > 0 &&
 					   IS_PATH_SEP(dir[dir_len - 1]));
-		has_led_sep = IS_PATH_SEP(name[0]);
+		has_led_sep = IS_PATH_SEP(entry_name[0]);
 
 		if (dir_has_sep) {
-				if (has_led_sep) wd_snprintf(out, out_sz, "%s%s", dir, name + 1);
-				else wd_snprintf(out, out_sz, "%s%s", dir, name);
+				if (has_led_sep)
+					wd_snprintf(out, out_sz, "%s%s", dir, entry_name + 1);
+				else wd_snprintf(out, out_sz, "%s%s", dir, entry_name);
 		} else {
-				if (has_led_sep) wd_snprintf(out, out_sz, "%s%s", dir, name);
-				else wd_snprintf(out, out_sz, "%s%s%s", dir, __PATH_SEP, name);
+				if (has_led_sep)
+					wd_snprintf(out, out_sz, "%s%s", dir, entry_name);
+				else wd_snprintf(out, out_sz, "%s%s%s", dir, __PATH_SEP, entry_name);
 		}
 
 		out[out_sz - 1] = '\0';
-}
-
-static inline int min3(int a, int b, int c) {
-    	return (a < b) ? (a < c ? a : c) : (b < c ? b : c);
 }
 
 static int __command_suggest(const char *s1, const char *s2) {
@@ -555,30 +561,16 @@ const char *wd_find_near_command(const char *command,
 const char *wd_detect_os(void)
 {
     	static char os[64] = "unknown";
-
 #ifdef WD_WINDOWS
     	wd_strncpy(os, "windows", sizeof(os));
-#else
-		if (access("/.dockerenv", F_OK) == 0) {
-			wd_strncpy(os, "linux", sizeof(os));
-		}
-		else if ((getenv("WSL_INTEROP") || getenv("WSL_DISTRO_NAME")) &&
-				wd_run_command("which docker > /dev/null 2>&1") == 0) {
-			if (getenv("WD_USE_DOCKER") || access("Dockerfile", F_OK) == 0) {
-				wd_strncpy(os, "linux", sizeof(os));
-			} else {
-				wd_strncpy(os, "windows", sizeof(os));
-			}
-		} else {
-			struct utsname sys_info;
-			if (uname(&sys_info) == 0) {
-				if (strstr(sys_info.sysname, "Linux"))
-					wd_strncpy(os, "linux", sizeof(os));
-				else
-					wd_strncpy(os, sys_info.sysname, sizeof(os));
-			}
-		}
 #endif
+#ifdef WD_LINUX
+    	wd_strncpy(os, "linux", sizeof(os));
+#endif
+		if (access("/.dockerenv", F_OK) == 0)
+			wd_strncpy(os, "linux", sizeof(os));
+		else if (getenv("WSL_INTEROP") || getenv("WSL_DISTRO_NAME"))
+				wd_strncpy(os, "windows", sizeof(os));
 
 		os[sizeof(os)-1] = '\0';
 		return os;
@@ -586,39 +578,32 @@ const char *wd_detect_os(void)
 
 int dir_exists(const char *path)
 {
-		struct stat st;
-
-		if (stat(path, &st) == 0 &&
-			S_ISDIR(st.st_mode))
-				return __RETN;
-
-		return __RETZ;
+	    struct stat st;
+	    if (stat(path, &st) == 0 && S_ISDIR(st.st_mode))
+	        return WD_RETN;
+	    return WD_RETZ;
 }
 
 int path_exists(const char *path)
 {
-		struct stat st;
-
-		if (stat(path, &st) == 0)
-				return __RETN;
-
-		return __RETZ;
+	    struct stat st;
+	    if (stat(path, &st) == 0)
+	        return WD_RETN;
+	    return WD_RETZ;
 }
 
 int dir_writable(const char *path)
 {
-		if (access(path, W_OK) == 0)
-				return __RETN;
-
-		return __RETZ;
+	    if (access(path, W_OK) == 0)
+	        return WD_RETN;
+	    return WD_RETZ;
 }
 
 int path_acces(const char *path)
 {
-		if (access(path, F_OK) == 0)
-				return __RETN;
-
-		return __RETZ;
+	    if (access(path, F_OK) == 0)
+	        return WD_RETN;
+	    return WD_RETZ;
 }
 
 int file_regular(const char *path)
@@ -626,7 +611,7 @@ int file_regular(const char *path)
 		struct stat st;
 
 		if (stat(path, &st) != 0)
-				return __RETZ;
+				return WD_RETZ;
 
 		return S_ISREG(st.st_mode);
 }
@@ -636,9 +621,9 @@ int file_same_file(const char *a, const char *b)
 		struct stat sa, sb;
 
 		if (stat(a, &sa) != 0)
-				return __RETZ;
+				return WD_RETZ;
 		if (stat(b, &sb) != 0)
-				return __RETZ;
+				return WD_RETZ;
 
 		return (sa.st_ino == sb.st_ino &&
 				sa.st_dev == sb.st_dev);
@@ -651,65 +636,67 @@ ensure_parent_dir(char *out_parent, size_t n, const char *dest)
 		char *parent;
 
 		if (strlen(dest) >= sizeof(tmp))
-				return -__RETN;
+				return -WD_RETN;
 
 		wd_strncpy(tmp, dest, sizeof(tmp));
 		tmp[sizeof(tmp)-1] = '\0';
 
 		parent = dirname(tmp);
 		if (!parent)
-				return -__RETN;
+				return -WD_RETN;
 
 		wd_strncpy(out_parent, parent, n);
 		out_parent[n-1] = '\0';
 
-		return __RETZ;
+		return WD_RETZ;
 }
 
-int kill_process(const char *name)
+int kill_process(const char *entry_name)
 {
-		if (!name)
-			return -__RETN;
-		char cmd[PATH_MAX];
+		if (!entry_name)
+			return -WD_RETN;
+		char cmd[WD_PATH_MAX];
 #ifndef WD_WINDOWS
-		wd_snprintf(cmd, sizeof(cmd), "pkill -SIGTERM \"%s\" > /dev/null 2>&1", name);
+		wd_snprintf(cmd, sizeof(cmd),
+				"pkill -SIGTERM \"%s\" > /dev/null", entry_name);
 #else
-		wd_snprintf(cmd, sizeof(cmd), "C:\\Windows\\System32\\taskkill.exe "
-									  "/IM \"%s\" >nul 2>&1", name);
+		wd_snprintf(cmd, sizeof(cmd),
+				"C:\\Windows\\System32\\taskkill.exe "
+				"/IM \"%s\" >nul", entry_name);
 #endif
 		return wd_run_command(cmd);
 }
 
 static int
-wd_match_filename(const char *name, const char *pattern)
+wd_match_filename(const char *entry_name, const char *pattern)
 {
 		if (strchr(pattern, '*') || strchr(pattern, '?')) {
 #ifdef WD_WINDOWS
-				return PathMatchSpecA(name, pattern);
+				return PathMatchSpecA(entry_name, pattern);
 #else
-				return (fnmatch(pattern, name, 0) == 0);
+				return (fnmatch(pattern, entry_name, 0) == 0);
 #endif
 		} else {
-				return (strcmp(name, pattern) == 0);
+				return (strcmp(entry_name, pattern) == 0);
 		}
 }
 
-int wd_is_special_dir(const char *name)
+int wd_is_special_dir(const char *entry_name)
 {
-		return (name[0] == '.' &&
-		       (name[1] == '\0' ||
-			   (name[1] == '.' && name[2] == '\0')));
+		return (entry_name[0] == '.' &&
+		       (entry_name[1] == '\0' ||
+			   (entry_name[1] == '.' && entry_name[2] == '\0')));
 }
 
-static int wd_should_ignore_dir(const char *name,
+static int wd_should_ignore_dir(const char *entry_name,
 								const char *ignore_dir)
 {
 		if (!ignore_dir)
-				return __RETZ;
+				return WD_RETZ;
 #ifdef WD_WINDOWS
-		return (_stricmp(name, ignore_dir) == 0);
+		return (_stricmp(entry_name, ignore_dir) == 0);
 #else
-		return (strcmp(name, ignore_dir) == 0);
+		return (strcmp(entry_name, ignore_dir) == 0);
 #endif
 }
 
@@ -736,7 +723,8 @@ int wd_sef_fdir(const char *sef_path,
 		WIN32_FIND_DATA find_data;
 		HANDLE find_handle;
 		char sp[WD_MAX_PATH * 2];
-		const char *name;
+		const char *entry_name;
+
 		if (sef_path[strlen(sef_path) - 1] == __PATH_CHR_SEP_WIN32)
 				wd_snprintf(sp,
 						    sizeof(sp), "%s*", sef_path);
@@ -745,28 +733,28 @@ int wd_sef_fdir(const char *sef_path,
 						    sizeof(sp), "%s\\*", sef_path);
 		find_handle = FindFirstFile(sp, &find_data);
 		if (find_handle == INVALID_HANDLE_VALUE)
-				return __RETZ;
+				return WD_RETZ;
 
 		do {
-				name = find_data.cFileName;
-				if (wd_is_special_dir(name))
+				entry_name = find_data.cFileName;
+				if (wd_is_special_dir(entry_name))
 						continue;
 
-				__set_path_sep(path_buff, sizeof(path_buff), sef_path, name);
+				__set_path_sep(path_buff, sizeof(path_buff), sef_path, entry_name);
 
 				if (find_data.dwFileAttributes &
 						FILE_ATTRIBUTE_DIRECTORY) {
-						if (wd_should_ignore_dir(name, ignore_dir))
+						if (wd_should_ignore_dir(entry_name, ignore_dir))
 								continue;
 						if (wd_sef_fdir(path_buff, sef_name, ignore_dir)) {
 								FindClose(find_handle);
-								return __RETN;
+								return WD_RETN;
 						}
 				} else {
-						if (wd_match_filename(name, sef_name)) {
+						if (wd_match_filename(entry_name, sef_name)) {
 								wd_add_found_path(path_buff);
 								FindClose(find_handle);
-								return __RETN;
+								return WD_RETN;
 						}
 				}
 		} while (FindNextFile(find_handle, &find_data));
@@ -776,48 +764,48 @@ int wd_sef_fdir(const char *sef_path,
 		DIR *dir;
 		struct dirent *item;
 		struct stat statbuf;
-		const char *name;
+		const char *entry_name;
 
 		dir = opendir(sef_path);
 		if (!dir)
-				return __RETZ;
+				return WD_RETZ;
 
 		while ((item = readdir(dir)) != NULL) {
-				name = item->d_name;
-				if (wd_is_special_dir(name))
+				entry_name = item->d_name;
+				if (wd_is_special_dir(entry_name))
 						continue;
 
-				__set_path_sep(path_buff, sizeof(path_buff), sef_path, name);
+				__set_path_sep(path_buff, sizeof(path_buff), sef_path, entry_name);
 
 				if (item->d_type == DT_DIR) {
-						if (wd_should_ignore_dir(name, ignore_dir))
+						if (wd_should_ignore_dir(entry_name, ignore_dir))
 								continue;
 						if (wd_sef_fdir(path_buff, sef_name, ignore_dir)) {
 								closedir(dir);
-								return __RETN;
+								return WD_RETN;
 						}
 				} else if (item->d_type == DT_REG) {
-						if (wd_match_filename(name, sef_name)) {
+						if (wd_match_filename(entry_name, sef_name)) {
 								wd_add_found_path(path_buff);
 								closedir(dir);
-								return __RETN;
+								return WD_RETN;
 						}
 				} else {
 						if (stat(path_buff, &statbuf) == -1)
 								continue;
 
 						if (S_ISDIR(statbuf.st_mode)) {
-								if (wd_should_ignore_dir(name, ignore_dir))
+								if (wd_should_ignore_dir(entry_name, ignore_dir))
 										continue;
 								if (wd_sef_fdir(path_buff, sef_name, ignore_dir)) {
 										closedir(dir);
-										return __RETN;
+										return WD_RETN;
 								}
 						} else if (S_ISREG(statbuf.st_mode)) {
-								if (wd_match_filename(name, sef_name)) {
+								if (wd_match_filename(entry_name, sef_name)) {
 										wd_add_found_path(path_buff);
 										closedir(dir);
-										return __RETN;
+										return WD_RETN;
 								}
 						}
 				}
@@ -826,7 +814,7 @@ int wd_sef_fdir(const char *sef_path,
 		closedir(dir);
 #endif
 
-		return __RETZ;
+		return WD_RETZ;
 }
 
 static void
@@ -848,16 +836,19 @@ static void wd_check_compiler_options(int *compatibility, int *optimized_lt)
 		FILE *proc_file;
 		char log_line[1024];
 
-		wd_snprintf(run_cmd, sizeof(run_cmd),
+		if (path_acces(".compiler_test.log"))
+			remove(".compiler_test.log");
+
+		snprintf(run_cmd, sizeof(run_cmd),
 					"%s -___DDDDDDDDDDDDDDDDD "
 					"-___DDDDDDDDDDDDDDDDD"
 					"-___DDDDDDDDDDDDDDDDD-"
-					"___DDDDDDDDDDDDDDDDD > .__CP.log 2>&1",
+					"___DDDDDDDDDDDDDDDDD > .compiler_test.log",
 					wcfg.wd_sef_found_list[0]);
 		wd_run_command(run_cmd);
 
 		int found_Z = 0, found_ver = 0;
-		proc_file = fopen(".__CP.log", "r");
+		proc_file = fopen(".compiler_test.log", "r");
 
 		if (proc_file) {
 			while (fgets(log_line, sizeof(log_line), proc_file) != NULL) {
@@ -866,17 +857,19 @@ static void wd_check_compiler_options(int *compatibility, int *optimized_lt)
 				if (!found_ver && strstr(log_line, "3.10.11"))
 					found_ver = 1;
 			}
+
 			if (found_Z)
 				*compatibility = 1;
 			if (found_ver)
 				*optimized_lt = 1;
+
 			fclose(proc_file);
 		} else {
-			pr_error(stdout, "Failed to open .__CP.log");
+			pr_error(stdout, "Failed to open .compiler_test.log");
 		}
 
-		if (path_acces(".__CP.log"))
-				remove(".__CP.log");
+		if (path_acces(".compiler_test.log"))
+				remove(".compiler_test.log");
 }
 
 static int wd_parse_toml_config(void)
@@ -889,7 +882,7 @@ static int wd_parse_toml_config(void)
 		proc_file = fopen("watchdogs.toml", "r");
 		if (!proc_file) {
 				pr_error(stdout, "Cannot read file %s", "watchdogs.toml");
-				return __RETZ;
+				return WD_RETZ;
 		}
 
 		_toml_config = toml_parse_file(proc_file, error_buffer, sizeof(error_buffer));
@@ -897,7 +890,7 @@ static int wd_parse_toml_config(void)
 
 		if (!_toml_config) {
 				pr_error(stdout, "Parsing TOML: %s", error_buffer);
-				return __RETZ;
+				return WD_RETZ;
 		}
 
 		general_table = toml_table_in(_toml_config, "general");
@@ -910,7 +903,7 @@ static int wd_parse_toml_config(void)
 		}
 
 		toml_free(_toml_config);
-		return __RETN;
+		return WD_RETN;
 }
 
 static int wd_find_compiler(const char *wd_os_type)
@@ -1104,7 +1097,7 @@ int wd_set_toml(void)
 			if (crit_nf == 0) {
 				crit_nf = 1;
 				pr_crit(stdout, "can't locate sa-mp/open.mp server!");
-				return __RETZ;
+				return WD_RETZ;
 			}
 		}
 
@@ -1129,7 +1122,7 @@ int wd_set_toml(void)
 				toml_file = fopen("watchdogs.toml", "w");
 				if (!toml_file) {
 						pr_error(stdout, "Failed to create watchdogs.toml");
-						return __RETN;
+						return WD_RETN;
 				}
 
 				if (find_pawncc)
@@ -1143,18 +1136,18 @@ int wd_set_toml(void)
 
 		if (!wd_parse_toml_config()) {
 				pr_error(stdout, "Failed to parse TOML configuration");
-				return __RETN;
+				return WD_RETN;
 		}
 
 		char error_buffer[256];
 		toml_table_t *_toml_config;
-		FILE *procc_f = fopen("watchdogs.toml", "r");
-		_toml_config = toml_parse_file(procc_f, error_buffer, sizeof(error_buffer));
-		if (procc_f) fclose(procc_f);
+		FILE *proc_f = fopen("watchdogs.toml", "r");
+		_toml_config = toml_parse_file(proc_f, error_buffer, sizeof(error_buffer));
+		if (proc_f) fclose(proc_f);
 
 		if (!_toml_config) {
 			pr_error(stdout, "parsing TOML: %s", error_buffer);
-			wd_main(NULL);
+			start_chain(NULL);
 		}
 
 		toml_table_t *wd_toml_depends = toml_table_in(_toml_config, "depends");
@@ -1180,8 +1173,10 @@ int wd_set_toml(void)
 							wcfg.wd_is_omp = CRC32_TRUE;
 							wcfg.wd_ptr_omp = strdup(bin_val.u.s);
 						}
-						else
+						else {
+							wcfg.wd_is_samp = CRC32_TRUE;
 							wcfg.wd_ptr_samp = strdup(bin_val.u.s);
+						}
 						wcfg.wd_toml_binary = strdup(bin_val.u.s);
 						wd_free(bin_val.u.s);
 				}
@@ -1208,47 +1203,47 @@ int wd_set_toml(void)
 			}
 		}
 
-		return __RETZ;
+		return WD_RETZ;
 }
 
 static int _try_mv_without_sudo(const char *src, const char *dest) {
-		char size_mv[WD_PATH_MAX];
-		if (is_native_windows())
-			wd_snprintf(size_mv, sizeof(size_mv), "move /-Y %s %s", src, dest);
-		else
-			wd_snprintf(size_mv, sizeof(size_mv), "mv -i %s %s", src, dest);
-		int ret = wd_run_command(size_mv);
-		return ret;
+	    char size_mv[WD_PATH_MAX];
+	    if (is_native_windows())
+	        wd_snprintf(size_mv, sizeof(size_mv), "move /-Y %s %s", src, dest);
+	    else
+	        wd_snprintf(size_mv, sizeof(size_mv), "mv -f %s %s", src, dest);
+	    int ret = wd_run_command(size_mv);
+	    return ret;
 }
 
 static int __mv_with_sudo(const char *src, const char *dest) {
-		char size_mv[WD_PATH_MAX];
-		if (is_native_windows())
-			wd_snprintf(size_mv, sizeof(size_mv), "move /-Y %s %s", src, dest);
-		else
-			wd_snprintf(size_mv, sizeof(size_mv), "sudo mv -i %s %s", src, dest);
-		int ret = wd_run_command(size_mv);
-		return ret;
+	    char size_mv[WD_PATH_MAX];
+	    if (is_native_windows())
+	        wd_snprintf(size_mv, sizeof(size_mv), "move /-Y %s %s", src, dest);
+	    else
+	        wd_snprintf(size_mv, sizeof(size_mv), "sudo mv -f %s %s", src, dest);
+	    int ret = wd_run_command(size_mv);
+	    return ret;
 }
 
 static int _try_cp_without_sudo(const char *src, const char *dest) {
-		char size_cp[WD_PATH_MAX];
-		if (is_native_windows())
-			wd_snprintf(size_cp, sizeof(size_cp), "xcopy /-Y %s %s", src, dest);
-		else
-			wd_snprintf(size_cp, sizeof(size_cp), "cp -i %s %s", src, dest);
-		int ret = wd_run_command(size_cp);
-		return ret;
+	    char size_cp[WD_PATH_MAX];
+	    if (is_native_windows())
+	        wd_snprintf(size_cp, sizeof(size_cp), "xcopy /-Y %s %s", src, dest);
+	    else
+	        wd_snprintf(size_cp, sizeof(size_cp), "cp -f %s %s", src, dest);
+	    int ret = wd_run_command(size_cp);
+	    return ret;
 }
 
 static int __cp_with_sudo(const char *src, const char *dest) {
-		char size_cp[WD_PATH_MAX];
-		if (is_native_windows())
-			wd_snprintf(size_cp, sizeof(size_cp), "xcopy /-Y %s %s", src, dest);
-		else
-			wd_snprintf(size_cp, sizeof(size_cp), "sudo cp -i %s %s", src, dest);
-		int ret = wd_run_command(size_cp);
-		return ret;
+	    char size_cp[WD_PATH_MAX];
+	    if (is_native_windows())
+	        wd_snprintf(size_cp, sizeof(size_cp), "xcopy /-Y %s %s", src, dest);
+	    else
+	        wd_snprintf(size_cp, sizeof(size_cp), "sudo cp -f %s %s", src, dest);
+	    int ret = wd_run_command(size_cp);
+	    return ret;
 }
 
 static int __wd_sef_safety(const char *c_src, const char *c_dest)
@@ -1275,7 +1270,7 @@ static int __wd_sef_safety(const char *c_src, const char *c_dest)
 		if (!S_ISDIR(st.st_mode))
 				pr_error(stdout, "destination parent is not a dir: %s", parent);
 
-		return __RETN;
+		return WD_RETN;
 }
 
 static void __wd_sef_set_permissions(const char *c_dest)
@@ -1302,32 +1297,34 @@ int wd_sef_wmv(const char *c_src, const char *c_dest)
 		int ret, mv_ret;
 
 		ret = __wd_sef_safety(c_src, c_dest);
-		if (ret != __RETN)
-				return __RETN;
+		if (ret != WD_RETN)
+				return WD_RETN;
 
 		int is_not_sudo = 0;
 #ifdef WD_WINDOWS
 		is_not_sudo = 1;
 #else
-		is_not_sudo = wd_run_command("which sudo > /dev/null 2>&1");
+		is_not_sudo = wd_run_command("sudo echo > /dev/null");
 #endif
 		if (is_not_sudo == 1) {
 			mv_ret = _try_mv_without_sudo(c_src, c_dest);
+
 			if (!mv_ret) {
 					__wd_sef_set_permissions(c_dest);
 					pr_info(stdout, "* moved without sudo: '%s' -> '%s'", c_src, c_dest);
-					return __RETZ;
+					return WD_RETZ;
 			}
 		} else {
 			mv_ret = __mv_with_sudo(c_src, c_dest);
+
 			if (!mv_ret) {
 					__wd_sef_set_permissions(c_dest);
 					pr_info(stdout, "* moved with sudo: '%s' -> '%s'", c_src, c_dest);
-					return __RETZ;
+					return WD_RETZ;
 			}
 		}
 
-		return __RETN;
+		return WD_RETN;
 }
 
 int wd_sef_wcopy(const char *c_src, const char *c_dest)
@@ -1335,30 +1332,32 @@ int wd_sef_wcopy(const char *c_src, const char *c_dest)
 		int ret, cp_ret;
 
 		ret = __wd_sef_safety(c_src, c_dest);
-		if (ret != __RETN)
-				return __RETN;
+		if (ret != WD_RETN)
+				return WD_RETN;
 
 		int is_not_sudo = 0;
 #ifdef WD_WINDOWS
 		is_not_sudo = 1;
 #else
-		is_not_sudo = wd_run_command("which sudo > /dev/null 2>&1");
+		is_not_sudo = wd_run_command("sudo echo > /dev/null");
 #endif
 		if (is_not_sudo == 1) {
 			cp_ret = _try_cp_without_sudo(c_src, c_dest);
+
 			if (!cp_ret) {
 					__wd_sef_set_permissions(c_dest);
 					pr_info(stdout, "* copying without sudo: '%s' -> '%s'", c_src, c_dest);
-					return __RETZ;
+					return WD_RETZ;
 			}
 		} else {
 			cp_ret = __cp_with_sudo(c_src, c_dest);
+
 			if (!cp_ret) {
 					__wd_sef_set_permissions(c_dest);
 					pr_info(stdout, "* copying with sudo: '%s' -> '%s'", c_src, c_dest);
-					return __RETZ;
+					return WD_RETZ;
 			}
 		}
 
-		return __RETN;
+		return WD_RETN;
 }

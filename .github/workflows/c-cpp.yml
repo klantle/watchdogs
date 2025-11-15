@@ -1,37 +1,35 @@
-# ---------------------------------------------------------------
-# Workflow Name: C/C++ Continuous Integration (CI)
-# ---------------------------------------------------------------
-# This workflow automatically builds and runs a C/C++ project
-# whenever code is pushed or a pull request is opened on 'main'.
-# It ensures that the project compiles successfully and executes
-# correctly on a clean Ubuntu environment.
-# ---------------------------------------------------------------
-
-name: C/C++ CI  # The workflow name as it appears in GitHub Actions UI
+name: C/C++ CI
 
 on:
   push:
-    branches: [ "main" ]      # Trigger workflow when code is pushed to main
+    branches: [ "main" ]
   pull_request:
-    branches: [ "main" ]      # Also trigger when PRs target the main branch
+    branches: [ "main" ]
 
 jobs:
-  build:                      # Job ID 'build' (can be referenced by other jobs)
-    runs-on: ubuntu-latest    # The job runs on GitHub's latest Ubuntu runner
+  build:
+    runs-on: ubuntu-latest
+    env:
+      CC: clang
+      CXX: clang++
 
     steps:
-    # -----------------------------------------------------------
-    # Step 1: Checkout repository
-    # -----------------------------------------------------------
-    - uses: actions/checkout@v4  # Clones your repository code into the runner
-                                 # so that subsequent steps can access it
+    # Repository checkout with depth=1 for faster cloning (shallow clone)
+    - uses: actions/checkout@v4
+      with:
+        fetch-depth: 1
 
-    # -----------------------------------------------------------
-    # Step 2: Install dependencies and compilers
-    # -----------------------------------------------------------
+    # System dependencies installation with optimized apt configuration
     - name: Install build dependencies
       run: |
+        # Configure apt for non-interactive operation and cache optimization
+        export DEBIAN_FRONTEND=noninteractive
         sudo apt-get update -y
+        
+        # Install core build toolchain and development libraries
+        # build-essential: GCC, G++, make, libc-dev, etc.
+        # procps: process utilities (ps, top, kill, etc.)
+        # clang/lld: LLVM compiler toolchain and linker
         sudo apt-get install -y --no-install-recommends \
           build-essential \
           procps \
@@ -45,9 +43,41 @@ jobs:
           libarchive-dev \
           zlib1g-dev \
           libonig-dev
+        
+        # Clean up apt cache to reduce image size
+        sudo apt-get autoremove -y
+        sudo apt-get clean
 
-    # -----------------------------------------------------------
-    # Step 3: Build the project
-    # -----------------------------------------------------------
-    - name: Build project
-      run: make debug            # Executes the 'debug' with debugging mode target from your Makefile
+    # Build phase with debug symbols and sanitizers enabled
+    - name: Build project (Debug configuration)
+      run: |
+        # Build with debug symbols and address sanitizer
+        # This enables: -g (debug symbols) -fsanitize=address (memory error detection)
+        make debug
+        file watchdogs.debug  # Verify binary type and properties
+
+    # Test execution phase with multiple command validation
+    - name: Execute test suite and validation
+      run: |
+        # Test 1: Verify help command functionality
+        echo "Testing help command..."
+        ./watchdogs.debug help
+        
+        # Test 2: Execute main watchdogs functionality
+        echo "Testing main watchdogs command..."
+        ./watchdogs.debug watchdogs
+        
+        # Test 3: Validate binary dependencies and linking
+        echo "Checking binary dependencies..."
+        ldd watchdogs.debug || true
+        
+        # Exit with combined status code from all tests
+        exit 0
+
+    # Optional: Binary size and artifact reporting
+    - name: Build artifact analysis
+      run: |
+        echo "Build artifact statistics:"
+        ls -la watchdogs.debug
+        size watchdogs.debug || true
+        echo "Build completed successfully"

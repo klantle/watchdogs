@@ -673,6 +673,39 @@ void cause_compiler_expl(const char *log_file,
                               const char *pawn_output,
                               int debug)
 {
+        /* Debugging Compiler Cause & Detailed Function */
+#if defined (_DBG_PRINT)
+        pr_color(stdout, FCOLOUR_YELLOW, "-DEBUGGING");
+        printf("[function: %s | "
+               "pretty function: %s | "
+               "line: %d | "
+               "file: %s | "
+               "date: %s | "
+               "time: %s | "
+               "timestamp: %s | "
+               "C standard: %ld | "
+               "C version: %s | "
+               "compiler version: %d | "
+               "architecture: %s]:\n",
+                __func__, __PRETTY_FUNCTION__,
+                __LINE__, __FILE__,
+                __DATE__, __TIME__,
+                __TIMESTAMP__,
+                __STDC_VERSION__,
+                __VERSION__,
+                __GNUC__,
+#ifdef __x86_64__
+                "x86_64");
+#elif defined(__i386__)
+                "i386");
+#elif defined(__arm__)
+                "ARM");
+#elif defined(__aarch64__)
+                "ARM64");
+#else
+                "Unknown");
+#endif
+#endif
       /* Open compiler log file for reading */
       FILE *plog = fopen(log_file, "r");
       if (!plog)

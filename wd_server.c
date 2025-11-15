@@ -23,12 +23,12 @@ char *__cJSON_Data = NULL, *__cJSON_Printed = NULL;
 
 int server_mode = 0;
 void unit_handle_sigint(int sig) {
-        // this is to ensure that SA-MP actually sends the signal "--- Server Shutting Down."
-        // it’s not needed because, in Watchdogs,
-        // the process is replaced by the executed binary from the start,
-        // and if CTRL + C is pressed, it will directly send a SIGINT to the server process,
-        // stopping the server immediately.
-        // wd_stop_server_tasks();
+/* Ensure SA-MP sends the "--- Server Shutting Down." message.
+* This is unnecessary in Watchdogs since the process is replaced
+* by the executed binary from the start. If CTRL+C is pressed,
+* it sends a SIGINT to the server process, stopping the server immediately.
+*/
+/* wd_stop_server_tasks(); */
         if (server_mode == 1) {
           restore_samp_config();
           restore_omp_config();
@@ -78,7 +78,7 @@ void wd_stop_server_tasks(void) {
  * Creates backup, modifies gamemode0 line, and handles file operations
  * 
  * @param gamemode The new gamemode to set in the configuration
- * @return __RETZ on success, -__RETN on failure
+ * @return WD_RETZ on success, -WD_RETN on failure
  */
 static int update_server_config(const char *gamemode)
 {
@@ -108,21 +108,21 @@ static int update_server_config(const char *gamemode)
         /* Execute backup creation command */
         if (wd_run_command(size_mv) != 0) {
                 pr_error(stdout, "Failed to create backup file");
-                return -__RETN;
+                return -WD_RETN;
         }
 
         /* Open backup file for reading */
         config_in = fopen(size_config, "r");
         if (!config_in) {
                 pr_error(stdout, "Failed to open backup config");
-                return -__RETN;
+                return -WD_RETN;
         }
         /* Open original config file for writing (creates new file) */
         config_out = fopen(wcfg.wd_toml_config, "w");
         if (!config_out) {
                 pr_error(stdout, "Failed to write new config");
                 fclose(config_in);
-                return -__RETN;
+                return -WD_RETN;
         }
 
         /* Process gamemode parameter - remove file extension if present */
@@ -153,7 +153,7 @@ static int update_server_config(const char *gamemode)
         fclose(config_in);
         fclose(config_out);
 
-        return __RETZ;  /* Return success */
+        return WD_RETZ;  /* Return success */
 }
 
 /**
@@ -193,19 +193,19 @@ void wd_server_crash_check(void) {
         int __has_error = 0;           /* Flag indicating runtime error was found */
         int server_crashdetect = 0;    /* Counter for crashdetect debug lines */
 
-        FILE *procc_f;  /* File handle for log file processing */
+        FILE *proc_f;  /* File handle for log file processing */
         /* Open appropriate log file based on server mode */
         if (server_mode == 0)
-          procc_f = fopen("server_log.txt", "r");  /* SA-MP log */
+          proc_f = fopen("server_log.txt", "r");  /* SA-MP log */
         else
-          procc_f = fopen("log.txt", "r");         /* OpenMP log */
+          proc_f = fopen("log.txt", "r");         /* OpenMP log */
 
         /* Process log file if successfully opened */
-        if (procc_f)
+        if (proc_f)
         {
             char line_buf[1024 + 1024];  /* Buffer for reading log lines */
             /* Read each line from the log file */
-            while (fgets(line_buf, sizeof(line_buf), procc_f))
+            while (fgets(line_buf, sizeof(line_buf), proc_f))
             {
                 /* Check for runtime error indicators (case insensitive) */
                 if (strfind(line_buf, "run time error") || strfind(line_buf, "Run time error"))
@@ -216,7 +216,7 @@ void wd_server_crash_check(void) {
                     ++server_crashdetect;  /* Count crashdetect related lines */
                 }
             }
-            fclose(procc_f);  /* Close log file */
+            fclose(proc_f);  /* Close log file */
         }
         /* If runtime error occurred but no crashdetect was found, offer to install it */
         if (__has_error == 1 && server_crashdetect < 1) {
@@ -258,6 +258,39 @@ void restore_samp_config(void) {
  */
 void wd_run_samp_server(const char *gamemode, const char *server_bin)
 {
+        /* Debugging SA-MP Function */
+#if defined (_DBG_PRINT)
+	pr_color(stdout, FCOLOUR_YELLOW, "-DEBUGGING");
+        printf("[function: %s | "
+               "pretty function: %s | "
+               "line: %d | "
+               "file: %s | "
+               "date: %s | "
+               "time: %s | "
+               "timestamp: %s | "
+               "C standard: %ld | "
+               "C version: %s | "
+               "compiler version: %d | "
+               "architecture: %s]:\n",
+                __func__, __PRETTY_FUNCTION__,
+                __LINE__, __FILE__,
+                __DATE__, __TIME__,
+                __TIMESTAMP__,
+                __STDC_VERSION__,
+                __VERSION__,
+                __GNUC__,
+#ifdef __x86_64__
+                "x86_64");
+#elif defined(__i386__)
+                "i386");
+#elif defined(__arm__)
+                "ARM");
+#elif defined(__aarch64__)
+                "ARM64");
+#else
+                "Unknown");
+#endif
+#endif
         /* Validate configuration file type - must be TOML, not JSON */
         if (strfind(wcfg.wd_toml_config, ".json"))
                 return;
@@ -292,12 +325,12 @@ void wd_run_samp_server(const char *gamemode, const char *server_bin)
                 /* Gamemode file not found - display error and return to main menu */
                 printf("Cannot locate gamemode: ");
                 pr_color(stdout, FCOLOUR_CYAN, "%s\n", gamemode);
-                wd_main(NULL);
+                start_chain(NULL);
         }
 
         /* Update server configuration with new gamemode */
         if (update_server_config(gamemode) != 0)
-                wd_main(NULL);  /* Return to main menu on configuration failure */
+                start_chain(NULL);  /* Return to main menu on configuration failure */
 
         /* Set execute permissions on server binary (Unix/Linux systems) */
         CHMOD(server_bin, FILE_MODE);
@@ -336,7 +369,7 @@ back_start:
 
         /* Execute the server command */
         ret = wd_run_command(command);
-        if (ret == __RETZ) {
+        if (ret == WD_RETZ) {
                 /* Server started successfully */
                 if (!strcmp(wcfg.wd_os_type, OS_SIGNAL_LINUX)) {
                         /* On Linux, wait a moment then display server logs */
@@ -359,7 +392,7 @@ back_start:
         wd_server_crash_check();
 
         /* Return to main menu after server stops */
-        wd_main(NULL);
+        start_chain(NULL);
 }
 
 /**
@@ -367,14 +400,14 @@ back_start:
  * Handles JSON parsing, modification, and file operations
  * 
  * @param gamemode The new gamemode to set in the configuration
- * @return __RETZ on success, -__RETN on failure
+ * @return WD_RETZ on success, -WD_RETN on failure
  */
 static int update_omp_config(const char *gamemode)
 {
         struct stat st;              /* File status structure */
         char gamemode_buf[256];      /* Buffer for processed gamemode name */
         char put_gamemode[256];      /* Buffer for gamemode processing */
-        int ret = -__RETN;           /* Return status, default to error */
+        int ret = -WD_RETN;           /* Return status, default to error */
 
         /* Create backup filename */
         char size_config[WD_PATH_MAX];
@@ -396,20 +429,20 @@ static int update_omp_config(const char *gamemode)
         /* Execute backup creation */
         if (wd_run_command(size_mv) != 0) {
                 pr_error(stdout, "Failed to create backup file");
-                return -__RETN;
+                return -WD_RETN;
         }
 
         /* Get file size for memory allocation */
         if (stat(size_config, &st) != 0) {
                 pr_error(stdout, "Failed to get file status");
-                return -__RETN;
+                return -WD_RETN;
         }
 
         /* Open backup file for reading */
         config_in = fopen(size_config, "rb");
         if (!config_in) {
                 pr_error(stdout, "Failed to open %s", size_config);
-                return -__RETN;
+                return -WD_RETN;
         }
 
         /* Allocate memory for entire file content plus null terminator */
@@ -481,7 +514,7 @@ static int update_omp_config(const char *gamemode)
                 goto done;
         }
 
-        ret = __RETZ;  /* Mark operation as successful */
+        ret = WD_RETZ;  /* Mark operation as successful */
 
 /* Cleanup section for error handling and resource management */
 done:
@@ -516,6 +549,39 @@ void restore_omp_config(void) {
  */
 void wd_run_omp_server(const char *gamemode, const char *server_bin)
 {
+        /* Debugging OMP Function */
+#if defined (_DBG_PRINT)
+        pr_color(stdout, FCOLOUR_YELLOW, "-DEBUGGING");
+        printf("[function: %s | "
+               "pretty function: %s | "
+               "line: %d | "
+               "file: %s | "
+               "date: %s | "
+               "time: %s | "
+               "timestamp: %s | "
+               "C standard: %ld | "
+               "C version: %s | "
+               "compiler version: %d | "
+               "architecture: %s]:\n",
+                __func__, __PRETTY_FUNCTION__,
+                __LINE__, __FILE__,
+                __DATE__, __TIME__,
+                __TIMESTAMP__,
+                __STDC_VERSION__,
+                __VERSION__,
+                __GNUC__,
+#ifdef __x86_64__
+                "x86_64");
+#elif defined(__i386__)
+                "i386");
+#elif defined(__arm__)
+                "ARM");
+#elif defined(__aarch64__)
+                "ARM64");
+#else
+                "Unknown");
+#endif
+#endif
         /* Validate configuration file type - must be JSON, not CFG */
         if (strfind(wcfg.wd_toml_config, ".cfg"))
                 return;
@@ -548,7 +614,7 @@ void wd_run_omp_server(const char *gamemode, const char *server_bin)
                 /* Gamemode file not found - display error and return to main menu */
                 printf("Cannot locate gamemode: ");
                 pr_color(stdout, FCOLOUR_CYAN, "%s\n", gamemode);
-                wd_main(NULL);
+                start_chain(NULL);
         }
 
         /* Update OpenMP JSON configuration with new gamemode */
@@ -589,7 +655,7 @@ back_start:
 
         /* Execute the server command */
         ret = wd_run_command(command);
-        if (ret == __RETZ) {
+        if (ret == WD_RETZ) {
                 /* Server started successfully - display logs after brief delay */
                 sleep(2);
                 wd_display_server_logs(1);  /* Display OpenMP logs */
@@ -609,5 +675,5 @@ back_start:
         wd_server_crash_check();
 
         /* Return to main menu */
-        wd_main(NULL);
+        start_chain(NULL);
 }

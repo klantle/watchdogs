@@ -30,22 +30,23 @@
 #include <io.h>
 #define __PATH_SEP "\\"
 #define IS_PATH_SEP(c) ((c) == '/' || (c) == '\\')
-#define mkdir(path) _mkdir(path)
-#define MKDIR(path) mkdir(path)
+#define mkdir(wx) _mkdir(wx)
+#define MKDIR(wx) mkdir(wx)
 #define Sleep(sec) Sleep((sec)*1000)
 #define sleep(wx) Sleep(wx)
 #define setenv(wx,wy,wz) _putenv_s(wx,wy)
 #define SETEN(wx,wy,wz) setenv(wx,wy)
-static inline int
-win32_chmod(const char *path) {
-    int mode = _S_IREAD | _S_IWRITE;
-    return chmod(path, mode);
-}
+#define win32_chmod(path) \
+({ \
+    const char *_path = (path); \
+    int _mode = _S_IREAD | _S_IWRITE; \
+    chmod(_path, _mode); \
+})
 #define open _open
 #define read _read
 #define close _close
 #define O_RDONLY _O_RDONLY
-#define CHMOD(path, mode) _chmod(path, mode)
+#define CHMOD(wx, wy) _chmod(wx, wy)
 #define FILE_MODE _S_IREAD | _S_IWRITE
 #define getcwd _getcwd
 #else
@@ -61,12 +62,6 @@ win32_chmod(const char *path) {
 #define FILE_MODE 0777
 #endif
 
-#define __PATH_CHR_SEP_LINUX '/'
-#define __PATH_CHR_SEP_WIN32 '\\'
-
-#define WD_PATH_MAX 260
-#define WD_MAX_PATH 4096
-
 #if __has_include(<readline/history.h>)
 #include <readline/history.h>
 #define wd_u_history() using_history()
@@ -76,15 +71,20 @@ win32_chmod(const char *path) {
 #define wd_a_history(cmd)
 #endif
 
-#define wd_malloc(x) malloc(x)
-#define wd_calloc(x, y) calloc(x, y)
-#define wd_realloc(x, y) realloc(x, y)
-#define wd_free(x) free(x)
+#define wd_malloc(wx) malloc(wx)
+#define wd_calloc(wx, wy) calloc(wx, wy)
+#define wd_realloc(wx, wy) realloc(wx, wy)
+#define wd_free(wx) free(wx)
 
-#define __RETZ 0
-#define __RETN 1
-#define __RETW 2
-#define __RETH 3
+#define __PATH_CHR_SEP_LINUX '/'
+#define __PATH_CHR_SEP_WIN32 '\\'
+
+enum {
+	WD_RETZ = 0,
+	WD_RETN = 1,
+	WD_RETW = 2,
+	WD_RETH = 3
+};
 
 #ifndef DT_UNKNOWN
 #define DT_UNKNOWN 0
@@ -98,6 +98,19 @@ win32_chmod(const char *path) {
 #define DT_WHT 14
 #endif
 
+#ifdef PATH_MAX
+#define WD_PATH_MAX PATH_MAX
+#else
+#define WD_PATH_MAX 260
+#endif
+#define WD_MAX_PATH 4096
+
+enum {
+    RATE_SEF_EMPTY = 0,
+    MAX_SEF_ENTRIES = 28,
+    MAX_SEF_PATH_SIZE = WD_PATH_MAX
+};
+
 #define COMPILER_SAMP    0x01
 #define COMPILER_OPENMP  0x02
 #define COMPILER_DEFAULT 0x00
@@ -110,9 +123,27 @@ win32_chmod(const char *path) {
 #define OS_SIGNAL_LINUX   CRC32_FALSE
 #define OS_SIGNAL_UNKNOWN CRC32_UNKNOWN
 
-#define MAX_SEF_EMPTY 0
-#define MAX_SEF_ENTRIES 28
-#define MAX_SEF_PATH_SIZE WD_PATH_MAX
+#define findstr strfind
+#define wd_strcpy strcpy
+#define wd_strncpy strncpy
+#define wd_snprintf snprintf
+
+#ifndef min3
+#define min3(a, b, c) \
+    ((a) < (b) ? ((a) < (c) ? (a) : (c)) : ((b) < (c) ? (b) : (c)))
+#endif
+
+#define wd_server_env() \
+({ \
+    int ret = WD_RETZ; \
+    if (ret == WD_RETZ) { \
+        if (!strcmp(wcfg.wd_is_samp, CRC32_TRUE)) \
+            ret = WD_RETN; \
+        else if (!strcmp(wcfg.wd_is_omp, CRC32_TRUE)) \
+            ret = WD_RETW; \
+    } \
+    ret; \
+})
 
 typedef struct {
     char *wd_toml_os_type;
@@ -128,7 +159,8 @@ typedef struct {
     char *wd_ptr_omp;
     int wd_compiler_stat;
     size_t wd_sef_count;
-    char wd_sef_found_list[MAX_SEF_ENTRIES][MAX_SEF_PATH_SIZE];
+    char wd_sef_found_list \
+    [MAX_SEF_ENTRIES][MAX_SEF_PATH_SIZE];
     char *wd_toml_aio_opt;
     char *wd_toml_aio_repo;
     char *wd_toml_gm_input;
@@ -143,13 +175,10 @@ struct struct_of { int (*title)(const char *); };
 extern const char* __command[];
 extern const size_t __command_len;
 const char *wd_get_cwd(void);
-char *wd_strcpy(char *dest, const char *src);
-char *wd_strncpy(char *dest, const char *src, size_t n);
-int wd_snprintf(char *buf, size_t size, const char *fmt, ...);
 char* wd_masked_text(int reveal, const char *text);
-int mkdir_recusrs(const char *path);
-int wd_server_env(void);
+int wd_mkdir(const char *path);
 int wd_run_command(const char *cmd);
+int wd_run_command_depends(const char *cmd);
 int is_termux_environment(void);
 int is_native_windows(void);
 void wd_printfile(const char *path);

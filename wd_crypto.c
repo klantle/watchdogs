@@ -303,13 +303,13 @@ int crypto_generate_sha256_hash(const char *input, unsigned char output[32])
         SHA256_CTX ctx;
 
         if (!input || !output)
-                return __RETZ;
+                return WD_RETZ;
 
         crypto_sha256_init(&ctx);
         crypto_sha256_update(&ctx, (const uint8_t *)input, strlen(input));
         crypto_sha256_final(&ctx, output);
 
-        return __RETN;
+        return WD_RETN;
 }
 
 char *crypto_base64_encode(const unsigned char *input, int len)
@@ -408,7 +408,7 @@ int crypto_derive_key_pbkdf2(const char *passphrase, const unsigned char *salt,
         uint32_t block_counter;
 
         if (!passphrase || !salt || !key || key_len <= 0)
-                return __RETZ;
+                return WD_RETZ;
 
         blocks = (key_len + SHA256_DIGEST_SIZE - 1) / SHA256_DIGEST_SIZE;
 
@@ -436,7 +436,7 @@ int crypto_derive_key_pbkdf2(const char *passphrase, const unsigned char *salt,
                 memcpy(key + (i - 1) * SHA256_DIGEST_SIZE, t, copy_len);
         }
 
-        return __RETN;
+        return WD_RETN;
 }
 
 int crypto_encrypt_with_password(const unsigned char *plain, int plaintext_len,
@@ -451,7 +451,7 @@ int crypto_encrypt_with_password(const unsigned char *plain, int plaintext_len,
 
         if (!plain || plaintext_len <= 0 || !passphrase ||
                 !out_blob || !out_blob_len)
-                return __RETZ;
+                return WD_RETZ;
 
         crypto_simple_rand_bytes(salt, salt_len);
         crypto_simple_rand_bytes(iv, iv_len);
@@ -459,7 +459,7 @@ int crypto_encrypt_with_password(const unsigned char *plain, int plaintext_len,
         total_len = salt_len + iv_len + plaintext_len;
         unsigned char *blob = wd_malloc(total_len);
         if (!blob)
-                return __RETZ;
+                return WD_RETZ;
 
         memcpy(blob, salt, salt_len);
         memcpy(blob + salt_len, iv, iv_len);
@@ -468,7 +468,7 @@ int crypto_encrypt_with_password(const unsigned char *plain, int plaintext_len,
         *out_blob = blob;
         *out_blob_len = total_len;
 
-        return __RETN;
+        return WD_RETN;
 }
 
 int crypto_decrypt_with_password(const unsigned char *in_blob, int in_blob_len,
@@ -480,22 +480,22 @@ int crypto_decrypt_with_password(const unsigned char *in_blob, int in_blob_len,
 
         if (!in_blob || in_blob_len <= 0 || !passphrase ||
                 !out_plain || !out_plain_len)
-                return __RETZ;
+                return WD_RETZ;
 
         if (in_blob_len <= salt_len + iv_len)
-                return __RETZ;
+                return WD_RETZ;
 
         int plaintext_len = in_blob_len - salt_len - iv_len;
         unsigned char *plain = wd_malloc(plaintext_len);
         if (!plain)
-                return __RETZ;
+                return WD_RETZ;
 
         memcpy(plain, in_blob + salt_len + iv_len, plaintext_len);
 
         *out_plain = plain;
         *out_plain_len = plaintext_len;
 
-        return __RETN;
+        return WD_RETN;
 }
 
 int crypto_convert_to_hex(const unsigned char *in, int in_len, char **out)
@@ -505,11 +505,11 @@ int crypto_convert_to_hex(const unsigned char *in, int in_len, char **out)
         static const char hex[] = hex_list;
 
         if (!in || in_len < 0 || !out)
-                return __RETZ;
+                return WD_RETZ;
 
         buffer = wd_malloc(in_len * 2 + 1);
         if (!buffer)
-                return __RETZ;
+                return WD_RETZ;
 
         for (i = 0; i < in_len; i++) {
                 buffer[i * 2] = hex[(in[i] >> 4) & 0xF];
@@ -518,5 +518,5 @@ int crypto_convert_to_hex(const unsigned char *in, int in_len, char **out)
         buffer[in_len * 2] = '\0';
         *out = buffer;
 
-        return __RETN;
+        return WD_RETN;
 }

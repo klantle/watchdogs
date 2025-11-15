@@ -2,7 +2,7 @@
 <div align="center">
   <h3>
     <a href="https://gitlab.com/mywatchdogs/watchdogs" >
-    	🛹 W A T C H D O G S 🛹
+        🛹 W A T C H D O G S 🛹
     </a>
   </h3>
 </div>
@@ -43,6 +43,10 @@
 ### [A.I Agent](https://aiagentslist.com/)
 __If you are confused about this project, you can use an A.I. Agent that can help provide available information to be filtered according to the given prompt. Alternatively, you can also create an issue to ask questions in this Repository.__
 ![img](https://raw.githubusercontent.com/klantle/watchdogs/refs/heads/main/__AGENT.png)
+
+### Information.
+~~This project is built purely from our own thinking and effort, not merely by imitation. We have never claimed to be inspired by similar projects that themselves draw inspiration from others. Our foundation prioritizes simplicity, speed, feature updates, and the latest library technologies, rather than long term stability.~~
+![img](https://raw.githubusercontent.com/klantle/watchdogs/refs/heads/main/actoride.png)
 
 ### Supported Platforms
 - [x] Linux (Debian/Ubuntu based distributions)
@@ -298,7 +302,7 @@ curl -L -o watchdogs.win "https://gitlab.com/-/project/75403219/uploads/1c2e3e29
 ```bash
 curl -L -o watchdogs.win "https://gitlab.com/-/project/75403219/uploads/e3e9fe215af95dab33872f873fd111ea/watchdogs.debug.win"
 ```
-> Install library - under 20/MB
+> Install library - under 20/MB.
 ```bash
 bash -c '[ -d "watch" ] && rm -rf -- "watch" && git clone https://github.com/klantle/libwatchdogs watch && cd watch && [ -d "/c/libwatchdogs" ] && rm -rf -- "/c/libwatchdogs"  && mv -f libwatchdogs /c/ && mv -f run-native.bat .. && cd .. && rm -rf watch'
 ```
@@ -539,6 +543,11 @@ install repo/user
 **Install specific version (tags):**
 ```bash
 install repo/user:v1.1
+```
+
+**Install specific branch:**
+```bash
+install --branch main repo/user:v1.1
 ```
 
 ### Make Commands Reference

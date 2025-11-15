@@ -10,42 +10,140 @@
 #include <intrin.h>
 int uname(struct utsname *name)
 {
-		OSVERSIONINFOEX osvi;
-		SYSTEM_INFO si;
+        OSVERSIONINFOEX osvi;
+        SYSTEM_INFO si;
 
-		ZeroMemory(&osvi, sizeof(OSVERSIONINFOEX));
-		osvi.dwOSVersionInfoSize = sizeof(OSVERSIONINFOEX);
+        ZeroMemory(&osvi, sizeof(OSVERSIONINFOEX));
+        osvi.dwOSVersionInfoSize = sizeof(OSVERSIONINFOEX);
 
-		if (!GetVersionEx((OSVERSIONINFO*)&osvi))
-				return -1;
+        if (!GetVersionEx((OSVERSIONINFO*)&osvi))
+                        return -WD_RETN;
 
-		GetSystemInfo(&si);
+        GetSystemInfo(&si);
 
-		wd_snprintf(name->sysname, sizeof(name->sysname), "Windows");
-		wd_snprintf(name->release, sizeof(name->release), "%lu.%lu",
-				 osvi.dwMajorVersion, osvi.dwMinorVersion);
-		wd_snprintf(name->version, sizeof(name->version), "Build %lu",
-				 osvi.dwBuildNumber);
+        wd_snprintf(name->sysname, sizeof(name->sysname), "Windows");
+        wd_snprintf(name->release, sizeof(name->release), "%lu.%lu",
+                         osvi.dwMajorVersion, osvi.dwMinorVersion);
+        wd_snprintf(name->version, sizeof(name->version), "Build %lu",
+                         osvi.dwBuildNumber);
 
-		switch (si.wProcessorArchitecture) {
-			case PROCESSOR_ARCHITECTURE_AMD64:
-					wd_snprintf(name->machine, sizeof(name->machine), "x86_64");
-					break;
-			case PROCESSOR_ARCHITECTURE_INTEL:
-					wd_snprintf(name->machine, sizeof(name->machine), "x86");
-					break;
-			case PROCESSOR_ARCHITECTURE_ARM:
-					wd_snprintf(name->machine, sizeof(name->machine), "ARM");
-					break;
-			case PROCESSOR_ARCHITECTURE_ARM64:
-					wd_snprintf(name->machine, sizeof(name->machine), "ARM64");
-					break;
-			default:
-					wd_snprintf(name->machine, sizeof(name->machine), "Unknown");
-					break;
-		}
+        switch (si.wProcessorArchitecture) {
+                case PROCESSOR_ARCHITECTURE_AMD64:
+                                wd_snprintf(name->machine, sizeof(name->machine), "x86_64");
+                                break;
+                case PROCESSOR_ARCHITECTURE_INTEL:
+                                wd_snprintf(name->machine, sizeof(name->machine), "x86");
+                                break;
+                case PROCESSOR_ARCHITECTURE_ARM:
+                                wd_snprintf(name->machine, sizeof(name->machine), "ARM");
+                                break;
+                case PROCESSOR_ARCHITECTURE_ARM64:
+                                wd_snprintf(name->machine, sizeof(name->machine), "ARM64");
+                                break;
+                default:
+                                wd_snprintf(name->machine, sizeof(name->machine), "Unknown");
+                                break;
+        }
 
-		return 0;
+        return WD_RETZ;
+}
+void WD_COMPILER_WIN32_API_START(PROCESS_INFORMATION pi) {
+        /** 
+         * Get handles to core Windows DLLs
+         * kernel32.dll contains core Windows API functions
+         * ntdll.dll contains Native API functions (lower level)
+         */
+        HMODULE hKernel32 = GetModuleHandle("kernel32.dll");
+        HMODULE hNtdll = GetModuleHandle("ntdll.dll");
+        
+        if (hKernel32) {
+            /**
+             * SetProcessIoPriority - Controls I/O priority of a process
+             * I/O priority affects how quickly the process's I/O requests are serviced
+             * by the storage subsystem
+             */
+            typedef BOOL (WINAPI *PSETPROCESSIOPRIORITY)(HANDLE, INT);
+            PSETPROCESSIOPRIORITY SetProcessIoPriority = 
+                (PSETPROCESSIOPRIORITY)GetProcAddress(hKernel32, "SetProcessIoPriority");
+            
+            if (SetProcessIoPriority) {
+                /** 
+                 * Set I/O priority to 4 (HIGH priority)
+                 * Windows I/O priority levels:
+                 * 0 - Very Low, 1 - Low, 2 - Normal, 3 - High, 4 - High, 5 - Critical
+                 * This gives the process faster access to disk I/O resources
+                 */
+                SetProcessIoPriority(pi.hProcess, 4);  /** HIGH priority */
+            }
+
+            /**
+             * SetProcessInformation - Sets various process information types
+             * PROCESS_INFORMATION_CLASS specifies what type of information to set
+             */
+            typedef BOOL (WINAPI *PSETPROCESSINFORMATION)(HANDLE, PROCESS_INFORMATION_CLASS, PVOID, ULONG);
+            PSETPROCESSINFORMATION SetProcessInformation = 
+                (PSETPROCESSINFORMATION)GetProcAddress(hKernel32, "SetProcessInformation");
+
+            if (SetProcessInformation) {
+                /**
+                 * MEMORY_PRIORITY_INFORMATION - Controls memory management behavior
+                 * MemoryPriority range: 0-5 (0 = lowest, 5 = highest)
+                 * Higher priority means:
+                 * - Pages are less likely to be paged out to disk
+                 * - Better chance of keeping working set in physical memory
+                 * - Potentially faster memory access
+                 */
+                MEMORY_PRIORITY_INFORMATION memPri = { 0 };
+                memPri.MemoryPriority = 3;  /** 0-5, 5 = highest */
+                SetProcessInformation(pi.hProcess, ProcessMemoryPriority, &memPri, sizeof(memPri));
+            }
+
+            /**
+             * SetProcessWorkingSetSizeEx - Sets minimum and maximum working set sizes
+             * Working set = portion of virtual address space that is resident in physical memory
+             */
+            typedef BOOL (WINAPI *PSETPROCESSWORKINGSETSIZEEX)(HANDLE, PSIZE_T, PSIZE_T, DWORD);
+            PSETPROCESSWORKINGSETSIZEEX SetProcessWorkingSetSizeEx = 
+                (PSETPROCESSWORKINGSETSIZEEX)GetProcAddress(hKernel32, "SetProcessWorkingSetSizeEx");
+
+            if (SetProcessWorkingSetSizeEx) {
+                /**
+                 * Setting both min and max to -1 means:
+                 * - No minimum working set limit
+                 * - No maximum working set limit  
+                 * - Process can use as much physical memory as needed
+                 * - Windows memory manager won't artificially restrict memory usage
+                 */
+                SIZE_T minWs = (SIZE_T)-1;  /** No limit */
+                SIZE_T maxWs = (SIZE_T)-1;  /** No limit */  
+                SetProcessWorkingSetSizeEx(pi.hProcess, &minWs, &maxWs, 0);  /** Flags = 0 */
+            }
+        }
+        
+        if (hNtdll) {
+            /**
+             * NtSetPowerRequest - Native API function for power management
+             * Part of Windows Native API (undocumented/low-level)
+             */
+            typedef NTSTATUS (WINAPI *PNTSETPOWERREQUEST)(HANDLE, POWER_REQUEST_TYPE);
+            PNTSETPOWERREQUEST NtSetPowerRequest = 
+                (PNTSETPOWERREQUEST)GetProcAddress(hNtdll, "NtSetPowerRequest");
+
+            if (NtSetPowerRequest) {
+                /**
+                 * PowerRequestExecutionRequired - Prevents system from entering sleep mode
+                 * while the process is running
+                 * Useful for:
+                 * - Compilation processes that shouldn't be interrupted
+                 * - Critical operations that require continuous execution
+                 * - Preventing system sleep during long-running tasks
+                 */
+                HANDLE powerRequest = NULL;
+                NtSetPowerRequest(powerRequest, PowerRequestExecutionRequired);
+            }
+        }
+        
+        return;
 }
 #else
 #include <sys/statvfs.h>
@@ -55,10 +153,6 @@ int uname(struct utsname *name)
 #include <unistd.h>
 #endif
 
-// ============================
-// DISPLAY FUNCTIONS
-// ============================
-
 void hardware_display_field(unsigned int field_id, const char* format, ...) {
         va_list args;
         va_start(args, format);
@@ -66,9 +160,9 @@ void hardware_display_field(unsigned int field_id, const char* format, ...) {
         const char* field_name = "";
         char prefix[32] = "";
 
-        // Determine field category and name
+        /** Determine field category and name */
         switch (field_id & 0xFF00) {
-                case 0x0000: // CPU fields
+                case 0x0000: /** CPU fields */
                         wd_strcpy(prefix, "CPU->");
                         switch (field_id) {
                                 case FIELD_CPU_NAME: field_name = "Processor"; break;
@@ -81,7 +175,7 @@ void hardware_display_field(unsigned int field_id, const char* format, ...) {
                         }
                         break;
 
-                case 0x0100: // Memory fields
+                case 0x0100: /** Memory fields */
                         wd_strcpy(prefix, "MEM->");
                         switch (field_id) {
                                 case FIELD_MEM_TOTAL: field_name = "Total RAM"; break;
@@ -91,7 +185,7 @@ void hardware_display_field(unsigned int field_id, const char* format, ...) {
                         }
                         break;
 
-                case 0x0200: // Disk fields
+                case 0x0200: /** Disk fields */
                         wd_strcpy(prefix, "DISK->");
                         switch (field_id) {
                                 case FIELD_DISK_MOUNT: field_name = "Mount Point"; break;
@@ -114,42 +208,38 @@ void hardware_display_field(unsigned int field_id, const char* format, ...) {
         va_end(args);
 }
 
-// ============================
-// HARDWARE INFO FUNCTIONS - WINDOWS
-// ============================
-
 #ifdef WD_WINDOWS
 
 int hardware_cpu_info(HardwareCPU* cpu) {
-        if (!cpu) return __RETZ;
+        if (!cpu) return WD_RETZ;
 
         memset(cpu, 0, sizeof(HardwareCPU));
 
-        // Get CPU brand
+        /** Get CPU brand */
         int cpuInfo[4] = { 0 };
         char brand[64] = { 0 };
-        __cpuid(cpuInfo, 0x80000000);
+        hardware_cpuid(cpuInfo, cpuid_cpuinfo);
         unsigned int maxId = cpuInfo[0];
 
-        if (maxId >= 0x80000004) {
-                __cpuid((int*)(brand), 0x80000002);
-                __cpuid((int*)(brand+16), 0x80000003);
-                __cpuid((int*)(brand+32), 0x80000004);
+        if (maxId >= cpu_maxid) {
+                hardware_cpuid((int*)(brand), cpuid_brand);
+                hardware_cpuid((int*)(brand+16), cpuid_brand_16);
+                hardware_cpuid((int*)(brand+32), cpuid_brand_32);
                 wd_strncpy(cpu->name, brand, sizeof(cpu->name)-1);
         }
 
-        // Get vendor
-        __cpuid(cpuInfo, 0);
+        /** Get vendor */
+        hardware_cpuid(cpuInfo, 0);
         int vendor[4] = {cpuInfo[1], cpuInfo[3], cpuInfo[2], 0};
         wd_strncpy(cpu->vendor, (char*)vendor, sizeof(cpu->vendor)-1);
 
-        // Get core info
+        /** Get core info */
         SYSTEM_INFO si;
         GetSystemInfo(&si);
         cpu->cores = si.dwNumberOfProcessors;
-        cpu->threads = si.dwNumberOfProcessors; // Simplified
+        cpu->threads = si.dwNumberOfProcessors; /** Simplified */
 
-        // Get architecture
+        /** Get architecture */
         if (si.wProcessorArchitecture == PROCESSOR_ARCHITECTURE_AMD64) {
                 wd_strcpy(cpu->architecture, "x86_64");
         } else if (si.wProcessorArchitecture == PROCESSOR_ARCHITECTURE_INTEL) {
@@ -158,11 +248,11 @@ int hardware_cpu_info(HardwareCPU* cpu) {
                 wd_strcpy(cpu->architecture, "Unknown");
         }
 
-        return __RETN;
+        return WD_RETN;
 }
 
 int hardware_memory_info(HardwareMemory* mem) {
-        if (!mem) return __RETZ;
+        if (!mem) return WD_RETZ;
 
         memset(mem, 0, sizeof(HardwareMemory));
 
@@ -173,14 +263,14 @@ int hardware_memory_info(HardwareMemory* mem) {
                 mem->avail_phys = memInfo.ullAvailPhys;
                 mem->total_virt = memInfo.ullTotalVirtual;
                 mem->avail_virt = memInfo.ullAvailVirtual;
-                return __RETN;
+                return WD_RETN;
         }
 
-        return __RETZ;
+        return WD_RETZ;
 }
 
 int hardware_disk_info(HardwareDisk* disk, const char* drive) {
-        if (!disk || !drive) return __RETZ;
+        if (!disk || !drive) return WD_RETZ;
 
         memset(disk, 0, sizeof(HardwareDisk));
         wd_strncpy(disk->mount_point, drive, sizeof(disk->mount_point)-1);
@@ -195,7 +285,7 @@ int hardware_disk_info(HardwareDisk* disk, const char* drive) {
                 disk->free_gb = freeBytes.QuadPart / (1024.0 * 1024 * 1024);
                 disk->used_gb = disk->used_bytes / (1024.0 * 1024 * 1024);
 
-                // Get filesystem type
+                /** Get filesystem type */
                 char fsName[32];
                 DWORD maxCompLen, fsFlags;
                 if (GetVolumeInformation(drive, NULL, 0, NULL, &maxCompLen, &fsFlags, fsName, sizeof(fsName))) {
@@ -204,37 +294,36 @@ int hardware_disk_info(HardwareDisk* disk, const char* drive) {
                         wd_strcpy(disk->filesystem, "Unknown");
                 }
 
-                return __RETN;
+                return WD_RETN;
         }
 
-        return __RETZ;
+        return WD_RETZ;
 }
 
 #else
 
 int hardware_cpu_info(HardwareCPU* cpu) {
-        if (!cpu) return __RETZ;
+        if (!cpu) return WD_RETZ;
 
         memset(cpu, 0, sizeof(HardwareCPU));
 
         FILE *f = fopen("/proc/cpuinfo", "r");
-        if (!f) return __RETZ;
+        if (!f) return WD_RETZ;
 
-        char line[256];
-        int cores = 0;
+        char cpu_line[256];
 
-        while (fgets(line, sizeof(line), f)) {
-                if (strncmp(line, "model name", 10) == 0) {
-                        char *colon = strchr(line, ':');
+        while (fgets(cpu_line, sizeof(cpu_line), f)) {
+                if (strncmp(cpu_line, "model name", 10) == 0) {
+                        char *colon = strchr(cpu_line, ':');
                         if (colon) {
-                                char* start = colon + 2; // Skip colon and space
+                                char* start = colon + 2; /** Skip colon and space */
                                 char* end = strchr(start, '\n');
                                 if (end) *end = '\0';
                                 wd_strncpy(cpu->name, start, sizeof(cpu->name)-1);
                         }
                 }
-                else if (strncmp(line, "vendor_id", 9) == 0) {
-                        char *colon = strchr(line, ':');
+                else if (strncmp(cpu_line, "vendor_id", 9) == 0) {
+                        char *colon = strchr(cpu_line, ':');
                         if (colon) {
                                 char* start = colon + 2;
                                 char* end = strchr(start, '\n');
@@ -242,14 +331,14 @@ int hardware_cpu_info(HardwareCPU* cpu) {
                                 wd_strncpy(cpu->vendor, start, sizeof(cpu->vendor)-1);
                         }
                 }
-                else if (strncmp(line, "cpu cores", 9) == 0) {
-                        char *colon = strchr(line, ':');
+                else if (strncmp(cpu_line, "cpu cores", 9) == 0) {
+                        char *colon = strchr(cpu_line, ':');
                         if (colon) {
                                 cpu->cores = atoi(colon + 2);
                         }
                 }
-                else if (strncmp(line, "siblings", 8) == 0) {
-                        char *colon = strchr(line, ':');
+                else if (strncmp(cpu_line, "siblings", 8) == 0) {
+                        char *colon = strchr(cpu_line, ':');
                         if (colon) {
                                 cpu->threads = atoi(colon + 2);
                         }
@@ -258,29 +347,29 @@ int hardware_cpu_info(HardwareCPU* cpu) {
 
         fclose(f);
 
-        // Get architecture
+        /** Get architecture */
         struct utsname uts;
         if (uname(&uts) == 0) {
                 wd_strncpy(cpu->architecture, uts.machine, sizeof(cpu->architecture)-1);
         }
 
-        return __RETN;
+        return WD_RETN;
 }
 
 int hardware_memory_info(HardwareMemory* mem) {
-        if (!mem) return __RETZ;
+        if (!mem) return WD_RETZ;
 
         memset(mem, 0, sizeof(HardwareMemory));
 
         FILE *f = fopen("/proc/meminfo", "r");
-        if (!f) return __RETZ;
+        if (!f) return WD_RETZ;
 
         char key[64], unit[64];
         unsigned long val;
 
         while (fscanf(f, "%63s %lu %63s", key, &val, unit) == 3) {
                 if (strcmp(key, "MemTotal:") == 0) {
-                        mem->total_phys = val * 1024; // Convert KB to bytes
+                        mem->total_phys = val * 1024; /** Convert KB to bytes */
                 }
                 else if (strcmp(key, "MemAvailable:") == 0) {
                         mem->avail_phys = val * 1024;
@@ -288,11 +377,11 @@ int hardware_memory_info(HardwareMemory* mem) {
         }
 
         fclose(f);
-        return __RETN;
+        return WD_RETN;
 }
 
 int hardware_disk_info(HardwareDisk* disk, const char* mount_point) {
-        if (!disk || !mount_point) return __RETZ;
+        if (!disk || !mount_point) return WD_RETZ;
 
         memset(disk, 0, sizeof(HardwareDisk));
         wd_strncpy(disk->mount_point, mount_point, sizeof(disk->mount_point)-1);
@@ -309,17 +398,13 @@ int hardware_disk_info(HardwareDisk* disk, const char* mount_point) {
 
                 wd_strncpy(disk->filesystem, "Unknown", sizeof(disk->filesystem)-1);
 
-                return __RETN;
+                return WD_RETN;
         }
 
-        return __RETZ;
+        return WD_RETZ;
 }
 
 #endif
-
-// ============================
-// COMPREHENSIVE DISPLAY FUNCTIONS
-// ============================
 
 void hardware_display_cpu_comprehensive() {
         HardwareCPU cpu;
@@ -361,10 +446,6 @@ void hardware_display_disk_comprehensive(const char* drive) {
                 hardware_display_field(FIELD_DISK_FREE, "%.2f GB", disk.free_gb);
         }
 }
-
-// ============================
-// FLEXIBLE QUERY SYSTEM
-// ============================
 
 void hardware_query_specific(unsigned int* fields, int count) {
         for (int i = 0; i < count; i++) {
@@ -447,10 +528,6 @@ void hardware_query_specific(unsigned int* fields, int count) {
         }
 }
 
-// ============================
-// MAIN INTERFACE FUNCTIONS
-// ============================
-
 void hardware_show_summary() {
         printf("=== HARDWARE SUMMARY ===\n");
         hardware_display_cpu_comprehensive();
@@ -468,15 +545,15 @@ void hardware_show_summary() {
 void hardware_show_detailed() {
         printf("=== DETAILED HARDWARE INFORMATION ===\n");
 
-        // CPU Section
+        /** CPU Section */
         printf("\n[CPU Information]\n");
         hardware_display_cpu_comprehensive();
 
-        // Memory Section
+        /** Memory Section */
         printf("\n[Memory Information]\n");
         hardware_display_memory_comprehensive();
 
-        // Disk Section
+        /** Disk Section */
         printf("\n[Disk Information]\n");
 #ifdef WD_WINDOWS
         hardware_display_disk_comprehensive("C:\\");
@@ -484,10 +561,6 @@ void hardware_show_detailed() {
         hardware_display_disk_comprehensive("/");
 #endif
 }
-
-// ============================
-// LEGACY COMPATIBILITY FUNCTIONS
-// ============================
 
 void hardware_cpu_info_legacy() {
         hardware_display_cpu_comprehensive();
@@ -506,12 +579,12 @@ void hardware_disk_info_legacy() {
 }
 
 void hardware_network_info_legacy() {
-        // Basic network info implementation
+        /** Basic network info implementation */
         printf("%-15s: Network information\n", "Network");
 }
 
 void hardware_system_info_legacy() {
-        // Basic system info implementation
+        /** Basic system info implementation */
 #ifdef WD_WINDOWS
         printf("%-15s: Windows\n", "OS");
 #else

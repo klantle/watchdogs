@@ -36,16 +36,16 @@ static int get_termux_architecture(char *out_arch, size_t buf_size)
 
 		if (uname(&uname_data) != 0) {
 				pr_error(stdout, "Failed to get system information");
-				return -__RETN;
+				return -WD_RETN;
 		}
 
 		if (strcmp(uname_data.machine, "aarch64") == 0) {
 				wd_strncpy(out_arch, "arm64", buf_size);
-				return __RETZ;
+				return WD_RETZ;
 		} else if (strcmp(uname_data.machine, "armv7l") == 0 ||
 				   strcmp(uname_data.machine, "armv8l") == 0) {
 				wd_strncpy(out_arch, "arm32", buf_size);
-				return __RETZ;
+				return WD_RETZ;
 		}
 		
 		printf("Unknown arch: %s\n", uname_data.machine);
@@ -60,21 +60,21 @@ static int get_termux_architecture(char *out_arch, size_t buf_size)
 		{
 			wd_strncpy(out_arch, "arm32", buf_size);
 			wd_free(selection);
-			return __RETZ;
+			return WD_RETZ;
 		} else if (strfind(selection, "B")) {
 			wd_strncpy(out_arch, "arm64", buf_size);
 			wd_free(selection);
-			return __RETZ;
+			return WD_RETZ;
 		} else {
 			pr_error(stdout, "Invalid architecture selection");
 			if (wcfg.wd_sel_stat == 0)
-				return __RETZ;
+				return WD_RETZ;
 			wd_free(selection);
-			return -__RETN;
+			return -WD_RETN;
 		}
 }
 
-static int handle_termux_installation(void)
+static int pawncc_handle_termux_installation(void)
 {
 		const char *termux_versions[] = {
 												"3.10.11",
@@ -139,10 +139,10 @@ ret_pawncc:
 		wcfg.wd_ipawncc = 1;
 		wd_download_file(url, filename);
 
-		return __RETZ;
+		return WD_RETZ;
 }
 
-static int handle_standard_installation(const char *platform)
+static int pawncc_handle_standard_installation(const char *platform)
 {
 		const char *versions[] = {
 									"3.10.11", "3.10.10", "3.10.9", "3.10.8", "3.10.7",
@@ -158,7 +158,7 @@ static int handle_standard_installation(const char *platform)
 
 		if (strcmp(platform, "linux") != 0 && strcmp(platform, "windows") != 0) {
 				pr_error(stdout, "Unsupported platform: %s", platform);
-				return -__RETN;
+				return -WD_RETN;
 		}
 
 		printf("Select the PawnCC version to download:\n");
@@ -169,6 +169,7 @@ static int handle_standard_installation(const char *platform)
 				versions[i]);
 		}
 
+get_back:
 		char *__version__ = readline("==> ");
 		version_selection = __version__[0];
 		if (version_selection >= 'A' &&
@@ -179,10 +180,10 @@ static int handle_standard_installation(const char *platform)
 			version_index = version_selection - 'a';
 		} else {
 			if (wcfg.wd_sel_stat == 0)
-				return __RETZ;
+				return WD_RETZ;
 			pr_error(stdout, "Invalid version selection");
 			wd_free(__version__);
-			return -__RETN;
+			goto get_back;
 		}
 
 		if (strcmp(versions[version_index], "3.10.11") == 0)
@@ -207,38 +208,104 @@ static int handle_standard_installation(const char *platform)
 		wcfg.wd_ipawncc = 1;
 		wd_download_file(url, filename);
 
-		return __RETZ;
+		return WD_RETZ;
 }
 
 int wd_install_pawncc(const char *platform)
 {
+        /* Debugging Pawncc Installation Function */
+#if defined (_DBG_PRINT)
+		pr_color(stdout, FCOLOUR_YELLOW, "-DEBUGGING");
+	    printf("[function: %s | "
+               "pretty function: %s | "
+               "line: %d | "
+               "file: %s | "
+               "date: %s | "
+               "time: %s | "
+               "timestamp: %s | "
+               "C standard: %ld | "
+               "C version: %s | "
+               "compiler version: %d | "
+               "architecture: %s]:\n",
+                __func__, __PRETTY_FUNCTION__,
+                __LINE__, __FILE__,
+                __DATE__, __TIME__,
+                __TIMESTAMP__,
+                __STDC_VERSION__,
+                __VERSION__,
+                __GNUC__,
+#ifdef __x86_64__
+                "x86_64");
+#elif defined(__i386__)
+                "i386");
+#elif defined(__arm__)
+                "ARM");
+#elif defined(__aarch64__)
+                "ARM64");
+#else
+                "Unknown");
+#endif
+#endif
 		if (!platform) {
 				pr_error(stdout, "Platform parameter is NULL");
 				if (wcfg.wd_sel_stat == 0)
-					return __RETZ;
-				return -__RETN;
+					return WD_RETZ;
+				return -WD_RETN;
 		}
 		if (strcmp(platform, "termux") == 0) {
-			int ret = handle_termux_installation();
+			int ret = pawncc_handle_termux_installation();
 loop_ipcc:
-			if (ret == -__RETN && wcfg.wd_sel_stat != 0)
+			if (ret == -WD_RETN && wcfg.wd_sel_stat != 0)
 				goto loop_ipcc;
-			else if (ret == __RETZ)
-				return __RETZ;
+			else if (ret == WD_RETZ)
+				return WD_RETZ;
 		} else {
-			int ret = handle_standard_installation(platform);
+			int ret = pawncc_handle_standard_installation(platform);
 loop_ipcc2:
-			if (ret == -__RETN && wcfg.wd_sel_stat != 0)
+			if (ret == -WD_RETN && wcfg.wd_sel_stat != 0)
 				goto loop_ipcc2;
-			else if (ret == __RETZ)
-				return __RETZ;
+			else if (ret == WD_RETZ)
+				return WD_RETZ;
 		}
 
-		return __RETZ;
+		return WD_RETZ;
 }
 
 int wd_install_server(const char *platform)
 {
+        /* Debugging Server Installation Function */
+#if defined (_DBG_PRINT)
+		pr_color(stdout, FCOLOUR_YELLOW, "-DEBUGGING");
+	    printf("[function: %s | "
+               "pretty function: %s | "
+               "line: %d | "
+               "file: %s | "
+               "date: %s | "
+               "time: %s | "
+               "timestamp: %s | "
+               "C standard: %ld | "
+               "C version: %s | "
+               "compiler version: %d | "
+               "architecture: %s]:\n",
+                __func__, __PRETTY_FUNCTION__,
+                __LINE__, __FILE__,
+                __DATE__, __TIME__,
+                __TIMESTAMP__,
+                __STDC_VERSION__,
+                __VERSION__,
+                __GNUC__,
+#ifdef __x86_64__
+                "x86_64");
+#elif defined(__i386__)
+                "i386");
+#elif defined(__arm__)
+                "ARM");
+#elif defined(__aarch64__)
+                "ARM64");
+#else
+                "Unknown");
+#endif
+#endif
 		struct version_info versions[] = {
 				{
 						'A', "SA-MP 0.3.DL R1",
@@ -338,8 +405,8 @@ int wd_install_server(const char *platform)
 		if (strcmp(platform, "linux") != 0 && strcmp(platform, "windows") != 0) {
 				pr_error(stdout, "Unsupported platform: %s", platform);
 				if (wcfg.wd_sel_stat == 0)
-					return __RETZ;
-				return -__RETN;
+					return WD_RETZ;
+				return -WD_RETN;
 		}
 
 		printf("Select the SA-MP version to download:\n");
@@ -348,8 +415,8 @@ int wd_install_server(const char *platform)
 				       versions[i].name);
 		}
 
+get_back:
 		char *__selection__ = readline("==> ");
-
 		selection = __selection__[0];
 		for (i = 0; i < version_count; i++) {
 				if (selection == versions[i].key ||
@@ -360,11 +427,11 @@ int wd_install_server(const char *platform)
 		}
 
 		if (!chosen) {
-				pr_error(stdout, "Invalid selection");
 				if (wcfg.wd_sel_stat == 0)
-					return __RETZ;
+					return WD_RETZ;
+				pr_error(stdout, "Invalid selection");
 				wd_free(__selection__);
-				return -__RETN;
+				goto get_back;
 		}
 
 		const char *url = (strcmp(platform, "linux") == 0) ?
@@ -374,5 +441,5 @@ int wd_install_server(const char *platform)
 
 		wd_download_file(url, filename);
 
-		return __RETZ;
+		return WD_RETZ;
 }

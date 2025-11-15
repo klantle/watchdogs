@@ -2,6 +2,6 @@
 #define WATCHDOGS
 
 extern const char*watchdogs_release;
-void wd_main(void *prefilled_command);
+void start_chain(void *prefilled_command);
 
 #endif

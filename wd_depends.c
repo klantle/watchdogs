@@ -18,43 +18,29 @@ char working[512];
 char *tag_ptr, *path, *first_slash;
 char *user, *repo_slash, *repo, *git_ext;
 char cmd[WD_MAX_PATH * 4], rm_cmd[WD_PATH_MAX];
-char *dname, *ext;
+char *depends_filename, *extension;
 
 void dep_sym_convert (char *path)
 {
 		char *p;
-
 		for (p = path; *p; p++) {
 				if (*p == __PATH_CHR_SEP_WIN32)
-						*p = __PATH_CHR_SEP_LINUX;
+					*p = __PATH_CHR_SEP_LINUX;
 		}
 }
 
-const char *dep_get_fname (const char *path)
+const char *dep_get_fname(const char *path)
 {
-		/* file name */
-		const char *depends;
-		depends = strrchr(path, __PATH_CHR_SEP_LINUX);
-		if (!depends)
-				depends = strrchr(path, __PATH_CHR_SEP_WIN32);
-		return depends ? depends + 1 : path;
+	    /* Get file name */
+	    const char *depends = PATH_SEPARATOR(path);
+	    return depends ? depends + 1 : path;
 }
 
-static const char *dep_get_bname (const char *path)
+static const char *dep_get_bname(const char *path)
 {
-		/* base name */
-		const char *p1 = strrchr(path, __PATH_CHR_SEP_LINUX),
-				   *p2 = strrchr(path, __PATH_CHR_SEP_WIN32),
-				   *p = NULL;
-
-		if (p1 && p2)
-			p = (p1 > p2) ? p1 : p2;
-		else if (p1)
-			p = p1;
-		else if (p2)
-			p = p2;
-
-		return p ? p + 1 : path;
+	    /* Get base name */
+	    const char *p = PATH_SEPARATOR(path);
+	    return p ? p + 1 : path;
 }
 
 static size_t dep_curl_write_cb (void *contents, size_t size, size_t nmemb, void *userp)
@@ -65,7 +51,7 @@ static size_t dep_curl_write_cb (void *contents, size_t size, size_t nmemb, void
 
 		ptr = wd_realloc(mem->data, mem->size + realsize + 1);
 		if (!ptr)
-				return __RETZ;
+				return WD_RETZ;
 
 		mem->data = ptr;
 		memcpy(&mem->data[mem->size], contents, realsize);
@@ -85,9 +71,9 @@ int dep_check_url (const char *url, const char *github_token)
 		struct curl_slist *headers = NULL;
 		char error_buffer[CURL_ERROR_SIZE] = { 0 };
 
-		printf("\t[DEPS] Create URL: %s...\n", url);
-		if (strstr(wcfg.wd_toml_github_tokens, "DO_HERE")) {
-			pr_color(stdout, FCOLOUR_GREEN, "[DEPS] Can't read Github token.. skipping\n");
+		printf("\tCreate URL: %s...\n", url);
+		if (strstr(wcfg.wd_toml_github_tokens, "DO_HERE") || wcfg.wd_toml_github_tokens == NULL || strlen(wcfg.wd_toml_github_tokens) < 1) {
+			pr_color(stdout, FCOLOUR_GREEN, "Can't read Github token.. skipping\n");
 			sleep(2);
 		} else {
 				char auth_header[512];
@@ -138,7 +124,7 @@ int dep_http_get_content (const char *url, const char *github_token, char **out_
 
         curl = curl_easy_init();
         if (!curl)
-            return __RETZ;
+            return WD_RETZ;
 
         if (github_token && strlen(github_token) > 0 && !strstr(github_token, "DO_HERE")) {
             char auth_header[512];
@@ -164,11 +150,11 @@ int dep_http_get_content (const char *url, const char *github_token, char **out_
 
         if (res != CURLE_OK || buffer.size == 0) {
             wd_free(buffer.data);
-            return __RETZ;
+            return WD_RETZ;
         }
 
         *out_html = buffer.data;
-        return __RETN;
+        return WD_RETN;
 }
 
 static char *dep_get_assets (char **deps_assets, int count, const char *preferred_os)
@@ -218,9 +204,9 @@ dep_parse_repo(const char *input, struct dep_repo_info *__deps_data)
 			wd_strncpy(__deps_data->tag, tag_ptr + 1, sizeof(__deps_data->tag) - 1);
 
 			if (!strcmp(__deps_data->tag, "latest")) {
-				printf("[DEPS] Latest ");
-				pr_color(stdout, FCOLOUR_GREEN, "(:latest) ");
-				printf("tag detected, will use latest release\n");
+				printf("latest tags ");
+				pr_color(stdout, FCOLOUR_CYAN, "[:latest] ");
+				printf("detected, will use latest release..\n");
 			}
 		}
 
@@ -259,7 +245,7 @@ dep_parse_repo(const char *input, struct dep_repo_info *__deps_data)
 		user = path;
 		repo_slash = strchr(path, __PATH_CHR_SEP_LINUX);
 		if (!repo_slash)
-			return __RETZ;
+			return WD_RETZ;
 
 		*repo_slash = '\0';
 		repo = repo_slash + 1;
@@ -272,18 +258,20 @@ dep_parse_repo(const char *input, struct dep_repo_info *__deps_data)
 		wd_strncpy(__deps_data->repo, repo, sizeof(__deps_data->repo) - 1);
 	
 		if (strlen(__deps_data->user) == 0 || strlen(__deps_data->repo) == 0)
-			return __RETZ;
+			return WD_RETZ;
 
 #if defined(_DBG_PRINT)
-		pr_info(stdout, "repo: host=%s, domain=%s, user=%s, repo=%s, tag=%s",
+		char size_title[WD_PATH_MAX * 3];
+		wd_snprintf(size_title, sizeof(size_title), "repo: host=%s, domain=%s, user=%s, repo=%s, tag=%s",
 			__deps_data->host,
 			__deps_data->domain,
 			__deps_data->user,
 			__deps_data->repo,
 			__deps_data->tag[0] ? __deps_data->tag : "(none)");
+		wd_set_title(size_title);
 #endif
 
-		return __RETN;
+		return WD_RETN;
 }
 
 static int dep_gh_release_assets (const char *user, const char *repo,
@@ -299,7 +287,7 @@ static int dep_gh_release_assets (const char *user, const char *repo,
 				 "https://", user, repo, tag);
 
 		if (!dep_http_get_content(api_url, wcfg.wd_toml_github_tokens, &json_data))
-				return __RETZ;
+				return WD_RETZ;
 
 		p = json_data;
 		while (url_count < max_urls && (p = strstr(p, "\"browser_download_url\"")) != NULL) {
@@ -406,7 +394,7 @@ static int dep_gh_latest_tag (const char *user, const char *repo,
 				"https://", user, repo);
 
 		if (!dep_http_get_content(api_url, wcfg.wd_toml_github_tokens, &json_data))
-			return __RETZ;
+			return WD_RETZ;
 
 		p = strstr(json_data, "\"tag_name\"");
 		if (p) {
@@ -445,29 +433,41 @@ static int dep_handle_repo (const struct dep_repo_info *dep_repo_info,
                            size_t deps_put_size)
 {
 		int ret = 0;
-
-		const char *deps_repo_branch[] = {
-											"main",
-											"master"
-										 };
-
-		char deps_actual_tag[128] = { 0 };
+		const char *deps_repo_branch[] = {"main", "master"};
+		char deps_actual_tag[128] = {0};
+		int use_fallback_branch = 0;
 
 		if (dep_repo_info->tag[0] && strcmp(dep_repo_info->tag, "latest") == 0) {
 			if (dep_gh_latest_tag(dep_repo_info->user,
 								dep_repo_info->repo,
 								deps_actual_tag,
 								sizeof(deps_actual_tag))) {
-									printf("[DEPS] Create latest tag: %s"
-												 "(instead of latest)\n", deps_actual_tag);
+				printf("Create latest tag: %s (instead of latest)\n", deps_actual_tag);
 			} else {
 				pr_error(stdout, "Failed to get latest tag for %s/%s,"
 								"falling back to main branch",
 								dep_repo_info->user, dep_repo_info->repo);
-				wd_strcpy(deps_actual_tag, "");
+				use_fallback_branch = 1;
 			}
 		} else {
 			wd_strncpy(deps_actual_tag, dep_repo_info->tag, sizeof(deps_actual_tag) - 1);
+		}
+
+		if (use_fallback_branch) {
+			for (int j = 0; j < 2 && !ret; j++) {
+				wd_snprintf(deps_put_url, deps_put_size,
+						"https://github.com/%s/%s/archive/refs/heads/%s.zip",
+						dep_repo_info->user,
+						dep_repo_info->repo,
+						deps_repo_branch[j]);
+
+				if (dep_check_url(deps_put_url, wcfg.wd_toml_github_tokens)) {
+					ret = 1;
+					if (j == 1)
+						printf("Create master branch (main branch not found)\n");
+				}
+			}
+			return ret;
 		}
 
 		if (deps_actual_tag[0]) {
@@ -522,7 +522,7 @@ static int dep_handle_repo (const struct dep_repo_info *dep_repo_info,
 				if (dep_check_url(deps_put_url, wcfg.wd_toml_github_tokens)) {
 					ret = 1;
 					if (j == 1)
-						printf("[DEPS] Create master branch (main branch not found)\n");
+						printf("Create master branch (main branch not found)\n");
 				}
 			}
 		}
@@ -556,13 +556,13 @@ dep_add_ncheck_hash(const char *_H_file_path, const char *_H_json_path)
 
         unsigned char digest[32];
 
-        if (crypto_generate_sha256_hash(convert_f_path, digest) != __RETN) {
+        if (crypto_generate_sha256_hash(convert_f_path, digest) != WD_RETN) {
         	return 1;
         }
 
 		pr_color(stdout,
 				 FCOLOUR_GREEN,
-				 "[DEPS] Create hash (CRC32) for '%s':\n",
+				 "Create hash (CRC32) for '%s':\n",
 				 convert_j_path);
 		crypto_print_hex(digest, sizeof(digest));
 
@@ -575,7 +575,7 @@ void dep_implementation_samp_conf (depConfig config) {
 
 		pr_color(stdout,
 				 FCOLOUR_GREEN,
-				 "[DEPS] Create Depends '%s' into '%s'\n",
+				 "Create Depends '%s' into '%s'\n",
 				 config.dep_added, config.dep_config);
 
 		FILE* c_file = fopen(config.dep_config, "r");
@@ -650,7 +650,7 @@ void dep_implementation_omp_conf (const char* config_name, const char* deps_name
 
 		pr_color(stdout,
 				 FCOLOUR_GREEN,
-				 "[DEPS] Create Depends '%s' into '%s'\n",
+				 "Create Depends '%s' into '%s'\n",
 				 deps_name, config_name);
 
 		FILE* c_file = fopen(config_name, "r");
@@ -740,7 +740,7 @@ void dep_add_include (const char *modes,
 					  char *dep_after) {
 		pr_color(stdout,
 				 FCOLOUR_GREEN,
-				 "[DEPS] Create include '%s' into '%s' after '%s'\n",
+				 "Create include '%s' into '%s' after '%s'\n",
 				 dep_name, modes, dep_after);
 
 		FILE *m_file = fopen(modes, "r");
@@ -814,9 +814,9 @@ static void dep_pr_include_directive (const char *deps_include)
 		const char
 			*direct_bnames = dep_get_bname(depends_name);
 
-		FILE *procc_f = fopen("watchdogs.toml", "r");
-		_toml_config = toml_parse_file(procc_f, error_buffer, sizeof(error_buffer));
-		if (procc_f) fclose(procc_f);
+		FILE *proc_f = fopen("watchdogs.toml", "r");
+		_toml_config = toml_parse_file(proc_f, error_buffer, sizeof(error_buffer));
+		if (proc_f) fclose(proc_f);
 
 		if (!_toml_config) {
 			pr_error(stdout, "parsing TOML: %s", error_buffer);
@@ -852,7 +852,7 @@ static void dep_pr_include_directive (const char *deps_include)
 		}
 }
 
-void deps_print_file_type (const char *path, const char *pattern,
+void dump_file_type (const char *path, const char *pattern,
 						   const char *exclude, const char *cwd,
 						   const char *target_dir, int root)
 {
@@ -869,54 +869,81 @@ void deps_print_file_type (const char *path, const char *pattern,
 						   *deps_bnames = dep_get_bname(wcfg.wd_sef_found_list[i]);
 
 				if (target_dir[0] != '\0') {
-				int _is_win32 = 0;
+					int _is_win32 = 0;
 #ifdef WD_WINDOWS
-				_is_win32 = 1;
+					_is_win32 = 1;
 #endif
-				if (_is_win32)
+					if (_is_win32)
 						wd_snprintf(cp_cmd, sizeof(cp_cmd),
 							"move /Y \"%s\" \"%s\\%s\\\"",
 							wcfg.wd_sef_found_list[i], cwd, target_dir);
 					else
 						wd_snprintf(cp_cmd, sizeof(cp_cmd), "mv -f \"%s\" \"%s/%s/\"",
 							wcfg.wd_sef_found_list[i], cwd, target_dir);
+
+	                struct timespec start = {0}, end = {0};
+	                double moving_dur;
+
+	                clock_gettime(CLOCK_MONOTONIC, &start);
+					wd_run_command_depends(cp_cmd);
+	                clock_gettime(CLOCK_MONOTONIC, &end);
+
+	                moving_dur = (end.tv_sec - start.tv_sec)
+	                           + (end.tv_nsec - start.tv_nsec) / 1e9;
+
+	            	pr_color(stdout,
+	                         FCOLOUR_CYAN,
+	                         " [MOVE] Plugins %s -> %s/%s Finished at %.3fs\n",
+	                         wcfg.wd_sef_found_list[i], cwd, target_dir, moving_dur);
 				} else {
-				int _is_win32 = 0;
+					int _is_win32 = 0;
 #ifdef WD_WINDOWS
-				_is_win32 = 1;
+					_is_win32 = 1;
 #endif
-				if (_is_win32)
-						wd_snprintf(cp_cmd, sizeof(cp_cmd),
-							"move /Y \"%s\" \"%s\"",
-							wcfg.wd_sef_found_list[i], cwd);
-					else
-						wd_snprintf(cp_cmd, sizeof(cp_cmd),
-							"mv -f \"%s\" \"%s\"",
-							wcfg.wd_sef_found_list[i], cwd);
-				}
+					if (_is_win32)
+							wd_snprintf(cp_cmd, sizeof(cp_cmd),
+								"move /Y \"%s\" \"%s\"",
+								wcfg.wd_sef_found_list[i], cwd);
+						else
+							wd_snprintf(cp_cmd, sizeof(cp_cmd),
+								"mv -f \"%s\" \"%s\"",
+								wcfg.wd_sef_found_list[i], cwd);
+					}
 
-				system(cp_cmd);
+	                struct timespec start = {0}, end = {0};
+	                double moving_dur;
 
-				wd_snprintf(json_item, sizeof(json_item), "%s", deps_names);
-				dep_add_ncheck_hash(json_item, json_item);
+	                clock_gettime(CLOCK_MONOTONIC, &start);
+					wd_run_command_depends(cp_cmd);
+	                clock_gettime(CLOCK_MONOTONIC, &end);
 
-				if (root == 1)
-					goto done;
+	                moving_dur = (end.tv_sec - start.tv_sec)
+	                           + (end.tv_nsec - start.tv_nsec) / 1e9;
 
-				if (wd_server_env() == 1 &&
-					  strfind(wcfg.wd_toml_config, "cfg"))
+	            	pr_color(stdout,
+	                         FCOLOUR_CYAN,
+	                         " [MOVE] Plugins %s -> %s Finished at %.3fs\n",
+	                         wcfg.wd_sef_found_list[i], cwd, moving_dur);
+
+					wd_snprintf(json_item, sizeof(json_item), "%s", deps_names);
+					dep_add_ncheck_hash(json_item, json_item);
+
+					if (root == 1)
+						goto done;
+
+					if (wd_server_env() == 1 &&
+						  strfind(wcfg.wd_toml_config, "cfg"))
 samp_label:
-						S_ADD_PLUGIN(wcfg.wd_toml_config,
-							"plugins", deps_bnames);
-				else if (wd_server_env() == 2 &&
-								strfind(wcfg.wd_toml_config, "json"))
-								M_ADD_PLUGIN(wcfg.wd_toml_config,
-											 deps_bnames);
-				else
-						goto samp_label;
+							S_ADD_PLUGIN(wcfg.wd_toml_config,
+								"plugins", deps_bnames);
+					else if (wd_server_env() == 2 &&
+									strfind(wcfg.wd_toml_config, "json"))
+									M_ADD_PLUGIN(wcfg.wd_toml_config,
+												 deps_bnames);
+					else
+							goto samp_label;
+				}
 			}
-		}
-
 done:
 		return;
 }
@@ -933,21 +960,21 @@ void dep_move_files (const char *dep_dir)
 {
 		char *deps_include_path = NULL;
 		char size_deps_copy[WD_MAX_PATH * 2];
-		char deps_base_include_path[WD_MAX_PATH];
+		char include_path[WD_MAX_PATH];
 		int i, deps_include_search = 0;
-		char deps_base_plugins_path[WD_PATH_MAX],
-			 deps_base_components_path[WD_PATH_MAX],
+		char plug_path[WD_PATH_MAX],
+			 comp_path[WD_PATH_MAX],
 			 deps_include_full_path[WD_PATH_MAX],
-			 fpath[WD_PATH_MAX * 2],
-			 parent[WD_PATH_MAX],
+			 depends_ipath[WD_PATH_MAX * 2],
+			 deps_parent_dir[WD_PATH_MAX],
 			 dest[WD_MAX_PATH * 2];
 
-		wd_snprintf(deps_base_plugins_path,
-				    sizeof(deps_base_plugins_path),
+		wd_snprintf(plug_path,
+				    sizeof(plug_path),
 				    "%s/plugins",
 				    dep_dir);
-		wd_snprintf(deps_base_components_path,
-				    sizeof(deps_base_components_path),
+		wd_snprintf(comp_path,
+				    sizeof(comp_path),
 				    "%s/components",
 				    dep_dir);
 
@@ -967,109 +994,18 @@ void dep_move_files (const char *dep_dir)
 
 		const char *cwd = wd_get_cwd();
 
-		deps_print_file_type(deps_base_plugins_path, "*.dll", NULL, cwd, "plugins", 0);
-		deps_print_file_type(deps_base_plugins_path, "*.so", NULL, cwd, "plugins", 0);
-		deps_print_file_type(dep_dir, "*.dll", "plugins", cwd, "", 1);
-		deps_print_file_type(dep_dir, "*.so", "plugins", cwd, "", 1);
+		dump_file_type(plug_path, "*.dll", NULL, cwd, "plugins", 0);
+		dump_file_type(plug_path, "*.so", NULL, cwd, "plugins", 0);
+		dump_file_type(dep_dir, "*.dll", "plugins", cwd, "", 1);
+		dump_file_type(dep_dir, "*.so", "plugins", cwd, "", 1);
 
 		if (wd_server_env() == 2) {
-			wd_snprintf(deps_base_include_path, sizeof(deps_base_include_path), "qawno/include");
-			deps_print_file_type(deps_base_components_path, "*.dll", NULL, cwd, "components", 0);
-			deps_print_file_type(deps_base_components_path, "*.so", NULL, cwd, "components", 0);
+			wd_snprintf(include_path, sizeof(include_path), "qawno/include");
+			dump_file_type(comp_path, "*.dll", NULL, cwd, "components", 0);
+			dump_file_type(comp_path, "*.so", NULL, cwd, "components", 0);
 		} else {
-			wd_snprintf(deps_base_include_path, sizeof(deps_base_include_path), "pawno/include");
+			wd_snprintf(include_path, sizeof(include_path), "pawno/include");
 		}
-
-		int stack_size = WD_MAX_PATH;
-		int stack_top = -1;
-		char **dir_stack = wd_malloc(stack_size * sizeof(char*));
-
-		for (int i = 0; i < stack_size; i++) {
-		    dir_stack[i] = wd_malloc(WD_PATH_MAX);
-		}
-
-		stack_top++;
-		wd_snprintf(dir_stack[stack_top], WD_PATH_MAX, "%s", dep_dir);
-
-		while (stack_top >= 0) {
-		    char current_dir[WD_PATH_MAX];
-		    wd_snprintf(current_dir, sizeof(current_dir), "%s",
-													   dir_stack[stack_top]);
-		    stack_top--;
-
-		    DIR *dir = opendir(current_dir);
-		    if (!dir) continue;
-
-		    struct dirent *item;
-		    struct stat st;
-
-			while ((item = readdir(dir)) != NULL) {
-					if (wd_is_special_dir(item->d_name))
-						continue;
-
-					wd_snprintf(fpath, sizeof(fpath), "%s/%s", current_dir,
-													item->d_name);
-
-					if (stat(fpath, &st) != 0)
-						continue;
-
-					if (S_ISDIR(st.st_mode)) {
-						if (stack_top < stack_size - 1) {
-							++stack_top;
-							wd_snprintf(dir_stack[stack_top], WD_MAX_PATH,
-									"%s", fpath);
-						}
-						continue;
-					}
-
-					ext = strrchr(item->d_name, '.');
-					if (!ext || strcmp(ext, ".inc"))
-							continue;
-
-						wd_snprintf(parent, sizeof(parent), "%s", current_dir);
-						dname = strrchr(parent, __PATH_CHR_SEP_LINUX);
-						if (!dname)
-								continue;
-
-						++dname; /* skip __PATH_CHR_SEP_LINUX */
-
-						wd_snprintf(dest, sizeof(dest), "%s/%s", deps_base_include_path, dname);
-
-						if (rename(parent, dest)) {
-								int _is_win32 = 0;
-#ifdef WD_WINDOWS
-								_is_win32 = 1;
-#endif
-								if (_is_win32) {
-										wd_snprintf(cmd, sizeof(cmd),
-											    "xcopy \"%s\" \"%s\" /E /I /H /Y >nul 2>&1 && "
-											    "rmdir /S /Q \"%s\" >nul 2>&1",
-											    parent, dest, parent);
-								} else {
-										wd_snprintf(cmd, sizeof(cmd),
-												"cp -r \"%s\" \"%s\" && rm -rf \"%s\"",
-												parent, dest, parent);
-								}
-								if (wd_run_command(cmd)) {
-										pr_error(stdout, "failed to move include: %s\n", parent);
-										continue;
-								}
-						}
-
-						dep_add_ncheck_hash(dest, dest);
-
-						pr_info(stdout, "\tmoved include: %s to %s/\n",
-								dname, !strcmp(wcfg.wd_is_omp, CRC32_TRUE) ?
-								"qawno/include" : "pawno/include");
-				}
-
-		    closedir(dir);
-		}
-
-		for (int i = 0; i < stack_size; i++) {
-		    wd_free(dir_stack[i]);
-		}
-		wd_free(dir_stack);
 
 		wd_sef_fdir_reset();
 
@@ -1092,12 +1028,131 @@ void dep_move_files (const char *dep_dir)
 						"mv -f \"%s\" \"%s/%s/\"",
 						wcfg.wd_sef_found_list[i], cwd, deps_include_path);
 
-				wd_run_command(size_deps_copy);
+                struct timespec start = {0}, end = {0};
+                double moving_dur;
 
+                clock_gettime(CLOCK_MONOTONIC, &start);
+				wd_run_command_depends(size_deps_copy);
+                clock_gettime(CLOCK_MONOTONIC, &end);
+
+                moving_dur = (end.tv_sec - start.tv_sec)
+                           + (end.tv_nsec - start.tv_nsec) / 1e9;
+
+            	pr_color(stdout,
+                         FCOLOUR_CYAN,
+                         " [MOVE] Include %s -> %s/%s Finished at %.3fs\n",
+                         wcfg.wd_sef_found_list[i], cwd, deps_include_path, moving_dur);
+            
 				dep_add_ncheck_hash(fi_depends_name, fi_depends_name);
 				dep_pr_include_directive(fi_depends_name);
 			}
 		}
+
+		int stack_size = WD_MAX_PATH;
+		int stack_index = -1;
+		char **dir_stack = wd_malloc(stack_size * sizeof(char*));
+
+		for (int i = 0; i < stack_size; i++) {
+		    dir_stack[i] = wd_malloc(WD_PATH_MAX);
+		}
+
+		stack_index++;
+		wd_snprintf(dir_stack[stack_index], WD_PATH_MAX, "%s", dep_dir);
+
+		while (stack_index >= 0) {
+		    char current_dir[WD_PATH_MAX];
+		    strlcpy(current_dir, dir_stack[stack_index], sizeof(current_dir));
+		    stack_index--;
+
+		    DIR *dir = opendir(current_dir);
+		    if (!dir)
+		        continue;
+
+		    struct dirent *item;
+		    struct stat st;
+
+		    while ((item = readdir(dir)) != NULL) {
+		        if (wd_is_special_dir(item->d_name))
+		            continue;
+
+		        strlcpy(depends_ipath, current_dir, sizeof(depends_ipath));
+		        strlcat(depends_ipath, "/", sizeof(depends_ipath));
+		        strlcat(depends_ipath, item->d_name, sizeof(depends_ipath));
+
+		        if (stat(depends_ipath, &st) != 0)
+		            continue;
+
+		        if (S_ISDIR(st.st_mode)) {
+		            if (stack_index < stack_size - 1) {
+		                stack_index++;
+		                strlcpy(dir_stack[stack_index], depends_ipath, WD_MAX_PATH);
+		            }
+		            continue;
+		        }
+
+		        const char *extension = strrchr(item->d_name, '.');
+		        if (!extension || strcmp(extension, ".inc"))
+		            continue;
+
+		        strlcpy(deps_parent_dir, current_dir, sizeof(deps_parent_dir));
+		        char *depends_filename = strrchr(deps_parent_dir, __PATH_CHR_SEP_LINUX);
+		        if (!depends_filename)
+		            continue;
+
+		        depends_filename++; /* skip __PATH_CHR_SEP_LINUX */
+
+		        strlcpy(dest, include_path, sizeof(dest));
+		        strlcat(dest, "/", sizeof(dest));
+		        strlcat(dest, depends_filename, sizeof(dest));
+
+		        if (rename(deps_parent_dir, dest)) {
+		            int _is_win32 = 0;
+		#ifdef WD_WINDOWS
+		            _is_win32 = 1;
+		#endif
+		            if (_is_win32) {
+		                strlcpy(cmd, "xcopy ", sizeof(cmd));
+		                strlcat(cmd, deps_parent_dir, sizeof(cmd));
+		                strlcat(cmd, " ", sizeof(cmd));
+		                strlcat(cmd, dest, sizeof(cmd));
+		                strlcat(cmd, " /E /I /H /Y >nul 2>&1 && rmdir /S /Q ", sizeof(cmd));
+		                strlcat(cmd, deps_parent_dir, sizeof(cmd));
+		                strlcat(cmd, " >nul 2>&1", sizeof(cmd));
+		            } else {
+		                strlcpy(cmd, "cp -r ", sizeof(cmd));
+		                strlcat(cmd, deps_parent_dir, sizeof(cmd));
+		                strlcat(cmd, " ", sizeof(cmd));
+		                strlcat(cmd, dest, sizeof(cmd));
+		                strlcat(cmd, " && rm -rf ", sizeof(cmd));
+		                strlcat(cmd, deps_parent_dir, sizeof(cmd));
+		            }
+
+		            struct timespec start = {0}, end = {0};
+		            double move_duration;
+
+		            clock_gettime(CLOCK_MONOTONIC, &start);
+		            wd_run_command_depends(cmd);
+		            clock_gettime(CLOCK_MONOTONIC, &end);
+
+		            move_duration = (end.tv_sec - start.tv_sec) + (end.tv_nsec - start.tv_nsec) / 1e9;
+
+		            pr_color(stdout, FCOLOUR_CYAN, " [MOVE] Include %s -> %s Finished at %.3fs\n", deps_parent_dir, dest, move_duration);
+		        }
+
+		        dep_add_ncheck_hash(dest, dest);
+
+		        pr_info(stdout, "\tmoved include: %s to %s/\n",
+		                depends_filename, !strcmp(wcfg.wd_is_omp, CRC32_TRUE) ?
+		                "qawno/include" : "pawno/include");
+		    }
+
+		    closedir(dir);
+		}
+
+		for (int i = 0; i < stack_size; i++) {
+		    wd_free(dir_stack[i]);
+		}
+		wd_free(dir_stack);
 
 		int _is_win32 = 0;
 #ifdef WD_WINDOWS
@@ -1120,111 +1175,137 @@ void wd_apply_depends (const char *depends_name)
 {
 		char _depends[WD_PATH_MAX];
 		char dep_dir[WD_PATH_MAX];
-		struct stat st;
-		char *f_EXT;
-
-		wd_snprintf(_depends, WD_PATH_MAX, "%s", depends_name);
-		f_EXT = strrchr(_depends, '.');
-		if (f_EXT)
-			*f_EXT = '\0';
+		
+		wd_snprintf(_depends, sizeof(_depends), "%s", depends_name);
+		
+		if (strstr(_depends, ".tar.gz")) {
+			char *f_EXT = strstr(_depends, ".tar.gz");
+			if (f_EXT)
+				*f_EXT = '\0';
+		} if (strstr(_depends, ".zip")) {
+			char *f_EXT = strstr(_depends, ".zip");
+			if (f_EXT)
+				*f_EXT = '\0';
+		}
 
 		wd_snprintf(dep_dir, sizeof(dep_dir), "%s", _depends);
 
 		if (wd_server_env() == 1) {
-			if (stat("pawno/include", &st) != 0 && errno == ENOENT)
-				mkdir_recusrs("pawno/include");
-			if (stat("plugins", &st) != 0 && errno == ENOENT)
-				mkdir_recusrs("plugins");
+			if (dir_exists("pawno/include") == 0) {
+				wd_mkdir("pawno/include");
+			}
+			if (dir_exists("plugins") == 0) {
+				MKDIR("plugins");
+			}
 		} else if (wd_server_env() == 2) {
-			if (stat("qawno/include", &st) != 0 && errno == ENOENT)
-				mkdir_recusrs("qawno/include");
-
-			if (stat("components", &st) != 0 && errno == ENOENT)
-				mkdir_recusrs("components");
-
-			if (stat("plugins", &st) != 0 && errno == ENOENT)
-				mkdir_recusrs("plugins");
+			if (dir_exists("qawno/include") == 0) {
+				wd_mkdir("qawno/include");
+			}
+			if (dir_exists("plugins") == 0) {
+				MKDIR("plugins");
+			}
+			if (dir_exists("components") == 0) {
+				MKDIR("components");
+			}
 		}
-
+		
 		dep_move_files(dep_dir);
-
-		return;
 }
 
-void wd_install_depends (const char *depends_string)
+void wd_install_depends(const char *depends_string)
 {
-		char buffer[1024];
-		const char *depends[MAX_DEPENDS];
-		char *depends_files[MAX_DEPENDS];
-		int dep_item_found = 0;
-		char dep_url[1024] = { 0 };
-		char dep_repo_name[256] = { 0 };
-		struct dep_repo_info dep_repo_info;
-		const char *chr_last_slash;
-		char *token;
-		int DEPS_COUNT = 0;
-		int file_count = 0;
-		wcfg.wd_idepends = 0;
+        char buffer[1024];
+        const char *depends[MAX_DEPENDS];
+        struct dep_repo_info repo;
+        char dep_url[1024];
+        char dep_name[256];
+        const char *last_slash;
+        char *token;
+        int deps_count = 0;
+        int i;
 
-		if (!depends_string || !*depends_string) {
-			pr_color(stdout, FCOLOUR_RED, "[DEPS] ");
-			printf("no valid dependencies to install!");
-			goto done;
-		}
+        memset(depends, 0, sizeof(depends));
+        wcfg.wd_idepends = 0;
 
-		wd_snprintf(buffer, sizeof(buffer), "%s", depends_string);
-		token = strtok(buffer, " ");
+        if (!depends_string || !*depends_string) {
+                pr_color(stdout, FCOLOUR_RED, "");
+                printf("no valid dependencies to install!\n");
+                goto done;
+        }
 
-		while (token && DEPS_COUNT < MAX_DEPENDS) {
-			depends[DEPS_COUNT++] = token;
-			token = strtok(NULL, " ");
-		}
-		if (DEPS_COUNT == 0) {
-			pr_color(stdout, FCOLOUR_RED, "[DEPS] ");
-			printf("no valid depends to install!");
-			goto done;
-		}
-		int i;
-		for (i = 0; i < DEPS_COUNT; i++) {
-			if (!dep_parse_repo(depends[i], &dep_repo_info)) {
-				pr_color(stdout, FCOLOUR_RED, "[DEPS] ");
-				printf("invalid repo format: %s\n", depends[i]);
-				continue;
-			}
-			if (!strcmp(dep_repo_info.host, "github")) {
-				dep_item_found = dep_handle_repo(&dep_repo_info,
-												dep_url,
-												sizeof(dep_url));
-			} else {
-				dep_build_repo_url(&dep_repo_info, 0, dep_url, sizeof(dep_url));
-				dep_item_found = dep_check_url(dep_url, wcfg.wd_toml_github_tokens);
-			}
-			if (!dep_item_found) {
-				pr_color(stdout, FCOLOUR_RED, "[DEPS] ");
-				printf("repo not found: %s\n", depends[i]);
-				continue;
-			}
+        if (strlen(depends_string) >= sizeof(buffer)) {
+                pr_color(stdout, FCOLOUR_RED, "");
+                printf("depends_string too long!\n");
+                goto done;
+        }
 
-			chr_last_slash = strrchr(dep_url, __PATH_CHR_SEP_LINUX);
-			if (chr_last_slash &&
-				*(chr_last_slash + 1))
-				wd_snprintf(dep_repo_name, sizeof(dep_repo_name), "%s",
-						chr_last_slash + 1);
-			else
-				wd_snprintf(dep_repo_name, sizeof(dep_repo_name), "%s.zip",
-						dep_repo_info.repo);
+        wd_snprintf(buffer, sizeof(buffer), "%s", depends_string);
 
-			wcfg.wd_idepends = 1;
+        /* split depends by space */
+        token = strtok(buffer, " ");
+        while (token && deps_count < MAX_DEPENDS) {
+                depends[deps_count++] = token;
+                token = strtok(NULL, " ");
+        }
 
-			if (wd_download_file(dep_url, dep_repo_name) == __RETZ)
-				depends_files[file_count++] = strdup(dep_repo_name);
-		}
+        if (!deps_count) {
+                pr_color(stdout, FCOLOUR_RED, "");
+                printf("no valid depends to install!\n");
+                goto done;
+        }
 
-		for (i = 0; i < file_count; i++) {
-			wd_apply_depends(depends_files[i]);
-			wd_free(depends_files[i]);
-		}
+        /* incremental flow: parse -> resolve -> download -> apply */
+        for (i = 0; i < deps_count; i++) {
+
+                /* parse repo info */
+                if (!dep_parse_repo(depends[i], &repo)) {
+                        pr_color(stdout, FCOLOUR_RED, "");
+                        printf("invalid repo format: %s\n", depends[i]);
+                        continue;
+                }
+
+                /* resolve URL */
+                if (!strcmp(repo.host, "github")) {
+                        if (!dep_handle_repo(&repo, dep_url, sizeof(dep_url))) {
+                                pr_color(stdout, FCOLOUR_RED, "");
+                                printf("repo not found: %s\n", depends[i]);
+                                continue;
+                        }
+                } else {
+                        dep_build_repo_url(&repo, 0, dep_url, sizeof(dep_url));
+                        if (!dep_check_url(dep_url, wcfg.wd_toml_github_tokens)) {
+                                pr_color(stdout, FCOLOUR_RED, "");
+                                printf("repo not found: %s\n", depends[i]);
+                                continue;
+                        }
+                }
+
+                /* determine archive file name */
+                last_slash = strrchr(dep_url, __PATH_CHR_SEP_LINUX);
+                if (last_slash && *(last_slash + 1)) {
+                        wd_snprintf(dep_name, sizeof(dep_name), "%s", last_slash + 1);
+                        if (!strstr(dep_name, ".zip") && !strstr(dep_name, ".tar.gz"))
+                                wd_snprintf(dep_name + strlen(dep_name),
+                                            sizeof(dep_name) - strlen(dep_name),
+                                            ".zip");
+                } else {
+                        wd_snprintf(dep_name, sizeof(dep_name), "%s.tar.gz", repo.repo);
+                }
+
+                if (!*dep_name) {
+                        pr_color(stdout, FCOLOUR_RED, "");
+                        printf("invalid repo name: %s\n", dep_url);
+                        continue;
+                }
+
+                wcfg.wd_idepends = 1;
+
+                /* download -> apply immediately */
+                wd_download_file(dep_url, dep_name);
+                wd_apply_depends(dep_name);
+        }
 
 done:
-		wd_main(NULL);
+        return;
 }
+

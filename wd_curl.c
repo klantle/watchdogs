@@ -18,8 +18,11 @@
 #include "wd_unit.h"
 #include "wd_curl.h"
 
-// This is a string variable used to statically store the PawnCC folder name,
-// ensuring that PawnCC is applied from the correct directory and not from an incorrect extraction folder.
+/**
+ * hello there!.
+ * this is a string variable used to statically store the PawnCC folder name,
+ * ensuring that PawnCC is applied from the correct directory and not from an incorrect extraction folder.
+ */
 static char
 	pawncc_dir_src[WD_PATH_MAX];
 
@@ -36,15 +39,19 @@ void verify_cacert_pem(CURL *curl) {
 #ifdef WD_LINUX
 		is_linux = 3;
 #endif
+		static int cacert_notice = 0;
 		if (is_win32) {
 				if (access("cacert.pem", F_OK) == 0)
 					curl_easy_setopt(curl, CURLOPT_CAINFO, "cacert.pem");
 				else if (access("C:/libwatchdogs/cacert.pem", F_OK) == 0)
 					curl_easy_setopt(curl, CURLOPT_CAINFO, "C:/libwatchdogs/cacert.pem");
 				else {
-					pr_color(stdout,
-							 FCOLOUR_YELLOW,
-							 "Warning: No CA file found. SSL verification may fail.\n");
+					if (cacert_notice != 1) {
+						cacert_notice = 1;
+						pr_color(stdout,
+								 FCOLOUR_YELLOW,
+								 "curl: i can't found cacert.pem. SSL verification may fail.\n");
+					}
 				}
 		} else if (is_android) {
 				const char *env_home = getenv("HOME");
@@ -55,9 +62,12 @@ void verify_cacert_pem(CURL *curl) {
 				else if (access(size_env_home, F_OK) == 0)
 					curl_easy_setopt(curl, CURLOPT_CAINFO, size_env_home);
 				else {
-					pr_color(stdout,
-							 FCOLOUR_YELLOW,
-							 "Warning: No CA file found. SSL verification may fail.\n");
+					if (cacert_notice != 1) {
+						cacert_notice = 1;
+						pr_color(stdout,
+								 FCOLOUR_YELLOW,
+								 "curl: i can't found cacert.pem. SSL verification may fail.\n");
+					}
 				}
 		} else if (is_linux) {
 				if (access("cacert.pem", F_OK) == 0)
@@ -65,9 +75,12 @@ void verify_cacert_pem(CURL *curl) {
 				else if (access("/etc/ssl/certs/cacert.pem", F_OK) == 0)
 					curl_easy_setopt(curl, CURLOPT_CAINFO, "/etc/ssl/certs/cacert.pem");
 				else {
-					pr_color(stdout,
-							 FCOLOUR_YELLOW,
-							 "Warning: No CA file found. SSL verification may fail.\n");
+					if (cacert_notice != 1) {
+						cacert_notice = 1;
+						pr_color(stdout,
+								 FCOLOUR_GREEN,
+								 "curl: i can't found cacert.pem. SSL verification may fail.\n");
+					}
 				}
 		}
 }
@@ -81,7 +94,7 @@ void verify_cacert_pem(CURL *curl) {
  * @param dlnow Bytes downloaded so far
  * @param ultotal Total bytes to upload (not used)
  * @param ulnow Bytes uploaded so far (not used)
- * @return Always returns __RETZ (success)
+ * @return Always returns WD_RETZ (success)
  */
 static int progress_callback(void *ptr, curl_off_t dltotal,
 						     curl_off_t dlnow, curl_off_t ultotal,
@@ -98,16 +111,16 @@ static int progress_callback(void *ptr, curl_off_t dltotal,
 				if (percent != last_percent) {
 						/* Display different message for incomplete vs complete downloads */
 						if (percent < 100)
-								printf("\r\tDownloading... %3d%% ?-", percent);  /* In progress */
+								pr_color(stdout, FCOLOUR_CYAN, "\r\tDownloading... %3d%% ?-", percent);  /* In progress */
 						else
-								printf("\r\tDownloading... %3d%% - ", percent);   /* Complete */
+								pr_color(stdout, FCOLOUR_CYAN, "\r\tDownloading... %3d%% - ", percent);   /* Complete */
 
 						fflush(stdout);      /* Ensure output is displayed immediately */
 						last_percent = percent;  /* Update last displayed percentage */
 				}
 		}
 
-		return __RETZ;  /* Always return success to continue download */
+		return WD_RETZ;  /* Always return success to continue download */
 }
 
 /**
@@ -129,7 +142,7 @@ size_t write_memory_callback(void *contents, size_t size,
 
 		/* Validate input parameters */
 		if (!contents || !mem)
-			return __RETZ;
+			return WD_RETZ;
 
 		/* Reallocate memory buffer to accommodate new data plus null terminator */
 		ptr = wd_realloc(mem->memory, mem->size + realsize + 1);
@@ -139,7 +152,7 @@ size_t write_memory_callback(void *contents, size_t size,
 			pr_error(stdout,
 				   "Out of memory detected in %s\n", __func__);
 #endif
-			return __RETZ;
+			return WD_RETZ;
 		}
 
 		/* Update memory structure with new buffer and copy data */
@@ -149,47 +162,6 @@ size_t write_memory_callback(void *contents, size_t size,
 		mem->memory[mem->size] = '\0';   /* Null-terminate the buffer */
 
 		return realsize;  /* Return number of bytes processed */
-}
-
-/**
- * Extracts archive files based on their type
- * Supports TAR, TAR.GZ, and ZIP formats
- * 
- * @param filename Path to the archive file to extract
- * @return 0 on success, negative error code on failure
- */
-static int extract_archive(const char *filename)
-{
-		char output_path[WD_PATH_MAX];  /* Buffer for extraction path */
-		size_t name_len;                /* Length of filename */
-
-		/* Check for TAR archive formats */
-		if (strstr(filename, ".tar") || strstr(filename, ".tar.gz")) {
-				printf(" Try Extracting TAR archive: %s\n", filename);
-				return wd_extract_tar(filename);  /* Extract using TAR handler */
-		} else if (strstr(filename, ".zip")) {
-				/* Handle ZIP archive extraction */
-				printf(" Try Extracting ZIP archive: %s\n", filename);
-
-				/* Remove .zip extension for output directory */
-				name_len = strlen(filename);
-				if (name_len > 4 &&
-					!strncmp(filename + name_len - 4, ".zip", 4))
-				{
-						/* Copy filename without .zip extension */
-						wd_strncpy(output_path, filename, name_len - 4);
-						output_path[name_len - 4] = '\0';
-				} else {
-						/* Use full filename if no .zip extension found */
-						wd_strcpy(output_path, filename);
-				}
-
-				return wd_extract_zip(filename, output_path);  /* Extract using ZIP handler */
-		} else {
-				/* Unknown archive format - log and return error */
-				pr_info(stdout, "Unknown archive type, skipping extraction: %s\n", filename);
-				return -__RETN;
-		}
 }
 
 /**
@@ -212,8 +184,8 @@ static void find_compiler_tools(int compiler_type,
 		const char *ignore_dir = NULL;  /* No directories to ignore in search */
 		char size_pf[WD_PATH_MAX + 56]; /* Buffer for search path */
 
-		/* Build search path in bin directory */
-		wd_snprintf(size_pf, sizeof(size_pf), "%s/bin", pawncc_dir_src);
+		/* Build search path */
+		wd_snprintf(size_pf, sizeof(size_pf), "%s", pawncc_dir_src);
 		
 		/* Search for each compiler tool in the bin directory */
 		*found_pawncc_exe = wd_sef_fdir(size_pf, "pawncc.exe", ignore_dir);
@@ -247,14 +219,6 @@ static const char *get_compiler_directory(void)
 						dir_path = "pawno";
 		}
 		
-		/* Create include directories if they don't exist */
-		if (stat("pawno/include", &st) != 0 && errno == ENOENT) {
-			mkdir_recusrs("pawno/include");  /* Create pawno/include recursively */
-		}
-		else if (stat("qawno/include", &st) != 0 && errno == ENOENT) {
-			mkdir_recusrs("qawno/include");  /* Create qawno/include recursively */
-		}
-
 		return dir_path;  /* Return selected directory path */
 }
 
@@ -277,38 +241,89 @@ static void copy_compiler_tool(const char *src_path, const char *tool_name,
 
 #ifndef WD_WINDOWS
 /**
- * Updates library environment variables for Linux/Unix systems
- * Handles library path configuration and system cache updates
+ * Updates library environment variables permanently for Linux/Unix systems
+ * by modifying shell configuration files
  * 
  * @param lib_path Library path to add to environment
  */
 static void update_library_environment(const char *lib_path)
 {
-		const char *old_path;     /* Existing LD_LIBRARY_PATH value */
-		char new_path[256];       /* New LD_LIBRARY_PATH value */
+	    const char *home_dir = getenv("HOME");
+	    if (!home_dir) {
+	        fprintf(stderr, "Error: HOME environment variable not set\n");
+	        return;
+	    }
 
-		/* Update system library cache if path is in system directory */
-		if (strstr(lib_path, "/usr/local")) {
-				/* Try to use sudo for system-wide update, fall back to regular ldconfig */
-				int is_not_sudo = wd_run_command("which sudo > /dev/null 2>&1");
-				if (is_not_sudo == 0)
-						wd_run_command("sudo ldconfig");  /* Update with sudo */
-				else
-						wd_run_command("ldconfig");       /* Update without sudo */
-		}
+	    /* Determine shell configuration file based on current shell */
+	    const char *shell_rc = NULL;
+	    char shell_path[256];
+	    
+	    /* Get current shell */
+	    char *shell = getenv("SHELL");
+	    if (shell) {
+	        if (strfind(shell, "zsh")) {
+	            shell_rc = ".zshrc";
+	        } else if (strfind(shell, "bash")) {
+	            shell_rc = ".bashrc";
+	        }
+	    }
+	    
+	    /* Fallback to common shells if detection failed */
+	    if (!shell_rc) {
+	        /* Check if zshrc exists */
+	        wd_snprintf(shell_path, sizeof(shell_path), "%s/.zshrc", home_dir);
+	        if (access(shell_path, F_OK) == 0) {
+	            shell_rc = ".zshrc";
+	        } else {
+	            shell_rc = ".bashrc";  /* Default to bash */
+	        }
+	    }
 
-		/* Get current LD_LIBRARY_PATH environment variable */
-		old_path = getenv("LD_LIBRARY_PATH");
-		if (old_path) {
-				/* Prepend new path to existing paths */
-				wd_snprintf(new_path, sizeof(new_path), "%s:%s", lib_path, old_path);
-		} else {
-				/* Use new path as the only library path */
-				wd_snprintf(new_path, sizeof(new_path), "%s", lib_path);
-		}
+	    char config_file[256];
+	    wd_snprintf(config_file, sizeof(config_file), "%s/%s", home_dir, shell_rc);
 
-		/* Set updated library path in environment */
-		SETENV("LD_LIBRARY_PATH", new_path, 1);
+	    /* Check if the path already exists in the config file */
+	    char grep_cmd[512];
+	    wd_snprintf(grep_cmd, sizeof(grep_cmd), 
+	                "grep -q \"LD_LIBRARY_PATH.*%s\" %s", lib_path, config_file);
+	    
+	    int path_exists = system(grep_cmd);
+	    
+	    /* If path doesn't exist, add it to the config file */
+	    if (path_exists != 0) {
+	        char export_cmd[512];
+	        char backup_cmd[WD_PATH_MAX * 3];
+	        
+	        /* Create backup of config file */
+	        wd_snprintf(backup_cmd, sizeof(backup_cmd), "cp %s %s.backup", config_file, config_file);
+	        system(backup_cmd);
+	        
+	        /* Add export command to config file */
+	        wd_snprintf(export_cmd, sizeof(export_cmd),
+	                   "echo 'export LD_LIBRARY_PATH=%s:$LD_LIBRARY_PATH' >> %s",
+	                   lib_path, config_file);
+	        
+	        int ret = system(export_cmd);
+	        
+	        if (ret == 0) {
+	            printf("Successfully updated %s. Please run 'source %s' to apply changes.\n", 
+	                   shell_rc, config_file);
+	        } else {
+	            fprintf(stderr, "Error updating %s\n", shell_rc);
+	        }
+	    } else {
+	        printf("Library path already exists in %s\n", shell_rc);
+	    }
+
+	    /* Also update system library cache for system directories */
+	    if (strfind(lib_path, "/usr/")) {
+	        int is_not_sudo = system("sudo echo > /dev/null");
+	        if (is_not_sudo == 0) {
+	            system("sudo ldconfig");
+	        } else {
+	            system("ldconfig");
+	        }
+	    }
 }
 #endif
 
@@ -316,13 +331,13 @@ static void update_library_environment(const char *lib_path)
  * Sets up Linux library installation for pawn compiler
  * Copies library files to system directories and updates environment
  * 
- * @return __RETZ on success, -__RETN on failure
+ * @return WD_RETZ on success, -WD_RETN on failure
  */
 static int setup_linux_library(void)
 {
 #ifdef WD_WINDOWS
 		/* Skip library setup on Windows systems */
-		return __RETZ;
+		return WD_RETZ;
 #else
 		const char *selected_path = NULL;  /* Chosen library installation path */
 		char libpawnc_src[WD_PATH_MAX];    /* Source path of library file */
@@ -345,14 +360,14 @@ static int setup_linux_library(void)
 		/* Skip setup on Windows or unknown OS types */
 		if (!strcmp(wcfg.wd_toml_os_type, OS_SIGNAL_WINDOWS) ||
 			!strcmp(wcfg.wd_toml_os_type, OS_SIGNAL_UNKNOWN))
-				return __RETZ;
+				return WD_RETZ;
 
-		/* Search for libpawnc.so in the lib directory */
+		/* Search for libpawnc.so */
 		char size_pf[WD_PATH_MAX + 56];
-		wd_snprintf(size_pf, sizeof(size_pf), "%s/lib", pawncc_dir_src);
+		wd_snprintf(size_pf, sizeof(size_pf), "%s", pawncc_dir_src);
 		found_lib = wd_sef_fdir(size_pf, "libpawnc.so", NULL);
 		if (!found_lib)
-				return __RETZ;  /* Return if library not found */
+				return WD_RETZ;  /* Return if library not found */
 
 		/* Find the actual path of the library file */
 		for (i = 0; i < wcfg.wd_sef_count; i++) {
@@ -373,7 +388,7 @@ static int setup_linux_library(void)
 		/* Error if no valid library path found */
 		if (!selected_path) {
 				fprintf(stderr, "No valid library path found!\n");
-				return -__RETN;
+				return -WD_RETN;
 		}
 
 		/* Copy library to system directory */
@@ -383,7 +398,7 @@ static int setup_linux_library(void)
 		/* Update library environment variables */
 		update_library_environment(selected_path);
 
-		return __RETZ;  /* Return success */
+		return WD_RETZ;  /* Return success */
 #endif
 }
 
@@ -493,13 +508,13 @@ void wd_apply_pawncc(void)
 /* Cleanup label for error handling */
 done:
 		/* Return to main menu */
-		wd_main(NULL);
+		start_chain(NULL);
 }
 
 /**
  * Prompts user to apply pawn compiler after download
  * 
- * @return __RETN if user confirms, __RETZ if user declines
+ * @return WD_RETN if user confirms, WD_RETZ if user declines
  */
 static int prompt_apply_pawncc(void)
 {
@@ -527,13 +542,13 @@ static int prompt_apply_pawncc(void)
 		if (confirm) {
 			if (strcmp(confirm, "Y") == 0 || strcmp(confirm, "y") == 0) {
 				wd_free(confirm);
-				return __RETN;  /* User confirmed - apply pawncc */
+				return WD_RETN;  /* User confirmed - apply pawncc */
 			}
 		}
 
 /* Cleanup label */
 done:
-		return __RETZ;  /* User declined or error occurred */
+		return WD_RETZ;  /* User declined or error occurred */
 }
 
 /**
@@ -544,25 +559,60 @@ done:
  */
 int is_archive_file(const char *filename)
 {
-		const char *ext = strrchr(filename, '.');  /* Find file extension */
-		if (!ext) return 0;  /* No extension - not an archive */
+		if (strfind(filename, ".tar") ||
+			strfind(filename, ".zip"))
+			return 1;
+		return 0;
+}
 
-		/* List of supported archive extensions */
-		const char *archive_exts[] = {
-										".zip",      /* ZIP archive */
-										".tar",      /* TAR archive */
-										".tar.gz",   /* Compressed TAR archive */
-										NULL         /* End of list marker */
-									 };
+/**
+ * Debug callback function for libcurl to log connection details
+ * 
+ * @param handle  The CURL handle that triggered the callback
+ * @param type    Type of debug information being provided
+ * @param data    Pointer to the data being transmitted/received
+ * @param size    Size of the data in bytes
+ * @param userptr User pointer set with CURLOPT_DEBUGDATA
+ * @return        Always returns 0
+ */
+static int debug_callback(CURL *handle, curl_infotype type,
+                         char *data, size_t size, void *userptr)
+{
+	    (void)handle; /* prevent compiler warning for unused parameter */
+	    (void)userptr; /* prevent compiler warning for unused parameter */
 
-		/* Check if file extension matches any known archive type */
-		for (int i = 0; archive_exts[i] != NULL; i++) {
-			if (strcasecmp(ext, archive_exts[i]) == 0) {
-				return 1;  /* File is an archive */
-			}
-		}
-
-		return 0;  /* File is not a recognized archive */
+	    /* Process different types of debug information from libcurl */
+	    switch (type) {
+	    case CURLINFO_TEXT:
+	        /* General informational text from libcurl */
+	        break;
+	    case CURLINFO_HEADER_OUT:
+	        /* Headers being sent to the server */
+	        break;
+	    case CURLINFO_DATA_OUT:
+	        /* Data payload being sent to the server */
+	        break;
+	    case CURLINFO_SSL_DATA_OUT:
+	        /* SSL/TLS data being sent (encrypted) */
+	        break;
+	    case CURLINFO_HEADER_IN:
+	        /* Headers received from the server */
+	        /* Skipped long data information */
+	        if (strfind(data, "location: ") || strfind(data, "content-security-policy: "))
+	        	break;
+	        printf("<= Recv header: %.*s", (int)size, data);
+	        break;
+	    case CURLINFO_DATA_IN:
+	        /* Data payload received from the server */
+	        break;
+	    case CURLINFO_SSL_DATA_IN:
+	        /* SSL/TLS data received (encrypted) */
+	        break;
+	    default:
+	        /* Ignore any other debug info types */
+	        return WD_RETZ;
+	    }
+	    return WD_RETZ;
 }
 
 /**
@@ -571,10 +621,43 @@ int is_archive_file(const char *filename)
  * 
  * @param url URL to download from
  * @param filename Local filename to save as
- * @return __RETZ on success, -__RETN on failure
+ * @return WD_RETZ on success, -WD_RETN on failure
  */
 int wd_download_file(const char *url, const char *filename)
 {
+        /* Debugging Downloader file Function */
+#if defined (_DBG_PRINT)
+		pr_color(stdout, FCOLOUR_YELLOW, "-DEBUGGING");
+	    printf("[function: %s | "
+               "pretty function: %s | "
+               "line: %d | "
+               "file: %s | "
+               "date: %s | "
+               "time: %s | "
+               "timestamp: %s | "
+               "C standard: %ld | "
+               "C version: %s | "
+               "compiler version: %d | "
+               "architecture: %s]:\n",
+                __func__, __PRETTY_FUNCTION__,
+                __LINE__, __FILE__,
+                __DATE__, __TIME__,
+                __TIMESTAMP__,
+                __STDC_VERSION__,
+                __VERSION__,
+                __GNUC__,
+#ifdef __x86_64__
+                "x86_64");
+#elif defined(__i386__)
+                "i386");
+#elif defined(__arm__)
+                "ARM");
+#elif defined(__aarch64__)
+                "ARM64");
+#else
+                "Unknown");
+#endif
+#endif
 		CURL *curl;                    /* CURL handle for HTTP requests */
 		FILE *c_fp;                    /* File pointer for writing download */
 		CURLcode res;                  /* CURL operation result */
@@ -583,7 +666,7 @@ int wd_download_file(const char *url, const char *filename)
 		struct stat file_stat;         /* File status for size verification */
 
 		/* Display download initiation message */
-		pr_color(stdout, FCOLOUR_GREEN, "Downloading: %s\n", filename);
+		pr_color(stdout, FCOLOUR_GREEN, "Downloading: %s", filename);
 
 		/* Retry loop for download attempts */
 		do {
@@ -591,7 +674,7 @@ int wd_download_file(const char *url, const char *filename)
 			c_fp = fopen(filename, "wb");
 			if (!c_fp) {
 				pr_color(stdout, FCOLOUR_RED, "Failed to open file: %s\n", filename);
-				return -__RETN;
+				return -WD_RETN;
 			}
 
 			/* Initialize CURL session */
@@ -599,7 +682,7 @@ int wd_download_file(const char *url, const char *filename)
 			if (!curl) {
 				pr_color(stdout, FCOLOUR_RED, "Failed to initialize CURL\n");
 				fclose(c_fp);
-				return -__RETN;
+				return -WD_RETN;
 			}
 
 			/* Prepare HTTP headers */
@@ -607,8 +690,8 @@ int wd_download_file(const char *url, const char *filename)
 
 			/* Add GitHub authentication if downloading dependencies */
 			if (wcfg.wd_idepends == 1) {
-				if (strstr(wcfg.wd_toml_github_tokens, "DO_HERE")) {
-						pr_color(stdout, FCOLOUR_GREEN, "\tcan't read github token...\n");
+				if (strstr(wcfg.wd_toml_github_tokens, "DO_HERE") || wcfg.wd_toml_github_tokens == NULL || strlen(wcfg.wd_toml_github_tokens) < 1) {
+						pr_color(stdout, FCOLOUR_GREEN, "\t- can't read github token!...\n");
 						sleep(1);
 				} else {
 						/* Create Authorization header with GitHub token */
@@ -638,7 +721,18 @@ int wd_download_file(const char *url, const char *filename)
 			curl_easy_setopt(curl, CURLOPT_SSL_VERIFYPEER, 1L);
 			curl_easy_setopt(curl, CURLOPT_NOPROGRESS, 0L);
 
+			pr_color(stdout, FCOLOUR_GREEN, "\ncreate debugging http?");
+			char *debug_http = readline(" [y/n]: ");
+
+			if (debug_http) {
+				if (debug_http[0] == 'Y' || debug_http[0] == 'y') {
+					curl_easy_setopt(curl, CURLOPT_VERBOSE, 1L);
+					curl_easy_setopt(curl, CURLOPT_DEBUGFUNCTION, debug_callback);
+					curl_easy_setopt(curl, CURLOPT_DEBUGDATA, NULL);
+				}
+			}
 			printf("\n");
+
 			/* Set progress callback for download tracking */
 			curl_easy_setopt(curl, CURLOPT_XFERINFOFUNCTION, progress_callback);
 			curl_easy_setopt(curl, CURLOPT_XFERINFODATA, NULL);
@@ -663,7 +757,7 @@ int wd_download_file(const char *url, const char *filename)
 			if (res == CURLE_OK && response_code == 200) {
 				/* Verify downloaded file exists and has content */
 				if (stat(filename, &file_stat) == 0 && file_stat.st_size > 0) {
-					printf("Download successful: %" PRIdMAX " bytes\n", (intmax_t)file_stat.st_size);
+					pr_color(stdout, FCOLOUR_GREEN, "Download successful: %" PRIdMAX " bytes\n", (intmax_t)file_stat.st_size);
 					fflush(stdout);
 
 					/* Check if downloaded file is an archive */
@@ -671,7 +765,7 @@ int wd_download_file(const char *url, const char *filename)
 						printf("Checking file type for extraction...\n");
 						fflush(stdout);
 						/* Extract the archive */
-						extract_archive(filename);
+						wd_extract_archive(filename);
 
 						char rm_cmd[WD_PATH_MAX];
 						/* Handle archive cleanup based on dependency type */
@@ -680,7 +774,6 @@ int wd_download_file(const char *url, const char *filename)
 							if (rm_deps == 0) {
 								/* Prompt user to remove dependency archive */
 								pr_color(stdout, FCOLOUR_GREEN, "* remove archive '%s'? ", filename);
-								fflush(stdout);
 								char *confirm = readline(" [y/n]: ");
 								if (confirm) {
 									if (confirm[0] == 'Y' || confirm[0] == 'y') {
@@ -712,10 +805,10 @@ int wd_download_file(const char *url, const char *filename)
 										filename);
 								wd_run_command(rm_cmd);
 							}
+							return WD_RETZ;  /* Return success */
 						} else {
 							/* Prompt for regular file removal */
 							pr_color(stdout, FCOLOUR_GREEN, "remove archive '%s'? ", filename);
-							fflush(stdout);
 							char *confirm = readline(" [y/n]: ");
 							if (confirm) {
 								if (confirm[0] == 'Y' || confirm[0] == 'y') {
@@ -734,6 +827,27 @@ int wd_download_file(const char *url, const char *filename)
 								}
 								wd_free(confirm);
 							}
+							return WD_RETZ;  /* Return success */
+						}
+
+						/* Check if pawncc installation is requested */
+						if (wcfg.wd_ipawncc && prompt_apply_pawncc()) {
+							/* Prepare source directory for pawncc installation */
+							char size_filename[WD_PATH_MAX];
+						    wd_snprintf(size_filename, sizeof(size_filename), "%s", filename);
+						    
+						    if (strstr(size_filename, ".tar.gz")) {
+						        char *f_EXT = strstr(size_filename, ".tar.gz");
+						        if (f_EXT)
+						            *f_EXT = '\0';  /* Remove .tar.gz extension */
+						    } else {
+						        char *f_EXT = strrchr(size_filename, '.');
+						        if (f_EXT)
+						            *f_EXT = '\0';  /* Remove single extension */
+						    }
+							wd_snprintf(pawncc_dir_src, sizeof(pawncc_dir_src), "%s", size_filename);
+							/* Apply pawncc compiler tools */
+							wd_apply_pawncc();
 						}
 					} else {
 						/* File is not an archive - skip extraction */
@@ -741,24 +855,12 @@ int wd_download_file(const char *url, const char *filename)
 						fflush(stdout);
 					}
 
-					/* Check if pawncc installation is requested */
-					if (wcfg.wd_ipawncc && prompt_apply_pawncc()) {
-						/* Prepare source directory for pawncc installation */
-						char size_filename[WD_PATH_MAX];
-						wd_snprintf(size_filename, sizeof(size_filename), "%s", filename);
-						char *f_EXT = strrchr(size_filename, '.');
-						if (f_EXT)
-								*f_EXT = '\0';  /* Remove extension */
-						wd_snprintf(pawncc_dir_src, sizeof(pawncc_dir_src), "%s", size_filename);
-						/* Apply pawncc compiler tools */
-						wd_apply_pawncc();
-					}
-
-					return __RETZ;  /* Return success */
+					return WD_RETZ;  /* Return success */
 				} else {
 					/* Downloaded file is empty or missing */
 					pr_color(stdout, FCOLOUR_RED, "Downloaded file is empty or missing\n");
-					fflush(stdout);
+					/* Failed */
+					return WD_RETN;
 				}
 			} else {
 				/* Download failed - display error details */
@@ -775,6 +877,8 @@ int wd_download_file(const char *url, const char *filename)
 
 		/* All retry attempts failed */
 		pr_color(stdout, FCOLOUR_RED, "Download failed after 5 retries\n");
-		wd_main(NULL);
-		return 0;
+		start_chain(NULL);
+		
+		/* Failed */
+		return WD_RETN;
 }

@@ -20,6 +20,13 @@ typedef struct {
 		const char *dep_added;
 } depConfig;
 
+#define PATH_SEPARATOR(path) \
+    ({ \
+        const char *sep_linux = strrchr(path, __PATH_CHR_SEP_LINUX); \
+        const char *sep_win32 = strrchr(path, __PATH_CHR_SEP_WIN32); \
+        (sep_linux && sep_win32) ? ((sep_linux > sep_win32) ? sep_linux : sep_win32) : (sep_linux ? sep_linux : sep_win32); \
+    })
+
 void wd_install_depends(const char *depends_string);
 
 #endif

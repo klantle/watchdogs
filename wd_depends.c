@@ -1148,17 +1148,6 @@ void dep_move_files (const char *dep_dir)
 		        strlcat(dest, "/", sizeof(dest));
 #endif
 		        strlcat(dest, depends_filename, sizeof(dest));
-#ifdef WD_WINDOWS
-				char *path_pos;
-				while ((path_pos = strstr(dest, "include\\")) != NULL)
-					memmove(path_pos, path_pos + strlen("include/"),
-						strlen(path_pos + strlen("include\\")) + 1);
-#else
-				char *path_pos;
-				while ((path_pos = strstr(dest, "include/")) != NULL)
-					memmove(path_pos, path_pos + strlen("include/"),
-						strlen(path_pos + strlen("include/")) + 1);
-#endif
 
 		        if (rename(deps_parent_dir, dest)) {
 		            int _is_win32 = 0;
@@ -1197,15 +1186,16 @@ void dep_move_files (const char *dep_dir)
 		        dep_add_ncheck_hash(dest, dest);
 
 #ifndef WD_WINDOWS
-		        pr_info(stdout, "\tmoved include: %s to %s/\n",
+		        pr_info(stdout, "\tmoved include: %s to %s/",
 		                depends_filename, !strcmp(wcfg.wd_is_omp, CRC32_TRUE) ?
 		                "qawno/include" : "pawno/include");
 #else
 
-		        pr_info(stdout, "\tmoved include: %s to %s\\n",
+		        pr_info(stdout, "\tmoved include: %s to %s\\",
 		                depends_filename, !strcmp(wcfg.wd_is_omp, CRC32_TRUE) ?
 		                "qawno\\include" : "pawno\\include");
 #endif
+				printf("\n");
 		    }
 
 		    closedir(dir);

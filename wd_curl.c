@@ -721,15 +721,26 @@ int wd_download_file(const char *url, const char *filename)
 			curl_easy_setopt(curl, CURLOPT_SSL_VERIFYPEER, 1L);
 			curl_easy_setopt(curl, CURLOPT_NOPROGRESS, 0L);
 
-			pr_color(stdout, FCOLOUR_GREEN, "~ create debugging http?");
-			char *debug_http = readline(" [y/n]: ");
-
-			if (debug_http) {
-				if (debug_http[0] == 'Y' || debug_http[0] == 'y') {
-					curl_easy_setopt(curl, CURLOPT_VERBOSE, 1L);
-					curl_easy_setopt(curl, CURLOPT_DEBUGFUNCTION, debug_callback);
-					curl_easy_setopt(curl, CURLOPT_DEBUGDATA, NULL);
+			/* Debugging Notice */
+			static int create_debugging = 0;
+			static int always_create_debugging = 0;
+			if (create_debugging == 0) {
+				create_debugging = 1;
+				pr_color(stdout, FCOLOUR_GREEN, "* create debugging http?");
+				char *debug_http = readline(" [y/n]: ");
+				if (debug_http) {
+					if (debug_http[0] == 'Y' || debug_http[0] == 'y') {
+						always_create_debugging = 1;
+						curl_easy_setopt(curl, CURLOPT_VERBOSE, 1L);
+						curl_easy_setopt(curl, CURLOPT_DEBUGFUNCTION, debug_callback);
+						curl_easy_setopt(curl, CURLOPT_DEBUGDATA, NULL);
+					}
 				}
+			}
+			if (always_create_debugging) {
+				curl_easy_setopt(curl, CURLOPT_VERBOSE, 1L);
+				curl_easy_setopt(curl, CURLOPT_DEBUGFUNCTION, debug_callback);
+				curl_easy_setopt(curl, CURLOPT_DEBUGDATA, NULL);
 			}
 
 			/* Set progress callback for download tracking */
@@ -866,7 +877,7 @@ int wd_download_file(const char *url, const char *filename)
 				pr_color(stdout, FCOLOUR_RED, "Download failed - "
 						 "HTTP: %ld, "
 						 "CURL: %d, "
-						 "retrying...\n", response_code, res);
+						 "retrying... ", response_code, res);
 			}
 
 			/* Increment retry counter and wait before retry */

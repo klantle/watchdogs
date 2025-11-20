@@ -1,8 +1,11 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+
 #include <archive.h>
 #include <archive_entry.h>
+#include <readline/readline.h>
+#include <readline/history.h>
 
 #include "wd_extra.h"
 #include "wd_util.h"
@@ -13,7 +16,7 @@
 /**
  * Copies data blocks from source archive to destination archive
  * Handles the actual data transfer for archive entries with content
- * 
+ *
  * @param ar Source archive to read data from
  * @param aw Destination archive to write data to
  * @return ARCHIVE_OK on success, error code on failure
@@ -56,7 +59,7 @@ static int arch_copy_data(struct archive *ar, struct archive *aw)
  */
 int wd_extract_tar(const char *tar_path, const char *entry_dest) {
 	    struct archive *a;           /* Archive reader object */
-	    struct archive *ext;         /* Archive writer/disk extractor object */  
+	    struct archive *ext;         /* Archive writer/disk extractor object */
 	    struct archive_entry *entry; /* Represents a single file/directory in archive */
 	    int flags;                  /* Extraction flags */
 	    int r;                      /* Return code for archive operations */
@@ -65,7 +68,7 @@ int wd_extract_tar(const char *tar_path, const char *entry_dest) {
 	     * SET EXTRACTION FLAGS
 	     * Configure what metadata to preserve during extraction
 	     * ARCHIVE_EXTRACT_TIME - Preserve file timestamps
-	     * ARCHIVE_EXTRACT_PERM - Preserve file permissions  
+	     * ARCHIVE_EXTRACT_PERM - Preserve file permissions
 	     * ARCHIVE_EXTRACT_ACL - Preserve Access Control Lists
 	     * ARCHIVE_EXTRACT_FFLAGS - Preserve file flags
 	     */
@@ -86,7 +89,7 @@ int wd_extract_tar(const char *tar_path, const char *entry_dest) {
 	    archive_read_support_filter_all(a);
 
 	    /**
-	     * INITIALIZE DISK WRITER  
+	     * INITIALIZE DISK WRITER
 	     * Create and configure the disk extraction object
 	     * archive_write_disk_new - Create new disk writer
 	     * archive_write_disk_set_options - Apply extraction flags
@@ -130,13 +133,30 @@ int wd_extract_tar(const char *tar_path, const char *entry_dest) {
 
 	        /* Get original path of current entry */
 	        const char *entry_path = archive_entry_pathname(entry);
-    		printf(" * Extracting: %s\n", entry_path);
+
+			/* Debugging Notice */
+			static int extract_notice = 0;
+			static int always_extract_notice = 0;
+			if (extract_notice == 0) {
+				extract_notice = 1;
+				pr_color(stdout, FCOLOUR_GREEN, "* create debugging extracting archive?");
+				char *debug_extract = readline(" [y/n]: ");
+				if (debug_extract) {
+					if (debug_extract[0] == 'Y' || debug_extract[0] == 'y') {
+						always_extract_notice = 1;
+		    			printf(" * Extracting: %s\n", entry_path);
+					}
+				}
+			}
+			if (always_extract_notice) {
+				printf(" * Extracting: %s\n", entry_path);
+			}
 
 	        /**
 	         * MODIFY EXTRACTION PATH IF DESTINATION SPECIFIED
 	         * Prepend destination directory to extraction path
 	         * wd_mkdir - Should create destination directory recursively
-	         * snprintf - Construct new path: entry_dest/original_filename  
+	         * snprintf - Construct new path: entry_dest/original_filename
 	         * archive_entry_set_pathname - Update extraction path
 	         */
 	        if (entry_dest != NULL && strlen(entry_dest) > 0) {
@@ -153,7 +173,7 @@ int wd_extract_tar(const char *tar_path, const char *entry_dest) {
 	         */
 	        r = archive_write_header(ext, entry);
 	        if (r != ARCHIVE_OK) {
-	            fprintf(stderr, "Error writing header for %s: %s\n", 
+	            fprintf(stderr, "Error writing header for %s: %s\n",
 	                    entry_path, archive_error_string(ext));
 	        } else {
 	            /**
@@ -175,7 +195,7 @@ int wd_extract_tar(const char *tar_path, const char *entry_dest) {
 	         */
 	        r = archive_write_finish_entry(ext);
 	        if (r != ARCHIVE_OK) {
-	            fprintf(stderr, "Error finishing entry %s: %s\n", 
+	            fprintf(stderr, "Error finishing entry %s: %s\n",
 	                    entry_path, archive_error_string(ext));
 	        }
 	    }
@@ -184,7 +204,7 @@ int wd_extract_tar(const char *tar_path, const char *entry_dest) {
 	     * CLEANUP RESOURCES
 	     * Close and free all archive objects
 	     * archive_read_close - Close archive reader
-	     * archive_read_free - Free reader memory  
+	     * archive_read_free - Free reader memory
 	     * archive_write_close - Close disk writer
 	     * archive_write_free - Free writer memory
 	     */
@@ -199,7 +219,7 @@ int wd_extract_tar(const char *tar_path, const char *entry_dest) {
 /**
  * Builds the full extraction path for an archive entry
  * Combines destination directory with entry path, handling edge cases
- * 
+ *
  * @param entry_dest Destination directory path (can be NULL or ".")
  * @param entry_path Path of the entry within the archive
  * @param out_path Output buffer for the full path
@@ -227,7 +247,7 @@ static void build_extraction_path(const char *entry_dest, const char *entry_path
 /**
  * Extracts a single ZIP archive entry to disk
  * Handles both file content and directory creation
- * 
+ *
  * @param archive_read ZIP archive reading handle
  * @param archive_write Disk writing handle
  * @param item Archive entry to extract
@@ -278,7 +298,7 @@ static int extract_zip_entry(struct archive *archive_read,
 /**
  * Extracts a ZIP archive file to the specified destination directory
  * Handles path construction and error recovery
- * 
+ *
  * @param zip_file Path to the ZIP archive file to extract
  * @param entry_dest Destination directory for extraction
  * @return WD_RETZ on success, negative error code on failure
@@ -320,7 +340,7 @@ int wd_extract_zip(const char *zip_file, const char *entry_dest)
 		/* Process each entry in the ZIP archive */
 		while (archive_read_next_header(archive_read, &item) == ARCHIVE_OK) {
 				const char *entry_path = archive_entry_pathname(item);
-	    		printf(" * Extracting: %s\n", entry_path);  
+	    		printf(" * Extracting: %s\n", entry_path);
 
 				/* Build the full extraction path for this entry */
 				build_extraction_path(entry_dest, entry_path, full_path, sizeof(full_path));
@@ -358,7 +378,7 @@ error:
 /**
  * Extracts archive files based on their type
  * Supports TAR, TAR.GZ, and ZIP formats
- * 
+ *
  * @param filename Path to the archive file to extract
  * @return WD_RETZ on success, negative error code on failure
  */

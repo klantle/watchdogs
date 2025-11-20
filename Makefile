@@ -141,7 +141,6 @@ compress:
 # Cleaning
 clean:
 	rm -rf $(OBJS) $(RESFILE) watchdogs watchdogs.tmux watchdogs.win watchdogs.debug watchdogs.debug.tmux watchdogs.debug.win
-	@echo "==> Clean done."
 
 # Linux
 linux:
@@ -177,7 +176,6 @@ termux:
 windows: $(RESFILE)
 	@echo "-> [LANG = $$LANG]"
 	@echo "==> Building for Windows"
-	@echo "==> Running: $(CC) $(CFLAGS) -I/ucrt64/include $(SRCS) $(RESFILE) -o watchdogs.win $(LDFLAGS) -liphlpapi -lshlwapi"
 	$(CC) $(CFLAGS) -I/ucrt64/include $(SRCS) $(RESFILE) -o watchdogs.win $(LDFLAGS) -liphlpapi -lshlwapi
 	@echo "==> Windows build complete"
 
@@ -215,6 +213,5 @@ termux-debug:
 windows-debug: $(RESFILE)
 	@echo "-> [LANG = $$LANG]"
 	@echo "==> Building DEBUG Windows version"
-	@echo "==> Running: $(CC) $(CFLAGS) -I/ucrt64/include $(SRCS) $(RESFILE) -g -O0 -D_DBG_PRINT -Wall -o watchdogs.debug.win $(LDFLAGS) -liphlpapi -lshlwapi"
 	$(CC) $(CFLAGS) -I/ucrt64/include $(SRCS) $(RESFILE) -g -O0 -D_DBG_PRINT -Wall -o watchdogs.debug.win $(LDFLAGS) -liphlpapi -lshlwapi
 	@echo "==> Debug build complete"

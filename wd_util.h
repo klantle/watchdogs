@@ -171,6 +171,12 @@ typedef struct {
 extern WatchdogConfig wcfg;
 
 void wd_sef_fdir_reset();
+#ifdef WD_WINDOWS
+#define strlcpy win_strlcpy
+#define strlcat win_strlcat
+size_t win_strlcpy(char *dst, const char *src, size_t size);
+size_t win_strlcat(char *dst, const char *src, size_t size);
+#endif
 struct struct_of { int (*title)(const char *); };
 extern const char* __command[];
 extern const size_t __command_len;

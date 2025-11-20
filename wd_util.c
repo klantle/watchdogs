@@ -63,37 +63,64 @@ const size_t
 sizeof(__command) / sizeof(__command[0]);
 
 WatchdogConfig wcfg = {
-		.wd_toml_os_type = NULL,
-		.wd_toml_binary = NULL,
-		.wd_toml_config = NULL,
-		.wd_ipawncc = 0,
-		.wd_idepends = 0,
-		.wd_os_type = CRC32_FALSE,
-		.wd_sel_stat = 0,
-		.wd_is_samp = CRC32_FALSE,
-		.wd_is_omp = CRC32_FALSE,
-		.wd_ptr_samp = NULL,
-		.wd_ptr_omp = NULL,
-		.wd_compiler_stat = 0,
-		.wd_sef_count = RATE_SEF_EMPTY,
-		.wd_sef_found_list = { { RATE_SEF_EMPTY } },
-		.wd_toml_aio_opt = NULL,
-		.wd_toml_aio_repo = NULL,
-		.wd_toml_gm_input = NULL,
-		.wd_toml_gm_output = NULL
+			.wd_toml_os_type = NULL,
+			.wd_toml_binary = NULL,
+			.wd_toml_config = NULL,
+			.wd_ipawncc = 0,
+			.wd_idepends = 0,
+			.wd_os_type = CRC32_FALSE,
+			.wd_sel_stat = 0,
+			.wd_is_samp = CRC32_FALSE,
+			.wd_is_omp = CRC32_FALSE,
+			.wd_ptr_samp = NULL,
+			.wd_ptr_omp = NULL,
+			.wd_compiler_stat = 0,
+			.wd_sef_count = RATE_SEF_EMPTY,
+			.wd_sef_found_list = { { RATE_SEF_EMPTY } },
+			.wd_toml_aio_opt = NULL,
+			.wd_toml_aio_repo = NULL,
+			.wd_toml_gm_input = NULL,
+			.wd_toml_gm_output = NULL
 };
 
 void wd_sef_fdir_reset(void) {
-		size_t i, sef_max_entries;
-		sef_max_entries = sizeof(wcfg.wd_sef_found_list) /
-			      	  	  sizeof(wcfg.wd_sef_found_list[0]);
+			size_t i, sef_max_entries;
+			sef_max_entries = sizeof(wcfg.wd_sef_found_list) /
+				      	  	  sizeof(wcfg.wd_sef_found_list[0]);
 
-		for (i = 0; i < sef_max_entries; i++)
-			wcfg.wd_sef_found_list[i][0] = '\0';
+			for (i = 0; i < sef_max_entries; i++)
+				wcfg.wd_sef_found_list[i][0] = '\0';
 
-		wcfg.wd_sef_count = RATE_SEF_EMPTY;
-		memset(wcfg.wd_sef_found_list, RATE_SEF_EMPTY, sizeof(wcfg.wd_sef_found_list));
+			wcfg.wd_sef_count = RATE_SEF_EMPTY;
+			memset(wcfg.wd_sef_found_list, RATE_SEF_EMPTY, sizeof(wcfg.wd_sef_found_list));
 }
+
+#ifdef WD_WINDOWS
+size_t win_strlcpy(char *dst, const char *src, size_t size)
+{
+	    size_t len = strlen(src);
+	    if (size > 0) {
+	        size_t copy = (len >= size) ? size - 1 : len;
+	        memcpy(dst, src, copy);
+	        dst[copy] = 0;
+	    }
+	    return len;
+}
+
+size_t win_strlcat(char *dst, const char *src, size_t size)
+{
+	    size_t dlen = strlen(dst);
+	    size_t slen = strlen(src);
+	    if (dlen < size) {
+	        size_t space = size - dlen - 1;
+	        size_t copy = (slen > space) ? space : slen;
+	        memcpy(dst + dlen, src, copy);
+	        dst[dlen + copy] = 0;
+	        return dlen + slen;
+	    }
+	    return size + slen;
+}
+#endif
 
 static char wd_work_dir[WD_PATH_MAX];
 static void __wd_init_cwd(void) {
@@ -116,9 +143,9 @@ static void __wd_init_cwd(void) {
 }
 
 const char *wd_get_cwd(void) {
-	if (wd_work_dir[0] == '\0')
-		__wd_init_cwd();
-	return wd_work_dir;
+		if (wd_work_dir[0] == '\0')
+			__wd_init_cwd();
+		return wd_work_dir;
 }
 
 char* wd_masked_text(int reveal, const char *text) {
@@ -161,7 +188,11 @@ int wd_mkdir(const char *path) {
 	    for (p = temp + 1; *p; p++) {
 	        if (*p == '/') {
 	            *p = '\0';
+#ifdef WD_WINDOWS
+							if (mkdir(temp) == -1) {
+#else
 	            if (mkdir(temp, S_IRWXU) == -1) {
+#endif
 	                if (errno != EEXIST) {
 	                    return -WD_RETN;
 	                }
@@ -170,7 +201,11 @@ int wd_mkdir(const char *path) {
 	        }
 	    }
 
-	    if (mkdir(temp, S_IRWXU) == -1) {
+#ifdef WD_WINDOWS
+			if (mkdir(temp) == -1) {
+#else
+			if (mkdir(temp, S_IRWXU) == -1) {
+#endif
 	        if (errno != EEXIST) {
 	            return -WD_RETN;
 	        }
@@ -257,7 +292,7 @@ int wd_run_command_depends(const char *cmd)
 
 	    int spawn_ret = -WD_RETN;
 	    spawn_ret = posix_spawnp(&pid, "sh", &posix_f_actions, NULL, argv, environ);
-	    
+
 	    posix_spawn_file_actions_destroy(&posix_f_actions);
 
 	    if (spawn_ret != WD_RETZ) {
@@ -417,7 +452,7 @@ bool strfind(const char *text, const char *pattern) {
 
 	    for (size_t i = 0; i < 256; i++)
 	        skip[i] = (uint8_t)m;
-	    
+
 	    for (size_t i = 0; i < m - 1; i++)
 	        skip[pat[i]] = (uint8_t)(m - 1 - i);
 
@@ -426,7 +461,7 @@ bool strfind(const char *text, const char *pattern) {
 
 	    while (i <= n - m) {
 	        unsigned char current_char = wd_tolower(txt[i + m - 1]);
-	        
+
 	        if (current_char == pat[m - 1]) {
 	            int j = (int)m - 2;
 	            while (j >= 0 && pat[j] == wd_tolower(txt[i + j])) {
@@ -436,7 +471,7 @@ bool strfind(const char *text, const char *pattern) {
 	                return true;
 	            }
 	        }
-	        
+
 	        i += skip[current_char];
 	    }
 

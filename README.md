@@ -2,7 +2,7 @@
 <div align="center">
   <h3>
     <a href="https://gitlab.com/mywatchdogs/watchdogs" >
-        🛹 W A T C H D O G S 🛹
+         工具链 | 辅助工具 | 快速工具 | 自由工具
     </a>
   </h3>
 </div>
@@ -46,7 +46,7 @@ __If you are confused about this project, you can use an A.I. Agent that can hel
 
 ### Information.
 ~~This project is built purely from our own thinking and effort, not merely by imitation. We have never claimed to be inspired by similar projects that themselves draw inspiration from others. Our foundation prioritizes simplicity, speed, feature updates, and the latest library technologies, rather than long term stability.~~
-![img](https://raw.githubusercontent.com/klantle/watchdogs/refs/heads/main/actoride.png)
+![img](https://raw.githubusercontent.com/klantle/watchdogs/refs/heads/main/__ACTORIDE.png)
 
 ### Supported Platforms
 - [x] Linux (Debian/Ubuntu based distributions)

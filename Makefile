@@ -140,7 +140,7 @@ compress:
 
 # Cleaning
 clean:
-	rm -rf $(OBJS) $(RESFILE) watchdogs watchdogs.tmux watchdogs.win watchdogs.debug watchdogs.debug.tmux watchdogs.debug.win
+	rm -rf $(OBJS) $(RESFILE) version.res watchdogs watchdogs.tmux watchdogs.win watchdogs.debug watchdogs.debug.tmux watchdogs.debug.win
 
 # Linux
 linux:

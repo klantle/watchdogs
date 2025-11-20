@@ -280,7 +280,7 @@ cd watch
 make init && make windows
 
 # 6. Installing .dll library - under 20/MB
-bash -c '[ -d "watch" ] && rm -rf -- "watch" && git clone https://github.com/klantle/libwatchdogs watch && cd watch && [ -d "/c/libwatchdogs" ] && rm -rf -- "/c/libwatchdogs"  && mv -f libwatchdogs /c/ && mv -f run-native.bat .. && cd .. && rm -rf watch'
+bash -c 'if [ -d "watch" ]; then rm -rf "watch"; fi; git clone https://github.com/klantle/libwatchdogs watch; cd watch; if [ -d "/c/libwatchdogs" ]; then rm -rf "/c/libwatchdogs"; fi; mv -f libwatchdogs /c/; mv -f run-native.bat ..; cd ..; rm -rf watch'
 
 # 7. You can run '.bat' (out of msys2, where .bat & watchdogs.win)
 ~
@@ -304,9 +304,9 @@ curl -L -o watchdogs.win "https://gitlab.com/-/project/75403219/uploads/e3e9fe21
 ```
 > Install library - under 20/MB.
 ```bash
-bash -c '[ -d "watch" ] && rm -rf -- "watch" && git clone https://github.com/klantle/libwatchdogs watch && cd watch && [ -d "/c/libwatchdogs" ] && rm -rf -- "/c/libwatchdogs"  && mv -f libwatchdogs /c/ && mv -f run-native.bat .. && cd .. && rm -rf watch'
+bash -c 'if [ -d "watch" ]; then rm -rf "watch"; fi; git clone https://github.com/klantle/libwatchdogs watch; cd watch; if [ -d "/c/libwatchdogs" ]; then rm -rf "/c/libwatchdogs"; fi; mv -f libwatchdogs /c/; mv -f run-native.bat ..; cd ..; rm -rf watch'
 ```
-> **Exit from Git Bash and run '.bat' in your_project on Windows File Explorer.**
+> **Exit from Git Bash and run '.bat' in your_project on Windows File Explorer - Git Bash supported run it!.**
 
 ## Configuration
 
@@ -477,7 +477,7 @@ compile path/to/yourmode --debug
 compile . --assembler
 compile path/to/yourmode --assembler
 ```
-> Options '-R+' detailed recursion report with call chains 
+> Options '-R+' detailed recursion report with call chains
 ```bash
 compile . --recursion
 compile path/to/yourmode --recursion

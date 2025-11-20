@@ -29,14 +29,14 @@ void dep_sym_convert (char *path)
 		}
 }
 
-const char *dep_get_fname(const char *path)
+const char *dep_get_fname (const char *path)
 {
 	    /* Get file name */
 	    const char *depends = PATH_SEPARATOR(path);
 	    return depends ? depends + 1 : path;
 }
 
-static const char *dep_get_bname(const char *path)
+static const char *dep_get_bname (const char *path)
 {
 	    /* Get base name */
 	    const char *p = PATH_SEPARATOR(path);
@@ -188,7 +188,7 @@ static char *dep_get_assets (char **deps_assets, int count, const char *preferre
 }
 
 static int
-dep_parse_repo(const char *input, struct dep_repo_info *__deps_data)
+dep_parse_repo (const char *input, struct dep_repo_info *__deps_data)
 {
 		memset(__deps_data, 0, sizeof(*__deps_data));
 
@@ -256,7 +256,7 @@ dep_parse_repo(const char *input, struct dep_repo_info *__deps_data)
 		if (git_ext)
 			*git_ext = '\0';
 		wd_strncpy(__deps_data->repo, repo, sizeof(__deps_data->repo) - 1);
-	
+
 		if (strlen(__deps_data->user) == 0 || strlen(__deps_data->repo) == 0)
 			return WD_RETZ;
 
@@ -318,7 +318,7 @@ static int dep_gh_release_assets (const char *user, const char *repo,
 }
 
 static void
-dep_build_repo_url(const struct dep_repo_info *__deps_data, int is_tag_page,
+dep_build_repo_url (const struct dep_repo_info *__deps_data, int is_tag_page,
 		   char *deps_put_url, size_t deps_put_size)
 {
 		char deps_actual_tag[128] = { 0 };
@@ -429,12 +429,12 @@ static int dep_gh_latest_tag (const char *user, const char *repo,
 }
 
 static int dep_handle_repo (const struct dep_repo_info *dep_repo_info,
-                           char *deps_put_url,
-                           size_t deps_put_size)
+                            char *deps_put_url,
+                            size_t deps_put_size)
 {
 		int ret = 0;
 		const char *deps_repo_branch[] = {"main", "master"};
-		char deps_actual_tag[128] = {0};
+		char deps_actual_tag[128] = { 0 };
 		int use_fallback_branch = 0;
 
 		if (dep_repo_info->tag[0] && strcmp(dep_repo_info->tag, "latest") == 0) {
@@ -442,7 +442,7 @@ static int dep_handle_repo (const struct dep_repo_info *dep_repo_info,
 								dep_repo_info->repo,
 								deps_actual_tag,
 								sizeof(deps_actual_tag))) {
-				printf("Create latest tag: %s (instead of latest)\n", deps_actual_tag);
+				printf("Create latest tag: %s (~instead of latest)\n", deps_actual_tag);
 			} else {
 				pr_error(stdout, "Failed to get latest tag for %s/%s,"
 								"falling back to main branch",
@@ -531,22 +531,21 @@ static int dep_handle_repo (const struct dep_repo_info *dep_repo_info,
 }
 
 int
-dep_add_ncheck_hash(const char *_H_file_path, const char *_H_json_path)
+dep_add_ncheck_hash (const char *_H_file_path, const char *_H_json_path)
 {
 		char convert_f_path[WD_PATH_MAX];
 		char convert_j_path[WD_PATH_MAX];
-
+#ifdef WD_WINDOWS
 		char *path_pos;
-		while ((path_pos = strstr(_H_file_path, "include/")) != NULL)
-		{
+		while ((path_pos = strstr(convert_f_path, "include\\")) != NULL)
+			memmove(path_pos, path_pos + strlen("include/"),
+				strlen(path_pos + strlen("include\\")) + 1);
+#else
+		char *path_pos;
+		while ((path_pos = strstr(convert_j_path, "include/")) != NULL)
 			memmove(path_pos, path_pos + strlen("include/"),
 				strlen(path_pos + strlen("include/")) + 1);
-		}
-		while ((path_pos = strstr(_H_json_path, "include/")) != NULL)
-		{
-			memmove(path_pos, path_pos + strlen("include/"),
-				strlen(path_pos + strlen("include/")) + 1);
-		}
+#endif
 		wd_strncpy(convert_f_path, _H_file_path, sizeof(convert_f_path));
 			convert_f_path[sizeof(convert_f_path) - 1] = '\0';
 		dep_sym_convert(convert_f_path);
@@ -554,17 +553,22 @@ dep_add_ncheck_hash(const char *_H_file_path, const char *_H_json_path)
 			convert_j_path[sizeof(convert_j_path) - 1] = '\0';
 		dep_sym_convert(convert_j_path);
 
-        unsigned char digest[32];
+		static int init_crc32 = 0;
+		if (init_crc32 != 1) {
+			init_crc32 = 1;
+			crypto_crc32_init_table();
+		}
 
-        if (crypto_generate_sha256_hash(convert_f_path, digest) != WD_RETN) {
-        	return 1;
-        }
+        uint32_t crc32_generate;
+        crc32_generate = crypto_generate_crc32(convert_f_path, sizeof(convert_f_path) - 1);
+
+        char crc_str[11];
+        sprintf(crc_str, "%08X", crc32_generate);
 
 		pr_color(stdout,
 				 FCOLOUR_GREEN,
-				 "Create hash (CRC32) for '%s':\n",
-				 convert_j_path);
-		crypto_print_hex(digest, sizeof(digest));
+				 "Create hash (CRC32) for '%s': %s\n",
+				 convert_j_path, crc_str);
 
 		return 1;
 }
@@ -738,6 +742,10 @@ void dep_implementation_omp_conf (const char* config_name, const char* deps_name
 void dep_add_include (const char *modes,
 					  char *dep_name,
 					  char *dep_after) {
+		if (path_exists(modes) == 0) {
+			pr_color(stdout, FCOLOUR_GREEN, "~ can't found %s.. skipping adding include name\n", modes);
+			return;
+		}
 		pr_color(stdout,
 				 FCOLOUR_GREEN,
 				 "Create include '%s' into '%s' after '%s'\n",
@@ -852,9 +860,10 @@ static void dep_pr_include_directive (const char *deps_include)
 		}
 }
 
-void dump_file_type (const char *path, const char *pattern,
-						   const char *exclude, const char *cwd,
-						   const char *target_dir, int root)
+void dump_file_type (const char *path,
+					 char *pattern,
+				     char *exclude, char *cwd,
+				     char *target_dir, int root)
 {
 		char cp_cmd[WD_MAX_PATH * 2];
 		char json_item[WD_PATH_MAX];
@@ -865,7 +874,7 @@ void dump_file_type (const char *path, const char *pattern,
 
 		if (found) {
 			for (int i = 0; i < wcfg.wd_sef_count; ++i) {
-				const char *deps_names = dep_get_fname(wcfg.wd_sef_found_list[i]),
+				const char *deps_names  = dep_get_fname(wcfg.wd_sef_found_list[i]),
 						   *deps_bnames = dep_get_bname(wcfg.wd_sef_found_list[i]);
 
 				if (target_dir[0] != '\0') {
@@ -873,19 +882,19 @@ void dump_file_type (const char *path, const char *pattern,
 #ifdef WD_WINDOWS
 					_is_win32 = 1;
 #endif
-					if (_is_win32)
+					if (_is_win32) {
 						wd_snprintf(cp_cmd, sizeof(cp_cmd),
 							"move /Y \"%s\" \"%s\\%s\\\"",
 							wcfg.wd_sef_found_list[i], cwd, target_dir);
-					else
+					} else
 						wd_snprintf(cp_cmd, sizeof(cp_cmd), "mv -f \"%s\" \"%s/%s/\"",
 							wcfg.wd_sef_found_list[i], cwd, target_dir);
 
-	                struct timespec start = {0}, end = {0};
+	                struct timespec start = {0}, end = { 0 };
 	                double moving_dur;
 
 	                clock_gettime(CLOCK_MONOTONIC, &start);
-					wd_run_command_depends(cp_cmd);
+					wd_run_command(cp_cmd);
 	                clock_gettime(CLOCK_MONOTONIC, &end);
 
 	                moving_dur = (end.tv_sec - start.tv_sec)
@@ -893,28 +902,27 @@ void dump_file_type (const char *path, const char *pattern,
 
 	            	pr_color(stdout,
 	                         FCOLOUR_CYAN,
-	                         " [MOVE] Plugins %s -> %s/%s Finished at %.3fs\n",
+	                         " [MOVE] Plugins %s -> %s\\%s Finished at %.3fs\n",
 	                         wcfg.wd_sef_found_list[i], cwd, target_dir, moving_dur);
 				} else {
 					int _is_win32 = 0;
 #ifdef WD_WINDOWS
 					_is_win32 = 1;
 #endif
-					if (_is_win32)
+					if (_is_win32) {
 							wd_snprintf(cp_cmd, sizeof(cp_cmd),
 								"move /Y \"%s\" \"%s\"",
 								wcfg.wd_sef_found_list[i], cwd);
-						else
-							wd_snprintf(cp_cmd, sizeof(cp_cmd),
-								"mv -f \"%s\" \"%s\"",
-								wcfg.wd_sef_found_list[i], cwd);
-					}
+					} else
+						wd_snprintf(cp_cmd, sizeof(cp_cmd),
+							"mv -f \"%s\" \"%s\"",
+							wcfg.wd_sef_found_list[i], cwd);
 
-	                struct timespec start = {0}, end = {0};
+	                struct timespec start = {0}, end = { 0 };
 	                double moving_dur;
 
 	                clock_gettime(CLOCK_MONOTONIC, &start);
-					wd_run_command_depends(cp_cmd);
+					wd_run_command(cp_cmd);
 	                clock_gettime(CLOCK_MONOTONIC, &end);
 
 	                moving_dur = (end.tv_sec - start.tv_sec)
@@ -944,6 +952,7 @@ samp_label:
 							goto samp_label;
 				}
 			}
+		}
 done:
 		return;
 }
@@ -968,43 +977,74 @@ void dep_move_files (const char *dep_dir)
 			 depends_ipath[WD_PATH_MAX * 2],
 			 deps_parent_dir[WD_PATH_MAX],
 			 dest[WD_MAX_PATH * 2];
-
+#ifdef WD_WINDOWS
 		wd_snprintf(plug_path,
 				    sizeof(plug_path),
-				    "%s/plugins",
+				    "%s\\plugins",
 				    dep_dir);
 		wd_snprintf(comp_path,
 				    sizeof(comp_path),
-				    "%s/components",
+				    "%s\\components",
 				    dep_dir);
+#else
+		wd_snprintf(plug_path,
+				    sizeof(plug_path),
+				    "%s\\plugins",
+				    dep_dir);
+		wd_snprintf(comp_path,
+				    sizeof(comp_path),
+				    "%s\\components",
+				    dep_dir);
+#endif
 
 		if (wd_server_env() == 1) {
+#ifdef WD_WINDOWS
+			deps_include_path = "pawno\\include";
+			wd_snprintf(deps_include_full_path,
+					sizeof(deps_include_full_path), "%s\\pawno\\include", dep_dir);
+#else
 			deps_include_path = "pawno/include";
 			wd_snprintf(deps_include_full_path,
 					sizeof(deps_include_full_path), "%s/pawno/include", dep_dir);
+#endif
 		} else if (wd_server_env() == 2) {
+#ifdef WD_WINDOWS
+			deps_include_path = "qawno\\include";
+			wd_snprintf(deps_include_full_path,
+					sizeof(deps_include_full_path), "%s\\qawno\\include", dep_dir);
+#else
 			deps_include_path = "qawno/include";
 			wd_snprintf(deps_include_full_path,
 					sizeof(deps_include_full_path), "%s/qawno/include", dep_dir);
-		} else {
-			deps_include_path = "pawno/include";
-			wd_snprintf(deps_include_full_path,
-					sizeof(deps_include_full_path), "%s/pawno/include", dep_dir);
+#endif
 		}
 
-		const char *cwd = wd_get_cwd();
+		char *cwd = wd_get_cwd();
 
-		dump_file_type(plug_path, "*.dll", NULL, cwd, "plugins", 0);
-		dump_file_type(plug_path, "*.so", NULL, cwd, "plugins", 0);
+#ifndef WD_WINDOWS
+		dump_file_type(plug_path, "*.dll", NULL, cwd, "/plugins", 0);
+		dump_file_type(plug_path, "*.so", NULL, cwd, "/plugins", 0);
+#else
+		dump_file_type(plug_path, "*.dll", NULL, cwd, "\\plugins", 0);
+		dump_file_type(plug_path, "*.so", NULL, cwd, "\\plugins", 0);
+#endif
 		dump_file_type(dep_dir, "*.dll", "plugins", cwd, "", 1);
 		dump_file_type(dep_dir, "*.so", "plugins", cwd, "", 1);
 
 		if (wd_server_env() == 2) {
+#ifdef WD_WINDOWS
+			wd_snprintf(include_path, sizeof(include_path), "qawno\\include");
+#else
 			wd_snprintf(include_path, sizeof(include_path), "qawno/include");
+#endif
 			dump_file_type(comp_path, "*.dll", NULL, cwd, "components", 0);
 			dump_file_type(comp_path, "*.so", NULL, cwd, "components", 0);
 		} else {
+#ifdef WD_WINDOWS
+			wd_snprintf(include_path, sizeof(include_path), "pawno\\include");
+#else
 			wd_snprintf(include_path, sizeof(include_path), "pawno/include");
+#endif
 		}
 
 		wd_sef_fdir_reset();
@@ -1019,20 +1059,20 @@ void dep_move_files (const char *dep_dir)
 #ifdef WD_WINDOWS
 				_is_win32 = 1;
 #endif
-				if (_is_win32)
+				if (_is_win32) {
 					wd_snprintf(size_deps_copy, sizeof(size_deps_copy),
 						"move /Y \"%s\" \"%s\\%s\\\"",
 						wcfg.wd_sef_found_list[i], cwd, deps_include_path);
-				else
+				} else
 					wd_snprintf(size_deps_copy, sizeof(size_deps_copy),
 						"mv -f \"%s\" \"%s/%s/\"",
 						wcfg.wd_sef_found_list[i], cwd, deps_include_path);
 
-                struct timespec start = {0}, end = {0};
+                struct timespec start = {0}, end = { 0 };
                 double moving_dur;
 
                 clock_gettime(CLOCK_MONOTONIC, &start);
-				wd_run_command_depends(size_deps_copy);
+				wd_run_command(size_deps_copy);
                 clock_gettime(CLOCK_MONOTONIC, &end);
 
                 moving_dur = (end.tv_sec - start.tv_sec)
@@ -1042,7 +1082,7 @@ void dep_move_files (const char *dep_dir)
                          FCOLOUR_CYAN,
                          " [MOVE] Include %s -> %s/%s Finished at %.3fs\n",
                          wcfg.wd_sef_found_list[i], cwd, deps_include_path, moving_dur);
-            
+
 				dep_add_ncheck_hash(fi_depends_name, fi_depends_name);
 				dep_pr_include_directive(fi_depends_name);
 			}
@@ -1102,8 +1142,23 @@ void dep_move_files (const char *dep_dir)
 		        depends_filename++; /* skip __PATH_CHR_SEP_LINUX */
 
 		        strlcpy(dest, include_path, sizeof(dest));
+#ifdef WD_WINDOWS
+				strlcat(dest, "\\", sizeof(dest));
+#else
 		        strlcat(dest, "/", sizeof(dest));
+#endif
 		        strlcat(dest, depends_filename, sizeof(dest));
+#ifdef WD_WINDOWS
+				char *path_pos;
+				while ((path_pos = strstr(dest, "include\\")) != NULL)
+					memmove(path_pos, path_pos + strlen("include/"),
+						strlen(path_pos + strlen("include\\")) + 1);
+#else
+				char *path_pos;
+				while ((path_pos = strstr(dest, "include/")) != NULL)
+					memmove(path_pos, path_pos + strlen("include/"),
+						strlen(path_pos + strlen("include/")) + 1);
+#endif
 
 		        if (rename(deps_parent_dir, dest)) {
 		            int _is_win32 = 0;
@@ -1127,11 +1182,11 @@ void dep_move_files (const char *dep_dir)
 		                strlcat(cmd, deps_parent_dir, sizeof(cmd));
 		            }
 
-		            struct timespec start = {0}, end = {0};
+		            struct timespec start = {0}, end = { 0 };
 		            double move_duration;
 
 		            clock_gettime(CLOCK_MONOTONIC, &start);
-		            wd_run_command_depends(cmd);
+		            wd_run_command(cmd);
 		            clock_gettime(CLOCK_MONOTONIC, &end);
 
 		            move_duration = (end.tv_sec - start.tv_sec) + (end.tv_nsec - start.tv_nsec) / 1e9;
@@ -1141,9 +1196,16 @@ void dep_move_files (const char *dep_dir)
 
 		        dep_add_ncheck_hash(dest, dest);
 
+#ifndef WD_WINDOWS
 		        pr_info(stdout, "\tmoved include: %s to %s/\n",
 		                depends_filename, !strcmp(wcfg.wd_is_omp, CRC32_TRUE) ?
 		                "qawno/include" : "pawno/include");
+#else
+
+		        pr_info(stdout, "\tmoved include: %s to %s\\n",
+		                depends_filename, !strcmp(wcfg.wd_is_omp, CRC32_TRUE) ?
+		                "qawno\\include" : "pawno\\include");
+#endif
 		    }
 
 		    closedir(dir);
@@ -1175,9 +1237,9 @@ void wd_apply_depends (const char *depends_name)
 {
 		char _depends[WD_PATH_MAX];
 		char dep_dir[WD_PATH_MAX];
-		
+
 		wd_snprintf(_depends, sizeof(_depends), "%s", depends_name);
-		
+
 		if (strstr(_depends, ".tar.gz")) {
 			char *f_EXT = strstr(_depends, ".tar.gz");
 			if (f_EXT)
@@ -1208,11 +1270,11 @@ void wd_apply_depends (const char *depends_name)
 				MKDIR("components");
 			}
 		}
-		
+
 		dep_move_files(dep_dir);
 }
 
-void wd_install_depends(const char *depends_string)
+void wd_install_depends (const char *depends_string)
 {
         char buffer[1024];
         const char *depends[MAX_DEPENDS];
@@ -1308,4 +1370,3 @@ void wd_install_depends(const char *depends_string)
 done:
         return;
 }
-

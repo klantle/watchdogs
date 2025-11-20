@@ -260,7 +260,7 @@ void wd_run_samp_server(const char *gamemode, const char *server_bin)
 {
         /* Debugging SA-MP Function */
 #if defined (_DBG_PRINT)
-	pr_color(stdout, FCOLOUR_YELLOW, "-DEBUGGING");
+	pr_color(stdout, FCOLOUR_YELLOW, "-DEBUGGING ");
         printf("[function: %s | "
                "pretty function: %s | "
                "line: %d | "
@@ -551,7 +551,7 @@ void wd_run_omp_server(const char *gamemode, const char *server_bin)
 {
         /* Debugging OMP Function */
 #if defined (_DBG_PRINT)
-        pr_color(stdout, FCOLOUR_YELLOW, "-DEBUGGING");
+        pr_color(stdout, FCOLOUR_YELLOW, "-DEBUGGING ");
         printf("[function: %s | "
                "pretty function: %s | "
                "line: %d | "

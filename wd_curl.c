@@ -88,7 +88,7 @@ void verify_cacert_pem(CURL *curl) {
 /**
  * Progress callback function for CURL downloads
  * Displays download progress with percentage and visual indicator
- * 
+ *
  * @param ptr User-defined pointer (not used)
  * @param dltotal Total bytes to download
  * @param dlnow Bytes downloaded so far
@@ -126,7 +126,7 @@ static int progress_callback(void *ptr, curl_off_t dltotal,
 /**
  * Memory write callback for CURL
  * Stores downloaded data in a dynamically growing memory buffer
- * 
+ *
  * @param contents Pointer to the data received from CURL
  * @param size Size of each data element
  * @param nmemb Number of data elements
@@ -167,7 +167,7 @@ size_t write_memory_callback(void *contents, size_t size,
 /**
  * Searches for compiler tools in the specified directory
  * Identifies pawn compiler components for different platforms
- * 
+ *
  * @param compiler_type Type of compiler (SAMP or OPENMP)
  * @param found_pawncc_exe Output: found pawncc.exe status
  * @param found_pawncc Output: found pawncc (Unix) status
@@ -186,7 +186,7 @@ static void find_compiler_tools(int compiler_type,
 
 		/* Build search path */
 		wd_snprintf(size_pf, sizeof(size_pf), "%s", pawncc_dir_src);
-		
+
 		/* Search for each compiler tool in the bin directory */
 		*found_pawncc_exe = wd_sef_fdir(size_pf, "pawncc.exe", ignore_dir);
 		*found_pawncc = wd_sef_fdir(size_pf, "pawncc", ignore_dir);
@@ -199,7 +199,7 @@ static void find_compiler_tools(int compiler_type,
 /**
  * Determines and creates the appropriate compiler directory
  * Checks for existing pawno/qawno directories or creates new one
- * 
+ *
  * @return Path to compiler directory, or NULL on failure
  */
 static const char *get_compiler_directory(void)
@@ -218,13 +218,13 @@ static const char *get_compiler_directory(void)
 				if (MKDIR("pawno") == 0)
 						dir_path = "pawno";
 		}
-		
+
 		return dir_path;  /* Return selected directory path */
 }
 
 /**
  * Copies compiler tools from source to destination directory
- * 
+ *
  * @param src_path Source path of the tool
  * @param tool_name Name of the tool file
  * @param dest_dir Destination directory
@@ -243,7 +243,7 @@ static void copy_compiler_tool(const char *src_path, const char *tool_name,
 /**
  * Updates library environment variables permanently for Linux/Unix systems
  * by modifying shell configuration files
- * 
+ *
  * @param lib_path Library path to add to environment
  */
 static void update_library_environment(const char *lib_path)
@@ -257,7 +257,7 @@ static void update_library_environment(const char *lib_path)
 	    /* Determine shell configuration file based on current shell */
 	    const char *shell_rc = NULL;
 	    char shell_path[256];
-	    
+
 	    /* Get current shell */
 	    char *shell = getenv("SHELL");
 	    if (shell) {
@@ -267,7 +267,7 @@ static void update_library_environment(const char *lib_path)
 	            shell_rc = ".bashrc";
 	        }
 	    }
-	    
+
 	    /* Fallback to common shells if detection failed */
 	    if (!shell_rc) {
 	        /* Check if zshrc exists */
@@ -284,29 +284,29 @@ static void update_library_environment(const char *lib_path)
 
 	    /* Check if the path already exists in the config file */
 	    char grep_cmd[512];
-	    wd_snprintf(grep_cmd, sizeof(grep_cmd), 
+	    wd_snprintf(grep_cmd, sizeof(grep_cmd),
 	                "grep -q \"LD_LIBRARY_PATH.*%s\" %s", lib_path, config_file);
-	    
+
 	    int path_exists = system(grep_cmd);
-	    
+
 	    /* If path doesn't exist, add it to the config file */
 	    if (path_exists != 0) {
 	        char export_cmd[512];
 	        char backup_cmd[WD_PATH_MAX * 3];
-	        
+
 	        /* Create backup of config file */
 	        wd_snprintf(backup_cmd, sizeof(backup_cmd), "cp %s %s.backup", config_file, config_file);
 	        system(backup_cmd);
-	        
+
 	        /* Add export command to config file */
 	        wd_snprintf(export_cmd, sizeof(export_cmd),
 	                   "echo 'export LD_LIBRARY_PATH=%s:$LD_LIBRARY_PATH' >> %s",
 	                   lib_path, config_file);
-	        
+
 	        int ret = system(export_cmd);
-	        
+
 	        if (ret == 0) {
-	            printf("Successfully updated %s. Please run 'source %s' to apply changes.\n", 
+	            printf("Successfully updated %s. Please run 'source %s' to apply changes.\n",
 	                   shell_rc, config_file);
 	        } else {
 	            fprintf(stderr, "Error updating %s\n", shell_rc);
@@ -330,7 +330,7 @@ static void update_library_environment(const char *lib_path)
 /**
  * Sets up Linux library installation for pawn compiler
  * Copies library files to system directories and updates environment
- * 
+ *
  * @return WD_RETZ on success, -WD_RETN on failure
  */
 static int setup_linux_library(void)
@@ -344,7 +344,7 @@ static int setup_linux_library(void)
 		char dest_path[WD_PATH_MAX];       /* Destination path for library */
 		struct stat st;                    /* File status structure */
 		int i, found_lib;                  /* Loop counter and library found flag */
-		
+
 		/* Possible library installation paths for different environments */
 		const char *lib_paths[] =	{
 										"/data/data/com.termux/files/usr/lib/",      /* Termux ARM */
@@ -412,9 +412,9 @@ void wd_apply_pawncc(void)
 		int found_pawncc_exe, found_pawncc;
 		int found_pawndisasm_exe, found_pawndisasm;
 		int found_pawnc_dll, found_PAWNC_DLL;
-		
+
 		const char *dest_dir;  /* Destination directory for compiler tools */
-		
+
 		/* Buffers for source paths of each compiler tool */
 		char pawncc_src[WD_PATH_MAX] = { 0 },
 			 pawncc_exe_src[WD_PATH_MAX] = { 0 },
@@ -513,7 +513,7 @@ done:
 
 /**
  * Prompts user to apply pawn compiler after download
- * 
+ *
  * @return WD_RETN if user confirms, WD_RETZ if user declines
  */
 static int prompt_apply_pawncc(void)
@@ -524,20 +524,20 @@ static int prompt_apply_pawncc(void)
 		pr_color(stdout, FCOLOUR_YELLOW, "Apply pawncc?");
 		char *confirm = readline(" [y/n]: ");
 		fflush(stdout);
-		
+
 		/* Handle input reading errors */
 		if (!confirm) {
 			fprintf(stderr, "Error reading input\n");
 			wd_free(confirm);
 			goto done;
 		}
-		
+
 		/* Handle empty input by re-prompting */
 		if (strlen(confirm) == 0) {
 			wd_free(confirm);
 			confirm = readline(" >>> [y/n]: ");
 		}
-		
+
 		/* Process user confirmation */
 		if (confirm) {
 			if (strcmp(confirm, "Y") == 0 || strcmp(confirm, "y") == 0) {
@@ -553,7 +553,7 @@ done:
 
 /**
  * Checks if a file is an archive based on its extension
- * 
+ *
  * @param filename File name to check
  * @return 1 if file is an archive, 0 otherwise
  */
@@ -567,7 +567,7 @@ int is_archive_file(const char *filename)
 
 /**
  * Debug callback function for libcurl to log connection details
- * 
+ *
  * @param handle  The CURL handle that triggered the callback
  * @param type    Type of debug information being provided
  * @param data    Pointer to the data being transmitted/received
@@ -618,7 +618,7 @@ static int debug_callback(CURL *handle, curl_infotype type,
 /**
  * Downloads a file from URL with retry logic and progress display
  * Handles archive extraction and compiler installation if applicable
- * 
+ *
  * @param url URL to download from
  * @param filename Local filename to save as
  * @return WD_RETZ on success, -WD_RETN on failure
@@ -627,7 +627,7 @@ int wd_download_file(const char *url, const char *filename)
 {
         /* Debugging Downloader file Function */
 #if defined (_DBG_PRINT)
-		pr_color(stdout, FCOLOUR_YELLOW, "-DEBUGGING");
+		pr_color(stdout, FCOLOUR_YELLOW, "-DEBUGGING ");
 	    printf("[function: %s | "
                "pretty function: %s | "
                "line: %d | "
@@ -691,7 +691,7 @@ int wd_download_file(const char *url, const char *filename)
 			/* Add GitHub authentication if downloading dependencies */
 			if (wcfg.wd_idepends == 1) {
 				if (strstr(wcfg.wd_toml_github_tokens, "DO_HERE") || wcfg.wd_toml_github_tokens == NULL || strlen(wcfg.wd_toml_github_tokens) < 1) {
-						pr_color(stdout, FCOLOUR_GREEN, "\t- can't read github token!...\n");
+						pr_color(stdout, FCOLOUR_GREEN, " ~ can't read github token!...\n");
 						sleep(1);
 				} else {
 						/* Create Authorization header with GitHub token */
@@ -721,7 +721,7 @@ int wd_download_file(const char *url, const char *filename)
 			curl_easy_setopt(curl, CURLOPT_SSL_VERIFYPEER, 1L);
 			curl_easy_setopt(curl, CURLOPT_NOPROGRESS, 0L);
 
-			pr_color(stdout, FCOLOUR_GREEN, "\ncreate debugging http?");
+			pr_color(stdout, FCOLOUR_GREEN, "~ create debugging http?");
 			char *debug_http = readline(" [y/n]: ");
 
 			if (debug_http) {
@@ -731,7 +731,6 @@ int wd_download_file(const char *url, const char *filename)
 					curl_easy_setopt(curl, CURLOPT_DEBUGDATA, NULL);
 				}
 			}
-			printf("\n");
 
 			/* Set progress callback for download tracking */
 			curl_easy_setopt(curl, CURLOPT_XFERINFOFUNCTION, progress_callback);
@@ -835,7 +834,7 @@ int wd_download_file(const char *url, const char *filename)
 							/* Prepare source directory for pawncc installation */
 							char size_filename[WD_PATH_MAX];
 						    wd_snprintf(size_filename, sizeof(size_filename), "%s", filename);
-						    
+
 						    if (strstr(size_filename, ".tar.gz")) {
 						        char *f_EXT = strstr(size_filename, ".tar.gz");
 						        if (f_EXT)
@@ -878,7 +877,7 @@ int wd_download_file(const char *url, const char *filename)
 		/* All retry attempts failed */
 		pr_color(stdout, FCOLOUR_RED, "Download failed after 5 retries\n");
 		start_chain(NULL);
-		
+
 		/* Failed */
 		return WD_RETN;
 }

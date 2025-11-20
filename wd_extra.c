@@ -29,7 +29,7 @@ char *RST = "\x1b[0m";
 /**
  * Prints formatted output to a stream followed by a newline character
  * Similar to puts() but with format specifier support
- * 
+ *
  * @param stream The output stream to write to (e.g., stdout, stderr)
  * @param format Format string specifying how subsequent arguments are converted
  * @param ... Variable arguments to be formatted according to the format string
@@ -55,7 +55,7 @@ void println(FILE *stream, const char *format, ...)
 /**
  * Prints colored formatted output to a stream
  * Applies specified color before printing and resets to default after
- * 
+ *
  * @param stream The output stream to write to
  * @param color ANSI color code string to apply to the text
  * @param format Format string specifying how subsequent arguments are converted
@@ -84,7 +84,7 @@ void printf_color(FILE *stream, const char *color, const char *format, ...)
 /**
  * Prints informational messages with [INFO] prefix and automatic newline
  * Typically used for general program status updates
- * 
+ *
  * @param stream The output stream to write to
  * @param format Format string specifying how subsequent arguments are converted
  * @param ... Variable arguments to be formatted according to the format string
@@ -112,7 +112,7 @@ void printf_info(FILE *stream, const char *format, ...)
 /**
  * Prints warning messages with [WARNING] prefix and automatic newline
  * Typically used for non-critical issues that don't stop program execution
- * 
+ *
  * @param stream The output stream to write to
  * @param format Format string specifying how subsequent arguments are converted
  * @param ... Variable arguments to be formatted according to the format string
@@ -140,7 +140,7 @@ void printf_warning(FILE *stream, const char *format, ...)
 /**
  * Prints error messages with [ERROR] prefix and automatic newline
  * Typically used for serious issues that may affect program functionality
- * 
+ *
  * @param stream The output stream to write to
  * @param format Format string specifying how subsequent arguments are converted
  * @param ... Variable arguments to be formatted according to the format string
@@ -168,7 +168,7 @@ void printf_error(FILE *stream, const char *format, ...)
 /**
  * Prints critical error messages with [CRIT] prefix and automatic newline
  * Typically used for severe issues that may cause program termination
- * 
+ *
  * @param stream The output stream to write to
  * @param format Format string specifying how subsequent arguments are converted
  * @param ... Variable arguments to be formatted according to the format string
@@ -569,7 +569,7 @@ causeExplanation ccs[] =
 /**
  * Searches for warning or error patterns in a line of text
  * Matches against known compiler message patterns to identify specific issues
- * 
+ *
  * @param line The text line to search for warning/error patterns
  * @return Pointer to the issue description if found, NULL otherwise
  */
@@ -590,7 +590,7 @@ static const char *wd_find_warn_err(const char *line)
 /**
  * Displays detailed compilation results and file information
  * Shows memory usage statistics, file metadata, and compilation status
- * 
+ *
  * @param pawn_output Path to the compiled output file (.amx)
  * @param debug Debug mode flag (0 = disabled, non-zero = enabled)
  * @param wcnt Number of warnings generated during compilation
@@ -628,7 +628,7 @@ void compiler_detailed(const char *pawn_output, int debug,
                        "Stack  : %dB\n",
                        header_size, total_size, code_size,
                        hash, data_size, stack_size);
-                
+
                 /* Get detailed file system information */
                 portable_stat_t st;
                 if (portable_stat(pawn_output, &st) == 0) {
@@ -664,7 +664,7 @@ void compiler_detailed(const char *pawn_output, int debug,
 /**
  * Parses compiler log file and displays detailed analysis
  * Extracts warnings, errors, size information and provides contextual help
- * 
+ *
  * @param log_file Path to the compiler log file to parse
  * @param pawn_output Path to the compiled output file
  * @param debug Debug mode flag for additional information
@@ -675,7 +675,7 @@ void cause_compiler_expl(const char *log_file,
 {
         /* Debugging Compiler Cause & Detailed Function */
 #if defined (_DBG_PRINT)
-        pr_color(stdout, FCOLOUR_YELLOW, "-DEBUGGING");
+        pr_color(stdout, FCOLOUR_YELLOW, "-DEBUGGING ");
         printf("[function: %s | "
                "pretty function: %s | "
                "line: %d | "
@@ -719,7 +719,7 @@ void cause_compiler_expl(const char *log_file,
       int header_size = 0, code_size = 0, data_size = 0;
       int stack_size = 0, total_size = 0;
       /* Compiler version string */
-      char compiler_ver[64] = {0};
+      char compiler_ver[64] = { 0 };
 
       /* Process each line of the compiler log file */
       while (fgets(line, sizeof(line), plog)) {

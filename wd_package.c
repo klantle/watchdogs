@@ -215,7 +215,7 @@ int wd_install_pawncc(const char *platform)
 {
         /* Debugging Pawncc Installation Function */
 #if defined (_DBG_PRINT)
-		pr_color(stdout, FCOLOUR_YELLOW, "-DEBUGGING");
+		pr_color(stdout, FCOLOUR_YELLOW, "-DEBUGGING ");
 	    printf("[function: %s | "
                "pretty function: %s | "
                "line: %d | "
@@ -275,7 +275,7 @@ int wd_install_server(const char *platform)
 {
         /* Debugging Server Installation Function */
 #if defined (_DBG_PRINT)
-		pr_color(stdout, FCOLOUR_YELLOW, "-DEBUGGING");
+		pr_color(stdout, FCOLOUR_YELLOW, "-DEBUGGING ");
 	    printf("[function: %s | "
                "pretty function: %s | "
                "line: %d | "

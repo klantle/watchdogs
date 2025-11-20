@@ -19,7 +19,6 @@
 #include <libgen.h>
 #include "wd_util.h"
 #ifdef WD_LINUX
-#include <spawn.h>
 #include <termios.h>
 #endif
 
@@ -63,36 +62,36 @@ const size_t
 sizeof(__command) / sizeof(__command[0]);
 
 WatchdogConfig wcfg = {
-			.wd_toml_os_type = NULL,
-			.wd_toml_binary = NULL,
-			.wd_toml_config = NULL,
-			.wd_ipawncc = 0,
-			.wd_idepends = 0,
-			.wd_os_type = CRC32_FALSE,
-			.wd_sel_stat = 0,
-			.wd_is_samp = CRC32_FALSE,
-			.wd_is_omp = CRC32_FALSE,
-			.wd_ptr_samp = NULL,
-			.wd_ptr_omp = NULL,
-			.wd_compiler_stat = 0,
-			.wd_sef_count = RATE_SEF_EMPTY,
-			.wd_sef_found_list = { { RATE_SEF_EMPTY } },
-			.wd_toml_aio_opt = NULL,
-			.wd_toml_aio_repo = NULL,
-			.wd_toml_gm_input = NULL,
-			.wd_toml_gm_output = NULL
+	    .wd_toml_os_type = NULL,
+	    .wd_toml_binary = NULL,
+	    .wd_toml_config = NULL,
+	    .wd_ipawncc = 0,
+	    .wd_idepends = 0,
+	    .wd_os_type = CRC32_FALSE,
+	    .wd_sel_stat = 0,
+	    .wd_is_samp = CRC32_FALSE,
+	    .wd_is_omp = CRC32_FALSE,
+	    .wd_ptr_samp = NULL,
+	    .wd_ptr_omp = NULL,
+	    .wd_compiler_stat = 0,
+	    .wd_sef_count = RATE_SEF_EMPTY,
+	    .wd_sef_found_list = { { RATE_SEF_EMPTY } },
+	    .wd_toml_aio_opt = NULL,
+	    .wd_toml_aio_repo = NULL,
+	    .wd_toml_gm_input = NULL,
+	    .wd_toml_gm_output = NULL
 };
 
 void wd_sef_fdir_reset(void) {
-			size_t i, sef_max_entries;
-			sef_max_entries = sizeof(wcfg.wd_sef_found_list) /
-				      	  	  sizeof(wcfg.wd_sef_found_list[0]);
+	    size_t i, sef_max_entries;
+	    sef_max_entries = sizeof(wcfg.wd_sef_found_list) /
+	    				  sizeof(wcfg.wd_sef_found_list[0]);
 
-			for (i = 0; i < sef_max_entries; i++)
-				wcfg.wd_sef_found_list[i][0] = '\0';
+	    for (i = 0; i < sef_max_entries; i++)
+	    	wcfg.wd_sef_found_list[i][0] = '\0';
 
-			wcfg.wd_sef_count = RATE_SEF_EMPTY;
-			memset(wcfg.wd_sef_found_list, RATE_SEF_EMPTY, sizeof(wcfg.wd_sef_found_list));
+	    wcfg.wd_sef_count = RATE_SEF_EMPTY;
+	    memset(wcfg.wd_sef_found_list, RATE_SEF_EMPTY, sizeof(wcfg.wd_sef_found_list));
 }
 
 #ifdef WD_WINDOWS
@@ -142,7 +141,7 @@ static void __wd_init_cwd(void) {
 #endif
 }
 
-const char *wd_get_cwd(void) {
+char *wd_get_cwd(void) {
 		if (wd_work_dir[0] == '\0')
 			__wd_init_cwd();
 		return wd_work_dir;
@@ -214,103 +213,20 @@ int wd_mkdir(const char *path) {
 	    return WD_RETZ;
 }
 
-int wd_run_command(const char *cmd)
-{
-		char size_command[WD_MAX_PATH];
-		wd_snprintf(size_command,
-				sizeof(size_command), "%s", cmd);
-		if (cmd[0] == '\0')
-			return WD_RETZ;
-		return system(size_command);
-}
-
-int wd_run_command_depends(const char *cmd)
-{
-		/* fastest command run */
-		/* do not use for complex command|args */
-	    if (cmd == NULL) {
-	        return -WD_RETN;
-	    }
-#ifdef WD_WINDOWS
-	    PROCESS_INFORMATION pi;
-	    STARTUPINFO si;
-	    DWORD exit_code;
-	    char *cmd_copy = NULL;
-	    int ret = -WD_RETN;
-
-	    ZeroMemory(&si, sizeof(si));
-	    si.cb = sizeof(si);
-	    ZeroMemory(&pi, sizeof(pi));
-
-	    cmd_copy = _strdup(cmd);
-	    if (cmd_copy == NULL) {
-	        return -WD_RETN;
-	    }
-
-	    BOOL rate_windows_proc_success = CreateProcess(
-	        NULL,           // No module name (use command line)
-	        cmd_copy,       // Command line
-	        NULL,           // Process handle not inheritable
-	        NULL,           // Thread handle not inheritable
-	        FALSE,          // Set handle inheritance to FALSE
-	        0,              // No creation flags
-	        NULL,           // Use parent's environment block
-	        NULL,           // Use parent's starting directory
-	        &si,            // Pointer to STARTUPINFO structure
-	        &pi             // Pointer to PROCESS_INFORMATION structure
-	    );
-
-	    if (!rate_windows_proc_success) {
-	        wd_free(cmd_copy);
-	        return -WD_RETN;
-	    }
-
-	    wd_free(cmd_copy);
-
-	    WaitForSingleObject(pi.hProcess, INFINITE);
-
-	    if (GetExitCodeProcess(pi.hProcess, &exit_code)) {
-	        ret = (int)exit_code;
-	    }
-
-	    CloseHandle(pi.hProcess);
-	    CloseHandle(pi.hThread);
-
-	    return ret;
-#elif defined(WD_LINUX)
-	    pid_t pid;
-	    int rate_posix_proc_status;
-	    char *argv[] = { "sh", "-c", NULL, NULL };
-	    posix_spawn_file_actions_t posix_f_actions;
-	    extern char **environ;
-
-	    argv[2] = (char *)cmd;
-
-	    if (posix_spawn_file_actions_init(&posix_f_actions) != 0) {
-	        return -WD_RETN;
-	    }
-
-	    int spawn_ret = -WD_RETN;
-	    spawn_ret = posix_spawnp(&pid, "sh", &posix_f_actions, NULL, argv, environ);
-
-	    posix_spawn_file_actions_destroy(&posix_f_actions);
-
-	    if (spawn_ret != WD_RETZ) {
-	        return -spawn_ret;
-	    }
-	    if (waitpid(pid, &rate_posix_proc_status, 0) == -1) {
-	        return -WD_RETN;
-	    }
-
-	    if (WIFEXITED(rate_posix_proc_status)) {
-	        return WEXITSTATUS(rate_posix_proc_status);
-	    } else if (WIFSIGNALED(rate_posix_proc_status)) {
-	        return 128 + WTERMSIG(rate_posix_proc_status);
-	    } else {
-	        return -WD_RETN;
-	    }
-#endif
-    	return -WD_RETN;
+int wd_run_command(const char *reg_command) {
+__asm__ volatile (
+	    "movl $0, %%eax\n\t"
+	    "movl $0, %%ebx\n\t"
+	    : /* no outputs */
+	    : /* no inputs */
+	    : "%eax", "%ebx"
+);
+	    char size_command[WD_MAX_PATH]; /* 4096 */
+	    wd_snprintf(size_command,
+	    			sizeof(size_command), "%s", reg_command);
+	    if (reg_command[0] == '\0')
+	    		return WD_RETZ;
+	    return system(size_command);
 }
 
 int is_termux_environment(void)
@@ -690,16 +606,16 @@ int kill_process(const char *entry_name)
 {
 		if (!entry_name)
 			return -WD_RETN;
-		char cmd[WD_PATH_MAX];
+		char reg_command[WD_PATH_MAX];
 #ifndef WD_WINDOWS
-		wd_snprintf(cmd, sizeof(cmd),
+		wd_snprintf(reg_command, sizeof(reg_command),
 				"pkill -SIGTERM \"%s\" > /dev/null", entry_name);
 #else
-		wd_snprintf(cmd, sizeof(cmd),
+		wd_snprintf(reg_command, sizeof(reg_command),
 				"C:\\Windows\\System32\\taskkill.exe "
 				"/IM \"%s\" >nul", entry_name);
 #endif
-		return wd_run_command(cmd);
+		return wd_run_command(reg_command);
 }
 
 static int

@@ -366,7 +366,7 @@ void wd_extract_archive(const char *filename)
 {
         /* Debugging Extract Archive Function */
 #if defined (_DBG_PRINT)
-		pr_color(stdout, FCOLOUR_YELLOW, "-DEBUGGING");
+		pr_color(stdout, FCOLOUR_YELLOW, "-DEBUGGING ");
 	    printf("[function: %s | "
                "pretty function: %s | "
                "line: %d | "

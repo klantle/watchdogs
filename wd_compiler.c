@@ -36,11 +36,11 @@ static char container_output[WD_PATH_MAX] = { 0 },            /* Output file pat
 /**
  * Main compiler execution function with extensive configuration handling
  * Supports TOML-based configuration, cross-platform execution, and multiple compilation modes
- * 
+ *
  * @param arg Primary argument (can be NULL for TOML configuration)
  * @param compile_args Compilation arguments string
  * @param second_arg Secondary compiler argument
- * @param four_arg Fourth compiler argument  
+ * @param four_arg Fourth compiler argument
  * @param five_arg Fifth compiler argument
  * @param six_arg Sixth compiler argument
  * @param seven_arg Seventh compiler argument
@@ -54,7 +54,7 @@ int wd_run_compiler(const char *arg, const char *compile_args,
 {
         /* Debugging Compiler Function */
 #if defined (_DBG_PRINT)
-        pr_color(stdout, FCOLOUR_YELLOW, "-DEBUGGING");
+        pr_color(stdout, FCOLOUR_YELLOW, "-DEBUGGING ");
         printf("[function: %s | "
                "pretty function: %s | "
                "line: %d | "
@@ -228,7 +228,7 @@ int wd_run_compiler(const char *arg, const char *compile_args,
                         int rate_valid_flag = 0;  /* Flag for option validation */
 
                         /* Extract flag prefix for validation (first 2 characters) */
-                        char flag_to_search[3] = {0};
+                        char flag_to_search[3] = { 0 };
                         size_t size_flag_to_search = sizeof(flag_to_search);
                         if (strlen(opt_val.u.s) >= 2) {
                             wd_snprintf(flag_to_search,
@@ -347,13 +347,13 @@ n_valid_flag:
                     size_t current_len, addt_len;
                     current_len = strlen(wcfg.wd_toml_aio_opt);
                     addt_len = strlen(compiler_addt_opt);
-                    
+
                     /* Check buffer size to prevent overflow */
                     if (current_len + addt_len < sizeof(wcfg.wd_toml_aio_opt)) {
                         strcat(wcfg.wd_toml_aio_opt, compiler_addt_opt);
                     } else {
                         /* Use safe concatenation if buffer is nearly full */
-                        strncat(wcfg.wd_toml_aio_opt, compiler_addt_opt, 
+                        strncat(wcfg.wd_toml_aio_opt, compiler_addt_opt,
                                 sizeof(wcfg.wd_toml_aio_opt) - current_len - 1);
                     }
                 }
@@ -427,7 +427,7 @@ n_valid_flag:
                     }
 
                     /* Timing variables for performance measurement */
-                    struct timespec start = {0}, end = {0};
+                    struct timespec start = {0}, end = { 0 };
                     double compiler_dur;
 
                     /* Platform-specific compilation execution */
@@ -548,7 +548,7 @@ n_valid_flag:
                     posix_spawnattr_t spawn_attr;
                     posix_spawnattr_init(&spawn_attr);
 
-                    posix_spawnattr_setflags(&spawn_attr, 
+                    posix_spawnattr_setflags(&spawn_attr,
                         POSIX_SPAWN_SETSIGDEF |
                         POSIX_SPAWN_SETSIGMASK
                     );
@@ -556,7 +556,7 @@ n_valid_flag:
                     extern char **environ;
 
                     pid_t compiler_process_id;
-                    
+
                     int process_spawn_result = posix_spawnp(&compiler_process_id,
                                 wd_compiler_unix_args[0],
                                 &process_file_actions,
@@ -849,7 +849,7 @@ compiler_done:
                         wd_snprintf(size_container_output, sizeof(size_container_output), "%s.amx", container_output);
 
                         /* Timing and platform-specific execution (similar to Branch 1) */
-                        struct timespec start = {0}, end = {0};
+                        struct timespec start = {0}, end = { 0 };
                         double compiler_dur;
 #ifdef WD_WINDOWS
                         /* Windows process creation (similar to above) */
@@ -965,7 +965,7 @@ compiler_done:
 						posix_spawnattr_t spawn_attr;
 						posix_spawnattr_init(&spawn_attr);
 
-						posix_spawnattr_setflags(&spawn_attr, 
+						posix_spawnattr_setflags(&spawn_attr,
 							POSIX_SPAWN_SETSIGDEF |
 							POSIX_SPAWN_SETSIGMASK
 						);
@@ -973,7 +973,7 @@ compiler_done:
 						extern char **environ;
 
 						pid_t compiler_process_id;
-						
+
 						int process_spawn_result = posix_spawnp(&compiler_process_id,
 									wd_compiler_unix_args[0],
 									&process_file_actions,

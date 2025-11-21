@@ -119,7 +119,29 @@ size_t win_strlcat(char *dst, const char *src, size_t size)
 	    }
 	    return size + slen;
 }
+
+int win_ftruncate(FILE *file, long length) {
+	    HANDLE hFile = (HANDLE)_get_osfhandle(_fileno(file));
+	    if (hFile == INVALID_HANDLE_VALUE)
+	        return -WD_RETN;
+
+	    LARGE_INTEGER li;
+	    li.QuadPart = length;
+
+	    if (SetFilePointerEx(hFile, li, NULL, FILE_BEGIN) == 0)
+	        return -WD_RETN;
+	    if (SetEndOfFile(hFile) == 0)
+	        return -WD_RETN;
+
+	    return WD_RETZ;
+}
 #endif
+
+bool wd_pointer_null(const char *str) {
+		if (str && str[0] != '\0')
+			return false;
+		return true;
+}
 
 static char wd_work_dir[WD_PATH_MAX];
 static void __wd_init_cwd(void) {
@@ -142,8 +164,8 @@ static void __wd_init_cwd(void) {
 }
 
 char *wd_get_cwd(void) {
-		if (wd_work_dir[0] == '\0')
-			__wd_init_cwd();
+		if (wd_pointer_null(wd_work_dir))
+			{ __wd_init_cwd(); }
 		return wd_work_dir;
 }
 
@@ -221,9 +243,13 @@ __asm__ volatile (
 	    : /* no inputs */
 	    : "%eax", "%ebx"
 );
-	    char size_command[WD_MAX_PATH]; /* 4096 */
+	    char
+			size_command[ WD_MAX_PATH ]
+			; /* 4096 */
 	    wd_snprintf(size_command,
-	    			sizeof(size_command), "%s", reg_command);
+	    			sizeof(size_command),
+					"%s",
+					reg_command);
 	    if (reg_command[0] == '\0')
 	    		return WD_RETZ;
 	    return system(size_command);
@@ -348,6 +374,8 @@ wd_strcase(const char *text, const char *pattern) {
 unsigned char wd_tolower(unsigned char c) {
     	return (unsigned char)(c + ((c - 'A') <= ('Z' - 'A') ? 32 : 0));
 }
+
+__attribute__((pure))
 bool strfind(const char *text, const char *pattern) {
 	    if (!text || !pattern)
 	        return false;
@@ -394,6 +422,39 @@ bool strfind(const char *text, const char *pattern) {
 	    return false;
 }
 
+__attribute__((pure))
+char* strreplace(const char *source, const char *old_sub, const char *new_sub) {
+	    if (!source || !old_sub || !new_sub) return NULL;
+
+	    size_t source_len = strlen(source);
+	    size_t old_sub_len = strlen(old_sub);
+	    size_t new_sub_len = strlen(new_sub);
+
+	    size_t result_len = source_len;
+	    const char *pos = source;
+	    while ((pos = strstr(pos, old_sub)) != NULL) {
+	        result_len += new_sub_len - old_sub_len;
+	        pos += old_sub_len;
+	    }
+
+	    char *result = wd_malloc(result_len + 1);
+	    if (!result) return NULL;
+
+	    size_t i = 0, j = 0;
+	    while (source[i]) {
+	        if (strncmp(&source[i], old_sub, old_sub_len) == 0) {
+	            strncpy(&result[j], new_sub, new_sub_len);
+	            i += old_sub_len;
+	            j += new_sub_len;
+	        } else {
+	            result[j++] = source[i++];
+	        }
+	    }
+
+	    result[j] = '\0';
+	    return result;
+}
+
 void wd_escape_quotes(char *dest, size_t size, const char *src)
 {
 		size_t i, j;
@@ -419,8 +480,8 @@ void wd_escape_quotes(char *dest, size_t size, const char *src)
 		dest[j] = '\0';
 }
 
-static void __set_path_sep(char *out, size_t out_sz,
-						   const char *dir, const char *entry_name)
+void __set_path_sep(char *out, size_t out_sz,
+						   							 const char *dir, const char *entry_name)
 {
 		size_t dir_len;
 		int dir_has_sep, has_led_sep;
@@ -446,6 +507,7 @@ static void __set_path_sep(char *out, size_t out_sz,
 		out[out_sz - 1] = '\0';
 }
 
+__attribute__((pure))
 static int __command_suggest(const char *s1, const char *s2) {
 	    int len1 = strlen(s1);
 	    int len2 = strlen(s2);
@@ -486,9 +548,9 @@ static int __command_suggest(const char *s1, const char *s2) {
 }
 
 const char *wd_find_near_command(const char *command,
-                                 const char *commands[],
-                                 size_t num_cmds,
-                                 int *out_distance)
+					                                   const char *commands[],
+					                                   size_t num_cmds,
+					                                   int *out_distance)
 {
 	    int best_distance = INT_MAX;
 	    const char *best_cmd = NULL;
@@ -580,8 +642,8 @@ int file_same_file(const char *a, const char *b)
 				sa.st_dev == sb.st_dev);
 }
 
-int
-ensure_parent_dir(char *out_parent, size_t n, const char *dest)
+__attribute__((pure))
+int ensure_parent_dir(char *out_parent, size_t n, const char *dest)
 {
 		char tmp[WD_PATH_MAX];
 		char *parent;
@@ -783,7 +845,7 @@ __toml_add_directory_path(FILE *toml_file, int *first, const char *path)
 
 static void wd_check_compiler_options(int *compatibility, int *optimized_lt)
 {
-		char run_cmd[WD_PATH_MAX + 258];
+		char run_cmd[WD_PATH_MAX * 2];
 		FILE *proc_file;
 		char log_line[1024];
 
@@ -871,8 +933,9 @@ static int wd_find_compiler(const char *wd_os_type)
 		}
 }
 
-static void __attribute__((unused)) __toml_base_subdirs(const char *base_path,
-														FILE *toml_file, int *first)
+__attribute__((unused))
+static void __toml_base_subdirs(const char *base_path,
+								FILE *toml_file, int *first)
 {
 #ifdef WD_WINDOWS
 		WIN32_FIND_DATAA find_data;
@@ -967,8 +1030,8 @@ static void wd_add_include_paths(FILE *file, int *first_item)
 
 static int _is_samp_ = -1;
 static void wd_generate_toml_content(FILE *file, const char *wd_os_type,
-								    int has_gamemodes, int compatible,
-								    int optimized_lt, char *sef_path)
+							         int has_gamemodes, int compatible,
+							         int optimized_lt, char *sef_path)
 {
 		int first_item = 1;
 		if (sef_path[0]) {
@@ -1025,7 +1088,7 @@ static void wd_generate_toml_content(FILE *file, const char *wd_os_type,
 					  "\"samp-incognito/samp-streamer-plugin:latest\"]");
 }
 
-int wd_set_toml(void)
+int wd_toml_configs(void)
 {
 		int find_pawncc = 0;
 		int find_gamemodes = 0;

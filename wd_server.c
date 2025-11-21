@@ -76,7 +76,7 @@ void wd_stop_server_tasks(void) {
 /**
  * Updates server configuration file with new gamemode
  * Creates backup, modifies gamemode0 line, and handles file operations
- * 
+ *
  * @param gamemode The new gamemode to set in the configuration
  * @return WD_RETZ on success, -WD_RETN on failure
  */
@@ -159,7 +159,7 @@ static int update_server_config(const char *gamemode)
 /**
  * Displays server log files based on server type
  * Shows either SA-MP server_log.txt or OpenMP log.txt
- * 
+ *
  * @param ret Server type indicator (0 = SA-MP, non-zero = OpenMP)
  */
 void wd_display_server_logs(int ret)
@@ -192,6 +192,7 @@ void wd_display_server_logs(int ret)
 void wd_server_crash_check(void) {
         int __has_error = 0;           /* Flag indicating runtime error was found */
         int server_crashdetect = 0;    /* Counter for crashdetect debug lines */
+        int server_rcon_pass = 0;      /* rcon password error init */
 
         FILE *proc_f;  /* File handle for log file processing */
         /* Open appropriate log file based on server mode */
@@ -215,8 +216,73 @@ void wd_server_crash_check(void) {
                   if (strfind(line_buf, "[debug]") || strfind(line_buf, "crashdetect"))
                     ++server_crashdetect;  /* Count crashdetect related lines */
                 }
+                /* Rcon Password Error Check */
+                if (wd_server_env() == 1) {
+                    if (strfind(line_buf, "Error: Your password must be changed from the default password")) {
+                        ++server_rcon_pass; /* Set to true for next step */
+                    }
+                }
             }
             fclose(proc_f);  /* Close log file */
+        }
+        /* If error from rcon password is true */
+        if (server_rcon_pass == 1) {
+            printf("Error detected! : Error: Your password must be changed from the default password..\n");
+            char *fixed_now = readline("fixed now? [Y/n] ");
+
+            /* Check if user confirmed they fixed the issue */
+            if (!strcmp(fixed_now, "Y") || !strcmp(fixed_now, "y")) {
+                /* Check if server config file exists */
+                if (path_exists("server.cfg")) {
+                    FILE *read_f = fopen("server.cfg", "rb");
+                    if (read_f) {
+                        /* Get file size */
+                        fseek(read_f, 0, SEEK_END);
+                        long server_file_size = ftell(read_f);
+                        fseek(read_f, 0, SEEK_SET);
+
+                        /* Read file content */
+                        char *server_f_content;
+                        server_f_content = wd_malloc(server_file_size + 1);
+                        if (server_f_content) {
+                            size_t bytes_read;
+                            bytes_read = fread(server_f_content, 1, server_file_size, read_f);
+                            server_f_content[bytes_read] = '\0';
+                            fclose(read_f);
+
+                            /* Replace the default password */
+                            char *server_n_content = NULL;
+                            char *pos = strstr(server_f_content, "rcon_password changeme");
+                            if (pos) {
+                                server_n_content = wd_malloc(server_file_size + 10);
+                                if (server_n_content) {
+                                    strncpy(server_n_content, server_f_content, pos - server_f_content);
+                                    server_n_content[pos - server_f_content] = '\0';
+                                    strcat(server_n_content, "rcon_password changeme2");
+                                    strcat(server_n_content, pos + strlen("rcon_password changeme"));
+                                }
+                            }
+
+                            /* Write modified content back to file */
+                            if (server_n_content) {
+                                FILE *write_f = fopen("server.cfg", "wb");
+                                if (write_f) {
+                                    fwrite(server_n_content, 1, strlen(server_n_content), write_f);
+                                    fclose(write_f);
+                                    printf("done! * server.cfg - rcon_password from changeme to changeme2.\n");
+                                } else {
+                                    printf("Error: Cannot write to server.cfg\n");
+                                }
+                                wd_free(server_n_content);
+                            } else {
+                                printf("Error: Replacement failed\n");
+                            }
+                            wd_free(server_f_content);
+                        }
+                    }
+                }
+            }
+            wd_free(fixed_now);
         }
         /* If runtime error occurred but no crashdetect was found, offer to install it */
         if (__has_error == 1 && server_crashdetect < 1) {
@@ -252,7 +318,7 @@ void restore_samp_config(void) {
 /**
  * Runs SA-MP server with specified gamemode
  * Handles configuration updates, process execution, and error recovery
- * 
+ *
  * @param gamemode The gamemode to run (without .amx extension)
  * @param server_bin The server binary executable filename
  */
@@ -398,7 +464,7 @@ back_start:
 /**
  * Updates OpenMP server configuration with new gamemode using JSON format
  * Handles JSON parsing, modification, and file operations
- * 
+ *
  * @param gamemode The new gamemode to set in the configuration
  * @return WD_RETZ on success, -WD_RETN on failure
  */
@@ -543,7 +609,7 @@ void restore_omp_config(void) {
 /**
  * Runs OpenMP server with specified gamemode
  * Handles JSON configuration updates, process execution, and error recovery
- * 
+ *
  * @param gamemode The gamemode to run (without .amx extension)
  * @param server_bin The server binary executable filename
  */

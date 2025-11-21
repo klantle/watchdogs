@@ -287,8 +287,8 @@ static void crypto_hmac_sha256(const uint8_t *key, size_t key_len,
 }
 
 void crypto_aes_encrypt(const uint8_t in[AES_BLOCK_SIZE],
-                                           uint8_t out[AES_BLOCK_SIZE],
-                                           const AES_KEY *key) {
+                        uint8_t out[AES_BLOCK_SIZE],
+                        const AES_KEY *key) {
         memcpy(out, in, AES_BLOCK_SIZE);
 }
 
@@ -440,8 +440,8 @@ int crypto_derive_key_pbkdf2(const char *passphrase, const unsigned char *salt,
 }
 
 int crypto_encrypt_with_password(const unsigned char *plain, int plaintext_len,
-						  const char *passphrase, unsigned char **out_blob,
-						  int *out_blob_len)
+						         const char *passphrase, unsigned char **out_blob,
+						         int *out_blob_len)
 {
         const int salt_len = 16;
         const int iv_len = 16;
@@ -472,8 +472,8 @@ int crypto_encrypt_with_password(const unsigned char *plain, int plaintext_len,
 }
 
 int crypto_decrypt_with_password(const unsigned char *in_blob, int in_blob_len,
-						  const char *passphrase, unsigned char **out_plain,
-						  int *out_plain_len)
+						         const char *passphrase, unsigned char **out_plain,
+						         int *out_plain_len)
 {
         const int salt_len = 16;
         const int iv_len = 16;

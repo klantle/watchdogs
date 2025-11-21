@@ -172,14 +172,17 @@ extern WatchdogConfig wcfg;
 
 void wd_sef_fdir_reset();
 #ifdef WD_WINDOWS
-#define strlcpy win_strlcpy
-#define strlcat win_strlcat
+#define strlcpy   win_strlcpy
+#define strlcat   win_strlcat
+#define ftruncate win_ftruncate
 size_t win_strlcpy(char *dst, const char *src, size_t size);
 size_t win_strlcat(char *dst, const char *src, size_t size);
+int win_ftruncate(FILE *file, long length);
 #endif
 struct struct_of { int (*title)(const char *); };
 extern const char* __command[];
 extern const size_t __command_len;
+bool wd_pointer_null(const char *str);
 char *wd_get_cwd(void);
 char* wd_masked_text(int reveal, const char *text);
 int wd_mkdir(const char *path);
@@ -192,6 +195,7 @@ void wd_strip_dot_fns(char *dst, size_t dst_sz, const char *src);
 unsigned char wd_tolower(unsigned char c);
 bool wd_strcase(const char *text, const char *pattern);
 bool strfind(const char *text, const char *pattern);
+char* strreplace(const char *source, const char *old_sub, const char *new_sub);
 void wd_escape_quotes(char *dest, size_t size, const char *src);
 extern const char* wd_find_near_command(
     const char *ptr_command, const char *__commands[],
@@ -209,7 +213,7 @@ int ensure_parent_dir(char *out_parent, size_t n, const char *dest);
 int cp_f_content(const char *src, const char *dst);
 int wd_is_special_dir(const char *name);
 int wd_sef_fdir(const char *sef_path, const char *sef_name, const char *ignore_dir);
-int wd_set_toml(void);
+int wd_toml_configs(void);
 int wd_sef_wcopy(const char *c_src, const char *c_dest);
 int wd_sef_wmv(const char *c_src, const char *c_dest);
 

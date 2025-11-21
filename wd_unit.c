@@ -43,7 +43,7 @@ struct timespec cmd_start, cmd_end;
 double command_dur;
 
 void __function__(void) {
-        wd_set_toml();
+        wd_toml_configs();
         wd_sef_fdir_reset();
         wd_u_history();
 #if defined(_DBG_PRINT)
@@ -160,7 +160,7 @@ int __command__(char *chain_pre_command)
         const char *_dist_command;
 
 _ptr_command:
-        if (chain_pre_command && chain_pre_command[0] != '\0') {
+        if (!wd_pointer_null(chain_pre_command)) {
             ptr_command = strdup(chain_pre_command);
             printf("[" FCOLOUR_CYAN
                    "watchdogs ~ %s" FCOLOUR_DEFAULT "]$ %s\n", wd_get_cwd(), ptr_command);
@@ -170,7 +170,7 @@ _ptr_command:
                         "watchdogs ~ %s" FCOLOUR_DEFAULT "]$ ", wd_get_cwd());
             ptr_command = readline(ptr_prompt);
 
-            if (ptr_command == NULL || ptr_command[0] == '\0')
+            if (wd_pointer_null(ptr_command))
                 goto _ptr_command;
         }
 
@@ -302,7 +302,7 @@ _reexecute_command:
 
                 uint32_t crc32_generate;
                 crc32_generate = crypto_generate_crc32(arg, sizeof(arg) - 1);
-                
+
                 char crc_str[11];
                 sprintf(crc_str, "%08X", crc32_generate);
 
@@ -727,10 +727,10 @@ _runners_:
                 char *arg1 = strtok(arg, " ");
 
                 char *size_arg1 = NULL;
-                if (arg1 == NULL || *arg1 == '\0')
+                if (wd_pointer_null(arg1))
                     size_arg1 = wcfg.wd_toml_gm_input;
                 else
-                    size_arg1 = arg1;
+                    size_arg1 = "none";
                 char *gamemode = size_arg1;
                 if (gamemode) {
                     char *f_EXT = strrchr(gamemode, '.');
@@ -775,11 +775,10 @@ _runners_:
                 }
 
                 pr_color(stdout, FCOLOUR_YELLOW, "running..\n");
+                char size_run[128];
                 if (wd_server_env() == 1) {
-                    if (arg == NULL || *arg == '\0' || (arg[0] == '.' && arg[1] == '\0')) {
+                    if (wd_pointer_null(arg) || (arg[0] == '.' && arg[1] == '\0')) {
 start_main:
-                        char size_run[128];
-
                         struct sigaction sa;
 
                         sa.sa_handler = unit_handle_sigint;
@@ -832,10 +831,8 @@ start_main:
                         wd_run_samp_server(arg1, wcfg.wd_ptr_samp);
                     }
                 } else if (wd_server_env() == 2) {
-                    if (arg == NULL || *arg == '\0' || (arg[0] == '.' && arg[1] == '\0')) {
+                    if (wd_pointer_null(arg) || (arg[0] == '.' && arg[1] == '\0')) {
 start_main2:
-                        char size_run[128];
-
                         struct sigaction sa;
 
                         sa.sa_handler = unit_handle_sigint;

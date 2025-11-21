@@ -47,7 +47,7 @@ static int get_termux_architecture(char *out_arch, size_t buf_size)
 				wd_strncpy(out_arch, "arm32", buf_size);
 				return WD_RETZ;
 		}
-		
+
 		printf("Unknown arch: %s\n", uname_data.machine);
 
 		printf("Select architecture for Termux:\n");
@@ -91,6 +91,7 @@ static int pawncc_handle_termux_installation(void)
 		if (!is_termux_environment())
 				pr_info(stdout, "Currently not in Termux!");
 
+		char *__version__;
 ret_pawncc:
 		printf("Select the PawnCC version to download:\n");
 		for (size_t i = 0; i < version_count; i++) {
@@ -100,7 +101,7 @@ ret_pawncc:
 				termux_versions[i]);
 		}
 
-		char *__version__ = readline("==> ");
+		__version__ = readline("==> ");
 		version_selection = __version__[0];
 		if (version_selection >= 'A' &&
 			version_selection < 'A' + (char)version_count) {
@@ -415,8 +416,9 @@ int wd_install_server(const char *platform)
 				       versions[i].name);
 		}
 
+		char *__selection__;
 get_back:
-		char *__selection__ = readline("==> ");
+		__selection__ = readline("==> ");
 		selection = __selection__[0];
 		for (i = 0; i < version_count; i++) {
 				if (selection == versions[i].key ||

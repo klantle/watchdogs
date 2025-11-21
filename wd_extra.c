@@ -603,9 +603,9 @@ static const char *wd_find_warn_err(const char *line)
  * @param total_size Total memory requirements in bytes
  */
 void compiler_detailed(const char *pawn_output, int debug,
-                     int wcnt, int ecnt, const char *compiler_ver,
-                     int header_size, int code_size, int data_size,
-                     int stack_size, int total_size)
+                       int wcnt, int ecnt, const char *compiler_ver,
+                       int header_size, int code_size, int data_size,
+                       int stack_size, int total_size)
 {
       /* Create formatted title string showing compilation status */
       char size_compiler[256];
@@ -670,8 +670,8 @@ void compiler_detailed(const char *pawn_output, int debug,
  * @param debug Debug mode flag for additional information
  */
 void cause_compiler_expl(const char *log_file,
-                              const char *pawn_output,
-                              int debug)
+                         const char *pawn_output,
+                         int debug)
 {
         /* Debugging Compiler Cause & Detailed Function */
 #if defined (_DBG_PRINT)

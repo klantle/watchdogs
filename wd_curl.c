@@ -14,6 +14,7 @@
 #include "wd_crypto.h"
 #include "wd_archive.h"
 #include "wd_depends.h"
+#include "wd_compiler.h"
 #include "wd_util.h"
 #include "wd_unit.h"
 #include "wd_curl.h"
@@ -134,7 +135,7 @@ static int progress_callback(void *ptr, curl_off_t dltotal,
  * @return Number of bytes actually processed
  */
 size_t write_memory_callback(void *contents, size_t size,
-							size_t nmemb, void *userp)
+							 size_t nmemb, void *userp)
 {
 		struct memory_struct *mem = userp;  /* Cast user pointer to memory structure */
 		size_t realsize = size * nmemb;     /* Calculate actual data size received */
@@ -505,6 +506,21 @@ void wd_apply_pawncc(void)
 		/* Display success message */
 		pr_info(stdout, "Compiler installed successfully!");
 
+		/* Display Compiler */
+		pr_color(stdout, FCOLOUR_CYAN, "~ compile now? [Y/n]");
+		char *compile_now = readline(" ");
+		if (!strcmp(compile_now, "Y") || !strcmp(compile_now, "y")) {
+			pr_color(stdout, FCOLOUR_CYAN, "~ gamemode name (enter from config toml - enter E/e to exit): ");
+			char *gamemode_compile = readline(" ");
+			if (strlen(gamemode_compile) < 1) {
+		            const char *args[] = { NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL };
+		            wd_run_compiler(args[0], args[1], args[2], args[3], args[4], args[5], args[6], args[7]);
+			} else {
+		            const char *args[] = { NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL };
+		            wd_run_compiler(args[0], gamemode_compile, args[2], args[3], args[4], args[5], args[6], args[7]);
+			}
+		}
+
 /* Cleanup label for error handling */
 done:
 		/* Return to main menu */
@@ -561,8 +577,8 @@ int is_archive_file(const char *filename)
 {
 		if (strfind(filename, ".tar") ||
 			strfind(filename, ".zip"))
-			return 1;
-		return 0;
+			return WD_RETN;
+		return WD_RETZ;
 }
 
 /**
@@ -576,7 +592,7 @@ int is_archive_file(const char *filename)
  * @return        Always returns 0
  */
 static int debug_callback(CURL *handle, curl_infotype type,
-                         char *data, size_t size, void *userptr)
+                          char *data, size_t size, void *userptr)
 {
 	    (void)handle; /* prevent compiler warning for unused parameter */
 	    (void)userptr; /* prevent compiler warning for unused parameter */
@@ -837,7 +853,6 @@ int wd_download_file(const char *url, const char *filename)
 								}
 								wd_free(confirm);
 							}
-							return WD_RETZ;  /* Return success */
 						}
 
 						/* Check if pawncc installation is requested */

@@ -641,6 +641,17 @@ n_valid_flag:
                         }
 
                         wd_printfile(".wd_compiler.log");
+                        
+                		char log_line[1024];
+                		proc_file = fopen(".wd_compiler.log", "r");
+
+                		if (proc_file != NULL) {
+                            while (fgets(log_line, sizeof(log_line), proc_file) != NULL) {
+                                if (strfind(log_line, "backtrace"))
+                                    pr_color(stdout, FCOLOUR_CYAN, "~ backtrace detected - make sure you are using a newer version of pawncc than the one currently in use.");
+                            }
+                            fclose(proc_file);
+                        }
                     }
 /* Label for compiler completion handling */
 compiler_done:
@@ -1054,6 +1065,17 @@ compiler_done:
                             }
 
                             wd_printfile(".wd_compiler.log");
+
+                    		char log_line[1024];
+                    		proc_file = fopen(".wd_compiler.log", "r");
+
+                    		if (proc_file != NULL) {
+                                while (fgets(log_line, sizeof(log_line), proc_file) != NULL) {
+                                    if (strfind(log_line, "backtrace"))
+                                        pr_color(stdout, FCOLOUR_CYAN, "~ backtrace detected - make sure you are using a newer version of pawncc than the one currently in use.");
+                                }
+                                fclose(proc_file);
+                            }
                         }
 
 /* Label for file-based compilation completion */

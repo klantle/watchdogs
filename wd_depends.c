@@ -319,7 +319,7 @@ static int dep_gh_release_assets (const char *user, const char *repo,
 
 static void
 dep_build_repo_url (const struct dep_repo_info *__deps_data, int is_tag_page,
-		   char *deps_put_url, size_t deps_put_size)
+		   			char *deps_put_url, size_t deps_put_size)
 {
 		char deps_actual_tag[128] = { 0 };
 
@@ -382,7 +382,7 @@ dep_build_repo_url (const struct dep_repo_info *__deps_data, int is_tag_page,
 }
 
 static int dep_gh_latest_tag (const char *user, const char *repo,
-                              		  char *out_tag, size_t deps_put_size)
+                              char *out_tag, size_t deps_put_size)
 {
 		char api_url[WD_PATH_MAX];
 		char *json_data = NULL;
@@ -530,8 +530,7 @@ static int dep_handle_repo (const struct dep_repo_info *dep_repo_info,
 		return ret;
 }
 
-int
-dep_add_ncheck_hash (const char *_H_file_path, const char *_H_json_path)
+int dep_add_ncheck_hash (const char *_H_file_path, const char *_H_json_path)
 {
 		char convert_f_path[WD_PATH_MAX];
 		char convert_j_path[WD_PATH_MAX];

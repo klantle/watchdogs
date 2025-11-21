@@ -808,7 +808,8 @@ start_main:
                         int running_FAIL = wd_run_command(size_run);
                         if (running_FAIL == 0) {
                             if (!strcmp(wcfg.wd_os_type, OS_SIGNAL_LINUX)) {
-                                sleep(2);
+                                printf("~ Waiting logging...\n");
+                                sleep(3);
                                 wd_display_server_logs(0);
                             }
                         } else {
@@ -861,7 +862,8 @@ back_start2:
 
                         int running_FAIL = wd_run_command(size_run);
                         if (running_FAIL == 0) {
-                            sleep(2);
+                            printf("~ Waiting logging...\n");
+                            sleep(3);
                             wd_display_server_logs(1);
                         } else {
                             pr_color(stdout, FCOLOUR_RED, "Server startup failed!\n");

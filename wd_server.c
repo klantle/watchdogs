@@ -204,27 +204,162 @@ void wd_server_crash_check(void) {
         /* Process log file if successfully opened */
         if (proc_f)
         {
-            char line_buf[1024 + 1024];  /* Buffer for reading log lines */
-            /* Read each line from the log file */
-            while (fgets(line_buf, sizeof(line_buf), proc_f))
-            {
-                /* Check for runtime error indicators (case insensitive) */
-                if (strfind(line_buf, "run time error") || strfind(line_buf, "Run time error"))
-                    __has_error = 1;  /* Mark that a runtime error occurred */
-                /* If error was found, look for crashdetect debug information */
-                if (__has_error) {
+          char line_buf[1024 + 1024];  /* Buffer for reading log lines */
+          /* Read each line from the log file */
+          while (fgets(line_buf, sizeof(line_buf), proc_f))
+          {
+              /* Check for runtime error indicators (case insensitive) */
+              if (strfind(line_buf, "run time error") || strfind(line_buf, "Run time error"))
+              {
+                  __has_error = 1;  /* Mark that a runtime error occurred */
+                  printf("Runtime error detected in log file\n");
+
+                  /* Additional checks after runtime error detection */
+                  if (strfind(line_buf, "division by zero")) {
+                      printf("Division by zero error found\n");
+                  }
+                  if (strfind(line_buf, "array index out of bounds")) {
+                      printf("Array index out of bounds error found\n");
+                  }
+                  if (strfind(line_buf, "invalid index")) {
+                      printf("Invalid index error found\n");
+                  }
+              }
+              /* Memory address detection in crash logs */
+              if (strfind(line_buf, "0x")) {
+                  printf("Hexadecimal address found in log: %s", line_buf);
+              }
+              if (strfind(line_buf, "address") || strfind(line_buf, "Address")) {
+                  printf("Memory address reference found: %s", line_buf);
+              }
+              /* Specific common crash addresses */
+              if (strfind(line_buf, "0x00000000")) {
+                  printf("NULL pointer address detected (0x00000000)\n");
+              }
+              if (strfind(line_buf, "0xFFFFFFFF")) {
+                  printf("End of memory address detected (0xFFFFFFFF)\n");
+              }
+              if (strfind(line_buf, "0xDEADBEEF")) {
+                  printf("Debug marker address detected (0xDEADBEEF)\n");
+              }
+              if (strfind(line_buf, "0xBAADF00D")) {
+                  printf("Heap fill pattern detected (0xBAADF00D)\n");
+              }
+              if (strfind(line_buf, "0xC0000000")) {
+                  printf("Kernel space address detected (0xC0000000)\n");
+              }
+              if (strfind(line_buf, "0x0012") || strfind(line_buf, "0x0013")) {
+                  printf("Stack memory address detected (%s)\n", line_buf);
+              }
+              if (strfind(line_buf, "0x0040") || strfind(line_buf, "0x0041")) {
+                  printf("Process base address detected (%s)\n", line_buf);
+              }
+              if (strfind(line_buf, "0x1000") || strfind(line_buf, "0x1001")) {
+                  printf("DLL base address detected (%s)\n", line_buf);
+              }
+              if (strfind(line_buf, "0x7FFF")) {
+                  printf("User space limit address detected (0x7FFF...)\n");
+              }
+              if (strfind(line_buf, "0x8000")) {
+                  printf("Kernel boundary address detected (0x8000...)\n");
+              }
+              /* If error was found, look for crashdetect debug information */
+              if (__has_error) {
                   if (strfind(line_buf, "[debug]") || strfind(line_buf, "crashdetect"))
-                    ++server_crashdetect;  /* Count crashdetect related lines */
-                }
-                /* Rcon Password Error Check */
-                if (wd_server_env() == 1) {
-                    if (strfind(line_buf, "Error: Your password must be changed from the default password")) {
-                        ++server_rcon_pass; /* Set to true for next step */
-                    }
-                }
-            }
-            fclose(proc_f);  /* Close log file */
+                  {
+                      ++server_crashdetect;
+                      printf("Crashdetect debug information found\n");
+
+                      /* Additional crashdetect analysis */
+                      if (strfind(line_buf, "AMX backtrace")) {
+                          printf("AMX backtrace detected in crash log\n");
+                      }
+                      if (strfind(line_buf, "native stack trace")) {
+                          printf("Native stack trace detected\n");
+                      }
+                      if (strfind(line_buf, "heap")) {
+                          printf("Heap-related issue mentioned\n");
+                      }
+                  }
+                  /* Additional error pattern checks when error is present */
+                  if (strfind(line_buf, "stack")) {
+                      printf("Stack-related issue detected\n");
+                  }
+                  if (strfind(line_buf, "memory")) {
+                      printf("Memory-related issue detected\n");
+                  }
+                  if (strfind(line_buf, "access violation")) {
+                      printf("Access violation detected\n");
+                  }
+                  if (strfind(line_buf, "segment")) {
+                      printf("Segmentation fault detected\n");
+                  }
+                  if (strfind(line_buf, "buffer overrun") || strfind(line_buf, "buffer overflow")) {
+                      printf("Buffer overflow detected\n");
+                  }
+                  if (strfind(line_buf, "null pointer")) {
+                      printf("Null pointer exception detected\n");
+                  }
+              }
+              /* Rcon Password Error Check */
+              if (wd_server_env() == 1) {
+                  if (strfind(line_buf, "Error: Your password must be changed from the default password")) {
+                      ++server_rcon_pass;
+
+                      printf("RCON password security error detected\n");
+
+                      /* Additional security checks */
+                      if (strfind(line_buf, "password") && strfind(line_buf, "default")) {
+                          printf("Default password usage detected\n");
+                      }
+                  }
+              }
+              /* Additional general server health checks */
+              if (strfind(line_buf, "warning") || strfind(line_buf, "Warning")) {
+                  printf("Warning message found in log\n");
+              }
+              if (strfind(line_buf, "failed") || strfind(line_buf, "Failed")) {
+                  printf("Failure message detected\n");
+              }
+              if (strfind(line_buf, "timeout") || strfind(line_buf, "Timeout")) {
+                  printf("Timeout event detected\n");
+              }
+              if (strfind(line_buf, "connection lost") || strfind(line_buf, "disconnected")) {
+                  printf("Connection loss detected\n");
+              }
+              /* Plugin specific checks */
+              if (strfind(line_buf, "plugin") || strfind(line_buf, "Plugin")) {
+                  if (strfind(line_buf, "failed to load")) {
+                      printf("Plugin load failure detected\n");
+                  }
+                  if (strfind(line_buf, "crashed")) {
+                      printf("Plugin crash detected\n");
+                  }
+              }
+              /* Performance monitoring */
+              if (strfind(line_buf, "lag") || strfind(line_buf, "Lag")) {
+                  printf("Lag report detected\n");
+              }
+              if (strfind(line_buf, "server fps") || strfind(line_buf, "FPS")) {
+                  printf("FPS information found\n");
+              }
+              /* Database connection issues */
+              if (strfind(line_buf, "database") || strfind(line_buf, "mysql")) {
+                  if (strfind(line_buf, "connection failed") || strfind(line_buf, "can't connect")) {
+                      printf("Database connection failure detected\n");
+                  }
+              }
+              /* Memory allocation issues */
+              if (strfind(line_buf, "out of memory") || strfind(line_buf, "memory allocation")) {
+                  printf("Memory allocation failure detected\n");
+              }
+              if (strfind(line_buf, "malloc") || strfind(line_buf, "free()")) {
+                  printf("Memory management function referenced\n");
+              }
+          }
+          fclose(proc_f);  /* Close log file */
         }
+
         /* If error from rcon password is true */
         if (server_rcon_pass == 1) {
             printf("Error detected! : Error: Your password must be changed from the default password..\n");
@@ -439,7 +574,8 @@ back_start:
                 /* Server started successfully */
                 if (!strcmp(wcfg.wd_os_type, OS_SIGNAL_LINUX)) {
                         /* On Linux, wait a moment then display server logs */
-                        sleep(2);
+                        printf("~ Waiting logging...\n");
+                        sleep(3);
                         wd_display_server_logs(0);  /* Display SA-MP logs */
                 }
         } else {
@@ -723,7 +859,8 @@ back_start:
         ret = wd_run_command(command);
         if (ret == WD_RETZ) {
                 /* Server started successfully - display logs after brief delay */
-                sleep(2);
+                printf("~ Waiting logging...\n");
+                sleep(3);
                 wd_display_server_logs(1);  /* Display OpenMP logs */
         } else {
                 /* Server startup failed */

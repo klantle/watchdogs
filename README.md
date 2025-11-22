@@ -38,39 +38,36 @@
 
 ## Introduction
 
----
-
-### [A.I Agent](https://aiagentslist.com/)
+## [A.I Agent](https://aiagentslist.com/)
 __If you are confused about this project, you can use an A.I. Agent that can help provide available information to be filtered according to the given prompt. Alternatively, you can also create an issue to ask questions in this Repository.__
 ![img](https://raw.githubusercontent.com/klantle/watchdogs/refs/heads/main/__AGENT.png)
 
-### [Wanion - A.I for Watchdogs](https://github.com/klantle/watchdogs?tab=readme-ov-file#configuration)
-`Based on Gemini and Groq Supported models: Gemini: gemini-2x|3x Groq: llama|gpt|qwen`
+## Wanion - A.I for Watchdogs
 ![img](https://raw.githubusercontent.com/klantle/watchdogs/refs/heads/main/__WANION.png)
 
-### Information.
+## Information.
 ~~This project is built purely from our own thinking and effort, not merely by imitation. We have never claimed to be inspired by similar projects that themselves draw inspiration from others. Our foundation prioritizes simplicity, speed, feature updates, and the latest library technologies, rather than long term stability.~~
 ![img](https://raw.githubusercontent.com/klantle/watchdogs/refs/heads/main/__ACTORIDE.png)
 
-### Supported Platforms
+## Supported Platforms
 - [x] Linux (Debian/Ubuntu based distributions)
 - [x] Windows (via Native, MSYS2, WSL, or Docker)
 - [x] macOS (via Docker)
 - [x] Android (via Termux)
 - [x] Github Actions/VPS
 
-### Supported Architectures
+## Supported Architectures
 - [x] Qualcomm Snapdragon
 - [x] MediaTek  
 - [x] Intel
 - [x] AMD
 
-### Prerequisites
+## Prerequisites
 - GNU Make
 - Git
 - Bash shell environment
 
-### Roadmap
+## Roadmap
 | File              | Description                                                                                           |
 | ----------------- | ----------------------------------------------------------------------------------------------------- |
 | **wd_unit**     | This is the main Watchdogs file.                                                                      |

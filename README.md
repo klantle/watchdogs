@@ -49,6 +49,9 @@ __If you are confused about this project, you can use an A.I. Agent that can hel
 ~~This project is built purely from our own thinking and effort, not merely by imitation. We have never claimed to be inspired by similar projects that themselves draw inspiration from others. Our foundation prioritizes simplicity, speed, feature updates, and the latest library technologies, rather than long term stability.~~
 ![img](https://raw.githubusercontent.com/klantle/watchdogs/refs/heads/main/__ACTORIDE.png)
 
+## -Logo's
+![img](https://raw.githubusercontent.com/klantle/watchdogs/refs/heads/main/__LOGO.png)
+
 ## Supported Platforms
 - [x] Linux (Debian/Ubuntu based distributions)
 - [x] Windows (via Native, MSYS2, WSL, or Docker)

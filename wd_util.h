@@ -24,10 +24,11 @@
 
 #ifdef WD_WINDOWS
 #include <windows.h>
+#include <io.h>
+#include <time.h>
 #include <direct.h>
 #include <shlwapi.h>
 #include <strings.h>
-#include <io.h>
 #define __PATH_SEP "\\"
 #define IS_PATH_SEP(c) ((c) == '/' || (c) == '\\')
 #define mkdir(wx) _mkdir(wx)
@@ -49,6 +50,20 @@
 #define CHMOD(wx, wy) _chmod(wx, wy)
 #define FILE_MODE _S_IREAD | _S_IWRITE
 #define getcwd _getcwd
+#define usleep(mc) { \
+    long ms = (mc) / 1000; \
+    long us = (mc) % 1000; \
+    if (ms < 1) ms = 1; \
+    Sleep(ms); \
+    if (us > 0) { \
+        LARGE_INTEGER frequency, start, end; \
+        QueryPerformanceFrequency(&frequency); \
+        QueryPerformanceCounter(&start); \
+        do { \
+            QueryPerformanceCounter(&end); \
+        } while ((end.QuadPart - start.QuadPart) * 1000000 / frequency.QuadPart < us); \
+    } \
+}
 #else
 #include <sys/utsname.h>
 #include <sys/wait.h>
@@ -166,6 +181,9 @@ typedef struct {
     char *wd_toml_gm_input;
     char *wd_toml_gm_output;
     char *wd_toml_github_tokens;
+    char *wd_toml_key_ai;
+    char *wd_toml_chatbot_ai;
+    char *wd_toml_models_ai;
 } WatchdogConfig;
 
 extern WatchdogConfig wcfg;

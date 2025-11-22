@@ -26,6 +26,9 @@ const char *watchdogs_release = WATCHDOGS_RELEASE;
 #endif
 #include <readline/readline.h>
 #include <readline/history.h>
+#ifdef WD_LINUX
+#include <spawn.h>
+#endif
 
 #include "wd_extra.h"
 #include "wd_util.h"
@@ -61,11 +64,14 @@ void __function__(void) {
                "architecture: %s | "
                "os_type: %s (CRC32) |"
                "pointer_samp: %s |"
-               "pointer_openmp: %s |"
-               "f_samp: %s (CRC32) |"
-               "f_openmp: %s (CRC32) |"
-               "config: %s |"
-               "github tokens: %s\n",
+               "pointer_openmp: %s | "
+               "f_samp: %s (CRC32) | "
+               "f_openmp: %s (CRC32) | "
+               "config: %s | "
+               "github tokens: %s | "
+               "chatbot: %s | "
+               "models: %s | "
+               "ai key: %s\n",
                 __func__, __PRETTY_FUNCTION__,
                 __LINE__, __FILE__,
                 __DATE__, __TIME__,
@@ -87,7 +93,10 @@ void __function__(void) {
                 wcfg.wd_os_type, wcfg.wd_ptr_samp,
                 wcfg.wd_ptr_omp, wcfg.wd_is_samp,
                 wcfg.wd_is_omp, wcfg.wd_toml_config,
-                wcfg.wd_toml_github_tokens);
+                wcfg.wd_toml_github_tokens,
+                wcfg.wd_toml_chatbot_ai,
+                wcfg.wd_toml_models_ai,
+                wcfg.wd_toml_key_ai);
         printf("STDC: %d\n", __STDC__);
         printf("STDC_HOSTED: %d\n", __STDC_HOSTED__);
         printf("BYTE_ORDER: ");
@@ -227,6 +236,7 @@ _reexecute_command:
             } else if (strcmp(arg, "compiles") == 0) { println(stdout, "compiles: compile & running your project. | Usage: \"compiles\" | [<args>]");
             } else if (strcmp(arg, "stop") == 0) { println(stdout, "stop: stopped server task. | Usage: \"stop\"");
             } else if (strcmp(arg, "restart") == 0) { println(stdout, "restart: restart server task. | Usage: \"restart\"");
+            } else if (strcmp(arg, "wanion") == 0) { println(stdout, "wanion: ask to wanion. | Usage: \"wanion\" | [<args>] | gemini based");
             } else {
                 printf("wd-help can't found for: '");
                 printf_color(stdout, FCOLOUR_YELLOW, "%s", arg);
@@ -708,8 +718,11 @@ _runners_:
                 wd_stop_server_tasks();
 
                 if (!path_exists(wcfg.wd_toml_binary)) {
-                    pr_error(stdout, "Can't locate sa-mp/open.mp binary file!");
+                    pr_error(stdout, "can't locate sa-mp/open.mp binary file!");
                     goto done;
+                }
+                if (!path_exists(wcfg.wd_toml_config)) {
+                    pr_warning(stdout, "can't locate %s!", wcfg.wd_toml_config);
                 }
 
                 server_mode = 0;
@@ -941,6 +954,215 @@ n_loop_igm2:
             wd_stop_server_tasks();
             sleep(2);
             goto _runners_;
+        } else if (strncmp(ptr_command, "wanion", 6) == 0) {
+            char *arg = ptr_command + 6;
+            while (*arg == ' ') ++arg;
+
+            if (*arg == '\0') {
+                println(stdout, "Usage: wanion [<text>]");
+            } else {
+                char size_rest_api_perform[WD_PATH_MAX];
+                int is_chatbot_groq_based = 0;
+                if (strcmp(wcfg.wd_toml_chatbot_ai, "gemini") == 0)
+rest_def:
+                    snprintf(size_rest_api_perform, sizeof(size_rest_api_perform),
+                                      "https://generativelanguage.googleapis.com/"
+                                      "v1beta/models/%s:generateContent",
+                                      wcfg.wd_toml_models_ai);
+                else if (strcmp(wcfg.wd_toml_chatbot_ai, "groq") == 0) {
+                    is_chatbot_groq_based = 1;
+                    snprintf(size_rest_api_perform, sizeof(size_rest_api_perform),
+                                      "https://api.groq.com/"
+                                      "openai/v1/chat/completions");
+                } else { goto rest_def; }
+
+#if defined(_DBG_PRINT)
+                printf("rest perform: %s\n", size_rest_api_perform);
+#endif
+                char wanion_escaped_argument[WD_MAX_PATH];
+                json_escape_string(wanion_escaped_argument, arg, sizeof(wanion_escaped_argument));
+
+                char wanion_json_payload[WD_MAX_PATH + WD_PATH_MAX];
+                if (is_chatbot_groq_based == 1) {
+                    snprintf(wanion_json_payload, sizeof(wanion_json_payload),
+                             "{"
+                             "\"model\":\"%s\","
+                             "\"messages\":[{"
+                             "\"role\":\"user\","
+                             "\"content\":\"Your name is Wanion made from Groq my asking: %s\""
+                             "}],"
+                             "\"max_tokens\":1024}",
+                             wcfg.wd_toml_models_ai,
+                             wanion_escaped_argument);
+                } else {
+                    snprintf(wanion_json_payload, sizeof(wanion_json_payload),
+                             "{"
+                             "\"contents\":[{\"role\":\"user\","
+                             "\"parts\":[{\"text\":\"Your name is Wanion made from Google my asking: %s\"}]}],"
+                             "\"generationConfig\": {\"maxOutputTokens\": 1024}}",
+                             wanion_escaped_argument);
+                }
+
+#if defined(_DBG_PRINT)
+                printf("json payload: %s\n", wanion_json_payload);
+#endif
+                struct timespec start = {0}, end = { 0 };
+                double wanion_dur;
+
+                int retry = 0;
+retrying:
+                clock_gettime(CLOCK_MONOTONIC, &start);
+                struct buf b = {0};
+                CURL *h = curl_easy_init();
+                if (!h) {
+                    clock_gettime(CLOCK_MONOTONIC, &end);
+                    goto done;
+                }
+
+                struct curl_slist *hdr = curl_slist_append(NULL, "Content-Type: application/json");
+                char size_tokens[WD_PATH_MAX];
+                if (is_chatbot_groq_based == 1)
+                    wd_snprintf(size_tokens, sizeof(size_tokens), "Authorization: Bearer %s", wcfg.wd_toml_key_ai);
+                else
+                    wd_snprintf(size_tokens, sizeof(size_tokens), "x-goog-api-key: %s", wcfg.wd_toml_key_ai);
+                hdr = curl_slist_append(hdr, size_tokens);
+
+                curl_easy_setopt(h, CURLOPT_URL, size_rest_api_perform);
+                curl_easy_setopt(h, CURLOPT_HTTPHEADER, hdr);
+                curl_easy_setopt(h, CURLOPT_TCP_KEEPALIVE, 1L);
+                curl_easy_setopt(h, CURLOPT_POSTFIELDS, wanion_json_payload);
+                curl_easy_setopt(h, CURLOPT_ACCEPT_ENCODING, "gzip, deflate");
+                curl_easy_setopt(h, CURLOPT_WRITEFUNCTION, write_cb);
+                curl_easy_setopt(h, CURLOPT_WRITEDATA, &b);
+                curl_easy_setopt(h, CURLOPT_TIMEOUT, 30L);
+
+                verify_cacert_pem(h);
+
+                CURLcode res = curl_easy_perform(h);
+                if (res != CURLE_OK) {
+                    fprintf(stderr, "HTTP request failed: %s\n", curl_easy_strerror(res));
+                    curl_slist_free_all(hdr);
+                    curl_easy_cleanup(h);
+                    clock_gettime(CLOCK_MONOTONIC, &end);
+                    goto done;
+                }
+
+                long http_code = 0;
+                curl_easy_getinfo(h, CURLINFO_RESPONSE_CODE, &http_code);
+                if (http_code != 200) {
+                    fprintf(stderr, "API returned HTTP %ld:\n%s\n", http_code, b.data);
+                    if (strfind(b.data, "You exceeded your current quota, please check your plan and billing details") ||
+                        strfind(b.data, "Too Many Requests"))
+                        printf("~ limit detected!\n");
+                    curl_slist_free_all(hdr);
+                    curl_easy_cleanup(h);
+                    clock_gettime(CLOCK_MONOTONIC, &end);
+                    goto done;
+                }
+
+                cJSON *root = cJSON_Parse(b.data);
+                if (!root) {
+                    fprintf(stderr, "JSON parse error\n");
+                    clock_gettime(CLOCK_MONOTONIC, &end);
+                    goto done_left;
+                }
+
+                cJSON *error = cJSON_GetObjectItem(root, "error");
+                if (error) {
+                    cJSON *message = cJSON_GetObjectItem(error, "message");
+                    if (message && cJSON_IsString(message)) {
+                        fprintf(stderr, "API Error: %s\n", message->valuestring);
+                    }
+                    clock_gettime(CLOCK_MONOTONIC, &end);
+                    goto done_right;
+                }
+
+#if defined(_DBG_PRINT)
+                char *response_str = cJSON_Print(root);
+                printf("response: %s\n", response_str);
+                cJSON_free(response_str);
+#endif
+                if (is_chatbot_groq_based == 1) {
+                    char *response_text = NULL;
+                    cJSON *choices = cJSON_GetObjectItem(root, "choices");
+                    if (choices && cJSON_IsArray(choices) && cJSON_GetArraySize(choices) > 0) {
+                        cJSON *first_choice = cJSON_GetArrayItem(choices, 0);
+                        cJSON *message = cJSON_GetObjectItem(first_choice, "message");
+                        if (message) {
+                            cJSON *content = cJSON_GetObjectItem(message, "content");
+                            if (cJSON_IsString(content)) {
+                                response_text = content->valuestring;
+                            }
+                        }
+                    }
+                    if (!response_text) {
+                        cJSON *data = cJSON_GetObjectItem(root, "data");
+                        if (data && cJSON_IsArray(data) && cJSON_GetArraySize(data) > 0) {
+                            cJSON *text_item = cJSON_GetArrayItem(data, 0);
+                            cJSON *text = cJSON_GetObjectItem(text_item, "text");
+                            if (cJSON_IsString(text)) {
+                                response_text = text->valuestring;
+                            }
+                        }
+                    }
+                    if (!response_text) {
+                        cJSON *text = cJSON_GetObjectItem(root, "text");
+                        if (cJSON_IsString(text)) {
+                            response_text = text->valuestring;
+                        }
+                    }
+                    if (response_text) {
+                        fwrite(response_text, 1, strlen(response_text), stdout);
+                    } else {
+                        fprintf(stderr, "No response text found in Groq response\n");
+                        printf("Raw Groq response: %s\n", b.data);
+                    }
+                } else {
+                    cJSON *candidates = cJSON_GetObjectItem(root, "candidates");
+                    if (candidates &&
+                        cJSON_IsArray(candidates) && cJSON_GetArraySize(candidates) > 0) {
+                        cJSON *candidate = cJSON_GetArrayItem(candidates, 0);
+                        cJSON *content = cJSON_GetObjectItem(candidate, "content");
+                        if (content) {
+                            cJSON *parts = cJSON_GetObjectItem(content, "parts");
+                            if (parts && cJSON_IsArray(parts) && cJSON_GetArraySize(parts) > 0) {
+                                cJSON *part = cJSON_GetArrayItem(parts, 0);
+                                cJSON *text = cJSON_GetObjectItem(part, "text");
+                                if (cJSON_IsString(text) && text->valuestring) {
+                                    fwrite(text->valuestring,
+                                           1,
+                                           strlen(text->valuestring),
+                                           stdout);
+                                } else fprintf(stderr, "No response text found\n");
+                            } else {
+                                fprintf(stderr, "No parts found in content\n");
+                                if (retry != 1) { retry = 1;
+                                                  goto retrying; }
+                            }
+                        } else fprintf(stderr, "No content found in candidate\n");
+                    } else {
+                        fprintf(stderr, "No candidates found in response\n");
+                    }
+                }
+
+                clock_gettime(CLOCK_MONOTONIC, &end);
+
+                wanion_dur = (end.tv_sec - start.tv_sec)
+                           + (end.tv_nsec - start.tv_nsec) / 1e9;
+
+                printf("\n");
+                pr_color(stdout, FCOLOUR_CYAN,
+                    " <W> Finished at %.3fs (%.0f ms)\n",
+                    wanion_dur, wanion_dur * 1000.0);
+
+done_right:
+                cJSON_Delete(root);
+done_left:
+                wd_free(b.data);
+                curl_slist_free_all(hdr);
+                curl_easy_cleanup(h);
+                goto done;
+            }
         } else if (strcmp(ptr_command, "watchdogs") == 0) {
 #ifndef WD_WINDOWS
             char *art;
@@ -1080,7 +1302,7 @@ void start_chain(void *chain_pre_command) {
         /* Clear window title */
         wd_set_title(NULL);
 
-        /* Log function entry (likely a debug macro) */
+        /* Debugging & processing toml data */
         __function__();
 
         /* Initialize return value to "rethrow" error code */

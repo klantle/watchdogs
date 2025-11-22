@@ -27,63 +27,95 @@
 static char
 	pawncc_dir_src[WD_PATH_MAX];
 
+/**
+ * Verifies and sets the CA certificate bundle for CURL SSL verification
+ * Searches for cacert.pem in platform-specific locations
+ * @param curl: Pointer to CURL handle to configure
+ */
 void verify_cacert_pem(CURL *curl) {
-		int is_win32 = 0;
-#ifdef WD_WINDOWS
-		is_win32 = 1;
-#endif
-		int is_android = 0;
-#ifdef WD_ANDROID
-		is_android = 2;
-#endif
-		int is_linux = 0;
-#ifdef WD_LINUX
-		is_linux = 3;
-#endif
-		static int cacert_notice = 0;
-		if (is_win32) {
-				if (access("cacert.pem", F_OK) == 0)
-					curl_easy_setopt(curl, CURLOPT_CAINFO, "cacert.pem");
-				else if (access("C:/libwatchdogs/cacert.pem", F_OK) == 0)
-					curl_easy_setopt(curl, CURLOPT_CAINFO, "C:/libwatchdogs/cacert.pem");
-				else {
-					if (cacert_notice != 1) {
-						cacert_notice = 1;
-						pr_color(stdout,
-								 FCOLOUR_YELLOW,
-								 "curl: i can't found cacert.pem. SSL verification may fail.\n");
-					}
-				}
-		} else if (is_android) {
-				const char *env_home = getenv("HOME");
-				char size_env_home[WD_PATH_MAX + 6];
-				wd_snprintf(size_env_home, sizeof(size_env_home), "%s/cacert.pem", env_home);
-				if (access("cacert.pem", F_OK) == 0)
-					curl_easy_setopt(curl, CURLOPT_CAINFO, "cacert.pem");
-				else if (access(size_env_home, F_OK) == 0)
-					curl_easy_setopt(curl, CURLOPT_CAINFO, size_env_home);
-				else {
-					if (cacert_notice != 1) {
-						cacert_notice = 1;
-						pr_color(stdout,
-								 FCOLOUR_YELLOW,
-								 "curl: i can't found cacert.pem. SSL verification may fail.\n");
-					}
-				}
-		} else if (is_linux) {
-				if (access("cacert.pem", F_OK) == 0)
-					curl_easy_setopt(curl, CURLOPT_CAINFO, "cacert.pem");
-				else if (access("/etc/ssl/certs/cacert.pem", F_OK) == 0)
-					curl_easy_setopt(curl, CURLOPT_CAINFO, "/etc/ssl/certs/cacert.pem");
-				else {
-					if (cacert_notice != 1) {
-						cacert_notice = 1;
-						pr_color(stdout,
-								 FCOLOUR_GREEN,
-								 "curl: i can't found cacert.pem. SSL verification may fail.\n");
-					}
-				}
-		}
+	    /* Determine the current platform using preprocessor defines */
+	    int is_win32 = 0;
+	#ifdef WD_WINDOWS
+	    is_win32 = 1;
+	#endif
+
+	    int is_android = 0;
+	#ifdef WD_ANDROID
+	    is_android = 2;
+	#endif
+
+	    int is_linux = 0;
+	#ifdef WD_LINUX
+	    is_linux = 3;
+	#endif
+
+	    /* Static variable to ensure warning is only shown once per program execution */
+	    static int cacert_notice = 0;
+
+	    /* Windows-specific certificate search paths */
+	    if (is_win32) {
+	        /* Check current directory for cacert.pem */
+	        if (access("cacert.pem", F_OK) == 0)
+	            curl_easy_setopt(curl, CURLOPT_CAINFO, "cacert.pem");
+	        /* Check Windows-specific path */
+	        else if (access("C:/libwatchdogs/cacert.pem", F_OK) == 0)
+	            curl_easy_setopt(curl, CURLOPT_CAINFO, "C:/libwatchdogs/cacert.pem");
+	        else {
+	            /* Show warning only once if certificate not found */
+	            if (cacert_notice != 1) {
+	                cacert_notice = 1;
+	                pr_color(stdout,
+	                         FCOLOUR_YELLOW,
+	                         "curl: i can't found cacert.pem. SSL verification may fail.\n");
+	            }
+	        }
+	    }
+	    /* Android-specific certificate search paths */
+	    else if (is_android) {
+	        /* Get user's home directory from environment */
+	        const char *env_home = getenv("HOME");
+	        char size_env_home[WD_PATH_MAX + 6];  /* Buffer for home path + "/cacert.pem" */
+
+	        /* Construct full path to cacert.pem in home directory */
+	        wd_snprintf(size_env_home, sizeof(size_env_home), "%s/cacert.pem", env_home);
+
+	        /* Check current directory for cacert.pem */
+	        if (access("cacert.pem", F_OK) == 0)
+	            curl_easy_setopt(curl, CURLOPT_CAINFO, "cacert.pem");
+	        /* Check home directory for cacert.pem */
+	        else if (access(size_env_home, F_OK) == 0)
+	            curl_easy_setopt(curl, CURLOPT_CAINFO, size_env_home);
+	        else {
+	            /* Show warning only once if certificate not found */
+	            if (cacert_notice != 1) {
+	                cacert_notice = 1;
+	                pr_color(stdout,
+	                         FCOLOUR_YELLOW,
+	                         "curl: i can't found cacert.pem. SSL verification may fail.\n");
+	            }
+	        }
+	    }
+	    /* Linux-specific certificate search paths */
+	    else if (is_linux) {
+	        /* Check current directory for cacert.pem */
+	        if (access("cacert.pem", F_OK) == 0)
+	            curl_easy_setopt(curl, CURLOPT_CAINFO, "cacert.pem");
+	        /* Check system certificates directory */
+	        else if (access("/etc/ssl/certs/cacert.pem", F_OK) == 0)
+	            curl_easy_setopt(curl, CURLOPT_CAINFO, "/etc/ssl/certs/cacert.pem");
+	        else {
+	            /* Show warning only once if certificate not found */
+	            if (cacert_notice != 1) {
+	                cacert_notice = 1;
+	                pr_color(stdout,
+	                         FCOLOUR_GREEN,  /* Note: Different color for Linux */
+	                         "curl: i can't found cacert.pem. SSL verification may fail.\n");
+	            }
+	        }
+	    }
+
+	    /* Note: If no platform matches or certificate not found,
+	     * CURL will use its default certificate verification behavior */
 }
 
 /**
@@ -122,6 +154,139 @@ static int progress_callback(void *ptr, curl_off_t dltotal,
 		}
 
 		return WD_RETZ;  /* Always return success to continue download */
+}
+
+/**
+ * Callback function for writing data received from curl
+ * @param ptr: Pointer to the received data buffer
+ * @param size: Always 1 (according to curl documentation)
+ * @param nmemb: Size of the data in bytes
+ * @param userdata: Pointer to user-provided data structure (struct buf in this case)
+ * @return: Number of bytes actually processed (should equal size * nmemb on success)
+ */
+size_t write_cb(void *ptr, size_t size, size_t nmemb, void *userdata)
+{
+	    /* Calculate total size of the incoming data */
+	    size_t total = size * nmemb;
+
+	    /* Cast userdata to our buffer structure */
+	    struct buf *b = userdata;
+
+	    /* Reallocate buffer to accommodate new data plus null terminator */
+	    char *p = realloc(b->data, b->len + total + 1);
+
+	    /* If realloc fails, return 0 to signal error to curl */
+	    if (!p) return 0;
+
+	    /* Update buffer pointer with new memory location */
+	    b->data = p;
+
+	    /* Copy new data to the end of existing buffer */
+	    memcpy(b->data + b->len, ptr, total);
+
+	    /* Update buffer length */
+	    b->len += total;
+
+	    /* Null-terminate the buffer (making it a proper C string) */
+	    b->data[b->len] = 0;
+
+	    /* Return number of bytes processed */
+	    return total;
+}
+
+/**
+ * Escapes a string for safe JSON encoding
+ * Converts special characters to their JSON escape sequences
+ *
+ * @param dest: Destination buffer where escaped string will be stored
+ * @param src: Source string to be escaped
+ * @param dest_size: Total size of destination buffer (including null terminator)
+ */
+void json_escape_string(char *dest, const char *src, size_t dest_size) {
+	    /* Initialize pointers and calculate remaining space (leave room for null terminator) */
+	    char *ptr = dest;
+	    size_t remaining = dest_size - 1;
+
+	    /* Process each character in source string until we run out of characters or buffer space */
+	    while (*src && remaining > 1) {
+	        switch (*src) {
+	            /* Double quote - escape with backslash */
+	            case '\"':
+	                if (remaining > 2) {
+	                    *ptr++ = '\\';
+	                    *ptr++ = '\"';
+	                    remaining -= 2;  /* Used 2 characters for escape sequence */
+	                }
+	                break;
+
+	            /* Backslash - escape with another backslash */
+	            case '\\':
+	                if (remaining > 2) {
+	                    *ptr++ = '\\';
+	                    *ptr++ = '\\';
+	                    remaining -= 2;  /* Used 2 characters for escape sequence */
+	                }
+	                break;
+
+	            /* Backspace - convert to \b */
+	            case '\b':
+	                if (remaining > 2) {
+	                    *ptr++ = '\\';
+	                    *ptr++ = 'b';
+	                    remaining -= 2;  /* Used 2 characters for escape sequence */
+	                }
+	                break;
+
+	            /* Form feed - convert to \f */
+	            case '\f':
+	                if (remaining > 2) {
+	                    *ptr++ = '\\';
+	                    *ptr++ = 'f';
+	                    remaining -= 2;  /* Used 2 characters for escape sequence */
+	                }
+	                break;
+
+	            /* Newline - convert to \n */
+	            case '\n':
+	                if (remaining > 2) {
+	                    *ptr++ = '\\';
+	                    *ptr++ = 'n';
+	                    remaining -= 2;  /* Used 2 characters for escape sequence */
+	                }
+	                break;
+
+	            /* Carriage return - convert to \r */
+	            case '\r':
+	                if (remaining > 2) {
+	                    *ptr++ = '\\';
+	                    *ptr++ = 'r';
+	                    remaining -= 2;  /* Used 2 characters for escape sequence */
+	                }
+	                break;
+
+	            /* Tab - convert to \t */
+	            case '\t':
+	                if (remaining > 2) {
+	                    *ptr++ = '\\';
+	                    *ptr++ = 't';
+	                    remaining -= 2;  /* Used 2 characters for escape sequence */
+	                }
+	                break;
+
+	            /* Regular character - copy as-is */
+	            default:
+	                *ptr++ = *src;
+	                remaining--;  /* Used 1 character */
+	                break;
+	        }
+	        src++;  /* Move to next character in source string */
+	    }
+
+	    /* Null-terminate the destination string */
+	    *ptr = '\0';
+
+	    /* Note: If buffer runs out of space, the function stops processing
+	     * and ensures the destination is always null-terminated */
 }
 
 /**

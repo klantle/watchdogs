@@ -45,10 +45,10 @@ const char* __command[]={
 				"config", "stopwatch",
 				"install", "hardware",
 				"gamemode", "pawncc",
-				"compile",
-				"running", "compiles",
+				"compile", "running",
+				"compiles",
 				"stop", "restart",
-				"ls", "ping",
+				"wanion", "ls", "ping",
 				"clear", "nslookup",
 				"netstat", "ipconfig",
 				"uname", "hostname",
@@ -79,7 +79,10 @@ WatchdogConfig wcfg = {
 	    .wd_toml_aio_opt = NULL,
 	    .wd_toml_aio_repo = NULL,
 	    .wd_toml_gm_input = NULL,
-	    .wd_toml_gm_output = NULL
+	    .wd_toml_gm_output = NULL,
+		.wd_toml_key_ai = NULL,
+		.wd_toml_chatbot_ai = NULL,
+		.wd_toml_models_ai = NULL
 };
 
 void wd_sef_fdir_reset(void) {
@@ -1059,6 +1062,9 @@ static void wd_generate_toml_content(FILE *file, const char *wd_os_type,
 				fprintf(file, "\tconfig = \"%s\"\n", "server.cfg");
 			}
 		}
+		fprintf(file, "\tkeys = \"API_KEY\"\n");
+		fprintf(file, "\tchatbot = \"gemini\"\n");
+		fprintf(file, "\tmodels = \"gemini-2.5-pro\"\n");
 
 		fprintf(file, "[compiler]\n");
 
@@ -1199,6 +1205,18 @@ int wd_toml_configs(void)
 						wcfg.wd_toml_config = strdup(conf_val.u.s);
 						wd_free(conf_val.u.s);
 				}
+				toml_datum_t keys_val = toml_string_in(general_table, "keys");
+				if (keys_val.ok) {
+					wcfg.wd_toml_key_ai = keys_val.u.s;
+				}
+				toml_datum_t chatbot_val = toml_string_in(general_table, "chatbot");
+				if (chatbot_val.ok) {
+					wcfg.wd_toml_chatbot_ai = chatbot_val.u.s;
+				}
+				toml_datum_t models_val = toml_string_in(general_table, "models");
+				if (models_val.ok) {
+					wcfg.wd_toml_models_ai = models_val.u.s;
+				}
 		}
 
 		toml_free(_toml_config);
@@ -1207,14 +1225,6 @@ int wd_toml_configs(void)
 			wcfg.wd_os_type = OS_SIGNAL_WINDOWS;
 		} else if (strcmp(wcfg.wd_toml_os_type, "linux") == 0) {
 			wcfg.wd_os_type = OS_SIGNAL_LINUX;
-		}
-
-		if (!path_exists(wcfg.wd_toml_config)) {
-			static int crit_nf = 0;
-			if (crit_nf == 0) {
-				crit_nf = 1;
-				pr_warning(stdout, "can't locate %s!", wcfg.wd_toml_config);
-			}
 		}
 
 		return WD_RETZ;

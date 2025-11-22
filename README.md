@@ -320,6 +320,17 @@ os = "linux"
 binary = "samp-server.exe"
 # SA-MP/Open.MP Config
 config = "server.cfg"
+# A.I (Wanion) for Watchdogs
+# api keys
+# https://aistudio.google.com/api-keys
+# https://console.groq.com/keys
+keys = "API_KEY"
+# chatbot - "gemini" "groq"
+chatbot = "gemini"
+# models - llama | gpt | qwen
+# groq models: https://console.groq.com/docs/models
+# gemini models: https://ai.google.dev/gemini-api/docs/models
+models = "gemini-2.5-pro"
 
 [compiler]
 # Compiler options

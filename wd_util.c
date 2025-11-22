@@ -20,6 +20,7 @@
 #include "wd_util.h"
 #ifdef WD_LINUX
 #include <termios.h>
+#include <sys/sendfile.h>
 #endif
 
 #ifndef _NCURSES
@@ -292,27 +293,39 @@ int is_native_windows(void)
 }
 
 void wd_printfile(const char *path) {
+#ifdef WD_WINDOWS
 		int fd = open(path, O_RDONLY);
-		if (fd < 0) {
-			perror("open");
-			return;
-		}
+		if (fd < 0) return;
 
-		char buf[65536];
-		ssize_t n;
-
-		while ((n = read(fd, buf, sizeof buf)) > 0) {
-			if (write(STDOUT_FILENO, buf, n) != n) {
-				perror("write");
-				close(fd);
-				return;
+		static char buf[1 << 20];
+		for (;;) {
+			ssize_t n = read(fd, buf, sizeof buf);
+			if (n <= 0) break;
+			ssize_t w = 0;
+			while (w < n) {
+				ssize_t k = write(STDOUT_FILENO, buf + w, n - w);
+				if (k <= 0) { close(fd); return; }
+				w += k;
 			}
 		}
 
-		if (n < 0)
-			perror("read");
+		close(fd);
+#else
+		int fd = open(path, O_RDONLY);
+		if (fd < 0) return;
+
+		off_t off = 0;
+		struct stat st;
+		if (fstat(fd, &st) < 0) { close(fd); return; }
+
+		while (off < st.st_size) {
+			ssize_t n = sendfile(STDOUT_FILENO, fd, &off, st.st_size - off);
+			if (n <= 0) { close(fd); return; }
+		}
 
 		close(fd);
+#endif
+		return;
 }
 
 int wd_set_title(const char *title)

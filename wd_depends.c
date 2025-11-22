@@ -534,17 +534,7 @@ int dep_add_ncheck_hash (const char *_H_file_path, const char *_H_json_path)
 {
 		char convert_f_path[WD_PATH_MAX];
 		char convert_j_path[WD_PATH_MAX];
-#ifdef WD_WINDOWS
-		char *path_pos;
-		while ((path_pos = strstr(convert_f_path, "include\\")) != NULL)
-			memmove(path_pos, path_pos + strlen("include/"),
-				strlen(path_pos + strlen("include\\")) + 1);
-#else
-		char *path_pos;
-		while ((path_pos = strstr(convert_j_path, "include/")) != NULL)
-			memmove(path_pos, path_pos + strlen("include/"),
-				strlen(path_pos + strlen("include/")) + 1);
-#endif
+
 		wd_strncpy(convert_f_path, _H_file_path, sizeof(convert_f_path));
 			convert_f_path[sizeof(convert_f_path) - 1] = '\0';
 		dep_sym_convert(convert_f_path);
@@ -553,13 +543,18 @@ int dep_add_ncheck_hash (const char *_H_file_path, const char *_H_json_path)
 		dep_sym_convert(convert_j_path);
 
 		static int init_crc32 = 0;
+
+		if (strfind(convert_j_path, "pawno") ||
+			strfind(convert_j_path, "qawno"))
+			goto done;
+
 		if (init_crc32 != 1) {
 			init_crc32 = 1;
 			crypto_crc32_init_table();
 		}
 
         uint32_t crc32_generate;
-        crc32_generate = crypto_generate_crc32(convert_f_path, sizeof(convert_f_path) - 1);
+        crc32_generate = crypto_generate_crc32(convert_j_path, sizeof(convert_j_path) - 1);
 
         char crc_str[11];
         sprintf(crc_str, "%08X", crc32_generate);
@@ -569,7 +564,8 @@ int dep_add_ncheck_hash (const char *_H_file_path, const char *_H_json_path)
 				 "Create hash (CRC32) for '%s': %s\n",
 				 convert_j_path, crc_str);
 
-		return 1;
+done:
+		return WD_RETN;
 }
 
 void dep_implementation_samp_conf (depConfig config) {
@@ -899,17 +895,10 @@ void dump_file_type (const char *path,
 	                moving_dur = (end.tv_sec - start.tv_sec)
 	                           + (end.tv_nsec - start.tv_nsec) / 1e9;
 
-#ifdef WD_WINDOWS
 	            	pr_color(stdout,
 	                         FCOLOUR_CYAN,
-	                         " [MOVING] Plugins %s -> %s\%s [Finished at %.3fs]\n",
+	                         " [MOVING] Plugins %s -> %s - %s [Finished at %.3fs]\n",
 	                         wcfg.wd_sef_found_list[i], cwd, target_dir, moving_dur);
-#else
-	            	pr_color(stdout,
-	                         FCOLOUR_CYAN,
-	                         " [MOVING] Plugins %s -> %s/%s [Finished at %.3fs]\n",
-	                         wcfg.wd_sef_found_list[i], cwd, target_dir, moving_dur);
-#endif
 				} else {
 					int _is_win32 = 0;
 #ifdef WD_WINDOWS
@@ -1025,6 +1014,20 @@ void dep_move_files (const char *dep_dir)
 #endif
 		}
 
+		char *path_pos;
+		while ((path_pos = strstr(deps_include_path, "include\\")) != NULL)
+			memmove(path_pos, path_pos + strlen("include/"),
+				strlen(path_pos + strlen("include\\")) + 1);
+		while ((path_pos = strstr(deps_include_path, "include/")) != NULL)
+			memmove(path_pos, path_pos + strlen("include/"),
+				strlen(path_pos + strlen("include/")) + 1);
+		while ((path_pos = strstr(deps_include_full_path, "include\\")) != NULL)
+			memmove(path_pos, path_pos + strlen("include/"),
+				strlen(path_pos + strlen("include\\")) + 1);
+		while ((path_pos = strstr(deps_include_full_path, "include/")) != NULL)
+			memmove(path_pos, path_pos + strlen("include/"),
+				strlen(path_pos + strlen("include/")) + 1);
+
 		char *cwd = wd_get_cwd();
 
 #ifndef WD_WINDOWS
@@ -1052,6 +1055,13 @@ void dep_move_files (const char *dep_dir)
 			wd_snprintf(include_path, sizeof(include_path), "pawno/include");
 #endif
 		}
+
+		while ((path_pos = strstr(include_path, "include\\")) != NULL)
+			memmove(path_pos, path_pos + strlen("include/"),
+				strlen(path_pos + strlen("include\\")) + 1);
+		while ((path_pos = strstr(include_path, "include/")) != NULL)
+			memmove(path_pos, path_pos + strlen("include/"),
+				strlen(path_pos + strlen("include/")) + 1);
 
 		wd_sef_fdir_reset();
 
@@ -1084,17 +1094,10 @@ void dep_move_files (const char *dep_dir)
                 moving_dur = (end.tv_sec - start.tv_sec)
                            + (end.tv_nsec - start.tv_nsec) / 1e9;
 
-#ifdef WD_WINDOWS
-	            	pr_color(stdout,
-	                         FCOLOUR_CYAN,
-	                         " [MOVING] Include %s -> %s\%s [Finished at %.3fs]\n",
-	                         wcfg.wd_sef_found_list[i], cwd, deps_include_path, moving_dur);
-#else
-	            	pr_color(stdout,
-	                         FCOLOUR_CYAN,
-	                         " [MOVING] Plugins %s -> %s/%s [Finished at %.3fs]\n",
-	                         wcfg.wd_sef_found_list[i], cwd, deps_include_path, moving_dur);
-#endif
+	        	pr_color(stdout,
+	                     FCOLOUR_CYAN,
+	                     " [MOVING] Include %s -> %s - %s [Finished at %.3fs]\n",
+	                     wcfg.wd_sef_found_list[i], cwd, deps_include_path, moving_dur);
 
 				dep_add_ncheck_hash(fi_depends_name, fi_depends_name);
 				dep_pr_include_directive(fi_depends_name);
@@ -1136,6 +1139,10 @@ void dep_move_files (const char *dep_dir)
 		            continue;
 
 		        if (S_ISDIR(st.st_mode)) {
+		            if (strcmp(item->d_name, "pawno") == 0 ||
+						strcmp(item->d_name, "qawno") == 0 || strcmp(item->d_name, "include") == 0) {
+		                continue;
+		            }
 		            if (stack_index < stack_size - 1) {
 		                stack_index++;
 		                strlcpy(dir_stack[stack_index], depends_ipath, WD_MAX_PATH);
@@ -1148,7 +1155,12 @@ void dep_move_files (const char *dep_dir)
 		            continue;
 
 		        strlcpy(deps_parent_dir, current_dir, sizeof(deps_parent_dir));
-		        char *depends_filename = strrchr(deps_parent_dir, __PATH_CHR_SEP_LINUX);
+				char *depends_filename = NULL;
+#ifdef WD_WIDOWS
+				depends_filename = strrchr(deps_parent_dir, __PATH_CHR_SEP_WIN32);
+#else
+				depends_filename = strrchr(deps_parent_dir, __PATH_CHR_SEP_LINUX);
+#endif
 		        if (!depends_filename)
 		            continue;
 
@@ -1198,16 +1210,6 @@ void dep_move_files (const char *dep_dir)
 
 		        dep_add_ncheck_hash(dest, dest);
 
-#ifndef WD_WINDOWS
-		        pr_info(stdout, "\tmoved include: %s to %s/",
-		                depends_filename, !strcmp(wcfg.wd_is_omp, CRC32_TRUE) ?
-		                "qawno/include" : "pawno/include");
-#else
-
-		        pr_info(stdout, "\tmoved include: %s to %s\\",
-		                depends_filename, !strcmp(wcfg.wd_is_omp, CRC32_TRUE) ?
-		                "qawno\\include" : "pawno\\include");
-#endif
 				printf("\n");
 		    }
 
@@ -1365,9 +1367,22 @@ void wd_install_depends (const char *depends_string)
 
                 wcfg.wd_idepends = 1;
 
+                struct timespec start = {0}, end = { 0 };
+                double depends_dur;
+
+                clock_gettime(CLOCK_MONOTONIC, &start);
                 /* download -> apply immediately */
                 wd_download_file(dep_url, dep_name);
                 wd_apply_depends(dep_name);
+                clock_gettime(CLOCK_MONOTONIC, &end);
+
+                depends_dur = (end.tv_sec - start.tv_sec)
+                            + (end.tv_nsec - start.tv_nsec) / 1e9;
+
+            	pr_color(stdout,
+                         FCOLOUR_CYAN,
+                         " <D> Finished at %.3fs (%.0f ms)\n",
+	                     depends_dur, depends_dur * 1000.0);
         }
 
 done:

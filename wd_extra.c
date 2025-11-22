@@ -653,6 +653,10 @@ void compiler_detailed(const char *pawn_output, int debug,
                         );
                 }
       }
+
+      /* Make sure stream fflush stdout */
+      fflush(stdout);
+
       /* Add spacing for better output formatting */
       printf("\n");
       /* Display compiler copyright information */
@@ -754,7 +758,7 @@ void cause_compiler_expl(const char *log_file,
         }
 
         /* Display the original compiler output line */
-        fputs(line, stdout);
+        fwrite(line, 1, strlen(line), stdout);
 
         /* Count warning and error occurrences */
         if (wd_strcase(line, "warning")) ++wcnt;

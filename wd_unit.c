@@ -45,9 +45,9 @@ const char *watchdogs_release = WATCHDOGS_RELEASE;
 struct timespec cmd_start, cmd_end;
 double command_dur;
 
-void __function__(void) {
-        wd_toml_configs();
+void chain_main_data(void) {
         wd_sef_fdir_reset();
+        wd_toml_configs();
         wd_u_history();
 #if defined(_DBG_PRINT)
         pr_color(stdout, FCOLOUR_YELLOW, "-DEBUGGING ");
@@ -137,11 +137,12 @@ void __function__(void) {
         printf("FMA: Supported\n");
 #endif
 #endif
-        return;
 }
 
 int __command__(char *chain_pre_command)
 {
+        chain_main_data();
+
         setlocale(LC_ALL, "en_US.UTF-8");
         int _wd_crash_ck = path_acces(".wd_crashdetect");
         if (_wd_crash_ck) {
@@ -193,7 +194,7 @@ _ptr_command:
                                              &c_distance);
 
 _reexecute_command:
-        __function__();
+        chain_main_data();
         clock_gettime(CLOCK_MONOTONIC, &cmd_start);
         if (strncmp(ptr_command, "help", 4) == 0) {
             wd_set_title("Watchdogs | @ help");
@@ -259,7 +260,7 @@ _reexecute_command:
             wcfg.wd_sel_stat = 0;
             wd_compile_running = 0;
 
-            __function__();
+            chain_main_data();
 
            if (chain_pre_command && chain_pre_command[0] != '\0')
                 goto done;
@@ -359,7 +360,7 @@ _reexecute_command:
                 remove("watchdogs.toml");
 
             wd_notice_logged = 0;
-            __function__();
+            chain_main_data();
 
             wd_printfile("watchdogs.toml");
 
@@ -1299,11 +1300,8 @@ done:
 }
 
 void start_chain(void *chain_pre_command) {
-        /* Clear window title */
+        /* Reset terminal title */
         wd_set_title(NULL);
-
-        /* Debugging & processing toml data */
-        __function__();
 
         /* Initialize return value to "rethrow" error code */
         int ret = -WD_RETH;

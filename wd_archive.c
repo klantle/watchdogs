@@ -145,11 +145,13 @@ int wd_extract_tar(const char *tar_path, const char *entry_dest) {
 					if (debug_extract[0] == 'Y' || debug_extract[0] == 'y') {
 						always_extract_notice = 1;
 		    			printf(" * Extracting: %s\n", entry_path);
+						fflush(stdout);
 					}
 				}
 			}
 			if (always_extract_notice) {
 				printf(" * Extracting: %s\n", entry_path);
+				fflush(stdout);
 			}
 
 	        /**
@@ -340,7 +342,7 @@ int wd_extract_zip(const char *zip_file, const char *entry_dest)
 		/* Process each entry in the ZIP archive */
 		while (archive_read_next_header(archive_read, &item) == ARCHIVE_OK) {
 				const char *entry_path = archive_entry_pathname(item);
-				
+
 				/* Debugging Notice */
 				static int extract_notice = 0;
 				static int always_extract_notice = 0;
@@ -352,11 +354,13 @@ int wd_extract_zip(const char *zip_file, const char *entry_dest)
 						if (debug_extract[0] == 'Y' || debug_extract[0] == 'y') {
 							always_extract_notice = 1;
 			    			printf(" * Extracting: %s\n", entry_path);
+							fflush(stdout);
 						}
 					}
 				}
 				if (always_extract_notice) {
 					printf(" * Extracting: %s\n", entry_path);
+					fflush(stdout);
 				}
 
 				/* Build the full extraction path for this entry */

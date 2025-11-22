@@ -915,6 +915,7 @@ int wd_download_file(const char *url, const char *filename)
 						curl_easy_setopt(curl, CURLOPT_VERBOSE, 1L);
 						curl_easy_setopt(curl, CURLOPT_DEBUGFUNCTION, debug_callback);
 						curl_easy_setopt(curl, CURLOPT_DEBUGDATA, NULL);
+						fflush(stdout);
 					}
 				}
 			}
@@ -922,6 +923,7 @@ int wd_download_file(const char *url, const char *filename)
 				curl_easy_setopt(curl, CURLOPT_VERBOSE, 1L);
 				curl_easy_setopt(curl, CURLOPT_DEBUGFUNCTION, debug_callback);
 				curl_easy_setopt(curl, CURLOPT_DEBUGDATA, NULL);
+				fflush(stdout);
 			}
 
 			/* Set progress callback for download tracking */

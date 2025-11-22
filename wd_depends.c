@@ -899,10 +899,17 @@ void dump_file_type (const char *path,
 	                moving_dur = (end.tv_sec - start.tv_sec)
 	                           + (end.tv_nsec - start.tv_nsec) / 1e9;
 
+#ifdef WD_WINDOWS
 	            	pr_color(stdout,
 	                         FCOLOUR_CYAN,
-	                         " [MOVE] Plugins %s -> %s\\%s Finished at %.3fs\n",
+	                         " [MOVING] Plugins %s -> %s\%s [Finished at %.3fs]\n",
 	                         wcfg.wd_sef_found_list[i], cwd, target_dir, moving_dur);
+#else
+	            	pr_color(stdout,
+	                         FCOLOUR_CYAN,
+	                         " [MOVING] Plugins %s -> %s/%s [Finished at %.3fs]\n",
+	                         wcfg.wd_sef_found_list[i], cwd, target_dir, moving_dur);
+#endif
 				} else {
 					int _is_win32 = 0;
 #ifdef WD_WINDOWS
@@ -929,7 +936,7 @@ void dump_file_type (const char *path,
 
 	            	pr_color(stdout,
 	                         FCOLOUR_CYAN,
-	                         " [MOVE] Plugins %s -> %s Finished at %.3fs\n",
+	                         " [MOVING] Plugins %s -> %s [Finished at %.3fs]\n",
 	                         wcfg.wd_sef_found_list[i], cwd, moving_dur);
 
 					wd_snprintf(json_item, sizeof(json_item), "%s", deps_names);
@@ -1077,10 +1084,17 @@ void dep_move_files (const char *dep_dir)
                 moving_dur = (end.tv_sec - start.tv_sec)
                            + (end.tv_nsec - start.tv_nsec) / 1e9;
 
-            	pr_color(stdout,
-                         FCOLOUR_CYAN,
-                         " [MOVE] Include %s -> %s/%s Finished at %.3fs\n",
-                         wcfg.wd_sef_found_list[i], cwd, deps_include_path, moving_dur);
+#ifdef WD_WINDOWS
+	            	pr_color(stdout,
+	                         FCOLOUR_CYAN,
+	                         " [MOVING] Include %s -> %s\%s [Finished at %.3fs]\n",
+	                         wcfg.wd_sef_found_list[i], cwd, deps_include_path, moving_dur);
+#else
+	            	pr_color(stdout,
+	                         FCOLOUR_CYAN,
+	                         " [MOVING] Plugins %s -> %s/%s [Finished at %.3fs]\n",
+	                         wcfg.wd_sef_found_list[i], cwd, deps_include_path, moving_dur);
+#endif
 
 				dep_add_ncheck_hash(fi_depends_name, fi_depends_name);
 				dep_pr_include_directive(fi_depends_name);
@@ -1179,7 +1193,7 @@ void dep_move_files (const char *dep_dir)
 
 		            move_duration = (end.tv_sec - start.tv_sec) + (end.tv_nsec - start.tv_nsec) / 1e9;
 
-		            pr_color(stdout, FCOLOUR_CYAN, " [MOVE] Include %s -> %s Finished at %.3fs\n", deps_parent_dir, dest, move_duration);
+		            pr_color(stdout, FCOLOUR_CYAN, " [MOVING] Include %s -> %s [Finished at %.3fs]\n", deps_parent_dir, dest, move_duration);
 		        }
 
 		        dep_add_ncheck_hash(dest, dest);

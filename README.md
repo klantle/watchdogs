@@ -44,6 +44,10 @@
 __If you are confused about this project, you can use an A.I. Agent that can help provide available information to be filtered according to the given prompt. Alternatively, you can also create an issue to ask questions in this Repository.__
 ![img](https://raw.githubusercontent.com/klantle/watchdogs/refs/heads/main/__AGENT.png)
 
+### [Wanion - A.I for Watchdogs](https://github.com/klantle/watchdogs?tab=readme-ov-file#configuration)
+`Based on Gemini and Groq Supported models: Gemini: gemini-2x|3x Groq: llama|gpt|qwen`
+![img](https://raw.githubusercontent.com/klantle/watchdogs/refs/heads/main/__WANION.png)
+
 ### Information.
 ~~This project is built purely from our own thinking and effort, not merely by imitation. We have never claimed to be inspired by similar projects that themselves draw inspiration from others. Our foundation prioritizes simplicity, speed, feature updates, and the latest library technologies, rather than long term stability.~~
 ![img](https://raw.githubusercontent.com/klantle/watchdogs/refs/heads/main/__ACTORIDE.png)

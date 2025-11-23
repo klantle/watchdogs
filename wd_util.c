@@ -1056,6 +1056,11 @@ static void wd_generate_toml_content(FILE *file, const char *wd_os_type,
 			if (f_EXT)
 					*f_EXT = '\0';
 		}
+		char *p;
+		for (p = sef_path; *p; p++) {
+				if (*p == '\\')
+					*p = '/';
+		}
 
 		fprintf(file, "[general]\n");
 		fprintf(file, "\tos = \"%s\"\n", wd_os_type);

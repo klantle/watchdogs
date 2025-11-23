@@ -448,10 +448,6 @@ n_valid_flag:
                         FILE_ATTRIBUTE_NORMAL,
                         NULL
                     );
-#if defined(_DBG_PRINT)
-                    pr_color(stdout, FCOLOUR_YELLOW, "-DEBUGGING\n");
-                    printf("[COMPILER]:\n\t%s\n", _compiler_input_);
-#endif
                     si.dwFlags = STARTF_USESTDHANDLES | STARTF_USESHOWWINDOW;
                     si.wShowWindow = SW_HIDE;
 
@@ -472,7 +468,10 @@ n_valid_flag:
                                         wcfg.wd_toml_aio_opt,          // all-in-one options
                                         include_aio_path,              // all-in-one path
                                         path_include);                 // more include path
-
+#if defined(_DBG_PRINT)
+                    pr_color(stdout, FCOLOUR_YELLOW, "-DEBUGGING\n");
+                    printf("[COMPILER]:\n\t%s\n", _compiler_input_);
+#endif
                     /* Start timing and execute compiler */
                     clock_gettime(CLOCK_MONOTONIC, &start);
                     if (ret_command > 0 && ret_command < (int)sizeof(_compiler_input_)) {
@@ -689,6 +688,12 @@ compiler_done:
                     pr_color(stdout, FCOLOUR_CYAN,
                         " <P> Finished at %.3fs (%.0f ms)\n",
                         compiler_dur, compiler_dur * 1000.0);
+                    if (compiler_dur > 100.0) {
+                        printf("~ It appears to be taking quite some time.\n"
+                               "  Ensure that all existing warnings have been resolved, use the latest compiler,\n"
+                               "  and verify that the logic and Pawn algorithm optimizations within the gamemode scripts are consistent.\n");
+                        fflush(stdout);
+                    }
                 }
                 /* Branch 2: File-based compilation (when specific file is provided) */
                 else
@@ -878,10 +883,7 @@ compiler_done:
                             FILE_ATTRIBUTE_NORMAL,
                             NULL
                         );
-#if defined(_DBG_PRINT)
-                        pr_color(stdout, FCOLOUR_YELLOW, "-DEBUGGING\n");
-                        printf("[COMPILER]:\n\t%s\n", _compiler_input_);
-#endif
+
                         si.dwFlags = STARTF_USESTDHANDLES | STARTF_USESHOWWINDOW;
                         si.wShowWindow = SW_HIDE;
 
@@ -901,7 +903,10 @@ compiler_done:
                                             wcfg.wd_toml_aio_opt,            // all-in-one pptions
                                             include_aio_path,                // all-in-one path
                                             path_include);                   // more include path
-
+#if defined(_DBG_PRINT)
+                        pr_color(stdout, FCOLOUR_YELLOW, "-DEBUGGING\n");
+                        printf("[COMPILER]:\n\t%s\n", _compiler_input_);
+#endif
                         clock_gettime(CLOCK_MONOTONIC, &start);
                         if (ret_command > 0 && ret_command < (int)sizeof(_compiler_input_)) {
                             BOOL win32_process_succes = CreateProcessA(
@@ -1113,6 +1118,12 @@ compiler_done2:
                         pr_color(stdout, FCOLOUR_CYAN,
                             " <P> Finished at %.3fs (%.0f ms)\n",
                             compiler_dur, compiler_dur * 1000.0);
+                        if (compiler_dur > 100.0) {
+                            printf("~ It appears to be taking quite some time.\n"
+                                   "  Ensure that all existing warnings have been resolved, use the latest compiler,\n"
+                                   "  and verify that the logic and Pawn algorithm optimizations within the gamemode scripts are consistent.\n");
+                            fflush(stdout);
+                        }
                     }
                     else
                     {

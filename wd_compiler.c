@@ -191,7 +191,7 @@ int wd_run_compiler(const char *arg, const char *compile_args,
             for (int i = 0; i < 5; i++) {
                 if (compiler_args[i] != NULL) {
                     if (strfind(compiler_args[i], "--watchdogs")) ++compiler_has_watchdogs;  /* Enable watchdogs analysis */
-                    if(strfind(compiler_args[i], "--debug")) ++compiler_has_debug;      /* Enable debug output */
+                    if (strfind(compiler_args[i], "--debug")) ++compiler_has_debug;      /* Enable debug output */
                     if (strfind(compiler_args[i], "--clean")) ++compiler_has_clean;      /* Clean output after compilation */
                     if (strfind(compiler_args[i], "--assembler")) ++compiler_has_assembler;  /* Generate assembler output */
                     if (strfind(compiler_args[i], "--recursion")) ++compiler_has_recursion;  /* Enable recursion */
@@ -641,7 +641,7 @@ n_valid_flag:
                         }
 
                         wd_printfile(".wd_compiler.log");
-                        
+
                 		char log_line[1024];
                 		proc_file = fopen(".wd_compiler.log", "r");
 

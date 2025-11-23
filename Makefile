@@ -76,11 +76,11 @@ init:
 		echo "==> Native Linux"; \
 		if command -v apt >/dev/null 2>&1; then \
 			apt update -y && apt install -y build-essential curl procps clang lld make \
-				libcurl4-openssl-dev libreadline-dev libarchive-dev \
+				libcurl4-openssl-dev libatomic1 libreadline-dev libarchive-dev \
 				libncursesw5-dev libncurses5-dev zlib1g-dev; \
 		elif command -v dnf >/dev/null 2>&1; then \
 			dnf groupinstall -y "Development Tools" && \
-			dnf install -y clang lld libcxx-devel ncurses-devel curl-devel \
+			dnf install -y clang lld libatomic libcxx-devel ncurses-devel curl-devel \
 				readline-devel libarchive-devel zlib-devel; \
 		elif command -v yum >/dev/null 2>&1; then \
 			yum groupinstall -y "Development Tools" && \
@@ -92,7 +92,7 @@ init:
 				libcurl-devel readline-devel libarchive-devel zlib-devel; \
 		elif command -v pacman >/dev/null 2>&1; then \
 			pacman -Sy --noconfirm && pacman -S --needed --noconfirm \
-				base-devel clang lld libc++ ncurses readline curl libarchive zlib; \
+				libatomic base-devel clang lld libc++ ncurses readline curl libarchive zlib; \
 		else \
 			echo "==> Unsupported distribution"; \
 			exit 1; \

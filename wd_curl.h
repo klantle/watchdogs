@@ -13,8 +13,17 @@ struct memory_struct {
 		size_t size;
 };
 
+struct string {
+	    char *ptr;
+	    size_t len;
+};
+
+#define MAX_NUM_SITES (80)
+
 void verify_cacert_pem(CURL *curl);
 size_t write_cb(void *ptr, size_t size, size_t nmemb, void *userdata);
+void acc_track_gn_variations(const char *base, char variations[][100], int *variation_count);
+void acc_track_username(CURL *curl, const char *username);
 void json_escape_string(char *dest, const char *src, size_t dest_size);
 size_t write_memory_callback(void *contents, size_t size, size_t nmemb, void *userp);
 int wd_download_file(const char *url, const char *fname);

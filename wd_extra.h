@@ -2,6 +2,7 @@
 #define EXTRA_H
 
 #include <stdint.h>
+#include <signal.h>
 #include <time.h>
 
 // Foreground Colors (Standard)

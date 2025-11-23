@@ -238,6 +238,7 @@ _reexecute_command:
             } else if (strcmp(arg, "stop") == 0) { println(stdout, "stop: stopped server task. | Usage: \"stop\"");
             } else if (strcmp(arg, "restart") == 0) { println(stdout, "restart: restart server task. | Usage: \"restart\"");
             } else if (strcmp(arg, "wanion") == 0) { println(stdout, "wanion: ask to wanion. | Usage: \"wanion\" | [<args>] | gemini based");
+            } else if (strcmp(arg, "tracker") == 0) { println(stdout, "tracker: account tracking. | Usage: \"tracker\" | [<args>]");
             } else {
                 printf("wd-help can't found for: '");
                 printf_color(stdout, FCOLOUR_YELLOW, "%s", arg);
@@ -787,7 +788,7 @@ _runners_:
                     pr_error(stdout, "%s not found!", wcfg.wd_toml_config);
                     goto done;
                 }
-
+                
                 pr_color(stdout, FCOLOUR_YELLOW, "running..\n");
                 char size_run[128];
                 if (wd_server_env() == 1) {
@@ -1164,6 +1165,40 @@ done_left:
                 curl_easy_cleanup(h);
                 goto done;
             }
+        } else if (strncmp(ptr_command, "tracker", 7) == 0) {
+            char *arg = ptr_command + 7;
+            while (*arg == ' ') ++arg;
+
+            if (*arg == '\0') {
+                println(stdout, "Usage: tracker [<account name>]");
+            } else {
+                CURL *curl;
+                curl_global_init(CURL_GLOBAL_DEFAULT);
+                curl = curl_easy_init();
+                if (!curl) {
+                    fprintf(stderr, "Curl initialization failed!\n");
+                    return 1;
+                }
+
+                char variations[100][100];
+                int variation_count = 0;
+
+                acc_track_gn_variations(arg, variations, &variation_count);
+
+                printf("[INFO] Search base: %s\n", arg);
+                printf("[INFO] Generated %d Variations\n\n", variation_count);
+
+                for (int i = 0; i < variation_count; i++) {
+                    printf("=== CHECKING: %s ===\n", variations[i]);
+                    acc_track_username(curl, variations[i]);
+                    printf("\n");
+                }
+
+                curl_easy_cleanup(curl);
+                curl_global_cleanup();
+            }
+
+            goto done;
         } else if (strcmp(ptr_command, "watchdogs") == 0) {
 #ifndef WD_WINDOWS
             char *art;

@@ -19,6 +19,86 @@
 #include "wd_unit.h"
 #include "wd_curl.h"
 
+const char* SITES[MAX_NUM_SITES][2] = {
+	    {"github", "https://github.com/%s"},
+	    {"gitlab", "https://gitlab.com/%s"},
+	    {"instagram", "https://instagram.com/%s"},
+	    {"tiktok", "https://www.tiktok.com/@%s"},
+	    {"x", "https://x.com/%s"},
+	    {"facebook", "https://www.facebook.com/%s"},
+	    {"linkedin", "https://www.linkedin.com/in/%s"},
+	    {"reddit", "https://www.reddit.com/user/%s"},
+	    {"pinterest", "https://www.pinterest.com/%s"},
+	    {"snapchat", "https://www.snapchat.com/add/%s"},
+	    {"telegram", "https://t.me/%s"},
+	    {"spotify", "https://open.spotify.com/user/%s"},
+	    {"soundcloud", "https://soundcloud.com/%s"},
+	    {"youtube", "https://www.youtube.com/@%s"},
+	    {"stackoverflow", "https://stackoverflow.com/users/%s"},
+	    {"devto", "https://dev.to/%s"},
+	    {"bitbucket", "https://bitbucket.org/%s"},
+	    {"sourceforge", "https://sourceforge.net/u/%s"},
+	    {"figma", "https://www.figma.com/@%s"},
+	    {"steam", "https://steamcommunity.com/id/%s"},
+	    {"twitch", "https://www.twitch.tv/%s"},
+	    {"epicgames", "https://www.epicgames.com/id/%s"},
+	    {"codepen", "https://codepen.io/%s"},
+	    {"jsfiddle", "https://jsfiddle.net/user/%s"},
+	    {"replit", "https://replit.com/@%s"},
+	    {"hackerrank", "https://www.hackerrank.com/%s"},
+	    {"leetcode", "https://leetcode.com/%s"},
+	    {"codewars", "https://www.codewars.com/users/%s"},
+	    {"kaggle", "https://www.kaggle.com/%s"},
+	    {"npm", "https://www.npmjs.com/~%s"},
+	    {"docker", "https://hub.docker.com/u/%s"},
+	    {"behance", "https://www.behance.net/%s"},
+	    {"dribbble", "https://dribbble.com/%s"},
+	    {"deviantart", "https://www.deviantart.com/%s"},
+	    {"artstation", "https://www.artstation.com/%s"},
+	    {"medium", "https://medium.com/@%s"},
+	    {"substack", "https://%s.substack.com"},
+	    {"wordpress", "https://%s.wordpress.com"},
+	    {"blogger", "https://%s.blogspot.com"},
+	    {"tumblr", "https://%s.tumblr.com"},
+	    {"discord", "https://discord.com/users/%s"},
+	    {"signal", "https://signal.me/#p/%s"},
+	    {"mastodon", "https://mastodon.social/@%s"},
+	    {"bluesky", "https://bsky.app/profile/%s"},
+	    {"threads", "https://www.threads.net/@%s"},
+	    {"angellist", "https://angel.co/u/%s"},
+	    {"crunchbase", "https://www.crunchbase.com/person/%s"},
+	    {"slideshare", "https://www.slideshare.net/%s"},
+	    {"speakerdeck", "https://speakerdeck.com/%s"},
+	    {"etsy", "https://www.etsy.com/shop/%s"},
+	    {"shopify", "https://%s.myshopify.com"},
+	    {"ebay", "https://www.ebay.com/usr/%s"},
+	    {"discord", "https://discord.gg/%s"},
+	    {"minecraft", "https://namemc.com/profile/%s"},
+	    {"roblox", "https://www.roblox.com/user.aspx?username=%s"},
+	    {"origin", "https://www.origin.com/usa/en-us/profile/%s"},
+	    {"ubisoft", "https://ubisoftconnect.com/en-US/profile/%s"},
+	    {"bandcamp", "https://%s.bandcamp.com"},
+	    {"mixcloud", "https://www.mixcloud.com/%s"},
+	    {"lastfm", "https://www.last.fm/user/%s"},
+	    {"vimeo", "https://vimeo.com/%s"},
+	    {"dailymotion", "https://www.dailymotion.com/%s"},
+	    {"odysee", "https://odysee.com/@%s"},
+	    {"coursera", "https://www.coursera.org/user/%s"},
+	    {"udemy", "https://www.udemy.com/user/%s"},
+	    {"skillshare", "https://www.skillshare.com/profile/%s"},
+	    {"khanacademy", "https://www.khanacademy.org/profile/%s"},
+	    {"keybase", "https://keybase.io/%s"},
+	    {"gravatar", "https://gravatar.com/%s"},
+	    {"flickr", "https://www.flickr.com/people/%s"},
+	    {"goodreads", "https://www.goodreads.com/%s"},
+	    {"letterboxd", "https://letterboxd.com/%s"},
+	    {"trello", "https://trello.com/%s"},
+	    {"linktree", "https://linktr.ee/%s"},
+	    {"cashapp", "https://cash.app/$%s"},
+	    {"venmo", "https://venmo.com/%s"},
+	    {"paypal", "https://paypal.me/%s"}
+};
+
 /**
  * hello there!.
  * this is a string variable used to statically store the PawnCC folder name,
@@ -154,6 +234,134 @@ static int progress_callback(void *ptr, curl_off_t dltotal,
 		}
 
 		return WD_RETZ;  /* Always return success to continue download */
+}
+
+/*
+ * Callback function for handling HTTP response data from site checks
+ * This function is called by libcurl as it receives data from the HTTP response
+ */
+size_t write_cb_sites(void *data, size_t size, size_t nmemb, void *userp) {
+	    /* Calculate total size of the received data chunk */
+	    size_t total_size = size * nmemb;
+	    /* Cast user pointer to our string structure */
+	    struct string *str = (struct string *)userp;
+
+	    /* Reallocate memory to accommodate the new data plus null terminator */
+	    str->ptr = realloc(str->ptr, str->len + total_size + 1);
+	    if (str->ptr == NULL) {
+	        printf("Memory allocation failed!\n");
+	        exit(1);
+	    }
+
+	    /* Copy the new data to the end of our existing buffer */
+	    memcpy(str->ptr + str->len, data, total_size);
+	    /* Update the length of our string */
+	    str->len += total_size;
+	    /* Ensure the string is null-terminated */
+	    str->ptr[str->len] = '\0';
+
+	    /* Return the number of bytes processed (required by libcurl) */
+	    return total_size;
+}
+
+/*
+ * Generates username variations for account tracking
+ * Creates common permutations that people might use when their preferred username is taken
+ */
+void acc_track_gn_variations(const char *base, char variations[][100], int *variation_count) {
+	    int len = strlen(base);
+	    int i;
+
+	    /* Start with the original base username */
+	    strcpy(variations[(*variation_count)++], base);
+
+	    /* Generate variations with duplicated characters (e.g., "user" -> "uuser", "usser", etc.) */
+	    for (i = 0; i < len; i++) {
+	        char temp[100];
+	        /* Copy characters up to position i */
+	        strncpy(temp, base, i);
+	        /* Duplicate the character at position i */
+	        temp[i] = base[i];
+	        temp[i+1] = base[i];
+	        /* Copy the rest of the string after the duplicated character */
+	        strcpy(temp + i + 2, base + i + 1);
+	        strcpy(variations[(*variation_count)++], temp);
+	    }
+
+	    /* Generate variations with repeated last character (e.g., "user" -> "userrr", "userrrr") */
+	    for (i = 2; i <= 5; i++) {
+	        char temp[100];
+	        snprintf(temp, sizeof(temp), "%s", base);
+	        /* Append the last character multiple times */
+	        for (int j = 0; j < i; j++) {
+	            temp[strlen(temp)] = base[len - 1];
+	        }
+	        strcpy(variations[(*variation_count)++], temp);
+	    }
+
+	    /* Generate common suffix variations */
+	    strcpy(variations[(*variation_count)++], strcat(strdup(base), "1"));      /* Add number 1 */
+	    strcpy(variations[(*variation_count)++], strcat(strdup(base), "123"));    /* Add sequence 123 */
+	    strcpy(variations[(*variation_count)++], strcat(strdup(base), "007"));    /* Add James Bond reference */
+	    strcpy(variations[(*variation_count)++], strcat(strdup(base), "_"));      /* Add underscore */
+	    strcpy(variations[(*variation_count)++], strcat(strdup(base), "."));      /* Add period */
+	    strcpy(variations[(*variation_count)++], strcat(strdup(base), "_dev"));   /* Add _dev suffix */
+}
+
+/*
+ * Checks if a username exists across multiple websites/platforms
+ * Performs HTTP requests to various sites with the given username pattern
+ */
+void acc_track_username(CURL *curl, const char *username) {
+	    CURLcode res;
+	    /* Initialize response buffer structure */
+	    struct string response;
+	    response.ptr = malloc(1);
+	    response.len = 0;
+
+	    /* Set up HTTP headers with a common user agent */
+	    struct curl_slist *headers = NULL;
+	    headers = curl_slist_append(headers, "User-Agent: Mozilla/5.0");
+
+	    /* Iterate through all defined sites to check for username existence */
+	    for (int i = 0; i < MAX_NUM_SITES; i++) {
+	        char url[200];
+	        /* Format the URL with the username (SITES[i][1] likely contains URL pattern) */
+	        snprintf(url, sizeof(url), SITES[i][1], username);
+
+	        /* Configure libcurl options for this request */
+	        curl_easy_setopt(curl, CURLOPT_URL, url);
+	        curl_easy_setopt(curl, CURLOPT_HTTPHEADER, headers);
+	        curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, write_cb_sites);
+	        curl_easy_setopt(curl, CURLOPT_WRITEDATA, (void *)&response);
+
+	        /* Verify SSL certificate (security measure) */
+	        verify_cacert_pem(curl);
+
+	        /* Execute the HTTP request */
+	        res = curl_easy_perform(curl);
+
+	        /* Handle request results */
+	        if (res != CURLE_OK) {
+	            /* Report curl errors (network issues, etc.) */
+	            printf("[%s] %s -> ERROR %s\n", SITES[i][0], url, curl_easy_strerror(res));
+	        } else {
+	            /* Get HTTP status code to determine if account exists */
+	            long status_code;
+	            curl_easy_getinfo(curl, CURLINFO_RESPONSE_CODE, &status_code);
+	            if (status_code == 200) {
+	                /* 200 status typically means account exists */
+	                printf("[%s] %s -> FOUND\n", SITES[i][0], url);
+	                fflush(stdout);
+	            } else {
+	                /* Other status codes typically mean account doesn't exist */
+	                printf("[%s] %s -> NOT FOUND (%ld)\n", SITES[i][0], url, status_code);
+	                fflush(stdout);
+	            }
+	        }
+	        /* Reset response buffer for next request */
+	        response.len = 0;
+	    }
 }
 
 /**

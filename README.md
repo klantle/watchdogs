@@ -38,15 +38,13 @@
 
 ## Introduction
 
-## [A.I Agent](https://aiagentslist.com/)
-__If you are confused about this project, you can use an A.I. Agent that can help provide available information to be filtered according to the given prompt. Alternatively, you can also create an issue to ask questions in this Repository.__
-![img](https://raw.githubusercontent.com/klantle/watchdogs/refs/heads/main/__AGENT.png)
-
-## Wanion - A.I for Watchdogs
+## Wanion - A.I on Watchdogs
 ![img](https://raw.githubusercontent.com/klantle/watchdogs/refs/heads/main/__WANION.png)
 
-## Information.
-~~This project is built purely from our own thinking and effort, not merely by imitation. We have never claimed to be inspired by similar projects that themselves draw inspiration from others. Our foundation prioritizes simplicity, speed, feature updates, and the latest library technologies, rather than long term stability.~~
+## "Inspired from XXX"
+> This project started from my personal curiosity a few years back about why pawncc.exe always closed when opened and didn't output any GUI. That curiosity led to a simple discovery through experiments of commanding it (pawncc.exe) from behind the shell.
+> This project is built purely from our own thinking and effort, not merely by imitation. We have never claimed to be inspired by similar projects that themselves draw inspiration from others.
+
 ![img](https://raw.githubusercontent.com/klantle/watchdogs/refs/heads/main/__ACTORIDE.png)
 
 ## Supported Platforms
@@ -77,7 +75,7 @@ __If you are confused about this project, you can use an A.I. Agent that can hel
 | **wd_curl**     | This file manages cURL connections, file installations, and Pawncc integration for Watchdogs.         |
 | **wd_archive**  | This file handles archive management, including extraction for Watchdogs.                             |
 | **wd_compiler** | This file handles the Pawncc compiler integration for Watchdogs.                                      |
-| **wd_extra**    | This file contains additional (extra) functions for Watchdogs.                                        |
+| **wd_extra**    | This file contains additional functions for Watchdogs.                                        |
 | **wd_depends**  | This file manages dependencies for Watchdogs.                                                         |
 | **wd_package**  | This file handles the installation process for SA-MP/Open.MP and Pawncc within Watchdogs.             |
 | **wd_server**   | This file manages the SA-MP/Open.MP server operations for Watchdogs.                                  |
@@ -165,7 +163,7 @@ mv -f watchdogs .. && cd .. && \
 termux-setup-storage
 
 # 2. Change repository mirror (if needed)
-termux-change-repo
+termux-change-repo # just Enter & Enter & Enter
 
 # 3. Update package lists
 apt update
@@ -233,8 +231,8 @@ Server = https://downloads.sourceforge.net/project/msys2/REPOS/msys/$arch
 #### Installation Steps
 
 ```bash
-# 1. Sync package database
-pacman -Sy
+# 1. Sync package database & Upgrade package
+pacman -Syu
 
 # 2. Install required packages
 pacman -S curl make git
@@ -409,6 +407,7 @@ For Windows native:
 > ANSI (Optional) https://github.com/aziz/SublimeANSI
 1. Go to Tools > Build System > New Build System
 2. Replace the code with:
+> (FYI): You cannot run watchdogs without args (inline command) because in Sublime Text, it is not possible to run shell I/O processes simultaneously with terminal linkup like in cmd.exe or powershell.exe in VSCode.
 
 > Windows native
 ```json
@@ -494,6 +493,11 @@ compile path/to/yourmode --assembler
 compile . --recursion
 compile path/to/yourmode --recursion
 ```
+> Options '-C+' compact encoding for output file
+```bash
+compile . --encoding
+compile path/to/yourmode --encoding
+```
 > Option '-v2' verbosity level - verbose
 ```bash
 compile . --verbose
@@ -535,7 +539,7 @@ compiles
 <br><br>
 Serves as an assistant for installing various files required by SA-MP/Open.MP. When installing dependencies that contain a `plugins/` folder and include files, it will install them into the `plugins/` and `/pawno-qawno/include` directories, respectively. It also handles gamemode components (root watchdogs). Watchdogs will automatically add the include names to the gamemode based on the main gamemode filename specified in the `input` key within `watchdogs.toml`. Furthermore, Watchdogs assists in installing the plugin names and their respective formats into `config.json` (from watchdogs.toml) - (for Open.MP) or `server.cfg` (from watchdogs.toml) - (for SA-MP). Note that the `components/` directory is not required for Open.MP.
 <br><br>
-For plugin or include files located in the root directory of the dependency archive (for both Linux and Windows), their installation paths will be adjusted accordingly. Plugins found in the root folder will be placed directly into the server's root directory, rather than in specific subdirectories like `plugins/` or `components/`.
+For plugin files located in the root directory of the dependency archive (for both Linux and Windows), their installation paths will be adjusted accordingly. Plugins found in the root folder will be placed directly into the server's root directory, rather than in specific subdirectories like `plugins/` or `components/`.
 <br><br>
 The handling of YSI includes differs due to their structure containing multiple nested folders of include files. In this case, the entire folder containing these includes is moved directly to the target path (e.g., `pawno/include` or `qawno/include`), streamlining the process.
 <br>

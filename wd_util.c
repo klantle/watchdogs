@@ -20,6 +20,23 @@
 #include "wd_util.h"
 #ifdef WD_LINUX
 #include <termios.h>
+#endif
+#if defined(WD_ANDROID)
+ssize_t sendfile(int out_fd,
+				 int in_fd,
+				 off_t *offset,
+				 size_t count) {
+	    char buf[8192];
+	    size_t left = count;
+	    while (left > 0) {
+	        ssize_t n = read(in_fd, buf, sizeof(buf));
+	        if (n <= 0) return n;
+	        write(out_fd, buf, n);
+	        left -= n;
+	    }
+	    return count;
+}
+#elif !defined(WD_ANDROID) && defined(WD_LINUX)
 #include <sys/sendfile.h>
 #endif
 
@@ -46,7 +63,7 @@ const char* __command[]={
 				"config", "stopwatch",
 				"install", "hardware",
 				"gamemode", "pawncc",
-				"compile", "running",
+				"log", "compile", "running",
 				"compiles", "stop",
 				"restart", "wanion",
 				"tracker",
@@ -142,12 +159,6 @@ int win_ftruncate(FILE *file, long length) {
 }
 #endif
 
-bool wd_pointer_null(const char *str) {
-		if (str && str[0] != '\0')
-			return false;
-		return true;
-}
-
 static char wd_work_dir[WD_PATH_MAX];
 static void __wd_init_cwd(void) {
 #ifdef WD_WINDOWS
@@ -169,7 +180,7 @@ static void __wd_init_cwd(void) {
 }
 
 char *wd_get_cwd(void) {
-		if (wd_pointer_null(wd_work_dir))
+		if (wd_work_dir[0] == '\0')
 			{ __wd_init_cwd(); }
 		return wd_work_dir;
 }
@@ -215,7 +226,7 @@ int wd_mkdir(const char *path) {
 	        if (*p == '/') {
 	            *p = '\0';
 #ifdef WD_WINDOWS
-							if (mkdir(temp) == -1) {
+				if (mkdir(temp) == -1) {
 #else
 	            if (mkdir(temp, S_IRWXU) == -1) {
 #endif
@@ -240,14 +251,97 @@ int wd_mkdir(const char *path) {
 	    return WD_RETZ;
 }
 
+void json_escape_string(char *dest, const char *src, size_t dest_size) {
+	    char *ptr = dest;
+	    size_t remaining = dest_size - 1;
+
+	    while (*src && remaining > 1) {
+	        switch (*src) {
+	            case '\"':
+	                if (remaining > 2) {
+	                    *ptr++ = '\\';
+	                    *ptr++ = '\"';
+	                    remaining -= 2;
+	                }
+	                break;
+
+	            case '\\':
+	                if (remaining > 2) {
+	                    *ptr++ = '\\';
+	                    *ptr++ = '\\';
+	                    remaining -= 2;
+	                }
+	                break;
+
+	            case '\b':
+	                if (remaining > 2) {
+	                    *ptr++ = '\\';
+	                    *ptr++ = 'b';
+	                    remaining -= 2;
+	                }
+	                break;
+
+	            case '\f':
+	                if (remaining > 2) {
+	                    *ptr++ = '\\';
+	                    *ptr++ = 'f';
+	                    remaining -= 2;
+	                }
+	                break;
+
+	            case '\n':
+	                if (remaining > 2) {
+	                    *ptr++ = '\\';
+	                    *ptr++ = 'n';
+	                    remaining -= 2;
+	                }
+	                break;
+
+	            case '\r':
+	                if (remaining > 2) {
+	                    *ptr++ = '\\';
+	                    *ptr++ = 'r';
+	                    remaining -= 2;
+	                }
+	                break;
+
+	            case '\t':
+	                if (remaining > 2) {
+	                    *ptr++ = '\\';
+	                    *ptr++ = 't';
+	                    remaining -= 2;
+	                }
+	                break;
+
+	            default:
+	                *ptr++ = *src;
+	                remaining--;
+	                break;
+	        }
+	        src++;
+	    }
+
+	    *ptr = '\0';
+}
+
 int wd_run_command(const char *reg_command) {
+#if defined(WD_ANDROID)
+__asm__ volatile(
+	    "mov x0, #0\n\t"
+	    "mov x1, #0\n\t"
+	    :
+	    :
+	    : "x0", "x1"
+);
+#elif !defined(WD_ANDROID) && defined(WD_LINUX)
 __asm__ volatile (
 	    "movl $0, %%eax\n\t"
 	    "movl $0, %%ebx\n\t"
-	    : /* no outputs */
-	    : /* no inputs */
+	    :
+	    :
 	    : "%eax", "%ebx"
 );
+#endif
 	    char
 			size_command[ WD_MAX_PATH ]
 			; /* 4096 */
@@ -282,7 +376,7 @@ int is_termux_environment(void)
 
 int is_native_windows(void)
 {
-#if defined WD_LINUX || WD_ANDROID
+#if defined(WD_LINUX) || defined(WD_ANDROID)
 		return WD_RETZ;
 #endif
 		char* msys2_env;
@@ -629,7 +723,7 @@ int dir_writable(const char *path)
 	    return WD_RETZ;
 }
 
-int path_acces(const char *path)
+int path_access(const char *path)
 {
 	    if (access(path, F_OK) == 0)
 	        return WD_RETN;
@@ -692,7 +786,7 @@ int kill_process(const char *entry_name)
 #else
 		wd_snprintf(reg_command, sizeof(reg_command),
 				"C:\\Windows\\System32\\taskkill.exe "
-				"/IM \"%s\" >nul", entry_name);
+				"/IM \"%s\" >nul 2>&1", entry_name);
 #endif
 		return wd_run_command(reg_command);
 }
@@ -866,7 +960,7 @@ static void wd_check_compiler_options(int *compatibility, int *optimized_lt)
 		FILE *proc_file;
 		char log_line[1024];
 
-		if (path_acces(".compiler_test.log"))
+		if (path_access(".compiler_test.log"))
 			remove(".compiler_test.log");
 
 		snprintf(run_cmd, sizeof(run_cmd),
@@ -898,7 +992,7 @@ static void wd_check_compiler_options(int *compatibility, int *optimized_lt)
 			pr_error(stdout, "Failed to open .compiler_test.log");
 		}
 
-		if (path_acces(".compiler_test.log"))
+		if (path_access(".compiler_test.log"))
 				remove(".compiler_test.log");
 }
 
@@ -1018,7 +1112,7 @@ static void __toml_base_subdirs(const char *base_path,
 
 static void wd_add_compiler_path(FILE *file, const char *path, int *first_item)
 {
-		if (path_acces(path)) {
+		if (path_access(path)) {
 				if (!*first_item)
 						fprintf(file, ",");
 				fprintf(file, "\n        \"%s\"", path);
@@ -1029,7 +1123,7 @@ static void wd_add_compiler_path(FILE *file, const char *path, int *first_item)
 
 static void wd_add_include_paths(FILE *file, int *first_item)
 {
-		if (path_acces("gamemodes")) {
+		if (path_access("gamemodes")) {
 				if (!*first_item)
 						fprintf(file, ",");
 				fprintf(file, "\n        \"gamemodes/\"");
@@ -1200,6 +1294,22 @@ int wd_toml_configs(void)
 				}
 		}
 
+		toml_table_t *wd_toml_compiler = toml_table_in(_toml_config, "compiler");
+		if (wd_toml_depends) {
+				toml_datum_t input_val = toml_string_in(wd_toml_compiler, "input");
+				if (input_val.ok) {
+					wcfg.wd_toml_gm_input = input_val.u.s;
+					wd_free(input_val.u.s);
+					input_val.u.s = NULL;
+				}
+				toml_datum_t output_val = toml_string_in(wd_toml_compiler, "output");
+				if (output_val.ok) {
+					wcfg.wd_toml_gm_output = output_val.u.s;
+					wd_free(output_val.u.s);
+					output_val.u.s = NULL;
+				}
+		}
+
 		toml_table_t *general_table = toml_table_in(_toml_config, "general");
 		if (general_table) {
 				toml_datum_t bin_val = toml_string_in(general_table, "binary");
@@ -1218,23 +1328,31 @@ int wd_toml_configs(void)
 						}
 						wcfg.wd_toml_binary = strdup(bin_val.u.s);
 						wd_free(bin_val.u.s);
+						bin_val.u.s = NULL;
 				}
 				toml_datum_t conf_val = toml_string_in(general_table, "config");
 				if (conf_val.ok) {
 						wcfg.wd_toml_config = strdup(conf_val.u.s);
 						wd_free(conf_val.u.s);
+						conf_val.u.s = NULL;
 				}
 				toml_datum_t keys_val = toml_string_in(general_table, "keys");
 				if (keys_val.ok) {
 					wcfg.wd_toml_key_ai = keys_val.u.s;
+					wd_free(keys_val.u.s);
+					keys_val.u.s = NULL;
 				}
 				toml_datum_t chatbot_val = toml_string_in(general_table, "chatbot");
 				if (chatbot_val.ok) {
 					wcfg.wd_toml_chatbot_ai = chatbot_val.u.s;
+					wd_free(chatbot_val.u.s);
+					chatbot_val.u.s = NULL;
 				}
 				toml_datum_t models_val = toml_string_in(general_table, "models");
 				if (models_val.ok) {
 					wcfg.wd_toml_models_ai = models_val.u.s;
+					wd_free(models_val.u.s);
+					models_val.u.s = NULL;
 				}
 		}
 

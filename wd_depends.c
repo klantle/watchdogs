@@ -162,34 +162,87 @@ int dep_http_get_content (const char *url, const char *github_token, char **out_
         return WD_RETN;
 }
 
-static char *dep_get_assets (char **deps_assets, int count, const char *preferred_os)
+static int is_os_specific_archive (const char *filename)
 {
-		int i, j;
-		const char *os_patterns[] = {
+	    const char *os_patterns[] = {
+"windows", "win", ".exe", "msvc", "mingw",
+"macos", "mac", "darwin", "osx",
+"linux", "ubuntu", "debian", "centos", "fedora", "arch",
+"x86", "x64", "x86_64", "amd64", "arm64", "aarch64",
+NULL
+	    };
+	    
+	    for (int i = 0; os_patterns[i] != NULL; i++) {
+	        if (strstr(filename, os_patterns[i])) {
+	            return WD_RETN;
+	        }
+	    }
+	    return WD_RETZ;
+}
+
+static int is_gamemode_archive (const char *filename)
+{
+	    const char *gamemode_patterns[] = {
+"server", "_server",
+NULL
+	    };
+	    
+	    for (int i = 0; gamemode_patterns[i] != NULL; i++) {
+	        if (strstr(filename, gamemode_patterns[i])) {
+	            return WD_RETN;
+	        }
+	    }
+	    return WD_RETZ;
+}
+
+static char *dep_get_assets (char **deps_assets, int cnt, const char *preferred_os)
+{
+	    int i, j;
+	    const char *os_patterns[] = {
 #ifdef WD_WINDOWS
-				"windows", "win", ".exe", "msvc", "mingw",
+"windows", "win", ".exe", "msvc", "mingw",
 #elif defined(__APPLE__)
-				"macos", "mac", "darwin", "osx",
+"macos", "mac", "darwin", "osx", 
 #else
-				"linux", "ubuntu", "debian", "centos",
+"linux", "ubuntu", "debian", "centos",
 #endif
-				"src", "source"
-		};
-		size_t num_patterns = sizeof(os_patterns) / sizeof(os_patterns[0]);
+"src", "source"
+	    };
+	    size_t num_patterns = sizeof(os_patterns) / sizeof(os_patterns[0]);
 
-		if (count == 0)
-				return NULL;
-		if (count == 1)
-				return strdup(deps_assets[0]);
+	    if (cnt == WD_RETZ)
+	        return NULL;
+	    if (cnt == WD_RETN)
+	        return strdup(deps_assets[0]);
 
-		for (i = 0; i < num_patterns; i++) {
-				for (j = 0; j < count; j++) {
-						if (strstr(deps_assets[j], os_patterns[i]))
-								return strdup(deps_assets[j]);
-				}
-		}
+	    for (i = 0; i < cnt; i++) {
+	        if (strstr(deps_assets[i], "server") || 
+	        	strstr(deps_assets[i], "_server")) {
+	            return strdup(deps_assets[i]);
+	        }
+	    }
 
-		return strdup(deps_assets[0]);
+	    for (i = 0; i < num_patterns; i++) {
+	        for (j = 0; j < cnt; j++) {
+	            if (strstr(deps_assets[j], os_patterns[i]))
+	                return strdup(deps_assets[j]);
+	        }
+	    }
+
+	    for (i = 0; i < cnt; i++) {
+	        int has_os_pattern = 0;
+	        for (j = 0; j < num_patterns; j++) {
+	            if (strstr(deps_assets[i], os_patterns[j])) {
+	                has_os_pattern = 1;
+	                break;
+	            }
+	        }
+	        if (!has_os_pattern) {
+	            return strdup(deps_assets[i]);
+	        }
+	    }
+
+	    return strdup(deps_assets[0]);
 }
 
 static int
@@ -434,106 +487,113 @@ static int dep_gh_latest_tag (const char *user, const char *repo,
 		return ret;
 }
 
-static int dep_handle_repo (const struct dep_repo_info *dep_repo_info,
-                            char *deps_put_url,
-                            size_t deps_put_size)
+static int dep_handle_repo(const struct dep_repo_info *dep_repo_info,
+                          char *deps_put_url,
+                          size_t deps_put_size)
 {
-		int ret = 0;
-		const char *deps_repo_branch[] = {"main", "master"};
-		char deps_actual_tag[128] = { 0 };
-		int use_fallback_branch = 0;
+	    int ret = 0;
+	    const char *deps_repo_branch[] = {"main", "master"};
+	    char deps_actual_tag[128] = {0};
+	    int use_fallback_branch = 0;
 
-		if (dep_repo_info->tag[0] && strcmp(dep_repo_info->tag, "latest") == 0) {
-			if (dep_gh_latest_tag(dep_repo_info->user,
-								dep_repo_info->repo,
-								deps_actual_tag,
-								sizeof(deps_actual_tag))) {
-				printf("Create latest tag: %s (~instead of latest)\t\t[V]\n", deps_actual_tag);
-			} else {
-				pr_error(stdout, "Failed to get latest tag for %s/%s,"
-								 "Falling back to main branch\t\t[X]",
-								 dep_repo_info->user, dep_repo_info->repo);
-				use_fallback_branch = 1;
-			}
-		} else {
-			wd_strncpy(deps_actual_tag, dep_repo_info->tag, sizeof(deps_actual_tag) - 1);
-		}
+	    if (dep_repo_info->tag[0] && strcmp(dep_repo_info->tag, "latest") == 0) {
+	        if (dep_gh_latest_tag(dep_repo_info->user,
+	                            dep_repo_info->repo,
+	                            deps_actual_tag,
+	                            sizeof(deps_actual_tag))) {
+	            printf("Create latest tag: %s (~instead of latest)\t\t[V]\n", deps_actual_tag);
+	        } else {
+	            pr_error(stdout, "Failed to get latest tag for %s/%s,"
+	                             "Falling back to main branch\t\t[X]",
+	                             dep_repo_info->user, dep_repo_info->repo);
+	            use_fallback_branch = 1;
+	        }
+	    } else {
+	        wd_strncpy(deps_actual_tag, dep_repo_info->tag, sizeof(deps_actual_tag) - 1);
+	    }
 
-		if (use_fallback_branch) {
-			for (int j = 0; j < 2 && !ret; j++) {
-				wd_snprintf(deps_put_url, deps_put_size,
-						"https://github.com/%s/%s/archive/refs/heads/%s.zip",
-						dep_repo_info->user,
-						dep_repo_info->repo,
-						deps_repo_branch[j]);
+	    if (use_fallback_branch) {
+	        for (int j = 0; j < 2 && !ret; j++) {
+	            wd_snprintf(deps_put_url, deps_put_size,
+	                    "https://github.com/%s/%s/archive/refs/heads/%s.zip",
+	                    dep_repo_info->user,
+	                    dep_repo_info->repo,
+	                    deps_repo_branch[j]);
 
-				if (dep_check_url(deps_put_url, wcfg.wd_toml_github_tokens)) {
-					ret = 1;
-					if (j == 1)
-						printf("Create master branch (main branch not found)\t\t[V]\n");
-				}
-			}
-			return ret;
-		}
+	            if (dep_check_url(deps_put_url, wcfg.wd_toml_github_tokens)) {
+	                ret = 1;
+	                if (j == 1)
+	                    printf("Create master branch (main branch not found)\t\t[V]\n");
+	            }
+	        }
+	        return ret;
+	    }
 
-		if (deps_actual_tag[0]) {
-			char *deps_assets[10] = { 0 };
+	    if (deps_actual_tag[0]) {
+	        char *deps_assets[10] = {0};
+	        int deps_asset_count = dep_gh_release_assets(dep_repo_info->user,
+	                                                     dep_repo_info->repo,
+	                                                     deps_actual_tag,
+	                                                     deps_assets,
+	                                                     10);
 
-			int deps_asset_count = dep_gh_release_assets(dep_repo_info->user,
-														 dep_repo_info->repo,
-														 deps_actual_tag,
-														 deps_assets,
-														 10);
+	        if (deps_asset_count > 0) {
+	            char *deps_best_asset = NULL;
+	            deps_best_asset = dep_get_assets(deps_assets, deps_asset_count, NULL);
 
-			if (deps_asset_count > 0) {
-				char *deps_best_asset = NULL;
-				if (deps_best_asset == NULL)
-					deps_best_asset = dep_get_assets(deps_assets, deps_asset_count, NULL);
+	            if (deps_best_asset) {
+	                wd_strncpy(deps_put_url, deps_best_asset, deps_put_size - 1);
+	                ret = 1;
+	                
+	                if (is_gamemode_archive(deps_best_asset)) {
+	                    printf("Selected gamemode archive: %s\t\t[V]\n", deps_best_asset);
+	                } else if (is_os_specific_archive(deps_best_asset)) {
+	                    printf("Selected OS-specific archive: %s\t\t[V]\n", deps_best_asset);
+	                } else {
+	                    printf("Selected neutral archive: %s\t\t[V]\n", deps_best_asset);
+	                }
+	                
+	                wd_free(deps_best_asset);
+	            }
 
-				if (deps_best_asset) {
-					wd_strncpy(deps_put_url, deps_best_asset, deps_put_size - 1);
-					ret = 1;
-					wd_free(deps_best_asset);
-				}
+	            for (int j = 0; j < deps_asset_count; j++)
+	                wd_free(deps_assets[j]);
+	        }
 
-				for (int j = 0; j < deps_asset_count; j++)
-					wd_free(deps_assets[j]);
-			}
+	        if (!ret) {
+	            const char *deps_arch_format[] = {
+	                "https://github.com/%s/%s/archive/refs/tags/%s.tar.gz",
+	                "https://github.com/%s/%s/archive/refs/tags/%s.zip"
+	            };
 
-			if (!ret) {
-				const char *deps_arch_format[] = {
-					"https://github.com/%s/%s/archive/refs/tags/%s.tar.gz",
-					"https://github.com/%s/%s/archive/refs/tags/%s.zip"
-				};
+	            for (int j = 0; j < 2 && !ret; j++) {
+	                wd_snprintf(deps_put_url, deps_put_size, deps_arch_format[j],
+	                         dep_repo_info->user,
+	                         dep_repo_info->repo,
+	                         deps_actual_tag);
 
-				for (int j = 0; j < 2 && !ret; j++) {
-					wd_snprintf(deps_put_url, deps_put_size, deps_arch_format[j],
-							 dep_repo_info->user,
-							 dep_repo_info->repo,
-							 deps_actual_tag);
+	                if (dep_check_url(deps_put_url, wcfg.wd_toml_github_tokens))
+	                    ret = 1;
+	            }
+	        }
+	    } else {
+	        for (int j = 0; j < 2 && !ret; j++) {
+	            wd_snprintf(deps_put_url, deps_put_size,
+	                    "%s%s/%s/archive/refs/heads/%s.zip",
+	                    "https://github.com/",
+	                    dep_repo_info->user,
+	                    dep_repo_info->repo,
+	                    deps_repo_branch[j]);
 
-					if (dep_check_url(deps_put_url, wcfg.wd_toml_github_tokens))
-						ret = 1;
-				}
-			}
-		} else {
-			for (int j = 0; j < 2 && !ret; j++) {
-				wd_snprintf(deps_put_url, deps_put_size,
-						"%s%s/%s/archive/refs/heads/%s.zip",
-						"https://github.com/",
-						dep_repo_info->user,
-						dep_repo_info->repo,
-						deps_repo_branch[j]);
+	            if (dep_check_url(deps_put_url, wcfg.wd_toml_github_tokens)) {
+	                ret = 1;
+	                if (j == 1)
+	                    printf("Create master branch (main branch not found)\t\t[V]\n");
+	            }
+	        }
+	    }
 
-				if (dep_check_url(deps_put_url, wcfg.wd_toml_github_tokens)) {
-					ret = 1;
-					if (j == 1)
-						printf("Create master branch (main branch not found)\t\t[V]\n");
-				}
-			}
-		}
-
-		return ret;
+	    return ret;
 }
 
 int dep_add_ncheck_hash (const char *_H_file_path, const char *_H_json_path)

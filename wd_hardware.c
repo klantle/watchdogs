@@ -48,14 +48,14 @@ int uname(struct utsname *name)
         return WD_RETZ;
 }
 void WD_COMPILER_WIN32_API_START(PROCESS_INFORMATION pi) {
-        /** 
+        /**
          * Get handles to core Windows DLLs
          * kernel32.dll contains core Windows API functions
          * ntdll.dll contains Native API functions (lower level)
          */
         HMODULE hKernel32 = GetModuleHandle("kernel32.dll");
         HMODULE hNtdll = GetModuleHandle("ntdll.dll");
-        
+
         if (hKernel32) {
             /**
              * SetProcessIoPriority - Controls I/O priority of a process
@@ -63,11 +63,11 @@ void WD_COMPILER_WIN32_API_START(PROCESS_INFORMATION pi) {
              * by the storage subsystem
              */
             typedef BOOL (WINAPI *PSETPROCESSIOPRIORITY)(HANDLE, INT);
-            PSETPROCESSIOPRIORITY SetProcessIoPriority = 
+            PSETPROCESSIOPRIORITY SetProcessIoPriority =
                 (PSETPROCESSIOPRIORITY)GetProcAddress(hKernel32, "SetProcessIoPriority");
-            
+
             if (SetProcessIoPriority) {
-                /** 
+                /**
                  * Set I/O priority to 4 (HIGH priority)
                  * Windows I/O priority levels:
                  * 0 - Very Low, 1 - Low, 2 - Normal, 3 - High, 4 - High, 5 - Critical
@@ -81,7 +81,7 @@ void WD_COMPILER_WIN32_API_START(PROCESS_INFORMATION pi) {
              * PROCESS_INFORMATION_CLASS specifies what type of information to set
              */
             typedef BOOL (WINAPI *PSETPROCESSINFORMATION)(HANDLE, PROCESS_INFORMATION_CLASS, PVOID, ULONG);
-            PSETPROCESSINFORMATION SetProcessInformation = 
+            PSETPROCESSINFORMATION SetProcessInformation =
                 (PSETPROCESSINFORMATION)GetProcAddress(hKernel32, "SetProcessInformation");
 
             if (SetProcessInformation) {
@@ -103,30 +103,30 @@ void WD_COMPILER_WIN32_API_START(PROCESS_INFORMATION pi) {
              * Working set = portion of virtual address space that is resident in physical memory
              */
             typedef BOOL (WINAPI *PSETPROCESSWORKINGSETSIZEEX)(HANDLE, PSIZE_T, PSIZE_T, DWORD);
-            PSETPROCESSWORKINGSETSIZEEX SetProcessWorkingSetSizeEx = 
+            PSETPROCESSWORKINGSETSIZEEX SetProcessWorkingSetSizeEx =
                 (PSETPROCESSWORKINGSETSIZEEX)GetProcAddress(hKernel32, "SetProcessWorkingSetSizeEx");
 
             if (SetProcessWorkingSetSizeEx) {
                 /**
                  * Setting both min and max to -1 means:
                  * - No minimum working set limit
-                 * - No maximum working set limit  
+                 * - No maximum working set limit
                  * - Process can use as much physical memory as needed
                  * - Windows memory manager won't artificially restrict memory usage
                  */
                 SIZE_T minWs = (SIZE_T)-1;  /** No limit */
-                SIZE_T maxWs = (SIZE_T)-1;  /** No limit */  
+                SIZE_T maxWs = (SIZE_T)-1;  /** No limit */
                 SetProcessWorkingSetSizeEx(pi.hProcess, &minWs, &maxWs, 0);  /** Flags = 0 */
             }
         }
-        
+
         if (hNtdll) {
             /**
              * NtSetPowerRequest - Native API function for power management
              * Part of Windows Native API (undocumented/low-level)
              */
             typedef NTSTATUS (WINAPI *PNTSETPOWERREQUEST)(HANDLE, POWER_REQUEST_TYPE);
-            PNTSETPOWERREQUEST NtSetPowerRequest = 
+            PNTSETPOWERREQUEST NtSetPowerRequest =
                 (PNTSETPOWERREQUEST)GetProcAddress(hNtdll, "NtSetPowerRequest");
 
             if (NtSetPowerRequest) {
@@ -142,7 +142,7 @@ void WD_COMPILER_WIN32_API_START(PROCESS_INFORMATION pi) {
                 NtSetPowerRequest(powerRequest, PowerRequestExecutionRequired);
             }
         }
-        
+
         return;
 }
 #else

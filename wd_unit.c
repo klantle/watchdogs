@@ -46,8 +46,10 @@ struct timespec cmd_start, cmd_end;
 double command_dur;
 
 void chain_main_data(void) {
+        signal(SIGINT, SIG_DFL);
         wd_sef_fdir_reset();
         wd_toml_configs();
+        wd_stop_server_tasks();
         wd_u_history();
 #if defined(_DBG_PRINT)
         pr_color(stdout, FCOLOUR_YELLOW, "-DEBUGGING ");
@@ -62,11 +64,13 @@ void chain_main_data(void) {
                "C version: %s | "
                "compiler version: %d | "
                "architecture: %s | "
-               "os_type: %s (CRC32) |"
-               "pointer_samp: %s |"
+               "os_type: %s (CRC32) | "
+               "pointer_samp: %s | "
                "pointer_openmp: %s | "
                "f_samp: %s (CRC32) | "
                "f_openmp: %s (CRC32) | "
+               "gamemode input: %s | "
+               "gamemode output: %s | "
                "config: %s | "
                "github tokens: %s | "
                "chatbot: %s | "
@@ -92,7 +96,10 @@ void chain_main_data(void) {
 #endif
                 wcfg.wd_os_type, wcfg.wd_ptr_samp,
                 wcfg.wd_ptr_omp, wcfg.wd_is_samp,
-                wcfg.wd_is_omp, wcfg.wd_toml_config,
+                wcfg.wd_is_omp,
+                wcfg.wd_toml_gm_input,
+                wcfg.wd_toml_gm_output,
+                wcfg.wd_toml_config,
                 wcfg.wd_toml_github_tokens,
                 wcfg.wd_toml_chatbot_ai,
                 wcfg.wd_toml_models_ai,
@@ -144,13 +151,17 @@ int __command__(char *chain_pre_command)
         chain_main_data();
 
         setlocale(LC_ALL, "en_US.UTF-8");
-        int _wd_crash_ck = path_acces(".wd_crashdetect");
-        if (_wd_crash_ck) {
+        if (path_access(".wd_crashdetect"))
           remove(".wd_crashdetect");
-          wd_server_crash_check();
-        }
+
+        char size_config[WD_PATH_MAX];
+        wd_snprintf(size_config, sizeof(size_config),
+                ".%s.bak", wcfg.wd_toml_config);
+        if (path_access(size_config))
+            remove(size_config);
 
         wcfg.wd_sel_stat = 0;
+        handle_sigint_status = 0;
         int wd_compile_running = 0;
 
         static int wd_notice_logged = 0;
@@ -170,7 +181,7 @@ int __command__(char *chain_pre_command)
         const char *_dist_command;
 
 _ptr_command:
-        if (!wd_pointer_null(chain_pre_command)) {
+        if (chain_pre_command && chain_pre_command[0] != '\0') {
             ptr_command = strdup(chain_pre_command);
             printf("[" FCOLOUR_CYAN
                    "watchdogs ~ %s" FCOLOUR_DEFAULT "]$ %s\n", wd_get_cwd(), ptr_command);
@@ -180,7 +191,7 @@ _ptr_command:
                         "watchdogs ~ %s" FCOLOUR_DEFAULT "]$ ", wd_get_cwd());
             ptr_command = readline(ptr_prompt);
 
-            if (wd_pointer_null(ptr_command))
+            if (ptr_command[0] == '\0')
                 goto _ptr_command;
         }
 
@@ -232,6 +243,7 @@ _reexecute_command:
             } else if (strcmp(arg, "hardware") == 0) { println(stdout, "hardware: hardware information. | Usage: \"hardware\"");
             } else if (strcmp(arg, "gamemode") == 0) { println(stdout, "gamemode: download sa-mp gamemode. | Usage: \"gamemode\"");
             } else if (strcmp(arg, "pawncc") == 0) { println(stdout, "pawncc: download sa-mp pawncc. | Usage: \"pawncc\"");
+            } else if (strcmp(arg, "log") == 0) { println(stdout, "log: debugging after running server. | Usage: \"log\"");
             } else if (strcmp(arg, "compile") == 0) { println(stdout, "compile: compile your project. | Usage: \"compile\" | [<args>]");
             } else if (strcmp(arg, "running") == 0) { println(stdout, "running: running your project. | Usage: \"running\" | [<args>]");
             } else if (strcmp(arg, "compiles") == 0) { println(stdout, "compiles: compile & running your project. | Usage: \"compiles\" | [<args>]");
@@ -256,11 +268,10 @@ _reexecute_command:
                 wd_run_command("cls");
             }
 
-            wd_sef_fdir_reset();
             wd_notice_logged = 0;
             wcfg.wd_sel_stat = 0;
             wd_compile_running = 0;
-
+            
             chain_main_data();
 
            if (chain_pre_command && chain_pre_command[0] != '\0')
@@ -685,6 +696,32 @@ loop_ipcc3:
             }
 
             goto done;
+        } else if (strcmp(ptr_command, "log") == 0) {
+            wd_set_title("Watchdogs | @ log");
+            printf("running logs command: WD_START_LOGGING...\n");
+#ifdef __ANDROID__
+#ifndef _DBG_PRINT
+        wd_run_command("./watchdogs.tmux WD_START_LOGGING");
+#else
+        wd_run_command("./watchdogs.debug.tmux WD_START_LOGGING");
+#endif
+#elif defined(WD_LINUX)
+#ifndef _DBG_PRINT
+        wd_run_command("./watchdogs WD_START_LOGGING");
+#else
+        wd_run_command("./watchdogs.debug WD_START_LOGGING");
+#endif
+#elif defined(WD_WINDOWS)
+#ifndef _DBG_PRINT
+        wd_run_command("watchdogs.win WD_START_LOGGING");
+#else
+        wd_run_command("watchdogs.debug.win WD_START_LOGGING");
+#endif
+#endif
+            goto done;
+        } else if (strcmp(ptr_command, "WD_START_LOGGING") == 0) {
+            wd_server_crash_check();
+            return WD_RETH;
         } else if (strncmp(ptr_command, "compile", 7) == 0) {
             wd_set_title("Watchdogs | @ compile");
 
@@ -696,6 +733,7 @@ loop_ipcc3:
             char *six_arg = NULL;
             char *seven_arg = NULL;
             char *eight_arg = NULL;
+            char *nine_arg = NULL;
 
             arg = ptr_command + 7;
 
@@ -710,9 +748,11 @@ loop_ipcc3:
             six_arg = strtok(NULL, " ");
             seven_arg = strtok(NULL, " ");
             eight_arg = strtok(NULL, " ");
+            nine_arg = strtok(NULL, " ");
 
             wd_run_compiler(arg, compile_args, second_arg, four_arg,
-                            five_arg, six_arg, seven_arg, eight_arg);
+                            five_arg, six_arg, seven_arg, eight_arg,
+                            nine_arg);
 
             goto done;
         } if (strncmp(ptr_command, "running", 7) == 0) {
@@ -724,46 +764,38 @@ _runners_:
                     goto done;
                 }
                 if (!path_exists(wcfg.wd_toml_config)) {
-                    pr_warning(stdout, "can't locate %s!", wcfg.wd_toml_config);
+                    pr_warning(stdout, "can't locate %s - config file!", wcfg.wd_toml_config);
+                    goto done;
                 }
 
                 server_mode = 0;
 
-                int _wd_log_acces = path_acces("server_log.txt");
+                int _wd_log_acces = path_access("server_log.txt");
                 if (_wd_log_acces)
                   remove("server_log.txt");
-                _wd_log_acces = path_acces("log.txt");
+                _wd_log_acces = path_access("log.txt");
                 if (_wd_log_acces)
                   remove("log.txt");
 
                 size_t cmd_len = 7;
                 char *arg = ptr_command + cmd_len;
                 while (*arg == ' ') ++arg;
-                char *arg1 = strtok(arg, " ");
+                char *arg1 = NULL;
+                arg1 = strtok(arg, " ");
 
                 char *size_arg1 = NULL;
-                if (wd_pointer_null(arg1))
-                    size_arg1 = wcfg.wd_toml_gm_input;
+                if (arg1 == NULL || arg1[0] == '\0')
+                    size_arg1 = wcfg.wd_toml_gm_output;
                 else
-                    size_arg1 = "none";
-                char *gamemode = size_arg1;
-                if (gamemode) {
-                    char *f_EXT = strrchr(gamemode, '.');
-                    if (f_EXT)
-                            *f_EXT = '\0';
-                } else {
-                    gamemode = wcfg.wd_toml_gm_output;
-                }
+                    size_arg1 = arg1;
 
                 size_t needed = wd_snprintf(NULL, 0,
                                 "Watchdogs | "
                                 "@ running | "
                                 "args: %s | "
-                                "gamemode: %s | "
                                 "config: %s | "
-                                "CTRL + C to stop.",
+                                "CTRL + C to stop. | \"log\" for debugging",
                                 size_arg1,
-                                gamemode,
                                 wcfg.wd_toml_config) + 1;
                 char *title_running_info = wd_malloc(needed);
                 if (!title_running_info) { return WD_RETN; }
@@ -771,11 +803,9 @@ _runners_:
                                     "Watchdogs | "
                                     "@ running | "
                                     "args: %s | "
-                                    "gamemode: %s | "
                                     "config: %s | "
-                                    "CTRL + C to stop.",
+                                    "CTRL + C to stop. | \"log\" for debugging",
                                     size_arg1,
-                                    gamemode,
                                     wcfg.wd_toml_config);
                 if (title_running_info) {
                 		wd_set_title(title_running_info);
@@ -783,19 +813,18 @@ _runners_:
                     title_running_info = NULL;
                 }
 
-                int _wd_config_acces = path_acces(wcfg.wd_toml_config);
+                int _wd_config_acces = path_access(wcfg.wd_toml_config);
                 if (!_wd_config_acces) {
                     pr_error(stdout, "%s not found!", wcfg.wd_toml_config);
                     goto done;
                 }
-                
+
                 pr_color(stdout, FCOLOUR_YELLOW, "running..\n");
                 char size_run[128];
+                struct sigaction sa;
                 if (wd_server_env() == 1) {
-                    if (wd_pointer_null(arg) || (arg[0] == '.' && arg[1] == '\0')) {
+                    if (arg1 == NULL || (arg1[0] == '.' && arg1[1] == '\0')) {
 start_main:
-                        struct sigaction sa;
-
                         sa.sa_handler = unit_handle_sigint;
                         sigemptyset(&sa.sa_mask);
                         sa.sa_flags = SA_RESTART;
@@ -809,14 +838,13 @@ start_main:
                         double elapsed;
 
                         int ret_serv = 0;
-
-                        back_start:
+back_start:
                         start = time(NULL);
 #ifdef WD_WINDOWS
-                        wd_snprintf(size_run, sizeof(size_run), "%s", wcfg.wd_ptr_samp);
+                        wd_snprintf(size_run, sizeof(size_run), "%s", wcfg.wd_toml_binary);
 #else
-                        chmod(wcfg.wd_ptr_samp, 0777);
-                        wd_snprintf(size_run, sizeof(size_run), "./%s", wcfg.wd_ptr_samp);
+                        chmod(wcfg.wd_toml_binary, 0777);
+                        wd_snprintf(size_run, sizeof(size_run), "./%s", wcfg.wd_toml_binary);
 #endif
                         end = time(NULL);
 
@@ -833,24 +861,46 @@ start_main:
                             if (elapsed <= 5.0 && ret_serv == 0) {
                                 ret_serv = 1;
                                 printf("\ttry starting again..");
+                                _wd_log_acces = path_access("server_log.txt");
+                                if (_wd_log_acces)
+                                  remove("server_log.txt");
+                                _wd_log_acces = path_access("log.txt");
+                                if (_wd_log_acces)
+                                  remove("log.txt");
                                 goto back_start;
                             }
                         }
 
-                        wd_server_crash_check();
+                        if (handle_sigint_status == 0)
+                            raise(SIGINT);
+
+                        printf("- create debugging runner? [y/n]");
+                        char *dbg_runner = readline(" ");
+                        if (strcmp(dbg_runner, "Y") == 0 || strcmp(dbg_runner, "y") == 0) {
+                            ptr_command = strdup("log");
+                            wd_free(dbg_runner);
+                            goto _reexecute_command;
+                        }
+                        wd_free(dbg_runner);
                     } else {
                         if (wd_compile_running == 1) {
                             wd_compile_running = 0;
                             goto start_main;
                         }
                         server_mode = 1;
-                        wd_run_samp_server(arg1, wcfg.wd_ptr_samp);
+                        wd_run_samp_server(arg1, wcfg.wd_toml_binary);
+                        printf("- create debugging runner? [y/n]");
+                        char *dbg_runner = readline(" ");
+                        if (strcmp(dbg_runner, "Y") == 0 || strcmp(dbg_runner, "y") == 0) {
+                            ptr_command = strdup("log");
+                            wd_free(dbg_runner);
+                            goto _reexecute_command;
+                        }
+                        wd_free(dbg_runner);
                     }
                 } else if (wd_server_env() == 2) {
-                    if (wd_pointer_null(arg) || (arg[0] == '.' && arg[1] == '\0')) {
+                    if (arg1 == NULL || (arg1[0] == '.' && arg1[1] == '\0')) {
 start_main2:
-                        struct sigaction sa;
-
                         sa.sa_handler = unit_handle_sigint;
                         sigemptyset(&sa.sa_mask);
                         sa.sa_flags = SA_RESTART;
@@ -864,14 +914,13 @@ start_main2:
                         double elapsed;
 
                         int ret_serv = 0;
-
 back_start2:
                         start = time(NULL);
 #ifdef WD_WINDOWS
-                        wd_snprintf(size_run, sizeof(size_run), "%s", wcfg.wd_ptr_omp);
+                        wd_snprintf(size_run, sizeof(size_run), "%s", wcfg.wd_toml_binary);
 #else
-                        chmod(wcfg.wd_ptr_samp, 0777);
-                        wd_snprintf(size_run, sizeof(size_run), "./%s", wcfg.wd_ptr_omp);
+                        chmod(wcfg.wd_toml_binary, 0777);
+                        wd_snprintf(size_run, sizeof(size_run), "./%s", wcfg.wd_toml_binary);
 #endif
                         end = time(NULL);
 
@@ -886,11 +935,27 @@ back_start2:
                             if (elapsed <= 5.0 && ret_serv == 0) {
                                 ret_serv = 1;
                                 printf("\ttry starting again..");
+                                _wd_log_acces = path_access("server_log.txt");
+                                if (_wd_log_acces)
+                                  remove("server_log.txt");
+                                _wd_log_acces = path_access("log.txt");
+                                if (_wd_log_acces)
+                                  remove("log.txt");
                                 goto back_start2;
                             }
                         }
 
-                        wd_server_crash_check();
+                        if (handle_sigint_status == 0)
+                            raise(SIGINT);
+
+                        printf("- create debugging runner? [y/n]");
+                        char *dbg_runner = readline(" ");
+                        if (strcmp(dbg_runner, "Y") == 0 || strcmp(dbg_runner, "y") == 0) {
+                            ptr_command = strdup("log");
+                            wd_free(dbg_runner);
+                            goto _reexecute_command;
+                        }
+                        wd_free(dbg_runner);
                     } else {
                         if (wd_compile_running == 1) {
                             wd_compile_running = 0;
@@ -898,7 +963,14 @@ back_start2:
                         }
                         server_mode = 1;
                         wd_run_omp_server(arg1, wcfg.wd_ptr_omp);
-                    }
+                        printf("- create debugging runner? [y/n]");
+                        char *dbg_runner = readline(" ");
+                        if (strcmp(dbg_runner, "Y") == 0 || strcmp(dbg_runner, "y") == 0) {
+                            ptr_command = strdup("log");
+                            wd_free(dbg_runner);
+                            goto _reexecute_command;
+                        }
+                        wd_free(dbg_runner);                    }
                 } else {
                     pr_crit(stdout, "samp-server/open.mp server not found!");
 
@@ -936,11 +1008,13 @@ n_loop_igm2:
         } else if (strcmp(ptr_command, "compiles") == 0) {
             wd_set_title("Watchdogs | @ compiles");
 
-            const char *args[] = { NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL };
+            const char *args[] = { NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL };
 
             wd_compile_running = 1;
 
-            wd_run_compiler(args[0], args[1], args[2], args[3], args[4], args[5], args[6], args[7]);
+            wd_run_compiler(args[0], args[1], args[2], args[3],
+                            args[4], args[5], args[6], args[7],
+                            args[8]);
 
             if (wcfg.wd_compiler_stat < 1) {
                 goto _runners_;
@@ -949,10 +1023,13 @@ n_loop_igm2:
             goto done;
         } else if (strcmp(ptr_command, "stop") == 0) {
             wd_set_title("Watchdogs | @ stop");
+
             wd_stop_server_tasks();
 
             goto done;
         } else if (strcmp(ptr_command, "restart") == 0) {
+            wd_set_title("Watchdogs | @ restart");
+
             wd_stop_server_tasks();
             sleep(2);
             goto _runners_;
@@ -1034,7 +1111,7 @@ retrying:
                 curl_easy_setopt(h, CURLOPT_TCP_KEEPALIVE, 1L);
                 curl_easy_setopt(h, CURLOPT_POSTFIELDS, wanion_json_payload);
                 curl_easy_setopt(h, CURLOPT_ACCEPT_ENCODING, "gzip, deflate");
-                curl_easy_setopt(h, CURLOPT_WRITEFUNCTION, write_cb);
+                curl_easy_setopt(h, CURLOPT_WRITEFUNCTION, write_callback);
                 curl_easy_setopt(h, CURLOPT_WRITEDATA, &b);
                 curl_easy_setopt(h, CURLOPT_TIMEOUT, 30L);
 
@@ -1297,17 +1374,6 @@ L"\t\t   W   A   T   C   H   D   O   G   S\n");
                 goto done;
             }
         } else {
-            if (!strcmp(ptr_command, "sh") || !strcmp(ptr_command, "bash") ||
-                !strcmp(ptr_command, "zsh") || !strcmp(ptr_command, "make") ||
-                !strcmp(ptr_command, "cd")
-                )
-            {
-                pr_error(stdout, "You can't run it!");
-                if (chain_pre_command && chain_pre_command[0] != '\0')
-                    goto done;
-                else
-                    goto _ptr_command;
-            }
             char _p_command[WD_PATH_MAX];
             wd_snprintf(_p_command, WD_PATH_MAX, "%s", ptr_command);
             if (!strcmp(_p_command, "clear")) {
@@ -1335,31 +1401,16 @@ done:
 }
 
 void start_chain(void *chain_pre_command) {
-        /* Reset terminal title */
         wd_set_title(NULL);
-
-        /* Initialize return value to "rethrow" error code */
         int ret = -WD_RETH;
-
-        /* If a pre-command was provided via command line arguments */
-        if (chain_pre_command != NULL) {
-            /* Convert void pointer back to command string */
+        if (chain_pre_command != NULL ) {
             char *fetch_command_argv = (char*)chain_pre_command;
-
-            /* Execute the provided command */
             ret = __command__(fetch_command_argv);
-
-            /* Record command completion time */
             clock_gettime(CLOCK_MONOTONIC, &cmd_end);
-
-            /* If command returns "wait" code, exit this execution */
             if (ret == -WD_RETW) { return; }
-
-            /* Calculate command execution duration */
+            if (ret == WD_RETH) { return; }
             command_dur = (cmd_end.tv_sec - cmd_start.tv_sec) +
                           (cmd_end.tv_nsec - cmd_start.tv_nsec) / 1e9;
-
-            /* Print completion message with timing */
             pr_color(stdout,
                          FCOLOUR_CYAN,
                          " <C> Finished at %.3fs\n",
@@ -1367,14 +1418,9 @@ void start_chain(void *chain_pre_command) {
             return;
         }
 
-/* Label for main command loop when no pre-command provided */
 loop_main:
-        /* Execute command with NULL argument (likely default behavior) */
         ret = __command__(NULL);
-
-        /* Handle different return codes from command execution */
         if (ret == -WD_RETN) {
-            /* Command returned "next" - log completion and restart */
             clock_gettime(CLOCK_MONOTONIC, &cmd_end);
             command_dur = (cmd_end.tv_sec - cmd_start.tv_sec) +
                           (cmd_end.tv_nsec - cmd_start.tv_nsec) / 1e9;
@@ -1382,71 +1428,63 @@ loop_main:
                          FCOLOUR_CYAN,
                          " <C> Finished at %.3fs\n",
                          command_dur);
-            goto loop_main;  /* Restart the command */
+            goto loop_main;
         } else if (ret == WD_RETW) {
-            /* Command returned "wait" - exit program with error */
             clock_gettime(CLOCK_MONOTONIC, &cmd_end);
-            exit(1);
+            exit(0);
         } else if (ret == -WD_RETW) {
-            /* Command returned negative "wait" - restart without logging */
             clock_gettime(CLOCK_MONOTONIC, &cmd_end);
-            goto loop_main;  /* Silent restart */
+            goto loop_main;
+        } else if (ret == WD_RETH) {
+            clock_gettime(CLOCK_MONOTONIC, &cmd_end);
         } else {
-            /* Any other return value - proceed to basic end */
             goto basic_end;
         }
 
-/* Label for normal command completion */
 basic_end:
-        /* Record completion time and calculate duration */
+
         clock_gettime(CLOCK_MONOTONIC, &cmd_end);
         command_dur = (cmd_end.tv_sec - cmd_start.tv_sec) +
                       (cmd_end.tv_nsec - cmd_start.tv_nsec) / 1e9;
 
-        /* Print completion message */
         pr_color(stdout,
                      FCOLOUR_CYAN,
                      " <C> Finished at %.3fs\n",
                      command_dur);
-        goto loop_main;  /* Restart the command loop */
+        goto loop_main;
 }
 
 int main(int argc, char *argv[]) {
-        /* Check if command line arguments were provided */
+        chain_main_data();
+
         if (argc > 1) {
             int i;
             size_t chain_total_len = 0;
 
-            /* Calculate total length needed for command string */
             for (i = 1; i < argc; ++i)
-                chain_total_len += strlen(argv[i]) + 1;  /* +1 for spaces */
+                chain_total_len += strlen(argv[i]) + 1;
 
-            /* Allocate memory for the combined command string */
             char *chain_size_prompt;
             chain_size_prompt = wd_malloc(chain_total_len);
             if (!chain_size_prompt) {
                 pr_error(stdout, "Failed to allocate memory for command");
-                return WD_RETN;  /* Return "next" error code */
+                return WD_RETN;
             }
 
-            /* Build the command string from all arguments */
-            chain_size_prompt[0] = '\0';  /* Initialize empty string */
+            chain_size_prompt[0] = '\0';
             for (i = 1; i < argc; ++i) {
                 if (i > 1)
-                    strcat(chain_size_prompt, " ");  /* Add space between args */
-                strcat(chain_size_prompt, argv[i]);  /* Append each argument */
+                    strcat(chain_size_prompt, " ");
+                strcat(chain_size_prompt, argv[i]);
             }
 
-            /* Start command chain with the built command */
             start_chain(chain_size_prompt);
 
-            /* Clean up allocated memory */
             wd_free(chain_size_prompt);
-            return WD_RETZ;  /* Return "zero" success code */
+            return WD_RETZ;
         } else {
-            /* No arguments provided - start with NULL (default behavior) */
             start_chain(NULL);
         }
 
-        return WD_RETZ;  /* Return "zero" success code */
+        return WD_RETZ;
 }

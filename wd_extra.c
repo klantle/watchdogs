@@ -616,7 +616,7 @@ void compiler_detailed(const char *pawn_output, int debug,
       wd_set_title(size_compiler);
 
       /* Check if compiled output file exists and is accessible */
-      int amx_access = path_acces(pawn_output);
+      int amx_access = path_access(pawn_output);
       /* Only show detailed info if file exists and debug mode is enabled */
       if (amx_access && debug != 0) {
                 /* Calculate DJB2 hash of the compiled file for verification */

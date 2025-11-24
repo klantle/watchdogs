@@ -19,6 +19,7 @@ wd_run_compiler(const char *arg,
 				const char *five_arg,
 				const char *six_arg,
 				const char *seven_arg,
-				const char *eight_arg);
+				const char *eight_arg,
+				const char *nine_arg);
 
 #endif

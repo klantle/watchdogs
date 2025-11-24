@@ -163,12 +163,12 @@ termux:
 	@echo "==> Building for Termux (Android)"
 	@if [ -f "/usr/include/ncurses.h" ] || [ -f "/data/data/com.termux/files/usr/include/ncurses" ]; then \
 		echo "==> ncurses found, building with _NCURSES flag"; \
-		echo "==> Running: $(CC) $(CFLAGS) -I/data/data/com.termux/files/usr/include -I$$PREFIX/include -I$$PREFIX/lib -I$$PREFIX/bin -D__ANDROID__ -D_NCURSES -fPIE $(SRCS) -o watchdogs.tmux $(LDFLAGS) -landroid-spawn -pie"; \
-		$(CC) $(CFLAGS) -I/data/data/com.termux/files/usr/include -I$$PREFIX/include -I$$PREFIX/lib -I$$PREFIX/bin -D__ANDROID__ -D_NCURSES -fPIE $(SRCS) -o watchdogs.tmux $(LDFLAGS) -landroid-spawn -pie; \
+		echo "==> Running: $(CC) $(CFLAGS) -I$$PREFIX/include -I$$PREFIX/lib -D__ANDROID__ -D_NCURSES -fPIE $(SRCS) -o watchdogs.tmux $(LDFLAGS) -landroid-spawn -pie"; \
+		$(CC) $(CFLAGS) -I$$PREFIX/include -I$$PREFIX/lib -D__ANDROID__ -D_NCURSES -fPIE $(SRCS) -o watchdogs.tmux $(LDFLAGS) -landroid-spawn -pie; \
 	else \
 		echo "==> ncurses not found, building without _NCURSES flag"; \
-		echo "==> Running: $(CC) $(CFLAGS) -I/data/data/com.termux/files/usr/include -I$$PREFIX/include -I$$PREFIX/lib -I$$PREFIX/bin -D__ANDROID__ -fPIE $(SRCS) -o watchdogs.tmux $(LDFLAGS) -landroid-spawn -pie"; \
-		$(CC) $(CFLAGS) -I/data/data/com.termux/files/usr/include -I$$PREFIX/include -I$$PREFIX/lib -I$$PREFIX/bin -D__ANDROID__ -fPIE $(SRCS) -o watchdogs.tmux $(LDFLAGS) -landroid-spawn -pie; \
+		echo "==> Running: $(CC) $(CFLAGS) -I$$PREFIX/include -I$$PREFIX/lib -D__ANDROID__ -fPIE $(SRCS) -o watchdogs.tmux $(LDFLAGS) -landroid-spawn -pie"; \
+		$(CC) $(CFLAGS) -I$$PREFIX/include -I$$PREFIX/lib -D__ANDROID__ -fPIE $(SRCS) -o watchdogs.tmux $(LDFLAGS) -landroid-spawn -pie; \
 	fi;
 	@echo "==> Termux build complete"
 
@@ -200,12 +200,12 @@ termux-debug:
 	@echo "==> Building DEBUG Termux version"
 	@if [ -f "/usr/include/ncurses.h" ] || [ -f "/data/data/com.termux/files/usr/include/ncurses" ]; then \
 		echo "==> ncurses found, building with _NCURSES flag and debug flags"; \
-		echo "==> Running: $(CC) -g -O0 -Wall -fno-omit-frame-pointer -fno-inline -I/data/data/com.termux/files/usr/include -I$$PREFIX/include -I$$PREFIX/lib -I$$PREFIX/bin -D__ANDROID__ -D_NCURSES $(SRCS) -o watchdogs.debug.tmux $(LDFLAGS) -landroid-spawn"; \
-		$(CC) -g -O0 -Wall -fno-omit-frame-pointer -fno-inline -I/data/data/com.termux/files/usr/include -I$$PREFIX/include -I$$PREFIX/lib -I$$PREFIX/bin -D__ANDROID__ -D_NCURSES $(SRCS) -o watchdogs.debug.tmux $(LDFLAGS) -landroid-spawn; \
+		echo "==> Running: $(CC) -g -O0 -Wall -fno-omit-frame-pointer -fno-inline -I$$PREFIX/include -I$$PREFIX/lib -D__ANDROID__ -D_NCURSES $(SRCS) -landroid-spawn -o watchdogs.debug.tmux $(LDFLAGS)"; \
+		$(CC) -g -O0 -Wall -fno-omit-frame-pointer -fno-inline -I$$PREFIX/include -I$$PREFIX/lib -D__ANDROID__ -D_NCURSES $(SRCS) -landroid-spawn -o watchdogs.debug.tmux $(LDFLAGS); \
 	else \
 		echo "==> ncurses not found, building without _NCURSES flag and debug flags"; \
-		echo "==> Running: $(CC) -g -O0 -Wall -fno-omit-frame-pointer -fno-inline -I/data/data/com.termux/files/usr/include -I$$PREFIX/include -I$$PREFIX/lib -I$$PREFIX/bin -D__ANDROID__ $(SRCS) -o watchdogs.debug.tmux $(LDFLAGS) -landroid-spawn"; \
-		$(CC) -g -O0 -Wall -fno-omit-frame-pointer -fno-inline -I/data/data/com.termux/files/usr/include -I$$PREFIX/include -I$$PREFIX/lib -I$$PREFIX/bin -D__ANDROID__ $(SRCS) -o watchdogs.debug.tmux $(LDFLAGS) -landroid-spawn; \
+		echo "==> Running: $(CC) -g -O0 -Wall -fno-omit-frame-pointer -fno-inline -I$$PREFIX/include -I$$PREFIX/lib -D__ANDROID__ $(SRCS) -landroid-spawn -o watchdogs.debug.tmux $(LDFLAGS)"; \
+		$(CC) -g -O0 -Wall -fno-omit-frame-pointer -fno-inline -I$$PREFIX/include -I$$PREFIX/lib -D__ANDROID__ $(SRCS) -landroid-spawn -o watchdogs.debug.tmux $(LDFLAGS); \
 	fi;
 	@echo "==> Termux debug build complete"
 

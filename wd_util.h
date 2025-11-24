@@ -2,7 +2,6 @@
 #define UTILS_H
 
 #define __WATCHDOGS__
-#ifdef __WATCHDOGS__
 
 #include <stddef.h>
 #include <stdbool.h>
@@ -14,12 +13,14 @@
 #include "include/cJSON/cJSON.h"
 #include "include/tomlc/toml.h"
 
-#ifdef _WIN32
+#if defined(_WIN32)
 #define WD_WINDOWS
-#elif defined(__ANDROID__)
-#define WD_ANDROID
-#elif defined(__linux__)
+#endif
+#if defined(__linux__)
 #define WD_LINUX
+#endif
+#if defined(__ANDROID__)
+#define WD_ANDROID
 #endif
 
 #ifdef WD_WINDOWS
@@ -141,6 +142,7 @@ enum {
 #define findstr strfind
 #define wd_strcpy strcpy
 #define wd_strncpy strncpy
+#define wd_sprintf sprintf
 #define wd_snprintf snprintf
 
 #ifndef min3
@@ -200,10 +202,11 @@ int win_ftruncate(FILE *file, long length);
 struct struct_of { int (*title)(const char *); };
 extern const char* __command[];
 extern const size_t __command_len;
-bool wd_pointer_null(const char *str);
 char *wd_get_cwd(void);
 char* wd_masked_text(int reveal, const char *text);
 int wd_mkdir(const char *path);
+void
+json_escape_string(char *dest, const char *src, size_t dest_size);
 int wd_run_command(const char *cmd);
 int is_termux_environment(void);
 int is_native_windows(void);
@@ -224,7 +227,7 @@ int kill_process(const char *name);
 int dir_exists(const char *path);
 int path_exists(const char *path);
 int dir_writable(const char *path);
-int path_acces(const char *path);
+int path_access(const char *path);
 int file_regular(const char *path);
 int file_same_file(const char *a, const char *b);
 int ensure_parent_dir(char *out_parent, size_t n, const char *dest);
@@ -235,5 +238,4 @@ int wd_toml_configs(void);
 int wd_sef_wcopy(const char *c_src, const char *c_dest);
 int wd_sef_wmv(const char *c_src, const char *c_dest);
 
-#endif
 #endif

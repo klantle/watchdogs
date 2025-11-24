@@ -30,61 +30,17 @@ struct version_info {
 		const char *windows_file;
 };
 
-static int get_termux_architecture(char *out_arch, size_t buf_size)
-{
-		struct utsname uname_data;
-
-		if (uname(&uname_data) != 0) {
-				pr_error(stdout, "Failed to get system information");
-				return -WD_RETN;
-		}
-
-		if (strcmp(uname_data.machine, "aarch64") == 0) {
-				wd_strncpy(out_arch, "arm64", buf_size);
-				return WD_RETZ;
-		} else if (strcmp(uname_data.machine, "armv7l") == 0 ||
-				   strcmp(uname_data.machine, "armv8l") == 0) {
-				wd_strncpy(out_arch, "arm32", buf_size);
-				return WD_RETZ;
-		}
-
-		printf("Unknown arch: %s\n", uname_data.machine);
-
-		printf("Select architecture for Termux:\n");
-		printf("-> [A/a] arm32\n");
-		printf("-> [B/b] arm64\n");
-
-		char *selection = readline("==> ");
-
-		if (strfind(selection, "A"))
-		{
-			wd_strncpy(out_arch, "arm32", buf_size);
-			wd_free(selection);
-			return WD_RETZ;
-		} else if (strfind(selection, "B")) {
-			wd_strncpy(out_arch, "arm64", buf_size);
-			wd_free(selection);
-			return WD_RETZ;
-		} else {
-			pr_error(stdout, "Invalid architecture selection");
-			if (wcfg.wd_sel_stat == 0)
-				return WD_RETZ;
-			wd_free(selection);
-			return -WD_RETN;
-		}
-}
-
 static int pawncc_handle_termux_installation(void)
 {
 		const char *termux_versions[] = {
-												"3.10.11",
-												"3.10.10"
-										};
+							"3.10.11",
+							"3.10.10"
+						};
 		size_t version_count;
 		version_count = sizeof(termux_versions) / sizeof(termux_versions[0]);
 		char version_selection;
 		char architecture[16];
-		char url[526];
+		char url[WD_PATH_MAX * 3];
 		char filename[128];
 		int version_index;
 
@@ -111,17 +67,57 @@ ret_pawncc:
 			version_index = version_selection - 'a';
 		} else {
 			pr_error(stdout, "Invalid version selection '%c'. "
-							 "Input must be A..%c or a..%c\n",
+ 					 "Input must be A..%c or a..%c\n",
 				version_selection,
 				'A' + (int)version_count - 1,
 				'a' + (int)version_count - 1);
 			wd_free(__version__);
 			goto ret_pawncc;
-    	}
+	    	}
+		wd_free(__version__);
 
-		get_termux_architecture(architecture,
-							    sizeof(architecture) != 0);
+		struct utsname uname_data;
 
+		if (uname(&uname_data) != 0) {
+				pr_error(stdout, "Failed to get system information");
+				return -WD_RETN;
+		}
+
+		if (strcmp(uname_data.machine, "aarch64") == 0) {
+			wd_strncpy(architecture, "arm64", sizeof(architecture));
+			goto done;
+		} else if (strcmp(uname_data.machine, "armv7l") == 0 ||
+			   strcmp(uname_data.machine, "armv8l") == 0) {
+			wd_strncpy(architecture, "arm32", sizeof(architecture));
+			goto done;
+		}
+
+		printf("Unknown arch: %s\n", uname_data.machine);
+
+back:
+		printf("Select architecture for Termux:\n");
+		printf("-> [A/a] arm32\n");
+		printf("-> [B/b] arm64\n");
+
+		char *selection = readline("==> ");
+
+		if (strfind(selection, "A"))
+		{
+			wd_strncpy(architecture, "arm32", sizeof(architecture));
+			wd_free(selection);
+		} else if (strfind(selection, "B")) {
+			wd_strncpy(architecture, "arm64", sizeof(architecture));
+			wd_free(selection);
+		} else {
+			wd_free(selection);
+			if (wcfg.wd_sel_stat == 0)
+				return WD_RETZ;
+			pr_error(stdout, "Invalid architecture selection");
+			goto back;
+		}
+		wd_free(selection);
+
+done:
 		wd_snprintf(url, sizeof(url),
 			 "https://github.com/"
 			 "mxp96/"
@@ -170,8 +166,9 @@ static int pawncc_handle_standard_installation(const char *platform)
 				versions[i]);
 		}
 
+		char *__version__;
 get_back:
-		char *__version__ = readline("==> ");
+		__version__ = readline("==> ");
 		version_selection = __version__[0];
 		if (version_selection >= 'A' &&
 			version_selection <= 'J') {
@@ -180,12 +177,13 @@ get_back:
 			version_selection <= 'j') {
 			version_index = version_selection - 'a';
 		} else {
+			wd_free(__version__);
 			if (wcfg.wd_sel_stat == 0)
 				return WD_RETZ;
 			pr_error(stdout, "Invalid version selection");
-			wd_free(__version__);
 			goto get_back;
 		}
+		wd_free(__version__);
 
 		if (strcmp(versions[version_index], "3.10.11") == 0)
 				pkg_repo_base = "https://github.com/"
@@ -214,7 +212,7 @@ get_back:
 
 int wd_install_pawncc(const char *platform)
 {
-        /* Debugging Pawncc Installation Function */
+        	/* Debugging Pawncc Installation Function */
 #if defined (_DBG_PRINT)
 		pr_color(stdout, FCOLOUR_YELLOW, "-DEBUGGING ");
 	    printf("[function: %s | "
@@ -421,20 +419,20 @@ get_back:
 		__selection__ = readline("==> ");
 		selection = __selection__[0];
 		for (i = 0; i < version_count; i++) {
-				if (selection == versions[i].key ||
-					selection == versions[i].key + 32) {
-						chosen = &versions[i];
-						break;
-				}
+			if (selection == versions[i].key ||
+				selection == versions[i].key + 32) {
+				chosen = &versions[i];
+				break;
+			}
 		}
-
 		if (!chosen) {
-				if (wcfg.wd_sel_stat == 0)
-					return WD_RETZ;
-				pr_error(stdout, "Invalid selection");
-				wd_free(__selection__);
-				goto get_back;
+			wd_free(__selection__);
+			if (wcfg.wd_sel_stat == 0)
+				return WD_RETZ;
+			pr_error(stdout, "Invalid selection");
+			goto get_back;
 		}
+		wd_free(__selection__);
 
 		const char *url = (strcmp(platform, "linux") == 0) ?
 				chosen->linux_url : chosen->windows_url;

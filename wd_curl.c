@@ -19,7 +19,7 @@
 #include "wd_unit.h"
 #include "wd_curl.h"
 
-const char* SITES[MAX_NUM_SITES][2] = {
+const char* AIO_SITES_LIST[MAX_NUM_SITES][2] = {
 	    {"github", "https://github.com/%s"},
 	    {"gitlab", "https://gitlab.com/%s"},
 	    {"instagram", "https://instagram.com/%s"},
@@ -99,21 +99,10 @@ const char* SITES[MAX_NUM_SITES][2] = {
 	    {"paypal", "https://paypal.me/%s"}
 };
 
-/**
- * hello there!.
- * this is a string variable used to statically store the PawnCC folder name,
- * ensuring that PawnCC is applied from the correct directory and not from an incorrect extraction folder.
- */
 static char
 	pawncc_dir_src[WD_PATH_MAX];
 
-/**
- * Verifies and sets the CA certificate bundle for CURL SSL verification
- * Searches for cacert.pem in platform-specific locations
- * @param curl: Pointer to CURL handle to configure
- */
 void verify_cacert_pem(CURL *curl) {
-	    /* Determine the current platform using preprocessor defines */
 	    int is_win32 = 0;
 	#ifdef WD_WINDOWS
 	    is_win32 = 1;
@@ -129,19 +118,14 @@ void verify_cacert_pem(CURL *curl) {
 	    is_linux = 3;
 	#endif
 
-	    /* Static variable to ensure warning is only shown once per program execution */
 	    static int cacert_notice = 0;
 
-	    /* Windows-specific certificate search paths */
 	    if (is_win32) {
-	        /* Check current directory for cacert.pem */
 	        if (access("cacert.pem", F_OK) == 0)
 	            curl_easy_setopt(curl, CURLOPT_CAINFO, "cacert.pem");
-	        /* Check Windows-specific path */
 	        else if (access("C:/libwatchdogs/cacert.pem", F_OK) == 0)
 	            curl_easy_setopt(curl, CURLOPT_CAINFO, "C:/libwatchdogs/cacert.pem");
 	        else {
-	            /* Show warning only once if certificate not found */
 	            if (cacert_notice != 1) {
 	                cacert_notice = 1;
 	                pr_color(stdout,
@@ -150,23 +134,20 @@ void verify_cacert_pem(CURL *curl) {
 	            }
 	        }
 	    }
-	    /* Android-specific certificate search paths */
 	    else if (is_android) {
-	        /* Get user's home directory from environment */
 	        const char *env_home = getenv("HOME");
-	        char size_env_home[WD_PATH_MAX + 6];  /* Buffer for home path + "/cacert.pem" */
+	        if (env_home == NULL || env_home[0] == '\0') {
+	        	env_home = "/data/data/com.termux/files/home";
+	        }
+	        char size_env_home[WD_PATH_MAX + 6];
 
-	        /* Construct full path to cacert.pem in home directory */
 	        wd_snprintf(size_env_home, sizeof(size_env_home), "%s/cacert.pem", env_home);
 
-	        /* Check current directory for cacert.pem */
 	        if (access("cacert.pem", F_OK) == 0)
 	            curl_easy_setopt(curl, CURLOPT_CAINFO, "cacert.pem");
-	        /* Check home directory for cacert.pem */
 	        else if (access(size_env_home, F_OK) == 0)
 	            curl_easy_setopt(curl, CURLOPT_CAINFO, size_env_home);
 	        else {
-	            /* Show warning only once if certificate not found */
 	            if (cacert_notice != 1) {
 	                cacert_notice = 1;
 	                pr_color(stdout,
@@ -175,393 +156,201 @@ void verify_cacert_pem(CURL *curl) {
 	            }
 	        }
 	    }
-	    /* Linux-specific certificate search paths */
 	    else if (is_linux) {
-	        /* Check current directory for cacert.pem */
 	        if (access("cacert.pem", F_OK) == 0)
 	            curl_easy_setopt(curl, CURLOPT_CAINFO, "cacert.pem");
-	        /* Check system certificates directory */
 	        else if (access("/etc/ssl/certs/cacert.pem", F_OK) == 0)
 	            curl_easy_setopt(curl, CURLOPT_CAINFO, "/etc/ssl/certs/cacert.pem");
 	        else {
-	            /* Show warning only once if certificate not found */
 	            if (cacert_notice != 1) {
 	                cacert_notice = 1;
 	                pr_color(stdout,
-	                         FCOLOUR_GREEN,  /* Note: Different color for Linux */
+	                         FCOLOUR_GREEN,
 	                         "curl: i can't found cacert.pem. SSL verification may fail.\n");
 	            }
 	        }
 	    }
-
-	    /* Note: If no platform matches or certificate not found,
-	     * CURL will use its default certificate verification behavior */
 }
 
-/**
- * Progress callback function for CURL downloads
- * Displays download progress with percentage and visual indicator
- *
- * @param ptr User-defined pointer (not used)
- * @param dltotal Total bytes to download
- * @param dlnow Bytes downloaded so far
- * @param ultotal Total bytes to upload (not used)
- * @param ulnow Bytes uploaded so far (not used)
- * @return Always returns WD_RETZ (success)
- */
 static int progress_callback(void *ptr, curl_off_t dltotal,
 						     curl_off_t dlnow, curl_off_t ultotal,
 						     curl_off_t ulnow)
 {
-		static int last_percent = -1;  /* Store last displayed percentage to avoid flickering */
-		int percent;                   /* Current download percentage */
+		static int last_percent = -1;
+		int percent;
 
-		/* Only calculate percentage if we know the total download size */
 		if (dltotal > 0) {
-				/* Calculate current download percentage */
 				percent = (int)((dlnow * 100) / dltotal);
-				/* Only update display if percentage has changed */
 				if (percent != last_percent) {
-						/* Display different message for incomplete vs complete downloads */
 						if (percent < 100)
-								pr_color(stdout, FCOLOUR_CYAN, "\r\tDownloading... %3d%% ?-", percent);  /* In progress */
+								pr_color(stdout, FCOLOUR_CYAN, "\r\tDownloading... %3d%% ?-", percent);
 						else
-								pr_color(stdout, FCOLOUR_CYAN, "\r\tDownloading... %3d%% - ", percent);   /* Complete */
+								pr_color(stdout, FCOLOUR_CYAN, "\r\tDownloading... %3d%% - ", percent);
 
-						fflush(stdout);      /* Ensure output is displayed immediately */
-						last_percent = percent;  /* Update last displayed percentage */
+						fflush(stdout);
+						last_percent = percent;
 				}
 		}
 
-		return WD_RETZ;  /* Always return success to continue download */
+		return WD_RETZ;
 }
 
-/*
- * Callback function for handling HTTP response data from site checks
- * This function is called by libcurl as it receives data from the HTTP response
- */
-size_t write_cb_sites(void *data, size_t size, size_t nmemb, void *userp) {
-	    /* Calculate total size of the received data chunk */
-	    size_t total_size = size * nmemb;
-	    /* Cast user pointer to our string structure */
-	    struct string *str = (struct string *)userp;
-
-	    /* Reallocate memory to accommodate the new data plus null terminator */
-	    str->ptr = realloc(str->ptr, str->len + total_size + 1);
-	    if (str->ptr == NULL) {
-	        printf("Memory allocation failed!\n");
-	        exit(1);
-	    }
-
-	    /* Copy the new data to the end of our existing buffer */
-	    memcpy(str->ptr + str->len, data, total_size);
-	    /* Update the length of our string */
-	    str->len += total_size;
-	    /* Ensure the string is null-terminated */
-	    str->ptr[str->len] = '\0';
-
-	    /* Return the number of bytes processed (required by libcurl) */
-	    return total_size;
-}
-
-/*
- * Generates username variations for account tracking
- * Creates common permutations that people might use when their preferred username is taken
- */
-void acc_track_gn_variations(const char *base, char variations[][100], int *variation_count) {
-	    int len = strlen(base);
-	    int i;
-
-	    /* Start with the original base username */
-	    strcpy(variations[(*variation_count)++], base);
-
-	    /* Generate variations with duplicated characters (e.g., "user" -> "uuser", "usser", etc.) */
-	    for (i = 0; i < len; i++) {
-	        char temp[100];
-	        /* Copy characters up to position i */
-	        strncpy(temp, base, i);
-	        /* Duplicate the character at position i */
-	        temp[i] = base[i];
-	        temp[i+1] = base[i];
-	        /* Copy the rest of the string after the duplicated character */
-	        strcpy(temp + i + 2, base + i + 1);
-	        strcpy(variations[(*variation_count)++], temp);
-	    }
-
-	    /* Generate variations with repeated last character (e.g., "user" -> "userrr", "userrrr") */
-	    for (i = 2; i <= 5; i++) {
-	        char temp[100];
-	        snprintf(temp, sizeof(temp), "%s", base);
-	        /* Append the last character multiple times */
-	        for (int j = 0; j < i; j++) {
-	            temp[strlen(temp)] = base[len - 1];
-	        }
-	        strcpy(variations[(*variation_count)++], temp);
-	    }
-
-	    /* Generate common suffix variations */
-	    strcpy(variations[(*variation_count)++], strcat(strdup(base), "1"));      /* Add number 1 */
-	    strcpy(variations[(*variation_count)++], strcat(strdup(base), "123"));    /* Add sequence 123 */
-	    strcpy(variations[(*variation_count)++], strcat(strdup(base), "007"));    /* Add James Bond reference */
-	    strcpy(variations[(*variation_count)++], strcat(strdup(base), "_"));      /* Add underscore */
-	    strcpy(variations[(*variation_count)++], strcat(strdup(base), "."));      /* Add period */
-	    strcpy(variations[(*variation_count)++], strcat(strdup(base), "_dev"));   /* Add _dev suffix */
-}
-
-/*
- * Checks if a username exists across multiple websites/platforms
- * Performs HTTP requests to various sites with the given username pattern
- */
-void acc_track_username(CURL *curl, const char *username) {
-	    CURLcode res;
-	    /* Initialize response buffer structure */
-	    struct string response;
-	    response.ptr = malloc(1);
-	    response.len = 0;
-
-	    /* Set up HTTP headers with a common user agent */
-	    struct curl_slist *headers = NULL;
-	    headers = curl_slist_append(headers, "User-Agent: Mozilla/5.0");
-
-	    /* Iterate through all defined sites to check for username existence */
-	    for (int i = 0; i < MAX_NUM_SITES; i++) {
-	        char url[200];
-	        /* Format the URL with the username (SITES[i][1] likely contains URL pattern) */
-	        snprintf(url, sizeof(url), SITES[i][1], username);
-
-	        /* Configure libcurl options for this request */
-	        curl_easy_setopt(curl, CURLOPT_URL, url);
-	        curl_easy_setopt(curl, CURLOPT_HTTPHEADER, headers);
-	        curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, write_cb_sites);
-	        curl_easy_setopt(curl, CURLOPT_WRITEDATA, (void *)&response);
-
-	        /* Verify SSL certificate (security measure) */
-	        verify_cacert_pem(curl);
-
-	        /* Execute the HTTP request */
-	        res = curl_easy_perform(curl);
-
-	        /* Handle request results */
-	        if (res != CURLE_OK) {
-	            /* Report curl errors (network issues, etc.) */
-	            printf("[%s] %s -> ERROR %s\n", SITES[i][0], url, curl_easy_strerror(res));
-	        } else {
-	            /* Get HTTP status code to determine if account exists */
-	            long status_code;
-	            curl_easy_getinfo(curl, CURLINFO_RESPONSE_CODE, &status_code);
-	            if (status_code == 200) {
-	                /* 200 status typically means account exists */
-	                printf("[%s] %s -> FOUND\n", SITES[i][0], url);
-	                fflush(stdout);
-	            } else {
-	                /* Other status codes typically mean account doesn't exist */
-	                printf("[%s] %s -> NOT FOUND (%ld)\n", SITES[i][0], url, status_code);
-	                fflush(stdout);
-	            }
-	        }
-	        /* Reset response buffer for next request */
-	        response.len = 0;
-	    }
-}
-
-/**
- * Callback function for writing data received from curl
- * @param ptr: Pointer to the received data buffer
- * @param size: Always 1 (according to curl documentation)
- * @param nmemb: Size of the data in bytes
- * @param userdata: Pointer to user-provided data structure (struct buf in this case)
- * @return: Number of bytes actually processed (should equal size * nmemb on success)
- */
-size_t write_cb(void *ptr, size_t size, size_t nmemb, void *userdata)
+size_t
+write_callback(void *ptr, size_t size, size_t nmemb, void *userdata)
 {
-	    /* Calculate total size of the incoming data */
-	    size_t total = size * nmemb;
+	    size_t total;
+	    total = size * nmemb;
+	    struct buf *b;
+	    b = userdata;
+	    char *p;
+	    p = wd_realloc(b->data,
+	    			   b->len + total + 1);
 
-	    /* Cast userdata to our buffer structure */
-	    struct buf *b = userdata;
+	    if (!p)
+	    	return WD_RETZ;
 
-	    /* Reallocate buffer to accommodate new data plus null terminator */
-	    char *p = realloc(b->data, b->len + total + 1);
-
-	    /* If realloc fails, return 0 to signal error to curl */
-	    if (!p) return 0;
-
-	    /* Update buffer pointer with new memory location */
 	    b->data = p;
-
-	    /* Copy new data to the end of existing buffer */
-	    memcpy(b->data + b->len, ptr, total);
-
-	    /* Update buffer length */
+	    memcpy(b->data + b->len,
+	    	   ptr, total);
 	    b->len += total;
+	    b->data[b->len] = WD_RETZ;
 
-	    /* Null-terminate the buffer (making it a proper C string) */
-	    b->data[b->len] = 0;
-
-	    /* Return number of bytes processed */
 	    return total;
 }
 
-/**
- * Escapes a string for safe JSON encoding
- * Converts special characters to their JSON escape sequences
- *
- * @param dest: Destination buffer where escaped string will be stored
- * @param src: Source string to be escaped
- * @param dest_size: Total size of destination buffer (including null terminator)
- */
-void json_escape_string(char *dest, const char *src, size_t dest_size) {
-	    /* Initialize pointers and calculate remaining space (leave room for null terminator) */
-	    char *ptr = dest;
-	    size_t remaining = dest_size - 1;
+size_t write_callback_sites(void *data,
+							size_t size,
+							size_t nmemb,
+							void *userp) {
+	    size_t total_size;
+	    total_size = size * nmemb;
+	    struct string *str;
+	    str = (struct string *)userp;
 
-	    /* Process each character in source string until we run out of characters or buffer space */
-	    while (*src && remaining > 1) {
-	        switch (*src) {
-	            /* Double quote - escape with backslash */
-	            case '\"':
-	                if (remaining > 2) {
-	                    *ptr++ = '\\';
-	                    *ptr++ = '\"';
-	                    remaining -= 2;  /* Used 2 characters for escape sequence */
-	                }
-	                break;
-
-	            /* Backslash - escape with another backslash */
-	            case '\\':
-	                if (remaining > 2) {
-	                    *ptr++ = '\\';
-	                    *ptr++ = '\\';
-	                    remaining -= 2;  /* Used 2 characters for escape sequence */
-	                }
-	                break;
-
-	            /* Backspace - convert to \b */
-	            case '\b':
-	                if (remaining > 2) {
-	                    *ptr++ = '\\';
-	                    *ptr++ = 'b';
-	                    remaining -= 2;  /* Used 2 characters for escape sequence */
-	                }
-	                break;
-
-	            /* Form feed - convert to \f */
-	            case '\f':
-	                if (remaining > 2) {
-	                    *ptr++ = '\\';
-	                    *ptr++ = 'f';
-	                    remaining -= 2;  /* Used 2 characters for escape sequence */
-	                }
-	                break;
-
-	            /* Newline - convert to \n */
-	            case '\n':
-	                if (remaining > 2) {
-	                    *ptr++ = '\\';
-	                    *ptr++ = 'n';
-	                    remaining -= 2;  /* Used 2 characters for escape sequence */
-	                }
-	                break;
-
-	            /* Carriage return - convert to \r */
-	            case '\r':
-	                if (remaining > 2) {
-	                    *ptr++ = '\\';
-	                    *ptr++ = 'r';
-	                    remaining -= 2;  /* Used 2 characters for escape sequence */
-	                }
-	                break;
-
-	            /* Tab - convert to \t */
-	            case '\t':
-	                if (remaining > 2) {
-	                    *ptr++ = '\\';
-	                    *ptr++ = 't';
-	                    remaining -= 2;  /* Used 2 characters for escape sequence */
-	                }
-	                break;
-
-	            /* Regular character - copy as-is */
-	            default:
-	                *ptr++ = *src;
-	                remaining--;  /* Used 1 character */
-	                break;
-	        }
-	        src++;  /* Move to next character in source string */
+	    str->ptr = wd_realloc(str->ptr,
+	    					  str->len + total_size + 1);
+	    if (str->ptr == NULL) {
+	        printf("Memory allocation failed!\n");
+	        start_chain(NULL);
 	    }
 
-	    /* Null-terminate the destination string */
-	    *ptr = '\0';
+	    memcpy(str->ptr + str->len,
+	    	   data, total_size);
+	    str->len += total_size;
+	    str->ptr[str->len] = '\0';
 
-	    /* Note: If buffer runs out of space, the function stops processing
-	     * and ensures the destination is always null-terminated */
+	    return total_size;
 }
 
-/**
- * Memory write callback for CURL
- * Stores downloaded data in a dynamically growing memory buffer
- *
- * @param contents Pointer to the data received from CURL
- * @param size Size of each data element
- * @param nmemb Number of data elements
- * @param userp User pointer to memory_struct
- * @return Number of bytes actually processed
- */
 size_t write_memory_callback(void *contents, size_t size,
 							 size_t nmemb, void *userp)
 {
-		struct memory_struct *mem = userp;  /* Cast user pointer to memory structure */
-		size_t realsize = size * nmemb;     /* Calculate actual data size received */
-		char *ptr;                          /* Temporary pointer for realloc */
+		struct memory_struct *mem = userp;
+		size_t realsize = size * nmemb;
+		char *ptr;
 
-		/* Validate input parameters */
 		if (!contents || !mem)
 			return WD_RETZ;
 
-		/* Reallocate memory buffer to accommodate new data plus null terminator */
 		ptr = wd_realloc(mem->memory, mem->size + realsize + 1);
 		if (!ptr) {
 #if defined(_DBG_PRINT)
-			/* Only print memory error in debug mode */
 			pr_error(stdout,
 				   "Out of memory detected in %s\n", __func__);
 #endif
 			return WD_RETZ;
 		}
 
-		/* Update memory structure with new buffer and copy data */
 		mem->memory = ptr;
 		memcpy(&mem->memory[mem->size], contents, realsize);
-		mem->size += realsize;           /* Update total size */
-		mem->memory[mem->size] = '\0';   /* Null-terminate the buffer */
+		mem->size += realsize;
+		mem->memory[mem->size] = '\0';
 
-		return realsize;  /* Return number of bytes processed */
+		return realsize;
 }
 
-/**
- * Searches for compiler tools in the specified directory
- * Identifies pawn compiler components for different platforms
- *
- * @param compiler_type Type of compiler (SAMP or OPENMP)
- * @param found_pawncc_exe Output: found pawncc.exe status
- * @param found_pawncc Output: found pawncc (Unix) status
- * @param found_pawndisasm_exe Output: found pawndisasm.exe status
- * @param found_pawndisasm Output: found pawndisasm (Unix) status
- * @param found_pawnc_dll Output: found pawnc.dll status
- * @param found_PAWNC_DLL Output: found PAWNC.dll status
- */
+void
+acc_track_gn_variations(const char *base, char variations[][100], int *variation_count) {
+	    int len = strlen(base);
+	    int i;
+
+	    strcpy(variations[(*variation_count)++], base);
+
+	    for (i = 0; i < len; i++) {
+	        char size_temp[100];
+	        strncpy(size_temp, base, i);
+	        size_temp[i] = base[i];
+	        size_temp[i+1] = base[i];
+	        strcpy(size_temp + i + 2, base + i + 1);
+	        strcpy(variations[(*variation_count)++], size_temp);
+	    }
+
+	    for (i = 2; i <= 5; i++) {
+	        char size_temp[100];
+	        snprintf(size_temp, sizeof(size_temp), "%s", base);
+	        for (int j = 0; j < i; j++) {
+	            size_temp[strlen(size_temp)] = base[len - 1];
+	        }
+	        strcpy(variations[(*variation_count)++], size_temp);
+	    }
+
+	    strcpy(variations[(*variation_count)++], strcat(strdup(base), "1"));
+	    strcpy(variations[(*variation_count)++], strcat(strdup(base), "123"));
+	    strcpy(variations[(*variation_count)++], strcat(strdup(base), "007"));
+	    strcpy(variations[(*variation_count)++], strcat(strdup(base), "_"));
+	    strcpy(variations[(*variation_count)++], strcat(strdup(base), "."));
+	    strcpy(variations[(*variation_count)++], strcat(strdup(base), "_dev"));
+}
+
+void acc_track_username(CURL *curl, const char *username) {
+	    CURLcode res;
+	    struct string response;
+	    response.ptr = wd_malloc(1);
+	    response.len = 0;
+
+	    struct curl_slist *headers = NULL;
+	    headers = curl_slist_append(headers, "User-Agent: Mozilla/5.0");
+
+	    for (int i = 0; i < MAX_NUM_SITES; i++) {
+	        char url[200];
+	        snprintf(url, sizeof(url), AIO_SITES_LIST[i][1], username);
+
+	        curl_easy_setopt(curl, CURLOPT_URL, url);
+	        curl_easy_setopt(curl, CURLOPT_HTTPHEADER, headers);
+	        curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, write_callback_sites);
+	        curl_easy_setopt(curl, CURLOPT_WRITEDATA, (void *)&response);
+
+	        verify_cacert_pem(curl);
+
+	        res = curl_easy_perform(curl);
+
+	        if (res != CURLE_OK) {
+	            printf("[%s] %s -> ERROR %s\n", AIO_SITES_LIST[i][0], url, curl_easy_strerror(res));
+	        } else {
+	            long status_code;
+	            curl_easy_getinfo(curl, CURLINFO_RESPONSE_CODE, &status_code);
+	            if (status_code == 200) {
+	                printf("[%s] %s -> FOUND\n", AIO_SITES_LIST[i][0], url);
+	                fflush(stdout);
+	            } else {
+	                printf("[%s] %s -> NOT FOUND (%ld)\n", AIO_SITES_LIST[i][0], url, status_code);
+	                fflush(stdout);
+	            }
+	        }
+	        response.len = 0;
+	    }
+}
+
 static void find_compiler_tools(int compiler_type,
 								int *found_pawncc_exe, int *found_pawncc,
 								int *found_pawndisasm_exe, int *found_pawndisasm,
 								int *found_pawnc_dll, int *found_PAWNC_DLL)
 {
-		const char *ignore_dir = NULL;  /* No directories to ignore in search */
-		char size_pf[WD_PATH_MAX + 56]; /* Buffer for search path */
+		const char *ignore_dir = NULL;
+		char size_pf[WD_PATH_MAX + 56];
 
-		/* Build search path */
 		wd_snprintf(size_pf, sizeof(size_pf), "%s", pawncc_dir_src);
 
-		/* Search for each compiler tool in the bin directory */
 		*found_pawncc_exe = wd_sef_fdir(size_pf, "pawncc.exe", ignore_dir);
 		*found_pawncc = wd_sef_fdir(size_pf, "pawncc", ignore_dir);
 		*found_pawndisasm_exe = wd_sef_fdir(size_pf, "pawndisasm.exe", ignore_dir);
@@ -570,56 +359,33 @@ static void find_compiler_tools(int compiler_type,
 		*found_PAWNC_DLL = wd_sef_fdir(size_pf, "PAWNC.dll", ignore_dir);
 }
 
-/**
- * Determines and creates the appropriate compiler directory
- * Checks for existing pawno/qawno directories or creates new one
- *
- * @return Path to compiler directory, or NULL on failure
- */
 static const char *get_compiler_directory(void)
 {
-		struct stat st;           /* File status structure for directory checks */
-		const char *dir_path = NULL;  /* Selected directory path */
+		struct stat st;
+		const char *dir_path = NULL;
 
-		/* Check for existing pawno directory */
 		if (stat("pawno", &st) == 0 && S_ISDIR(st.st_mode)) {
 				dir_path = "pawno";
 		} else if (stat("qawno", &st) == 0 && S_ISDIR(st.st_mode)) {
-				/* Check for existing qawno directory */
 				dir_path = "qawno";
 		} else {
-				/* Create new pawno directory if none exist */
 				if (MKDIR("pawno") == 0)
 						dir_path = "pawno";
 		}
 
-		return dir_path;  /* Return selected directory path */
+		return dir_path;
 }
 
-/**
- * Copies compiler tools from source to destination directory
- *
- * @param src_path Source path of the tool
- * @param tool_name Name of the tool file
- * @param dest_dir Destination directory
- */
 static void copy_compiler_tool(const char *src_path, const char *tool_name,
 						       const char *dest_dir)
 {
-		char dest_path[WD_PATH_MAX];  /* Buffer for destination path */
+		char dest_path[WD_PATH_MAX];
 
-		/* Build full destination path and move the file */
 		wd_snprintf(dest_path, sizeof(dest_path), "%s/%s", dest_dir, tool_name);
-		wd_sef_wmv(src_path, dest_path);  /* Move file to destination */
+		wd_sef_wmv(src_path, dest_path);
 }
 
 #ifndef WD_WINDOWS
-/**
- * Updates library environment variables permanently for Linux/Unix systems
- * by modifying shell configuration files
- *
- * @param lib_path Library path to add to environment
- */
 static void update_library_environment(const char *lib_path)
 {
 	    const char *home_dir = getenv("HOME");
@@ -628,11 +394,9 @@ static void update_library_environment(const char *lib_path)
 	        return;
 	    }
 
-	    /* Determine shell configuration file based on current shell */
 	    const char *shell_rc = NULL;
 	    char shell_path[256];
 
-	    /* Get current shell */
 	    char *shell = getenv("SHELL");
 	    if (shell) {
 	        if (strfind(shell, "zsh")) {
@@ -642,37 +406,31 @@ static void update_library_environment(const char *lib_path)
 	        }
 	    }
 
-	    /* Fallback to common shells if detection failed */
 	    if (!shell_rc) {
-	        /* Check if zshrc exists */
 	        wd_snprintf(shell_path, sizeof(shell_path), "%s/.zshrc", home_dir);
 	        if (access(shell_path, F_OK) == 0) {
 	            shell_rc = ".zshrc";
 	        } else {
-	            shell_rc = ".bashrc";  /* Default to bash */
+	            shell_rc = ".bashrc";
 	        }
 	    }
 
 	    char config_file[256];
 	    wd_snprintf(config_file, sizeof(config_file), "%s/%s", home_dir, shell_rc);
 
-	    /* Check if the path already exists in the config file */
 	    char grep_cmd[512];
 	    wd_snprintf(grep_cmd, sizeof(grep_cmd),
 	                "grep -q \"LD_LIBRARY_PATH.*%s\" %s", lib_path, config_file);
 
 	    int path_exists = system(grep_cmd);
 
-	    /* If path doesn't exist, add it to the config file */
 	    if (path_exists != 0) {
 	        char export_cmd[512];
 	        char backup_cmd[WD_PATH_MAX * 3];
 
-	        /* Create backup of config file */
 	        wd_snprintf(backup_cmd, sizeof(backup_cmd), "cp %s %s.backup", config_file, config_file);
 	        system(backup_cmd);
 
-	        /* Add export command to config file */
 	        wd_snprintf(export_cmd, sizeof(export_cmd),
 	                   "echo 'export LD_LIBRARY_PATH=%s:$LD_LIBRARY_PATH' >> %s",
 	                   lib_path, config_file);
@@ -689,7 +447,6 @@ static void update_library_environment(const char *lib_path)
 	        printf("Library path already exists in %s\n", shell_rc);
 	    }
 
-	    /* Also update system library cache for system directories */
 	    if (strfind(lib_path, "/usr/")) {
 	        int is_not_sudo = system("sudo echo > /dev/null");
 	        if (is_not_sudo == 0) {
@@ -701,49 +458,38 @@ static void update_library_environment(const char *lib_path)
 }
 #endif
 
-/**
- * Sets up Linux library installation for pawn compiler
- * Copies library files to system directories and updates environment
- *
- * @return WD_RETZ on success, -WD_RETN on failure
- */
 static int setup_linux_library(void)
 {
 #ifdef WD_WINDOWS
-		/* Skip library setup on Windows systems */
 		return WD_RETZ;
 #else
-		const char *selected_path = NULL;  /* Chosen library installation path */
-		char libpawnc_src[WD_PATH_MAX];    /* Source path of library file */
-		char dest_path[WD_PATH_MAX];       /* Destination path for library */
-		struct stat st;                    /* File status structure */
-		int i, found_lib;                  /* Loop counter and library found flag */
+		const char *selected_path = NULL;
+		char libpawnc_src[WD_PATH_MAX];
+		char dest_path[WD_PATH_MAX];
+		struct stat st;
+		int i, found_lib;
 
-		/* Possible library installation paths for different environments */
 		const char *lib_paths[] =	{
-										"/data/data/com.termux/files/usr/lib/",      /* Termux ARM */
-										"/data/data/com.termux/files/usr/local/lib/", /* Termux local */
-										"/data/data/com.termux/arm64/usr/lib",        /* Termux ARM64 */
-										"/data/data/com.termux/arm32/usr/lib",        /* Termux ARM32 */
-										"/data/data/com.termux/amd32/usr/lib",        /* Termux x86 */
-										"/data/data/com.termux/amd64/usr/lib",        /* Termux x64 */
-										"/usr/local/lib",                            /* System local lib */
-										"/usr/local/lib32"                           /* System local lib32 */
+										"/data/data/com.termux/files/usr/lib/",
+										"/data/data/com.termux/files/usr/local/lib/",
+										"/data/data/com.termux/arm64/usr/lib",
+										"/data/data/com.termux/arm32/usr/lib",
+										"/data/data/com.termux/amd32/usr/lib",
+										"/data/data/com.termux/amd64/usr/lib",
+										"/usr/local/lib",
+										"/usr/local/lib32"
 									};
 
-		/* Skip setup on Windows or unknown OS types */
 		if (!strcmp(wcfg.wd_toml_os_type, OS_SIGNAL_WINDOWS) ||
 			!strcmp(wcfg.wd_toml_os_type, OS_SIGNAL_UNKNOWN))
 				return WD_RETZ;
 
-		/* Search for libpawnc.so */
 		char size_pf[WD_PATH_MAX + 56];
 		wd_snprintf(size_pf, sizeof(size_pf), "%s", pawncc_dir_src);
 		found_lib = wd_sef_fdir(size_pf, "libpawnc.so", NULL);
 		if (!found_lib)
-				return WD_RETZ;  /* Return if library not found */
+				return WD_RETZ;
 
-		/* Find the actual path of the library file */
 		for (i = 0; i < wcfg.wd_sef_count; i++) {
 				if (strstr(wcfg.wd_sef_found_list[i], "libpawnc.so")) {
 						wd_strncpy(libpawnc_src, wcfg.wd_sef_found_list[i], sizeof(libpawnc_src));
@@ -751,45 +497,35 @@ static int setup_linux_library(void)
 				}
 		}
 
-		/* Find a valid library installation path */
 		for (i = 0; i < sizeof(lib_paths) / sizeof(lib_paths[0]); i++) {
 				if (stat(lib_paths[i], &st) == 0 && S_ISDIR(st.st_mode)) {
-						selected_path = lib_paths[i];  /* Use first valid path found */
+						selected_path = lib_paths[i];
 						break;
 				}
 		}
 
-		/* Error if no valid library path found */
 		if (!selected_path) {
 				fprintf(stderr, "No valid library path found!\n");
 				return -WD_RETN;
 		}
 
-		/* Copy library to system directory */
 		wd_snprintf(dest_path, sizeof(dest_path), "%s/libpawnc.so", selected_path);
 		wd_sef_wmv(libpawnc_src, dest_path);
 
-		/* Update library environment variables */
 		update_library_environment(selected_path);
 
-		return WD_RETZ;  /* Return success */
+		return WD_RETZ;
 #endif
 }
 
-/**
- * Applies pawn compiler tools to the project
- * Copies compiler binaries and libraries to appropriate directories
- */
 void wd_apply_pawncc(void)
 {
-		/* Flags indicating which compiler tools were found */
 		int found_pawncc_exe, found_pawncc;
 		int found_pawndisasm_exe, found_pawndisasm;
 		int found_pawnc_dll, found_PAWNC_DLL;
 
-		const char *dest_dir;  /* Destination directory for compiler tools */
+		const char *dest_dir;
 
-		/* Buffers for source paths of each compiler tool */
 		char pawncc_src[WD_PATH_MAX] = { 0 },
 			 pawncc_exe_src[WD_PATH_MAX] = { 0 },
 			 pawndisasm_src[WD_PATH_MAX] = { 0 },
@@ -797,31 +533,26 @@ void wd_apply_pawncc(void)
 			 pawnc_dll_src[WD_PATH_MAX] = { 0 },
 			 PAWNC_DLL_src[WD_PATH_MAX] = { 0 };
 
-		int i;  /* Loop counter */
+		int i;
 
-		/* Reset file directory search results */
 		wd_sef_fdir_reset();
 
-		/* Search for compiler tools based on server type */
 		find_compiler_tools(wcfg.wd_is_samp ? COMPILER_SAMP : COMPILER_OPENMP,
 						    &found_pawncc_exe, &found_pawncc,
 						    &found_pawndisasm_exe, &found_pawndisasm,
 							&found_pawnc_dll, &found_PAWNC_DLL);
 
-		/* Get or create compiler directory */
 		dest_dir = get_compiler_directory();
 		if (!dest_dir) {
 				pr_error(stdout, "Failed to create compiler directory");
-				goto done;  /* Exit on directory creation failure */
+				goto done;
 		}
 
-		/* Process search results to extract full paths of found tools */
 		for (i = 0; i < wcfg.wd_sef_count; i++) {
 				const char *item = wcfg.wd_sef_found_list[i];
 				if (!item)
 						continue;
 
-				/* Identify and store paths for each compiler tool */
 				if (strstr(item, "pawncc.exe")) {
 						wd_strncpy(pawncc_exe_src, item, sizeof(pawncc_exe_src));
 				} else if (strstr(item, "pawncc") && !strstr(item, ".exe")) {
@@ -837,7 +568,6 @@ void wd_apply_pawncc(void)
 				}
 		}
 
-		/* Copy each found tool to the compiler directory */
 		if (found_pawncc_exe && pawncc_exe_src[0])
 				copy_compiler_tool(pawncc_exe_src, "pawncc.exe", dest_dir);
 
@@ -856,96 +586,74 @@ void wd_apply_pawncc(void)
 		if (found_PAWNC_DLL && PAWNC_DLL_src[0])
 				copy_compiler_tool(PAWNC_DLL_src, "PAWNC.dll", dest_dir);
 
-		/* Setup Linux library environment if applicable */
 		setup_linux_library();
 
-		/* Clean up downloaded compiler source directory */
 		char rm_cmd[WD_PATH_MAX + 56];
 		if (is_native_windows())
-			/* Windows delete command with error suppression */
 			wd_snprintf(rm_cmd, sizeof(rm_cmd),
 				"rmdir /s /q \"%s\"",
 				pawncc_dir_src);
 		else
-			/* Unix/Linux recursive delete */
 			wd_snprintf(rm_cmd, sizeof(rm_cmd),
 				"rm -rf %s",
 				pawncc_dir_src);
 		wd_run_command(rm_cmd);
 
-		/* Clear the source directory variable */
 		memset(pawncc_dir_src, 0, sizeof(pawncc_dir_src));
 
-		/* Display success message */
 		pr_info(stdout, "Compiler installed successfully!");
 
-		/* Display Compiler */
 		pr_color(stdout, FCOLOUR_CYAN, "~ compile now? [Y/n]");
 		char *compile_now = readline(" ");
 		if (!strcmp(compile_now, "Y") || !strcmp(compile_now, "y")) {
-			pr_color(stdout, FCOLOUR_CYAN, "~ gamemode name (enter from config toml - enter E/e to exit): ");
+			wd_free(compile_now);
+          	pr_color(stdout, FCOLOUR_CYAN, "~ pawn file name (press enter for from config toml - enter E/e to exit):");
 			char *gamemode_compile = readline(" ");
 			if (strlen(gamemode_compile) < 1) {
-		            const char *args[] = { NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL };
-		            wd_run_compiler(args[0], args[1], args[2], args[3], args[4], args[5], args[6], args[7]);
+		            const char *args[] = { NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL };
+		            wd_run_compiler(args[0], args[1], args[2], args[3], args[4], args[5], args[6], args[7], args[8]);
+					wd_free(gamemode_compile);
 			} else {
-		            const char *args[] = { NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL };
-		            wd_run_compiler(args[0], gamemode_compile, args[2], args[3], args[4], args[5], args[6], args[7]);
+		            const char *args[] = { NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL };
+		            wd_run_compiler(args[0], gamemode_compile, args[2], args[3], args[4], args[5], args[6], args[7], args[8]);
+					wd_free(gamemode_compile);
 			}
-		}
+		} else { wd_free(compile_now); }
 
-/* Cleanup label for error handling */
 done:
-		/* Return to main menu */
 		start_chain(NULL);
 }
 
-/**
- * Prompts user to apply pawn compiler after download
- *
- * @return WD_RETN if user confirms, WD_RETZ if user declines
- */
 static int prompt_apply_pawncc(void)
 {
-		wcfg.wd_ipawncc = 0;  /* Reset pawncc installation flag */
+		wcfg.wd_ipawncc = 0;
 
-		/* Display prompt in yellow color */
 		pr_color(stdout, FCOLOUR_YELLOW, "Apply pawncc?");
 		char *confirm = readline(" [y/n]: ");
 		fflush(stdout);
 
-		/* Handle input reading errors */
 		if (!confirm) {
 			fprintf(stderr, "Error reading input\n");
 			wd_free(confirm);
 			goto done;
 		}
 
-		/* Handle empty input by re-prompting */
 		if (strlen(confirm) == 0) {
 			wd_free(confirm);
 			confirm = readline(" >>> [y/n]: ");
 		}
 
-		/* Process user confirmation */
 		if (confirm) {
 			if (strcmp(confirm, "Y") == 0 || strcmp(confirm, "y") == 0) {
 				wd_free(confirm);
-				return WD_RETN;  /* User confirmed - apply pawncc */
+				return WD_RETN;
 			}
 		}
 
-/* Cleanup label */
 done:
-		return WD_RETZ;  /* User declined or error occurred */
+		return WD_RETZ;
 }
 
-/**
- * Checks if a file is an archive based on its extension
- *
- * @param filename File name to check
- * @return 1 if file is an archive, 0 otherwise
- */
 int is_archive_file(const char *filename)
 {
 		if (strfind(filename, ".tar") ||
@@ -954,67 +662,38 @@ int is_archive_file(const char *filename)
 		return WD_RETZ;
 }
 
-/**
- * Debug callback function for libcurl to log connection details
- *
- * @param handle  The CURL handle that triggered the callback
- * @param type    Type of debug information being provided
- * @param data    Pointer to the data being transmitted/received
- * @param size    Size of the data in bytes
- * @param userptr User pointer set with CURLOPT_DEBUGDATA
- * @return        Always returns 0
- */
 static int debug_callback(CURL *handle, curl_infotype type,
                           char *data, size_t size, void *userptr)
 {
-	    (void)handle; /* prevent compiler warning for unused parameter */
-	    (void)userptr; /* prevent compiler warning for unused parameter */
+	    (void)handle;
+	    (void)userptr;
 
-	    /* Process different types of debug information from libcurl */
 	    switch (type) {
 	    case CURLINFO_TEXT:
-	        /* General informational text from libcurl */
 	        break;
 	    case CURLINFO_HEADER_OUT:
-	        /* Headers being sent to the server */
 	        break;
 	    case CURLINFO_DATA_OUT:
-	        /* Data payload being sent to the server */
 	        break;
 	    case CURLINFO_SSL_DATA_OUT:
-	        /* SSL/TLS data being sent (encrypted) */
 	        break;
 	    case CURLINFO_HEADER_IN:
-	        /* Headers received from the server */
-	        /* Skipped long data information */
 	        if (strfind(data, "location: ") || strfind(data, "content-security-policy: "))
 	        	break;
 	        printf("<= Recv header: %.*s", (int)size, data);
 	        break;
 	    case CURLINFO_DATA_IN:
-	        /* Data payload received from the server */
 	        break;
 	    case CURLINFO_SSL_DATA_IN:
-	        /* SSL/TLS data received (encrypted) */
 	        break;
 	    default:
-	        /* Ignore any other debug info types */
 	        return WD_RETZ;
 	    }
 	    return WD_RETZ;
 }
 
-/**
- * Downloads a file from URL with retry logic and progress display
- * Handles archive extraction and compiler installation if applicable
- *
- * @param url URL to download from
- * @param filename Local filename to save as
- * @return WD_RETZ on success, -WD_RETN on failure
- */
 int wd_download_file(const char *url, const char *filename)
 {
-        /* Debugging Downloader file Function */
 #if defined (_DBG_PRINT)
 		pr_color(stdout, FCOLOUR_YELLOW, "-DEBUGGING ");
 	    printf("[function: %s | "
@@ -1047,43 +726,36 @@ int wd_download_file(const char *url, const char *filename)
                 "Unknown");
 #endif
 #endif
-		CURL *curl;                    /* CURL handle for HTTP requests */
-		FILE *c_fp;                    /* File pointer for writing download */
-		CURLcode res;                  /* CURL operation result */
-		long response_code = 0;        /* HTTP response code */
-		int retry_count = 0;           /* Counter for retry attempts */
-		struct stat file_stat;         /* File status for size verification */
+		CURL *curl;
+		FILE *c_fp;
+		CURLcode res;
+		long response_code = 0;
+		int retry_count = 0;
+		struct stat file_stat;
 
-		/* Display download initiation message */
 		pr_color(stdout, FCOLOUR_GREEN, "Downloading: %s", filename);
 
-		/* Retry loop for download attempts */
 		do {
-			/* Open file for binary writing */
 			c_fp = fopen(filename, "wb");
 			if (!c_fp) {
-				pr_color(stdout, FCOLOUR_RED, "Failed to open file: %s\n", filename);
+				pr_color(stdout, FCOLOUR_RED, "\nFailed to open file: %s\n", filename);
 				return -WD_RETN;
 			}
 
-			/* Initialize CURL session */
 			curl = curl_easy_init();
 			if (!curl) {
-				pr_color(stdout, FCOLOUR_RED, "Failed to initialize CURL\n");
+				pr_color(stdout, FCOLOUR_RED, "\nFailed to initialize CURL\n");
 				fclose(c_fp);
 				return -WD_RETN;
 			}
 
-			/* Prepare HTTP headers */
 			struct curl_slist *headers = NULL;
 
-			/* Add GitHub authentication if downloading dependencies */
 			if (wcfg.wd_idepends == 1) {
 				if (strstr(wcfg.wd_toml_github_tokens, "DO_HERE") || wcfg.wd_toml_github_tokens == NULL || strlen(wcfg.wd_toml_github_tokens) < 1) {
 						pr_color(stdout, FCOLOUR_GREEN, " ~ can't read github token!...\n");
 						sleep(1);
 				} else {
-						/* Create Authorization header with GitHub token */
 						char auth_header[512];
 						wd_snprintf(auth_header, sizeof(auth_header), "Authorization: token %s", wcfg.wd_toml_github_tokens);
 						headers = curl_slist_append(headers, auth_header);
@@ -1095,11 +767,9 @@ int wd_download_file(const char *url, const char *filename)
 				}
 			}
 
-			/* Add standard HTTP headers */
 			headers = curl_slist_append(headers, "User-Agent: watchdogs/1.0");
 			headers = curl_slist_append(headers, "Accept: application/vnd.github.v3.raw");
 
-			/* Configure CURL options */
 			curl_easy_setopt(curl, CURLOPT_URL, url);
 			curl_easy_setopt(curl, CURLOPT_WRITEDATA, c_fp);
 			curl_easy_setopt(curl, CURLOPT_FAILONERROR, 1L);
@@ -1110,12 +780,11 @@ int wd_download_file(const char *url, const char *filename)
 			curl_easy_setopt(curl, CURLOPT_SSL_VERIFYPEER, 1L);
 			curl_easy_setopt(curl, CURLOPT_NOPROGRESS, 0L);
 
-			/* Debugging Notice */
 			static int create_debugging = 0;
 			static int always_create_debugging = 0;
 			if (create_debugging == 0) {
 				create_debugging = 1;
-				pr_color(stdout, FCOLOUR_GREEN, "* create debugging http?");
+				pr_color(stdout, FCOLOUR_GREEN, " * create debugging http?");
 				char *debug_http = readline(" [y/n]: ");
 				if (debug_http) {
 					if (debug_http[0] == 'Y' || debug_http[0] == 'y') {
@@ -1134,52 +803,40 @@ int wd_download_file(const char *url, const char *filename)
 				fflush(stdout);
 			}
 
-			/* Set progress callback for download tracking */
 			curl_easy_setopt(curl, CURLOPT_XFERINFOFUNCTION, progress_callback);
 			curl_easy_setopt(curl, CURLOPT_XFERINFODATA, NULL);
 
-			/* Verify SSL certificates */
 			verify_cacert_pem(curl);
 
 			fflush(stdout);
-			/* Perform the download */
 			res = curl_easy_perform(curl);
 			curl_easy_getinfo(curl, CURLINFO_RESPONSE_CODE, &response_code);
 
-			/* Clean up CURL resources */
 			curl_easy_cleanup(curl);
 			curl_slist_free_all(headers);
 
-			/* Close file */
 			if (c_fp)
 				fclose(c_fp);
 
-			/* Check if download was successful */
 			if (res == CURLE_OK && response_code == 200) {
-				/* Verify downloaded file exists and has content */
 				if (stat(filename, &file_stat) == 0 && file_stat.st_size > 0) {
 					pr_color(stdout, FCOLOUR_GREEN, "Download successful: %" PRIdMAX " bytes\n", (intmax_t)file_stat.st_size);
 					fflush(stdout);
 
-					/* Check if downloaded file is an archive */
 					if (is_archive_file(filename)) {
 						printf("Checking file type for extraction...\n");
 						fflush(stdout);
-						/* Extract the archive */
 						wd_extract_archive(filename);
 
 						char rm_cmd[WD_PATH_MAX];
-						/* Handle archive cleanup based on dependency type */
 						if (wcfg.wd_idepends == 1) {
 							static int rm_deps = 0;
 							if (rm_deps == 0) {
-								/* Prompt user to remove dependency archive */
 								pr_color(stdout, FCOLOUR_GREEN, "* remove archive '%s'? ", filename);
 								char *confirm = readline(" [y/n]: ");
 								if (confirm) {
 									if (confirm[0] == 'Y' || confirm[0] == 'y') {
 										rm_deps = 1;
-										/* Build platform-specific delete command */
 										if (is_native_windows())
 											wd_snprintf(rm_cmd, sizeof(rm_cmd),
 												"if exist \"%s\" (del /f /q \"%s\" 2>nul || "
@@ -1194,7 +851,6 @@ int wd_download_file(const char *url, const char *filename)
 									wd_free(confirm);
 								}
 							} else {
-								/* Auto-remove if user previously confirmed */
 								if (is_native_windows())
 									wd_snprintf(rm_cmd, sizeof(rm_cmd),
 										"if exist \"%s\" (del /f /q \"%s\" 2>nul || "
@@ -1206,15 +862,13 @@ int wd_download_file(const char *url, const char *filename)
 										filename);
 								wd_run_command(rm_cmd);
 							}
-							return WD_RETZ;  /* Return success */
+							return WD_RETZ;
 						} else {
-							/* Prompt for regular file removal */
 							pr_color(stdout, FCOLOUR_GREEN, "remove archive '%s'? ", filename);
 							char *confirm = readline(" [y/n]: ");
 							if (confirm) {
 								if (confirm[0] == 'Y' || confirm[0] == 'y') {
 									char rm_cmd[WD_PATH_MAX];
-									/* Build platform-specific delete command */
 									if (is_native_windows())
 										wd_snprintf(rm_cmd, sizeof(rm_cmd),
 											"if exist \"%s\" (del /f /q \"%s\" 2>nul || "
@@ -1230,55 +884,45 @@ int wd_download_file(const char *url, const char *filename)
 							}
 						}
 
-						/* Check if pawncc installation is requested */
 						if (wcfg.wd_ipawncc && prompt_apply_pawncc()) {
-							/* Prepare source directory for pawncc installation */
 							char size_filename[WD_PATH_MAX];
 						    wd_snprintf(size_filename, sizeof(size_filename), "%s", filename);
 
 						    if (strstr(size_filename, ".tar.gz")) {
 						        char *f_EXT = strstr(size_filename, ".tar.gz");
 						        if (f_EXT)
-						            *f_EXT = '\0';  /* Remove .tar.gz extension */
+						            *f_EXT = '\0';
 						    } else {
 						        char *f_EXT = strrchr(size_filename, '.');
 						        if (f_EXT)
-						            *f_EXT = '\0';  /* Remove single extension */
+						            *f_EXT = '\0';
 						    }
 							wd_snprintf(pawncc_dir_src, sizeof(pawncc_dir_src), "%s", size_filename);
-							/* Apply pawncc compiler tools */
 							wd_apply_pawncc();
 						}
 					} else {
-						/* File is not an archive - skip extraction */
 						printf("File is not an archive, skipping extraction.\n");
 						fflush(stdout);
 					}
 
-					return WD_RETZ;  /* Return success */
+					return WD_RETZ;
 				} else {
-					/* Downloaded file is empty or missing */
 					pr_color(stdout, FCOLOUR_RED, "Downloaded file is empty or missing\n");
-					/* Failed */
 					return WD_RETN;
 				}
 			} else {
-				/* Download failed - display error details */
 				pr_color(stdout, FCOLOUR_RED, "Download failed - "
 						 "HTTP: %ld, "
 						 "CURL: %d, "
-						 "retrying... ", response_code, res);
+						 "retrying... \n", response_code, res);
 			}
 
-			/* Increment retry counter and wait before retry */
 			++retry_count;
 			sleep(3);
-		} while (retry_count < 5);  /* Maximum 5 retry attempts */
+		} while (retry_count < 5);
 
-		/* All retry attempts failed */
 		pr_color(stdout, FCOLOUR_RED, "Download failed after 5 retries\n");
 		start_chain(NULL);
 
-		/* Failed */
 		return WD_RETN;
 }

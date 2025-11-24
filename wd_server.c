@@ -15,31 +15,23 @@
 #include "wd_extra.h"
 #include "wd_util.h"
 #include "wd_depends.h"
+#include "wd_compiler.h"
 #include "wd_server.h"
 
+int handle_sigint_status = 0;
 FILE *config_in = NULL, *config_out = NULL;
 cJSON *sroot = NULL, *pawn = NULL, *main_scripts = NULL;
 char *__cJSON_Data = NULL, *__cJSON_Printed = NULL;
 
 int server_mode = 0;
 void unit_handle_sigint(int sig) {
-/* Ensure SA-MP sends the "--- Server Shutting Down." message.
-* This is unnecessary in Watchdogs since the process is replaced
-* by the executed binary from the start. If CTRL+C is pressed,
-* it sends a SIGINT to the server process, stopping the server immediately.
-*/
-/* wd_stop_server_tasks(); */
-        if (server_mode == 1) {
-          restore_samp_config();
-          restore_omp_config();
-        }
+        handle_sigint_status = 1;
+        wd_stop_server_tasks();
         struct timespec stop_all_timer;
         clock_gettime(CLOCK_MONOTONIC, &stop_all_timer);
-
         FILE *crashdetect_file = fopen(".wd_crashdetect", "w");
         if (crashdetect_file != NULL)
             fclose(crashdetect_file);
-
 #ifdef __ANDROID__
 #ifndef _DBG_PRINT
         wd_run_command("exit && ./watchdogs.tmux");
@@ -61,322 +53,340 @@ void unit_handle_sigint(int sig) {
 #endif
 }
 
-/**
- * Stops running server tasks based on the current server environment
- * Kills the appropriate server process (SA-MP or OpenMP)
- */
 void wd_stop_server_tasks(void) {
-        /* Check server environment and kill the corresponding process */
         if (wd_server_env() == 1)
-          kill_process(wcfg.wd_ptr_samp);  /* Kill SA-MP server process */
+          kill_process(wcfg.wd_toml_binary);
         else if (wd_server_env() == 2)
-          kill_process(wcfg.wd_ptr_omp);   /* Kill OpenMP server process */
+          kill_process(wcfg.wd_toml_binary);
 }
 
-/**
- * Updates server configuration file with new gamemode
- * Creates backup, modifies gamemode0 line, and handles file operations
- *
- * @param gamemode The new gamemode to set in the configuration
- * @return WD_RETZ on success, -WD_RETN on failure
- */
-static int update_server_config(const char *gamemode)
-{
-        FILE *config_in, *config_out;  /* File handles for input and output */
-        char line[1024];               /* Buffer for reading configuration lines */
-        int gamemode_updated = 0;      /* Flag indicating if gamemode was found and updated */
-
-        /* Create backup filename by adding .bak prefix */
-        char size_config[WD_PATH_MAX];
-        wd_snprintf(size_config, sizeof(size_config), ".%s.bak", wcfg.wd_toml_config);
-
-        /* Build move command for creating backup (platform-specific) */
-        char size_mv[WD_MAX_PATH];
-        if (is_native_windows())
-            /* Windows rename command */
-            wd_snprintf(size_mv, sizeof(size_mv),
-                        "ren %s %s",
-                        wcfg.wd_toml_config,
-                        size_config);
-        else
-            /* Unix/Linux move command with force flag */
-            wd_snprintf(size_mv, sizeof(size_mv),
-                        "mv -f %s %s",
-                        wcfg.wd_toml_config,
-                        size_config);
-
-        /* Execute backup creation command */
-        if (wd_run_command(size_mv) != 0) {
-                pr_error(stdout, "Failed to create backup file");
-                return -WD_RETN;
-        }
-
-        /* Open backup file for reading */
-        config_in = fopen(size_config, "r");
-        if (!config_in) {
-                pr_error(stdout, "Failed to open backup config");
-                return -WD_RETN;
-        }
-        /* Open original config file for writing (creates new file) */
-        config_out = fopen(wcfg.wd_toml_config, "w");
-        if (!config_out) {
-                pr_error(stdout, "Failed to write new config");
-                fclose(config_in);
-                return -WD_RETN;
-        }
-
-        /* Process gamemode parameter - remove file extension if present */
-        char put_gamemode[256];
-        wd_snprintf(put_gamemode, sizeof(put_gamemode), "%s", gamemode);
-        char *f_EXT = strrchr(put_gamemode, '.');  /* Find last dot in filename */
-        if (f_EXT) *f_EXT = '\0';  /* Remove file extension by null-terminating */
-        gamemode = put_gamemode;   /* Update gamemode pointer to processed string */
-
-        /* Read and process each line from backup configuration */
-        while (fgets(line, sizeof(line), config_in)) {
-                /* Check if this line is the gamemode0 configuration line */
-                if (strncmp(line, "gamemode0 ", 10) == 0) {
-                        /* Replace with new gamemode value */
-                        fprintf(config_out, "gamemode0 %s\n", gamemode);
-                        gamemode_updated = 1;  /* Mark that we found and updated the gamemode */
-                } else {
-                        /* Copy line as-is without modification */
-                        fputs(line, config_out);
-                }
-        }
-
-        /* If gamemode0 line wasn't found, append it to the end */
-        if (!gamemode_updated)
-                fprintf(config_out, "gamemode0 %s\n", gamemode);
-
-        /* Close both file handles */
-        fclose(config_in);
-        fclose(config_out);
-
-        return WD_RETZ;  /* Return success */
-}
-
-/**
- * Displays server log files based on server type
- * Shows either SA-MP server_log.txt or OpenMP log.txt
- *
- * @param ret Server type indicator (0 = SA-MP, non-zero = OpenMP)
- */
 void wd_display_server_logs(int ret)
 {
-        FILE *log_file;  /* File handle for log file */
-        int ch;          /* Character buffer for reading file */
-
-        /* Determine which log file to open based on server type */
-        if (!ret)
-                log_file = fopen("server_log.txt", "r");  /* SA-MP server log */
-        else
-                log_file = fopen("log.txt", "r");         /* OpenMP server log */
-
-        /* Silently return if log file cannot be opened */
-        if (!log_file) {
-                return;
-        }
-
-        /* Output log contents character by character to stdout */
-        while ((ch = fgetc(log_file)) != EOF)
-                putchar(ch);
-
-        fclose(log_file);  /* Close log file */
+        char *log_file = NULL;
+        if (wd_server_env() == 1)
+            log_file = "server_log.txt";
+        else if (wd_server_env() == 2)
+            log_file = "log.txt";
+        wd_printfile(log_file);
+        return;
 }
 
-/**
- * Checks for server crashes and prompts to install crash detection
- * Scans log files for runtime errors and checks if crashdetect is present
- */
 void wd_server_crash_check(void) {
-        int __has_error = 0;           /* Flag indicating runtime error was found */
-        int server_crashdetect = 0;    /* Counter for crashdetect debug lines */
-        int server_rcon_pass = 0;      /* rcon password error init */
-
-        FILE *proc_f;  /* File handle for log file processing */
-        /* Open appropriate log file based on server mode */
-        if (server_mode == 0)
-          proc_f = fopen("server_log.txt", "r");  /* SA-MP log */
-        else
-          proc_f = fopen("log.txt", "r");         /* OpenMP log */
-
-        /* Process log file if successfully opened */
-        if (proc_f)
-        {
-          char line_buf[1024 + 1024];  /* Buffer for reading log lines */
-          /* Read each line from the log file */
-          while (fgets(line_buf, sizeof(line_buf), proc_f))
-          {
-              /* Check for runtime error indicators (case insensitive) */
-              if (strfind(line_buf, "run time error") || strfind(line_buf, "Run time error"))
-              {
-                  __has_error = 1;  /* Mark that a runtime error occurred */
-                  printf("Runtime error detected in log file\n");
-
-                  /* Additional checks after runtime error detection */
-                  if (strfind(line_buf, "division by zero")) {
-                      printf("Division by zero error found\n");
-                  }
-                  if (strfind(line_buf, "array index out of bounds")) {
-                      printf("Array index out of bounds error found\n");
-                  }
-                  if (strfind(line_buf, "invalid index")) {
-                      printf("Invalid index error found\n");
-                  }
-              }
-              /* Memory address detection in crash logs */
-              if (strfind(line_buf, "0x")) {
-                  printf("Hexadecimal address found in log: %s", line_buf);
-              }
-              if (strfind(line_buf, "address") || strfind(line_buf, "Address")) {
-                  printf("Memory address reference found: %s", line_buf);
-              }
-              /* Specific common crash addresses */
-              if (strfind(line_buf, "0x00000000")) {
-                  printf("NULL pointer address detected (0x00000000)\n");
-              }
-              if (strfind(line_buf, "0xFFFFFFFF")) {
-                  printf("End of memory address detected (0xFFFFFFFF)\n");
-              }
-              if (strfind(line_buf, "0xDEADBEEF")) {
-                  printf("Debug marker address detected (0xDEADBEEF)\n");
-              }
-              if (strfind(line_buf, "0xBAADF00D")) {
-                  printf("Heap fill pattern detected (0xBAADF00D)\n");
-              }
-              if (strfind(line_buf, "0xC0000000")) {
-                  printf("Kernel space address detected (0xC0000000)\n");
-              }
-              if (strfind(line_buf, "0x0012") || strfind(line_buf, "0x0013")) {
-                  printf("Stack memory address detected (%s)\n", line_buf);
-              }
-              if (strfind(line_buf, "0x0040") || strfind(line_buf, "0x0041")) {
-                  printf("Process base address detected (%s)\n", line_buf);
-              }
-              if (strfind(line_buf, "0x1000") || strfind(line_buf, "0x1001")) {
-                  printf("DLL base address detected (%s)\n", line_buf);
-              }
-              if (strfind(line_buf, "0x7FFF")) {
-                  printf("User space limit address detected (0x7FFF...)\n");
-              }
-              if (strfind(line_buf, "0x8000")) {
-                  printf("Kernel boundary address detected (0x8000...)\n");
-              }
-              /* If error was found, look for crashdetect debug information */
-              if (__has_error) {
-                  if (strfind(line_buf, "[debug]") || strfind(line_buf, "crashdetect"))
-                  {
-                      ++server_crashdetect;
-                      printf("Crashdetect debug information found\n");
-
-                      /* Additional crashdetect analysis */
-                      if (strfind(line_buf, "AMX backtrace")) {
-                          printf("AMX backtrace detected in crash log\n");
-                      }
-                      if (strfind(line_buf, "native stack trace")) {
-                          printf("Native stack trace detected\n");
-                      }
-                      if (strfind(line_buf, "heap")) {
-                          printf("Heap-related issue mentioned\n");
-                      }
-                  }
-                  /* Additional error pattern checks when error is present */
-                  if (strfind(line_buf, "stack")) {
-                      printf("Stack-related issue detected\n");
-                  }
-                  if (strfind(line_buf, "memory")) {
-                      printf("Memory-related issue detected\n");
-                  }
-                  if (strfind(line_buf, "access violation")) {
-                      printf("Access violation detected\n");
-                  }
-                  if (strfind(line_buf, "segment")) {
-                      printf("Segmentation fault detected\n");
-                  }
-                  if (strfind(line_buf, "buffer overrun") || strfind(line_buf, "buffer overflow")) {
-                      printf("Buffer overflow detected\n");
-                  }
-                  if (strfind(line_buf, "null pointer")) {
-                      printf("Null pointer exception detected\n");
-                  }
-              }
-              /* Rcon Password Error Check */
-              if (wd_server_env() == 1) {
-                  if (strfind(line_buf, "Error: Your password must be changed from the default password")) {
-                      ++server_rcon_pass;
-
-                      printf("RCON password security error detected\n");
-
-                      /* Additional security checks */
-                      if (strfind(line_buf, "password") && strfind(line_buf, "default")) {
-                          printf("Default password usage detected\n");
-                      }
-                  }
-              }
-              /* Additional general server health checks */
-              if (strfind(line_buf, "warning") || strfind(line_buf, "Warning")) {
-                  printf("Warning message found in log\n");
-              }
-              if (strfind(line_buf, "failed") || strfind(line_buf, "Failed")) {
-                  printf("Failure message detected\n");
-              }
-              if (strfind(line_buf, "timeout") || strfind(line_buf, "Timeout")) {
-                  printf("Timeout event detected\n");
-              }
-              if (strfind(line_buf, "connection lost") || strfind(line_buf, "disconnected")) {
-                  printf("Connection loss detected\n");
-              }
-              /* Plugin specific checks */
-              if (strfind(line_buf, "plugin") || strfind(line_buf, "Plugin")) {
-                  if (strfind(line_buf, "failed to load")) {
-                      printf("Plugin load failure detected\n");
-                  }
-                  if (strfind(line_buf, "crashed")) {
-                      printf("Plugin crash detected\n");
-                  }
-              }
-              /* Performance monitoring */
-              if (strfind(line_buf, "lag") || strfind(line_buf, "Lag")) {
-                  printf("Lag report detected\n");
-              }
-              if (strfind(line_buf, "server fps") || strfind(line_buf, "FPS")) {
-                  printf("FPS information found\n");
-              }
-              /* Database connection issues */
-              if (strfind(line_buf, "database") || strfind(line_buf, "mysql")) {
-                  if (strfind(line_buf, "connection failed") || strfind(line_buf, "can't connect")) {
-                      printf("Database connection failure detected\n");
-                  }
-              }
-              /* Memory allocation issues */
-              if (strfind(line_buf, "out of memory") || strfind(line_buf, "memory allocation")) {
-                  printf("Memory allocation failure detected\n");
-              }
-              if (strfind(line_buf, "malloc") || strfind(line_buf, "free()")) {
-                  printf("Memory management function referenced\n");
-              }
-          }
-          fclose(proc_f);  /* Close log file */
+        int __has_error = 0;
+        int server_crashdetect = 0;
+        int server_rcon_pass = 0;
+        
+        FILE *proc_f = NULL;
+        if (server_mode == 0) {
+            CHMOD("server_log.txt", FILE_MODE);
+            proc_f = fopen("server_log.txt", "rb");
+        }
+        else {
+            CHMOD("log.txt", FILE_MODE);
+            proc_f = fopen("log.txt", "rb");
         }
 
-        /* If error from rcon password is true */
+        if (proc_f)
+        {
+            char line_buf[WD_MAX_PATH * 3];
+            char output_buf[4096];
+            int needed;
+            
+            needed = wd_snprintf(output_buf, sizeof(output_buf),
+                  "====================================================================\n");
+            fwrite(output_buf, 1, needed, stdout);
+            fflush(stdout);
+            
+            while (fgets(line_buf, sizeof(line_buf), proc_f))
+            {
+                if (strfind(line_buf, "run time error") || strfind(line_buf, "Run time error"))
+                {
+                    __has_error = 1;
+                    needed = wd_snprintf(output_buf, sizeof(output_buf), "@ Runtime error detected\n\t");
+                    fwrite(output_buf, 1, needed, stdout);
+                    pr_color(stdout, FCOLOUR_BLUE, line_buf);
+                    fflush(stdout);
+
+                    if (strfind(line_buf, "division by zero")) {
+                        needed = wd_snprintf(output_buf, sizeof(output_buf), "@ Division by zero error found\n\t");
+                        fwrite(output_buf, 1, needed, stdout);
+                        pr_color(stdout, FCOLOUR_BLUE, line_buf);
+                        fflush(stdout);
+                    }
+                    if (strfind(line_buf, "invalid index")) {
+                        needed = wd_snprintf(output_buf, sizeof(output_buf), "@ Invalid index error found\n\t");
+                        fwrite(output_buf, 1, needed, stdout);
+                        pr_color(stdout, FCOLOUR_BLUE, line_buf);
+                        fflush(stdout);
+                    }
+                }
+                if (strfind(line_buf, "The script might need to be recompiled with the latest include file.")) {
+                    needed = wd_snprintf(output_buf, sizeof(output_buf), "@ Needed for recompiled\n\t");
+                    fwrite(output_buf, 1, needed, stdout);
+                    pr_color(stdout, FCOLOUR_BLUE, line_buf);
+                    fflush(stdout);
+                    char *recompiled = readline("recompiled now?");
+                    if (!strcmp(recompiled, "Y") || !strcmp(recompiled, "y")) {
+                      wd_free(recompiled);
+                      pr_color(stdout, FCOLOUR_CYAN, "~ pawn file name (press enter for from config toml - enter E/e to exit):");
+                      char *gamemode_compile = readline(" ");
+                      if (strlen(gamemode_compile) < 1) {
+                            const char *args[] = { NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL };
+                            wd_run_compiler(args[0], args[1], args[2], args[3], args[4], args[5], args[6], args[7], args[8]);
+                            wd_free(gamemode_compile);
+                      } else {
+                            const char *args[] = { NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL };
+                            wd_run_compiler(args[0], gamemode_compile, args[2], args[3], args[4], args[5], args[6], args[7], args[8]);
+                            wd_free(gamemode_compile);
+                      }
+                    } else { wd_free(recompiled); }
+                }
+                if (strfind(line_buf, "I couldn't load any gamemode scripts.")) {
+                    needed = wd_snprintf(output_buf, sizeof(output_buf), "@ Can't found gamemode detected\n\t");
+                    fwrite(output_buf, 1, needed, stdout);
+                    pr_color(stdout, FCOLOUR_BLUE, line_buf);
+                    fflush(stdout);
+                    needed = wd_snprintf(output_buf, sizeof(output_buf), 
+                           "\tYou need to ensure that the name specified "
+                           "in the configuration file matches the one in the gamemodes/ folder,\n"
+                           "\tand that the .amx file exists. For example, if server.cfg contains gamemode0 main,\n"
+                           "\tthen main.amx must be present in the gamemodes/ directory\n");
+                    fwrite(output_buf, 1, needed, stdout);
+                    fflush(stdout);
+                }
+                if (strfind(line_buf, "0x")) {
+                    needed = wd_snprintf(output_buf, sizeof(output_buf), "@ Hexadecimal address found\n\t");
+                    fwrite(output_buf, 1, needed, stdout);
+                    pr_color(stdout, FCOLOUR_BLUE, line_buf);
+                    fflush(stdout);
+                }
+                if (strfind(line_buf, "address") || strfind(line_buf, "Address")) {
+                    needed = wd_snprintf(output_buf, sizeof(output_buf), "@ Memory address reference found\n\t");
+                    fwrite(output_buf, 1, needed, stdout);
+                    pr_color(stdout, FCOLOUR_BLUE, line_buf);
+                    fflush(stdout);
+                }
+                if (__has_error) {
+                    if (strfind(line_buf, "[debug]") || strfind(line_buf, "crashdetect"))
+                    {
+                        ++server_crashdetect;
+                        needed = wd_snprintf(output_buf, sizeof(output_buf), "@ Crashdetect: Crashdetect debug information found\n\t");
+                        fwrite(output_buf, 1, needed, stdout);
+                        pr_color(stdout, FCOLOUR_BLUE, line_buf);
+                        fflush(stdout);
+
+                        if (strfind(line_buf, "AMX backtrace")) {
+                            needed = wd_snprintf(output_buf, sizeof(output_buf), "@ Crashdetect: AMX backtrace detected in crash log\n\t");
+                            fwrite(output_buf, 1, needed, stdout);
+                            pr_color(stdout, FCOLOUR_BLUE, line_buf);
+                            fflush(stdout);
+                        }
+                        if (strfind(line_buf, "native stack trace")) {
+                            needed = wd_snprintf(output_buf, sizeof(output_buf), "@ Crashdetect: Native stack trace detected\n\t");
+                            fwrite(output_buf, 1, needed, stdout);
+                            pr_color(stdout, FCOLOUR_BLUE, line_buf);
+                            fflush(stdout);
+                        }
+                        if (strfind(line_buf, "heap")) {
+                            needed = wd_snprintf(output_buf, sizeof(output_buf), "@ Crashdetect: Heap-related issue mentioned\n\t");
+                            fwrite(output_buf, 1, needed, stdout);
+                            pr_color(stdout, FCOLOUR_BLUE, line_buf);
+                            fflush(stdout);
+                        }
+                        if (strfind(line_buf, "[debug]")) {
+                            needed = wd_snprintf(output_buf, sizeof(output_buf), "@ Crashdetect: Debug Detected\n\t");
+                            fwrite(output_buf, 1, needed, stdout);
+                            pr_color(stdout, FCOLOUR_BLUE, line_buf);
+                            fflush(stdout);
+                        }
+                        if (strfind(line_buf, "Native backtrace")) {
+                            needed = wd_snprintf(output_buf, sizeof(output_buf), "@ Crashdetect: Native backtrace detected\n\t");
+                            fwrite(output_buf, 1, needed, stdout);
+                            pr_color(stdout, FCOLOUR_BLUE, line_buf);
+                            fflush(stdout);
+
+                            if (strfind(line_buf, "sampvoice")) {
+                                if(strfind(line_buf, "pawnraknet")) {
+                                    needed = wd_snprintf(output_buf, sizeof(output_buf), "@ Crashdetect: Crash potent detected\n\t");
+                                    fwrite(output_buf, 1, needed, stdout);
+                                    pr_color(stdout, FCOLOUR_BLUE, line_buf);
+                                    fflush(stdout);
+                                    needed = wd_snprintf(output_buf, sizeof(output_buf),
+                                      "\tWe have detected a crash and identified two plugins as potential causes,\n"
+                                      "\tnamely SampVoice and Pawn.Raknet.\n"
+                                      "\tAre you using SampVoice version 3.1?\n"
+                                      "\tYou can downgrade to SampVoice version 3.0 if necessary,\n"
+                                      "\tor you can remove either Sampvoice or Pawn.Raknet to avoid a potential crash.\n"
+                                      "\tYou can review the changes between versions 3.0 and 3.1 to understand and analyze the possible reason for the crash\n"
+                                      "\ton here: https://github.com/CyberMor/sampvoice/compare/v3.0-alpha...v3.1\n");
+                                    fwrite(output_buf, 1, needed, stdout);
+                                    fflush(stdout);
+
+                                    needed = wd_snprintf(output_buf, sizeof(output_buf), "* downgrading sampvoice now? 3.1 -> 3.0 [Y/n]\n");
+                                    fwrite(output_buf, 1, needed, stdout);
+                                    fflush(stdout);
+                                    char *downgrading = readline(" ");
+                                    if (strcmp(downgrading, "Y") == 0 || strcmp(downgrading, "y")) {
+                                        wd_install_depends("CyberMor/sampvoice:v3.0-alpha");
+                                    }
+                              }
+                            }
+                        }
+                    }
+                    if (strfind(line_buf, "stack")) {
+                        needed = wd_snprintf(output_buf, sizeof(output_buf), "@ Stack-related issue detected\n\t");
+                        fwrite(output_buf, 1, needed, stdout);
+                        pr_color(stdout, FCOLOUR_BLUE, line_buf);
+                        fflush(stdout);
+                    }
+                    if (strfind(line_buf, "memory")) {
+                        needed = wd_snprintf(output_buf, sizeof(output_buf), "@ Memory-related issue detected\n\t");
+                        fwrite(output_buf, 1, needed, stdout);
+                        pr_color(stdout, FCOLOUR_BLUE, line_buf);
+                        fflush(stdout);
+                    }
+                    if (strfind(line_buf, "access violation")) {
+                        needed = wd_snprintf(output_buf, sizeof(output_buf), "@ Access violation detected\n\t");
+                        fwrite(output_buf, 1, needed, stdout);
+                        pr_color(stdout, FCOLOUR_BLUE, line_buf);
+                        fflush(stdout);
+                    }
+                    if (strfind(line_buf, "buffer overrun") || strfind(line_buf, "buffer overflow")) {
+                        needed = wd_snprintf(output_buf, sizeof(output_buf), "@ Buffer overflow detected\n\t");
+                        fwrite(output_buf, 1, needed, stdout);
+                        pr_color(stdout, FCOLOUR_BLUE, line_buf);
+                        fflush(stdout);
+                    }
+                    if (strfind(line_buf, "null pointer")) {
+                        needed = wd_snprintf(output_buf, sizeof(output_buf), "@ Null pointer exception detected\n\t");
+                        fwrite(output_buf, 1, needed, stdout);
+                        pr_color(stdout, FCOLOUR_BLUE, line_buf);
+                        fflush(stdout);
+                    }
+                }
+                if (strfind(line_buf, "out of bounds")) {
+                    needed = wd_snprintf(output_buf, sizeof(output_buf), "@ out of bounds detected\n\t");
+                    fwrite(output_buf, 1, needed, stdout);
+                    pr_color(stdout, FCOLOUR_BLUE, line_buf);
+                    fflush(stdout);
+                    needed = wd_snprintf(output_buf, sizeof(output_buf),
+                        "\tnew array[3];\n"
+                        "\tmain() {\n"
+                        "\t  for (new i = 0; i < 4; i++) < potent 4 of 3\n"
+                        "\t                      ^ sizeof(array)   for array[this] and array[this][]\n"
+                        "\t                      ^ sizeof(array[]) for array[][this]\n"
+                        "\t                      * instead of manual indexing..\n"
+                        "\t     array[i] = 0;\n"
+                        "\t}\n");
+                    fwrite(output_buf, 1, needed, stdout);
+                    fflush(stdout);
+                }
+                if (wd_server_env() == 1) {
+                    if (strfind(line_buf, "Your password must be changed from the default password")) {
+                        ++server_rcon_pass;
+                    }
+                }
+                if (strfind(line_buf, "warning") || strfind(line_buf, "Warning")) {
+                    needed = wd_snprintf(output_buf, sizeof(output_buf), "@ Warning message found\n\t");
+                    fwrite(output_buf, 1, needed, stdout);
+                    pr_color(stdout, FCOLOUR_BLUE, line_buf);
+                    fflush(stdout);
+                }
+                if (strfind(line_buf, "failed") || strfind(line_buf, "Failed")) {
+                    needed = wd_snprintf(output_buf, sizeof(output_buf), "@ Failure or Failed message detected\n\t");
+                    fwrite(output_buf, 1, needed, stdout);
+                    pr_color(stdout, FCOLOUR_BLUE, line_buf);
+                    fflush(stdout);
+                }
+                if (strfind(line_buf, "timeout") || strfind(line_buf, "Timeout")) {
+                    needed = wd_snprintf(output_buf, sizeof(output_buf), "@ Timeout event detected\n\t");
+                    fwrite(output_buf, 1, needed, stdout);
+                    pr_color(stdout, FCOLOUR_BLUE, line_buf);
+                    fflush(stdout);
+                }
+                if (strfind(line_buf, "plugin") || strfind(line_buf, "Plugin")) {
+                    if (strfind(line_buf, "failed to load") || strfind(line_buf, "Failed.")) {
+                        needed = wd_snprintf(output_buf, sizeof(output_buf), "@ Plugin load failure or failed detected\n\t");
+                        fwrite(output_buf, 1, needed, stdout);
+                        pr_color(stdout, FCOLOUR_BLUE, line_buf);
+                        fflush(stdout);
+                        needed = wd_snprintf(output_buf, sizeof(output_buf),
+                            "\tIf you need to reinstall a plugin that failed, you can use the command:\n"
+                            "\t\tinstall user/repo:tags\n"
+                            "\tExample:\n"
+                            "\t\tinstall Y-Less/sscanf:latest\n"
+                            "\tYou can also recheck the username shown on the failed plugin using the command:\n"
+                            "\t\ttracker name\n");
+                        fwrite(output_buf, 1, needed, stdout);
+                        fflush(stdout);
+                    }
+                    if (strfind(line_buf, "unloaded")) {
+                        needed = wd_snprintf(output_buf, sizeof(output_buf), "@ Plugin unloaded detected\n\t");
+                        fwrite(output_buf, 1, needed, stdout);
+                        pr_color(stdout, FCOLOUR_BLUE, line_buf);
+                        fflush(stdout);
+                        needed = wd_snprintf(output_buf, sizeof(output_buf),
+                            "\tLOADED (Active/In Use):\n"
+                            "\t  - Plugin is running, all features are available.\n"
+                            "\t  - Utilizing system memory and CPU (e.g., running background threads).\n"
+                            "\tUNLOADED (Deactivated/Inactive):\n"
+                            "\t  - Plugin has been shut down and removed from memory.\n"
+                            "\t  - Features are no longer available; system resources (memory/CPU) are released.\n");
+                        fwrite(output_buf, 1, needed, stdout);
+                        fflush(stdout);
+                    }
+                }
+                if (strfind(line_buf, "database") || strfind(line_buf, "mysql")) {
+                    if (strfind(line_buf, "connection failed") || strfind(line_buf, "can't connect")) {
+                        needed = wd_snprintf(output_buf, sizeof(output_buf), "@ Database connection failure detected\n\t");
+                        fwrite(output_buf, 1, needed, stdout);
+                        pr_color(stdout, FCOLOUR_BLUE, line_buf);
+                        fflush(stdout);
+                    }
+                    if (strfind(line_buf, "error") || strfind(line_buf, "failed")) {
+                        needed = wd_snprintf(output_buf, sizeof(output_buf), "@ Error or Failed database | mysql found\n\t");
+                        fwrite(output_buf, 1, needed, stdout);
+                        pr_color(stdout, FCOLOUR_BLUE, line_buf);
+                        fflush(stdout);
+                    }
+                }
+                if (strfind(line_buf, "out of memory") || strfind(line_buf, "memory allocation")) {
+                    needed = wd_snprintf(output_buf, sizeof(output_buf), "@ Memory allocation failure detected\n\t");
+                    fwrite(output_buf, 1, needed, stdout);
+                    pr_color(stdout, FCOLOUR_BLUE, line_buf);
+                    fflush(stdout);
+                }
+                if (strfind(line_buf, "malloc") || strfind(line_buf, "free") || strfind(line_buf, "realloc") || strfind(line_buf, "calloc")) {
+                    needed = wd_snprintf(output_buf, sizeof(output_buf), "@ Memory management function referenced\n\t");
+                    fwrite(output_buf, 1, needed, stdout);
+                    pr_color(stdout, FCOLOUR_BLUE, line_buf);
+                    fflush(stdout);
+                }
+                fflush(stdout);
+            }
+        }
+
+        if (proc_f) fclose(proc_f);
+
         if (server_rcon_pass == 1) {
-            printf("Error detected! : Error: Your password must be changed from the default password..\n");
+            char output_buf[4096];
+            int needed;
+            
+            needed = wd_snprintf(output_buf, sizeof(output_buf),
+              "@ Rcon Pass Error found\n\t* Error: Your password must be changed from the default password..\n");
+            fwrite(output_buf, 1, needed, stdout);
+            fflush(stdout);
+            
             char *fixed_now = readline("fixed now? [Y/n] ");
 
-            /* Check if user confirmed they fixed the issue */
             if (!strcmp(fixed_now, "Y") || !strcmp(fixed_now, "y")) {
-                /* Check if server config file exists */
                 if (path_exists("server.cfg")) {
                     FILE *read_f = fopen("server.cfg", "rb");
                     if (read_f) {
-                        /* Get file size */
                         fseek(read_f, 0, SEEK_END);
                         long server_file_size = ftell(read_f);
                         fseek(read_f, 0, SEEK_SET);
 
-                        /* Read file content */
                         char *server_f_content;
                         server_f_content = wd_malloc(server_file_size + 1);
                         if (server_f_content) {
@@ -385,7 +395,6 @@ void wd_server_crash_check(void) {
                             server_f_content[bytes_read] = '\0';
                             fclose(read_f);
 
-                            /* Replace the default password */
                             char *server_n_content = NULL;
                             char *pos = strstr(server_f_content, "rcon_password changeme");
                             if (pos) {
@@ -398,19 +407,28 @@ void wd_server_crash_check(void) {
                                 }
                             }
 
-                            /* Write modified content back to file */
                             if (server_n_content) {
                                 FILE *write_f = fopen("server.cfg", "wb");
                                 if (write_f) {
                                     fwrite(server_n_content, 1, strlen(server_n_content), write_f);
                                     fclose(write_f);
-                                    printf("done! * server.cfg - rcon_password from changeme to changeme2.\n");
+                                    needed = wd_snprintf(output_buf, sizeof(output_buf), "done! * server.cfg - rcon_password from changeme to changeme2.\n");
+                                    fwrite(output_buf, 1, needed, stdout);
+                                    fflush(stdout);
                                 } else {
-                                    printf("Error: Cannot write to server.cfg\n");
+                                    needed = wd_snprintf(output_buf, sizeof(output_buf), "Error: Cannot write to server.cfg\n");
+                                    fwrite(output_buf, 1, needed, stdout);
+                                    fflush(stdout);
                                 }
                                 wd_free(server_n_content);
                             } else {
-                                printf("Error: Replacement failed\n");
+                                needed = wd_snprintf(output_buf, sizeof(output_buf), 
+                                       "-Replacement failed!\n"
+                                       " It is not known what the primary cause is."
+                                       " A reasonable explanation"
+                                       " is that it occurs when server.cfg does not contain the rcon_password parameter.\n");
+                                fwrite(output_buf, 1, needed, stdout);
+                                fflush(stdout);
                             }
                             wd_free(server_f_content);
                         }
@@ -419,22 +437,29 @@ void wd_server_crash_check(void) {
             }
             wd_free(fixed_now);
         }
-        /* If runtime error occurred but no crashdetect was found, offer to install it */
+        
+        char output_buf[4096];
+        int needed;
+        needed = wd_snprintf(output_buf, sizeof(output_buf),
+              "====================================================================\n");
+        fwrite(output_buf, 1, needed, stdout);
+        fflush(stdout);
+        
         if (__has_error == 1 && server_crashdetect < 1) {
-              printf("INFO: crash found! "
+              needed = wd_snprintf(output_buf, sizeof(output_buf), "INFO: crash found! "
                      "and crashdetect not found.. "
                      "install crashdetect now? ");
-              /* Prompt user for installation confirmation */
+              fwrite(output_buf, 1, needed, stdout);
+              fflush(stdout);
+              
               char *confirm;
               confirm = readline("Y/n ");
               if (strfind(confirm, "y")) {
-                  wd_free(confirm);  /* Free confirmation string */
-                  /* Install crashdetect plugin from repository */
+                  wd_free(confirm);
                   wd_install_depends("Y-Less/samp-plugin-crashdetect:latest");
               } else {
-                  wd_free(confirm);  /* Free confirmation string */
-                  /* Check for and remove crashdetect check file if it exists */
-                  int _wd_crash_ck = path_acces(".wd_crashdetect");
+                  wd_free(confirm);
+                  int _wd_crash_ck = path_access(".wd_crashdetect");
                   if (_wd_crash_ck)
                     remove(".wd_crashdetect");
                   return;
@@ -442,26 +467,99 @@ void wd_server_crash_check(void) {
         }
 }
 
-/**
- * Placeholder function for restoring SA-MP configuration
- * Currently does nothing but provides framework for future implementation
- */
-void restore_samp_config(void) {
-        return;  /* No restoration logic implemented yet */
+static int update_samp_config(const char *gamemode)
+{
+        FILE *config_in, *config_out;
+        char line[1024];
+
+        char size_config[WD_PATH_MAX];
+        wd_snprintf(size_config, sizeof(size_config), ".%s.bak", wcfg.wd_toml_config);
+
+        if (path_exists(size_config))
+            remove(size_config);
+
+        char size_mv[WD_MAX_PATH];
+        if (is_native_windows())
+            wd_snprintf(size_mv, sizeof(size_mv),
+                        "ren %s %s",
+                        wcfg.wd_toml_config,
+                        size_config);
+        else
+            wd_snprintf(size_mv, sizeof(size_mv),
+                        "mv -f %s %s",
+                        wcfg.wd_toml_config,
+                        size_config);
+
+        if (wd_run_command(size_mv) != 0) {
+                pr_error(stdout, "Failed to create backup file");
+                return -WD_RETN;
+        }
+
+        config_in = fopen(size_config, "r");
+        if (!config_in) {
+                pr_error(stdout, "Failed to open backup config");
+                return -WD_RETN;
+        }
+        config_out = fopen(wcfg.wd_toml_config, "w+");
+        if (!config_out) {
+                pr_error(stdout, "Failed to write new config");
+                fclose(config_out);
+                return -WD_RETN;
+        }
+
+        char put_gamemode[256];
+        wd_snprintf(put_gamemode, sizeof(put_gamemode), "%s", gamemode);
+        char *f_EXT = strrchr(put_gamemode, '.');
+        if (f_EXT) *f_EXT = '\0';
+        gamemode = put_gamemode;
+
+        while (fgets(line, sizeof(line), config_in)) {
+              if (strfind(line, "gamemode0")) {
+                  char size_gamemode[WD_PATH_MAX * 2];
+                  wd_snprintf(size_gamemode, sizeof(size_gamemode),
+                      "gamemode0 %s\n", put_gamemode);
+                  fputs(size_gamemode, config_out);
+                  continue;
+              }
+              fputs(line, config_out);
+        }
+
+        fclose(config_in);
+        fclose(config_out);
+
+        return WD_RETN;
 }
 
-/**
- * Runs SA-MP server with specified gamemode
- * Handles configuration updates, process execution, and error recovery
- *
- * @param gamemode The gamemode to run (without .amx extension)
- * @param server_bin The server binary executable filename
- */
+void restore_samp_config(void) {
+        char size_config[WD_PATH_MAX];
+        wd_snprintf(size_config, sizeof(size_config), ".%s.bak", wcfg.wd_toml_config);
+
+        if (path_exists(size_config) == 0)
+            goto done;
+
+        char size_mv[WD_PATH_MAX * 2 + 56];
+
+        if (is_native_windows())
+            wd_snprintf(size_mv, sizeof(size_mv),
+                        "ren %s %s",
+                        size_config,
+                        wcfg.wd_toml_config);
+        else
+            wd_snprintf(size_mv, sizeof(size_mv),
+                        "mv -f %s %s",
+                        size_config,
+                        wcfg.wd_toml_config);
+
+        wd_run_command(size_mv);
+
+done:
+        return;
+}
+
 void wd_run_samp_server(const char *gamemode, const char *server_bin)
 {
-        /* Debugging SA-MP Function */
 #if defined (_DBG_PRINT)
-	pr_color(stdout, FCOLOUR_YELLOW, "-DEBUGGING ");
+  pr_color(stdout, FCOLOUR_YELLOW, "-DEBUGGING ");
         printf("[function: %s | "
                "pretty function: %s | "
                "line: %d | "
@@ -492,18 +590,15 @@ void wd_run_samp_server(const char *gamemode, const char *server_bin)
                 "Unknown");
 #endif
 #endif
-        /* Validate configuration file type - must be TOML, not JSON */
         if (strfind(wcfg.wd_toml_config, ".json"))
                 return;
 
-        char command[256];  /* Buffer for building execution command */
-        int ret;            /* Return status from command execution */
+        char command[256];
+        int ret;
 
-        /* Process gamemode parameter - ensure it has .amx extension */
         char put_gamemode[256];
-        char *f_EXT = strrchr(gamemode, '.');  /* Find file extension */
+        char *f_EXT = strrchr(gamemode, '.');
         if (f_EXT) {
-            /* Calculate length without extension and append .amx */
             size_t len = f_EXT - gamemode;
             wd_snprintf(put_gamemode,
                      sizeof(put_gamemode),
@@ -511,111 +606,98 @@ void wd_run_samp_server(const char *gamemode, const char *server_bin)
                      (int)len,
                      gamemode);
         } else {
-            /* No extension found, simply append .amx */
             wd_snprintf(put_gamemode,
                      sizeof(put_gamemode),
                      "%s.amx",
                      gamemode);
         }
 
-        gamemode = put_gamemode;  /* Update gamemode pointer */
+        gamemode = put_gamemode;
 
-        /* Search for gamemode file in current directory */
-        wd_sef_fdir_reset();  /* Reset file directory search */
-        if (wd_sef_fdir(".", gamemode, NULL) != 1) {
-                /* Gamemode file not found - display error and return to main menu */
+        wd_sef_fdir_reset();
+        if (wd_sef_fdir(".", gamemode, NULL) == WD_RETZ) {
                 printf("Cannot locate gamemode: ");
                 pr_color(stdout, FCOLOUR_CYAN, "%s\n", gamemode);
                 start_chain(NULL);
         }
 
-        /* Update server configuration with new gamemode */
-        if (update_server_config(gamemode) != 0)
-                start_chain(NULL);  /* Return to main menu on configuration failure */
+        int ret_c = update_samp_config(gamemode);
+        if (ret_c == WD_RETZ ||
+            ret_c == -WD_RETN)
+            return;
 
-        /* Set execute permissions on server binary (Unix/Linux systems) */
         CHMOD(server_bin, FILE_MODE);
 
-        /* Set up signal handler for graceful shutdown on Ctrl+C */
         struct sigaction sa;
 
-        sa.sa_handler = unit_handle_sigint;  /* Signal handler function */
-        sigemptyset(&sa.sa_mask);            /* Initialize empty signal mask */
-        sa.sa_flags = SA_RESTART;            /* Restart system calls if interrupted */
+        sa.sa_handler = unit_handle_sigint;
+        sigemptyset(&sa.sa_mask);
+        sa.sa_flags = SA_RESTART;
 
-        /* Register SIGINT (Ctrl+C) handler */
         if (sigaction(SIGINT, &sa, NULL) == -1) {
                 perror("sigaction");
                 exit(EXIT_FAILURE);
         }
 
-        /* Variables for tracking server runtime and restart attempts */
         time_t start, end;
         double elapsed;
 
-        int ret_serv = 0;  /* Restart attempt counter */
+        int ret_serv = 0;
 
-/* Label for restarting server after quick failure */
+        int _wd_log_acces = -1;
 back_start:
-        start = time(NULL);  /* Record start time */
-        /* Build execution command (platform-specific) */
+        start = time(NULL);
 #ifdef WD_WINDOWS
-        /* Windows: execute binary directly */
         wd_snprintf(command, sizeof(command), "%s", server_bin);
 #else
-        /* Unix/Linux: execute with ./ prefix */
         wd_snprintf(command, sizeof(command), "./%s", server_bin);
 #endif
-        end = time(NULL);  /* Record end time (minimal time elapsed for command building) */
+        end = time(NULL);
 
-        /* Execute the server command */
         ret = wd_run_command(command);
         if (ret == WD_RETZ) {
-                /* Server started successfully */
                 if (!strcmp(wcfg.wd_os_type, OS_SIGNAL_LINUX)) {
-                        /* On Linux, wait a moment then display server logs */
                         printf("~ Waiting logging...\n");
                         sleep(3);
-                        wd_display_server_logs(0);  /* Display SA-MP logs */
+                        wd_display_server_logs(0);
                 }
         } else {
-                /* Server startup failed */
                 pr_color(stdout, FCOLOUR_RED, "Server startup failed!\n");
-                elapsed = difftime(end, start);  /* Calculate how long server ran */
-                /* If server failed quickly (within 5 seconds) and we haven't retried yet */
+                elapsed = difftime(end, start);
                 if (elapsed <= 5.0 && ret_serv == 0) {
-                    ret_serv = 1;  /* Mark that we've attempted restart */
+                    ret_serv = 1;
                     printf("\ttry starting again..");
-                    goto back_start;  /* Restart the server */
+                    _wd_log_acces = path_access("server_log.txt");
+                    if (_wd_log_acces)
+                      remove("server_log.txt");
+                    _wd_log_acces = path_access("log.txt");
+                    if (_wd_log_acces)
+                      remove("log.txt");
+                    goto back_start;
                 }
         }
-        /* Restore original configuration and check for crashes */
-        restore_samp_config();
-        wd_server_crash_check();
 
-        /* Return to main menu after server stops */
-        start_chain(NULL);
+        if (handle_sigint_status == 0)
+            raise(SIGINT);
+
+        restore_samp_config();
+
+        return;
 }
 
-/**
- * Updates OpenMP server configuration with new gamemode using JSON format
- * Handles JSON parsing, modification, and file operations
- *
- * @param gamemode The new gamemode to set in the configuration
- * @return WD_RETZ on success, -WD_RETN on failure
- */
 static int update_omp_config(const char *gamemode)
 {
-        struct stat st;              /* File status structure */
-        char gamemode_buf[256];      /* Buffer for processed gamemode name */
-        char put_gamemode[256];      /* Buffer for gamemode processing */
-        int ret = -WD_RETN;           /* Return status, default to error */
+        struct stat st;
+        char gamemode_buf[256];
+        char put_gamemode[256];
+        int ret = -WD_RETN;
 
-        /* Create backup filename */
         char size_config[WD_PATH_MAX];
         wd_snprintf(size_config, sizeof(size_config), ".%s.bak", wcfg.wd_toml_config);
 
-        /* Build platform-specific move command for backup */
+        if (path_exists(size_config))
+            remove(size_config);
+
         char size_mv[WD_MAX_PATH];
         if (is_native_windows())
             wd_snprintf(size_mv, sizeof(size_mv),
@@ -628,33 +710,28 @@ static int update_omp_config(const char *gamemode)
                         wcfg.wd_toml_config,
                         size_config);
 
-        /* Execute backup creation */
         if (wd_run_command(size_mv) != 0) {
                 pr_error(stdout, "Failed to create backup file");
                 return -WD_RETN;
         }
 
-        /* Get file size for memory allocation */
         if (stat(size_config, &st) != 0) {
                 pr_error(stdout, "Failed to get file status");
                 return -WD_RETN;
         }
 
-        /* Open backup file for reading */
         config_in = fopen(size_config, "rb");
         if (!config_in) {
                 pr_error(stdout, "Failed to open %s", size_config);
                 return -WD_RETN;
         }
 
-        /* Allocate memory for entire file content plus null terminator */
         __cJSON_Data = wd_malloc(st.st_size + 1);
         if (!__cJSON_Data) {
                 pr_error(stdout, "Memory allocation failed");
                 goto done;
         }
 
-        /* Read entire file into memory */
         size_t bytes_read = fread(__cJSON_Data, 1, st.st_size, config_in);
         if (bytes_read != (size_t)st.st_size) {
                 pr_error(stdout, "Incomplete file read (%zu of %ld bytes)",
@@ -663,62 +740,52 @@ static int update_omp_config(const char *gamemode)
                 goto done;
         }
 
-        /* Null-terminate the file data for string processing */
         __cJSON_Data[st.st_size] = '\0';
         fclose(config_in);
         config_in = NULL;
 
-        /* Parse JSON data from file */
         sroot = cJSON_Parse(__cJSON_Data);
         if (!sroot) {
                 pr_error(stdout, "JSON parse error: %s", cJSON_GetErrorPtr());
                 goto done;
         }
 
-        /* Get the "pawn" section from JSON configuration */
         pawn = cJSON_GetObjectItem(sroot, "pawn");
         if (!pawn) {
                 pr_error(stdout, "Missing 'pawn' section in config");
                 goto done;
         }
 
-        /* Process gamemode name - remove file extension */
         wd_snprintf(put_gamemode, sizeof(put_gamemode), "%s", gamemode);
         char *f_EXT = strrchr(put_gamemode, '.');
         if (f_EXT) *f_EXT = '\0';
 
-        /* Remove existing main_scripts array */
         cJSON_DeleteItemFromObject(pawn, "main_scripts");
 
-        /* Create new main_scripts array with the specified gamemode */
         main_scripts = cJSON_CreateArray();
         wd_snprintf(gamemode_buf, sizeof(gamemode_buf), "%s", put_gamemode);
         cJSON_AddItemToArray(main_scripts, cJSON_CreateString(gamemode_buf));
         cJSON_AddItemToObject(pawn, "main_scripts", main_scripts);
 
-        /* Open original config file for writing updated JSON */
         config_out = fopen(wcfg.wd_toml_config, "w");
         if (!config_out) {
                 pr_error(stdout, "Failed to write %s", wcfg.wd_toml_config);
                 goto done;
         }
 
-        /* Convert JSON object back to string representation */
         __cJSON_Printed = cJSON_Print(sroot);
         if (!__cJSON_Printed) {
                 pr_error(stdout, "Failed to print JSON");
                 goto done;
         }
 
-        /* Write JSON string to configuration file */
         if (fputs(__cJSON_Printed, config_out) == EOF) {
                 pr_error(stdout, "Failed to write to %s", wcfg.wd_toml_config);
                 goto done;
         }
 
-        ret = WD_RETZ;  /* Mark operation as successful */
+        ret = WD_RETZ;
 
-/* Cleanup section for error handling and resource management */
 done:
         if (config_out)
                 fclose(config_out);
@@ -734,24 +801,12 @@ done:
         return ret;
 }
 
-/**
- * Placeholder function for restoring OpenMP configuration
- * Currently does nothing but provides framework for future implementation
- */
 void restore_omp_config(void) {
-        return;  /* No restoration logic implemented yet */
+        restore_samp_config();
 }
 
-/**
- * Runs OpenMP server with specified gamemode
- * Handles JSON configuration updates, process execution, and error recovery
- *
- * @param gamemode The gamemode to run (without .amx extension)
- * @param server_bin The server binary executable filename
- */
 void wd_run_omp_server(const char *gamemode, const char *server_bin)
 {
-        /* Debugging OMP Function */
 #if defined (_DBG_PRINT)
         pr_color(stdout, FCOLOUR_YELLOW, "-DEBUGGING ");
         printf("[function: %s | "
@@ -784,14 +839,12 @@ void wd_run_omp_server(const char *gamemode, const char *server_bin)
                 "Unknown");
 #endif
 #endif
-        /* Validate configuration file type - must be JSON, not CFG */
         if (strfind(wcfg.wd_toml_config, ".cfg"))
                 return;
 
-        char command[256];  /* Buffer for execution command */
-        int ret;            /* Return status from command execution */
+        char command[256];
+        int ret;
 
-        /* Process gamemode parameter - ensure it has .amx extension */
         char put_gamemode[256];
         char *f_EXT = strrchr(gamemode, '.');
         if (f_EXT) {
@@ -808,25 +861,22 @@ void wd_run_omp_server(const char *gamemode, const char *server_bin)
                         gamemode);
         }
 
-        gamemode = put_gamemode;  /* Update gamemode pointer */
+        gamemode = put_gamemode;
 
-        /* Search for gamemode file in current directory */
         wd_sef_fdir_reset();
-        if (wd_sef_fdir(".", gamemode, NULL) != 1) {
-                /* Gamemode file not found - display error and return to main menu */
+        if (wd_sef_fdir(".", gamemode, NULL) == WD_RETZ) {
                 printf("Cannot locate gamemode: ");
                 pr_color(stdout, FCOLOUR_CYAN, "%s\n", gamemode);
                 start_chain(NULL);
         }
 
-        /* Update OpenMP JSON configuration with new gamemode */
-        if (update_omp_config(gamemode) != 0)
-                return;  /* Return on configuration failure */
+        int ret_c = update_omp_config(gamemode);
+        if (ret_c == WD_RETZ ||
+            ret_c == -WD_RETN)
+            return;
 
-        /* Set execute permissions on server binary */
         CHMOD(server_bin, FILE_MODE);
 
-        /* Set up signal handler for graceful shutdown */
         struct sigaction sa;
 
         sa.sa_handler = unit_handle_sigint;
@@ -838,45 +888,46 @@ void wd_run_omp_server(const char *gamemode, const char *server_bin)
                 exit(EXIT_FAILURE);
         }
 
-        /* Variables for tracking server runtime and restart attempts */
         time_t start, end;
         double elapsed;
 
-        int ret_serv = 0;  /* Restart attempt counter */
+        int ret_serv = 0;
 
-/* Label for restarting server after quick failure */
+        int _wd_log_acces = -1;
 back_start:
-        start = time(NULL);  /* Record start time */
-        /* Build platform-specific execution command */
+        start = time(NULL);
 #ifdef WD_WINDOWS
         wd_snprintf(command, sizeof(command), "%s", server_bin);
 #else
         wd_snprintf(command, sizeof(command), "./%s", server_bin);
 #endif
-        end = time(NULL);  /* Record end time */
+        end = time(NULL);
 
-        /* Execute the server command */
         ret = wd_run_command(command);
         if (ret == WD_RETZ) {
-                /* Server started successfully - display logs after brief delay */
                 printf("~ Waiting logging...\n");
                 sleep(3);
-                wd_display_server_logs(1);  /* Display OpenMP logs */
+                wd_display_server_logs(1);
         } else {
-                /* Server startup failed */
                 pr_color(stdout, FCOLOUR_RED, "Server startup failed!\n");
-                elapsed = difftime(end, start);  /* Calculate runtime */
-                /* If quick failure and no restart attempted yet, try again */
+                elapsed = difftime(end, start);
                 if (elapsed <= 5.0 && ret_serv == 0) {
-                    ret_serv = 1;  /* Mark restart attempt */
+                    ret_serv = 1;
                     printf("\ttry starting again..");
-                    goto back_start;  /* Restart server */
+                    _wd_log_acces = path_access("server_log.txt");
+                    if (_wd_log_acces)
+                      remove("server_log.txt");
+                    _wd_log_acces = path_access("log.txt");
+                    if (_wd_log_acces)
+                      remove("log.txt");
+                    goto back_start;
                 }
         }
-        /* Restore configuration and check for crashes */
-        restore_omp_config();
-        wd_server_crash_check();
 
-        /* Return to main menu */
-        start_chain(NULL);
+        if (handle_sigint_status == 0)
+            raise(SIGINT);
+
+        restore_omp_config();
+
+        return;
 }

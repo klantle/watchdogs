@@ -8,9 +8,6 @@
 #include <time.h>
 #include <signal.h>
 
-#include <readline/readline.h>
-#include <readline/history.h>
-
 #include "wd_unit.h"
 #include "wd_extra.h"
 #include "wd_util.h"
@@ -88,9 +85,9 @@ void wd_server_crash_check(void) {
 
         if (proc_f)
         {
-            char line_buf[WD_MAX_PATH * 3];
-            char output_buf[4096];
             int needed;
+            char output_buf[4096];
+            char line_buf[WD_MAX_PATH * 4];
             
             needed = wd_snprintf(output_buf, sizeof(output_buf),
                   "====================================================================\n");
@@ -507,7 +504,7 @@ static int update_samp_config(const char *gamemode)
                 return -WD_RETN;
         }
 
-        char put_gamemode[256];
+        char put_gamemode[WD_PATH_MAX + 26];
         wd_snprintf(put_gamemode, sizeof(put_gamemode), "%s", gamemode);
         char *f_EXT = strrchr(put_gamemode, '.');
         if (f_EXT) *f_EXT = '\0';
@@ -593,8 +590,8 @@ void wd_run_samp_server(const char *gamemode, const char *server_bin)
         if (strfind(wcfg.wd_toml_config, ".json"))
                 return;
 
-        char command[256];
-        int ret;
+        int ret = -WD_RETN;
+        char command[WD_PATH_MAX];
 
         char put_gamemode[256];
         char *f_EXT = strrchr(gamemode, '.');
@@ -688,8 +685,8 @@ back_start:
 static int update_omp_config(const char *gamemode)
 {
         struct stat st;
-        char gamemode_buf[256];
-        char put_gamemode[256];
+        char gamemode_buf[WD_PATH_MAX + 26];
+        char put_gamemode[WD_PATH_MAX + 26];
         int ret = -WD_RETN;
 
         char size_config[WD_PATH_MAX];
@@ -842,8 +839,8 @@ void wd_run_omp_server(const char *gamemode, const char *server_bin)
         if (strfind(wcfg.wd_toml_config, ".cfg"))
                 return;
 
-        char command[256];
-        int ret;
+        int ret = -WD_RETN;
+        char command[WD_PATH_MAX];
 
         char put_gamemode[256];
         char *f_EXT = strrchr(gamemode, '.');

@@ -5,9 +5,6 @@
 #include <unistd.h>
 #include <stddef.h>
 
-#include <readline/readline.h>
-#include <readline/history.h>
-
 #include "wd_extra.h"
 #include "wd_util.h"
 

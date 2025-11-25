@@ -4,8 +4,6 @@
 
 #include <archive.h>
 #include <archive_entry.h>
-#include <readline/readline.h>
-#include <readline/history.h>
 
 #include "wd_extra.h"
 #include "wd_util.h"

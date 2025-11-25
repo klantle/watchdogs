@@ -6,6 +6,7 @@
 #include <stdarg.h>
 #include <fcntl.h>
 #include "wd_util.h"
+
 #ifdef WD_WINDOWS
   #define WIN32_LEAN_AND_MEAN
   #include <windows.h>

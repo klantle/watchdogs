@@ -80,11 +80,9 @@
 
 #if __has_include(<readline/history.h>)
 #include <readline/history.h>
+#include <readline/readline.h>
 #define wd_u_history() using_history()
 #define wd_a_history(cmd) add_history(cmd)
-#else
-#define wd_u_history()
-#define wd_a_history(cmd)
 #endif
 
 #define wd_malloc(wx) malloc(wx)

@@ -7,8 +7,6 @@
 #include <sys/stat.h>
 
 #include <curl/curl.h>
-#include <readline/readline.h>
-#include <readline/history.h>
 
 #include "wd_extra.h"
 #include "wd_crypto.h"

@@ -24,8 +24,6 @@ const char *watchdogs_release = WATCHDOGS_RELEASE;
 #else
 #include <ncurses.h>
 #endif
-#include <readline/readline.h>
-#include <readline/history.h>
 #ifdef WD_LINUX
 #include <spawn.h>
 #endif
@@ -173,7 +171,7 @@ int __command__(char *chain_pre_command)
                 pr_color(stdout, FCOLOUR_CYAN, "Welcome :) -Logged as Open.MP Server...\n");
         }
 
-        char ptr_prompt[WD_MAX_PATH];
+        char ptr_prompt[WD_MAX_PATH * 2];
         size_t size_ptrp;
         size_ptrp = sizeof(ptr_prompt);
         char *ptr_command;
@@ -285,7 +283,7 @@ _reexecute_command:
             if (*arg == '\0') {
                 println(stdout, "Usage: title [<title>]");
             } else {
-                char title_set[128];
+                char title_set[WD_PATH_MAX * 2];
                 wd_snprintf(title_set, sizeof(title_set), "%s", arg);
                 wd_set_title(title_set);
             }
@@ -820,7 +818,7 @@ _runners_:
                 }
 
                 pr_color(stdout, FCOLOUR_YELLOW, "running..\n");
-                char size_run[128];
+                char size_run[WD_PATH_MAX];
                 struct sigaction sa;
                 if (wd_server_env() == 1) {
                     if (arg1 == NULL || (arg1[0] == '.' && arg1[1] == '\0')) {
@@ -1061,23 +1059,25 @@ rest_def:
                 char wanion_escaped_argument[WD_MAX_PATH];
                 json_escape_string(wanion_escaped_argument, arg, sizeof(wanion_escaped_argument));
 
-                char wanion_json_payload[WD_MAX_PATH + WD_PATH_MAX];
+                char wanion_json_payload[WD_MAX_PATH * 2];
                 if (is_chatbot_groq_based == 1) {
                     snprintf(wanion_json_payload, sizeof(wanion_json_payload),
+                             /* prompt here */
                              "{"
                              "\"model\":\"%s\","
                              "\"messages\":[{"
                              "\"role\":\"user\","
-                             "\"content\":\"Your name is Wanion made from Groq my asking: %s\""
+                             "\"content\":\"Your name in here Wanion (use it) made from Groq my asking: %s\""
                              "}],"
                              "\"max_tokens\":1024}",
                              wcfg.wd_toml_models_ai,
                              wanion_escaped_argument);
                 } else {
                     snprintf(wanion_json_payload, sizeof(wanion_json_payload),
+                             /* prompt here */
                              "{"
                              "\"contents\":[{\"role\":\"user\","
-                             "\"parts\":[{\"text\":\"Your name is Wanion made from Google my asking: %s\"}]}],"
+                             "\"parts\":[{\"text\":\"Your name in here Wanion (use it) made from Google my asking: %s\"}]}],"
                              "\"generationConfig\": {\"maxOutputTokens\": 1024}}",
                              wanion_escaped_argument);
                 }
@@ -1099,7 +1099,7 @@ retrying:
                 }
 
                 struct curl_slist *hdr = curl_slist_append(NULL, "Content-Type: application/json");
-                char size_tokens[WD_PATH_MAX];
+                char size_tokens[WD_PATH_MAX + 26];
                 if (is_chatbot_groq_based == 1)
                     wd_snprintf(size_tokens, sizeof(size_tokens), "Authorization: Bearer %s", wcfg.wd_toml_key_ai);
                 else
@@ -1374,7 +1374,7 @@ L"\t\t   W   A   T   C   H   D   O   G   S\n");
                 goto done;
             }
         } else {
-            char _p_command[WD_PATH_MAX];
+            char _p_command[WD_PATH_MAX * 2];
             wd_snprintf(_p_command, WD_PATH_MAX, "%s", ptr_command);
             if (!strcmp(_p_command, "clear")) {
                 if (is_native_windows())

@@ -12,9 +12,6 @@
 #include <sys/wait.h>
 #endif
 
-#include <readline/readline.h>
-#include <readline/history.h>
-
 #include "wd_extra.h"
 #include "wd_unit.h"
 #include "wd_package.h"
@@ -26,7 +23,8 @@
 #endif
 #define WATCHDOGS_COMPILER_ZERO 0
 
-static char container_output[WD_PATH_MAX] = { 0 },
+static char
+            container_output[WD_PATH_MAX] = { 0 },
             __wcp_direct_path[WD_PATH_MAX] = { 0 },
             __wcp_file_name[WD_PATH_MAX] = { 0 },
             __wcp_input_path[WD_PATH_MAX] = { 0 },
@@ -74,7 +72,7 @@ int wd_run_compiler(const char *arg, const char *compile_args,
 
         FILE *proc_file;
         char _compiler_input_[WD_MAX_PATH + WD_PATH_MAX] = { 0 };
-        char size_log[1024];
+        char size_log[WD_MAX_PATH * 4];
         char run_cmd[WD_PATH_MAX + 258];
         char include_aio_path[WD_PATH_MAX] = { 0 };
 
@@ -323,7 +321,7 @@ n_valid_flag:
                         toml_datum_t path_val = toml_string_at(include_paths, i);
                         if (path_val.ok)
                         {
-                            char __procc[250];
+                            char __procc[WD_PATH_MAX + 26];
                             wd_strip_dot_fns(__procc, sizeof(__procc), path_val.u.s);
                             if (__procc[0] == '\0')
                                 continue;
@@ -445,7 +443,7 @@ n_valid_flag:
                     printf("[COMPILER]:\n\t%s\n", _compiler_input_);
 #endif
                     int i = 0;
-                    char *wd_compiler_unix_args[WD_MAX_PATH + 256] = { 0 };
+                    char *wd_compiler_unix_args[WD_MAX_PATH + 256];
                     char *compiler_unix_token = strtok(_compiler_input_, " ");
                     while (compiler_unix_token != NULL) {
                         wd_compiler_unix_args[i++] = compiler_unix_token;
@@ -457,9 +455,14 @@ n_valid_flag:
                     posix_spawn_file_actions_init(&process_file_actions);
                     int posix_logging_file = open(".wd_compiler.log", O_WRONLY | O_CREAT | O_TRUNC, 0644);
                     if (posix_logging_file != -1) {
-                        posix_spawn_file_actions_adddup2(&process_file_actions, posix_logging_file, STDOUT_FILENO);
-                        posix_spawn_file_actions_adddup2(&process_file_actions, posix_logging_file, STDERR_FILENO);
-                        posix_spawn_file_actions_addclose(&process_file_actions, posix_logging_file);
+                        posix_spawn_file_actions_adddup2(&process_file_actions,
+                                posix_logging_file,
+                                STDOUT_FILENO);
+                        posix_spawn_file_actions_adddup2(&process_file_actions,
+                                posix_logging_file,
+                                STDERR_FILENO);
+                        posix_spawn_file_actions_addclose(&process_file_actions,
+                                posix_logging_file);
                     }
 
                     posix_spawnattr_t spawn_attr;
@@ -557,15 +560,14 @@ n_valid_flag:
 
                         wd_printfile(".wd_compiler.log");
 
-                        char log_line[1024];
+                        char log_line[WD_MAX_PATH * 4];
                         proc_file = fopen(".wd_compiler.log", "r");
 
                         if (proc_file != NULL) {
                             while (fgets(log_line, sizeof(log_line), proc_file) != NULL) {
                                 if (strfind(log_line, "backtrace"))
-                                    pr_color(stdout,
-                                            FCOLOUR_CYAN,
-                                    "~ backtrace detected - make sure you are using a newer version of pawncc than the one currently in use.");
+                                    pr_color(stdout, FCOLOUR_CYAN,
+                                        "~ backtrace detected - make sure you are using a newer version of pawncc than the one currently in use.");
                             }
                             fclose(proc_file);
                         }
@@ -574,7 +576,7 @@ compiler_done:
                     proc_f = fopen(".wd_compiler.log", "r");
                     if (proc_f)
                     {
-                        char compiler_line_buffer[526];
+                        char compiler_line_buffer[WD_PATH_MAX];
                         int compiler_has_err = 0;
                         while (fgets(compiler_line_buffer, sizeof(compiler_line_buffer), proc_f))
                         {
@@ -847,7 +849,7 @@ compiler_done:
                         printf("[COMPILER]:\n\t%s\n", _compiler_input_);
 #endif
                         int i = 0;
-                        char *wd_compiler_unix_args[WD_MAX_PATH + 256] = { 0 };
+                        char *wd_compiler_unix_args[WD_MAX_PATH + 256];
                         char *compiler_unix_token = strtok(_compiler_input_, " ");
                         while (compiler_unix_token != NULL) {
                             wd_compiler_unix_args[i++] = compiler_unix_token;
@@ -859,9 +861,14 @@ compiler_done:
                         posix_spawn_file_actions_init(&process_file_actions);
                         int posix_logging_file = open(".wd_compiler.log", O_WRONLY | O_CREAT | O_TRUNC, 0644);
                         if (posix_logging_file != -1) {
-                            posix_spawn_file_actions_adddup2(&process_file_actions, posix_logging_file, STDOUT_FILENO);
-                            posix_spawn_file_actions_adddup2(&process_file_actions, posix_logging_file, STDERR_FILENO);
-                            posix_spawn_file_actions_addclose(&process_file_actions, posix_logging_file);
+                            posix_spawn_file_actions_adddup2(&process_file_actions,
+                                    posix_logging_file,
+                                    STDOUT_FILENO);
+                            posix_spawn_file_actions_adddup2(&process_file_actions,
+                                    posix_logging_file,
+                                    STDERR_FILENO);
+                            posix_spawn_file_actions_addclose(&process_file_actions,
+                                    posix_logging_file);
                         }
 
                         posix_spawnattr_t spawn_attr;
@@ -956,13 +963,14 @@ compiler_done:
 
                             wd_printfile(".wd_compiler.log");
 
-                            char log_line[1024];
+                            char log_line[WD_MAX_PATH * 4];
                             proc_file = fopen(".wd_compiler.log", "r");
 
                             if (proc_file != NULL) {
                                 while (fgets(log_line, sizeof(log_line), proc_file) != NULL) {
                                     if (strfind(log_line, "backtrace"))
-                                        pr_color(stdout, FCOLOUR_CYAN, "~ backtrace detected - make sure you are using a newer version of pawncc than the one currently in use.");
+                                        pr_color(stdout, FCOLOUR_CYAN,
+                                            "~ backtrace detected - make sure you are using a newer version of pawncc than the one currently in use.\n");
                                 }
                                 fclose(proc_file);
                             }
@@ -972,7 +980,7 @@ compiler_done2:
                         proc_f = fopen(".wd_compiler.log", "r");
                         if (proc_f)
                         {
-                            char compiler_line_buffer[526];
+                            char compiler_line_buffer[WD_PATH_MAX];
                             int compiler_has_err = 0;
                             while (fgets(compiler_line_buffer, sizeof(compiler_line_buffer), proc_f))
                             {

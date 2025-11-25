@@ -215,7 +215,7 @@ int wd_mkdir(const char *path) {
 	    char *p = NULL;
 	    size_t len;
 
-	    snprintf(temp, sizeof(temp), "%s", path);
+	    wd_snprintf(temp, sizeof(temp), "%s", path);
 	    len = strlen(temp);
 
 	    if (len == 0) {
@@ -252,75 +252,39 @@ int wd_mkdir(const char *path) {
 }
 
 void json_escape_string(char *dest, const char *src, size_t dest_size) {
+	    if (dest_size == 0) return;
+	    
 	    char *ptr = dest;
-	    size_t remaining = dest_size - 1;
-
+	    size_t remaining = dest_size;
+	    
 	    while (*src && remaining > 1) {
+	        size_t needed = 1;
+	        const char *replacement = NULL;
+	        
 	        switch (*src) {
-	            case '\"':
-	                if (remaining > 2) {
-	                    *ptr++ = '\\';
-	                    *ptr++ = '\"';
-	                    remaining -= 2;
-	                }
-	                break;
-
-	            case '\\':
-	                if (remaining > 2) {
-	                    *ptr++ = '\\';
-	                    *ptr++ = '\\';
-	                    remaining -= 2;
-	                }
-	                break;
-
-	            case '\b':
-	                if (remaining > 2) {
-	                    *ptr++ = '\\';
-	                    *ptr++ = 'b';
-	                    remaining -= 2;
-	                }
-	                break;
-
-	            case '\f':
-	                if (remaining > 2) {
-	                    *ptr++ = '\\';
-	                    *ptr++ = 'f';
-	                    remaining -= 2;
-	                }
-	                break;
-
-	            case '\n':
-	                if (remaining > 2) {
-	                    *ptr++ = '\\';
-	                    *ptr++ = 'n';
-	                    remaining -= 2;
-	                }
-	                break;
-
-	            case '\r':
-	                if (remaining > 2) {
-	                    *ptr++ = '\\';
-	                    *ptr++ = 'r';
-	                    remaining -= 2;
-	                }
-	                break;
-
-	            case '\t':
-	                if (remaining > 2) {
-	                    *ptr++ = '\\';
-	                    *ptr++ = 't';
-	                    remaining -= 2;
-	                }
-	                break;
-
-	            default:
-	                *ptr++ = *src;
+	            case '\"': replacement = "\\\""; needed = 2; break;
+	            case '\\': replacement = "\\\\"; needed = 2; break;
+	            case '\b': replacement = "\\b"; needed = 2; break;
+	            case '\f': replacement = "\\f"; needed = 2; break;
+	            case '\n': replacement = "\\n"; needed = 2; break;
+	            case '\r': replacement = "\\r"; needed = 2; break;
+	            case '\t': replacement = "\\t"; needed = 2; break;
+	            default: 
+	                *ptr++ = *src++;
 	                remaining--;
-	                break;
+	                continue;
+	        }
+	        
+	        if (needed >= remaining) break;
+	        
+	        if (replacement) {
+	            memcpy(ptr, replacement, needed);
+	            ptr += needed;
+	            remaining -= needed;
 	        }
 	        src++;
 	    }
-
+	    
 	    *ptr = '\0';
 }
 
@@ -342,6 +306,10 @@ __asm__ volatile (
 	    : "%eax", "%ebx"
 );
 #endif
+    	if (strlen(reg_command) >= WD_MAX_PATH) {
+    		pr_error(stdout, "register command too long!");
+    		return -WD_RETN;
+    	}
 	    char
 			size_command[ WD_MAX_PATH ]
 			; /* 4096 */
@@ -389,38 +357,52 @@ int is_native_windows(void)
 
 void wd_printfile(const char *path) {
 #ifdef WD_WINDOWS
-		int fd = open(path, O_RDONLY);
-		if (fd < 0) return;
+	    int fd = open(path, O_RDONLY);
+	    if (fd < 0) return;
 
-		static char buf[1 << 20];
-		for (;;) {
-			ssize_t n = read(fd, buf, sizeof buf);
-			if (n <= 0) break;
-			ssize_t w = 0;
-			while (w < n) {
-				ssize_t k = write(STDOUT_FILENO, buf + w, n - w);
-				if (k <= 0) { close(fd); return; }
-				w += k;
-			}
-		}
+	    static char buf[(1 << 20) + 1];
+	    for (;;) {
+	        ssize_t n = read(fd, buf, sizeof(buf) - 1);
+	        if (n <= 0) break;
 
-		close(fd);
+	        buf[n] = '\0';
+
+	        ssize_t w = 0;
+	        while (w < n) {
+	            ssize_t k = write(STDOUT_FILENO, buf + w, n - w);
+	            if (k <= 0) { close(fd); return; }
+	            w += k;
+	        }
+	    }
+
+	    close(fd);
 #else
-		int fd = open(path, O_RDONLY);
-		if (fd < 0) return;
+	    int fd = open(path, O_RDONLY);
+	    if (fd < 0) return;
 
-		off_t off = 0;
-		struct stat st;
-		if (fstat(fd, &st) < 0) { close(fd); return; }
+	    off_t off = 0;
+	    struct stat st;
+	    if (fstat(fd, &st) < 0) { close(fd); return; }
 
-		while (off < st.st_size) {
-			ssize_t n = sendfile(STDOUT_FILENO, fd, &off, st.st_size - off);
-			if (n <= 0) { close(fd); return; }
-		}
+	    static char buf[(1 << 20) + 1];
+	    while (off < st.st_size) {
+	        ssize_t to_read = (st.st_size - off) < (sizeof(buf) - 1) ? (st.st_size - off) : (sizeof(buf) - 1);
+	        ssize_t n = pread(fd, buf, to_read, off);
+	        if (n <= 0) break;
+	        off += n;
 
-		close(fd);
+	        buf[n] = '\0';
+
+	        ssize_t w = 0;
+	        while (w < n) {
+	            ssize_t k = write(STDOUT_FILENO, buf + w, n - w);
+	            if (k <= 0) { close(fd); return; }
+	            w += k;
+	        }
+	    }
+
+	    close(fd);
 #endif
-		return;
 }
 
 int wd_set_title(const char *title)
@@ -592,13 +574,19 @@ void wd_escape_quotes(char *dest, size_t size, const char *src)
 }
 
 void __set_path_sep(char *out, size_t out_sz,
-						   							 const char *dir, const char *entry_name)
+					const char *dir, const char *entry_name)
 {
-		size_t dir_len;
-		int dir_has_sep, has_led_sep;
+	    if (!out || out_sz == 0 || !dir || !entry_name) return;
+    
+	    size_t dir_len;;
+	    int dir_has_sep, has_led_sep;
+	    size_t entry_len = strlen(entry_name);
+	    size_t max_needed = dir_len + entry_len + 2;
 
-		if (!out || out_sz == 0)
-				return;
+	    if (max_needed >= out_sz) {
+	        out[0] = '\0';
+	        return;
+	    }
 
 		dir_len = strlen(dir);
 		dir_has_sep = (dir_len > 0 &&
@@ -1209,10 +1197,8 @@ static void wd_generate_toml_content(FILE *file, const char *wd_os_type,
 
 int wd_toml_configs(void)
 {
-		int find_pawncc = 0;
-		int find_gamemodes = 0;
-		int compatibility = 0;
-		int optimized_lt = 0;
+		int find_pawncc = 0, find_gamemodes = 0;
+		int compatibility = 0, optimized_lt = 0;
 
 		const char *wd_os_type;
 		FILE *toml_file;

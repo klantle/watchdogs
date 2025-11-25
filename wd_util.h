@@ -175,7 +175,7 @@ typedef struct {
     int wd_compiler_stat;
     size_t wd_sef_count;
     char wd_sef_found_list \
-    [MAX_SEF_ENTRIES][MAX_SEF_PATH_SIZE];
+        [MAX_SEF_ENTRIES][MAX_SEF_PATH_SIZE];
     char *wd_toml_aio_opt;
     char *wd_toml_aio_repo;
     char *wd_toml_gm_input;

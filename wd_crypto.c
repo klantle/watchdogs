@@ -105,7 +105,7 @@ unsigned long crypto_djb2_hash_file(const char *filename) {
       FILE *f = fopen(filename, "rb");
       if (!f) {
           perror("fopen");
-          return 0;
+          return WD_RETZ;
       }
 
       unsigned long hash = 5381;

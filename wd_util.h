@@ -8,8 +8,8 @@
 #include <stdint.h>
 #include <limits.h>
 #include <dirent.h>
-#include <sys/types.h>
 #include <sys/stat.h>
+#include <sys/types.h>
 #include "include/cJSON/cJSON.h"
 #include "include/tomlc/toml.h"
 
@@ -24,10 +24,10 @@
 #endif
 
 #ifdef WD_WINDOWS
-#include <windows.h>
 #include <io.h>
 #include <time.h>
 #include <direct.h>
+#include <windows.h>
 #include <shlwapi.h>
 #include <strings.h>
 #define __PATH_SEP "\\"
@@ -92,6 +92,8 @@
 
 #define __PATH_CHR_SEP_LINUX '/'
 #define __PATH_CHR_SEP_WIN32 '\\'
+#define __PATH_STR_SEP_LINUX "/"
+#define __PATH_STR_SEP_WIN32 "\\"
 
 enum {
 	WD_RETZ = 0,
@@ -140,6 +142,7 @@ enum {
 #define findstr strfind
 #define wd_strcpy strcpy
 #define wd_strncpy strncpy
+#define wd_strlcpy strlcpy
 #define wd_sprintf sprintf
 #define wd_snprintf snprintf
 

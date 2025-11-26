@@ -113,7 +113,8 @@ void wd_sef_fdir_reset(void) {
 	    	wcfg.wd_sef_found_list[i][0] = '\0';
 
 	    wcfg.wd_sef_count = RATE_SEF_EMPTY;
-	    memset(wcfg.wd_sef_found_list, RATE_SEF_EMPTY, sizeof(wcfg.wd_sef_found_list));
+	    memset(wcfg.wd_sef_found_list,
+			RATE_SEF_EMPTY, sizeof(wcfg.wd_sef_found_list));
 }
 
 #ifdef WD_WINDOWS
@@ -223,7 +224,7 @@ int wd_mkdir(const char *path) {
 	    }
 
 	    for (p = temp + 1; *p; p++) {
-	        if (*p == '/') {
+	        if (*p == __PATH_CHR_SEP_LINUX) {
 	            *p = '\0';
 #ifdef WD_WINDOWS
 				if (mkdir(temp) == -1) {
@@ -234,7 +235,7 @@ int wd_mkdir(const char *path) {
 	                    return -WD_RETN;
 	                }
 	            }
-	            *p = '/';
+	            *p = __PATH_CHR_SEP_LINUX;
 	        }
 	    }
 
@@ -578,20 +579,21 @@ void __set_path_sep(char *out, size_t out_sz,
 {
 	    if (!out || out_sz == 0 || !dir || !entry_name) return;
     
-	    size_t dir_len;;
+	    size_t dir_len;
 	    int dir_has_sep, has_led_sep;
 	    size_t entry_len = strlen(entry_name);
+
+		dir_len = strlen(dir);
+		dir_has_sep = (dir_len > 0 &&
+					   IS_PATH_SEP(dir[dir_len - 1]));
+		has_led_sep = IS_PATH_SEP(entry_name[0]);
+
 	    size_t max_needed = dir_len + entry_len + 2;
 
 	    if (max_needed >= out_sz) {
 	        out[0] = '\0';
 	        return;
 	    }
-
-		dir_len = strlen(dir);
-		dir_has_sep = (dir_len > 0 &&
-					   IS_PATH_SEP(dir[dir_len - 1]));
-		has_led_sep = IS_PATH_SEP(entry_name[0]);
 
 		if (dir_has_sep) {
 				if (has_led_sep)
@@ -816,12 +818,12 @@ static void wd_add_found_path(const char *path)
 {
 		if (wcfg.wd_sef_count < (sizeof(wcfg.wd_sef_found_list) /
 								 sizeof(wcfg.wd_sef_found_list[0]))) {
-				wd_strncpy(
-								wcfg.wd_sef_found_list[wcfg.wd_sef_count],
-								path,
-								MAX_SEF_PATH_SIZE
-						   );
-				wcfg.wd_sef_found_list[wcfg.wd_sef_count][MAX_SEF_PATH_SIZE - 1] = '\0';
+				wd_strncpy(wcfg.wd_sef_found_list[wcfg.wd_sef_count],
+					path,
+					MAX_SEF_PATH_SIZE);
+				wcfg.wd_sef_found_list \
+				[wcfg.wd_sef_count] \
+				[MAX_SEF_PATH_SIZE - 1] = '\0';
 				++wcfg.wd_sef_count;
 		}
 }
@@ -951,11 +953,8 @@ static void wd_check_compiler_options(int *compatibility, int *optimized_lt)
 		if (path_access(".compiler_test.log"))
 			remove(".compiler_test.log");
 
-		snprintf(run_cmd, sizeof(run_cmd),
-					"%s -___DDDDDDDDDDDDDDDDD "
-					"-___DDDDDDDDDDDDDDDDD"
-					"-___DDDDDDDDDDDDDDDDD-"
-					"___DDDDDDDDDDDDDDDDD > .compiler_test.log",
+		wd_snprintf(run_cmd, sizeof(run_cmd),
+					"%s -0000000U > .compiler_test.log",
 					wcfg.wd_sef_found_list[0]);
 		wd_run_command(run_cmd);
 
@@ -1140,8 +1139,8 @@ static void wd_generate_toml_content(FILE *file, const char *wd_os_type,
 		}
 		char *p;
 		for (p = sef_path; *p; p++) {
-				if (*p == '\\')
-					*p = '/';
+				if (*p == __PATH_CHR_SEP_WIN32)
+					*p = __PATH_CHR_SEP_LINUX;
 		}
 
 		fprintf(file, "[general]\n");

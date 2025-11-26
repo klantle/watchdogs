@@ -111,7 +111,6 @@ struct utsname {
 		char machine[256];
 };
 int uname(struct utsname *name);
-void WD_COMPILER_WIN32_API_START(PROCESS_INFORMATION pi);
 #endif
 
 int hardware_cpu_info(HardwareCPU* cpu);

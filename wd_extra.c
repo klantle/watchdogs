@@ -208,7 +208,7 @@ static time_t filetime_to_time_t(const FILETIME *ft) {
 
 /* Portable stat function */
 int portable_stat(const char *path, portable_stat_t *out) {
-        if (!path || !out) return -1;
+        if (!path || !out) return -WD_RETN;
         memset(out, 0, sizeof(*out));
 
 #ifdef WD_WINDOWS
@@ -217,7 +217,7 @@ int portable_stat(const char *path, portable_stat_t *out) {
         int len = MultiByteToWideChar(CP_UTF8, 0, path, -1, NULL, 0);
         if (len == 0 || len > WD_MAX_PATH) {
                 /* fallback: try ANSI conversion */
-                if (!MultiByteToWideChar(CP_ACP, 0, path, -1, wpath, WD_MAX_PATH)) return -1;
+                if (!MultiByteToWideChar(CP_ACP, 0, path, -1, wpath, WD_MAX_PATH)) return -WD_RETN;
         } else {
                 MultiByteToWideChar(CP_UTF8, 0, path, -1, wpath, WD_MAX_PATH);
         }
@@ -225,7 +225,7 @@ int portable_stat(const char *path, portable_stat_t *out) {
         WIN32_FILE_ATTRIBUTE_DATA fad;
         if (!GetFileAttributesExW(wpath, GetFileExInfoStandard, &fad)) {
                 /* could be a long path, try CreateFile with \\?\ prefix? omitted for brevity */
-                return -1;
+                return -WD_RETN;
         }
 
         /* size */
@@ -266,10 +266,10 @@ int portable_stat(const char *path, portable_stat_t *out) {
         out->st_ino = 0;
         out->st_dev = 0;
 
-        return 0;
+        return WD_RETZ;
 #else
         struct stat st;
-        if (stat(path, &st) != 0) return -1;
+        if (stat(path, &st) != 0) return -WD_RETN;
         out->st_size = (uint64_t)st.st_size;
         out->st_ino  = (uint64_t)st.st_ino;
         out->st_dev  = (uint64_t)st.st_dev;
@@ -282,7 +282,7 @@ int portable_stat(const char *path, portable_stat_t *out) {
         out->st_lmtime = st.st_mtime;
         out->st_mctime = st.st_ctime;
 #endif
-        return 0;
+        return WD_RETZ;
 #endif
 }
 

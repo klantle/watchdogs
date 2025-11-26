@@ -1,6 +1,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <stdbool.h>
 #include <unistd.h>
 #include <limits.h>
 #include <time.h>
@@ -19,16 +20,17 @@
 #include "wd_compiler.h"
 
 #ifndef WD_WINDOWS
+extern char **environ;
 #define POSIX_TIMEOUT 30
 #endif
 #define WATCHDOGS_COMPILER_ZERO 0
 
 static char
             container_output[WD_PATH_MAX] = { 0 },
-            __wcp_direct_path[WD_PATH_MAX] = { 0 },
-            __wcp_file_name[WD_PATH_MAX] = { 0 },
-            __wcp_input_path[WD_PATH_MAX] = { 0 },
-            __wcp_any_tmp[WD_PATH_MAX] = { 0 };
+            compiler_direct_path[WD_PATH_MAX] = { 0 },
+            compiler_size_file_name[WD_PATH_MAX] = { 0 },
+            compiler_size_input_path[WD_PATH_MAX] = { 0 },
+            compiler_size_temp[WD_PATH_MAX] = { 0 };
 
 int wd_run_compiler(const char *arg, const char *compile_args,
                     const char *second_arg, const char *four_arg,
@@ -36,6 +38,7 @@ int wd_run_compiler(const char *arg, const char *compile_args,
                     const char *seven_arg, const char *eight_arg,
                     const char *nine_arg)
 {
+        const int aio_extra_options = 7;
 #if defined (_DBG_PRINT)
         pr_color(stdout, FCOLOUR_YELLOW, "-DEBUGGING ");
         printf("[function: %s | "
@@ -71,10 +74,10 @@ int wd_run_compiler(const char *arg, const char *compile_args,
         wcfg.wd_compiler_stat = 0;
 
         FILE *proc_file;
-        char _compiler_input_[WD_MAX_PATH + WD_PATH_MAX] = { 0 };
         char size_log[WD_MAX_PATH * 4];
         char run_cmd[WD_PATH_MAX + 258];
-        char include_aio_path[WD_PATH_MAX] = { 0 };
+        char include_aio_path[WD_PATH_MAX * 2] = { 0 };
+        char _compiler_input_[WD_MAX_PATH + WD_PATH_MAX] = { 0 };
 
         char *compiler_last_slash = NULL;
         char *compiler_back_slash = NULL;
@@ -128,8 +131,8 @@ int wd_run_compiler(const char *arg, const char *compile_args,
             char error_buffer[256];
             toml_table_t *_toml_config;
             _toml_config = toml_parse_file(proc_f,
-                                           error_buffer,
-                                           sizeof(error_buffer));
+                       error_buffer,
+                       sizeof(error_buffer));
 
             if (proc_f) {
                 fclose(proc_f);
@@ -156,7 +159,7 @@ int wd_run_compiler(const char *arg, const char *compile_args,
                 pr_error(stdout, "Failed to open .compiler_test.log");
             }
 
-            for (int i = 0; i < 5; i++) {
+            for (int i = 0; i < aio_extra_options; ++i) {
                 if (compiler_args[i] != NULL) {
                     if (strfind(compiler_args[i], "--watchdogs")) ++compiler_has_watchdogs;
                     if (strfind(compiler_args[i], "--debug")) ++compiler_has_debug;
@@ -182,29 +185,31 @@ int wd_run_compiler(const char *arg, const char *compile_args,
 #endif
                 if (option_arr)
                 {
-                    size_t arr_sz = toml_array_nelem(option_arr);
                     char *merged = NULL;
+                    size_t toml_array_size;
+                    toml_array_size = toml_array_nelem(option_arr);
 
-                    for (size_t i = 0; i < arr_sz; i++)
+                    for (size_t i = 0; i < toml_array_size; i++)
                     {
-                        toml_datum_t opt_val = toml_string_at(option_arr, i);
-                        if (!opt_val.ok)
+                        toml_datum_t toml_option_value;
+                        toml_option_value = toml_string_at(option_arr, i);
+                        if (!toml_option_value.ok)
                             continue;
 
-                        int rate_valid_flag = 0;
+                        int rate_valid_flag_options = 0;
 
                         char flag_to_search[3] = { 0 };
                         size_t size_flag_to_search = sizeof(flag_to_search);
-                        if (strlen(opt_val.u.s) >= 2) {
+                        if (strlen(toml_option_value.u.s) >= 2) {
                             wd_snprintf(flag_to_search,
                                      size_flag_to_search,
                                      "%.2s",
-                                     opt_val.u.s);
+                                     toml_option_value.u.s);
                         } else {
-                            wd_strncpy(flag_to_search, opt_val.u.s, size_flag_to_search - 1);
+                            wd_strncpy(flag_to_search, toml_option_value.u.s, size_flag_to_search - 1);
                         }
 
-                        if (proc_file) {
+                        if (proc_file != NULL) {
                             rewind(proc_file);
                             while (fgets(size_log, sizeof(size_log), proc_file) != NULL) {
                                 if (strfind(size_log, "error while loading shared libraries:")) {
@@ -212,48 +217,50 @@ int wd_run_compiler(const char *arg, const char *compile_args,
                                     goto compiler_end;
                                 }
                                 if (strstr(size_log, flag_to_search)) {
-                                    rate_valid_flag = 1;
+                                    rate_valid_flag_options = 1;
                                     break;
                                 }
                             }
                         }
 
-                        if (rate_valid_flag == 0)
-                            goto n_valid_flag;
+                        if (rate_valid_flag_options == 0)
+                            goto not_valid_flag_options;
 
-                        if (opt_val.u.s[0] != '-') {
-n_valid_flag:
-                            printf("[WARN]: compiler option ");
-                            pr_color(stdout, FCOLOUR_GREEN, "\"%s\" ", opt_val.u.s);
-                            println(stdout, "not valid flag!");
-                            if (rate_valid_flag == 0)
+                        if (toml_option_value.u.s[0] != '-') {
+not_valid_flag_options:
+                            printf("[WARN]: "
+                                "compiler option ");
+                            pr_color(stdout, FCOLOUR_GREEN, "\"%s\" ", toml_option_value.u.s);
+                            println(stdout, "not valid flag options!..");
+
+                            if (rate_valid_flag_options == 0)
                               goto compiler_end;
                         }
 
-                        if (strfind(opt_val.u.s, "-d"))
+                        if (strfind(toml_option_value.u.s, "-d"))
                           ++compiler_debugging;
 
-                        size_t old_len = merged ? strlen(merged) : 0,
-                               new_len = old_len + strlen(opt_val.u.s) + 2;
+                        size_t old_len = merged  ? strlen(merged) : 0,
+                               new_len = old_len + strlen(toml_option_value.u.s) + 2;
 
                         char *tmp = wd_realloc(merged, new_len);
                         if (!tmp) {
                             wd_free(merged);
-                            wd_free(opt_val.u.s);
+                            wd_free(toml_option_value.u.s);
                             merged = NULL;
                             break;
                         }
                         merged = tmp;
 
                         if (!old_len)
-                            wd_snprintf(merged, new_len, "%s", opt_val.u.s);
+                            wd_snprintf(merged, new_len, "%s", toml_option_value.u.s);
                         else
                             wd_snprintf(merged + old_len,
                                      new_len - old_len,
-                                     " %s", opt_val.u.s);
+                                     " %s", toml_option_value.u.s);
 
-                        wd_free(opt_val.u.s);
-                        opt_val.u.s = NULL;
+                        wd_free(toml_option_value.u.s);
+                        toml_option_value.u.s = NULL;
                     }
 
                     if (proc_file) {
@@ -295,11 +302,11 @@ n_valid_flag:
                 if (compiler_has_encoding) strcat(compiler_extra_options, " -C+ ");
 
                 if (strlen(compiler_extra_options) > 0) {
-                    size_t current_len, addt_len;
+                    size_t current_len, extra_opt_len;
                     current_len = strlen(wcfg.wd_toml_aio_opt);
-                    addt_len = strlen(compiler_extra_options);
+                    extra_opt_len = strlen(compiler_extra_options);
 
-                    if (current_len + addt_len < sizeof(wcfg.wd_toml_aio_opt)) {
+                    if (current_len + extra_opt_len < sizeof(wcfg.wd_toml_aio_opt)) {
                         strcat(wcfg.wd_toml_aio_opt, compiler_extra_options);
                     } else {
                         strncat(wcfg.wd_toml_aio_opt, compiler_extra_options,
@@ -307,18 +314,19 @@ n_valid_flag:
                     }
                 }
 
-                toml_array_t *include_paths = toml_array_in(wd_compiler, "include_path");
+                toml_array_t *toml_include_path = toml_array_in(wd_compiler, "include_path");
 #if defined(_DBG_PRINT)
-                if (!include_paths)
+                if (!toml_include_path)
                     printf("%s not exists in line:%d", "include_path", __LINE__);
 #endif
-                if (include_paths)
+                if (toml_include_path)
                 {
-                    int array_size = toml_array_nelem(include_paths);
+                    int toml_array_size;
+                    toml_array_size = toml_array_nelem(toml_include_path);
 
-                    for (int i = 0; i < array_size; i++)
+                    for (int i = 0; i < toml_array_size; i++)
                     {
-                        toml_datum_t path_val = toml_string_at(include_paths, i);
+                        toml_datum_t path_val = toml_string_at(toml_include_path, i);
                         if (path_val.ok)
                         {
                             char __procc[WD_PATH_MAX + 26];
@@ -332,8 +340,8 @@ n_valid_flag:
                                 if (cur < sizeof(include_aio_path) - 1)
                                 {
                                     wd_snprintf(include_aio_path + cur,
-                                                sizeof(include_aio_path) - cur,
-                                                " ");
+                                        sizeof(include_aio_path) - cur,
+                                        " ");
                                 }
                             }
 
@@ -341,9 +349,9 @@ n_valid_flag:
                             if (cur < sizeof(include_aio_path) - 1)
                             {
                                 wd_snprintf(include_aio_path + cur,
-                                            sizeof(include_aio_path) - cur,
-                                            "-i\"%s\"",
-                                            __procc);
+                                    sizeof(include_aio_path) - cur,
+                                    "-i\"%s\"",
+                                    __procc);
                             }
                             wd_free(path_val.u.s);
                         }
@@ -362,13 +370,14 @@ n_valid_flag:
 
                     sa.bInheritHandle = TRUE;
                     HANDLE hFile = CreateFileA(
-                        ".wd_compiler.log",
-                        GENERIC_WRITE,
-                        FILE_SHARE_READ,
-                        &sa,
-                        CREATE_ALWAYS,
-                        FILE_ATTRIBUTE_NORMAL | FILE_FLAG_SEQUENTIAL_SCAN,
-                        NULL
+                            ".wd_compiler.log",
+                            GENERIC_WRITE,
+                            FILE_SHARE_READ,
+                            &sa,
+                            CREATE_ALWAYS,
+                            FILE_ATTRIBUTE_NORMAL |
+                                FILE_FLAG_SEQUENTIAL_SCAN,
+                            NULL
                     );
                     si.dwFlags = STARTF_USESTDHANDLES | STARTF_USESHOWWINDOW;
                     si.wShowWindow = SW_HIDE;
@@ -380,35 +389,33 @@ n_valid_flag:
 
                     int ret_command = 0;
                     ret_command = wd_snprintf(_compiler_input_,
-                                  sizeof(_compiler_input_),
-                                        "%s %s -o%s %s %s -i%s",
-                                        wd_compiler_input_pawncc_path,
-                                        wcfg.wd_toml_gm_input,
-                                        wcfg.wd_toml_gm_output,
-                                        wcfg.wd_toml_aio_opt,
-                                        include_aio_path,
-                                        path_include);
+                              sizeof(_compiler_input_),
+                                    "%s %s -o%s %s %s -i%s",
+                                    wd_compiler_input_pawncc_path,
+                                    wcfg.wd_toml_gm_input,
+                                    wcfg.wd_toml_gm_output,
+                                    wcfg.wd_toml_aio_opt,
+                                    include_aio_path,
+                                    path_include);
 #if defined(_DBG_PRINT)
                     pr_color(stdout, FCOLOUR_YELLOW, "-DEBUGGING\n");
                     printf("[COMPILER]:\n\t%s\n", _compiler_input_);
 #endif
                     if (ret_command > 0 && ret_command < (int)sizeof(_compiler_input_)) {
-                    clock_gettime(CLOCK_MONOTONIC, &start);
-                        BOOL win32_process_succes = CreateProcessA(
-                            NULL,
-                            _compiler_input_,
-                            NULL,
-                            NULL,
-                            TRUE,
-                            CREATE_NO_WINDOW | ABOVE_NORMAL_PRIORITY_CLASS,
-                            NULL,
-                            NULL,
-                            &si,
-                            &pi
-                        );
+                        BOOL win32_process_succes;
+                        clock_gettime(CLOCK_MONOTONIC, &start);
+                        win32_process_succes = CreateProcessA(
+                                NULL,
+                                _compiler_input_,
+                                NULL,
+                                NULL,
+                                TRUE,
+                                CREATE_NO_WINDOW | ABOVE_NORMAL_PRIORITY_CLASS,
+                                NULL,
+                                NULL,
+                                &si,
+                                &pi);
                         if (win32_process_succes) {
-                            WD_COMPILER_WIN32_API_START(pi);
-
                             WaitForSingleObject(pi.hProcess, INFINITE);
 
                             clock_gettime(CLOCK_MONOTONIC, &end);
@@ -423,13 +430,17 @@ n_valid_flag:
                             pr_error(stdout, "CreateProcess failed! (%lu)", GetLastError());
                         }
                     } else {
-                          clock_gettime(CLOCK_MONOTONIC, &end);
+                        clock_gettime(CLOCK_MONOTONIC, &end);
+                        pr_error(stdout, "ret_compiler too long! %s (L: %d)", __func__, __LINE__);
+                        goto compiler_end;
                     }
                     if (hFile != INVALID_HANDLE_VALUE) {
                         CloseHandle(hFile);
                     }
 #else
-                    wd_snprintf(_compiler_input_, sizeof(_compiler_input_), "%s %s %s%s %s%s %s%s",
+                    int ret_command = 0;
+                    ret_command = wd_snprintf(_compiler_input_, sizeof(_compiler_input_),
+                        "%s %s %s%s %s%s %s%s",
                         wd_compiler_input_pawncc_path,
                         wcfg.wd_toml_gm_input,
                         "-o",
@@ -438,6 +449,10 @@ n_valid_flag:
                         include_aio_path,
                         "-i",
                         path_include);
+                    if (ret_command > (int)sizeof(_compiler_input_)) {
+                        pr_error(stdout, "ret_compiler too long! %s (L: %d)", __func__, __LINE__);
+                        goto compiler_end;
+                    }
 #if defined(_DBG_PRINT)
                     pr_color(stdout, FCOLOUR_YELLOW, "-DEBUGGING\n");
                     printf("[COMPILER]:\n\t%s\n", _compiler_input_);
@@ -472,8 +487,6 @@ n_valid_flag:
                         POSIX_SPAWN_SETSIGDEF |
                         POSIX_SPAWN_SETSIGMASK
                     );
-
-                    extern char **environ;
 
                     pid_t compiler_process_id;
 
@@ -534,7 +547,7 @@ n_valid_flag:
 #endif
                     char size_container_output[WD_PATH_MAX + 128];
                     wd_snprintf(size_container_output,
-                sizeof(size_container_output), "%s", wcfg.wd_toml_gm_output);
+                        sizeof(size_container_output), "%s", wcfg.wd_toml_gm_output);
                     if (path_exists(".wd_compiler.log")) {
                         printf("\n");
                         char *ca = NULL;
@@ -567,7 +580,8 @@ n_valid_flag:
                             while (fgets(log_line, sizeof(log_line), proc_file) != NULL) {
                                 if (strfind(log_line, "backtrace"))
                                     pr_color(stdout, FCOLOUR_CYAN,
-                                        "~ backtrace detected - make sure you are using a newer version of pawncc than the one currently in use.");
+                                        "~ backtrace detected - "
+                                        "make sure you are using a newer version of pawncc than the one currently in use.");
                             }
                             fclose(proc_file);
                         }
@@ -615,130 +629,126 @@ compiler_done:
                 }
                 else
                 {
-                    wd_strncpy(__wcp_any_tmp, compile_args, sizeof(__wcp_any_tmp) - 1);
-                    __wcp_any_tmp[sizeof(__wcp_any_tmp) - 1] = '\0';
+                    wd_strncpy(compiler_size_temp, compile_args, sizeof(compiler_size_temp) - 1);
+                    compiler_size_temp[sizeof(compiler_size_temp) - 1] = '\0';
 
-                    compiler_last_slash = strrchr(__wcp_any_tmp, '/');
-                    compiler_back_slash = strrchr(__wcp_any_tmp, '\\');
+                    compiler_last_slash = strrchr(compiler_size_temp, '/');
+                    compiler_back_slash = strrchr(compiler_size_temp, '\\');
 
-                    if (compiler_back_slash &&
-                       (!compiler_last_slash ||
-                        compiler_back_slash > compiler_last_slash))
-                    {
+                    if (compiler_back_slash && (!compiler_last_slash || compiler_back_slash > compiler_last_slash))
                         compiler_last_slash = compiler_back_slash;
-                    }
 
                     if (compiler_last_slash)
                     {
-                        size_t __dir_len;
-                        __dir_len = (size_t)(compiler_last_slash - __wcp_any_tmp);
+                        size_t compiler_dir_len;
+                        compiler_dir_len = (size_t)(compiler_last_slash - compiler_size_temp);
 
-                        if (__dir_len >= sizeof(__wcp_direct_path))
-                            __dir_len = sizeof(__wcp_direct_path) - 1;
+                        if (compiler_dir_len >= sizeof(compiler_direct_path))
+                            compiler_dir_len = sizeof(compiler_direct_path) - 1;
 
-                        memcpy(__wcp_direct_path, __wcp_any_tmp, __dir_len);
-                        __wcp_direct_path[__dir_len] = '\0';
+                        memcpy(compiler_direct_path, compiler_size_temp, compiler_dir_len);
+                        compiler_direct_path[compiler_dir_len] = '\0';
 
-                        const char *__wcp_filename_start = compiler_last_slash + 1;
-                        size_t __wcp_filename_len;
-                        __wcp_filename_len = strlen(__wcp_filename_start);
+                        const char *compiler_filename_start = compiler_last_slash + 1;
+                        size_t compiler_filename_len;
+                        compiler_filename_len = strlen(compiler_filename_start);
 
-                        if (__wcp_filename_len >= sizeof(__wcp_file_name))
-                            __wcp_filename_len = sizeof(__wcp_file_name) - 1;
+                        if (compiler_filename_len >= sizeof(compiler_size_file_name))
+                            compiler_filename_len = sizeof(compiler_size_file_name) - 1;
 
-                        memcpy(__wcp_file_name, __wcp_filename_start, __wcp_filename_len);
-                        __wcp_file_name[__wcp_filename_len] = '\0';
+                        memcpy(compiler_size_file_name, compiler_filename_start, compiler_filename_len);
+                        compiler_size_file_name[compiler_filename_len] = '\0';
 
                         size_t total_needed;
-                        total_needed = strlen(__wcp_direct_path) + 1 +
-                                    strlen(__wcp_file_name) + 1;
+                        total_needed = strlen(compiler_direct_path) + 1 +
+                                    strlen(compiler_size_file_name) + 1;
 
-                        if (total_needed > sizeof(__wcp_input_path))
+                        if (total_needed > sizeof(compiler_size_input_path))
                         {
-                            wd_strncpy(__wcp_direct_path, "gamemodes",
-                                sizeof(__wcp_direct_path) - 1);
-                            __wcp_direct_path[sizeof(__wcp_direct_path) - 1] = '\0';
+                            wd_strncpy(compiler_direct_path, "gamemodes",
+                                sizeof(compiler_direct_path) - 1);
+                            compiler_direct_path[sizeof(compiler_direct_path) - 1] = '\0';
 
-                            size_t __wcp_max_file_name;
-                            __wcp_max_file_name = sizeof(__wcp_file_name) - 1;
+                            size_t compiler_max_size_file_name;
+                            compiler_max_size_file_name = sizeof(compiler_size_file_name) - 1;
 
-                            if (__wcp_filename_len > __wcp_max_file_name)
+                            if (compiler_filename_len > compiler_max_size_file_name)
                             {
-                                memcpy(__wcp_file_name, __wcp_filename_start,
-                                    __wcp_max_file_name);
-                                __wcp_file_name[__wcp_max_file_name] = '\0';
+                                memcpy(compiler_size_file_name, compiler_filename_start,
+                                    compiler_max_size_file_name);
+                                compiler_size_file_name[compiler_max_size_file_name] = '\0';
                             }
                         }
 
-                        if (wd_snprintf(__wcp_input_path, sizeof(__wcp_input_path),
-                                "%s/%s", __wcp_direct_path, __wcp_file_name) >=
-                            (int)sizeof(__wcp_input_path))
+                        if (wd_snprintf(compiler_size_input_path, sizeof(compiler_size_input_path),
+                                "%s/%s", compiler_direct_path, compiler_size_file_name) >=
+                            (int)sizeof(compiler_size_input_path))
                         {
-                            __wcp_input_path[sizeof(__wcp_input_path) - 1] = '\0';
+                            compiler_size_input_path[sizeof(compiler_size_input_path) - 1] = '\0';
                         }
                      }  else {
-                            wd_strncpy(__wcp_file_name, __wcp_any_tmp,
-                                sizeof(__wcp_file_name) - 1);
-                            __wcp_file_name[sizeof(__wcp_file_name) - 1] = '\0';
+                            wd_strncpy(compiler_size_file_name, compiler_size_temp,
+                                sizeof(compiler_size_file_name) - 1);
+                            compiler_size_file_name[sizeof(compiler_size_file_name) - 1] = '\0';
 
-                            wd_strncpy(__wcp_direct_path, ".", sizeof(__wcp_direct_path) - 1);
-                            __wcp_direct_path[sizeof(__wcp_direct_path) - 1] = '\0';
+                            wd_strncpy(compiler_direct_path, ".", sizeof(compiler_direct_path) - 1);
+                            compiler_direct_path[sizeof(compiler_direct_path) - 1] = '\0';
 
-                            if (wd_snprintf(__wcp_input_path, sizeof(__wcp_input_path),
-                                    "./%s", __wcp_file_name) >=
-                                (int)sizeof(__wcp_input_path))
+                            if (wd_snprintf(compiler_size_input_path, sizeof(compiler_size_input_path),
+                                    "./%s", compiler_size_file_name) >=
+                                (int)sizeof(compiler_size_input_path))
                             {
-                                __wcp_input_path[sizeof(__wcp_input_path) - 1] = '\0';
+                                compiler_size_input_path[sizeof(compiler_size_input_path) - 1] = '\0';
                             }
                         }
 
                     int compiler_finding_compile_args = 0;
-                    compiler_finding_compile_args = wd_sef_fdir(__wcp_direct_path, __wcp_file_name, NULL);
+                    compiler_finding_compile_args = wd_sef_fdir(compiler_direct_path, compiler_size_file_name, NULL);
 
                     if (!compiler_finding_compile_args &&
-                        strcmp(__wcp_direct_path, "gamemodes") != 0)
+                        strcmp(compiler_direct_path, "gamemodes") != 0)
                     {
                         compiler_finding_compile_args = wd_sef_fdir("gamemodes",
-                                            __wcp_file_name, NULL);
+                                            compiler_size_file_name, NULL);
                         if (compiler_finding_compile_args)
                         {
-                            wd_strncpy(__wcp_direct_path, "gamemodes",
-                                sizeof(__wcp_direct_path) - 1);
-                            __wcp_direct_path[sizeof(__wcp_direct_path) - 1] = '\0';
+                            wd_strncpy(compiler_direct_path, "gamemodes",
+                                sizeof(compiler_direct_path) - 1);
+                            compiler_direct_path[sizeof(compiler_direct_path) - 1] = '\0';
 
-                            if (wd_snprintf(__wcp_input_path, sizeof(__wcp_input_path),
-                                    "gamemodes/%s", __wcp_file_name) >=
-                                (int)sizeof(__wcp_input_path))
+                            if (wd_snprintf(compiler_size_input_path, sizeof(compiler_size_input_path),
+                                    "gamemodes/%s", compiler_size_file_name) >=
+                                (int)sizeof(compiler_size_input_path))
                             {
-                                __wcp_input_path[sizeof(__wcp_input_path) - 1] = '\0';
+                                compiler_size_input_path[sizeof(compiler_size_input_path) - 1] = '\0';
                             }
 
                             if (wcfg.wd_sef_count > RATE_SEF_EMPTY)
                                 wd_strncpy(wcfg.wd_sef_found_list[wcfg.wd_sef_count - 1],
-                                    __wcp_input_path, MAX_SEF_PATH_SIZE);
+                                    compiler_size_input_path, MAX_SEF_PATH_SIZE);
                         }
                     }
 
-                    if (!compiler_finding_compile_args && !strcmp(__wcp_direct_path, "."))
+                    if (!compiler_finding_compile_args && !strcmp(compiler_direct_path, "."))
                     {
                         compiler_finding_compile_args = wd_sef_fdir("gamemodes",
-                                            __wcp_file_name, NULL);
+                                            compiler_size_file_name, NULL);
                         if (compiler_finding_compile_args)
                         {
-                            wd_strncpy(__wcp_direct_path, "gamemodes",
-                                sizeof(__wcp_direct_path) - 1);
-                            __wcp_direct_path[sizeof(__wcp_direct_path) - 1] = '\0';
+                            wd_strncpy(compiler_direct_path, "gamemodes",
+                                sizeof(compiler_direct_path) - 1);
+                            compiler_direct_path[sizeof(compiler_direct_path) - 1] = '\0';
 
-                            if (wd_snprintf(__wcp_input_path, sizeof(__wcp_input_path),
-                                    "gamemodes/%s", __wcp_file_name) >=
-                                (int)sizeof(__wcp_input_path))
+                            if (wd_snprintf(compiler_size_input_path, sizeof(compiler_size_input_path),
+                                    "gamemodes/%s", compiler_size_file_name) >=
+                                (int)sizeof(compiler_size_input_path))
                             {
-                                __wcp_input_path[sizeof(__wcp_input_path) - 1] = '\0';
+                                compiler_size_input_path[sizeof(compiler_size_input_path) - 1] = '\0';
                             }
 
                             if (wcfg.wd_sef_count > RATE_SEF_EMPTY)
                                 wd_strncpy(wcfg.wd_sef_found_list[wcfg.wd_sef_count - 1],
-                                    __wcp_input_path, MAX_SEF_PATH_SIZE);
+                                    compiler_size_input_path, MAX_SEF_PATH_SIZE);
                         }
                     }
 
@@ -767,13 +777,14 @@ compiler_done:
 
                         sa.bInheritHandle = TRUE;
                         HANDLE hFile = CreateFileA(
-                            ".wd_compiler.log",
-                            GENERIC_WRITE,
-                            FILE_SHARE_READ,
-                            &sa,
-                            CREATE_ALWAYS,
-                            FILE_ATTRIBUTE_NORMAL | FILE_FLAG_SEQUENTIAL_SCAN,
-                            NULL
+                                ".wd_compiler.log",
+                                GENERIC_WRITE,
+                                FILE_SHARE_READ,
+                                &sa,
+                                CREATE_ALWAYS,
+                                FILE_ATTRIBUTE_NORMAL |
+                                    FILE_FLAG_SEQUENTIAL_SCAN,
+                                NULL
                         );
 
                         si.dwFlags = STARTF_USESTDHANDLES | STARTF_USESHOWWINDOW;
@@ -786,35 +797,33 @@ compiler_done:
 
                         int ret_command = 0;
                         ret_command = wd_snprintf(_compiler_input_,
-                                      sizeof(_compiler_input_),
-                                            "%s %s -o%s %s %s -i%s",
-                                            wd_compiler_input_pawncc_path,
-                                            wd_compiler_input_gamemode_path,
-                                            size_container_output,
-                                            wcfg.wd_toml_aio_opt,
-                                            include_aio_path,
-                                            path_include);
+                                  sizeof(_compiler_input_),
+                                        "%s %s -o%s %s %s -i%s",
+                                        wd_compiler_input_pawncc_path,
+                                        wd_compiler_input_gamemode_path,
+                                        size_container_output,
+                                        wcfg.wd_toml_aio_opt,
+                                        include_aio_path,
+                                        path_include);
 #if defined(_DBG_PRINT)
                         pr_color(stdout, FCOLOUR_YELLOW, "-DEBUGGING\n");
                         printf("[COMPILER]:\n\t%s\n", _compiler_input_);
 #endif
                         if (ret_command > 0 && ret_command < (int)sizeof(_compiler_input_)) {
+                            BOOL win32_process_succes;
                             clock_gettime(CLOCK_MONOTONIC, &start);
-                            BOOL win32_process_succes = CreateProcessA(
-                                NULL,
-                                _compiler_input_,
-                                NULL,
-                                NULL,
-                                TRUE,
-                                CREATE_NO_WINDOW | ABOVE_NORMAL_PRIORITY_CLASS,
-                                NULL,
-                                NULL,
-                                &si,
-                                &pi
-                            );
+                            win32_process_succes = CreateProcessA(
+                                    NULL,
+                                    _compiler_input_,
+                                    NULL,
+                                    NULL,
+                                    TRUE,
+                                    CREATE_NO_WINDOW | ABOVE_NORMAL_PRIORITY_CLASS,
+                                    NULL,
+                                    NULL,
+                                    &si,
+                                    &pi);
                             if (win32_process_succes) {
-                                WD_COMPILER_WIN32_API_START(pi);
-
                                 WaitForSingleObject(pi.hProcess, INFINITE);
 
                                 clock_gettime(CLOCK_MONOTONIC, &end);
@@ -829,13 +838,17 @@ compiler_done:
                                 pr_error(stdout, "CreateProcess failed! (%lu)", GetLastError());
                             }
                         } else {
-                              clock_gettime(CLOCK_MONOTONIC, &end);
+                            clock_gettime(CLOCK_MONOTONIC, &end);
+                            pr_error(stdout, "ret_compiler too long! %s (L: %d)", __func__, __LINE__);
+                            goto compiler_end;
                         }
                         if (hFile != INVALID_HANDLE_VALUE) {
                             CloseHandle(hFile);
                         }
 #else
-                        wd_snprintf(_compiler_input_, sizeof(_compiler_input_), "%s %s %s%s %s%s %s%s",
+                        int ret_command = 0;
+                        ret_command = wd_snprintf(_compiler_input_, sizeof(_compiler_input_),
+                            "%s %s %s%s %s%s %s%s",
                             wd_compiler_input_pawncc_path,
                             wd_compiler_input_gamemode_path,
                             "-o",
@@ -844,6 +857,10 @@ compiler_done:
                             include_aio_path,
                             "-i",
                             path_include);
+                        if (ret_command > (int)sizeof(_compiler_input_)) {
+                            pr_error(stdout, "ret_compiler too long! %s (L: %d)", __func__, __LINE__);
+                            goto compiler_end;
+                        }
 #if defined(_DBG_PRINT)
                         pr_color(stdout, FCOLOUR_YELLOW, "-DEBUGGING\n");
                         printf("[COMPILER]:\n\t%s\n", _compiler_input_);
@@ -878,8 +895,6 @@ compiler_done:
                                 POSIX_SPAWN_SETSIGDEF |
                                 POSIX_SPAWN_SETSIGMASK
                         );
-
-                        extern char **environ;
 
                         pid_t compiler_process_id;
 
@@ -970,7 +985,8 @@ compiler_done:
                                 while (fgets(log_line, sizeof(log_line), proc_file) != NULL) {
                                     if (strfind(log_line, "backtrace"))
                                         pr_color(stdout, FCOLOUR_CYAN,
-                                            "~ backtrace detected - make sure you are using a newer version of pawncc than the one currently in use.\n");
+                                            "~ backtrace detected - "
+                                            "make sure you are using a newer version of pawncc than the one currently in use.\n");
                                 }
                                 fclose(proc_file);
                             }
@@ -1030,12 +1046,12 @@ compiler_done2:
                 goto compiler_end;
             }
         } else {
-            pr_crit(stdout, "pawncc not found!");
+            pr_crit(stdout, "pawncc (our compiler) not found!");
 
             char *ptr_sigA;
             ptr_sigA = readline("install now? [Y/n]: ");
 
-            while (1)
+            while (true)
             {
                 if (strcmp(ptr_sigA, "Y") == 0 || strcmp(ptr_sigA, "y") == 0)
                 {

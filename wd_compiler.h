@@ -5,10 +5,10 @@
 do { \
     wd_sef_fdir_reset(); \
     memset(container_output, WATCHDOGS_COMPILER_ZERO, sizeof(container_output)); \
-    memset(__wcp_direct_path, WATCHDOGS_COMPILER_ZERO, sizeof(__wcp_direct_path)); \
-    memset(__wcp_file_name, WATCHDOGS_COMPILER_ZERO, sizeof(__wcp_file_name)); \
-    memset(__wcp_input_path, WATCHDOGS_COMPILER_ZERO, sizeof(__wcp_input_path)); \
-    memset(__wcp_any_tmp, WATCHDOGS_COMPILER_ZERO, sizeof(__wcp_any_tmp)); \
+    memset(compiler_direct_path, WATCHDOGS_COMPILER_ZERO, sizeof(compiler_direct_path)); \
+    memset(compiler_size_file_name, WATCHDOGS_COMPILER_ZERO, sizeof(compiler_size_file_name)); \
+    memset(compiler_size_input_path, WATCHDOGS_COMPILER_ZERO, sizeof(compiler_size_input_path)); \
+    memset(compiler_size_temp, WATCHDOGS_COMPILER_ZERO, sizeof(compiler_size_temp)); \
 } while(0)
 
 int

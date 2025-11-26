@@ -272,32 +272,32 @@ acc_track_gn_variations(const char *base, char variations[][100], int *variation
 	    int len = strlen(base);
 	    int i;
 
-	    strcpy(variations[(*variation_count)++], base);
+	    wd_strcpy(variations[(*variation_count)++], base);
 
 	    for (i = 0; i < len; i++) {
 	        char size_temp[100];
 	        strncpy(size_temp, base, i);
 	        size_temp[i] = base[i];
 	        size_temp[i+1] = base[i];
-	        strcpy(size_temp + i + 2, base + i + 1);
-	        strcpy(variations[(*variation_count)++], size_temp);
+	        wd_strcpy(size_temp + i + 2, base + i + 1);
+	        wd_strcpy(variations[(*variation_count)++], size_temp);
 	    }
 
 	    for (i = 2; i <= 5; i++) {
 	        char size_temp[100];
-	        snprintf(size_temp, sizeof(size_temp), "%s", base);
+	        wd_snprintf(size_temp, sizeof(size_temp), "%s", base);
 	        for (int j = 0; j < i; j++) {
 	            size_temp[strlen(size_temp)] = base[len - 1];
 	        }
-	        strcpy(variations[(*variation_count)++], size_temp);
+	        wd_strcpy(variations[(*variation_count)++], size_temp);
 	    }
 
-	    strcpy(variations[(*variation_count)++], strcat(strdup(base), "1"));
-	    strcpy(variations[(*variation_count)++], strcat(strdup(base), "123"));
-	    strcpy(variations[(*variation_count)++], strcat(strdup(base), "007"));
-	    strcpy(variations[(*variation_count)++], strcat(strdup(base), "_"));
-	    strcpy(variations[(*variation_count)++], strcat(strdup(base), "."));
-	    strcpy(variations[(*variation_count)++], strcat(strdup(base), "_dev"));
+	    wd_strcpy(variations[(*variation_count)++], strcat(strdup(base), "1"));
+	    wd_strcpy(variations[(*variation_count)++], strcat(strdup(base), "123"));
+	    wd_strcpy(variations[(*variation_count)++], strcat(strdup(base), "007"));
+	    wd_strcpy(variations[(*variation_count)++], strcat(strdup(base), "_"));
+	    wd_strcpy(variations[(*variation_count)++], strcat(strdup(base), "."));
+	    wd_strcpy(variations[(*variation_count)++], strcat(strdup(base), "_dev"));
 }
 
 void acc_track_username(CURL *curl, const char *username) {
@@ -311,7 +311,7 @@ void acc_track_username(CURL *curl, const char *username) {
 
 	    for (int i = 0; i < MAX_NUM_SITES; i++) {
 	        char url[200];
-	        snprintf(url, sizeof(url), AIO_SITES_LIST[i][1], username);
+	        wd_snprintf(url, sizeof(url), AIO_SITES_LIST[i][1], username);
 
 	        curl_easy_setopt(curl, CURLOPT_URL, url);
 	        curl_easy_setopt(curl, CURLOPT_HTTPHEADER, headers);
@@ -821,52 +821,24 @@ int wd_download_file(const char *url, const char *filename)
 					pr_color(stdout, FCOLOUR_GREEN, "Download successful: %" PRIdMAX " bytes\n", (intmax_t)file_stat.st_size);
 					fflush(stdout);
 
-					if (is_archive_file(filename)) {
-						printf("Checking file type for extraction...\n");
-						fflush(stdout);
-						wd_extract_archive(filename);
+					if (!is_archive_file(filename)) {
+						printf("File is not an archive!\n");
+						return WD_RETN;
+					}
+					
+					printf("Checking file type for extraction...\n");
+					fflush(stdout);
+					wd_extract_archive(filename);
 
-						char rm_cmd[WD_PATH_MAX];
-						if (wcfg.wd_idepends == 1) {
-							static int rm_deps = 0;
-							if (rm_deps == 0) {
-								pr_color(stdout, FCOLOUR_GREEN, "* remove archive '%s'? ", filename);
-								char *confirm = readline(" [y/n]: ");
-								if (confirm) {
-									if (confirm[0] == 'Y' || confirm[0] == 'y') {
-										rm_deps = 1;
-										if (is_native_windows())
-											wd_snprintf(rm_cmd, sizeof(rm_cmd),
-												"if exist \"%s\" (del /f /q \"%s\" 2>nul || "
-												"rmdir /s /q \"%s\" 2>nul)",
-												filename, filename, filename);
-										else
-											wd_snprintf(rm_cmd, sizeof(rm_cmd),
-												"rm -rf %s",
-												filename);
-										wd_run_command(rm_cmd);
-									}
-									wd_free(confirm);
-								}
-							} else {
-								if (is_native_windows())
-									wd_snprintf(rm_cmd, sizeof(rm_cmd),
-										"if exist \"%s\" (del /f /q \"%s\" 2>nul || "
-										"rmdir /s /q \"%s\" 2>nul)",
-										filename, filename, filename);
-								else
-									wd_snprintf(rm_cmd, sizeof(rm_cmd),
-										"rm -rf %s",
-										filename);
-								wd_run_command(rm_cmd);
-							}
-							return WD_RETZ;
-						} else {
-							pr_color(stdout, FCOLOUR_GREEN, "remove archive '%s'? ", filename);
+					char rm_cmd[WD_PATH_MAX];
+					if (wcfg.wd_idepends == 1) {
+						static int rm_deps = 0;
+						if (rm_deps == 0) {
+							pr_color(stdout, FCOLOUR_GREEN, "* remove archive '%s'? ", filename);
 							char *confirm = readline(" [y/n]: ");
 							if (confirm) {
 								if (confirm[0] == 'Y' || confirm[0] == 'y') {
-									char rm_cmd[WD_PATH_MAX];
+									rm_deps = 1;
 									if (is_native_windows())
 										wd_snprintf(rm_cmd, sizeof(rm_cmd),
 											"if exist \"%s\" (del /f /q \"%s\" 2>nul || "
@@ -880,27 +852,55 @@ int wd_download_file(const char *url, const char *filename)
 								}
 								wd_free(confirm);
 							}
+						} else {
+							if (is_native_windows())
+								wd_snprintf(rm_cmd, sizeof(rm_cmd),
+									"if exist \"%s\" (del /f /q \"%s\" 2>nul || "
+									"rmdir /s /q \"%s\" 2>nul)",
+									filename, filename, filename);
+							else
+								wd_snprintf(rm_cmd, sizeof(rm_cmd),
+									"rm -rf %s",
+									filename);
+							wd_run_command(rm_cmd);
 						}
-
-						if (wcfg.wd_ipawncc && prompt_apply_pawncc()) {
-							char size_filename[WD_PATH_MAX];
-						    wd_snprintf(size_filename, sizeof(size_filename), "%s", filename);
-
-						    if (strstr(size_filename, ".tar.gz")) {
-						        char *f_EXT = strstr(size_filename, ".tar.gz");
-						        if (f_EXT)
-						            *f_EXT = '\0';
-						    } else {
-						        char *f_EXT = strrchr(size_filename, '.');
-						        if (f_EXT)
-						            *f_EXT = '\0';
-						    }
-							wd_snprintf(pawncc_dir_src, sizeof(pawncc_dir_src), "%s", size_filename);
-							wd_apply_pawncc();
-						}
+						return WD_RETZ;
 					} else {
-						printf("File is not an archive, skipping extraction.\n");
-						fflush(stdout);
+						pr_color(stdout, FCOLOUR_GREEN, "remove archive '%s'? ", filename);
+						char *confirm = readline(" [y/n]: ");
+						if (confirm) {
+							if (confirm[0] == 'Y' || confirm[0] == 'y') {
+								char rm_cmd[WD_PATH_MAX];
+								if (is_native_windows())
+									wd_snprintf(rm_cmd, sizeof(rm_cmd),
+										"if exist \"%s\" (del /f /q \"%s\" 2>nul || "
+										"rmdir /s /q \"%s\" 2>nul)",
+										filename, filename, filename);
+								else
+									wd_snprintf(rm_cmd, sizeof(rm_cmd),
+										"rm -rf %s",
+										filename);
+								wd_run_command(rm_cmd);
+							}
+							wd_free(confirm);
+						}
+					}
+
+					if (wcfg.wd_ipawncc && prompt_apply_pawncc()) {
+						char size_filename[WD_PATH_MAX];
+						wd_snprintf(size_filename, sizeof(size_filename), "%s", filename);
+
+						if (strstr(size_filename, ".tar.gz")) {
+							char *f_EXT = strstr(size_filename, ".tar.gz");
+							if (f_EXT)
+								*f_EXT = '\0';
+						} else {
+							char *f_EXT = strrchr(size_filename, '.');
+							if (f_EXT)
+								*f_EXT = '\0';
+						}
+						wd_snprintf(pawncc_dir_src, sizeof(pawncc_dir_src), "%s", size_filename);
+						wd_apply_pawncc();
 					}
 
 					return WD_RETZ;

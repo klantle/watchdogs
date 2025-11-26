@@ -7,6 +7,7 @@ const char *watchdogs_release = WATCHDOGS_RELEASE;
 #include <stdlib.h>
 #include <string.h>
 #include <stdarg.h>
+#include <stdbool.h>
 #include <limits.h>
 #include <dirent.h>
 #include <time.h>
@@ -152,14 +153,8 @@ int __command__(char *chain_pre_command)
         if (path_access(".wd_crashdetect"))
           remove(".wd_crashdetect");
 
-        char size_config[WD_PATH_MAX];
-        wd_snprintf(size_config, sizeof(size_config),
-                ".%s.bak", wcfg.wd_toml_config);
-        if (path_access(size_config))
-            remove(size_config);
-
         wcfg.wd_sel_stat = 0;
-        handle_sigint_status = 0;
+        unit_handle_sigint_status = 0;
         int wd_compile_running = 0;
 
         static int wd_notice_logged = 0;
@@ -325,7 +320,7 @@ _reexecute_command:
                 crc32_generate = crypto_generate_crc32(arg, sizeof(arg) - 1);
 
                 char crc_str[11];
-                sprintf(crc_str, "%08X", crc32_generate);
+                wd_sprintf(crc_str, "%08X", crc32_generate);
 
                 printf("         Crypto Input : %s\n", arg);
                 printf("Crypto Output (CRC32) : ");
@@ -766,8 +761,6 @@ _runners_:
                     goto done;
                 }
 
-                server_mode = 0;
-
                 int _wd_log_acces = path_access("server_log.txt");
                 if (_wd_log_acces)
                   remove("server_log.txt");
@@ -846,12 +839,12 @@ back_start:
 #endif
                         end = time(NULL);
 
-                        int running_FAIL = wd_run_command(size_run);
-                        if (running_FAIL == 0) {
+                        int rate_runner_failed = wd_run_command(size_run);
+                        if (rate_runner_failed == WD_RETZ) {
                             if (!strcmp(wcfg.wd_os_type, OS_SIGNAL_LINUX)) {
-                                printf("~ Waiting logging...\n");
-                                sleep(3);
-                                wd_display_server_logs(0);
+                                    printf("~ logging...\n");
+                                    sleep(3);
+                                    wd_display_server_logs(0);
                             }
                         } else {
                             pr_color(stdout, FCOLOUR_RED, "Server startup failed!\n");
@@ -869,7 +862,7 @@ back_start:
                             }
                         }
 
-                        if (handle_sigint_status == 0)
+                        if (unit_handle_sigint_status == 0)
                             raise(SIGINT);
 
                         printf("- create debugging runner? [y/n]");
@@ -885,8 +878,8 @@ back_start:
                             wd_compile_running = 0;
                             goto start_main;
                         }
-                        server_mode = 1;
                         wd_run_samp_server(arg1, wcfg.wd_toml_binary);
+                        restore_server_config();
                         printf("- create debugging runner? [y/n]");
                         char *dbg_runner = readline(" ");
                         if (strcmp(dbg_runner, "Y") == 0 || strcmp(dbg_runner, "y") == 0) {
@@ -922,12 +915,8 @@ back_start2:
 #endif
                         end = time(NULL);
 
-                        int running_FAIL = wd_run_command(size_run);
-                        if (running_FAIL == 0) {
-                            printf("~ Waiting logging...\n");
-                            sleep(3);
-                            wd_display_server_logs(1);
-                        } else {
+                        int rate_runner_failed = wd_run_command(size_run);
+                        if (rate_runner_failed != WD_RETZ) {
                             pr_color(stdout, FCOLOUR_RED, "Server startup failed!\n");
                             elapsed = difftime(end, start);
                             if (elapsed <= 5.0 && ret_serv == 0) {
@@ -943,8 +932,9 @@ back_start2:
                             }
                         }
 
-                        if (handle_sigint_status == 0)
+                        if (unit_handle_sigint_status == 0) {
                             raise(SIGINT);
+                        }
 
                         printf("- create debugging runner? [y/n]");
                         char *dbg_runner = readline(" ");
@@ -959,8 +949,8 @@ back_start2:
                             wd_compile_running = 0;
                             goto start_main2;
                         }
-                        server_mode = 1;
                         wd_run_omp_server(arg1, wcfg.wd_ptr_omp);
+                        restore_server_config();
                         printf("- create debugging runner? [y/n]");
                         char *dbg_runner = readline(" ");
                         if (strcmp(dbg_runner, "Y") == 0 || strcmp(dbg_runner, "y") == 0) {
@@ -976,7 +966,7 @@ back_start2:
 ret_ptr3:
                     ptr_sigA = readline("install now? [Y/n]: ");
 
-                    while (1) {
+                    while (true) {
                         if (strcmp(ptr_sigA, "Y") == 0 || strcmp(ptr_sigA, "y") == 0) {
                             wd_free(ptr_sigA);
                             if (!strcmp(wcfg.wd_os_type, OS_SIGNAL_WINDOWS)) {
@@ -1042,13 +1032,13 @@ n_loop_igm2:
                 int is_chatbot_groq_based = 0;
                 if (strcmp(wcfg.wd_toml_chatbot_ai, "gemini") == 0)
 rest_def:
-                    snprintf(size_rest_api_perform, sizeof(size_rest_api_perform),
+                    wd_snprintf(size_rest_api_perform, sizeof(size_rest_api_perform),
                                       "https://generativelanguage.googleapis.com/"
                                       "v1beta/models/%s:generateContent",
                                       wcfg.wd_toml_models_ai);
                 else if (strcmp(wcfg.wd_toml_chatbot_ai, "groq") == 0) {
                     is_chatbot_groq_based = 1;
-                    snprintf(size_rest_api_perform, sizeof(size_rest_api_perform),
+                    wd_snprintf(size_rest_api_perform, sizeof(size_rest_api_perform),
                                       "https://api.groq.com/"
                                       "openai/v1/chat/completions");
                 } else { goto rest_def; }
@@ -1061,7 +1051,7 @@ rest_def:
 
                 char wanion_json_payload[WD_MAX_PATH * 2];
                 if (is_chatbot_groq_based == 1) {
-                    snprintf(wanion_json_payload, sizeof(wanion_json_payload),
+                    wd_snprintf(wanion_json_payload, sizeof(wanion_json_payload),
                              /* prompt here */
                              "{"
                              "\"model\":\"%s\","
@@ -1073,7 +1063,7 @@ rest_def:
                              wcfg.wd_toml_models_ai,
                              wanion_escaped_argument);
                 } else {
-                    snprintf(wanion_json_payload, sizeof(wanion_json_payload),
+                    wd_snprintf(wanion_json_payload, sizeof(wanion_json_payload),
                              /* prompt here */
                              "{"
                              "\"contents\":[{\"role\":\"user\","
@@ -1254,7 +1244,7 @@ done_left:
                 curl = curl_easy_init();
                 if (!curl) {
                     fprintf(stderr, "Curl initialization failed!\n");
-                    return 1;
+                    goto done;
                 }
 
                 char variations[100][100];

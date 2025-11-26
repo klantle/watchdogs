@@ -2,9 +2,9 @@ name: C/C++ CI
 
 on:
   push:
-    branches: [ "main" ]
+    branches: [ "dev" ]
   pull_request:
-    branches: [ "main" ]
+    branches: [ "dev" ]
 
 jobs:
   build:
@@ -63,8 +63,8 @@ jobs:
         echo "Testing help command..."
         ./watchdogs.debug help
         
-        # Test 2: Execute main watchdogs functionality
-        echo "Testing main watchdogs command..."
+        # Test 2: Execute dev watchdogs functionality
+        echo "Testing dev watchdogs command..."
         ./watchdogs.debug watchdogs
         
         # Test 3: Validate binary dependencies and linking

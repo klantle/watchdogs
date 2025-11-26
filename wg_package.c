@@ -5,53 +5,42 @@
 #include <unistd.h>
 #include <stddef.h>
 
-#include "wd_extra.h"
-#include "wd_util.h"
+#include "wg_extra.h"
+#include "wg_util.h"
 
-#ifndef WD_WINDOWS
+#ifndef WG_WINDOWS
 #include <sys/utsname.h>
 #endif
 
-#include "wd_unit.h"
-#include "wd_archive.h"
-#include "wd_curl.h"
-#include "wd_hardware.h"
-#include "wd_package.h"
-
-struct version_info {
-		char key;
-		const char *name;
-		const char *linux_url;
-		const char *linux_file;
-		const char *windows_url;
-		const char *windows_file;
-};
+#include "wg_unit.h"
+#include "wg_archive.h"
+#include "wg_curl.h"
+#include "wg_hardware.h"
+#include "wg_package.h"
 
 static int pawncc_handle_termux_installation(void)
 {
-		const char *termux_versions[] = {
-							"3.10.11",
-							"3.10.10"
-						};
-		size_t version_count;
-		version_count = sizeof(termux_versions) / sizeof(termux_versions[0]);
 		char version_selection;
 		char architecture[16];
-		char url[WD_PATH_MAX * 3];
+		char url[WG_PATH_MAX * 3];
 		char filename[128];
 		int version_index;
+		const char *pkg_termux_versions[] = { "3.10.11", "3.10.10" };
+		size_t size_pkg_termux_versions = sizeof(pkg_termux_versions);
+		size_t size_pkg_termux_versions_zero = sizeof(pkg_termux_versions[0]);
+		size_t version_count = size_pkg_termux_versions / size_pkg_termux_versions_zero;
 
 		if (!is_termux_environment())
 				pr_info(stdout, "Currently not in Termux!");
 
 		char *__version__;
 ret_pawncc:
-		printf("Select the PawnCC version to download:\n");
+        printf("\033[1;33m== Select the PawnCC version to download ==\033[0m\n");
 		for (size_t i = 0; i < version_count; i++) {
 			printf("-> [%c/%c] PawnCC %s (mxp96)\n",
 				(int)('A' + i),
 				(int)('a' + i),
-				termux_versions[i]);
+				pkg_termux_versions[i]);
 		}
 
 		__version__ = readline("==> ");
@@ -68,31 +57,31 @@ ret_pawncc:
 				version_selection,
 				'A' + (int)version_count - 1,
 				'a' + (int)version_count - 1);
-			wd_free(__version__);
+			wg_free(__version__);
 			goto ret_pawncc;
 	    	}
-		wd_free(__version__);
+		wg_free(__version__);
 
 		struct utsname uname_data;
 
 		if (uname(&uname_data) != 0) {
 				pr_error(stdout, "Failed to get system information");
-				return -WD_RETN;
+				return -WG_RETN;
 		}
 
-		if (strcmp(uname_data.machine, "aarch64") == 0) {
-			wd_strncpy(architecture, "arm64", sizeof(architecture));
+		if (strcmp(uname_data.machine, "aarch64") == WG_RETZ) {
+			wg_strncpy(architecture, "arm64", sizeof(architecture));
 			goto done;
-		} else if (strcmp(uname_data.machine, "armv7l") == 0 ||
-			   strcmp(uname_data.machine, "armv8l") == 0) {
-			wd_strncpy(architecture, "arm32", sizeof(architecture));
+		} else if (strcmp(uname_data.machine, "armv7l") == WG_RETZ ||
+			   strcmp(uname_data.machine, "armv8l") == WG_RETZ) {
+			wg_strncpy(architecture, "arm32", sizeof(architecture));
 			goto done;
 		}
 
 		printf("Unknown arch: %s\n", uname_data.machine);
 
 back:
-		printf("Select architecture for Termux:\n");
+        printf("\033[1;33m== Select architecture for Termux ==\033[0m\n");
 		printf("-> [A/a] arm32\n");
 		printf("-> [B/b] arm64\n");
 
@@ -100,22 +89,22 @@ back:
 
 		if (strfind(selection, "A"))
 		{
-			wd_strncpy(architecture, "arm32", sizeof(architecture));
-			wd_free(selection);
+			wg_strncpy(architecture, "arm32", sizeof(architecture));
+			wg_free(selection);
 		} else if (strfind(selection, "B")) {
-			wd_strncpy(architecture, "arm64", sizeof(architecture));
-			wd_free(selection);
+			wg_strncpy(architecture, "arm64", sizeof(architecture));
+			wg_free(selection);
 		} else {
-			wd_free(selection);
-			if (wcfg.wd_sel_stat == 0)
-				return WD_RETZ;
+			wg_free(selection);
+			if (wcfg.wg_sel_stat == WG_RETZ)
+				return WG_RETZ;
 			pr_error(stdout, "Invalid architecture selection");
 			goto back;
 		}
-		wd_free(selection);
+		wg_free(selection);
 
 done:
-		wd_snprintf(url, sizeof(url),
+		wg_snprintf(url, sizeof(url),
 			 "https://github.com/"
 			 "mxp96/"
 			 "compiler/"
@@ -123,17 +112,17 @@ done:
 			 "download/"
 			 "%s/"
 			 "pawnc-%s-%s.zip",
-			 termux_versions[version_index],
-			 termux_versions[version_index],
+			 pkg_termux_versions[version_index],
+			 pkg_termux_versions[version_index],
 			 architecture);
 
-		wd_snprintf(filename, sizeof(filename), "pawncc-%s-%s.zip",
-				    termux_versions[version_index], architecture);
+		wg_snprintf(filename, sizeof(filename), "pawncc-%s-%s.zip",
+				    pkg_termux_versions[version_index], architecture);
 
-		wcfg.wd_ipawncc = 1;
-		wd_download_file(url, filename);
+		wcfg.wg_ipawncc = 1;
+		wg_download_file(url, filename);
 
-		return WD_RETZ;
+		return WG_RETZ;
 }
 
 static int pawncc_handle_standard_installation(const char *platform)
@@ -152,10 +141,10 @@ static int pawncc_handle_standard_installation(const char *platform)
 
 		if (strcmp(platform, "linux") != 0 && strcmp(platform, "windows") != 0) {
 				pr_error(stdout, "Unsupported platform: %s", platform);
-				return -WD_RETN;
+				return -WG_RETN;
 		}
 
-		printf("Select the PawnCC version to download:\n");
+        printf("\033[1;33m== Select the PawnCC version to download ==\033[0m\n");
 		for (size_t i = 0; i < version_count; i++) {
 			printf("-> [%c/%c] PawnCC %s\n",
 				(int)('A' + i),
@@ -174,15 +163,15 @@ get_back:
 			version_selection <= 'j') {
 			version_index = version_selection - 'a';
 		} else {
-			wd_free(__version__);
-			if (wcfg.wd_sel_stat == 0)
-				return WD_RETZ;
+			wg_free(__version__);
+			if (wcfg.wg_sel_stat == WG_RETZ)
+				return WG_RETZ;
 			pr_error(stdout, "Invalid version selection");
 			goto get_back;
 		}
-		wd_free(__version__);
+		wg_free(__version__);
 
-		if (strcmp(versions[version_index], "3.10.11") == 0)
+		if (strcmp(versions[version_index], "3.10.11") == WG_RETZ)
 				pkg_repo_base = "https://github.com/"
 								"openmultiplayer/"
 								"compiler";
@@ -191,25 +180,24 @@ get_back:
 								"pawn-lang/"
 								"compiler";
 
-		archive_ext = (strcmp(platform, "linux") == 0) ? "tar.gz" : "zip";
+		archive_ext = (strcmp(platform, "linux") == WG_RETZ) ? "tar.gz" : "zip";
 
-		wd_snprintf(url, sizeof(url),
+		wg_snprintf(url, sizeof(url),
 			 "%s/releases/download/v%s/pawnc-%s-%s.%s",
 			 pkg_repo_base, versions[version_index], versions[version_index],
 			 platform, archive_ext);
 
-		wd_snprintf(filename, sizeof(filename), "pawnc-%s-%s.%s",
+		wg_snprintf(filename, sizeof(filename), "pawnc-%s-%s.%s",
 				    versions[version_index], platform, archive_ext);
 
-		wcfg.wd_ipawncc = 1;
-		wd_download_file(url, filename);
+		wcfg.wg_ipawncc = 1;
+		wg_download_file(url, filename);
 
-		return WD_RETZ;
+		return WG_RETZ;
 }
 
-int wd_install_pawncc(const char *platform)
+int wg_install_pawncc(const char *platform)
 {
-        	/* Debugging Pawncc Installation Function */
 #if defined (_DBG_PRINT)
 		pr_color(stdout, FCOLOUR_YELLOW, "-DEBUGGING ");
 	    printf("[function: %s | "
@@ -244,32 +232,31 @@ int wd_install_pawncc(const char *platform)
 #endif
 		if (!platform) {
 				pr_error(stdout, "Platform parameter is NULL");
-				if (wcfg.wd_sel_stat == 0)
-					return WD_RETZ;
-				return -WD_RETN;
+				if (wcfg.wg_sel_stat == WG_RETZ)
+					return WG_RETZ;
+				return -WG_RETN;
 		}
-		if (strcmp(platform, "termux") == 0) {
+		if (strcmp(platform, "termux") == WG_RETZ) {
 			int ret = pawncc_handle_termux_installation();
 loop_ipcc:
-			if (ret == -WD_RETN && wcfg.wd_sel_stat != 0)
+			if (ret == -WG_RETN && wcfg.wg_sel_stat != 0)
 				goto loop_ipcc;
-			else if (ret == WD_RETZ)
-				return WD_RETZ;
+			else if (ret == WG_RETZ)
+				return WG_RETZ;
 		} else {
 			int ret = pawncc_handle_standard_installation(platform);
 loop_ipcc2:
-			if (ret == -WD_RETN && wcfg.wd_sel_stat != 0)
+			if (ret == -WG_RETN && wcfg.wg_sel_stat != 0)
 				goto loop_ipcc2;
-			else if (ret == WD_RETZ)
-				return WD_RETZ;
+			else if (ret == WG_RETZ)
+				return WG_RETZ;
 		}
 
-		return WD_RETZ;
+		return WG_RETZ;
 }
 
-int wd_install_server(const char *platform)
+int wg_install_server(const char *platform)
 {
-        /* Debugging Server Installation Function */
 #if defined (_DBG_PRINT)
 		pr_color(stdout, FCOLOUR_YELLOW, "-DEBUGGING ");
 	    printf("[function: %s | "
@@ -302,7 +289,7 @@ int wd_install_server(const char *platform)
                 "Unknown");
 #endif
 #endif
-		struct version_info versions[] = {
+		struct pkg_version_info versions[] = {
 				{
 						'A', "SA-MP 0.3.DL R1",
 						"https://github.com/"
@@ -395,17 +382,17 @@ int wd_install_server(const char *platform)
 
 		const size_t version_count = sizeof(versions) / sizeof(versions[0]);
 		char selection;
-		struct version_info *chosen = NULL;
+		struct pkg_version_info *chosen = NULL;
 		size_t i;
 
 		if (strcmp(platform, "linux") != 0 && strcmp(platform, "windows") != 0) {
 				pr_error(stdout, "Unsupported platform: %s", platform);
-				if (wcfg.wd_sel_stat == 0)
-					return WD_RETZ;
-				return -WD_RETN;
+				if (wcfg.wg_sel_stat == WG_RETZ)
+					return WG_RETZ;
+				return -WG_RETN;
 		}
 
-		printf("Select the SA-MP version to download:\n");
+        printf("\033[1;33m== Select the SA-MP version to download ==\033[0m\n");
 		for (i = 0; i < version_count; i++) {
 				printf("-> [%c/%c] %s\n", versions[i].key, versions[i].key + 32,
 				       versions[i].name);
@@ -423,20 +410,20 @@ get_back:
 			}
 		}
 		if (!chosen) {
-			wd_free(__selection__);
-			if (wcfg.wd_sel_stat == 0)
-				return WD_RETZ;
+			wg_free(__selection__);
+			if (wcfg.wg_sel_stat == WG_RETZ)
+				return WG_RETZ;
 			pr_error(stdout, "Invalid selection");
 			goto get_back;
 		}
-		wd_free(__selection__);
+		wg_free(__selection__);
 
-		const char *url = (strcmp(platform, "linux") == 0) ?
+		const char *url = (strcmp(platform, "linux") == WG_RETZ) ?
 				chosen->linux_url : chosen->windows_url;
-		const char *filename = (strcmp(platform, "linux") == 0) ?
+		const char *filename = (strcmp(platform, "linux") == WG_RETZ) ?
 				chosen->linux_file : chosen->windows_file;
 
-		wd_download_file(url, filename);
+		wg_download_file(url, filename);
 
-		return WD_RETZ;
+		return WG_RETZ;
 }

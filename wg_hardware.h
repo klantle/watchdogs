@@ -8,9 +8,9 @@ extern "C" {
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include "wd_util.h"
+#include "wg_util.h"
 
-#if defined(WD_WINDOWS) || defined(_WIN64)
+#if defined(WG_WINDOWS) || defined(_WIN64)
 #define HARDWARE_WINDOWS 1
 #define HARDWARE_UNIX 0
 #else
@@ -102,13 +102,13 @@ typedef struct {
         unsigned int mtu;
 } HardwareNetwork;
 
-#ifdef WD_WINDOWS
+#ifdef WG_WINDOWS
 struct utsname {
-		char sysname[256];
-		char nodename[256];
-		char release[256];
-		char version[256];
-		char machine[256];
+        char sysname[256];
+        char nodename[256];
+        char release[256];
+        char version[256];
+        char machine[256];
 };
 int uname(struct utsname *name);
 #endif

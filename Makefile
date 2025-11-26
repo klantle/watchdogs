@@ -18,8 +18,8 @@ CFLAGS   = -O2 -pipe -fdata-sections -ffunction-sections
 LDFLAGS  = -lm -lcurl -lreadline -lncursesw -larchive
 
 # Source files used in the build
-SRCS = wd_extra.c wd_curl.c wd_unit.c wd_util.c wd_depends.c wd_hardware.c \
-       wd_compiler.c wd_archive.c wd_package.c wd_server.c wd_crypto.c \
+SRCS = wg_extra.c wg_curl.c wg_unit.c wg_util.c wg_depends.c wg_hardware.c \
+       wg_compiler.c wg_archive.c wg_package.c wg_runner.c wg_crypto.c \
        include/tomlc/toml.c include/cJSON/cJSON.c
 
 # Convert all .c sources -> .o (object files)

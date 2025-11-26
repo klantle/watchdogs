@@ -2,9 +2,9 @@
 #include <stdlib.h>
 #include <string.h>
 #include <stdarg.h>
-#include "wd_util.h"
-#include "wd_hardware.h"
-#ifdef WD_WINDOWS
+#include "wg_util.h"
+#include "wg_hardware.h"
+#ifdef WG_WINDOWS
 #include <windows.h>
 #include <iphlpapi.h>
 #include <intrin.h>
@@ -17,35 +17,35 @@ int uname(struct utsname *name)
         osvi.dwOSVersionInfoSize = sizeof(OSVERSIONINFOEX);
 
         if (!GetVersionEx((OSVERSIONINFO*)&osvi))
-                        return -WD_RETN;
+                        return -WG_RETN;
 
         GetSystemInfo(&si);
 
-        wd_snprintf(name->sysname, sizeof(name->sysname), "Windows");
-        wd_snprintf(name->release, sizeof(name->release), "%lu.%lu",
+        wg_snprintf(name->sysname, sizeof(name->sysname), "Windows");
+        wg_snprintf(name->release, sizeof(name->release), "%lu.%lu",
                          osvi.dwMajorVersion, osvi.dwMinorVersion);
-        wd_snprintf(name->version, sizeof(name->version), "Build %lu",
+        wg_snprintf(name->version, sizeof(name->version), "Build %lu",
                          osvi.dwBuildNumber);
 
         switch (si.wProcessorArchitecture) {
                 case PROCESSOR_ARCHITECTURE_AMD64:
-                                wd_snprintf(name->machine, sizeof(name->machine), "x86_64");
+                                wg_snprintf(name->machine, sizeof(name->machine), "x86_64");
                                 break;
                 case PROCESSOR_ARCHITECTURE_INTEL:
-                                wd_snprintf(name->machine, sizeof(name->machine), "x86");
+                                wg_snprintf(name->machine, sizeof(name->machine), "x86");
                                 break;
                 case PROCESSOR_ARCHITECTURE_ARM:
-                                wd_snprintf(name->machine, sizeof(name->machine), "ARM");
+                                wg_snprintf(name->machine, sizeof(name->machine), "ARM");
                                 break;
                 case PROCESSOR_ARCHITECTURE_ARM64:
-                                wd_snprintf(name->machine, sizeof(name->machine), "ARM64");
+                                wg_snprintf(name->machine, sizeof(name->machine), "ARM64");
                                 break;
                 default:
-                                wd_snprintf(name->machine, sizeof(name->machine), "Unknown");
+                                wg_snprintf(name->machine, sizeof(name->machine), "Unknown");
                                 break;
         }
 
-        return WD_RETZ;
+        return WG_RETZ;
 }
 #else
 #include <sys/statvfs.h>
@@ -65,7 +65,7 @@ void hardware_display_field(unsigned int field_id, const char* format, ...) {
         /** Determine field category and name */
         switch (field_id & 0xFF00) {
                 case 0x0000: /** CPU fields */
-                        wd_strcpy(prefix, "CPU->");
+                        wg_strcpy(prefix, "CPU->");
                         switch (field_id) {
                                 case FIELD_CPU_NAME: field_name = "Processor"; break;
                                 case FIELD_CPU_VENDOR: field_name = "Vendor"; break;
@@ -78,7 +78,7 @@ void hardware_display_field(unsigned int field_id, const char* format, ...) {
                         break;
 
                 case 0x0100: /** Memory fields */
-                        wd_strcpy(prefix, "MEM->");
+                        wg_strcpy(prefix, "MEM->");
                         switch (field_id) {
                                 case FIELD_MEM_TOTAL: field_name = "Total RAM"; break;
                                 case FIELD_MEM_AVAIL: field_name = "Available RAM"; break;
@@ -88,7 +88,7 @@ void hardware_display_field(unsigned int field_id, const char* format, ...) {
                         break;
 
                 case 0x0200: /** Disk fields */
-                        wd_strcpy(prefix, "DISK->");
+                        wg_strcpy(prefix, "DISK->");
                         switch (field_id) {
                                 case FIELD_DISK_MOUNT: field_name = "Mount Point"; break;
                                 case FIELD_DISK_TOTAL: field_name = "Total Space"; break;
@@ -110,10 +110,10 @@ void hardware_display_field(unsigned int field_id, const char* format, ...) {
         va_end(args);
 }
 
-#ifdef WD_WINDOWS
+#ifdef WG_WINDOWS
 
 int hardware_cpu_info(HardwareCPU* cpu) {
-        if (!cpu) return WD_RETZ;
+        if (!cpu) return WG_RETZ;
 
         memset(cpu, 0, sizeof(HardwareCPU));
 
@@ -127,13 +127,13 @@ int hardware_cpu_info(HardwareCPU* cpu) {
                 hardware_cpuid((int*)(brand), cpuid_brand);
                 hardware_cpuid((int*)(brand+16), cpuid_brand_16);
                 hardware_cpuid((int*)(brand+32), cpuid_brand_32);
-                wd_strncpy(cpu->name, brand, sizeof(cpu->name)-1);
+                wg_strncpy(cpu->name, brand, sizeof(cpu->name)-1);
         }
 
         /** Get vendor */
         hardware_cpuid(cpuInfo, 0);
         int vendor[4] = {cpuInfo[1], cpuInfo[3], cpuInfo[2], 0};
-        wd_strncpy(cpu->vendor, (char*)vendor, sizeof(cpu->vendor)-1);
+        wg_strncpy(cpu->vendor, (char*)vendor, sizeof(cpu->vendor)-1);
 
         /** Get core info */
         SYSTEM_INFO si;
@@ -143,18 +143,18 @@ int hardware_cpu_info(HardwareCPU* cpu) {
 
         /** Get architecture */
         if (si.wProcessorArchitecture == PROCESSOR_ARCHITECTURE_AMD64) {
-                wd_strcpy(cpu->architecture, "x86_64");
+                wg_strcpy(cpu->architecture, "x86_64");
         } else if (si.wProcessorArchitecture == PROCESSOR_ARCHITECTURE_INTEL) {
-                wd_strcpy(cpu->architecture, "x86");
+                wg_strcpy(cpu->architecture, "x86");
         } else {
-                wd_strcpy(cpu->architecture, "Unknown");
+                wg_strcpy(cpu->architecture, "Unknown");
         }
 
-        return WD_RETN;
+        return WG_RETN;
 }
 
 int hardware_memory_info(HardwareMemory* mem) {
-        if (!mem) return WD_RETZ;
+        if (!mem) return WG_RETZ;
 
         memset(mem, 0, sizeof(HardwareMemory));
 
@@ -165,17 +165,17 @@ int hardware_memory_info(HardwareMemory* mem) {
                 mem->avail_phys = memInfo.ullAvailPhys;
                 mem->total_virt = memInfo.ullTotalVirtual;
                 mem->avail_virt = memInfo.ullAvailVirtual;
-                return WD_RETN;
+                return WG_RETN;
         }
 
-        return WD_RETZ;
+        return WG_RETZ;
 }
 
 int hardware_disk_info(HardwareDisk* disk, const char* drive) {
-        if (!disk || !drive) return WD_RETZ;
+        if (!disk || !drive) return WG_RETZ;
 
         memset(disk, 0, sizeof(HardwareDisk));
-        wd_strncpy(disk->mount_point, drive, sizeof(disk->mount_point)-1);
+        wg_strncpy(disk->mount_point, drive, sizeof(disk->mount_point)-1);
 
         ULARGE_INTEGER freeBytes, totalBytes, totalFree;
         if (GetDiskFreeSpaceEx(drive, &freeBytes, &totalBytes, &totalFree)) {
@@ -191,55 +191,55 @@ int hardware_disk_info(HardwareDisk* disk, const char* drive) {
                 char fsName[32];
                 DWORD maxCompLen, fsFlags;
                 if (GetVolumeInformation(drive, NULL, 0, NULL, &maxCompLen, &fsFlags, fsName, sizeof(fsName))) {
-                        wd_strncpy(disk->filesystem, fsName, sizeof(disk->filesystem)-1);
+                        wg_strncpy(disk->filesystem, fsName, sizeof(disk->filesystem)-1);
                 } else {
-                        wd_strcpy(disk->filesystem, "Unknown");
+                        wg_strcpy(disk->filesystem, "Unknown");
                 }
 
-                return WD_RETN;
+                return WG_RETN;
         }
 
-        return WD_RETZ;
+        return WG_RETZ;
 }
 
 #else
 
 int hardware_cpu_info(HardwareCPU* cpu) {
-        if (!cpu) return WD_RETZ;
+        if (!cpu) return WG_RETZ;
 
         memset(cpu, 0, sizeof(HardwareCPU));
 
         FILE *f = fopen("/proc/cpuinfo", "r");
-        if (!f) return WD_RETZ;
+        if (!f) return WG_RETZ;
 
         char cpu_line[256];
 
         while (fgets(cpu_line, sizeof(cpu_line), f)) {
-                if (strncmp(cpu_line, "model name", 10) == 0) {
+                if (strncmp(cpu_line, "model name", 10) == WG_RETZ) {
                         char *colon = strchr(cpu_line, ':');
                         if (colon) {
                                 char* start = colon + 2; /** Skip colon and space */
                                 char* end = strchr(start, '\n');
                                 if (end) *end = '\0';
-                                wd_strncpy(cpu->name, start, sizeof(cpu->name)-1);
+                                wg_strncpy(cpu->name, start, sizeof(cpu->name)-1);
                         }
                 }
-                else if (strncmp(cpu_line, "vendor_id", 9) == 0) {
+                else if (strncmp(cpu_line, "vendor_id", 9) == WG_RETZ) {
                         char *colon = strchr(cpu_line, ':');
                         if (colon) {
                                 char* start = colon + 2;
                                 char* end = strchr(start, '\n');
                                 if (end) *end = '\0';
-                                wd_strncpy(cpu->vendor, start, sizeof(cpu->vendor)-1);
+                                wg_strncpy(cpu->vendor, start, sizeof(cpu->vendor)-1);
                         }
                 }
-                else if (strncmp(cpu_line, "cpu cores", 9) == 0) {
+                else if (strncmp(cpu_line, "cpu cores", 9) == WG_RETZ) {
                         char *colon = strchr(cpu_line, ':');
                         if (colon) {
                                 cpu->cores = atoi(colon + 2);
                         }
                 }
-                else if (strncmp(cpu_line, "siblings", 8) == 0) {
+                else if (strncmp(cpu_line, "siblings", 8) == WG_RETZ) {
                         char *colon = strchr(cpu_line, ':');
                         if (colon) {
                                 cpu->threads = atoi(colon + 2);
@@ -251,45 +251,45 @@ int hardware_cpu_info(HardwareCPU* cpu) {
 
         /** Get architecture */
         struct utsname uts;
-        if (uname(&uts) == 0) {
-                wd_strncpy(cpu->architecture, uts.machine, sizeof(cpu->architecture)-1);
+        if (uname(&uts) == WG_RETZ) {
+                wg_strncpy(cpu->architecture, uts.machine, sizeof(cpu->architecture)-1);
         }
 
-        return WD_RETN;
+        return WG_RETN;
 }
 
 int hardware_memory_info(HardwareMemory* mem) {
-        if (!mem) return WD_RETZ;
+        if (!mem) return WG_RETZ;
 
         memset(mem, 0, sizeof(HardwareMemory));
 
         FILE *f = fopen("/proc/meminfo", "r");
-        if (!f) return WD_RETZ;
+        if (!f) return WG_RETZ;
 
         char key[64], unit[64];
         unsigned long val;
 
         while (fscanf(f, "%63s %lu %63s", key, &val, unit) == 3) {
-                if (strcmp(key, "MemTotal:") == 0) {
+                if (strcmp(key, "MemTotal:") == WG_RETZ) {
                         mem->total_phys = val * 1024; /** Convert KB to bytes */
                 }
-                else if (strcmp(key, "MemAvailable:") == 0) {
+                else if (strcmp(key, "MemAvailable:") == WG_RETZ) {
                         mem->avail_phys = val * 1024;
                 }
         }
 
         fclose(f);
-        return WD_RETN;
+        return WG_RETN;
 }
 
 int hardware_disk_info(HardwareDisk* disk, const char* mount_point) {
-        if (!disk || !mount_point) return WD_RETZ;
+        if (!disk || !mount_point) return WG_RETZ;
 
         memset(disk, 0, sizeof(HardwareDisk));
-        wd_strncpy(disk->mount_point, mount_point, sizeof(disk->mount_point)-1);
+        wg_strncpy(disk->mount_point, mount_point, sizeof(disk->mount_point)-1);
 
         struct statvfs stat;
-        if (statvfs(mount_point, &stat) == 0) {
+        if (statvfs(mount_point, &stat) == WG_RETZ) {
                 disk->total_bytes = (unsigned long long)stat.f_blocks * stat.f_frsize;
                 disk->free_bytes = (unsigned long long)stat.f_bfree * stat.f_frsize;
                 disk->used_bytes = disk->total_bytes - disk->free_bytes;
@@ -298,12 +298,12 @@ int hardware_disk_info(HardwareDisk* disk, const char* mount_point) {
                 disk->free_gb = disk->free_bytes / (1024.0 * 1024 * 1024);
                 disk->used_gb = disk->used_bytes / (1024.0 * 1024 * 1024);
 
-                wd_strncpy(disk->filesystem, "Unknown", sizeof(disk->filesystem)-1);
+                wg_strncpy(disk->filesystem, "Unknown", sizeof(disk->filesystem)-1);
 
-                return WD_RETN;
+                return WG_RETN;
         }
 
-        return WD_RETZ;
+        return WG_RETZ;
 }
 
 #endif
@@ -408,7 +408,7 @@ void hardware_query_specific(unsigned int* fields, int count) {
                                         static int disk_loaded = 0;
                                         static HardwareDisk disk;
                                         if (!disk_loaded) {
-#ifdef WD_WINDOWS
+#ifdef WG_WINDOWS
                                                 hardware_disk_info(&disk, "C:\\");
 #else
                                                 hardware_disk_info(&disk, "/");
@@ -435,7 +435,7 @@ void hardware_show_summary() {
         hardware_display_cpu_comprehensive();
         hardware_display_memory_comprehensive();
 
-#ifdef WD_WINDOWS
+#ifdef WG_WINDOWS
         hardware_display_disk_comprehensive("C:\\");
 #else
         hardware_display_disk_comprehensive("/");
@@ -457,7 +457,7 @@ void hardware_show_detailed() {
 
         /** Disk Section */
         printf("\n[Disk Information]\n");
-#ifdef WD_WINDOWS
+#ifdef WG_WINDOWS
         hardware_display_disk_comprehensive("C:\\");
 #else
         hardware_display_disk_comprehensive("/");
@@ -473,7 +473,7 @@ void hardware_memory_info_legacy() {
 }
 
 void hardware_disk_info_legacy() {
-#ifdef WD_WINDOWS
+#ifdef WG_WINDOWS
         hardware_display_disk_comprehensive("C:\\");
 #else
         hardware_display_disk_comprehensive("/");
@@ -487,7 +487,7 @@ void hardware_network_info_legacy() {
 
 void hardware_system_info_legacy() {
         /** Basic system info implementation */
-#ifdef WD_WINDOWS
+#ifdef WG_WINDOWS
         printf("%-15s: Windows\n", "OS");
 #else
         struct utsname uts;

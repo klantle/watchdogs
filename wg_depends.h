@@ -27,6 +27,6 @@ typedef struct {
         (sep_linux && sep_win32) ? ((sep_linux > sep_win32) ? sep_linux : sep_win32) : (sep_linux ? sep_linux : sep_win32); \
     })
 
-void wd_install_depends(const char *depends_string);
+void wg_install_depends(const char *depends_string);
 
 #endif

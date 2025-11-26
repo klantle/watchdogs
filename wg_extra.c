@@ -5,9 +5,9 @@
 #include <time.h>
 #include <stdarg.h>
 #include <fcntl.h>
-#include "wd_util.h"
+#include "wg_util.h"
 
-#ifdef WD_WINDOWS
+#ifdef WG_WINDOWS
   #define WIN32_LEAN_AND_MEAN
   #include <windows.h>
   #include <sys/types.h>
@@ -19,8 +19,8 @@
   #include <errno.h>
 #endif
 
-#include "wd_crypto.h"
-#include "wd_extra.h"
+#include "wg_crypto.h"
+#include "wg_extra.h"
 
 char *BG = "\x1b[48;5;235m";
 char *FG = "\x1b[97m";
@@ -195,7 +195,7 @@ void printf_crit(FILE *stream, const char *format, ...)
 }
 
 /* Convert Windows FILETIME to time_t (seconds since UNIX epoch) */
-#ifdef WD_WINDOWS
+#ifdef WG_WINDOWS
 static time_t filetime_to_time_t(const FILETIME *ft) {
         /* FILETIME is in 100-nanosecond intervals since 1601-01-01.
            UNIX epoch is 1970-01-01: difference is 11644473600 seconds. */
@@ -208,24 +208,24 @@ static time_t filetime_to_time_t(const FILETIME *ft) {
 
 /* Portable stat function */
 int portable_stat(const char *path, portable_stat_t *out) {
-        if (!path || !out) return -WD_RETN;
+        if (!path || !out) return -WG_RETN;
         memset(out, 0, sizeof(*out));
 
-#ifdef WD_WINDOWS
+#ifdef WG_WINDOWS
         /* Use wide APIs for Unicode paths */
-        wchar_t wpath[WD_MAX_PATH];
+        wchar_t wpath[WG_MAX_PATH];
         int len = MultiByteToWideChar(CP_UTF8, 0, path, -1, NULL, 0);
-        if (len == 0 || len > WD_MAX_PATH) {
+        if (len == WG_RETZ || len > WG_MAX_PATH) {
                 /* fallback: try ANSI conversion */
-                if (!MultiByteToWideChar(CP_ACP, 0, path, -1, wpath, WD_MAX_PATH)) return -WD_RETN;
+                if (!MultiByteToWideChar(CP_ACP, 0, path, -1, wpath, WG_MAX_PATH)) return -WG_RETN;
         } else {
-                MultiByteToWideChar(CP_UTF8, 0, path, -1, wpath, WD_MAX_PATH);
+                MultiByteToWideChar(CP_UTF8, 0, path, -1, wpath, WG_MAX_PATH);
         }
 
         WIN32_FILE_ATTRIBUTE_DATA fad;
         if (!GetFileAttributesExW(wpath, GetFileExInfoStandard, &fad)) {
                 /* could be a long path, try CreateFile with \\?\ prefix? omitted for brevity */
-                return -WD_RETN;
+                return -WG_RETN;
         }
 
         /* size */
@@ -256,9 +256,9 @@ int portable_stat(const char *path, portable_stat_t *out) {
         }
         /* executable bit: heuristic by extension (common on Windows) */
         const char *ext = strrchr(path, '.');
-        if (ext && (_stricmp(ext, ".exe") == 0 ||
-                    _stricmp(ext, ".bat") == 0 ||
-                    _stricmp(ext, ".com") == 0)) {
+        if (ext && (_stricmp(ext, ".exe") == WG_RETZ ||
+                    _stricmp(ext, ".bat") == WG_RETZ ||
+                    _stricmp(ext, ".com") == WG_RETZ)) {
                 out->st_mode |= S_IXUSR;
         }
 
@@ -266,10 +266,10 @@ int portable_stat(const char *path, portable_stat_t *out) {
         out->st_ino = 0;
         out->st_dev = 0;
 
-        return WD_RETZ;
+        return WG_RETZ;
 #else
         struct stat st;
-        if (stat(path, &st) != 0) return -WD_RETN;
+        if (stat(path, &st) != 0) return -WG_RETN;
         out->st_size = (uint64_t)st.st_size;
         out->st_ino  = (uint64_t)st.st_ino;
         out->st_dev  = (uint64_t)st.st_dev;
@@ -282,13 +282,13 @@ int portable_stat(const char *path, portable_stat_t *out) {
         out->st_lmtime = st.st_mtime;
         out->st_mctime = st.st_ctime;
 #endif
-        return WD_RETZ;
+        return WG_RETZ;
 #endif
 }
 
 causeExplanation ccs[] =
 {
-/* === SYNTAX ERRORS (Invalid Code Structure) === */
+/* === SYNTAX ERRORS (Invalid Code Structure) ===  */
 
 /* A key language element (like ',' or ';') is missing. */
 {"expected token", "A required token (e.g., ';', ',', ')') is missing from the code. Check the line indicated for typos or omissions."},
@@ -336,7 +336,7 @@ causeExplanation ccs[] =
 
 
 
-/* === SEMANTIC ERRORS (Invalid Code Meaning) === */
+/* === SEMANTIC ERRORS (Invalid Code Meaning) ===  */
 
 /* A function was declared but its body was never defined. */
 {"is not implemented", "A function was declared but its implementation (body) was not found. This can be caused by a missing closing brace `}` in a previous function."},
@@ -512,7 +512,7 @@ causeExplanation ccs[] =
 
 
 
-/* === WARNINGS (Potentially Problematic Code) === */
+/* === WARNINGS (Potentially Problematic Code) ===  */
 
 /* literal array/string passed to a non-const parameter */
 {"literal array/string passed to a non", "Did you forget that the parameter isn’t a const parameter? Also, make sure you’re using the latest version of the standard library."},
@@ -534,7 +534,7 @@ causeExplanation ccs[] =
 
 
 
-/* === PREPROCESSOR ERRORS === */
+/* ===  PREPROCESSOR ERRORS ===  */
 
 /* The maximum allowed depth for #include directives has been exceeded. */
 {"too many nested includes", "The level of nested `#include` directives has exceeded the compiler's limit. Check for circular or overly deep inclusion."},
@@ -574,7 +574,7 @@ causeExplanation ccs[] =
  * @param line The text line to search for warning/error patterns
  * @return Pointer to the issue description if found, NULL otherwise
  */
-static const char *wd_find_warn_err(const char *line)
+static const char *wg_find_warn_err(const char *line)
 {
       /* Iterate through the compiler message pattern array */
       int cindex;
@@ -610,11 +610,11 @@ void compiler_detailed(const char *pawn_output, int debug,
 {
       /* Create formatted title string showing compilation status */
       char size_compiler[256];
-      wd_snprintf(size_compiler, sizeof(size_compiler),
+      wg_snprintf(size_compiler, sizeof(size_compiler),
                   "COMPILE COMPLETE :) | WITH ~%d ERROR | ~%d WARNING",
                   ecnt, wcnt);
       /* Update console/terminal title with compilation status */
-      wd_set_title(size_compiler);
+      wg_console_title(size_compiler);
 
       /* Check if compiled output file exists and is accessible */
       int amx_access = path_access(pawn_output);
@@ -632,7 +632,7 @@ void compiler_detailed(const char *pawn_output, int debug,
 
                 /* Get detailed file system information */
                 portable_stat_t st;
-                if (portable_stat(pawn_output, &st) == 0) {
+                if (portable_stat(pawn_output, &st) == WG_RETZ) {
                         /* Display comprehensive file metadata */
                         printf("ino    : %llu   |  File   : %lluB\n"
                                "dev    : %llu\n"
@@ -717,7 +717,7 @@ void cause_compiler_expl(const char *log_file,
         return;  /* Silently return if log file cannot be opened */
 
       /* Buffer for reading log file lines */
-      char line[WD_MAX_PATH];
+      char line[WG_MAX_PATH];
       /* Counters for warnings and errors */
       int wcnt = 0, ecnt = 0;
       /* Memory size variables extracted from compiler output */
@@ -729,29 +729,29 @@ void cause_compiler_expl(const char *log_file,
       /* Process each line of the compiler log file */
       while (fgets(line, sizeof(line), plog)) {
         /* Skip generic section headers that don't contain useful information */
-        if (wd_strcase(line, "Warnings.") ||
-            wd_strcase(line, "Warning.") ||
-            wd_strcase(line, "Errors.")  ||
-            wd_strcase(line, "Error."))
+        if (wg_strcase(line, "Warnings.") ||
+            wg_strcase(line, "Warning.") ||
+            wg_strcase(line, "Errors.")  ||
+            wg_strcase(line, "Error."))
             continue;
 
         /* Parse memory size information from compiler output */
-        if (wd_strcase(line, "Header size:")) {
+        if (wg_strcase(line, "Header size:")) {
             header_size = strtol(strchr(line, ':') + 1, NULL, 10);
             continue;
-        } else if (wd_strcase(line, "Code size:")) {
+        } else if (wg_strcase(line, "Code size:")) {
             code_size = strtol(strchr(line, ':') + 1, NULL, 10);
             continue;
-        } else if (wd_strcase(line, "Data size:")) {
+        } else if (wg_strcase(line, "Data size:")) {
             data_size = strtol(strchr(line, ':') + 1, NULL, 10);
             continue;
-        } else if (wd_strcase(line, "Stack/heap size:")) {
+        } else if (wg_strcase(line, "Stack/heap size:")) {
             stack_size = strtol(strchr(line, ':') + 1, NULL, 10);
             continue;
-        } else if (wd_strcase(line, "Total requirements:")) {
+        } else if (wg_strcase(line, "Total requirements:")) {
             total_size = strtol(strchr(line, ':') + 1, NULL, 10);
             continue;
-        } else if (wd_strcase(line, "Pawn compiler ")) {
+        } else if (wg_strcase(line, "Pawn compiler ")) {
             /* Extract compiler version information */
             const char *p = strstr(line, "Pawn compiler ");
             if (p) sscanf(p, "Pawn compiler %63s", compiler_ver);
@@ -762,11 +762,11 @@ void cause_compiler_expl(const char *log_file,
         fwrite(line, 1, strlen(line), stdout);
 
         /* Count warning and error occurrences */
-        if (wd_strcase(line, "warning")) ++wcnt;
-        if (wd_strcase(line, "error")) ++ecnt;
+        if (wg_strcase(line, "warning")) ++wcnt;
+        if (wg_strcase(line, "error")) ++ecnt;
 
         /* Check if this line contains a known warning/error pattern */
-        const char *description = wd_find_warn_err(line);
+        const char *description = wg_find_warn_err(line);
         if (description) {
             /* Find the exact position of the compiler message pattern in the line */
             const char *found = NULL;

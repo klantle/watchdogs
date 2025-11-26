@@ -14,16 +14,16 @@
 #include "include/tomlc/toml.h"
 
 #if defined(_WIN32)
-#define WD_WINDOWS
+#define WG_WINDOWS
 #endif
 #if defined(__linux__)
-#define WD_LINUX
+#define WG_LINUX
 #endif
 #if defined(__ANDROID__)
-#define WD_ANDROID
+#define WG_ANDROID
 #endif
 
-#ifdef WD_WINDOWS
+#ifdef WG_WINDOWS
 #include <io.h>
 #include <time.h>
 #include <direct.h>
@@ -81,14 +81,14 @@
 #if __has_include(<readline/history.h>)
 #include <readline/history.h>
 #include <readline/readline.h>
-#define wd_u_history() using_history()
-#define wd_a_history(cmd) add_history(cmd)
+#define wg_u_history() using_history()
+#define wg_a_history(cmd) add_history(cmd)
 #endif
 
-#define wd_malloc(wx) malloc(wx)
-#define wd_calloc(wx, wy) calloc(wx, wy)
-#define wd_realloc(wx, wy) realloc(wx, wy)
-#define wd_free(wx) free(wx)
+#define wg_malloc(wx) malloc(wx)
+#define wg_calloc(wx, wy) calloc(wx, wy)
+#define wg_realloc(wx, wy) realloc(wx, wy)
+#define wg_free(wx) free(wx)
 
 #define __PATH_CHR_SEP_LINUX '/'
 #define __PATH_CHR_SEP_WIN32 '\\'
@@ -96,10 +96,10 @@
 #define __PATH_STR_SEP_WIN32 "\\"
 
 enum {
-	WD_RETZ = 0,
-	WD_RETN = 1,
-	WD_RETW = 2,
-	WD_RETH = 3
+	WG_RETZ = 0,
+	WG_RETN = 1,
+	WG_RETW = 2,
+	WG_RETH = 3
 };
 
 #ifndef DT_UNKNOWN
@@ -115,16 +115,16 @@ enum {
 #endif
 
 #ifdef PATH_MAX
-#define WD_PATH_MAX PATH_MAX
+#define WG_PATH_MAX PATH_MAX
 #else
-#define WD_PATH_MAX 260
+#define WG_PATH_MAX 260
 #endif
-#define WD_MAX_PATH 4096
+#define WG_MAX_PATH 4096
 
 enum {
     RATE_SEF_EMPTY = 0,
     MAX_SEF_ENTRIES = 28,
-    MAX_SEF_PATH_SIZE = WD_PATH_MAX
+    MAX_SEF_PATH_SIZE = WG_PATH_MAX
 };
 
 #define COMPILER_SAMP    0x01
@@ -140,59 +140,60 @@ enum {
 #define OS_SIGNAL_UNKNOWN CRC32_UNKNOWN
 
 #define findstr strfind
-#define wd_strcpy strcpy
-#define wd_strncpy strncpy
-#define wd_strlcpy strlcpy
-#define wd_sprintf sprintf
-#define wd_snprintf snprintf
+#define wg_strcpy strcpy
+#define wg_strncpy strncpy
+#define wg_strlcpy strlcpy
+#define wg_sprintf sprintf
+#define wg_snprintf snprintf
 
 #ifndef min3
 #define min3(a, b, c) \
     ((a) < (b) ? ((a) < (c) ? (a) : (c)) : ((b) < (c) ? (b) : (c)))
 #endif
 
-#define wd_server_env() \
+#define wg_server_env() \
 ({ \
-    int ret = WD_RETZ; \
-    if (ret == WD_RETZ) { \
-        if (!strcmp(wcfg.wd_is_samp, CRC32_TRUE)) \
-            ret = WD_RETN; \
-        else if (!strcmp(wcfg.wd_is_omp, CRC32_TRUE)) \
-            ret = WD_RETW; \
+    int ret = WG_RETZ; \
+    if (ret == WG_RETZ) { \
+        if (!strcmp(wcfg.wg_is_samp, CRC32_TRUE)) \
+            ret = WG_RETN; \
+        else if (!strcmp(wcfg.wg_is_omp, CRC32_TRUE)) \
+            ret = WG_RETW; \
     } \
     ret; \
 })
 
 typedef struct {
-    char *wd_toml_os_type;
-    char *wd_toml_binary;
-    char *wd_toml_config;
-    int wd_ipawncc;
-    int wd_idepends;
-    char *wd_os_type;
-    int wd_sel_stat;
-    char *wd_is_samp;
-    char *wd_is_omp;
-    char *wd_ptr_samp;
-    char *wd_ptr_omp;
-    int wd_compiler_stat;
-    size_t wd_sef_count;
-    char wd_sef_found_list \
+    char *wg_toml_os_type;
+    char *wg_toml_binary;
+    char *wg_toml_config;
+    char *wg_toml_logs;
+    int wg_ipawncc;
+    int wg_idepends;
+    char *wg_os_type;
+    int wg_sel_stat;
+    char *wg_is_samp;
+    char *wg_is_omp;
+    char *wg_ptr_samp;
+    char *wg_ptr_omp;
+    int wg_compiler_stat;
+    size_t wg_sef_count;
+    char wg_sef_found_list \
         [MAX_SEF_ENTRIES][MAX_SEF_PATH_SIZE];
-    char *wd_toml_aio_opt;
-    char *wd_toml_aio_repo;
-    char *wd_toml_gm_input;
-    char *wd_toml_gm_output;
-    char *wd_toml_github_tokens;
-    char *wd_toml_key_ai;
-    char *wd_toml_chatbot_ai;
-    char *wd_toml_models_ai;
+    char *wg_toml_aio_opt;
+    char *wg_toml_aio_repo;
+    char *wg_toml_gm_input;
+    char *wg_toml_gm_output;
+    char *wg_toml_github_tokens;
+    char *wg_toml_key_ai;
+    char *wg_toml_chatbot_ai;
+    char *wg_toml_models_ai;
 } WatchdogConfig;
 
 extern WatchdogConfig wcfg;
 
-void wd_sef_fdir_reset(void);
-#ifdef WD_WINDOWS
+void wg_sef_fdir_reset(void);
+#ifdef WG_WINDOWS
 #define strlcpy   win_strlcpy
 #define strlcat   win_strlcat
 #define ftruncate win_ftruncate
@@ -203,27 +204,25 @@ int win_ftruncate(FILE *file, long length);
 struct struct_of { int (*title)(const char *); };
 extern const char* __command[];
 extern const size_t __command_len;
-char *wd_get_cwd(void);
-char* wd_masked_text(int reveal, const char *text);
-int wd_mkdir(const char *path);
-void
-json_escape_string(char *dest, const char *src, size_t dest_size);
-int wd_run_command(const char *cmd);
+char *wg_get_cwd(void);
+char* wg_masked_text(int reveal, const char *text);
+int wg_mkdir(const char *path);
+void wg_escaping_json(char *dest, const char *src, size_t dest_size);
+int wg_run_command(const char *cmd);
 int is_termux_environment(void);
 int is_native_windows(void);
-void wd_printfile(const char *path);
-int wd_set_title(const char *__title);
-void wd_strip_dot_fns(char *dst, size_t dst_sz, const char *src);
-unsigned char wd_tolower(unsigned char c);
-bool wd_strcase(const char *text, const char *pattern);
+void wg_printfile(const char *path);
+int wg_console_title(const char *__title);
+void wg_strip_dot_fns(char *dst, size_t dst_sz, const char *src);
+unsigned char wg_tolower(unsigned char c);
+bool wg_strcase(const char *text, const char *pattern);
 bool strfind(const char *text, const char *pattern);
 char* strreplace(const char *source, const char *old_sub, const char *new_sub);
-void wd_escape_quotes(char *dest, size_t size, const char *src);
-extern const char* wd_find_near_command(
+void wg_escape_quotes(char *dest, size_t size, const char *src);
+extern const char* wg_find_near_command(
     const char *ptr_command, const char *__commands[],
     size_t num_cmds, int *out_distance
 );
-const char* wd_detect_os(void);
 int kill_process(const char *name);
 int dir_exists(const char *path);
 int path_exists(const char *path);
@@ -232,11 +231,10 @@ int path_access(const char *path);
 int file_regular(const char *path);
 int file_same_file(const char *a, const char *b);
 int ensure_parent_dir(char *out_parent, size_t n, const char *dest);
-int cp_f_content(const char *src, const char *dst);
-int wd_is_special_dir(const char *name);
-int wd_sef_fdir(const char *sef_path, const char *sef_name, const char *ignore_dir);
-int wd_toml_configs(void);
-int wd_sef_wcopy(const char *c_src, const char *c_dest);
-int wd_sef_wmv(const char *c_src, const char *c_dest);
+int wg_is_special_dir(const char *name);
+int wg_sef_fdir(const char *sef_path, const char *sef_name, const char *ignore_dir);
+int wg_toml_configs(void);
+int wg_sef_wcopy(const char *c_src, const char *c_dest);
+int wg_sef_wmv(const char *c_src, const char *c_dest);
 
 #endif

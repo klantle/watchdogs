@@ -3,6 +3,7 @@
 
 #include <stdint.h>
 #include <stddef.h>
+#include <stdint.h>
 
 #ifdef __cplusplus
 extern "C" {
@@ -26,6 +27,12 @@ typedef struct {
         uint32_t rd_key[60];
         int rounds;
 } AES_KEY;
+
+uint32_t rotr(uint32_t x, int n);
+uint32_t ch(uint32_t x, uint32_t y, uint32_t z);
+uint32_t maj(uint32_t x, uint32_t y, uint32_t z);
+uint32_t sigma(uint32_t x);
+uint32_t sigma2(uint32_t x);
 
 void crypto_crc32_init_table();
 

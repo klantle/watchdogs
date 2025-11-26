@@ -1,10 +1,10 @@
 #ifndef SERVER_H
 #define SERVER_H
 
-#ifdef WD_WINDOWS
+#ifdef WG_WINDOWS
 /*
  * Windows compatibility layer for signal handling
- * WD_WINDOWS macro is defined when compiling for Windows systems
+ * WG_WINDOWS macro is defined when compiling for Windows systems
  */
 /* Stub implementation of sigaction for Windows */
 #define sigaction _sigaction_stub
@@ -32,11 +32,11 @@ static inline int _sigaction_stub(int sig, const struct sigaction *act, struct s
 #endif
 extern int unit_handle_sigint_status;
 void unit_handle_sigint(int sig);
-void wd_stop_server_tasks(void);
-void wd_display_server_logs(int ret);
-void wd_server_crash_check(void);
+void wg_stop_server_tasks(void);
+void wg_display_server_logs(int ret);
+void wg_server_crash_check(void);
 void restore_server_config(void);
-void wd_run_samp_server(const char *gamemode_arg, const char *server_bin);
-void wd_run_omp_server(const char *gamemode_arg, const char *server_bin);
+void wg_run_samp_server(const char *gamemode_arg, const char *server_bin);
+void wg_run_omp_server(const char *gamemode_arg, const char *server_bin);
 
 #endif

@@ -26,10 +26,9 @@
 2. [Quick Installation](#quick-installation)
 3. [Platform-Specific Installation](#platform-specific-installation)
    - [Docker](#docker)
+   - [Linux](#linux-bash)
    - [Termux](#termux)
    - [MSYS2](#msys2)
-   - [Windows native](#Native)
-   - [Linux (Bash)](#linux-bash)
 4. [Configuration](#configuration)
 6. [Usage Guide](#usage-guide)
 6. [Compiler Reference](#compiler-reference)
@@ -44,41 +43,37 @@
 ## "Inspired from XXX"
 > This project started from my personal curiosity a few years back about why pawncc.exe always closed when opened and didn't output any GUI. That curiosity led to a simple discovery through experiments of commanding it (pawncc.exe) from behind the shell.
 > This project is built purely from our own thinking and effort, not merely by imitation. We have never claimed to be inspired by similar projects that themselves draw inspiration from others.
+- Watchdogs ecosystem is partly inspired by the Next.js framework.
 
 ![img](https://raw.githubusercontent.com/klantle/watchdogs/refs/heads/main/__ACTORIDE.png)
 
 ## Supported Platforms
 - [x] Linux (Debian/Ubuntu based distributions)
-- [x] Windows (via Native, MSYS2, WSL, or Docker)
+- [x] Windows (MSYS2, WSL, or Docker)
 - [x] macOS (via Docker)
 - [x] Android (via Termux)
 - [x] Github Actions/VPS
 
 ## Supported Architectures
 - [x] Qualcomm Snapdragon
-- [x] MediaTek  
+- [x] MediaTek
 - [x] Intel
 - [x] AMD
-
-## Prerequisites
-- GNU Make
-- Git
-- Bash shell environment
 
 ## Roadmap
 | File              | Description                                                                                           |
 | ----------------- | ----------------------------------------------------------------------------------------------------- |
-| **wd_unit**     | This is the main Watchdogs file.                                                                      |
-| **wd_util**     | This file contains utility functions for Watchdogs.                                                   |
-| **wd_hardware** | This file contains hardware-related information for Watchdogs.                                        |
-| **wd_crypto**   | This file handles cryptographic operations such as hashing, encryption, and decryption for Watchdogs. |
-| **wd_curl**     | This file manages cURL connections, file installations, and Pawncc integration for Watchdogs.         |
-| **wd_archive**  | This file handles archive management, including extraction for Watchdogs.                             |
-| **wd_compiler** | This file handles the Pawncc compiler integration for Watchdogs.                                      |
-| **wd_extra**    | This file contains additional functions for Watchdogs.                                        |
-| **wd_depends**  | This file manages dependencies for Watchdogs.                                                         |
-| **wd_package**  | This file handles the installation process for SA-MP/Open.MP and Pawncc within Watchdogs.             |
-| **wd_server**   | This file manages the SA-MP/Open.MP server operations for Watchdogs.                                  |
+| **wg_unit**     | This is the main Watchdogs file.                                                                      |
+| **wg_util**     | This file contains utility functions for Watchdogs.                                                   |
+| **wg_hardware** | This file contains hardware-related information for Watchdogs.                                        |
+| **wg_crypto**   | This file handles cryptographic operations such as hashing, encryption, and decryption for Watchdogs. |
+| **wg_curl**     | This file manages cURL connections, file installations, and Pawncc integration for Watchdogs.         |
+| **wg_archive**  | This file handles archive management, including extraction for Watchdogs.                             |
+| **wg_compiler** | This file handles the Pawncc compiler integration for Watchdogs.                                      |
+| **wg_extra**    | This file contains additional functions for Watchdogs.                                        |
+| **wg_depends**  | This file manages dependencies for Watchdogs.                                                         |
+| **wg_package**  | This file handles the installation process for SA-MP/Open.MP and Pawncc within Watchdogs.             |
+| **wg_server**   | This file manages the SA-MP/Open.MP server operations for Watchdogs.                                  |
 
 ## Quick Installation
 
@@ -118,16 +113,19 @@ docker run -it ubuntu
 
 #### Common Docker Commands
 ```bash
-docker ps -a                               # List all containers
-docker start <container-name>              # Start a container
-docker exec -it <container-name> /bin/bash # Enter a running container
-docker stop <container-name>               # Stop a container
-docker rm -f <container-name>              # Remove a container
+docker ps -a                               # List of any container
+docker start <container-name>              # Start the container
+docker exec -it <container-name> /bin/bash # Enter running container
+docker stop <container-name>               # Stop the container
+docker rm -f <container-name>              # Remove the container
 ```
 
-### Linux (Bash)
+### Linux
 
 #### Installation Steps
+
+> Just drag and drop.
+
 ```bash
 # 1. Update package lists
 apt update
@@ -156,6 +154,7 @@ mv -f watchdogs .. && cd .. && \
 ### Termux
 
 > We highly recommend using the Termux distribution directly from GitHub instead of the Google Play Store to ensure compatibility with the latest Termux features and to enjoy the freedom offered outside the Play Store. https://github.com/termux/termux-app/releases
+> Just drag and drop.
 
 #### Installation Steps
 ```bash
@@ -194,8 +193,9 @@ mv -f watchdogs.tmux .. && cd .. && \
 
 ### MSYS2
 
-#### Mirror Configuration (if needed)
-Edit mirror lists:
+#### More mirror list (if needed)
+Available for:
+> /etc/pacman.d/mirrorlist.mingw64 | /etc/pacman.d/mirrorlist.msys | /etc/pacman.d/mirrorlist.ucrt64
 ```bash
 nano /etc/pacman.d/mirrorlist.mingw64
 nano /etc/pacman.d/mirrorlist.msys
@@ -229,6 +229,7 @@ Server = https://downloads.sourceforge.net/project/msys2/REPOS/msys/$arch
 > Save and Exit: **CTRL + X & Y + ENTER**
 
 #### Installation Steps
+> Just drag and drop.
 
 ```bash
 # 1. Sync package database & Upgrade package
@@ -256,57 +257,6 @@ mv -f watchdogs.win .. && cd .. && \
 ./watchdogs.win
 ```
 
-### Native
-
-#### Installation Steps
-
-> needed [msys2](https://www.msys2.org/) for compile.
-
-```bash
-# 1. Sync package database
-pacman -Sy
-
-# 2. Install required packages
-pacman -S make git
-
-# 3. Clone repository
-git clone https://gitlab.com/mywatchdogs/watchdogs watch
-
-# 4. Navigate to directory
-cd watch
-
-# 5. Installing Library & Build from source
-make init && make windows
-
-# 6. Installing .dll library - under 20/MB
-bash -c 'if [ -d "watch" ]; then rm -rf "watch"; fi; git clone https://github.com/klantle/libwatchdogs watch; cd watch; if [ -d "/c/libwatchdogs" ]; then rm -rf "/c/libwatchdogs"; fi; mv -f libwatchdogs /c/; mv -f run-native.bat ..; cd ..; rm -rf watch'
-
-# 7. You can run '.bat' (out of msys2, where .bat & watchdogs.win)
-~
-```
-
-### Windows native with Git Bash only
-> Download Git first in https://git-scm.com/install/windows
-> Run Git Bash
-
-> cd to your_project directory
-```bash
-cd /c/users/desktop_name/downloads/your_project
-```
-> Download stable binary
-```bash
-curl -L -o watchdogs.win "https://gitlab.com/-/project/75403219/uploads/49b8a96058cdb82c5f36fdf9fb7c8481/watchdogs.win"
-```
-> Debug Mode
-```bash
-curl -L -o watchdogs.win "https://gitlab.com/-/project/75403219/uploads/b5eea2bb70e45ef236fcd81a9ba4d7b0/watchdogs.debug.win"
-```
-> Install library - under 20/MB.
-```bash
-bash -c 'if [ -d "watch" ]; then rm -rf "watch"; fi; git clone https://github.com/klantle/libwatchdogs watch; cd watch; if [ -d "/c/libwatchdogs" ]; then rm -rf "/c/libwatchdogs"; fi; mv -f libwatchdogs /c/; mv -f run-native.bat ..; cd ..; rm -rf watch'
-```
-> **Exit from Git Bash and run '.bat' in your_project on Windows File Explorer - Git Bash supported run it!.**
-
 ## Configuration
 
 ### watchdogs.toml Structure
@@ -319,6 +269,8 @@ os = "linux"
 binary = "samp-server.exe"
 # SA-MP/Open.MP Config
 config = "server.cfg"
+# SA-MP/Open.MP logs file
+logs = "server_log.txt"
 # A.I (Wanion) for Watchdogs
 # api keys
 # https://aistudio.google.com/api-keys
@@ -363,77 +315,7 @@ aio_repo = [
     "Y-Less/sscanf:latest",
     "samp-incognito/samp-streamer-plugin:latest"
 ]
-```
-
-### VS Code Integration
-1. Create folder ".vscode"
-2. Create file "tasks.json" in .vscode
-
-```json
-{
-  "version": "2.0.0",
-  "tasks": [
-    {
-      "label": "watchdogs",
-      "type": "shell",
-      "command": "${workspaceRoot}/watchdogs",
-      "group": {
-        "kind": "build",
-        "isDefault": true
-      }
-    }
-  ]
-}
-```
-For Windows native:
-```json
-{
-  "version": "2.0.0",
-  "tasks": [
-    {
-      "label": "watchdogs",
-      "type": "shell",
-      "command": "${workspaceRoot}/run-native.bat",
-      "group": {
-        "kind": "build",
-        "isDefault": true
-      }
-    }
-  ]
-}
-```
-
-### Sublime Text
-> ANSI (Optional) https://github.com/aziz/SublimeANSI
-1. Go to Tools > Build System > New Build System
-2. Replace the code with:
-> (FYI): You cannot run watchdogs without args (inline command) because in Sublime Text, it is not possible to run shell I/O processes simultaneously with terminal linkup like in cmd.exe or powershell.exe in VSCode.
-
-> Windows native
-```json
-{
-  "cmd": ["path/to/run-native.bat", "arg1", "arg2"]
-}
-```
-```json
-{
-  "cmd": ["C:///", "compile", "bare.pwn"]
-}
-```
-> Linux
-```json
-{
-  "cmd": ["path/to/watchdogs", "arg1", "arg2"]
-}
-```
-```json
-{
-  "cmd": ["/home///", "compile", "bare.pwn"]
-}
-```
-
-3. Save - **CTRL + S**
-4. Run: **CTRL + SHIFT & B**
+``
 
 ## Usage Guide
 
@@ -513,6 +395,27 @@ compile path/to/yourmode --opt1 --opt2 --opt3 --opt4
 ### Server Management
 
 * **Algorithm**
+```
+--------------------     --------------------------
+|                  |     |                        |
+|       ARGS       | --> |        FILTERING       |                -
+|                  |     |                        |
+--------------------     --------------------------
+                                     |
+                                     v
+---------------------    --------------------------
+|                   |    |                        |
+|  LOGGING OUTPUT   |    |   EXIST FILE VALIDATE  |                -
+|                   |    |                        |
+---------------------    --------------------------
+         ^                           |
+         |                           v
+--------------------     --------------------------
+|                  |     |                        |
+|  RUNNING BINARY  | <-- |     EDITING CONFIG     |                -
+|                  |     |    if args not null    |
+--------------------     --------------------------
+```
 <br>It operates as usual by running the samp-server or open.mp server binary according to its default name in watchdogs.toml.
   In the `[<args>]` section, how it works is by modifying the `gamemode0` parameter in server.cfg for SA-MP or the `main_scripts` parameter in config.json for Open.MP.
 <br>
@@ -535,6 +438,27 @@ compiles
 ### Dependency Management
 
 * **Algorithm**
+```
+--------------------     --------------------------
+|                  |     |                        |
+|     BASE URL     | --> |      URL CHECKING      |                -
+|                  |     |                        |
+--------------------     --------------------------
+                                    |
+                                    v
+---------------------    --------------------------
+|                   |    |                        |
+|     APPLYING      |    |  PATTERNS - FILTERING  |                -
+|                   |    |                        |
+---------------------    --------------------------
+         ^                          |
+         |                          v
+--------------------     --------------------------
+|                  |     |                        |
+|  FILES CHECKING  | <-- |       INSTALLING       |                -
+|                  |     |                        |
+--------------------     --------------------------
+```
 <br>You no longer need to use regex just to detect files available in the tag you provided as a depends link. The existing files will now be automatically detected through HTML web interaction by watchdogs-depends, which scans for available files from the fallback URL `user/repo:tag`. Additionally, if you are in a Windows watchdogs environment, it will automatically search for and target only archives containing “windows” in their name - and do the opposite for Linux.
 <br><br>
 Serves as an assistant for installing various files required by SA-MP/Open.MP. When installing dependencies that contain a `plugins/` folder and include files, it will install them into the `plugins/` and `/pawno-qawno/include` directories, respectively. It also handles gamemode components (root watchdogs). Watchdogs will automatically add the include names to the gamemode based on the main gamemode filename specified in the `input` key within `watchdogs.toml`. Furthermore, Watchdogs assists in installing the plugin names and their respective formats into `config.json` (from watchdogs.toml) - (for Open.MP) or `server.cfg` (from watchdogs.toml) - (for SA-MP). Note that the `components/` directory is not required for Open.MP.
@@ -579,14 +503,6 @@ make debug-termux   # Build with debug mode (Termux)
 make windows-debug  # Build with debug mode (Windows)
 ```
 
-### XTerm Usage
-
-```bash
-xterm -hold -e ./watchdogs          # Linux
-xterm -hold -e ./watchdogs.win      # Windows  
-xterm -hold -e ./watchdogs.tmux     # Termux
-```
-
 ### Command Aliases
 
 Create alias for easier access:
@@ -601,7 +517,7 @@ alias watch='./watchdogs'
 
 ## Compiler Reference
 
-* **Historical Background of Pawn Code**  
+* **Historical Background of Pawn Code**
 Pawn originated in the early 1990s as a small, fast, and embeddable scripting language developed by **ITB CompuPhase**, primarily by **Frank Peelen** and **Johan Bosman**. Its design was inspired by C but with simpler syntax and a lightweight virtual machine that executes *Abstract Machine eXecutable (.amx)* bytecode.  
 Initially called **Small**, the language evolved into **Pawn** around 1998, when it became part of CompuPhase’s toolset for embedded systems and game engines. Its purpose was to allow rapid scripting within constrained environments, where resources like memory and processing power were limited.  
 Later, the **SA-MP (San Andreas Multiplayer)** community adopted Pawn as its scripting backbone due to its lightweight structure and flexibility. Over time, community forks like **PawnCC (PCC)** emerged to modernize the compiler, add better platform support (Windows/Linux/macOS), UTF-8 encoding, path handling, and maintain active development after CompuPhase’s version became static.

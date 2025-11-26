@@ -1,15 +1,16 @@
 #include <stdio.h>
 #include <stdlib.h>
+#include <stdbool.h>
 #include <string.h>
 
 #include <archive.h>
 #include <archive_entry.h>
 
-#include "wd_extra.h"
-#include "wd_util.h"
-#include "wd_archive.h"
-#include "wd_curl.h"
-#include "wd_unit.h"
+#include "wg_extra.h"
+#include "wg_util.h"
+#include "wg_archive.h"
+#include "wg_curl.h"
+#include "wg_unit.h"
 
 /**
  * Copies data blocks from source archive to destination archive
@@ -27,7 +28,7 @@ static int arch_copy_data(struct archive *ar, struct archive *aw)
 		la_int64_t offset;   /* Offset within the file */
 
 		/* Continue reading and writing data blocks until end of file */
-		while (1) {
+		while (true) {
 				/* Read a block of data from the source archive */
 				ret = archive_read_data_block(ar, &buffer, &size, &offset);
 				/* Check for end of file condition */
@@ -53,9 +54,9 @@ static int arch_copy_data(struct archive *ar, struct archive *aw)
  * Extract tar archive to destination directory
  * @param tar_path Path to the tar archive
  * @param entry_dest Destination directory path (NULL for current directory)
- * @return WD_RETZ on success, -WD_RETN on failure
+ * @return WG_RETZ on success, -WG_RETN on failure
  */
-int wd_extract_tar(const char *tar_path, const char *entry_dest) {
+int wg_extract_tar(const char *tar_path, const char *entry_dest) {
 	    struct archive *a;           /* Archive reader object */
 	    struct archive *ext;         /* Archive writer/disk extractor object */
 	    struct archive_entry *entry; /* Represents a single file/directory in archive */
@@ -108,7 +109,7 @@ int wd_extract_tar(const char *tar_path, const char *entry_dest) {
 	        fprintf(stderr, "Error opening archive: %s\n", archive_error_string(a));
 	        archive_read_free(a);
 	        archive_write_free(ext);
-	        return -WD_RETN;  /* Return failure */
+	        return -WG_RETN;  /* Return failure */
 	    }
 
 	    /**
@@ -117,7 +118,7 @@ int wd_extract_tar(const char *tar_path, const char *entry_dest) {
 	     * archive_read_next_header - Read next file/directory entry
 	     * ARCHIVE_EOF indicates successful end of archive
 	     */
-	    while (1) {
+	    while (true) {
 	        r = archive_read_next_header(a, &entry);
 	        if (r == ARCHIVE_EOF) {
 	            break;  /* End of archive reached successfully */
@@ -126,7 +127,7 @@ int wd_extract_tar(const char *tar_path, const char *entry_dest) {
 	            fprintf(stderr, "Error reading header: %s\n", archive_error_string(a));
 	            archive_read_free(a);
 	            archive_write_free(ext);
-	            return -WD_RETN;  /* Return failure */
+	            return -WG_RETN;  /* Return failure */
 	        }
 
 	        /* Get original path of current entry */
@@ -135,10 +136,10 @@ int wd_extract_tar(const char *tar_path, const char *entry_dest) {
 			/* Debugging Notice */
 			static int extract_notice = 0;
 			static int always_extract_notice = 0;
-			if (extract_notice == 0) {
+			if (extract_notice == WG_RETZ) {
 				extract_notice = 1;
-				pr_color(stdout, FCOLOUR_GREEN, "* create debugging extracting archive?");
-				char *debug_extract = readline(" [y/n]: ");
+				printf("\x1b[32m==> create debug extract archive?\x1b[0m\n");
+				char *debug_extract = readline("   answer [y/n]: ");
 				if (debug_extract) {
 					if (debug_extract[0] == 'Y' || debug_extract[0] == 'y') {
 						always_extract_notice = 1;
@@ -146,7 +147,7 @@ int wd_extract_tar(const char *tar_path, const char *entry_dest) {
 						fflush(stdout);
 					}
 				}
-				wd_free(debug_extract);
+				wg_free(debug_extract);
 			}
 			if (always_extract_notice) {
 				printf(" * Extracting: %s\n", entry_path);
@@ -156,13 +157,13 @@ int wd_extract_tar(const char *tar_path, const char *entry_dest) {
 	        /**
 	         * MODIFY EXTRACTION PATH IF DESTINATION SPECIFIED
 	         * Prepend destination directory to extraction path
-	         * wd_mkdir - Should create destination directory recursively
+	         * wg_mkdir - Should create destination directory recursively
 	         * snprintf - Construct new path: entry_dest/original_filename
 	         * archive_entry_set_pathname - Update extraction path
 	         */
 	        if (entry_dest != NULL && strlen(entry_dest) > 0) {
 	            char entry_new_path[1024];  /* Buffer for new path */
-	            wd_mkdir(entry_dest);  /* Create destination directory */
+	            wg_mkdir(entry_dest);  /* Create destination directory */
 	            snprintf(entry_new_path, sizeof(entry_new_path), "%s/%s", entry_dest, entry_path);
 	            archive_entry_set_pathname(entry, entry_new_path);
 	        }
@@ -214,7 +215,7 @@ int wd_extract_tar(const char *tar_path, const char *entry_dest) {
 	    archive_write_close(ext);
 	    archive_write_free(ext);
 
-	    return WD_RETZ;  /* Return success */
+	    return WG_RETZ;  /* Return success */
 }
 
 /**
@@ -232,15 +233,15 @@ static void build_extraction_path(const char *entry_dest, const char *entry_path
 		/* Handle case where no destination path is specified */
 		if (!entry_dest || !strcmp(entry_dest, ".")|| *entry_dest == '\0') {
 				/* Extract directly to current directory using entry path */
-				wd_snprintf(out_path, out_size, "%s", entry_path);
+				wg_snprintf(out_path, out_size, "%s", entry_path);
 		} else {
 				/* Check if entry path already contains destination path */
 				if (!strncmp(entry_path, entry_dest, strlen(entry_dest))) {
 						/* Use entry path as-is if it already starts with dest path */
-						wd_snprintf(out_path, out_size, "%s", entry_path);
+						wg_snprintf(out_path, out_size, "%s", entry_path);
 				} else {
 						/* Combine destination path with entry path */
-						wd_snprintf(out_path, out_size, "%s/%s", entry_dest, entry_path);
+						wg_snprintf(out_path, out_size, "%s/%s", entry_dest, entry_path);
 				}
 		}
 }
@@ -252,7 +253,7 @@ static void build_extraction_path(const char *entry_dest, const char *entry_path
  * @param archive_read ZIP archive reading handle
  * @param archive_write Disk writing handle
  * @param item Archive entry to extract
- * @return WD_RETZ on success, negative error code on failure
+ * @return WG_RETZ on success, negative error code on failure
  */
 static int extract_zip_entry(struct archive *archive_read,
 						     struct archive *archive_write,
@@ -267,11 +268,11 @@ static int extract_zip_entry(struct archive *archive_read,
 		ret = archive_write_header(archive_write, item);
 		if (ret != ARCHIVE_OK) {
 				pr_error(stdout, "Write header error: %s", archive_error_string(archive_write));
-				return -WD_RETN;
+				return -WG_RETN;
 		}
 
 		/* Copy file content if this entry has data */
-		while (1) {
+		while (true) {
 				/* Read a block of data from the ZIP entry */
 				ret = archive_read_data_block(archive_read, &buffer, &size, &offset);
 				/* Check for end of file */
@@ -280,7 +281,7 @@ static int extract_zip_entry(struct archive *archive_read,
 				/* Handle read errors */
 				if (ret < ARCHIVE_OK) {
 						pr_error(stdout, "Read data error: %s", archive_error_string(archive_read));
-						return -WD_RETW;
+						return -WG_RETW;
 				}
 
 				/* Write the data block to disk */
@@ -288,12 +289,12 @@ static int extract_zip_entry(struct archive *archive_read,
 				/* Handle write errors */
 				if (ret < ARCHIVE_OK) {
 						pr_error(stdout, "Write data error: %s", archive_error_string(archive_write));
-						return -WD_RETH;
+						return -WG_RETH;
 				}
 		}
 
 		/* Return success code */
-		return WD_RETZ;
+		return WG_RETZ;
 }
 
 /**
@@ -302,9 +303,9 @@ static int extract_zip_entry(struct archive *archive_read,
  *
  * @param zip_file Path to the ZIP archive file to extract
  * @param entry_dest Destination directory for extraction
- * @return WD_RETZ on success, negative error code on failure
+ * @return WG_RETZ on success, negative error code on failure
  */
-int wd_extract_zip(const char *zip_file, const char *entry_dest)
+int wg_extract_zip(const char *zip_file, const char *entry_dest)
 {
 		struct archive *archive_read;     /* ZIP reading handle */
 		struct archive *archive_write;    /* Disk writing handle */
@@ -345,10 +346,10 @@ int wd_extract_zip(const char *zip_file, const char *entry_dest)
 				/* Debugging Notice */
 				static int extract_notice = 0;
 				static int always_extract_notice = 0;
-				if (extract_notice == 0) {
+				if (extract_notice == WG_RETZ) {
 					extract_notice = 1;
-					pr_color(stdout, FCOLOUR_GREEN, "* create debugging extracting archive?");
-					char *debug_extract = readline(" [y/n]: ");
+					printf("\x1b[32m==> create debug extract archive?\x1b[0m\n");
+					char *debug_extract = readline("   answer [y/n]: ");
 					if (debug_extract) {
 						if (debug_extract[0] == 'Y' || debug_extract[0] == 'y') {
 							always_extract_notice = 1;
@@ -356,7 +357,7 @@ int wd_extract_zip(const char *zip_file, const char *entry_dest)
 							fflush(stdout);
 						}
 					}
-					wd_free(debug_extract);
+					wg_free(debug_extract);
 				}
 				if (always_extract_notice) {
 					printf(" * Extracting: %s\n", entry_path);
@@ -384,7 +385,7 @@ int wd_extract_zip(const char *zip_file, const char *entry_dest)
 		archive_write_free(archive_write);
 
 		/* Return success if no errors occurred */
-		return error_occurred ? -WD_RETN : 0;
+		return error_occurred ? -WG_RETN : 0;
 
 /* Error handling section */
 error:
@@ -393,7 +394,7 @@ error:
 				archive_read_free(archive_read);
 		if (archive_write)
 				archive_write_free(archive_write);
-		return -WD_RETN;
+		return -WG_RETN;
 }
 
 /**
@@ -401,9 +402,9 @@ error:
  * Supports TAR, TAR.GZ, and ZIP formats
  *
  * @param filename Path to the archive file to extract
- * @return WD_RETZ on success, negative error code on failure
+ * @return WG_RETZ on success, negative error code on failure
  */
-void wd_extract_archive(const char *filename)
+void wg_extract_archive(const char *filename)
 {
         /* Debugging Extract Archive Function */
 #if defined (_DBG_PRINT)
@@ -438,23 +439,23 @@ void wd_extract_archive(const char *filename)
                 "Unknown");
 #endif
 #endif
-		char output_path[WD_PATH_MAX];  /* Buffer for extraction path */
+		char output_path[WG_PATH_MAX];  /* Buffer for extraction path */
 		size_t name_len;                /* Length of filename */
 
 		/* Check for TAR archive formats */
 		if (strstr(filename, ".tar.gz")) {
 				printf(" Try Extracting TAR archive: %s\n", filename);
-				char size_filename[WD_PATH_MAX];
-			    wd_snprintf(size_filename, sizeof(size_filename), "%s", filename);
+				char size_filename[WG_PATH_MAX];
+			    wg_snprintf(size_filename, sizeof(size_filename), "%s", filename);
 			    if (strstr(size_filename, ".tar.gz")) {
 			        char *f_EXT = strstr(size_filename, ".tar.gz");
 			        if (f_EXT)
 			            *f_EXT = '\0';  /* Remove .tar.gz extension */
 			    }
-				wd_extract_tar(filename, size_filename);  /* Extract using TAR handler */
+				wg_extract_tar(filename, size_filename);  /* Extract using TAR handler */
 		} else if (strstr(filename, ".tar")) {
 				printf(" Try Extracting TAR archive: %s\n", filename);
-				wd_extract_tar(filename, NULL);  /* Extract using TAR handler */
+				wg_extract_tar(filename, NULL);  /* Extract using TAR handler */
 		} else if (strstr(filename, ".zip")) {
 				/* Handle ZIP archive extraction */
 				printf(" Try Extracting ZIP archive: %s\n", filename);
@@ -465,13 +466,13 @@ void wd_extract_archive(const char *filename)
 					!strncmp(filename + name_len - 4, ".zip", 4))
 				{
 						/* Copy filename without .zip extension */
-						wd_strncpy(output_path, filename, name_len - 4);
+						wg_strncpy(output_path, filename, name_len - 4);
 						output_path[name_len - 4] = '\0';
 				} else {
 						/* Use full filename if no .zip extension found */
-						wd_strcpy(output_path, filename);
+						wg_strcpy(output_path, filename);
 				}
-				wd_extract_zip(filename, output_path);  /* Extract using ZIP handler */
+				wg_extract_zip(filename, output_path);  /* Extract using ZIP handler */
 		} else {
 				/* Unknown archive format - log and return error */
 				pr_info(stdout, "Unknown archive type, skipping extraction: %s\n", filename);

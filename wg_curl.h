@@ -22,12 +22,13 @@ struct string {
 };
 
 #define MAX_NUM_SITES (80)
+#define WG_CURL_RESPONSE_OK (200)
 
 void verify_cacert_pem(CURL *curl);
 size_t write_callback(void *ptr, size_t size, size_t nmemb, void *userdata);
 size_t write_memory_callback(void *contents, size_t size, size_t nmemb, void *userp);
 void account_tracker_discrepancy(const char *base, char variations[][100], int *variation_count);
 void account_tracking_username(CURL *curl, const char *username);
-int wd_download_file(const char *url, const char *fname);
+int wg_download_file(const char *url, const char *fname);
 
 #endif

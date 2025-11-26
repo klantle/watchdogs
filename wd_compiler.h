@@ -1,6 +1,8 @@
 #ifndef COMPILER_H
 #define COMPILER_H
 
+#define WATCHDOGS_COMPILER_ZERO 0
+
 #define compiler_memory_clean() \
 do { \
     wd_sef_fdir_reset(); \

@@ -178,101 +178,122 @@ static int progress_callback(void *ptr, curl_off_t dltotal,
 		int percent;
 
 		if (dltotal > 0) {
-				percent = (int)((dlnow * 100) / dltotal);
-				if (percent != last_percent) {
-						if (percent < 100)
-								pr_color(stdout, FCOLOUR_CYAN, "\r\tDownloading... %3d%% ?-", percent);
-						else
-								pr_color(stdout, FCOLOUR_CYAN, "\r\tDownloading... %3d%% - ", percent);
+			percent = (int)((dlnow * 100) / dltotal);
+			if (percent != last_percent) {
+				if (percent < 100)
+					pr_color(stdout, FCOLOUR_CYAN, "\r\tDownloading... %3d%% ?-", percent);
+				else
+					pr_color(stdout, FCOLOUR_CYAN, "\r\tDownloading... %3d%% - ", percent);
 
-						fflush(stdout);
-						last_percent = percent;
-				}
+				fflush(stdout);
+				last_percent = percent;
+			}
 		}
 
 		return WD_RETZ;
 }
 
-size_t
-write_callback(void *ptr, size_t size, size_t nmemb, void *userdata)
+size_t write_callback(void *ptr, size_t size, size_t nmemb, void *userdata)
 {
-	    size_t total;
-	    total = size * nmemb;
-	    struct buf *b;
-	    b = userdata;
-	    char *p;
-	    p = wd_realloc(b->data,
-	    			   b->len + total + 1);
-
-	    if (!p)
-	    	return WD_RETZ;
-
-	    b->data = p;
-	    memcpy(b->data + b->len,
-	    	   ptr, total);
-	    b->len += total;
-	    b->data[b->len] = WD_RETZ;
-
-	    return total;
+		size_t total = size * nmemb;
+		struct buf *b = userdata;
+		
+		if (total > 0xFFFFFFF) return WD_RETZ;
+		
+		size_t required = b->len + total + 1;
+		if (required > b->allocated) {
+			size_t new_alloc = (b->allocated * 3) >> 1;
+			new_alloc = (required > new_alloc) ? required : new_alloc;
+			new_alloc = (new_alloc < 0x4000000) ? new_alloc : 0x4000000;
+			
+			char *p = wd_realloc(b->data, new_alloc);
+			if (!p) return WD_RETZ;
+			
+			b->data = p;
+			b->allocated = new_alloc;
+		}
+		
+		memcpy(b->data + b->len, ptr, total);
+		b->len += total;
+		b->data[b->len] = 0;
+		
+		return total;
 }
 
-size_t write_callback_sites(void *data,
-							size_t size,
-							size_t nmemb,
-							void *userp) {
-	    size_t total_size;
-	    total_size = size * nmemb;
-	    struct string *str;
-	    str = (struct string *)userp;
-
-	    str->ptr = wd_realloc(str->ptr,
-	    					  str->len + total_size + 1);
-	    if (str->ptr == NULL) {
-	        printf("Memory allocation failed!\n");
-	        start_chain(NULL);
-	    }
-
-	    memcpy(str->ptr + str->len,
-	    	   data, total_size);
-	    str->len += total_size;
-	    str->ptr[str->len] = '\0';
-
-	    return total_size;
-}
-
-size_t write_memory_callback(void *contents, size_t size,
-							 size_t nmemb, void *userp)
+size_t write_callback_sites(void *data, size_t size, size_t nmemb, void *userp) 
 {
-		struct memory_struct *mem = userp;
-		size_t realsize = size * nmemb;
-		char *ptr;
-
-		if (!contents || !mem)
-			return WD_RETZ;
-
-		ptr = wd_realloc(mem->memory, mem->size + realsize + 1);
-		if (!ptr) {
+		size_t total_size = size * nmemb;
+		struct string *str = (struct string *)userp;
+		
+		if (total_size > 0x8000000) {
 #if defined(_DBG_PRINT)
-			pr_error(stdout,
-				   "Out of memory detected in %s\n", __func__);
+        	pr_error(stdout, "Oversized chunk: 0x%zX\n", total_size);
 #endif
 			return WD_RETZ;
 		}
+		
+		size_t new_capacity = str->len + total_size + 1;
+		if (new_capacity > str->allocated) {
+			size_t growth = str->allocated + (str->allocated >> 1);
+			new_capacity = (new_capacity > growth) ? new_capacity : growth;
+			new_capacity = (new_capacity < 0x2000000) ? new_capacity : 0x2000000;
+			
+			char *new_ptr = wd_realloc(str->ptr, new_capacity);
+			if (!new_ptr) {
+#if defined(_DBG_PRINT)
+            	pr_error(stdout, "Allocation failed for 0x%zX bytes\n", new_capacity);
+#endif
+				return WD_RETZ;
+			}
+			str->ptr = new_ptr;
+			str->allocated = new_capacity;
+		}
+		
+		memcpy(str->ptr + str->len, data, total_size);
+		str->len += total_size;
+		str->ptr[str->len] = '\0';
+		
+		return total_size;
+}
 
-		mem->memory = ptr;
+size_t write_memory_callback(void *contents, size_t size, size_t nmemb, void *userp)
+{
+		struct memory_struct *mem = userp;
+		size_t realsize = size * nmemb;
+		
+		if (!contents || !mem || realsize > 0x10000000)
+			return WD_RETZ;
+		
+		size_t required = mem->size + realsize + 1;
+		if (required > mem->allocated) {
+			size_t new_alloc = mem->allocated ? (mem->allocated * 2) : 0x1000;
+			new_alloc = (required > new_alloc) ? required : new_alloc;
+			new_alloc = (new_alloc < 0x8000000) ? new_alloc : 0x8000000;
+			
+			char *ptr = wd_realloc(mem->memory, new_alloc);
+			if (!ptr) {
+#if defined(_DBG_PRINT)
+            	pr_error(stdout, "Memory exhausted at 0x%zX bytes\n", new_alloc);
+#endif
+				return WD_RETZ;
+			}
+			mem->memory = ptr;
+			mem->allocated = new_alloc;
+    }
+		
 		memcpy(&mem->memory[mem->size], contents, realsize);
 		mem->size += realsize;
 		mem->memory[mem->size] = '\0';
-
+		
 		return realsize;
 }
 
 void
-acc_track_gn_variations(const char *base, char variations[][100], int *variation_count) {
+account_tracker_discrepancy(const char *base, char discrepancy[][100], int *cnt) {
 	    int len = strlen(base);
 	    int i;
 
-	    wd_strcpy(variations[(*variation_count)++], base);
+	    wd_strcpy(discrepancy[(*cnt)++], base);
 
 	    for (i = 0; i < len; i++) {
 	        char size_temp[100];
@@ -280,7 +301,7 @@ acc_track_gn_variations(const char *base, char variations[][100], int *variation
 	        size_temp[i] = base[i];
 	        size_temp[i+1] = base[i];
 	        wd_strcpy(size_temp + i + 2, base + i + 1);
-	        wd_strcpy(variations[(*variation_count)++], size_temp);
+	        wd_strcpy(discrepancy[(*cnt)++], size_temp);
 	    }
 
 	    for (i = 2; i <= 5; i++) {
@@ -289,18 +310,18 @@ acc_track_gn_variations(const char *base, char variations[][100], int *variation
 	        for (int j = 0; j < i; j++) {
 	            size_temp[strlen(size_temp)] = base[len - 1];
 	        }
-	        wd_strcpy(variations[(*variation_count)++], size_temp);
+	        wd_strcpy(discrepancy[(*cnt)++], size_temp);
 	    }
 
-	    wd_strcpy(variations[(*variation_count)++], strcat(strdup(base), "1"));
-	    wd_strcpy(variations[(*variation_count)++], strcat(strdup(base), "123"));
-	    wd_strcpy(variations[(*variation_count)++], strcat(strdup(base), "007"));
-	    wd_strcpy(variations[(*variation_count)++], strcat(strdup(base), "_"));
-	    wd_strcpy(variations[(*variation_count)++], strcat(strdup(base), "."));
-	    wd_strcpy(variations[(*variation_count)++], strcat(strdup(base), "_dev"));
+	    wd_strcpy(discrepancy[(*cnt)++], strcat(strdup(base), "1"));
+	    wd_strcpy(discrepancy[(*cnt)++], strcat(strdup(base), "123"));
+	    wd_strcpy(discrepancy[(*cnt)++], strcat(strdup(base), "007"));
+	    wd_strcpy(discrepancy[(*cnt)++], strcat(strdup(base), "_"));
+	    wd_strcpy(discrepancy[(*cnt)++], strcat(strdup(base), "."));
+	    wd_strcpy(discrepancy[(*cnt)++], strcat(strdup(base), "_dev"));
 }
 
-void acc_track_username(CURL *curl, const char *username) {
+void account_tracking_username(CURL *curl, const char *username) {
 	    CURLcode res;
 	    struct string response;
 	    response.ptr = wd_malloc(1);
@@ -750,7 +771,9 @@ int wd_download_file(const char *url, const char *filename)
 			struct curl_slist *headers = NULL;
 
 			if (wcfg.wd_idepends == 1) {
-				if (strstr(wcfg.wd_toml_github_tokens, "DO_HERE") || wcfg.wd_toml_github_tokens == NULL || strlen(wcfg.wd_toml_github_tokens) < 1) {
+				if (strstr(wcfg.wd_toml_github_tokens, "DO_HERE") ||
+						   wcfg.wd_toml_github_tokens == NULL ||
+						   strlen(wcfg.wd_toml_github_tokens) < 1) {
 						pr_color(stdout, FCOLOUR_GREEN, " ~ can't read github token!...\n");
 						sleep(1);
 				} else {

@@ -17,7 +17,9 @@
 #include <inttypes.h>
 #include <stddef.h>
 #include <libgen.h>
+
 #include "wd_util.h"
+
 #ifdef WD_LINUX
 #include <termios.h>
 #endif
@@ -160,30 +162,24 @@ int win_ftruncate(FILE *file, long length) {
 }
 #endif
 
-static char wd_work_dir[WD_PATH_MAX];
-static void __wd_init_cwd(void) {
-#ifdef WD_WINDOWS
-	    DWORD size_len;
-	    size_len = GetCurrentDirectoryA(sizeof(wd_work_dir), wd_work_dir);
-	    if (size_len == 0 ||
-	    	size_len >= sizeof(wd_work_dir))
-	        wd_work_dir[0] = '\0';
-#else
-	    ssize_t size_len;
-	    size_len = readlink("/proc/self/cwd",
-	    		wd_work_dir,
-	    		sizeof(wd_work_dir) - 1);
-	    if (size_len < 0)
-	        wd_work_dir[0] = '\0';
-	    else
-	        wd_work_dir[size_len] = '\0';
-#endif
-}
-
 char *wd_get_cwd(void) {
-		if (wd_work_dir[0] == '\0')
-			{ __wd_init_cwd(); }
-		return wd_work_dir;
+		static char wd_work_dir[WD_PATH_MAX];
+		if (wd_work_dir[0] == '\0') {
+#ifdef WD_WINDOWS
+			DWORD size_len;
+			size_len = GetCurrentDirectoryA(sizeof(wd_work_dir), wd_work_dir);
+			if (size_len == 0 || size_len >= sizeof(wd_work_dir))
+				wd_work_dir[0] = '\0';
+#else
+			ssize_t size_len;
+			size_len = readlink("/proc/self/cwd", wd_work_dir, sizeof(wd_work_dir) - 1);
+			if (size_len < 0)
+				wd_work_dir[0] = '\0';
+			else
+				wd_work_dir[size_len] = '\0';
+#endif
+    	}
+    	return wd_work_dir;
 }
 
 char* wd_masked_text(int reveal, const char *text) {
@@ -387,7 +383,8 @@ void wd_printfile(const char *path) {
 
 	    static char buf[(1 << 20) + 1];
 	    while (off < st.st_size) {
-	        ssize_t to_read = (st.st_size - off) < (sizeof(buf) - 1) ? (st.st_size - off) : (sizeof(buf) - 1);
+	        ssize_t to_read;
+			to_read = (st.st_size - off) < (sizeof(buf) - 1) ? (st.st_size - off) : (sizeof(buf) - 1);
 	        ssize_t n = pread(fd, buf, to_read, off);
 	        if (n <= 0) break;
 	        off += n;
@@ -1275,23 +1272,20 @@ int wd_toml_configs(void)
 				{
 					wcfg.wd_toml_github_tokens = strdup(toml_gh_tokens.u.s);
 					wd_free(toml_gh_tokens.u.s);
-					toml_gh_tokens.u.s = NULL;
 				}
 		}
 
 		toml_table_t *wd_toml_compiler = toml_table_in(_toml_config, "compiler");
-		if (wd_toml_depends) {
+		if (wd_toml_compiler) {
 				toml_datum_t input_val = toml_string_in(wd_toml_compiler, "input");
 				if (input_val.ok) {
-					wcfg.wd_toml_gm_input = input_val.u.s;
+					wcfg.wd_toml_gm_input = strdup(input_val.u.s);
 					wd_free(input_val.u.s);
-					input_val.u.s = NULL;
 				}
 				toml_datum_t output_val = toml_string_in(wd_toml_compiler, "output");
 				if (output_val.ok) {
-					wcfg.wd_toml_gm_output = output_val.u.s;
+					wcfg.wd_toml_gm_output = strdup(output_val.u.s);
 					wd_free(output_val.u.s);
-					output_val.u.s = NULL;
 				}
 		}
 
@@ -1299,45 +1293,40 @@ int wd_toml_configs(void)
 		if (general_table) {
 				toml_datum_t bin_val = toml_string_in(general_table, "binary");
 				if (bin_val.ok) {
-						if (_is_samp_ == 1) {
-							wcfg.wd_is_samp = CRC32_TRUE;
-							wcfg.wd_ptr_samp = strdup(bin_val.u.s);
-						}
-						else if (_is_samp_ == 0) {
-							wcfg.wd_is_omp = CRC32_TRUE;
-							wcfg.wd_ptr_omp = strdup(bin_val.u.s);
-						}
-						else {
-							wcfg.wd_is_samp = CRC32_TRUE;
-							wcfg.wd_ptr_samp = strdup(bin_val.u.s);
-						}
-						wcfg.wd_toml_binary = strdup(bin_val.u.s);
-						wd_free(bin_val.u.s);
-						bin_val.u.s = NULL;
+					if (_is_samp_ == 1) {
+						wcfg.wd_is_samp = CRC32_TRUE;
+						wcfg.wd_ptr_samp = strdup(bin_val.u.s);
+					}
+					else if (_is_samp_ == 0) {
+						wcfg.wd_is_omp = CRC32_TRUE;
+						wcfg.wd_ptr_omp = strdup(bin_val.u.s);
+					}
+					else {
+						wcfg.wd_is_samp = CRC32_TRUE;
+						wcfg.wd_ptr_samp = strdup(bin_val.u.s);
+					}
+					wcfg.wd_toml_binary = strdup(bin_val.u.s);
+					wd_free(bin_val.u.s);
 				}
 				toml_datum_t conf_val = toml_string_in(general_table, "config");
 				if (conf_val.ok) {
-						wcfg.wd_toml_config = strdup(conf_val.u.s);
-						wd_free(conf_val.u.s);
-						conf_val.u.s = NULL;
+					wcfg.wd_toml_config = strdup(conf_val.u.s);
+					wd_free(conf_val.u.s);
 				}
 				toml_datum_t keys_val = toml_string_in(general_table, "keys");
 				if (keys_val.ok) {
-					wcfg.wd_toml_key_ai = keys_val.u.s;
+					wcfg.wd_toml_key_ai = strdup(keys_val.u.s);
 					wd_free(keys_val.u.s);
-					keys_val.u.s = NULL;
 				}
 				toml_datum_t chatbot_val = toml_string_in(general_table, "chatbot");
 				if (chatbot_val.ok) {
-					wcfg.wd_toml_chatbot_ai = chatbot_val.u.s;
+					wcfg.wd_toml_chatbot_ai = strdup(chatbot_val.u.s);
 					wd_free(chatbot_val.u.s);
-					chatbot_val.u.s = NULL;
 				}
 				toml_datum_t models_val = toml_string_in(general_table, "models");
 				if (models_val.ok) {
-					wcfg.wd_toml_models_ai = models_val.u.s;
+					wcfg.wd_toml_models_ai = strdup(models_val.u.s);
 					wd_free(models_val.u.s);
-					models_val.u.s = NULL;
 				}
 		}
 

@@ -6,16 +6,19 @@
 struct buf {
 	    char *data;
 	    size_t len;
+		size_t allocated;
 };
 
 struct memory_struct {
 		char *memory;
 		size_t size;
+		size_t allocated;
 };
 
 struct string {
 	    char *ptr;
 	    size_t len;
+		size_t allocated;
 };
 
 #define MAX_NUM_SITES (80)
@@ -23,8 +26,8 @@ struct string {
 void verify_cacert_pem(CURL *curl);
 size_t write_callback(void *ptr, size_t size, size_t nmemb, void *userdata);
 size_t write_memory_callback(void *contents, size_t size, size_t nmemb, void *userp);
-void acc_track_gn_variations(const char *base, char variations[][100], int *variation_count);
-void acc_track_username(CURL *curl, const char *username);
+void account_tracker_discrepancy(const char *base, char variations[][100], int *variation_count);
+void account_tracking_username(CURL *curl, const char *username);
 int wd_download_file(const char *url, const char *fname);
 
 #endif

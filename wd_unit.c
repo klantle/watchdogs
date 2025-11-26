@@ -1028,6 +1028,7 @@ n_loop_igm2:
             if (*arg == '\0') {
                 println(stdout, "Usage: wanion [<text>]");
             } else {
+                int retry = 0;
                 char size_rest_api_perform[WD_PATH_MAX];
                 int is_chatbot_groq_based = 0;
                 if (strcmp(wcfg.wd_toml_chatbot_ai, "gemini") == 0)
@@ -1072,14 +1073,13 @@ rest_def:
                              wanion_escaped_argument);
                 }
 
+retrying:
 #if defined(_DBG_PRINT)
                 printf("json payload: %s\n", wanion_json_payload);
 #endif
                 struct timespec start = {0}, end = { 0 };
                 double wanion_dur;
 
-                int retry = 0;
-retrying:
                 clock_gettime(CLOCK_MONOTONIC, &start);
                 struct buf b = {0};
                 CURL *h = curl_easy_init();
@@ -1110,6 +1110,11 @@ retrying:
                 CURLcode res = curl_easy_perform(h);
                 if (res != CURLE_OK) {
                     fprintf(stderr, "HTTP request failed: %s\n", curl_easy_strerror(res));
+                    if (retry != 3) {
+                        ++retry;
+                        printf("~ try retrying...\n");
+                        goto retrying;
+                    }
                     curl_slist_free_all(hdr);
                     curl_easy_cleanup(h);
                     clock_gettime(CLOCK_MONOTONIC, &end);
@@ -1120,9 +1125,19 @@ retrying:
                 curl_easy_getinfo(h, CURLINFO_RESPONSE_CODE, &http_code);
                 if (http_code != 200) {
                     fprintf(stderr, "API returned HTTP %ld:\n%s\n", http_code, b.data);
+                    int rate_api_limit = 0;
                     if (strfind(b.data, "You exceeded your current quota, please check your plan and billing details") ||
                         strfind(b.data, "Too Many Requests"))
+                        ++rate_api_limit;
+                    if (rate_api_limit)
                         printf("~ limit detected!\n");
+                    else {
+                        if (retry != 3) {
+                            ++retry;
+                            printf("~ try retrying...\n");
+                            goto retrying;
+                        }
+                    }
                     curl_slist_free_all(hdr);
                     curl_easy_cleanup(h);
                     clock_gettime(CLOCK_MONOTONIC, &end);
@@ -1181,10 +1196,59 @@ retrying:
                         }
                     }
                     if (response_text) {
-                        fwrite(response_text, 1, strlen(response_text), stdout);
+                        const char *p = response_text;
+                        int in_bold = 0;
+                        int in_italic = 0;
+                        int in_code = 0;
+                        while (*p) {
+                            if (!in_code && strncmp(p, "```", 3) == 0) {
+                                in_code = 1;
+                                printf("\033[38;5;244m");
+                                p += 3;
+                                continue;
+                            }
+                            if (in_code && strncmp(p, "```", 3) == 0) {
+                                in_code = 0;
+                                printf("\033[0m");
+                                p += 3;
+                                continue;
+                            }
+                            if (in_code) {
+                                putchar(*p++);
+                                continue;
+                            }
+                            if (strncmp(p, "**", 2) == 0) {
+                                in_bold = !in_bold;
+                                printf(in_bold ? "\033[1m" : "\033[0m");
+                                p += 2;
+                                continue;
+                            }
+                            if (*p == '_') {
+                                in_italic = !in_italic;
+                                printf(in_italic ? "\033[3m" : "\033[0m");
+                                p++;
+                                continue;
+                            }
+                            if (p == response_text || *(p - 1) == '\n') {
+                                if (*p == '#') {
+                                    printf("\033[1m");
+                                    p++;
+                                    continue;
+                                }
+                            }
+                            putchar(*p++);
+                        }
+                        printf("\033[0m");
                     } else {
                         fprintf(stderr, "No response text found in Groq response\n");
+                        if (retry != 3) {
+                            ++retry;
+                            printf("~ try retrying...\n");
+                            goto retrying;
+                        }
+#if defined(_DBG_PRINT)
                         printf("Raw Groq response: %s\n", b.data);
+#endif
                     }
                 } else {
                     cJSON *candidates = cJSON_GetObjectItem(root, "candidates");
@@ -1198,15 +1262,57 @@ retrying:
                                 cJSON *part = cJSON_GetArrayItem(parts, 0);
                                 cJSON *text = cJSON_GetObjectItem(part, "text");
                                 if (cJSON_IsString(text) && text->valuestring) {
-                                    fwrite(text->valuestring,
-                                           1,
-                                           strlen(text->valuestring),
-                                           stdout);
+                                    const char *p = text->valuestring;
+                                    int in_bold = 0;
+                                    int in_italic = 0;
+                                    int in_code = 0;
+                                    while (*p) {
+                                        if (!in_code && strncmp(p, "```", 3) == 0) {
+                                            in_code = 1;
+                                            printf("\033[38;5;244m");
+                                            p += 3;
+                                            continue;
+                                        }
+                                        if (in_code && strncmp(p, "```", 3) == 0) {
+                                            in_code = 0;
+                                            printf("\033[0m");
+                                            p += 3;
+                                            continue;
+                                        }
+                                        if (in_code) {
+                                            putchar(*p++);
+                                            continue;
+                                        }
+                                        if (strncmp(p, "**", 2) == 0) {
+                                            in_bold = !in_bold;
+                                            printf(in_bold ? "\033[1m" : "\033[0m");
+                                            p += 2;
+                                            continue;
+                                        }
+                                        if (*p == '_') {
+                                            in_italic = !in_italic;
+                                            printf(in_italic ? "\033[3m" : "\033[0m");
+                                            p++;
+                                            continue;
+                                        }
+                                        if (p == text->valuestring || *(p - 1) == '\n') {
+                                            if (*p == '#') {
+                                                printf("\033[1m");
+                                                p++;
+                                                continue;
+                                            }
+                                        }
+                                        putchar(*p++);
+                                    }
+                                    printf("\033[0m");
                                 } else fprintf(stderr, "No response text found\n");
                             } else {
-                                fprintf(stderr, "No parts found in content\n");
-                                if (retry != 1) { retry = 1;
-                                                  goto retrying; }
+                                fprintf(stderr, "No parts found in content\n");       
+                                if (retry != 3) {
+                                    ++retry;
+                                    printf("~ try retrying...\n");
+                                    goto retrying;
+                                }
                             }
                         } else fprintf(stderr, "No content found in candidate\n");
                     } else {
@@ -1250,14 +1356,14 @@ done_left:
                 char variations[100][100];
                 int variation_count = 0;
 
-                acc_track_gn_variations(arg, variations, &variation_count);
+                account_tracker_discrepancy(arg, variations, &variation_count);
 
                 printf("[INFO] Search base: %s\n", arg);
                 printf("[INFO] Generated %d Variations\n\n", variation_count);
 
                 for (int i = 0; i < variation_count; i++) {
                     printf("=== CHECKING: %s ===\n", variations[i]);
-                    acc_track_username(curl, variations[i]);
+                    account_tracking_username(curl, variations[i]);
                     printf("\n");
                 }
 

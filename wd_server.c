@@ -20,7 +20,6 @@ FILE *config_in = NULL, *config_out = NULL;
 cJSON *cJSON_server_root = NULL, *pawn = NULL, *cJSON_MS_Obj = NULL;
 char *cJSON_Data = NULL, *cjsON_PrInted_data = NULL;
 
-int server_mode = 0;
 void unit_handle_sigint(int sig) {
         unit_handle_sigint_status = 1;
         wd_stop_server_tasks();

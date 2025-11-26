@@ -23,7 +23,6 @@
 extern char **environ;
 #define POSIX_TIMEOUT 30
 #endif
-#define WATCHDOGS_COMPILER_ZERO 0
 
 static char
             container_output[WD_PATH_MAX] = { 0 },

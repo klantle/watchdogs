@@ -191,7 +191,7 @@ typedef struct {
 
 extern WatchdogConfig wcfg;
 
-void wd_sef_fdir_reset();
+void wd_sef_fdir_reset(void);
 #ifdef WD_WINDOWS
 #define strlcpy   win_strlcpy
 #define strlcat   win_strlcat

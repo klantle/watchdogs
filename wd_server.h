@@ -31,7 +31,6 @@ static inline int _sigaction_stub(int sig, const struct sigaction *act, struct s
 #endif
 #endif
 extern int unit_handle_sigint_status;
-extern int server_mode;
 void unit_handle_sigint(int sig);
 void wd_stop_server_tasks(void);
 void wd_display_server_logs(int ret);

@@ -16,7 +16,7 @@
 </div>
 <!-- markdownlint-enable MD033 -->
 
-![img](https://raw.githubusercontent.com/klantle/watchdogs/refs/heads/main/__WATCH.png)
+![img](https://raw.githubusercontent.com/klantle/watchdogs/refs/heads/dev/__WATCH.png)
 
 ---
 
@@ -38,14 +38,13 @@
 ## Introduction
 
 ## Wanion - A.I on Watchdogs
-![img](https://raw.githubusercontent.com/klantle/watchdogs/refs/heads/main/__WANION.png)
+![img](https://raw.githubusercontent.com/klantle/watchdogs/refs/heads/dev/__WANION.png)
 
 ## "Inspired from XXX"
 > This project started from my personal curiosity a few years back about why pawncc.exe always closed when opened and didn't output any GUI. That curiosity led to a simple discovery through experiments of commanding it (pawncc.exe) from behind the shell.
-> This project is built purely from our own thinking and effort, not merely by imitation. We have never claimed to be inspired by similar projects that themselves draw inspiration from others.
 - Watchdogs ecosystem is partly inspired by the Next.js framework.
 
-![img](https://raw.githubusercontent.com/klantle/watchdogs/refs/heads/main/__ACTORIDE.png)
+![img](https://raw.githubusercontent.com/klantle/watchdogs/refs/heads/dev/__ACTORIDE.png)
 
 ## Supported Platforms
 - [x] Linux (Debian/Ubuntu based distributions)
@@ -134,7 +133,7 @@ apt update
 apt install curl make git
 
 # 3. Installing cURL cacert.pem
-curl -L -o /etc/ssl/certs/cacert.pem "https://github.com/klantle/libwatchdogs/raw/refs/heads/main/libwatchdogs/cacert.pem"
+curl -L -o /etc/ssl/certs/cacert.pem "https://github.com/klantle/libwatchdogs/raw/refs/heads/dev/libwatchdogs/cacert.pem"
 
 # 4. Clone repository
 git clone https://gitlab.com/mywatchdogs/watchdogs watch
@@ -174,7 +173,7 @@ apt upgrade
 pkg install curl make git
 
 # 6. Installing cURL cacert.pem
-curl -L -o $HOME/cacert.pem "https://github.com/klantle/libwatchdogs/raw/refs/heads/main/libwatchdogs/cacert.pem"
+curl -L -o $HOME/cacert.pem "https://github.com/klantle/libwatchdogs/raw/refs/heads/dev/libwatchdogs/cacert.pem"
 
 # 7. Clone repository
 git clone https://gitlab.com/mywatchdogs/watchdogs watch
@@ -243,7 +242,7 @@ git clone https://gitlab.com/mywatchdogs/watchdogs watch
 
 # 4. Installing cURL cacert.pem
 mkdir C:/libwatchdogs # Create if not exist
-curl -L -o C:/libwatchdogs/cacert.pem "https://github.com/klantle/libwatchdogs/raw/refs/heads/main/libwatchdogs/cacert.pem"
+curl -L -o C:/libwatchdogs/cacert.pem "https://github.com/klantle/libwatchdogs/raw/refs/heads/dev/libwatchdogs/cacert.pem"
 
 # 5. Navigate to directory
 cd watch
@@ -315,7 +314,7 @@ aio_repo = [
     "Y-Less/sscanf:latest",
     "samp-incognito/samp-streamer-plugin:latest"
 ]
-``
+```
 
 ## Usage Guide
 
@@ -352,8 +351,8 @@ compile path/to/yourmode
 **Compile specific options:**
 > Extend compiler detail & cause
 ```bash
-compile . --watchdogs
-compile path/to/yourmode --watchdogs
+compile . --detailed
+compile path/to/yourmode --detailed
 ```
 > Clean '.amx' after compile
 ```bash
@@ -382,8 +381,8 @@ compile path/to/yourmode --encoding
 ```
 > Option '-v2' verbosity level - verbose
 ```bash
-compile . --verbose
-compile path/to/yourmode --verbose
+compile . --prolix
+compile path/to/yourmode --prolix
 ```
 
 - Can combined
@@ -468,7 +467,7 @@ For plugin files located in the root directory of the dependency archive (for bo
 The handling of YSI includes differs due to their structure containing multiple nested folders of include files. In this case, the entire folder containing these includes is moved directly to the target path (e.g., `pawno/include` or `qawno/include`), streamlining the process.
 <br>
 
-![img](https://raw.githubusercontent.com/klantle/watchdogs/refs/heads/main/__DEPS.png)
+![img](https://raw.githubusercontent.com/klantle/watchdogs/refs/heads/dev/__DEPS.png)
 
 **Install dependencies from `watchdogs.toml`:**
 ```bash

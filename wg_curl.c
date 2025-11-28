@@ -506,8 +506,8 @@ static int setup_linux_library(void)
 										"/usr/local/lib32"
 									};
 
-		if (!strcmp(wcfg.wg_toml_os_type, OS_SIGNAL_WINDOWS) ||
-			!strcmp(wcfg.wg_toml_os_type, OS_SIGNAL_UNKNOWN))
+		if (!strcmp(wgconfig.wg_toml_os_type, OS_SIGNAL_WINDOWS) ||
+			!strcmp(wgconfig.wg_toml_os_type, OS_SIGNAL_UNKNOWN))
 				return WG_RETZ;
 
 		char size_pf[WG_PATH_MAX + 56];
@@ -516,9 +516,9 @@ static int setup_linux_library(void)
 		if (!found_lib)
 				return WG_RETZ;
 
-		for (i = 0; i < wcfg.wg_sef_count; i++) {
-				if (strstr(wcfg.wg_sef_found_list[i], "libpawnc.so")) {
-						wg_strncpy(libpawnc_src, wcfg.wg_sef_found_list[i], sizeof(libpawnc_src));
+		for (i = 0; i < wgconfig.wg_sef_count; i++) {
+				if (strstr(wgconfig.wg_sef_found_list[i], "libpawnc.so")) {
+						wg_strncpy(libpawnc_src, wgconfig.wg_sef_found_list[i], sizeof(libpawnc_src));
 						break;
 				}
 		}
@@ -563,7 +563,7 @@ void wg_apply_pawncc(void)
 
 		wg_sef_fdir_reset();
 
-		find_compiler_tools(wcfg.wg_is_samp ? COMPILER_SAMP : COMPILER_OPENMP,
+		find_compiler_tools(wgconfig.wg_is_samp ? COMPILER_SAMP : COMPILER_OPENMP,
 						    &found_pawncc_exe, &found_pawncc,
 						    &found_pawndisasm_exe, &found_pawndisasm,
 							&found_pawnc_dll, &found_PAWNC_DLL);
@@ -571,11 +571,11 @@ void wg_apply_pawncc(void)
 		dest_dir = get_compiler_directory();
 		if (!dest_dir) {
 				pr_error(stdout, "Failed to create compiler directory");
-				goto done;
+				goto apply_done;
 		}
 
-		for (i = 0; i < wcfg.wg_sef_count; i++) {
-				const char *item = wcfg.wg_sef_found_list[i];
+		for (i = 0; i < wgconfig.wg_sef_count; i++) {
+				const char *item = wgconfig.wg_sef_found_list[i];
 				if (!item)
 						continue;
 
@@ -646,13 +646,13 @@ void wg_apply_pawncc(void)
 			}
 		} else { wg_free(compile_now); }
 
-done:
-		start_chain(NULL);
+apply_done:
+		chain_goto_main(NULL);
 }
 
 static int prompt_apply_pawncc(void)
 {
-		wcfg.wg_ipawncc = 0;
+		wgconfig.wg_ipawncc = 0;
 
 		pr_color(stdout, FCOLOUR_YELLOW, "Apply pawncc?");
 		char *confirm = readline(" [y/n]: ");
@@ -772,20 +772,20 @@ int wg_download_file(const char *url, const char *filename)
 
 			struct curl_slist *headers = NULL;
 
-			if (wcfg.wg_idepends == WG_RETN) {
-				if (strstr(wcfg.wg_toml_github_tokens, "DO_HERE") ||
-						   wcfg.wg_toml_github_tokens == NULL ||
-						   strlen(wcfg.wg_toml_github_tokens) < 1) {
+			if (wgconfig.wg_idepends == WG_RETN) {
+				if (strstr(wgconfig.wg_toml_github_tokens, "DO_HERE") ||
+						   wgconfig.wg_toml_github_tokens == NULL ||
+						   strlen(wgconfig.wg_toml_github_tokens) < 1) {
 						pr_color(stdout, FCOLOUR_GREEN, " ~ can't read github token!...\n");
 						sleep(1);
 				} else {
 						char auth_header[512];
-						wg_snprintf(auth_header, sizeof(auth_header), "Authorization: token %s", wcfg.wg_toml_github_tokens);
+						wg_snprintf(auth_header, sizeof(auth_header), "Authorization: token %s", wgconfig.wg_toml_github_tokens);
 						headers = curl_slist_append(headers, auth_header);
 						pr_color(stdout,
 								 FCOLOUR_GREEN,
 								 "\tCreate token: %s...\n",
-								 wg_masked_text(8, wcfg.wg_toml_github_tokens));
+								 wg_masked_text(8, wgconfig.wg_toml_github_tokens));
 				}
 			}
 
@@ -855,7 +855,7 @@ int wg_download_file(const char *url, const char *filename)
 					wg_extract_archive(filename);
 
 					char rm_cmd[WG_PATH_MAX];
-					if (wcfg.wg_idepends == WG_RETN) {
+					if (wgconfig.wg_idepends == WG_RETN) {
 						static int rm_deps = 0;
 						if (rm_deps == WG_RETZ) {
 							printf("\x1b[32m==> removing" FCOLOUR_CYAN "'%s'\x1b?\x1b[0m\n", filename);
@@ -910,7 +910,7 @@ int wg_download_file(const char *url, const char *filename)
 						}
 					}
 
-					if (wcfg.wg_ipawncc && prompt_apply_pawncc()) {
+					if (wgconfig.wg_ipawncc && prompt_apply_pawncc()) {
 						char size_filename[WG_PATH_MAX];
 						wg_snprintf(size_filename, sizeof(size_filename), "%s", filename);
 
@@ -944,7 +944,7 @@ int wg_download_file(const char *url, const char *filename)
 		} while (retry_count < 5);
 
 		pr_color(stdout, FCOLOUR_RED, "Download failed after 5 retries\n");
-		start_chain(NULL);
+		chain_goto_main(NULL);
 
 		return WG_RETN;
 }

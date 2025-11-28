@@ -24,7 +24,8 @@
 #include <termios.h>
 #endif
 #if defined(WG_ANDROID)
-ssize_t sendfile(int out_fd, int in_fd, off_t *offset, size_t count) {
+ssize_t sendfile(int out_fd,
+			int in_fd, off_t *offset, size_t count) {
 	    char buf[8192];
 	    size_t left = count;
 	    while (left > 0) {
@@ -54,32 +55,22 @@ ssize_t sendfile(int out_fd, int in_fd, off_t *offset, size_t count) {
 #include "wg_package.h"
 #include "wg_crypto.h"
 
-const char* __command[]={
-				"help", "exit",
-				"kill", "title",
-				"sha256", "crc32",
-				"djb2", "time",
-				"config", "stopwatch",
-				"install", "hardware",
-				"gamemode", "pawncc",
-				"log", "compile", "running",
-				"compiles", "stop",
-				"restart", "wanion",
-				"tracker",
-				"ls", "ping", "clear",
-				"nslookup", "netstat",
-				"ipconfig", "uname",
-				"hostname",
-				"whoami", "arp",
-				"route", "df",
-				"du", "ps"
-			};
+const char* __command[] = {
+	    "help",       "exit",      "kill",      "title",     "sha256",
+	    "crc32",      "djb2",      "time",      "config",    "stopwatch",
+	    "install",    "hardware",  "gamemode",  "pawncc",    "log",
+	    "compile",    "running",   "compiles",  "stop",      "restart",
+	    "wanion",     "tracker",   "ls",        "ping",      "clear",
+	    "nslookup",   "netstat",   "ipconfig",  "uname",     "hostname",
+	    "whoami",     "arp",       "route",     "df",        "du",
+	    "ps"
+};
 
 const size_t
 		__command_len =
 sizeof(__command) / sizeof(__command[0]);
 
-WatchdogConfig wcfg = {
+WatchdogConfig wgconfig = {
 	    .wg_toml_os_type = NULL,
 	    .wg_toml_binary = NULL,
 	    .wg_toml_config = NULL,
@@ -106,15 +97,15 @@ WatchdogConfig wcfg = {
 
 void wg_sef_fdir_reset(void) {
 	    size_t i, sef_max_entries;
-	    sef_max_entries = sizeof(wcfg.wg_sef_found_list) /
-	    				  sizeof(wcfg.wg_sef_found_list[0]);
+	    sef_max_entries = sizeof(wgconfig.wg_sef_found_list) /
+	    				  sizeof(wgconfig.wg_sef_found_list[0]);
 
 	    for (i = 0; i < sef_max_entries; i++)
-	    	wcfg.wg_sef_found_list[i][0] = '\0';
+	    	wgconfig.wg_sef_found_list[i][0] = '\0';
 
-	    wcfg.wg_sef_count = RATE_SEF_EMPTY;
-	    memset(wcfg.wg_sef_found_list,
-			RATE_SEF_EMPTY, sizeof(wcfg.wg_sef_found_list));
+	    wgconfig.wg_sef_count = RATE_SEF_EMPTY;
+	    memset(wgconfig.wg_sef_found_list,
+			RATE_SEF_EMPTY, sizeof(wgconfig.wg_sef_found_list));
 }
 
 #ifdef WG_WINDOWS
@@ -804,15 +795,15 @@ static int wg_should_ignore_dir(const char *entry_name,
 
 static void wg_add_found_path(const char *path)
 {
-		if (wcfg.wg_sef_count < (sizeof(wcfg.wg_sef_found_list) /
-								 sizeof(wcfg.wg_sef_found_list[0]))) {
-				wg_strncpy(wcfg.wg_sef_found_list[wcfg.wg_sef_count],
+		if (wgconfig.wg_sef_count < (sizeof(wgconfig.wg_sef_found_list) /
+								 sizeof(wgconfig.wg_sef_found_list[0]))) {
+				wg_strncpy(wgconfig.wg_sef_found_list[wgconfig.wg_sef_count],
 					path,
 					MAX_SEF_PATH_SIZE);
-				wcfg.wg_sef_found_list \
-				[wcfg.wg_sef_count] \
+				wgconfig.wg_sef_found_list \
+				[wgconfig.wg_sef_count] \
 				[MAX_SEF_PATH_SIZE - 1] = '\0';
-				++wcfg.wg_sef_count;
+				++wgconfig.wg_sef_count;
 		}
 }
 
@@ -946,7 +937,7 @@ static void wg_check_compiler_options(int *compatibility, int *optimized_lt)
 
 		wg_snprintf(run_cmd, sizeof(run_cmd),
 					"%s -0000000U > .watchdogs/compiler_test.log",
-					wcfg.wg_sef_found_list[0]);
+					wgconfig.wg_sef_found_list[0]);
 		wg_run_command(run_cmd);
 
 		int found_Z = 0, found_ver = 0;
@@ -999,7 +990,7 @@ static int wg_parsewg_toml_config(void)
 		if (general_table) {
 				toml_datum_t os_val = toml_string_in(general_table, "os");
 				if (os_val.ok) {
-						wcfg.wg_toml_os_type = strdup(os_val.u.s);
+						wgconfig.wg_toml_os_type = strdup(os_val.u.s);
 						wg_free(os_val.u.s);
 				}
 		}
@@ -1237,10 +1228,10 @@ int wg_toml_configs(void)
 
 				if (find_pawncc)
 					wg_generate_toml_content(toml_file, wg_os_type, find_gamemodes,
-						compatibility, optimized_lt, wcfg.wg_sef_found_list[1]);
+						compatibility, optimized_lt, wgconfig.wg_sef_found_list[1]);
 				else
 					wg_generate_toml_content(toml_file, wg_os_type, find_gamemodes,
-						compatibility, optimized_lt, wcfg.wg_sef_found_list[0]);
+						compatibility, optimized_lt, wgconfig.wg_sef_found_list[0]);
 				fclose(toml_file);
 		}
 
@@ -1257,7 +1248,7 @@ int wg_toml_configs(void)
 
 		if (!wg_toml_config) {
 			pr_error(stdout, "parsing TOML: %s", error_buffer);
-			start_chain(NULL);
+			chain_goto_main(NULL);
 		}
 
 		toml_table_t *wg_toml_depends = toml_table_in(wg_toml_config, "depends");
@@ -1265,7 +1256,7 @@ int wg_toml_configs(void)
 				toml_datum_t toml_gh_tokens = toml_string_in(wg_toml_depends, "github_tokens");
 				if (toml_gh_tokens.ok)
 				{
-					wcfg.wg_toml_github_tokens = strdup(toml_gh_tokens.u.s);
+					wgconfig.wg_toml_github_tokens = strdup(toml_gh_tokens.u.s);
 					wg_free(toml_gh_tokens.u.s);
 				}
 		}
@@ -1274,12 +1265,12 @@ int wg_toml_configs(void)
 		if (wg_toml_compiler) {
 				toml_datum_t input_val = toml_string_in(wg_toml_compiler, "input");
 				if (input_val.ok) {
-					wcfg.wg_toml_gm_input = strdup(input_val.u.s);
+					wgconfig.wg_toml_gm_input = strdup(input_val.u.s);
 					wg_free(input_val.u.s);
 				}
 				toml_datum_t output_val = toml_string_in(wg_toml_compiler, "output");
 				if (output_val.ok) {
-					wcfg.wg_toml_gm_output = strdup(output_val.u.s);
+					wgconfig.wg_toml_gm_output = strdup(output_val.u.s);
 					wg_free(output_val.u.s);
 				}
 		}
@@ -1289,53 +1280,53 @@ int wg_toml_configs(void)
 				toml_datum_t bin_val = toml_string_in(general_table, "binary");
 				if (bin_val.ok) {
 					if (_is_samp_ == WG_RETN) {
-						wcfg.wg_is_samp = CRC32_TRUE;
-						wcfg.wg_ptr_samp = strdup(bin_val.u.s);
+						wgconfig.wg_is_samp = CRC32_TRUE;
+						wgconfig.wg_ptr_samp = strdup(bin_val.u.s);
 					}
 					else if (_is_samp_ == WG_RETZ) {
-						wcfg.wg_is_omp = CRC32_TRUE;
-						wcfg.wg_ptr_omp = strdup(bin_val.u.s);
+						wgconfig.wg_is_omp = CRC32_TRUE;
+						wgconfig.wg_ptr_omp = strdup(bin_val.u.s);
 					}
 					else {
-						wcfg.wg_is_samp = CRC32_TRUE;
-						wcfg.wg_ptr_samp = strdup(bin_val.u.s);
+						wgconfig.wg_is_samp = CRC32_TRUE;
+						wgconfig.wg_ptr_samp = strdup(bin_val.u.s);
 					}
-					wcfg.wg_toml_binary = strdup(bin_val.u.s);
+					wgconfig.wg_toml_binary = strdup(bin_val.u.s);
 					wg_free(bin_val.u.s);
 				}
 				toml_datum_t conf_val = toml_string_in(general_table, "config");
 				if (conf_val.ok) {
-					wcfg.wg_toml_config = strdup(conf_val.u.s);
+					wgconfig.wg_toml_config = strdup(conf_val.u.s);
 					wg_free(conf_val.u.s);
 				}
 				toml_datum_t logs_val = toml_string_in(general_table, "logs");
 				if (logs_val.ok) {
-					wcfg.wg_toml_logs = strdup(logs_val.u.s);
+					wgconfig.wg_toml_logs = strdup(logs_val.u.s);
 					wg_free(logs_val.u.s);
 				}
 				toml_datum_t keys_val = toml_string_in(general_table, "keys");
 				if (keys_val.ok) {
-					wcfg.wg_toml_key_ai = strdup(keys_val.u.s);
+					wgconfig.wg_toml_key_ai = strdup(keys_val.u.s);
 					wg_free(keys_val.u.s);
 				}
 				toml_datum_t chatbot_val = toml_string_in(general_table, "chatbot");
 				if (chatbot_val.ok) {
-					wcfg.wg_toml_chatbot_ai = strdup(chatbot_val.u.s);
+					wgconfig.wg_toml_chatbot_ai = strdup(chatbot_val.u.s);
 					wg_free(chatbot_val.u.s);
 				}
 				toml_datum_t models_val = toml_string_in(general_table, "models");
 				if (models_val.ok) {
-					wcfg.wg_toml_models_ai = strdup(models_val.u.s);
+					wgconfig.wg_toml_models_ai = strdup(models_val.u.s);
 					wg_free(models_val.u.s);
 				}
 		}
 
 		toml_free(wg_toml_config);
 
-		if (strcmp(wcfg.wg_toml_os_type, "windows") == WG_RETZ) {
-			wcfg.wg_os_type = OS_SIGNAL_WINDOWS;
-		} else if (strcmp(wcfg.wg_toml_os_type, "linux") == WG_RETZ) {
-			wcfg.wg_os_type = OS_SIGNAL_LINUX;
+		if (strcmp(wgconfig.wg_toml_os_type, "windows") == WG_RETZ) {
+			wgconfig.wg_os_type = OS_SIGNAL_WINDOWS;
+		} else if (strcmp(wgconfig.wg_toml_os_type, "linux") == WG_RETZ) {
+			wgconfig.wg_os_type = OS_SIGNAL_LINUX;
 		}
 
 		return WG_RETZ;

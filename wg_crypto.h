@@ -10,6 +10,8 @@ extern "C" {
 #endif
 
 #define AES_BLOCK_SIZE 16
+#define SHA1_DIGEST_SIZE 20
+#define SHA1_BLOCK_SIZE 64
 #define CRYPTO_SALT_LEN 16
 #define CRYPTO_IV_LEN 16
 #define CRYPTO_KEY_LEN 32
@@ -27,6 +29,11 @@ typedef struct {
         uint32_t rd_key[60];
         int rounds;
 } AES_KEY;
+typedef struct {
+        uint32_t state[5];
+        uint32_t count[2];
+        uint8_t buffer[64];
+} SHA1_CTX;
 
 uint32_t rotr(uint32_t x, int n);
 uint32_t ch(uint32_t x, uint32_t y, uint32_t z);
@@ -44,7 +51,9 @@ unsigned long crypto_djb2_hash_file(const char *filename);
 
 int crypto_convert_to_hex(const unsigned char *in, int in_len, char **out);
 
-void crypto_print_hex(const unsigned char *buf, size_t len);
+void crypto_print_hex(const unsigned char *buf, size_t len, int null_terminator);
+
+int crypto_generate_sha1_hash(const char *input, unsigned char output[20]);
 
 int crypto_generate_sha256_hash(const char *input, unsigned char output[SHA256_DIGEST_LENGTH]);
 

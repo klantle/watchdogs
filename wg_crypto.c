@@ -119,12 +119,134 @@ unsigned long crypto_djb2_hash_file(const char *filename) {
         return hash;
 }
 
-void crypto_print_hex(const unsigned char *buf, size_t len)
+void crypto_print_hex(const unsigned char *buf, size_t len, int null_terminator)
 {
         for (size_t i = 0; i < len; ++i) {
             printf("%02x", buf[i]);
         }
-        putchar('\n');
+        if (null_terminator != 0)
+            putchar('\n');
+}
+
+static void crypto_sha1_transform(SHA1_CTX *ctx, const uint8_t data[SHA1_BLOCK_SIZE]) {
+        uint32_t a, b, c, d, e;
+        uint32_t w[80];
+        int i;
+
+        a = ctx->state[0];
+        b = ctx->state[1];
+        c = ctx->state[2];
+        d = ctx->state[3];
+        e = ctx->state[4];
+
+        for (i = 0; i < 16; i++) {
+                w[i] = ((uint32_t)data[i * 4] << 24) |
+                       ((uint32_t)data[i * 4 + 1] << 16) |
+                       ((uint32_t)data[i * 4 + 2] << 8) |
+                       ((uint32_t)data[i * 4 + 3]);
+        }
+
+        for (i = 16; i < 80; i++) {
+                w[i] = w[i-3] ^ w[i-8] ^ w[i-14] ^ w[i-16];
+                w[i] = (w[i] << 1) | (w[i] >> 31);
+        }
+
+        for (i = 0; i < 80; i++) {
+        uint32_t f, k;
+
+        if (i < 20) {
+            f = (b & c) | ((~b) & d);
+            k = 0x5A827999;
+        } else if (i < 40) {
+            f = b ^ c ^ d;
+            k = 0x6ED9EBA1;
+        } else if (i < 60) {
+            f = (b & c) | (b & d) | (c & d);
+            k = 0x8F1BBCDC;
+        } else {
+            f = b ^ c ^ d;
+            k = 0xCA62C1D6;
+        }
+
+        uint32_t temp = ((a << 5) | (a >> 27)) + f + e + k + w[i];
+                e = d;
+                d = c;
+                c = (b << 30) | (b >> 2);
+                b = a;
+                a = temp;
+        }
+
+        ctx->state[0] += a;
+        ctx->state[1] += b;
+        ctx->state[2] += c;
+        ctx->state[3] += d;
+        ctx->state[4] += e;
+}
+
+static void crypto_sha1_init(SHA1_CTX *ctx) {
+        ctx->state[0] = 0x67452301;
+        ctx->state[1] = 0xEFCDAB89;
+        ctx->state[2] = 0x98BADCFE;
+        ctx->state[3] = 0x10325476;
+        ctx->state[4] = 0xC3D2E1F0;
+        ctx->count[0] = ctx->count[1] = 0;
+}
+
+static void crypto_sha1_update(SHA1_CTX *ctx, const uint8_t *data, size_t len) {
+        size_t i;
+        size_t index = (ctx->count[0] >> 3) & 63;
+
+        if ((ctx->count[0] += (len << 3)) < (len << 3)) {
+                ctx->count[1]++;
+        }
+        ctx->count[1] += (len >> 29);
+
+        for (i = 0; i < len; i++) {
+        ctx->buffer[index++] = data[i];
+        if (index == 64) {
+            crypto_sha1_transform(ctx, ctx->buffer);
+            index = 0;
+        }
+    }
+}
+
+static void crypto_sha1_final(SHA1_CTX *ctx, uint8_t digest[SHA1_DIGEST_SIZE]) {
+        uint8_t bits[8];
+        size_t index, pad_len;
+        int i;
+
+        for (i = 0; i < 8; i++) {
+                bits[i] = (ctx->count[(i >= 4) ? 0 : 1] >> ((3 - (i & 3)) * 8)) & 0xff;
+        }
+
+        index = (ctx->count[0] >> 3) & 0x3f;
+        pad_len = (index < 56) ? (56 - index) : (120 - index);
+        crypto_sha1_update(ctx, (uint8_t*)"\x80", 1);
+        while (pad_len-- > 1) {
+                crypto_sha1_update(ctx, (uint8_t*)"\0", 1);
+        }
+
+        crypto_sha1_update(ctx, bits, 8);
+
+        for (i = 0; i < 5; i++) {
+                digest[i * 4] = (ctx->state[i] >> 24) & 0xff;
+                digest[i * 4 + 1] = (ctx->state[i] >> 16) & 0xff;
+                digest[i * 4 + 2] = (ctx->state[i] >> 8) & 0xff;
+                digest[i * 4 + 3] = ctx->state[i] & 0xff;
+        }
+}
+
+int crypto_generate_sha1_hash(const char *input, unsigned char output[20]) {
+        SHA1_CTX ctx;
+
+        if (!input || !output)
+                return WG_RETZ;
+
+        crypto_sha1_init(&ctx);
+        crypto_sha1_update(&ctx, (const uint8_t *)input, strlen(input));
+        crypto_sha1_final(&ctx, output);
+
+        return WG_RETN;
 }
 
 static void crypto_sha256_transform(SHA256_CTX *ctx,

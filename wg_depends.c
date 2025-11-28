@@ -67,9 +67,9 @@ int dep_url_checking (const char *url, const char *github_token)
 		char error_buffer[CURL_ERROR_SIZE] = { 0 };
 
 		printf("\tCreate & Checking URL: %s...\t\t[V]\n", url);
-		if (strstr(wcfg.wg_toml_github_tokens, "DO_HERE") ||
-				   wcfg.wg_toml_github_tokens == NULL ||
-				   strlen(wcfg.wg_toml_github_tokens) < 1) {
+		if (strstr(wgconfig.wg_toml_github_tokens, "DO_HERE") ||
+				   wgconfig.wg_toml_github_tokens == NULL ||
+				   strlen(wgconfig.wg_toml_github_tokens) < 1) {
 			pr_color(stdout, FCOLOUR_GREEN, "Can't read Github token.. skipping\n");
 			sleep(2);
 		} else {
@@ -343,7 +343,7 @@ static int dep_gh_release_assets (const char *user, const char *repo,
 				 "%sapi.github.com/repos/%s/%s/releases/tags/%s",
 				 "https://", user, repo, tag);
 
-		if (!dep_http_get_content(api_url, wcfg.wg_toml_github_tokens, &json_data))
+		if (!dep_http_get_content(api_url, wgconfig.wg_toml_github_tokens, &json_data))
 				return WG_RETZ;
 
 		p = json_data;
@@ -450,7 +450,7 @@ static int dep_gh_latest_tag (const char *user, const char *repo,
 				"%sapi.github.com/repos/%s/%s/releases/latest",
 				"https://", user, repo);
 
-		if (!dep_http_get_content(api_url, wcfg.wg_toml_github_tokens, &json_data))
+		if (!dep_http_get_content(api_url, wgconfig.wg_toml_github_tokens, &json_data))
 			return WG_RETZ;
 
 		p = strstr(json_data,
@@ -519,7 +519,7 @@ static int dep_handle_repo(const struct dep_repo_info *dep_repo_info,
 	                    dep_repo_info->repo,
 	                    deps_repo_branch[j]);
 
-	            if (dep_url_checking(deps_put_url, wcfg.wg_toml_github_tokens)) {
+	            if (dep_url_checking(deps_put_url, wgconfig.wg_toml_github_tokens)) {
 	                ret = 1;
 	                if (j == WG_RETN)
 	                    printf("Create master branch (main branch not found)\t\t[V]\n");
@@ -571,7 +571,7 @@ static int dep_handle_repo(const struct dep_repo_info *dep_repo_info,
 	                         dep_repo_info->repo,
 	                         deps_actual_tag);
 
-	                if (dep_url_checking(deps_put_url, wcfg.wg_toml_github_tokens))
+	                if (dep_url_checking(deps_put_url, wgconfig.wg_toml_github_tokens))
 	                    ret = 1;
 	            }
 	        }
@@ -584,7 +584,7 @@ static int dep_handle_repo(const struct dep_repo_info *dep_repo_info,
 	                    dep_repo_info->repo,
 	                    deps_repo_branch[j]);
 
-	            if (dep_url_checking(deps_put_url, wcfg.wg_toml_github_tokens)) {
+	            if (dep_url_checking(deps_put_url, wgconfig.wg_toml_github_tokens)) {
 	                ret = 1;
 	                if (j == WG_RETN)
 	                    printf("Create master branch (main branch not found)\t\t[V]\n");
@@ -595,39 +595,35 @@ static int dep_handle_repo(const struct dep_repo_info *dep_repo_info,
 	    return ret;
 }
 
-int dep_add_ncheck_hash (const char *_H_file_path, const char *_H_json_path)
+int dep_add_ncheck_hash (const char *raw_file_path, const char *raw_json_path)
 {
-		char convert_f_path[WG_PATH_MAX];
-		char convert_j_path[WG_PATH_MAX];
+		char res_convert_f_path[WG_PATH_MAX];
+		char res_convert_json_path[WG_PATH_MAX];
 
-		wg_strncpy(convert_f_path, _H_file_path, sizeof(convert_f_path));
-			convert_f_path[sizeof(convert_f_path) - 1] = '\0';
-		dep_sym_convert(convert_f_path);
-		wg_strncpy(convert_j_path, _H_json_path, sizeof(convert_j_path));
-			convert_j_path[sizeof(convert_j_path) - 1] = '\0';
-		dep_sym_convert(convert_j_path);
+		wg_strncpy(res_convert_f_path, raw_file_path, sizeof(res_convert_f_path));
+			res_convert_f_path[sizeof(res_convert_f_path) - 1] = '\0';
+		dep_sym_convert(res_convert_f_path);
+		wg_strncpy(res_convert_json_path, raw_json_path, sizeof(res_convert_json_path));
+			res_convert_json_path[sizeof(res_convert_json_path) - 1] = '\0';
+		dep_sym_convert(res_convert_json_path);
 
-		static int init_crc32 = 0;
 
-		if (strfind(convert_j_path, "pawno") ||
-			strfind(convert_j_path, "qawno"))
+		if (strfind(res_convert_json_path, "pawno") ||
+			strfind(res_convert_json_path, "qawno"))
 			goto done;
 
-		if (init_crc32 != 1) {
-			init_crc32 = 1;
-			crypto_crc32_init_table();
-		}
-
-        uint32_t crc32_generate;
-        crc32_generate = crypto_generate_crc32(convert_j_path, sizeof(convert_j_path) - 1);
-
-        char crc_str[11];
-        wg_sprintf(crc_str, "%08X", crc32_generate);
+        unsigned char sha1_hash[20];
+        int k = crypto_generate_sha1_hash(res_convert_json_path, sha1_hash);
+        if (k != WG_RETN)
+        	goto done;
 
 		pr_color(stdout,
 				 FCOLOUR_GREEN,
-				 "Create hash (CRC32) for '%s': %s\t\t[V]\n",
-				 convert_j_path, crc_str);
+				 "Create hash (CRC32) for '%s': ",
+				 res_convert_json_path);
+		crypto_print_hex(sha1_hash, sizeof(sha1_hash), 0);
+		printf("\t\t[V]\n");
+
 
 done:
 		return WG_RETN;
@@ -896,7 +892,7 @@ static void dep_pr_include_directive (const char *deps_include)
 		if (wg_compiler) {
 			toml_datum_t toml_gm_i = toml_string_in(wg_compiler, "input");
 			if (toml_gm_i.ok) {
-				wcfg.wg_toml_gm_input = strdup(toml_gm_i.u.s);
+				wgconfig.wg_toml_gm_input = strdup(toml_gm_i.u.s);
 				wg_free(toml_gm_i.u.s);
 			}
 		}
@@ -907,15 +903,15 @@ static void dep_pr_include_directive (const char *deps_include)
 				    direct_bnames);
 
 		if (wg_server_env() == WG_RETN) {
-			DEP_ADD_INCLUDES(wcfg.wg_toml_gm_input,
+			DEP_ADD_INCLUDES(wgconfig.wg_toml_gm_input,
 							 idirective,
 							 "#include <a_samp>");
 		} else if (wg_server_env() == WG_RETW) {
-			DEP_ADD_INCLUDES(wcfg.wg_toml_gm_input,
+			DEP_ADD_INCLUDES(wgconfig.wg_toml_gm_input,
 							 idirective,
 							 "#include <open.mp>");
 		} else {
-			DEP_ADD_INCLUDES(wcfg.wg_toml_gm_input,
+			DEP_ADD_INCLUDES(wgconfig.wg_toml_gm_input,
 							 idirective,
 							 "#include <a_samp>");
 		}
@@ -934,9 +930,9 @@ void dump_file_type (const char *path,
 		int found = wg_sef_fdir(path, pattern, exclude);
 
 		if (found) {
-			for (int i = 0; i < wcfg.wg_sef_count; ++i) {
-				const char *deps_names  = dep_get_fname(wcfg.wg_sef_found_list[i]),
-						   *deps_bnames = dep_get_bname(wcfg.wg_sef_found_list[i]);
+			for (int i = 0; i < wgconfig.wg_sef_count; ++i) {
+				const char *deps_names  = dep_get_fname(wgconfig.wg_sef_found_list[i]),
+						   *deps_bnames = dep_get_bname(wgconfig.wg_sef_found_list[i]);
 
 				if (target_dir[0] != '\0') {
 					int _is_win32 = 0;
@@ -946,10 +942,10 @@ void dump_file_type (const char *path,
 					if (_is_win32) {
 						wg_snprintf(cp_cmd, sizeof(cp_cmd),
 							"move /Y \"%s\" \"%s\\%s\\\"",
-							wcfg.wg_sef_found_list[i], cwd, target_dir);
+							wgconfig.wg_sef_found_list[i], cwd, target_dir);
 					} else
 						wg_snprintf(cp_cmd, sizeof(cp_cmd), "mv -f \"%s\" \"%s/%s/\"",
-							wcfg.wg_sef_found_list[i], cwd, target_dir);
+							wgconfig.wg_sef_found_list[i], cwd, target_dir);
 
 	                struct timespec start = {0}, end = { 0 };
 	                double moving_dur;
@@ -964,7 +960,7 @@ void dump_file_type (const char *path,
 	            	pr_color(stdout,
 	                         FCOLOUR_CYAN,
 	                         " [MOVING] Plugins %s -> %s - %s [Finished at %.3fs]\n",
-	                         wcfg.wg_sef_found_list[i], cwd, target_dir, moving_dur);
+	                         wgconfig.wg_sef_found_list[i], cwd, target_dir, moving_dur);
 				} else {
 					int _is_win32 = 0;
 #ifdef WG_WINDOWS
@@ -973,11 +969,11 @@ void dump_file_type (const char *path,
 					if (_is_win32) {
 							wg_snprintf(cp_cmd, sizeof(cp_cmd),
 								"move /Y \"%s\" \"%s\"",
-								wcfg.wg_sef_found_list[i], cwd);
+								wgconfig.wg_sef_found_list[i], cwd);
 					} else
 						wg_snprintf(cp_cmd, sizeof(cp_cmd),
 							"mv -f \"%s\" \"%s\"",
-							wcfg.wg_sef_found_list[i], cwd);
+							wgconfig.wg_sef_found_list[i], cwd);
 
 	                struct timespec start = {0}, end = { 0 };
 	                double moving_dur;
@@ -992,7 +988,7 @@ void dump_file_type (const char *path,
 	            	pr_color(stdout,
 	                         FCOLOUR_CYAN,
 	                         " [MOVING] Plugins %s -> %s [Finished at %.3fs]\n",
-	                         wcfg.wg_sef_found_list[i], cwd, moving_dur);
+	                         wgconfig.wg_sef_found_list[i], cwd, moving_dur);
 
 					wg_snprintf(json_item, sizeof(json_item), "%s", deps_names);
 					dep_add_ncheck_hash(json_item, json_item);
@@ -1001,13 +997,13 @@ void dump_file_type (const char *path,
 						goto done;
 
 					if (wg_server_env() == WG_RETN &&
-						  strfind(wcfg.wg_toml_config, "cfg"))
+						  strfind(wgconfig.wg_toml_config, "cfg"))
 samp_label:
-							S_ADD_PLUGIN(wcfg.wg_toml_config,
+							S_ADD_PLUGIN(wgconfig.wg_toml_config,
 								"plugins", deps_bnames);
 					else if (wg_server_env() == WG_RETW &&
-									strfind(wcfg.wg_toml_config, "json"))
-									M_ADD_PLUGIN(wcfg.wg_toml_config,
+									strfind(wgconfig.wg_toml_config, "json"))
+									M_ADD_PLUGIN(wgconfig.wg_toml_config,
 												 deps_bnames);
 					else
 							goto samp_label;
@@ -1133,9 +1129,9 @@ void dep_move_files (const char *dep_dir)
 
 		deps_include_search = wg_sef_fdir(deps_include_full_path, "*.inc", NULL);
 		if (deps_include_search) {
-			for (i = 0; i < wcfg.wg_sef_count; ++i) {
+			for (i = 0; i < wgconfig.wg_sef_count; ++i) {
 				const char *fi_depends_name;
-				fi_depends_name = dep_get_fname(wcfg.wg_sef_found_list[i]);
+				fi_depends_name = dep_get_fname(wgconfig.wg_sef_found_list[i]);
 
 				int _is_win32 = 0;
 #ifdef WG_WINDOWS
@@ -1144,11 +1140,11 @@ void dep_move_files (const char *dep_dir)
 				if (_is_win32) {
 					wg_snprintf(size_deps_copy, sizeof(size_deps_copy),
 						"move /Y \"%s\" \"%s\\%s\\\"",
-						wcfg.wg_sef_found_list[i], cwd, deps_include_path);
+						wgconfig.wg_sef_found_list[i], cwd, deps_include_path);
 				} else
 					wg_snprintf(size_deps_copy, sizeof(size_deps_copy),
 						"mv -f \"%s\" \"%s/%s/\"",
-						wcfg.wg_sef_found_list[i], cwd, deps_include_path);
+						wgconfig.wg_sef_found_list[i], cwd, deps_include_path);
 
                 struct timespec start = {0}, end = { 0 };
                 double moving_dur;
@@ -1163,7 +1159,7 @@ void dep_move_files (const char *dep_dir)
 	        	pr_color(stdout,
 	                     FCOLOUR_CYAN,
 	                     " [MOVING] Include %s -> %s - %s [Finished at %.3fs]\n",
-	                     wcfg.wg_sef_found_list[i], cwd, deps_include_path, moving_dur);
+	                     wgconfig.wg_sef_found_list[i], cwd, deps_include_path, moving_dur);
 
 				dep_add_ncheck_hash(fi_depends_name, fi_depends_name);
 				dep_pr_include_directive(fi_depends_name);
@@ -1365,7 +1361,7 @@ void wg_install_depends (const char *depends_string)
         int i;
 
         memset(depends, 0, sizeof(depends));
-        wcfg.wg_idepends = 0;
+        wgconfig.wg_idepends = 0;
 
         if (!depends_string || !*depends_string) {
                 pr_color(stdout, FCOLOUR_RED, "");
@@ -1407,7 +1403,7 @@ void wg_install_depends (const char *depends_string)
                         }
                 } else {
                         dep_build_repo_url(&repo, 0, dep_url, sizeof(dep_url));
-                        if (!dep_url_checking(dep_url, wcfg.wg_toml_github_tokens)) {
+                        if (!dep_url_checking(dep_url, wgconfig.wg_toml_github_tokens)) {
                                 pr_color(stdout, FCOLOUR_RED, "");
                                 printf("repo not found: %s\t\t[X]\n", depends[i]);
                                 continue;
@@ -1431,7 +1427,7 @@ void wg_install_depends (const char *depends_string)
                         continue;
                 }
 
-                wcfg.wg_idepends = 1;
+                wgconfig.wg_idepends = 1;
 
                 struct timespec start = {0}, end = { 0 };
                 double depends_dur;

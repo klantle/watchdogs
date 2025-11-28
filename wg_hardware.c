@@ -4,11 +4,13 @@
 #include <stdarg.h>
 #include "wg_util.h"
 #include "wg_hardware.h"
+
 #ifdef WG_WINDOWS
-#include <windows.h>
-#include <iphlpapi.h>
-#include <intrin.h>
-int uname(struct utsname *name)
+#  include <windows.h>
+#  include <iphlpapi.h>
+#  include <intrin.h>
+int
+uname(struct utsname *name)
 {
         OSVERSIONINFOEX osvi;
         SYSTEM_INFO si;
@@ -16,85 +18,93 @@ int uname(struct utsname *name)
         ZeroMemory(&osvi, sizeof(OSVERSIONINFOEX));
         osvi.dwOSVersionInfoSize = sizeof(OSVERSIONINFOEX);
 
-        if (!GetVersionEx((OSVERSIONINFO*)&osvi))
-                        return -WG_RETN;
+        if (!GetVersionEx((OSVERSIONINFO*)&osvi)) {
+                return -WG_RETN;
+        }
 
         GetSystemInfo(&si);
 
         wg_snprintf(name->sysname, sizeof(name->sysname), "Windows");
         wg_snprintf(name->release, sizeof(name->release), "%lu.%lu",
-                         osvi.dwMajorVersion, osvi.dwMinorVersion);
+                                osvi.dwMajorVersion, osvi.dwMinorVersion);
         wg_snprintf(name->version, sizeof(name->version), "Build %lu",
-                         osvi.dwBuildNumber);
+                                osvi.dwBuildNumber);
 
         switch (si.wProcessorArchitecture) {
                 case PROCESSOR_ARCHITECTURE_AMD64:
-                                wg_snprintf(name->machine, sizeof(name->machine), "x86_64");
-                                break;
+                        wg_snprintf(name->machine, sizeof(name->machine), "x86_64");
+                        break;
                 case PROCESSOR_ARCHITECTURE_INTEL:
-                                wg_snprintf(name->machine, sizeof(name->machine), "x86");
-                                break;
+                        wg_snprintf(name->machine, sizeof(name->machine), "x86");
+                        break;
                 case PROCESSOR_ARCHITECTURE_ARM:
-                                wg_snprintf(name->machine, sizeof(name->machine), "ARM");
-                                break;
+                        wg_snprintf(name->machine, sizeof(name->machine), "ARM");
+                        break;
                 case PROCESSOR_ARCHITECTURE_ARM64:
-                                wg_snprintf(name->machine, sizeof(name->machine), "ARM64");
-                                break;
+                        wg_snprintf(name->machine, sizeof(name->machine), "ARM64");
+                        break;
                 default:
-                                wg_snprintf(name->machine, sizeof(name->machine), "Unknown");
-                                break;
+                        wg_snprintf(name->machine, sizeof(name->machine), "Unknown");
+                        break;
         }
 
         return WG_RETZ;
 }
 #else
-#include <sys/statvfs.h>
-#include <sys/utsname.h>
-#include <ifaddrs.h>
-#include <net/if.h>
-#include <unistd.h>
+#  include <sys/statvfs.h>
+#  include <sys/utsname.h>
+#  include <ifaddrs.h>
+#  include <net/if.h>
+#  include <unistd.h>
 #endif
 
-void hardware_display_field(unsigned int field_id, const char* format, ...) {
+
+/* ============================================================================
+ * Field Display Utilities
+ * ==========================================================================*/
+
+void
+hardware_display_field(unsigned int field_id, const char* format, ...)
+{
         va_list args;
         va_start(args, format);
 
         const char* field_name = "";
         char prefix[32] = "";
 
-        /** Determine field category and name */
+        /* Determine field category and name */
         switch (field_id & 0xFF00) {
-                case 0x0000: /** CPU fields */
+                case 0x0000: /* CPU fields */
                         wg_strcpy(prefix, "CPU->");
                         switch (field_id) {
-                                case FIELD_CPU_NAME: field_name = "Processor"; break;
-                                case FIELD_CPU_VENDOR: field_name = "Vendor"; break;
-                                case FIELD_CPU_CORES: field_name = "Cores"; break;
+                                case FIELD_CPU_NAME:        field_name = "Processor"; break;
+                                case FIELD_CPU_VENDOR:  field_name = "Vendor"; break;
+                                case FIELD_CPU_CORES:   field_name = "Cores"; break;
                                 case FIELD_CPU_THREADS: field_name = "Threads"; break;
-                                case FIELD_CPU_CLOCK: field_name = "Clock Speed"; break;
-                                case FIELD_CPU_CACHE: field_name = "Cache"; break;
-                                case FIELD_CPU_ARCH: field_name = "Architecture"; break;
+                                case FIELD_CPU_CLOCK:   field_name = "Clock Speed"; break;
+                                case FIELD_CPU_CACHE:   field_name = "Cache"; break;
+                                case FIELD_CPU_ARCH:        field_name = "Architecture"; break;
                         }
                         break;
 
-                case 0x0100: /** Memory fields */
+                case 0x0100: /* Memory fields */
                         wg_strcpy(prefix, "MEM->");
                         switch (field_id) {
                                 case FIELD_MEM_TOTAL: field_name = "Total RAM"; break;
                                 case FIELD_MEM_AVAIL: field_name = "Available RAM"; break;
                                 case FIELD_MEM_SPEED: field_name = "Speed"; break;
-                                case FIELD_MEM_TYPE: field_name = "Type"; break;
+                                case FIELD_MEM_TYPE:  field_name = "Type"; break;
                         }
                         break;
 
-                case 0x0200: /** Disk fields */
+                case 0x0200: /* Disk fields */
                         wg_strcpy(prefix, "DISK->");
                         switch (field_id) {
                                 case FIELD_DISK_MOUNT: field_name = "Mount Point"; break;
                                 case FIELD_DISK_TOTAL: field_name = "Total Space"; break;
-                                case FIELD_DISK_FREE: field_name = "Free Space"; break;
-                                case FIELD_DISK_USED: field_name = "Used Space"; break;
-                                case FIELD_DISK_FS: field_name = "File System"; break;
+                                case FIELD_DISK_FREE:  field_name = "Free Space"; break;
+                                case FIELD_DISK_USED:  field_name = "Used Space"; break;
+                                case FIELD_DISK_FS:        field_name = "File System"; break;
                         }
                         break;
 
@@ -110,16 +120,25 @@ void hardware_display_field(unsigned int field_id, const char* format, ...) {
         va_end(args);
 }
 
+
+/* ============================================================================
+ * Platform-Specific Implementations
+ * ==========================================================================*/
+
 #ifdef WG_WINDOWS
 
-int hardware_cpu_info(HardwareCPU* cpu) {
-        if (!cpu) return WG_RETZ;
+int
+hardware_cpu_info(HardwareCPU* cpu)
+{
+        if (!cpu) {
+                return WG_RETZ;
+        }
 
         memset(cpu, 0, sizeof(HardwareCPU));
 
-        /** Get CPU brand */
-        int cpuInfo[4] = { 0 };
-        char brand[64] = { 0 };
+        /* Get CPU brand */
+        int cpuInfo[4] = {0};
+        char brand[64] = {0};
         hardware_cpuid(cpuInfo, cpuid_cpuinfo);
         unsigned int maxId = cpuInfo[0];
 
@@ -130,36 +149,43 @@ int hardware_cpu_info(HardwareCPU* cpu) {
                 wg_strncpy(cpu->name, brand, sizeof(cpu->name)-1);
         }
 
-        /** Get vendor */
+        /* Get vendor */
         hardware_cpuid(cpuInfo, 0);
         int vendor[4] = {cpuInfo[1], cpuInfo[3], cpuInfo[2], 0};
         wg_strncpy(cpu->vendor, (char*)vendor, sizeof(cpu->vendor)-1);
 
-        /** Get core info */
+        /* Get core info */
         SYSTEM_INFO si;
         GetSystemInfo(&si);
         cpu->cores = si.dwNumberOfProcessors;
-        cpu->threads = si.dwNumberOfProcessors; /** Simplified */
+        cpu->threads = si.dwNumberOfProcessors; /* Simplified */
 
-        /** Get architecture */
+        /* Get architecture */
         if (si.wProcessorArchitecture == PROCESSOR_ARCHITECTURE_AMD64) {
                 wg_strcpy(cpu->architecture, "x86_64");
-        } else if (si.wProcessorArchitecture == PROCESSOR_ARCHITECTURE_INTEL) {
+        }
+        else if (si.wProcessorArchitecture == PROCESSOR_ARCHITECTURE_INTEL) {
                 wg_strcpy(cpu->architecture, "x86");
-        } else {
+        }
+        else {
                 wg_strcpy(cpu->architecture, "Unknown");
         }
 
         return WG_RETN;
 }
 
-int hardware_memory_info(HardwareMemory* mem) {
-        if (!mem) return WG_RETZ;
+int
+hardware_memory_info(HardwareMemory* mem)
+{
+        if (!mem) {
+                return WG_RETZ;
+        }
 
         memset(mem, 0, sizeof(HardwareMemory));
 
         MEMORYSTATUSEX memInfo;
         memInfo.dwLength = sizeof(memInfo);
+        
         if (GlobalMemoryStatusEx(&memInfo)) {
                 mem->total_phys = memInfo.ullTotalPhys;
                 mem->avail_phys = memInfo.ullAvailPhys;
@@ -171,8 +197,12 @@ int hardware_memory_info(HardwareMemory* mem) {
         return WG_RETZ;
 }
 
-int hardware_disk_info(HardwareDisk* disk, const char* drive) {
-        if (!disk || !drive) return WG_RETZ;
+int
+hardware_disk_info(HardwareDisk* disk, const char* drive)
+{
+        if (!disk || !drive) {
+                return WG_RETZ;
+        }
 
         memset(disk, 0, sizeof(HardwareDisk));
         wg_strncpy(disk->mount_point, drive, sizeof(disk->mount_point)-1);
@@ -187,12 +217,14 @@ int hardware_disk_info(HardwareDisk* disk, const char* drive) {
                 disk->free_gb = freeBytes.QuadPart / (1024.0 * 1024 * 1024);
                 disk->used_gb = disk->used_bytes / (1024.0 * 1024 * 1024);
 
-                /** Get filesystem type */
+                /* Get filesystem type */
                 char fsName[32];
                 DWORD maxCompLen, fsFlags;
-                if (GetVolumeInformation(drive, NULL, 0, NULL, &maxCompLen, &fsFlags, fsName, sizeof(fsName))) {
+                if (GetVolumeInformation(drive, NULL, 0, NULL, &maxCompLen, 
+                                                                &fsFlags, fsName, sizeof(fsName))) {
                         wg_strncpy(disk->filesystem, fsName, sizeof(disk->filesystem)-1);
-                } else {
+                }
+                else {
                         wg_strcpy(disk->filesystem, "Unknown");
                 }
 
@@ -202,15 +234,21 @@ int hardware_disk_info(HardwareDisk* disk, const char* drive) {
         return WG_RETZ;
 }
 
-#else
+#else /* UNIX/Linux implementation */
 
-int hardware_cpu_info(HardwareCPU* cpu) {
-        if (!cpu) return WG_RETZ;
+int
+hardware_cpu_info(HardwareCPU* cpu)
+{
+        if (!cpu) {
+                return WG_RETZ;
+        }
 
         memset(cpu, 0, sizeof(HardwareCPU));
 
         FILE *f = fopen("/proc/cpuinfo", "r");
-        if (!f) return WG_RETZ;
+        if (!f) {
+                return WG_RETZ;
+        }
 
         char cpu_line[256];
 
@@ -218,7 +256,7 @@ int hardware_cpu_info(HardwareCPU* cpu) {
                 if (strncmp(cpu_line, "model name", 10) == WG_RETZ) {
                         char *colon = strchr(cpu_line, ':');
                         if (colon) {
-                                char* start = colon + 2; /** Skip colon and space */
+                                char* start = colon + 2; /* Skip colon and space */
                                 char* end = strchr(start, '\n');
                                 if (end) *end = '\0';
                                 wg_strncpy(cpu->name, start, sizeof(cpu->name)-1);
@@ -249,7 +287,7 @@ int hardware_cpu_info(HardwareCPU* cpu) {
 
         fclose(f);
 
-        /** Get architecture */
+        /* Get architecture */
         struct utsname uts;
         if (uname(&uts) == WG_RETZ) {
                 wg_strncpy(cpu->architecture, uts.machine, sizeof(cpu->architecture)-1);
@@ -258,20 +296,26 @@ int hardware_cpu_info(HardwareCPU* cpu) {
         return WG_RETN;
 }
 
-int hardware_memory_info(HardwareMemory* mem) {
-        if (!mem) return WG_RETZ;
+int
+hardware_memory_info(HardwareMemory* mem)
+{
+        if (!mem) {
+                return WG_RETZ;
+        }
 
         memset(mem, 0, sizeof(HardwareMemory));
 
         FILE *f = fopen("/proc/meminfo", "r");
-        if (!f) return WG_RETZ;
+        if (!f) {
+                return WG_RETZ;
+        }
 
         char key[64], unit[64];
         unsigned long val;
 
         while (fscanf(f, "%63s %lu %63s", key, &val, unit) == 3) {
                 if (strcmp(key, "MemTotal:") == WG_RETZ) {
-                        mem->total_phys = val * 1024; /** Convert KB to bytes */
+                        mem->total_phys = val * 1024; /* Convert KB to bytes */
                 }
                 else if (strcmp(key, "MemAvailable:") == WG_RETZ) {
                         mem->avail_phys = val * 1024;
@@ -282,8 +326,12 @@ int hardware_memory_info(HardwareMemory* mem) {
         return WG_RETN;
 }
 
-int hardware_disk_info(HardwareDisk* disk, const char* mount_point) {
-        if (!disk || !mount_point) return WG_RETZ;
+int
+hardware_disk_info(HardwareDisk* disk, const char* mount_point)
+{
+        if (!disk || !mount_point) {
+                return WG_RETZ;
+        }
 
         memset(disk, 0, sizeof(HardwareDisk));
         wg_strncpy(disk->mount_point, mount_point, sizeof(disk->mount_point)-1);
@@ -308,7 +356,14 @@ int hardware_disk_info(HardwareDisk* disk, const char* mount_point) {
 
 #endif
 
-void hardware_display_cpu_comprehensive() {
+
+/* ============================================================================
+ * Comprehensive Display Functions
+ * ==========================================================================*/
+
+void
+hardware_display_cpu_comprehensive(void)
+{
         HardwareCPU cpu;
         if (hardware_cpu_info(&cpu)) {
                 hardware_display_field(FIELD_CPU_NAME, "%s", cpu.name);
@@ -322,7 +377,9 @@ void hardware_display_cpu_comprehensive() {
         }
 }
 
-void hardware_display_memory_comprehensive() {
+void
+hardware_display_memory_comprehensive(void)
+{
         HardwareMemory mem;
         if (hardware_memory_info(&mem)) {
                 hardware_display_field(FIELD_MEM_TOTAL, "%.2f GB",
@@ -338,7 +395,9 @@ void hardware_display_memory_comprehensive() {
         }
 }
 
-void hardware_display_disk_comprehensive(const char* drive) {
+void
+hardware_display_disk_comprehensive(const char* drive)
+{
         HardwareDisk disk;
         if (hardware_disk_info(&disk, drive)) {
                 hardware_display_field(FIELD_DISK_MOUNT, "%s", disk.mount_point);
@@ -349,88 +408,103 @@ void hardware_display_disk_comprehensive(const char* drive) {
         }
 }
 
-void hardware_query_specific(unsigned int* fields, int count) {
+
+/* ============================================================================
+ * Query and Summary Functions
+ * ==========================================================================*/
+
+void
+hardware_query_specific(unsigned int* fields, int count)
+{
         for (int i = 0; i < count; i++) {
                 switch (fields[i]) {
-                        case FIELD_CPU_NAME: case FIELD_CPU_VENDOR: case FIELD_CPU_CORES: case FIELD_CPU_THREADS:
+                        case FIELD_CPU_NAME: 
+                        case FIELD_CPU_VENDOR: 
+                        case FIELD_CPU_CORES: 
+                        case FIELD_CPU_THREADS:
                         case FIELD_CPU_ARCH:
-                                {
-                                        static int cpu_loaded = 0;
-                                        static HardwareCPU cpu;
-                                        if (!cpu_loaded) {
-                                                hardware_cpu_info(&cpu);
-                                                cpu_loaded = 1;
-                                        }
-
-                                        switch (fields[i]) {
-                                                case FIELD_CPU_NAME:
-                                                        hardware_display_field(FIELD_CPU_NAME, "%s", cpu.name);
-                                                        break;
-                                                case FIELD_CPU_VENDOR:
-                                                        hardware_display_field(FIELD_CPU_VENDOR, "%s", cpu.vendor);
-                                                        break;
-                                                case FIELD_CPU_CORES:
-                                                        hardware_display_field(FIELD_CPU_CORES, "%u", cpu.cores);
-                                                        break;
-                                                case FIELD_CPU_THREADS:
-                                                        hardware_display_field(FIELD_CPU_THREADS, "%u", cpu.threads);
-                                                        break;
-                                                case FIELD_CPU_ARCH:
-                                                        hardware_display_field(FIELD_CPU_ARCH, "%s", cpu.architecture);
-                                                        break;
-                                        }
+                        {
+                                static int cpu_loaded = 0;
+                                static HardwareCPU cpu;
+                                if (!cpu_loaded) {
+                                        hardware_cpu_info(&cpu);
+                                        cpu_loaded = 1;
                                 }
-                                break;
-                        case FIELD_MEM_TOTAL: case FIELD_MEM_AVAIL:
-                                {
-                                        static int mem_loaded = 0;
-                                        static HardwareMemory mem;
-                                        if (!mem_loaded) {
-                                                hardware_memory_info(&mem);
-                                                mem_loaded = 1;
-                                        }
 
-                                        switch (fields[i]) {
-                                                case FIELD_MEM_TOTAL:
-                                                        hardware_display_field(FIELD_MEM_TOTAL, "%.2f GB",
-                                                                                                  mem.total_phys / (1024.0 * 1024 * 1024));
-                                                        break;
-                                                case FIELD_MEM_AVAIL:
-                                                        hardware_display_field(FIELD_MEM_AVAIL, "%.2f GB",
-                                                                                                  mem.avail_phys / (1024.0 * 1024 * 1024));
-                                                        break;
-                                        }
+                                switch (fields[i]) {
+                                        case FIELD_CPU_NAME:
+                                                hardware_display_field(FIELD_CPU_NAME, "%s", cpu.name);
+                                                break;
+                                        case FIELD_CPU_VENDOR:
+                                                hardware_display_field(FIELD_CPU_VENDOR, "%s", cpu.vendor);
+                                                break;
+                                        case FIELD_CPU_CORES:
+                                                hardware_display_field(FIELD_CPU_CORES, "%u", cpu.cores);
+                                                break;
+                                        case FIELD_CPU_THREADS:
+                                                hardware_display_field(FIELD_CPU_THREADS, "%u", cpu.threads);
+                                                break;
+                                        case FIELD_CPU_ARCH:
+                                                hardware_display_field(FIELD_CPU_ARCH, "%s", cpu.architecture);
+                                                break;
                                 }
-                                break;
+                        }
+                        break;
 
-                        case FIELD_DISK_FREE: case FIELD_DISK_TOTAL:
-                                {
-                                        static int disk_loaded = 0;
-                                        static HardwareDisk disk;
-                                        if (!disk_loaded) {
+                        case FIELD_MEM_TOTAL: 
+                        case FIELD_MEM_AVAIL:
+                        {
+                                static int mem_loaded = 0;
+                                static HardwareMemory mem;
+                                if (!mem_loaded) {
+                                        hardware_memory_info(&mem);
+                                        mem_loaded = 1;
+                                }
+
+                                switch (fields[i]) {
+                                        case FIELD_MEM_TOTAL:
+                                                hardware_display_field(FIELD_MEM_TOTAL, "%.2f GB",
+                                                                                          mem.total_phys / (1024.0 * 1024 * 1024));
+                                                break;
+                                        case FIELD_MEM_AVAIL:
+                                                hardware_display_field(FIELD_MEM_AVAIL, "%.2f GB",
+                                                                                          mem.avail_phys / (1024.0 * 1024 * 1024));
+                                                break;
+                                }
+                        }
+                        break;
+
+                        case FIELD_DISK_FREE: 
+                        case FIELD_DISK_TOTAL:
+                        {
+                                static int disk_loaded = 0;
+                                static HardwareDisk disk;
+                                if (!disk_loaded) {
 #ifdef WG_WINDOWS
-                                                hardware_disk_info(&disk, "C:\\");
+                                        hardware_disk_info(&disk, "C:\\");
 #else
-                                                hardware_disk_info(&disk, "/");
+                                        hardware_disk_info(&disk, "/");
 #endif
-                                                disk_loaded = 1;
-                                        }
-
-                                        switch (fields[i]) {
-                                                case FIELD_DISK_TOTAL:
-                                                        hardware_display_field(FIELD_DISK_TOTAL, "%.2f GB", disk.total_gb);
-                                                        break;
-                                                case FIELD_DISK_FREE:
-                                                        hardware_display_field(FIELD_DISK_FREE, "%.2f GB", disk.free_gb);
-                                                        break;
-                                        }
+                                        disk_loaded = 1;
                                 }
-                                break;
+
+                                switch (fields[i]) {
+                                        case FIELD_DISK_TOTAL:
+                                                hardware_display_field(FIELD_DISK_TOTAL, "%.2f GB", disk.total_gb);
+                                                break;
+                                        case FIELD_DISK_FREE:
+                                                hardware_display_field(FIELD_DISK_FREE, "%.2f GB", disk.free_gb);
+                                                break;
+                                }
+                        }
+                        break;
                 }
         }
 }
 
-void hardware_show_summary() {
+void
+hardware_show_summary(void)
+{
         printf("=== HARDWARE SUMMARY ===\n");
         hardware_display_cpu_comprehensive();
         hardware_display_memory_comprehensive();
@@ -444,18 +518,20 @@ void hardware_show_summary() {
         printf("\n");
 }
 
-void hardware_show_detailed() {
+void
+hardware_show_detailed(void)
+{
         printf("=== DETAILED HARDWARE INFORMATION ===\n");
 
-        /** CPU Section */
+        /* CPU Section */
         printf("\n[CPU Information]\n");
         hardware_display_cpu_comprehensive();
 
-        /** Memory Section */
+        /* Memory Section */
         printf("\n[Memory Information]\n");
         hardware_display_memory_comprehensive();
 
-        /** Disk Section */
+        /* Disk Section */
         printf("\n[Disk Information]\n");
 #ifdef WG_WINDOWS
         hardware_display_disk_comprehensive("C:\\");
@@ -464,15 +540,26 @@ void hardware_show_detailed() {
 #endif
 }
 
-void hardware_cpu_info_legacy() {
+
+/* ============================================================================
+ * Legacy Compatibility Functions
+ * ==========================================================================*/
+
+void
+hardware_cpu_info_legacy(void)
+{
         hardware_display_cpu_comprehensive();
 }
 
-void hardware_memory_info_legacy() {
+void
+hardware_memory_info_legacy(void)
+{
         hardware_display_memory_comprehensive();
 }
 
-void hardware_disk_info_legacy() {
+void
+hardware_disk_info_legacy(void)
+{
 #ifdef WG_WINDOWS
         hardware_display_disk_comprehensive("C:\\");
 #else
@@ -480,13 +567,17 @@ void hardware_disk_info_legacy() {
 #endif
 }
 
-void hardware_network_info_legacy() {
-        /** Basic network info implementation */
+void
+hardware_network_info_legacy(void)
+{
+        /* Basic network info implementation */
         printf("%-15s: Network information\n", "Network");
 }
 
-void hardware_system_info_legacy() {
-        /** Basic system info implementation */
+void
+hardware_system_info_legacy(void)
+{
+        /* Basic system info implementation */
 #ifdef WG_WINDOWS
         printf("%-15s: Windows\n", "OS");
 #else

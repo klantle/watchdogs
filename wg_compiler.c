@@ -25,11 +25,10 @@ extern char **environ;
 #define POSIX_TIMEOUT 30
 #endif
 
-int wg_run_compiler(const char *arg, const char *compile_args,  const char *second_arg, const char *four_arg,
+int wg_run_compiler(const char *args, const char *compile_args,  const char *second_arg, const char *four_arg,
                     const char *five_arg, const char *six_arg, const char *seven_arg, const char *eight_arg,
                     const char *nine_arg)
 {
-        const int aio_extra_options = 7;
 #if defined (_DBG_PRINT)
         pr_color(stdout, FCOLOUR_YELLOW, "-DEBUGGING ");
         printf("[function: %s | "
@@ -62,7 +61,10 @@ int wg_run_compiler(const char *arg, const char *compile_args,  const char *seco
                 "Unknown");
 #endif
 #endif
-        wcfg.wg_compiler_stat = 0;
+        const int aio_extra_options = 7;
+        wgconfig.wg_compiler_stat = 0;
+        io_compilers comp;
+        io_compilers *ptr_io = &comp;
 #ifdef WG_WINDOWS
         PROCESS_INFORMATION pi;
         STARTUPINFO si = { sizeof(si) };
@@ -80,6 +82,12 @@ int wg_run_compiler(const char *arg, const char *compile_args,  const char *seco
         char *compiler_last_slash = NULL;
         char *compiler_back_slash = NULL;
 
+        char *fetch_string_pos = NULL;
+        char compiler_extra_options[WG_PATH_MAX] = { 0 };
+        const char *debug_memm[] = {"-d1", "-d3"};
+        size_t size_debug_memm = sizeof(debug_memm);
+        size_t size_debug_memm_zero = sizeof(debug_memm[0]);
+
         int compiler_debugging = 0;
         int compiler_has_watchdogs = 0, compiler_has_debug = 0;
         int compiler_has_clean = 0, compiler_has_assembler = 0;
@@ -87,16 +95,16 @@ int wg_run_compiler(const char *arg, const char *compile_args,  const char *seco
         int compiler_has_encoding = 0;
 
         const char* compiler_args[] = {
-                                            second_arg, four_arg,
-                                            five_arg, six_arg,
-                                            seven_arg, eight_arg,
-                                            nine_arg
-                                      };
+            second_arg, four_arg,
+            five_arg, six_arg,
+            seven_arg, eight_arg,
+            nine_arg
+        };
 
         const char *ptr_pawncc = NULL;
-        if (!strcmp(wcfg.wg_os_type, OS_SIGNAL_WINDOWS))
+        if (!strcmp(wgconfig.wg_os_type, OS_SIGNAL_WINDOWS))
             ptr_pawncc = "pawncc.exe";
-        else if (!strcmp(wcfg.wg_os_type, OS_SIGNAL_LINUX))
+        else if (!strcmp(wgconfig.wg_os_type, OS_SIGNAL_LINUX))
             ptr_pawncc = "pawncc";
 
         char *path_include = NULL;
@@ -146,7 +154,7 @@ int wg_run_compiler(const char *arg, const char *compile_args,  const char *seco
             char wg_compiler_input_pawncc_path[WG_PATH_MAX],
                  wg_compiler_input_gamemode_path[WG_PATH_MAX];
             wg_snprintf(wg_compiler_input_pawncc_path,
-                    sizeof(wg_compiler_input_pawncc_path), "%s", wcfg.wg_sef_found_list[0]);
+                    sizeof(wg_compiler_input_pawncc_path), "%s", wgconfig.wg_sef_found_list[0]);
 
             wg_snprintf(run_cmd, sizeof(run_cmd),
                 "%s > .watchdogs/compiler_test.log",
@@ -269,30 +277,25 @@ not_valid_flag_options:
                     }
 
                     if (merged) {
-                        wcfg.wg_toml_aio_opt = merged;
+                        wgconfig.wg_toml_aio_opt = merged;
                     }
                     else {
-                        wcfg.wg_toml_aio_opt = strdup("");
+                        wgconfig.wg_toml_aio_opt = strdup("");
                     }
                 }
 
-                char compiler_extra_options[WG_PATH_MAX] = "";
-                if (compiler_has_debug && compiler_debugging) {
-                    const char *debug_mmv[] = {"-d1", "-d3"};
-                    size_t n_mem_target = sizeof(debug_mmv) / sizeof(debug_mmv[0]);
-                    size_t i;
-                    for (i = 0; i < n_mem_target; i++) {
-                        const char
-                            *debug_opt = debug_mmv[i];
-                        size_t size_debug_option = strlen(debug_opt);
-                        char *fetch_pos;
-                        while ((fetch_pos = strstr(wcfg.wg_toml_aio_opt, debug_opt)) != NULL) {
-                            memmove(fetch_pos,
-                                    fetch_pos + size_debug_option,
-                                    strlen(fetch_pos + size_debug_option) + 1);
+                if (compiler_has_debug != 0 && compiler_debugging != 0)
+                    {
+                        size_t memm_for = size_debug_memm / size_debug_memm_zero;
+                        for (int i = 0; i < memm_for; i++) {
+                            const char *memm_saving_target = debug_memm[i];
+                            size_t size_memm_saving_targetion = strlen(memm_saving_target);
+                            while ((fetch_string_pos = strstr(wgconfig.wg_toml_aio_opt, memm_saving_target)) != NULL)
+                                memmove(fetch_string_pos,
+                                    fetch_string_pos + size_memm_saving_targetion,
+                                    strlen(fetch_string_pos + size_memm_saving_targetion) + 1);
                         }
                     }
-                }
 
                 if (compiler_has_debug) strcat(compiler_extra_options, " -d2 ");
                 if (compiler_has_assembler) strcat(compiler_extra_options, " -a ");
@@ -302,14 +305,14 @@ not_valid_flag_options:
 
                 if (strlen(compiler_extra_options) > 0) {
                     size_t current_len, extra_opt_len;
-                    current_len = strlen(wcfg.wg_toml_aio_opt);
+                    current_len = strlen(wgconfig.wg_toml_aio_opt);
                     extra_opt_len = strlen(compiler_extra_options);
 
-                    if (current_len + extra_opt_len < sizeof(wcfg.wg_toml_aio_opt)) {
-                        strcat(wcfg.wg_toml_aio_opt, compiler_extra_options);
+                    if (current_len + extra_opt_len < sizeof(wgconfig.wg_toml_aio_opt)) {
+                        strcat(wgconfig.wg_toml_aio_opt, compiler_extra_options);
                     } else {
-                        strncat(wcfg.wg_toml_aio_opt, compiler_extra_options,
-                                sizeof(wcfg.wg_toml_aio_opt) - current_len - 1);
+                        strncat(wgconfig.wg_toml_aio_opt, compiler_extra_options,
+                                sizeof(wgconfig.wg_toml_aio_opt) - current_len - 1);
                     }
                 }
 
@@ -357,7 +360,7 @@ not_valid_flag_options:
                     }
                 }
 
-                if (arg == NULL || *arg == '\0' || (arg[0] == '.' && arg[1] == '\0'))
+                if (args == NULL || *args == '\0' || (args[0] == '.' && args[1] == '\0'))
                 {
 #ifdef WG_WINDOWS
                     sa.bInheritHandle = TRUE;
@@ -384,9 +387,9 @@ not_valid_flag_options:
                               sizeof(_compiler_input_),
                                     "%s %s -o%s %s %s -i%s",
                                     wg_compiler_input_pawncc_path,
-                                    wcfg.wg_toml_gm_input,
-                                    wcfg.wg_toml_gm_output,
-                                    wcfg.wg_toml_aio_opt,
+                                    wgconfig.wg_toml_gm_input,
+                                    wgconfig.wg_toml_gm_output,
+                                    wgconfig.wg_toml_aio_opt,
                                     include_aio_path,
                                     path_include);
 #if defined(_DBG_PRINT)
@@ -434,10 +437,10 @@ not_valid_flag_options:
                     ret_command = wg_snprintf(_compiler_input_, sizeof(_compiler_input_),
                         "%s %s %s%s %s%s %s%s",
                         wg_compiler_input_pawncc_path,
-                        wcfg.wg_toml_gm_input,
+                        wgconfig.wg_toml_gm_input,
                         "-o",
-                        wcfg.wg_toml_gm_output,
-                        wcfg.wg_toml_aio_opt,
+                        wgconfig.wg_toml_gm_output,
+                        wgconfig.wg_toml_aio_opt,
                         include_aio_path,
                         "-i",
                         path_include);
@@ -539,7 +542,7 @@ not_valid_flag_options:
 #endif
                     char size_container_output[WG_PATH_MAX + 128];
                     wg_snprintf(size_container_output,
-                        sizeof(size_container_output), "%s", wcfg.wg_toml_gm_output);
+                        sizeof(size_container_output), "%s", wgconfig.wg_toml_gm_output);
                     if (path_exists(".watchdogs/compiler.log")) {
                         printf("\n");
                         char *ca = NULL;
@@ -596,7 +599,7 @@ compiler_done:
                         {
                             if (size_container_output[0] != '\0' && path_access(size_container_output))
                                 remove(size_container_output);
-                            wcfg.wg_compiler_stat = 1;
+                            wgconfig.wg_compiler_stat = 1;
                         }
                     }
                     else {
@@ -622,11 +625,11 @@ compiler_done:
                 }
                 else
                 {
-                    wg_strncpy(wg_compiler_sys.compiler_size_temp, compile_args, sizeof(wg_compiler_sys.compiler_size_temp) - 1);
-                    wg_compiler_sys.compiler_size_temp[sizeof(wg_compiler_sys.compiler_size_temp) - 1] = '\0';
+                    wg_strncpy(ptr_io->compiler_size_temp, compile_args, sizeof(ptr_io->compiler_size_temp) - 1);
+                    ptr_io->compiler_size_temp[sizeof(ptr_io->compiler_size_temp) - 1] = '\0';
 
-                    compiler_last_slash = strrchr(wg_compiler_sys.compiler_size_temp, '/');
-                    compiler_back_slash = strrchr(wg_compiler_sys.compiler_size_temp, '\\');
+                    compiler_last_slash = strrchr(ptr_io->compiler_size_temp, '/');
+                    compiler_back_slash = strrchr(ptr_io->compiler_size_temp, '\\');
 
                     if (compiler_back_slash && (!compiler_last_slash || compiler_back_slash > compiler_last_slash))
                         compiler_last_slash = compiler_back_slash;
@@ -634,119 +637,119 @@ compiler_done:
                     if (compiler_last_slash)
                     {
                         size_t compiler_dir_len;
-                        compiler_dir_len = (size_t)(compiler_last_slash - wg_compiler_sys.compiler_size_temp);
+                        compiler_dir_len = (size_t)(compiler_last_slash - ptr_io->compiler_size_temp);
 
-                        if (compiler_dir_len >= sizeof(wg_compiler_sys.compiler_direct_path))
-                            compiler_dir_len = sizeof(wg_compiler_sys.compiler_direct_path) - 1;
+                        if (compiler_dir_len >= sizeof(ptr_io->compiler_direct_path))
+                            compiler_dir_len = sizeof(ptr_io->compiler_direct_path) - 1;
 
-                        memcpy(wg_compiler_sys.compiler_direct_path, wg_compiler_sys.compiler_size_temp, compiler_dir_len);
-                        wg_compiler_sys.compiler_direct_path[compiler_dir_len] = '\0';
+                        memcpy(ptr_io->compiler_direct_path, ptr_io->compiler_size_temp, compiler_dir_len);
+                        ptr_io->compiler_direct_path[compiler_dir_len] = '\0';
 
                         const char *compiler_filename_start = compiler_last_slash + 1;
                         size_t compiler_filename_len;
                         compiler_filename_len = strlen(compiler_filename_start);
 
-                        if (compiler_filename_len >= sizeof(wg_compiler_sys.compiler_size_file_name))
-                            compiler_filename_len = sizeof(wg_compiler_sys.compiler_size_file_name) - 1;
+                        if (compiler_filename_len >= sizeof(ptr_io->compiler_size_file_name))
+                            compiler_filename_len = sizeof(ptr_io->compiler_size_file_name) - 1;
 
-                        memcpy(wg_compiler_sys.compiler_size_file_name, compiler_filename_start, compiler_filename_len);
-                        wg_compiler_sys.compiler_size_file_name[compiler_filename_len] = '\0';
+                        memcpy(ptr_io->compiler_size_file_name, compiler_filename_start, compiler_filename_len);
+                        ptr_io->compiler_size_file_name[compiler_filename_len] = '\0';
 
                         size_t total_needed;
-                        total_needed = strlen(wg_compiler_sys.compiler_direct_path) + 1 +
-                                    strlen(wg_compiler_sys.compiler_size_file_name) + 1;
+                        total_needed = strlen(ptr_io->compiler_direct_path) + 1 +
+                                    strlen(ptr_io->compiler_size_file_name) + 1;
 
-                        if (total_needed > sizeof(wg_compiler_sys.compiler_size_input_path))
+                        if (total_needed > sizeof(ptr_io->compiler_size_input_path))
                         {
-                            wg_strncpy(wg_compiler_sys.compiler_direct_path, "gamemodes",
-                                sizeof(wg_compiler_sys.compiler_direct_path) - 1);
-                            wg_compiler_sys.compiler_direct_path[sizeof(wg_compiler_sys.compiler_direct_path) - 1] = '\0';
+                            wg_strncpy(ptr_io->compiler_direct_path, "gamemodes",
+                                sizeof(ptr_io->compiler_direct_path) - 1);
+                            ptr_io->compiler_direct_path[sizeof(ptr_io->compiler_direct_path) - 1] = '\0';
 
                             size_t compiler_max_size_file_name;
-                            compiler_max_size_file_name = sizeof(wg_compiler_sys.compiler_size_file_name) - 1;
+                            compiler_max_size_file_name = sizeof(ptr_io->compiler_size_file_name) - 1;
 
                             if (compiler_filename_len > compiler_max_size_file_name)
                             {
-                                memcpy(wg_compiler_sys.compiler_size_file_name, compiler_filename_start,
+                                memcpy(ptr_io->compiler_size_file_name, compiler_filename_start,
                                     compiler_max_size_file_name);
-                                wg_compiler_sys.compiler_size_file_name[compiler_max_size_file_name] = '\0';
+                                ptr_io->compiler_size_file_name[compiler_max_size_file_name] = '\0';
                             }
                         }
 
-                        if (wg_snprintf(wg_compiler_sys.compiler_size_input_path, sizeof(wg_compiler_sys.compiler_size_input_path),
-                                "%s/%s", wg_compiler_sys.compiler_direct_path, wg_compiler_sys.compiler_size_file_name) >=
-                            (int)sizeof(wg_compiler_sys.compiler_size_input_path))
+                        if (wg_snprintf(ptr_io->compiler_size_input_path, sizeof(ptr_io->compiler_size_input_path),
+                                "%s/%s", ptr_io->compiler_direct_path, ptr_io->compiler_size_file_name) >=
+                            (int)sizeof(ptr_io->compiler_size_input_path))
                         {
-                            wg_compiler_sys.compiler_size_input_path[sizeof(wg_compiler_sys.compiler_size_input_path) - 1] = '\0';
+                            ptr_io->compiler_size_input_path[sizeof(ptr_io->compiler_size_input_path) - 1] = '\0';
                         }
                      }  else {
-                            wg_strncpy(wg_compiler_sys.compiler_size_file_name, wg_compiler_sys.compiler_size_temp,
-                                sizeof(wg_compiler_sys.compiler_size_file_name) - 1);
-                            wg_compiler_sys.compiler_size_file_name[sizeof(wg_compiler_sys.compiler_size_file_name) - 1] = '\0';
+                            wg_strncpy(ptr_io->compiler_size_file_name, ptr_io->compiler_size_temp,
+                                sizeof(ptr_io->compiler_size_file_name) - 1);
+                            ptr_io->compiler_size_file_name[sizeof(ptr_io->compiler_size_file_name) - 1] = '\0';
 
-                            wg_strncpy(wg_compiler_sys.compiler_direct_path, ".", sizeof(wg_compiler_sys.compiler_direct_path) - 1);
-                            wg_compiler_sys.compiler_direct_path[sizeof(wg_compiler_sys.compiler_direct_path) - 1] = '\0';
+                            wg_strncpy(ptr_io->compiler_direct_path, ".", sizeof(ptr_io->compiler_direct_path) - 1);
+                            ptr_io->compiler_direct_path[sizeof(ptr_io->compiler_direct_path) - 1] = '\0';
 
-                            if (wg_snprintf(wg_compiler_sys.compiler_size_input_path, sizeof(wg_compiler_sys.compiler_size_input_path),
-                                    "./%s", wg_compiler_sys.compiler_size_file_name) >=
-                                (int)sizeof(wg_compiler_sys.compiler_size_input_path))
+                            if (wg_snprintf(ptr_io->compiler_size_input_path, sizeof(ptr_io->compiler_size_input_path),
+                                    "./%s", ptr_io->compiler_size_file_name) >=
+                                (int)sizeof(ptr_io->compiler_size_input_path))
                             {
-                                wg_compiler_sys.compiler_size_input_path[sizeof(wg_compiler_sys.compiler_size_input_path) - 1] = '\0';
+                                ptr_io->compiler_size_input_path[sizeof(ptr_io->compiler_size_input_path) - 1] = '\0';
                             }
                         }
 
                     int compiler_finding_compile_args = 0;
-                    compiler_finding_compile_args = wg_sef_fdir(wg_compiler_sys.compiler_direct_path, wg_compiler_sys.compiler_size_file_name, NULL);
+                    compiler_finding_compile_args = wg_sef_fdir(ptr_io->compiler_direct_path, ptr_io->compiler_size_file_name, NULL);
 
                     if (!compiler_finding_compile_args &&
-                        strcmp(wg_compiler_sys.compiler_direct_path, "gamemodes") != 0)
+                        strcmp(ptr_io->compiler_direct_path, "gamemodes") != 0)
                     {
                         compiler_finding_compile_args = wg_sef_fdir("gamemodes",
-                                            wg_compiler_sys.compiler_size_file_name, NULL);
+                                            ptr_io->compiler_size_file_name, NULL);
                         if (compiler_finding_compile_args)
                         {
-                            wg_strncpy(wg_compiler_sys.compiler_direct_path, "gamemodes",
-                                sizeof(wg_compiler_sys.compiler_direct_path) - 1);
-                            wg_compiler_sys.compiler_direct_path[sizeof(wg_compiler_sys.compiler_direct_path) - 1] = '\0';
+                            wg_strncpy(ptr_io->compiler_direct_path, "gamemodes",
+                                sizeof(ptr_io->compiler_direct_path) - 1);
+                            ptr_io->compiler_direct_path[sizeof(ptr_io->compiler_direct_path) - 1] = '\0';
 
-                            if (wg_snprintf(wg_compiler_sys.compiler_size_input_path, sizeof(wg_compiler_sys.compiler_size_input_path),
-                                    "gamemodes/%s", wg_compiler_sys.compiler_size_file_name) >=
-                                (int)sizeof(wg_compiler_sys.compiler_size_input_path))
+                            if (wg_snprintf(ptr_io->compiler_size_input_path, sizeof(ptr_io->compiler_size_input_path),
+                                    "gamemodes/%s", ptr_io->compiler_size_file_name) >=
+                                (int)sizeof(ptr_io->compiler_size_input_path))
                             {
-                                wg_compiler_sys.compiler_size_input_path[sizeof(wg_compiler_sys.compiler_size_input_path) - 1] = '\0';
+                                ptr_io->compiler_size_input_path[sizeof(ptr_io->compiler_size_input_path) - 1] = '\0';
                             }
 
-                            if (wcfg.wg_sef_count > RATE_SEF_EMPTY)
-                                wg_strncpy(wcfg.wg_sef_found_list[wcfg.wg_sef_count - 1],
-                                    wg_compiler_sys.compiler_size_input_path, MAX_SEF_PATH_SIZE);
+                            if (wgconfig.wg_sef_count > RATE_SEF_EMPTY)
+                                wg_strncpy(wgconfig.wg_sef_found_list[wgconfig.wg_sef_count - 1],
+                                    ptr_io->compiler_size_input_path, MAX_SEF_PATH_SIZE);
                         }
                     }
 
-                    if (!compiler_finding_compile_args && !strcmp(wg_compiler_sys.compiler_direct_path, "."))
+                    if (!compiler_finding_compile_args && !strcmp(ptr_io->compiler_direct_path, "."))
                     {
                         compiler_finding_compile_args = wg_sef_fdir("gamemodes",
-                                            wg_compiler_sys.compiler_size_file_name, NULL);
+                                            ptr_io->compiler_size_file_name, NULL);
                         if (compiler_finding_compile_args)
                         {
-                            wg_strncpy(wg_compiler_sys.compiler_direct_path, "gamemodes",
-                                sizeof(wg_compiler_sys.compiler_direct_path) - 1);
-                            wg_compiler_sys.compiler_direct_path[sizeof(wg_compiler_sys.compiler_direct_path) - 1] = '\0';
+                            wg_strncpy(ptr_io->compiler_direct_path, "gamemodes",
+                                sizeof(ptr_io->compiler_direct_path) - 1);
+                            ptr_io->compiler_direct_path[sizeof(ptr_io->compiler_direct_path) - 1] = '\0';
 
-                            if (wg_snprintf(wg_compiler_sys.compiler_size_input_path, sizeof(wg_compiler_sys.compiler_size_input_path),
-                                    "gamemodes/%s", wg_compiler_sys.compiler_size_file_name) >=
-                                (int)sizeof(wg_compiler_sys.compiler_size_input_path))
+                            if (wg_snprintf(ptr_io->compiler_size_input_path, sizeof(ptr_io->compiler_size_input_path),
+                                    "gamemodes/%s", ptr_io->compiler_size_file_name) >=
+                                (int)sizeof(ptr_io->compiler_size_input_path))
                             {
-                                wg_compiler_sys.compiler_size_input_path[sizeof(wg_compiler_sys.compiler_size_input_path) - 1] = '\0';
+                                ptr_io->compiler_size_input_path[sizeof(ptr_io->compiler_size_input_path) - 1] = '\0';
                             }
 
-                            if (wcfg.wg_sef_count > RATE_SEF_EMPTY)
-                                wg_strncpy(wcfg.wg_sef_found_list[wcfg.wg_sef_count - 1],
-                                    wg_compiler_sys.compiler_size_input_path, MAX_SEF_PATH_SIZE);
+                            if (wgconfig.wg_sef_count > RATE_SEF_EMPTY)
+                                wg_strncpy(wgconfig.wg_sef_found_list[wgconfig.wg_sef_count - 1],
+                                    ptr_io->compiler_size_input_path, MAX_SEF_PATH_SIZE);
                         }
                     }
 
                     wg_snprintf(wg_compiler_input_gamemode_path,
-                            sizeof(wg_compiler_input_gamemode_path), "%s", wcfg.wg_sef_found_list[1]);
+                            sizeof(wg_compiler_input_gamemode_path), "%s", wgconfig.wg_sef_found_list[1]);
 
                     if (compiler_finding_compile_args)
                     {
@@ -756,10 +759,10 @@ compiler_done:
                         if (f_EXT)
                             *f_EXT = '\0';
 
-                        wg_snprintf(wg_compiler_sys.container_output, sizeof(wg_compiler_sys.container_output), "%s", __sef_path_sz);
+                        wg_snprintf(ptr_io->container_output, sizeof(ptr_io->container_output), "%s", __sef_path_sz);
 
                         char size_container_output[WG_PATH_MAX + 128];
-                        wg_snprintf(size_container_output, sizeof(size_container_output), "%s.amx", wg_compiler_sys.container_output);
+                        wg_snprintf(size_container_output, sizeof(size_container_output), "%s.amx", ptr_io->container_output);
 
 #ifdef WG_WINDOWS
                         sa.bInheritHandle = TRUE;
@@ -789,7 +792,7 @@ compiler_done:
                                         wg_compiler_input_pawncc_path,
                                         wg_compiler_input_gamemode_path,
                                         size_container_output,
-                                        wcfg.wg_toml_aio_opt,
+                                        wgconfig.wg_toml_aio_opt,
                                         include_aio_path,
                                         path_include);
 #if defined(_DBG_PRINT)
@@ -840,7 +843,7 @@ compiler_done:
                             wg_compiler_input_gamemode_path,
                             "-o",
                             size_container_output,
-                            wcfg.wg_toml_aio_opt,
+                            wgconfig.wg_toml_aio_opt,
                             include_aio_path,
                             "-i",
                             path_include);
@@ -997,7 +1000,7 @@ compiler_done2:
                             {
                                 if (size_container_output[0] != '\0' && path_access(size_container_output))
                                     remove(size_container_output);
-                                wcfg.wg_compiler_stat = 1;
+                                wgconfig.wg_compiler_stat = 1;
                             }
                         }
                         else {
@@ -1052,7 +1055,7 @@ ret_ptr:
                     pr_color(stdout, FCOLOUR_YELLOW, " ^ work's in WSL/MSYS2\n");
                     println(stdout, "-> [T/t] Termux");
 
-                    wcfg.wg_sel_stat = 1;
+                    wgconfig.wg_sel_stat = 1;
 
                     char *platform = readline("==> ");
 
@@ -1061,7 +1064,7 @@ ret_ptr:
                         int ret = wg_install_pawncc("linux");
 loop_ipcc:
                         wg_free(platform);
-                        if (ret == -WG_RETN && wcfg.wg_sel_stat != 0)
+                        if (ret == -WG_RETN && wgconfig.wg_sel_stat != 0)
                             goto loop_ipcc;
                     }
                     if (strfind(platform, "W"))
@@ -1069,7 +1072,7 @@ loop_ipcc:
                         int ret = wg_install_pawncc("windows");
 loop_ipcc2:
                         wg_free(platform);
-                        if (ret == -WG_RETN && wcfg.wg_sel_stat != 0)
+                        if (ret == -WG_RETN && wgconfig.wg_sel_stat != 0)
                             goto loop_ipcc2;
                     }
                     if (strfind(platform, "T"))
@@ -1077,20 +1080,20 @@ loop_ipcc2:
                         int ret = wg_install_pawncc("termux");
 loop_ipcc3:
                         wg_free(platform);
-                        if (ret == -WG_RETN && wcfg.wg_sel_stat != 0)
+                        if (ret == -WG_RETN && wgconfig.wg_sel_stat != 0)
                             goto loop_ipcc3;
                     }
                     if (strfind(platform, "E")) {
                         wg_free(platform);
-                        goto done;
+                        goto loop_end;
                     }
                     else {
                         pr_error(stdout, "Invalid platform selection. Input 'E/e' to exit");
                         wg_free(platform);
                         goto ret_ptr;
                     }
-done:
-                    start_chain(NULL);
+loop_end:
+                    chain_goto_main(NULL);
                 }
                 else if (strcmp(ptr_sigA, "N") == WG_RETZ || strcmp(ptr_sigA, "n") == WG_RETZ)
                 {

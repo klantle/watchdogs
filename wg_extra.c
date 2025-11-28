@@ -27,196 +27,88 @@ char *FG = "\x1b[97m";
 char *BORD = "\x1b[33m";
 char *RST = "\x1b[0m";
 
-/**
- * Prints formatted output to a stream followed by a newline character
- * Similar to puts() but with format specifier support
- *
- * @param stream The output stream to write to (e.g., stdout, stderr)
- * @param format Format string specifying how subsequent arguments are converted
- * @param ... Variable arguments to be formatted according to the format string
- */
 void println(FILE *stream, const char *format, ...)
 {
-        /* Variable argument list handler */
         va_list args;
-
-        /* Initialize variable argument list starting after 'format' parameter */
         va_start(args, format);
-        /* Print formatted output using the variable arguments */
         vprintf(format, args);
-        /* Append newline character to complete the line */
         printf("\n");
-        /* Clean up variable argument list - mandatory after va_start */
         va_end(args);
-
-        /* Ensure all buffered data is written to the stream immediately */
         fflush(stream);
 }
 
-/**
- * Prints colored formatted output to a stream
- * Applies specified color before printing and resets to default after
- *
- * @param stream The output stream to write to
- * @param color ANSI color code string to apply to the text
- * @param format Format string specifying how subsequent arguments are converted
- * @param ... Variable arguments to be formatted according to the format string
- */
 void printf_color(FILE *stream, const char *color, const char *format, ...)
 {
-        /* Variable argument list handler */
         va_list args;
-
-        /* Initialize variable argument list starting after 'format' parameter */
         va_start(args, format);
-        /* Apply the specified color using ANSI escape codes */
         printf("%s", color);
-        /* Print formatted output with the applied color */
         vprintf(format, args);
-        /* Reset text color to terminal default */
         printf("%s", FCOLOUR_DEFAULT);
-        /* Clean up variable argument list - mandatory after va_start */
         va_end(args);
-
-        /* Ensure all buffered data is written to the stream immediately */
         fflush(stream);
 }
 
-/**
- * Prints informational messages with [INFO] prefix and automatic newline
- * Typically used for general program status updates
- *
- * @param stream The output stream to write to
- * @param format Format string specifying how subsequent arguments are converted
- * @param ... Variable arguments to be formatted according to the format string
- */
 void printf_info(FILE *stream, const char *format, ...)
 {
-        /* Variable argument list handler */
         va_list args;
-
-        /* Initialize variable argument list starting after 'format' parameter */
         va_start(args, format);
-        /* Print standardized info prefix */
         printf("[INFO] ");
-        /* Print the actual informational message */
         vprintf(format, args);
-        /* Append newline character to complete the line */
         printf("\n");
-        /* Clean up variable argument list - mandatory after va_start */
         va_end(args);
-
-        /* Ensure all buffered data is written to the stream immediately */
         fflush(stream);
 }
 
-/**
- * Prints warning messages with [WARNING] prefix and automatic newline
- * Typically used for non-critical issues that don't stop program execution
- *
- * @param stream The output stream to write to
- * @param format Format string specifying how subsequent arguments are converted
- * @param ... Variable arguments to be formatted according to the format string
- */
 void printf_warning(FILE *stream, const char *format, ...)
 {
-        /* Variable argument list handler */
         va_list args;
-
-        /* Initialize variable argument list starting after 'format' parameter */
         va_start(args, format);
-        /* Print standardized warning prefix */
         printf("[WARNING] ");
-        /* Print the actual warning message */
         vprintf(format, args);
-        /* Append newline character to complete the line */
         printf("\n");
-        /* Clean up variable argument list - mandatory after va_start */
         va_end(args);
-
-        /* Ensure all buffered data is written to the stream immediately */
         fflush(stream);
 }
 
-/**
- * Prints error messages with [ERROR] prefix and automatic newline
- * Typically used for serious issues that may affect program functionality
- *
- * @param stream The output stream to write to
- * @param format Format string specifying how subsequent arguments are converted
- * @param ... Variable arguments to be formatted according to the format string
- */
 void printf_error(FILE *stream, const char *format, ...)
 {
-        /* Variable argument list handler */
         va_list args;
-
-        /* Initialize variable argument list starting after 'format' parameter */
         va_start(args, format);
-        /* Print standardized error prefix */
         printf("[ERROR] ");
-        /* Print the actual error message */
         vprintf(format, args);
-        /* Append newline character to complete the line */
         printf("\n");
-        /* Clean up variable argument list - mandatory after va_start */
         va_end(args);
-
-        /* Ensure all buffered data is written to the stream immediately */
         fflush(stream);
 }
 
-/**
- * Prints critical error messages with [CRIT] prefix and automatic newline
- * Typically used for severe issues that may cause program termination
- *
- * @param stream The output stream to write to
- * @param format Format string specifying how subsequent arguments are converted
- * @param ... Variable arguments to be formatted according to the format string
- */
 void printf_crit(FILE *stream, const char *format, ...)
 {
-        /* Variable argument list handler */
         va_list args;
-
-        /* Initialize variable argument list starting after 'format' parameter */
         va_start(args, format);
-        /* Print standardized critical prefix */
         printf("[CRIT] ");
-        /* Print the actual critical error message */
         vprintf(format, args);
-        /* Append newline character to complete the line */
         printf("\n");
-        /* Clean up variable argument list - mandatory after va_start */
         va_end(args);
-
-        /* Ensure all buffered data is written to the stream immediately */
         fflush(stream);
 }
 
-/* Convert Windows FILETIME to time_t (seconds since UNIX epoch) */
 #ifdef WG_WINDOWS
 static time_t filetime_to_time_t(const FILETIME *ft) {
-        /* FILETIME is in 100-nanosecond intervals since 1601-01-01.
-           UNIX epoch is 1970-01-01: difference is 11644473600 seconds. */
-        const uint64_t EPOCH_DIFF = 116444736000000000ULL; /* in 100-ns units */
+        const uint64_t EPOCH_DIFF = 116444736000000000ULL;
         uint64_t v = ((uint64_t)ft->dwHighDateTime << 32) | ft->dwLowDateTime;
         if (v < EPOCH_DIFF) return (time_t)0;
         return (time_t)((v - EPOCH_DIFF) / 10000000ULL);
 }
 #endif
 
-/* Portable stat function */
 int portable_stat(const char *path, portable_stat_t *out) {
         if (!path || !out) return -WG_RETN;
         memset(out, 0, sizeof(*out));
 
 #ifdef WG_WINDOWS
-        /* Use wide APIs for Unicode paths */
         wchar_t wpath[WG_MAX_PATH];
         int len = MultiByteToWideChar(CP_UTF8, 0, path, -1, NULL, 0);
         if (len == WG_RETZ || len > WG_MAX_PATH) {
-                /* fallback: try ANSI conversion */
                 if (!MultiByteToWideChar(CP_ACP, 0, path, -1, wpath, WG_MAX_PATH)) return -WG_RETN;
         } else {
                 MultiByteToWideChar(CP_UTF8, 0, path, -1, wpath, WG_MAX_PATH);
@@ -224,22 +116,16 @@ int portable_stat(const char *path, portable_stat_t *out) {
 
         WIN32_FILE_ATTRIBUTE_DATA fad;
         if (!GetFileAttributesExW(wpath, GetFileExInfoStandard, &fad)) {
-                /* could be a long path, try CreateFile with \\?\ prefix? omitted for brevity */
                 return -WG_RETN;
         }
 
-        /* size */
         uint64_t size = ((uint64_t)fad.nFileSizeHigh << 32) | fad.nFileSizeLow;
         out->st_size = size;
 
-        /* times */
         out->st_latime = filetime_to_time_t(&fad.ftLastAccessTime);
         out->st_lmtime = filetime_to_time_t(&fad.ftLastWriteTime);
-        /* On Windows there's creation time and last metadata change isn't available like POSIX ctime.
-           Use creation time as a proxy for st_ctime. */
         out->st_mctime = filetime_to_time_t(&fad.ftCreationTime);
 
-        /* mode emulation: file/dir and simple permissions (read-only) */
         DWORD attrs = fad.dwFileAttributes;
         if (attrs & FILE_ATTRIBUTE_DIRECTORY) {
                 out->st_mode |= S_IFDIR;
@@ -247,14 +133,12 @@ int portable_stat(const char *path, portable_stat_t *out) {
                 out->st_mode |= S_IFREG;
         }
 
-        /* read-only bit -> emulate owner write bit */
         if (attrs & FILE_ATTRIBUTE_READONLY) {
                 out->st_mode |= S_IRUSR;
-                /* no write */
         } else {
                 out->st_mode |= (S_IRUSR | S_IWUSR);
         }
-        /* executable bit: heuristic by extension (common on Windows) */
+
         const char *ext = strrchr(path, '.');
         if (ext && (_stricmp(ext, ".exe") == WG_RETZ ||
                     _stricmp(ext, ".bat") == WG_RETZ ||
@@ -262,7 +146,6 @@ int portable_stat(const char *path, portable_stat_t *out) {
                 out->st_mode |= S_IXUSR;
         }
 
-        /* inode/device: not meaningful on Windows; you could use file index via GetFileInformationByHandle if needed */
         out->st_ino = 0;
         out->st_dev = 0;
 
@@ -567,62 +450,30 @@ causeExplanation ccs[] =
 {NULL, NULL}
 };
 
-/**
- * Searches for warning or error patterns in a line of text
- * Matches against known compiler message patterns to identify specific issues
- *
- * @param line The text line to search for warning/error patterns
- * @return Pointer to the issue description if found, NULL otherwise
- */
 static const char *wg_find_warn_err(const char *line)
 {
-      /* Iterate through the compiler message pattern array */
       int cindex;
       for (cindex = 0; ccs[cindex].cs_t; ++cindex) {
-        /* Check if current line contains this specific compiler message pattern */
         if (strstr(line, ccs[cindex].cs_t))
-            /* Return the corresponding description for this compiler message */
             return ccs[cindex].cs_i;
       }
-      /* No known warning/error pattern found in this line */
       return NULL;
 }
 
-/**
- * Displays detailed compilation results and file information
- * Shows memory usage statistics, file metadata, and compilation status
- *
- * @param pawn_output Path to the compiled output file (.amx)
- * @param debug Debug mode flag (0 = disabled, non-zero = enabled)
- * @param wcnt Number of warnings generated during compilation
- * @param ecnt Number of errors generated during compilation
- * @param compiler_ver Version string of the pawn compiler used
- * @param header_size Size of AMX header in bytes
- * @param code_size Size of code section in bytes
- * @param data_size Size of data section in bytes
- * @param stack_size Size of stack/heap in bytes
- * @param total_size Total memory requirements in bytes
- */
 void compiler_detailed(const char *pawn_output, int debug,
                        int wcnt, int ecnt, const char *compiler_ver,
                        int header_size, int code_size, int data_size,
                        int stack_size, int total_size)
 {
-      /* Create formatted title string showing compilation status */
       char size_compiler[256];
       wg_snprintf(size_compiler, sizeof(size_compiler),
                   "COMPILE COMPLETE :) | WITH ~%d ERROR | ~%d WARNING",
                   ecnt, wcnt);
-      /* Update console/terminal title with compilation status */
       wg_console_title(size_compiler);
 
-      /* Check if compiled output file exists and is accessible */
       int amx_access = path_access(pawn_output);
-      /* Only show detailed info if file exists and debug mode is enabled */
       if (amx_access && debug != 0) {
-                /* Calculate DJB2 hash of the compiled file for verification */
                 unsigned long hash = crypto_djb2_hash_file(pawn_output);
-                /* Display memory section sizes and file hash */
                 printf("Header : %dB  |  Total        : %dB\n"
                        "Code   : %dB  |  hash (djb2)  : %#lx\n"
                        "Data   : %dB\n"
@@ -630,10 +481,8 @@ void compiler_detailed(const char *pawn_output, int debug,
                        header_size, total_size, code_size,
                        hash, data_size, stack_size);
 
-                /* Get detailed file system information */
                 portable_stat_t st;
                 if (portable_stat(pawn_output, &st) == WG_RETZ) {
-                        /* Display comprehensive file metadata */
                         printf("ino    : %llu   |  File   : %lluB\n"
                                "dev    : %llu\n"
                                "read   : %s   |  write  : %s\n"
@@ -641,44 +490,31 @@ void compiler_detailed(const char *pawn_output, int debug,
                                "atime  : %llu\n"
                                "mtime  : %llu\n"
                                "ctime  : %llu\n",
-                               (unsigned long long)st.st_ino,      /* Inode number */
-                               (unsigned long long)st.st_size,     /* File size */
-                               (unsigned long long)st.st_dev,      /* Device ID */
-                               (st.st_mode & S_IRUSR) ? "Y" : "N", /* Read permission */
-                               (st.st_mode & S_IWUSR) ? "Y" : "N", /* Write permission */
-                               (st.st_mode & S_IXUSR) ? "Y" : "N", /* Execute permission */
-                               st.st_mode,                         /* Full file mode */
-                               (unsigned long long)st.st_latime,   /* Last access time */
-                               (unsigned long long)st.st_lmtime,   /* Last modification time */
-                               (unsigned long long)st.st_mctime    /* Last status change time */
+                               (unsigned long long)st.st_ino,
+                               (unsigned long long)st.st_size,
+                               (unsigned long long)st.st_dev,
+                               (st.st_mode & S_IRUSR) ? "Y" : "N",
+                               (st.st_mode & S_IWUSR) ? "Y" : "N",
+                               (st.st_mode & S_IXUSR) ? "Y" : "N",
+                               st.st_mode,
+                               (unsigned long long)st.st_latime,
+                               (unsigned long long)st.st_lmtime,
+                               (unsigned long long)st.st_mctime
                         );
                 }
       }
 
-      /* Make sure stream fflush stdout */
       fflush(stdout);
-
-      /* Add spacing for better output formatting */
       printf("\n");
-      /* Display compiler copyright information */
       printf("* Pawn Compiler %s - Copyright (c) 1997-2006, ITB CompuPhase\n", compiler_ver);
 
       return;
 }
 
-/**
- * Parses compiler log file and displays detailed analysis
- * Extracts warnings, errors, size information and provides contextual help
- *
- * @param log_file Path to the compiler log file to parse
- * @param pawn_output Path to the compiled output file
- * @param debug Debug mode flag for additional information
- */
 void cause_compiler_expl(const char *log_file,
                          const char *pawn_output,
                          int debug)
 {
-        /* Debugging Compiler Cause & Detailed Function */
 #if defined (_DBG_PRINT)
         pr_color(stdout, FCOLOUR_YELLOW, "-DEBUGGING ");
         printf("[function: %s | "
@@ -711,31 +547,23 @@ void cause_compiler_expl(const char *log_file,
                 "Unknown");
 #endif
 #endif
-      /* Open compiler log file for reading */
       FILE *plog = fopen(log_file, "r");
       if (!plog)
-        return;  /* Silently return if log file cannot be opened */
+        return;
 
-      /* Buffer for reading log file lines */
       char line[WG_MAX_PATH];
-      /* Counters for warnings and errors */
       int wcnt = 0, ecnt = 0;
-      /* Memory size variables extracted from compiler output */
       int header_size = 0, code_size = 0, data_size = 0;
       int stack_size = 0, total_size = 0;
-      /* Compiler version string */
       char compiler_ver[64] = { 0 };
 
-      /* Process each line of the compiler log file */
       while (fgets(line, sizeof(line), plog)) {
-        /* Skip generic section headers that don't contain useful information */
         if (wg_strcase(line, "Warnings.") ||
             wg_strcase(line, "Warning.") ||
             wg_strcase(line, "Errors.")  ||
             wg_strcase(line, "Error."))
             continue;
 
-        /* Parse memory size information from compiler output */
         if (wg_strcase(line, "Header size:")) {
             header_size = strtol(strchr(line, ':') + 1, NULL, 10);
             continue;
@@ -752,43 +580,34 @@ void cause_compiler_expl(const char *log_file,
             total_size = strtol(strchr(line, ':') + 1, NULL, 10);
             continue;
         } else if (wg_strcase(line, "Pawn compiler ")) {
-            /* Extract compiler version information */
             const char *p = strstr(line, "Pawn compiler ");
             if (p) sscanf(p, "Pawn compiler %63s", compiler_ver);
             continue;
         }
 
-        /* Display the original compiler output line */
         fwrite(line, 1, strlen(line), stdout);
 
-        /* Count warning and error occurrences */
         if (wg_strcase(line, "warning")) ++wcnt;
         if (wg_strcase(line, "error")) ++ecnt;
 
-        /* Check if this line contains a known warning/error pattern */
         const char *description = wg_find_warn_err(line);
         if (description) {
-            /* Find the exact position of the compiler message pattern in the line */
             const char *found = NULL;
             int mk_pos = 0;
             for (int i = 0; ccs[i].cs_t; ++i) {
                 if ((found = strstr(line, ccs[i].cs_t))) {
-                    mk_pos = found - line;  /* Calculate character position */
+                    mk_pos = found - line;
                     break;
                 }
             }
-            /* Print alignment spaces to position the caret under the issue */
             for (int i = 0; i < mk_pos; i++)
                 putchar(' ');
-            /* Display contextual help message in blue color */
             pr_color(stdout, FCOLOUR_BLUE, "^ %s :(\n", description);
         }
       }
 
-      /* Close the compiler log file */
       fclose(plog);
 
-      /* Display final compilation summary and detailed information */
       compiler_detailed(pawn_output, debug, wcnt, ecnt,
                         compiler_ver, header_size, code_size,
                         data_size, stack_size, total_size);

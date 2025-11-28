@@ -96,7 +96,7 @@ back:
 			wg_free(selection);
 		} else {
 			wg_free(selection);
-			if (wcfg.wg_sel_stat == WG_RETZ)
+			if (wgconfig.wg_sel_stat == WG_RETZ)
 				return WG_RETZ;
 			pr_error(stdout, "Invalid architecture selection");
 			goto back;
@@ -119,7 +119,7 @@ done:
 		wg_snprintf(filename, sizeof(filename), "pawncc-%s-%s.zip",
 				    pkg_termux_versions[version_index], architecture);
 
-		wcfg.wg_ipawncc = 1;
+		wgconfig.wg_ipawncc = 1;
 		wg_download_file(url, filename);
 
 		return WG_RETZ;
@@ -164,7 +164,7 @@ get_back:
 			version_index = version_selection - 'a';
 		} else {
 			wg_free(__version__);
-			if (wcfg.wg_sel_stat == WG_RETZ)
+			if (wgconfig.wg_sel_stat == WG_RETZ)
 				return WG_RETZ;
 			pr_error(stdout, "Invalid version selection");
 			goto get_back;
@@ -190,7 +190,7 @@ get_back:
 		wg_snprintf(filename, sizeof(filename), "pawnc-%s-%s.%s",
 				    versions[version_index], platform, archive_ext);
 
-		wcfg.wg_ipawncc = 1;
+		wgconfig.wg_ipawncc = 1;
 		wg_download_file(url, filename);
 
 		return WG_RETZ;
@@ -232,21 +232,21 @@ int wg_install_pawncc(const char *platform)
 #endif
 		if (!platform) {
 				pr_error(stdout, "Platform parameter is NULL");
-				if (wcfg.wg_sel_stat == WG_RETZ)
+				if (wgconfig.wg_sel_stat == WG_RETZ)
 					return WG_RETZ;
 				return -WG_RETN;
 		}
 		if (strcmp(platform, "termux") == WG_RETZ) {
 			int ret = pawncc_handle_termux_installation();
 loop_ipcc:
-			if (ret == -WG_RETN && wcfg.wg_sel_stat != 0)
+			if (ret == -WG_RETN && wgconfig.wg_sel_stat != 0)
 				goto loop_ipcc;
 			else if (ret == WG_RETZ)
 				return WG_RETZ;
 		} else {
 			int ret = pawncc_handle_standard_installation(platform);
 loop_ipcc2:
-			if (ret == -WG_RETN && wcfg.wg_sel_stat != 0)
+			if (ret == -WG_RETN && wgconfig.wg_sel_stat != 0)
 				goto loop_ipcc2;
 			else if (ret == WG_RETZ)
 				return WG_RETZ;
@@ -387,7 +387,7 @@ int wg_install_server(const char *platform)
 
 		if (strcmp(platform, "linux") != 0 && strcmp(platform, "windows") != 0) {
 				pr_error(stdout, "Unsupported platform: %s", platform);
-				if (wcfg.wg_sel_stat == WG_RETZ)
+				if (wgconfig.wg_sel_stat == WG_RETZ)
 					return WG_RETZ;
 				return -WG_RETN;
 		}
@@ -411,7 +411,7 @@ get_back:
 		}
 		if (!chosen) {
 			wg_free(__selection__);
-			if (wcfg.wg_sel_stat == WG_RETZ)
+			if (wgconfig.wg_sel_stat == WG_RETZ)
 				return WG_RETZ;
 			pr_error(stdout, "Invalid selection");
 			goto get_back;

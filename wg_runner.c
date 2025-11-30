@@ -15,18 +15,29 @@
 #include "wg_compiler.h"
 #include "wg_runner.h"
 
-int unit_handle_sigint_status = 0;
-FILE *config_in = NULL, *config_out = NULL;
-cJSON *cJSON_server_root = NULL, *pawn = NULL, *cJSON_MS_Obj = NULL;
-char *cJSON_Data = NULL, *cjsON_PrInted_data = NULL;
+int                 handle_sigint   = 0;
+FILE                *               config_in = NULL;
+FILE                *               config_out = NULL;
+cJSON               *               cJSON_server_root = NULL;
+cJSON               *               pawn = NULL;
+cJSON               *               cJSON_MS_Obj = NULL;
+char                *               cJSON_Data = NULL;
+char                *               cjsON_PrInted_data = NULL;
+char                                r_command[WG_MAX_PATH + WG_PATH_MAX * 2];
 
-void unit_handle_sigint(int sig) {
+void try_cleanup_server(void) {
+        handle_sigint = 1;
         wg_stop_server_tasks();
         restore_server_config();
-        unit_handle_sigint_status = 1;
+        return;
+}
+
+void unit_handle_sigint(int sig) {
+        try_cleanup_server();
         struct timespec stop_all_timer;
         clock_gettime(CLOCK_MONOTONIC, &stop_all_timer);
-        FILE *crashdetect_file = fopen(".watchdogs/crashdetect", "w");
+        FILE *crashdetect_file = NULL;
+        crashdetect_file = fopen(".watchdogs/crashdetect", "w");
         if (crashdetect_file != NULL)
             fclose(crashdetect_file);
 #ifdef __ANDROID__
@@ -155,7 +166,8 @@ void wg_server_crash_check(void) {
             }
             if (strfind(line_buf, "voice server running on port")) {
                 int _sampvoice_port;
-                scanf("%*[^v]voice server running on port %d", &_sampvoice_port);
+                if (scanf("%*[^v]voice server running on port %d", &_sampvoice_port) != WG_RETN)
+                    continue;
                 ++sampvoice_server_check;
                 sampvoice_port = (char *)&sampvoice_port;
             }
@@ -395,7 +407,8 @@ void wg_server_crash_check(void) {
             char *_p_sampvoice_port = NULL;
             while (fgets(line_buf, sizeof(line_buf), proc_f)) {
                 if (strfind(line_buf, "svport")) {
-                    scanf("sv_port %d", &_sampvoice_port);
+                    if (scanf("sv_port %d", &_sampvoice_port) != WG_RETN)
+                        break;
                     _p_sampvoice_port = (char *)&_sampvoice_port;
                     break;
                 }
@@ -510,472 +523,464 @@ skip:
 
 static int update_samp_config(const char *gamemode)
 {
-        FILE *config_in, *config_out;
-        char line[1024];
+    FILE *config_in, *config_out;
+    char line[0x400];
 
-        char size_config[WG_PATH_MAX];
-        wg_snprintf(size_config, sizeof(size_config), ".watchdogs/%s.bak", wgconfig.wg_toml_config);
+    char size_config[WG_PATH_MAX];
+    wg_snprintf(size_config, sizeof(size_config), ".watchdogs/%s.bak", wgconfig.wg_toml_config);
 
-        if (path_access(size_config))
-            remove(size_config);
+    if (path_access(size_config))
+        remove(size_config);
 
-        char size_mv[WG_MAX_PATH];
-        if (is_native_windows())
-            wg_snprintf(size_mv, sizeof(size_mv),
-                        "ren %s %s",
-                        wgconfig.wg_toml_config,
-                        size_config);
-        else
-            wg_snprintf(size_mv, sizeof(size_mv),
-                        "mv -f %s %s",
-                        wgconfig.wg_toml_config,
-                        size_config);
+    if (is_native_windows())
+        wg_snprintf(r_command, sizeof(r_command),
+            "ren %s %s",
+            wgconfig.wg_toml_config,
+            size_config);
+    else
+        wg_snprintf(r_command, sizeof(r_command),
+            "mv -f %s %s",
+            wgconfig.wg_toml_config,
+            size_config);
 
-        if (wg_run_command(size_mv) != 0) {
-                pr_error(stdout, "Failed to create backup file");
-                return -WG_RETN;
-        }
+    if (wg_run_command(r_command) != 0x0) {
+        pr_error(stdout, "Failed to create backup file");
+        return -WG_RETN;
+    }
 
-        config_in = fopen(size_config, "r");
-        if (!config_in) {
-                pr_error(stdout, "Failed to open backup config");
-                return -WG_RETN;
-        }
-        config_out = fopen(wgconfig.wg_toml_config, "w+");
-        if (!config_out) {
-                pr_error(stdout, "Failed to write new config");
-                fclose(config_out);
-                return -WG_RETN;
-        }
+    config_in = fopen(size_config, "r");
+    if (!config_in) {
+        pr_error(stdout, "Failed to open backup config");
+        return -WG_RETN;
+    }
+    config_out = fopen(wgconfig.wg_toml_config, "w+");
+    if (!config_out) {
+        pr_error(stdout, "Failed to write new config");
+        return -WG_RETN;
+    }
 
-        char put_gamemode[WG_PATH_MAX + 26];
-        wg_snprintf(put_gamemode, sizeof(put_gamemode), "%s", gamemode);
-        char *f_EXT = strrchr(put_gamemode, '.');
-        if (f_EXT) *f_EXT = '\0';
-        gamemode = put_gamemode;
+    char put_gamemode[WG_PATH_MAX + 0x1A];
+    wg_snprintf(put_gamemode, sizeof(put_gamemode), "%s", gamemode);
+    char *ext = strrchr(put_gamemode, '.');
+    if (ext) *ext = '\0';
+    gamemode = put_gamemode;
 
-        while (fgets(line, sizeof(line), config_in)) {
-              if (strfind(line, "gamemode0")) {
-                  char size_gamemode[WG_PATH_MAX * 2];
-                  wg_snprintf(size_gamemode, sizeof(size_gamemode),
-                      "gamemode0 %s\n", put_gamemode);
-                  fputs(size_gamemode, config_out);
-                  continue;
-              }
-              fputs(line, config_out);
-        }
+    while (fgets(line, sizeof(line), config_in)) {
+          if (strfind(line, "gamemode0")) {
+          char size_gamemode[WG_PATH_MAX * 0x2];
+          wg_snprintf(size_gamemode, sizeof(size_gamemode),
+              "gamemode0 %s\n", put_gamemode);
+          fputs(size_gamemode, config_out);
+          continue;
+          }
+          fputs(line, config_out);
+    }
 
-        fclose(config_in);
-        fclose(config_out);
+    fclose(config_in);
+    fclose(config_out);
 
-        return WG_RETN;
+    return WG_RETN;
 }
 
 void restore_server_config(void) {
-        char size_config[WG_PATH_MAX];
-        wg_snprintf(size_config, sizeof(size_config), ".watchdogs/%s.bak", wgconfig.wg_toml_config);
+    char size_config[WG_PATH_MAX];
+    wg_snprintf(size_config, sizeof(size_config), ".watchdogs/%s.bak", wgconfig.wg_toml_config);
 
-        if (path_access(size_config) == WG_RETZ)
-            goto restore_done;
+    if (path_access(size_config) == WG_RETZ)
+        goto restore_done;
 
-        char size_command[WG_PATH_MAX + WG_PATH_MAX + 26];
+    if (is_native_windows())
+        wg_snprintf(r_command, sizeof(r_command),
+        "if exist \"%s\" (del /f /q \"%s\" 2>nul || "
+        "rmdir /s /q \"%s\" 2>nul)",
+        wgconfig.wg_toml_config, wgconfig.wg_toml_config, wgconfig.wg_toml_config);
+    else
+        wg_snprintf(r_command, sizeof(r_command),
+        "rm -rf %s",
+        wgconfig.wg_toml_config);
 
-        if (is_native_windows())
-            wg_snprintf(size_command, sizeof(size_command),
-                "if exist \"%s\" (del /f /q \"%s\" 2>nul || "
-                "rmdir /s /q \"%s\" 2>nul)",
-                wgconfig.wg_toml_config, wgconfig.wg_toml_config, wgconfig.wg_toml_config);
-        else
-            wg_snprintf(size_command, sizeof(size_command),
-                "rm -rf %s",
-                wgconfig.wg_toml_config);
+    wg_run_command(r_command);
 
-        wg_run_command(size_command);
+    if (is_native_windows())
+        wg_snprintf(r_command, sizeof(r_command),
+            "ren %s %s",
+            size_config,
+            wgconfig.wg_toml_config);
+    else
+        wg_snprintf(r_command, sizeof(r_command),
+            "mv -f %s %s",
+            size_config,
+            wgconfig.wg_toml_config);
 
-        if (is_native_windows())
-            wg_snprintf(size_command, sizeof(size_command),
-                        "ren %s %s",
-                        size_config,
-                        wgconfig.wg_toml_config);
-        else
-            wg_snprintf(size_command, sizeof(size_command),
-                        "mv -f %s %s",
-                        size_config,
-                        wgconfig.wg_toml_config);
-
-        wg_run_command(size_command);
+    wg_run_command(r_command);
 
 restore_done:
-        return;
+    return;
 }
-
 void wg_run_samp_server(const char *gamemode, const char *server_bin)
 {
 #if defined (_DBG_PRINT)
-  pr_color(stdout, FCOLOUR_YELLOW, "-DEBUGGING ");
-        printf("[function: %s | "
-               "pretty function: %s | "
-               "line: %d | "
-               "file: %s | "
-               "date: %s | "
-               "time: %s | "
-               "timestamp: %s | "
-               "C standard: %ld | "
-               "C version: %s | "
-               "compiler version: %d | "
-               "architecture: %s]:\n",
-                __func__, __PRETTY_FUNCTION__,
-                __LINE__, __FILE__,
-                __DATE__, __TIME__,
-                __TIMESTAMP__,
-                __STDC_VERSION__,
-                __VERSION__,
-                __GNUC__,
+    pr_color(stdout, FCOLOUR_YELLOW, "-DEBUGGING ");
+    printf("[function: %s | "
+           "pretty function: %s | "
+           "line: %d | "
+           "file: %s | "
+           "date: %s | "
+           "time: %s | "
+           "timestamp: %s | "
+           "C standard: %ld | "
+           "C version: %s | "
+           "compiler version: %d | "
+           "architecture: %s]:\n",
+        __func__, __PRETTY_FUNCTION__,
+        __LINE__, __FILE__,
+        __DATE__, __TIME__,
+        __TIMESTAMP__,
+        __STDC_VERSION__,
+        __VERSION__,
+        __GNUC__,
 #ifdef __x86_64__
-                "x86_64");
+        "x86_64");
 #elif defined(__i386__)
-                "i386");
+        "i386");
 #elif defined(__arm__)
-                "ARM");
+        "ARM");
 #elif defined(__aarch64__)
-                "ARM64");
+        "ARM64");
 #else
-                "Unknown");
+        "Unknown");
 #endif
 #endif
-        if (strfind(wgconfig.wg_toml_config, ".json"))
-                return;
-
-        int ret = -WG_RETN;
-        char command[WG_PATH_MAX];
-
-        char put_gamemode[256];
-        char *f_EXT = strrchr(gamemode, '.');
-        if (f_EXT) {
-            size_t len = f_EXT - gamemode;
-            wg_snprintf(put_gamemode,
-                     sizeof(put_gamemode),
-                     "%.*s.amx",
-                     (int)len,
-                     gamemode);
-        } else {
-            wg_snprintf(put_gamemode,
-                     sizeof(put_gamemode),
-                     "%s.amx",
-                     gamemode);
-        }
-
-        gamemode = put_gamemode;
-
-        wg_sef_fdir_reset();
-        if (wg_sef_fdir(".", gamemode, NULL) == WG_RETZ) {
-                printf("Cannot locate gamemode: ");
-                pr_color(stdout, FCOLOUR_CYAN, "%s\n", gamemode);
-                chain_goto_main(NULL);
-        }
-
-        int ret_c = update_samp_config(gamemode);
-        if (ret_c == WG_RETZ ||
-            ret_c == -WG_RETN)
-            return;
-
-        CHMOD(server_bin, FILE_MODE);
-
-        struct sigaction sa;
-
-        sa.sa_handler = unit_handle_sigint;
-        sigemptyset(&sa.sa_mask);
-        sa.sa_flags = SA_RESTART;
-
-        if (sigaction(SIGINT, &sa, NULL) == -WG_RETN) {
-                perror("sigaction");
-                exit(EXIT_FAILURE);
-        }
-
-        time_t start, end;
-        double elapsed;
-
-        int ret_serv = 0;
-
-        int _wg_log_acces = -1;
-back_start:
-        start = time(NULL);
-#ifdef WG_WINDOWS
-        wg_snprintf(command, sizeof(command), "%s", server_bin);
-#else
-        wg_snprintf(command, sizeof(command), "./%s", server_bin);
-#endif
-        end = time(NULL);
-
-        ret = wg_run_command(command);
-        if (ret == WG_RETZ) {
-                if (!strcmp(wgconfig.wg_os_type, OS_SIGNAL_LINUX)) {
-                        printf("~ logging...\n");
-                        sleep(3);
-                        wg_display_server_logs(0);
-                }
-        } else {
-                pr_color(stdout, FCOLOUR_RED, "Server startup failed!\n");
-                elapsed = difftime(end, start);
-                if (elapsed <= 5.0 && ret_serv == WG_RETZ) {
-                    ret_serv = 1;
-                    printf("\ttry starting again..");
-                    _wg_log_acces = path_access(wgconfig.wg_toml_logs);
-                    if (_wg_log_acces)
-                      remove(wgconfig.wg_toml_logs);
-                    _wg_log_acces = path_access(wgconfig.wg_toml_logs);
-                    if (_wg_log_acces)
-                      remove(wgconfig.wg_toml_logs);
-                    goto back_start;
-                }
-        }
-
-        if (unit_handle_sigint_status == WG_RETZ)
-            raise(SIGINT);
-
+    if (strfind(wgconfig.wg_toml_config, ".json"))
         return;
+
+    int ret = -WG_RETN;
+
+    char put_gamemode[0x100];
+    char *ext = strrchr(gamemode, '.');
+    if (ext) {
+        size_t len = ext - gamemode;
+        wg_snprintf(put_gamemode,
+             sizeof(put_gamemode),
+             "%.*s.amx",
+             (int)len,
+             gamemode);
+    } else {
+        wg_snprintf(put_gamemode,
+             sizeof(put_gamemode),
+             "%s.amx",
+             gamemode);
+    }
+
+    gamemode = put_gamemode;
+
+    wg_sef_fdir_reset();
+    if (wg_sef_fdir(".", gamemode, NULL) == WG_RETZ) {
+        printf("Cannot locate gamemode: ");
+        pr_color(stdout, FCOLOUR_CYAN, "%s\n", gamemode);
+        chain_goto_main(NULL);
+    }
+
+    int ret_c = update_samp_config(gamemode);
+    if (ret_c == WG_RETZ ||
+        ret_c == -WG_RETN)
+        return;
+
+    CHMOD(server_bin, FILE_MODE);
+
+    struct sigaction sa;
+
+    sa.sa_handler = unit_handle_sigint;
+    sigemptyset(&sa.sa_mask);
+    sa.sa_flags = SA_RESTART;
+
+    if (sigaction(SIGINT, &sa, NULL) == -WG_RETN) {
+        perror("sigaction");
+        exit(EXIT_FAILURE);
+    }
+
+    time_t start, end;
+    double elapsed;
+
+    int ret_serv = 0x0;
+
+    int _wg_log_acces = -0x1;
+back_start:
+    start = time(NULL);
+#ifdef WG_WINDOWS
+    wg_snprintf(r_command, sizeof(r_command), "%s", server_bin);
+#else
+    wg_snprintf(r_command, sizeof(r_command), "./%s", server_bin);
+#endif
+    end = time(NULL);
+
+    ret = wg_run_command(r_command);
+    if (ret == WG_RETZ) {
+        if (!strcmp(wgconfig.wg_os_type, OS_SIGNAL_LINUX)) {
+            printf("~ logging...\n");
+            sleep(0x3);
+            wg_display_server_logs(0x0);
+        }
+    } else {
+        pr_color(stdout, FCOLOUR_RED, "Server startup failed!\n");
+        elapsed = difftime(end, start);
+        if (elapsed <= 5.0 && ret_serv == WG_RETZ) {
+            ret_serv = 0x1;
+            printf("\ttry starting again..");
+            _wg_log_acces = path_access(wgconfig.wg_toml_logs);
+            if (_wg_log_acces)
+                remove(wgconfig.wg_toml_logs);
+            _wg_log_acces = path_access(wgconfig.wg_toml_logs);
+            if (_wg_log_acces)
+                remove(wgconfig.wg_toml_logs);
+            goto back_start;
+        }
+    }
+
+    if (handle_sigint == WG_RETZ)
+        raise(SIGINT);
+
+    return;
 }
 
 static int update_omp_config(const char *gamemode)
 {
-        struct stat st;
-        char gamemode_buf[WG_PATH_MAX + 26];
-        char put_gamemode[WG_PATH_MAX + 26];
-        int ret = -WG_RETN;
+    struct stat st;
+    char gamemode_buf[WG_PATH_MAX + 0x1A];
+    char put_gamemode[WG_PATH_MAX + 0x1A];
+    int ret = -WG_RETN;
 
-        char size_config[WG_PATH_MAX];
-        wg_snprintf(size_config, sizeof(size_config), ".watchdogs/%s.bak", wgconfig.wg_toml_config);
+    char size_config[WG_PATH_MAX];
+    wg_snprintf(size_config, sizeof(size_config), ".watchdogs/%s.bak", wgconfig.wg_toml_config);
 
-        if (path_access(size_config))
-            remove(size_config);
+    if (path_access(size_config))
+        remove(size_config);
 
-        char size_mv[WG_MAX_PATH];
-        if (is_native_windows())
-            wg_snprintf(size_mv, sizeof(size_mv),
-                        "ren %s %s",
-                        wgconfig.wg_toml_config,
-                        size_config);
-        else
-            wg_snprintf(size_mv, sizeof(size_mv),
-                        "mv -f %s %s",
-                        wgconfig.wg_toml_config,
-                        size_config);
+    if (is_native_windows())
+        wg_snprintf(r_command, sizeof(r_command),
+            "ren %s %s",
+            wgconfig.wg_toml_config,
+            size_config);
+    else
+        wg_snprintf(r_command, sizeof(r_command),
+            "mv -f %s %s",
+            wgconfig.wg_toml_config,
+            size_config);
 
-        if (wg_run_command(size_mv) != 0) {
-                pr_error(stdout, "Failed to create backup file");
-                goto runner_end;
-        }
+    if (wg_run_command(r_command) != 0x0) {
+        pr_error(stdout, "Failed to create backup file");
+        goto runner_end;
+    }
 
-        if (stat(size_config, &st) != 0) {
-                pr_error(stdout, "Failed to get file status");
-                goto runner_end;
-        }
+    if (stat(size_config, &st) != 0x0) {
+        pr_error(stdout, "Failed to get file status");
+        goto runner_end;
+    }
 
-        config_in = fopen(size_config, "rb");
-        if (!config_in) {
-                pr_error(stdout, "Failed to open %s", size_config);
-                goto runner_end;
-        }
+    config_in = fopen(size_config, "rb");
+    if (!config_in) {
+        pr_error(stdout, "Failed to open %s", size_config);
+        goto runner_end;
+    }
 
-        cJSON_Data = wg_malloc(st.st_size + 1);
-        if (!cJSON_Data) {
-                pr_error(stdout, "Memory allocation failed");
-                goto runner_cleanup;
-        }
+    cJSON_Data = wg_malloc(st.st_size + 0x1);
+    if (!cJSON_Data) {
+        pr_error(stdout, "Memory allocation failed");
+        goto runner_cleanup;
+    }
 
-        size_t bytes_read;
-        bytes_read = fread(cJSON_Data, 1, st.st_size, config_in);
-        if (bytes_read != (size_t)st.st_size) {
-                pr_error(stdout, "Incomplete file read (%zu of %ld bytes)",
-                        bytes_read,
-                        st.st_size);
-                goto runner_cleanup;
-        }
+    size_t bytes_read;
+    bytes_read = fread(cJSON_Data, 0x1, st.st_size, config_in);
+    if (bytes_read != (size_t)st.st_size) {
+        pr_error(stdout, "Incomplete file read (%zu of %ld bytes)",
+            bytes_read,
+            st.st_size);
+        goto runner_cleanup;
+    }
 
-        cJSON_Data[st.st_size] = '\0';
-        fclose(config_in);
-        config_in = NULL;
+    cJSON_Data[st.st_size] = '\0';
+    fclose(config_in);
+    config_in = NULL;
 
-        cJSON_server_root = cJSON_Parse(cJSON_Data);
-        if (!cJSON_server_root) {
-                pr_error(stdout, "JSON parse error: %s", cJSON_GetErrorPtr());
-                goto runner_end;
-        }
+    cJSON_server_root = cJSON_Parse(cJSON_Data);
+    if (!cJSON_server_root) {
+        pr_error(stdout, "JSON parse error: %s", cJSON_GetErrorPtr());
+        goto runner_end;
+    }
 
-        pawn = cJSON_GetObjectItem(cJSON_server_root, "pawn");
-        if (!pawn) {
-                pr_error(stdout, "Missing 'pawn' section in config!");
-                goto runner_cleanup;
-        }
+    pawn = cJSON_GetObjectItem(cJSON_server_root, "pawn");
+    if (!pawn) {
+        pr_error(stdout, "Missing 'pawn' section in config!");
+        goto runner_cleanup;
+    }
 
-        wg_snprintf(put_gamemode, sizeof(put_gamemode), "%s", gamemode);
-        char *f_EXT = strrchr(put_gamemode, '.');
-        if (f_EXT) *f_EXT = '\0';
+    wg_snprintf(put_gamemode, sizeof(put_gamemode), "%s", gamemode);
+    char *ext = strrchr(put_gamemode, '.');
+    if (ext) *ext = '\0';
 
-        cJSON_DeleteItemFromObject(pawn, "cJSON_MS_Obj");
+    cJSON_DeleteItemFromObject(pawn, "cJSON_MS_Obj");
 
-        cJSON_MS_Obj = cJSON_CreateArray();
-        wg_snprintf(gamemode_buf, sizeof(gamemode_buf), "%s", put_gamemode);
-        cJSON_AddItemToArray(cJSON_MS_Obj, cJSON_CreateString(gamemode_buf));
-        cJSON_AddItemToObject(pawn, "cJSON_MS_Obj", cJSON_MS_Obj);
+    cJSON_MS_Obj = cJSON_CreateArray();
+    wg_snprintf(gamemode_buf, sizeof(gamemode_buf), "%s", put_gamemode);
+    cJSON_AddItemToArray(cJSON_MS_Obj, cJSON_CreateString(gamemode_buf));
+    cJSON_AddItemToObject(pawn, "cJSON_MS_Obj", cJSON_MS_Obj);
 
-        config_out = fopen(wgconfig.wg_toml_config, "w");
-        if (!config_out) {
-                pr_error(stdout, "Failed to write %s", wgconfig.wg_toml_config);
-                goto runner_end;
-        }
+    config_out = fopen(wgconfig.wg_toml_config, "w");
+    if (!config_out) {
+        pr_error(stdout, "Failed to write %s", wgconfig.wg_toml_config);
+        goto runner_end;
+    }
 
-        cjsON_PrInted_data = cJSON_Print(cJSON_server_root);
-        if (!cjsON_PrInted_data) {
-                pr_error(stdout, "Failed to print JSON");
-                goto runner_end;
-        }
+    cjsON_PrInted_data = cJSON_Print(cJSON_server_root);
+    if (!cjsON_PrInted_data) {
+        pr_error(stdout, "Failed to print JSON");
+        goto runner_end;
+    }
 
-        if (fputs(cjsON_PrInted_data, config_out) == EOF) {
-                pr_error(stdout, "Failed to write to %s", wgconfig.wg_toml_config);
-                goto runner_end;
-        }
+    if (fputs(cjsON_PrInted_data, config_out) == EOF) {
+        pr_error(stdout, "Failed to write to %s", wgconfig.wg_toml_config);
+        goto runner_end;
+    }
 
-        ret = WG_RETZ;
+    ret = WG_RETZ;
 
 runner_end:
-        ;
+    ;
 runner_cleanup:
-        if (config_out)
-                fclose(config_out);
-        if (config_in)
-                fclose(config_in);
-        if (cjsON_PrInted_data)
-                wg_free(cjsON_PrInted_data);
-        if (cJSON_server_root)
-                cJSON_Delete(cJSON_server_root);
-        if (cJSON_Data)
-                wg_free(cJSON_Data);
+    if (config_out)
+        fclose(config_out);
+    if (config_in)
+        fclose(config_in);
+    if (cjsON_PrInted_data)
+        wg_free(cjsON_PrInted_data);
+    if (cJSON_server_root)
+        cJSON_Delete(cJSON_server_root);
+    if (cJSON_Data)
+        wg_free(cJSON_Data);
 
-        return ret;
+    return ret;
 }
 
 void restore_omp_config(void) {
-        restore_server_config();
+    restore_server_config();
 }
 
 void wg_run_omp_server(const char *gamemode, const char *server_bin)
 {
 #if defined (_DBG_PRINT)
-        pr_color(stdout, FCOLOUR_YELLOW, "-DEBUGGING ");
-        printf("[function: %s | "
-               "pretty function: %s | "
-               "line: %d | "
-               "file: %s | "
-               "date: %s | "
-               "time: %s | "
-               "timestamp: %s | "
-               "C standard: %ld | "
-               "C version: %s | "
-               "compiler version: %d | "
-               "architecture: %s]:\n",
-                __func__, __PRETTY_FUNCTION__,
-                __LINE__, __FILE__,
-                __DATE__, __TIME__,
-                __TIMESTAMP__,
-                __STDC_VERSION__,
-                __VERSION__,
-                __GNUC__,
+    pr_color(stdout, FCOLOUR_YELLOW, "-DEBUGGING ");
+    printf("[function: %s | "
+           "pretty function: %s | "
+           "line: %d | "
+           "file: %s | "
+           "date: %s | "
+           "time: %s | "
+           "timestamp: %s | "
+           "C standard: %ld | "
+           "C version: %s | "
+           "compiler version: %d | "
+           "architecture: %s]:\n",
+        __func__, __PRETTY_FUNCTION__,
+        __LINE__, __FILE__,
+        __DATE__, __TIME__,
+        __TIMESTAMP__,
+        __STDC_VERSION__,
+        __VERSION__,
+        __GNUC__,
 #ifdef __x86_64__
-                "x86_64");
+        "x86_64");
 #elif defined(__i386__)
-                "i386");
+        "i386");
 #elif defined(__arm__)
-                "ARM");
+        "ARM");
 #elif defined(__aarch64__)
-                "ARM64");
+        "ARM64");
 #else
-                "Unknown");
+        "Unknown");
 #endif
 #endif
-        if (strfind(wgconfig.wg_toml_config, ".cfg"))
-                return;
-
-        int ret = -WG_RETN;
-        char command[WG_PATH_MAX];
-
-        char put_gamemode[256];
-        char *f_EXT = strrchr(gamemode, '.');
-        if (f_EXT) {
-            size_t len = f_EXT - gamemode;
-            wg_snprintf(put_gamemode,
-                        sizeof(put_gamemode),
-                        "%.*s.amx",
-                        (int)len,
-                        gamemode);
-        } else {
-            wg_snprintf(put_gamemode,
-                        sizeof(put_gamemode),
-                        "%s.amx",
-                        gamemode);
-        }
-
-        gamemode = put_gamemode;
-
-        wg_sef_fdir_reset();
-        if (wg_sef_fdir(".", gamemode, NULL) == WG_RETZ) {
-                printf("Cannot locate gamemode: ");
-                pr_color(stdout, FCOLOUR_CYAN, "%s\n", gamemode);
-                chain_goto_main(NULL);
-        }
-
-        int ret_c = update_omp_config(gamemode);
-        if (ret_c == WG_RETZ ||
-            ret_c == -WG_RETN)
-            return;
-
-        CHMOD(server_bin, FILE_MODE);
-
-        struct sigaction sa;
-
-        sa.sa_handler = unit_handle_sigint;
-        sigemptyset(&sa.sa_mask);
-        sa.sa_flags = SA_RESTART;
-
-        if (sigaction(SIGINT, &sa, NULL) == -WG_RETN) {
-                perror("sigaction");
-                exit(EXIT_FAILURE);
-        }
-
-        time_t start, end;
-        double elapsed;
-
-        int ret_serv = 0;
-
-        int _wg_log_acces = -1;
-back_start:
-        start = time(NULL);
-#ifdef WG_WINDOWS
-        wg_snprintf(command, sizeof(command), "%s", server_bin);
-#else
-        wg_snprintf(command, sizeof(command), "./%s", server_bin);
-#endif
-        end = time(NULL);
-
-        ret = wg_run_command(command);
-        if (ret != WG_RETZ) {
-                pr_color(stdout, FCOLOUR_RED, "Server startup failed!\n");
-                elapsed = difftime(end, start);
-                if (elapsed <= 5.0 && ret_serv == WG_RETZ) {
-                    ret_serv = 1;
-                    printf("\ttry starting again..");
-                    _wg_log_acces = path_access(wgconfig.wg_toml_logs);
-                    if (_wg_log_acces)
-                      remove(wgconfig.wg_toml_logs);
-                    _wg_log_acces = path_access(wgconfig.wg_toml_logs);
-                    if (_wg_log_acces)
-                      remove(wgconfig.wg_toml_logs);
-                    goto back_start;
-                }
-        }
-
-        if (unit_handle_sigint_status == WG_RETZ)
-            raise(SIGINT);
-
+    if (strfind(wgconfig.wg_toml_config, ".cfg"))
         return;
+
+    int ret = -WG_RETN;
+
+    char put_gamemode[0x100];
+    char *ext = strrchr(gamemode, '.');
+    if (ext) {
+        size_t len = ext - gamemode;
+        wg_snprintf(put_gamemode,
+            sizeof(put_gamemode),
+            "%.*s.amx",
+            (int)len,
+            gamemode);
+    } else {
+        wg_snprintf(put_gamemode,
+            sizeof(put_gamemode),
+            "%s.amx",
+            gamemode);
+    }
+
+    gamemode = put_gamemode;
+
+    wg_sef_fdir_reset();
+    if (wg_sef_fdir(".", gamemode, NULL) == WG_RETZ) {
+        printf("Cannot locate gamemode: ");
+        pr_color(stdout, FCOLOUR_CYAN, "%s\n", gamemode);
+        chain_goto_main(NULL);
+    }
+
+    int ret_c = update_omp_config(gamemode);
+    if (ret_c == WG_RETZ ||
+        ret_c == -WG_RETN)
+        return;
+
+    CHMOD(server_bin, FILE_MODE);
+
+    struct sigaction sa;
+
+    sa.sa_handler = unit_handle_sigint;
+    sigemptyset(&sa.sa_mask);
+    sa.sa_flags = SA_RESTART;
+
+    if (sigaction(SIGINT, &sa, NULL) == -WG_RETN) {
+        perror("sigaction");
+        exit(EXIT_FAILURE);
+    }
+
+    time_t start, end;
+    double elapsed;
+
+    int ret_serv = 0x0;
+
+    int _wg_log_acces = -0x1;
+back_start:
+    start = time(NULL);
+#ifdef WG_WINDOWS
+    wg_snprintf(r_command, sizeof(r_command), "%s", server_bin);
+#else
+    wg_snprintf(r_command, sizeof(r_command), "./%s", server_bin);
+#endif
+    end = time(NULL);
+
+    ret = wg_run_command(r_command);
+    if (ret != WG_RETZ) {
+        pr_color(stdout, FCOLOUR_RED, "Server startup failed!\n");
+        elapsed = difftime(end, start);
+        if (elapsed <= 5.0 && ret_serv == WG_RETZ) {
+            ret_serv = 0x1;
+            printf("\ttry starting again..");
+            _wg_log_acces = path_access(wgconfig.wg_toml_logs);
+            if (_wg_log_acces)
+                remove(wgconfig.wg_toml_logs);
+            _wg_log_acces = path_access(wgconfig.wg_toml_logs);
+            if (_wg_log_acces)
+                remove(wgconfig.wg_toml_logs);
+            goto back_start;
+        }
+    }
+
+    if (handle_sigint)
+        raise(SIGINT);
+
+    return;
 }

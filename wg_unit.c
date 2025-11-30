@@ -51,7 +51,7 @@ void chain_main_data(void) {
         wg_stop_server_tasks();
         wg_u_history();
         wgconfig.wg_sel_stat = 0;
-        unit_handle_sigint_status = 0;
+        handle_sigint = 0;
 #if defined(_DBG_PRINT)
         pr_color(stdout, FCOLOUR_YELLOW, "-DEBUGGING ");
         printf("[function: %s | "
@@ -242,7 +242,7 @@ _reexecute_command:
             } else if (strcmp(args, "tracker") == WG_RETZ) { println(stdout, "tracker: account tracking. | Usage: \"tracker\" | [<args>]");
             } else {
                 printf("wd-help can't found for: '");
-                printf_color(stdout, FCOLOUR_YELLOW, "%s", args);
+                printf_colour(stdout, FCOLOUR_YELLOW, "%s", args);
                 printf("'\n");
             }
             goto chain_done;
@@ -794,7 +794,7 @@ back_start:
                             }
                         }
 
-                        if (unit_handle_sigint_status == WG_RETZ)
+                        if (handle_sigint == WG_RETZ)
                             raise(SIGINT);
 
                         printf("\x1b[32m==> create debugging runner?\x1b[0m\n");
@@ -864,7 +864,7 @@ back_start2:
                             }
                         }
 
-                        if (unit_handle_sigint_status == WG_RETZ) {
+                        if (handle_sigint == WG_RETZ) {
                             raise(SIGINT);
                         }
 
@@ -1164,6 +1164,16 @@ wanion_retrying:
                                 p++;
                                 continue;
                             }
+                            if (strncmp(p, "~~", 2) == WG_RETZ) {
+                                printf("\033[9m");
+                                p += 2;
+                                continue;
+                            }
+                            if (strncmp(p, "==", 2) == WG_RETZ) {
+                                printf("\033[43m");
+                                p += 2;
+                                continue;
+                            }
                             if (p == response_text || *(p - 1) == '\n') {
                                 if (*p == '#' || memcmp(p, "##", 2) == 0 ||
                                     memcmp(p, "###", 3) == 0) {
@@ -1229,6 +1239,16 @@ wanion_retrying:
                                             in_italic = !in_italic;
                                             printf(in_italic ? "\033[3m" : "\033[0m");
                                             p++;
+                                            continue;
+                                        }
+                                        if (strncmp(p, "~~", 2) == WG_RETZ) {
+                                            printf("\033[9m");
+                                            p += 2;
+                                            continue;
+                                        }
+                                        if (strncmp(p, "==", 2) == WG_RETZ) {
+                                            printf("\033[43m");
+                                            p += 2;
                                             continue;
                                         }
                                         if (p == text->valuestring || *(p - 1) == '\n') {

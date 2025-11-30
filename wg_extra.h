@@ -100,14 +100,14 @@ typedef struct {
 int portable_stat(const char *path, portable_stat_t *out);
 void cause_compiler_expl(const char *log_file, const char *pawn_output, int debug);
 
-#define pr_color printf_color
+#define pr_color printf_colour
 #define pr_info printf_info
 #define pr_warning printf_warning
 #define pr_error printf_error
 #define pr_crit printf_crit
 
 void println(FILE *stream, const char* format, ...);
-void printf_color(FILE *stream, const char *color, const char *format, ...);
+void printf_colour(FILE *stream, const char *color, const char *format, ...);
 void printf_info(FILE *stream, const char *format, ...);
 void printf_warning(FILE *stream, const char *format, ...);
 void printf_error(FILE *stream, const char *format, ...);

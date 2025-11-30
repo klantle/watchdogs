@@ -30,7 +30,7 @@ static inline int _sigaction_stub(int sig, const struct sigaction *act, struct s
 }
 #endif
 #endif
-extern int unit_handle_sigint_status;
+extern int handle_sigint;
 void unit_handle_sigint(int sig);
 void wg_stop_server_tasks(void);
 void wg_display_server_logs(int ret);

@@ -297,7 +297,7 @@ __asm__ volatile (
 					reg_command);
 	    if (reg_command[0] == '\0')
 	    		return WG_RETZ;
-	    return system(size_command);
+	    return wg_run_command(size_command);
 }
 
 int is_termux_environment(void)
@@ -1115,9 +1115,9 @@ static void wg_generate_toml_content(FILE *file, const char *wg_os_type,
 {
 		int first_item = 1;
 		if (sef_path[0]) {
-			char *f_EXT = strrchr(sef_path, '.');
-			if (f_EXT)
-					*f_EXT = '\0';
+			char *ext = strrchr(sef_path, '.');
+			if (ext)
+					*ext = '\0';
 		}
 		char *p;
 		for (p = sef_path; *p; p++) {

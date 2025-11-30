@@ -57,20 +57,6 @@
 # define CHMOD(wx, wy) _chmod(wx, wy)
 # define FILE_MODE _S_IREAD | _S_IWRITE
 # define getcwd _getcwd
-# define usleep(mc) { \
-    long ms = (mc) / 1000; \
-    long us = (mc) % 1000; \
-    if (ms < 1) ms = 1; \
-    Sleep(ms); \
-    if (us > 0) { \
-        LARGE_INTEGER frequency, start, end; \
-        QueryPerformanceFrequency(&frequency); \
-        QueryPerformanceCounter(&start); \
-        do { \
-            QueryPerformanceCounter(&end); \
-        } while ((end.QuadPart - start.QuadPart) * 1000000 / frequency.QuadPart < us); \
-    } \
-}
 # else
 # include <sys/utsname.h>
 # include <sys/wait.h>
@@ -113,11 +99,7 @@ enum {
 # define DT_WHT 14
 # endif
 
-# ifdef PATH_MAX
-# define WG_PATH_MAX PATH_MAX
-# else
 # define WG_PATH_MAX 260
-# endif
 # define WG_MAX_PATH 4096
 
 enum {
@@ -163,30 +145,31 @@ enum {
 })
 
 typedef struct {
-    char *wg_toml_os_type;
-    char *wg_toml_binary;
-    char *wg_toml_config;
-    char *wg_toml_logs;
-    int wg_ipawncc;
-    int wg_idepends;
-    char *wg_os_type;
-    int wg_sel_stat;
-    char *wg_is_samp;
-    char *wg_is_omp;
-    char *wg_ptr_samp;
-    char *wg_ptr_omp;
-    int wg_compiler_stat;
+    char * wg_toml_os_type;
+    char * wg_toml_binary;
+    char * wg_toml_config;
+    char * wg_toml_logs;
+    int    wg_ipawncc;
+    int    wg_idepends;
+    char * wg_os_type;
+    int    wg_sel_stat;
+    char * wg_is_samp;
+    char * wg_is_omp;
+    char * wg_ptr_samp;
+    char * wg_ptr_omp;
+    int    wg_compiler_stat;
     size_t wg_sef_count;
-    char wg_sef_found_list \
-        [MAX_SEF_ENTRIES][MAX_SEF_PATH_SIZE];
-    char *wg_toml_aio_opt;
-    char *wg_toml_aio_repo;
-    char *wg_toml_gm_input;
-    char *wg_toml_gm_output;
-    char *wg_toml_github_tokens;
-    char *wg_toml_key_ai;
-    char *wg_toml_chatbot_ai;
-    char *wg_toml_models_ai;
+    char   wg_sef_found_list \
+            [MAX_SEF_ENTRIES] \
+            [MAX_SEF_PATH_SIZE];
+    char * wg_toml_aio_opt;
+    char * wg_toml_aio_repo;
+    char * wg_toml_gm_input;
+    char * wg_toml_gm_output;
+    char * wg_toml_github_tokens;
+    char * wg_toml_key_ai;
+    char * wg_toml_chatbot_ai;
+    char * wg_toml_models_ai;
 } WatchdogConfig;
 
 extern WatchdogConfig wgconfig;
@@ -218,10 +201,7 @@ bool wg_strcase(const char *text, const char *pattern);
 bool strfind(const char *text, const char *pattern);
 char* strreplace(const char *source, const char *old_sub, const char *new_sub);
 void wg_escape_quotes(char *dest, size_t size, const char *src);
-extern const char* wg_find_near_command(
-    const char *ptr_command, const char *__commands[],
-    size_t num_cmds, int *out_distance
-);
+extern const char* wg_find_near_command(const char *ptr_command, const char *__commands[], size_t num_cmds, int *out_distance);
 int kill_process(const char *name);
 int dir_exists(const char *path);
 int path_exists(const char *path);

@@ -14,10 +14,10 @@
 
 static int arch_copy_data(struct archive *ar, struct archive *aw)
 {
-	int ret;
-	const void *buffer;
 	size_t size;
 	la_int64_t offset;
+	int ret = -WG_RETW;
+	const void *buffer;
 
 	while (true) {
 		ret = archive_read_data_block(ar, &buffer, &size, &offset);
@@ -79,21 +79,21 @@ int wg_extract_tar(const char *tar_path, const char *entry_dest) {
 		const char *entry_path = archive_entry_pathname(entry);
 
 		static int extract_notice = 0;
-		static int always_extract_notice = 0;
+		static int notice_extracting = 0;
 		if (extract_notice == WG_RETZ) {
 			extract_notice = 1;
 			printf("\x1b[32m==> create debug extract archive?\x1b[0m\n");
 			char *debug_extract = readline("   answer [y/n]: ");
 			if (debug_extract) {
 				if (debug_extract[0] == 'Y' || debug_extract[0] == 'y') {
-					always_extract_notice = 1;
+					notice_extracting = 1;
 					printf(" * Extracting: %s\n", entry_path);
 					fflush(stdout);
 				}
 			}
 			wg_free(debug_extract);
 		}
-		if (always_extract_notice) {
+		if (notice_extracting) {
 			printf(" * Extracting: %s\n", entry_path);
 			fflush(stdout);
 		}
@@ -134,7 +134,9 @@ int wg_extract_tar(const char *tar_path, const char *entry_dest) {
 static void build_extraction_path(const char *entry_dest, const char *entry_path,
 								  char *out_path, size_t out_size)
 {
-	if (!entry_dest || !strcmp(entry_dest, ".")|| *entry_dest == '\0') {
+	if (!entry_dest ||
+		!strcmp(entry_dest, ".")||
+		*entry_dest == '\0') {
 		wg_snprintf(out_path, out_size, "%s", entry_path);
 	} else {
 		if (!strncmp(entry_path, entry_dest, strlen(entry_dest))) {
@@ -212,21 +214,21 @@ int wg_extract_zip(const char *zip_file, const char *entry_dest)
 		const char *entry_path = archive_entry_pathname(item);
 
 		static int extract_notice = 0;
-		static int always_extract_notice = 0;
+		static int notice_extracting = 0;
 		if (extract_notice == WG_RETZ) {
 			extract_notice = 1;
 			printf("\x1b[32m==> create debug extract archive?\x1b[0m\n");
 			char *debug_extract = readline("   answer [y/n]: ");
 			if (debug_extract) {
 				if (debug_extract[0] == 'Y' || debug_extract[0] == 'y') {
-					always_extract_notice = 1;
+					notice_extracting = 1;
 					printf(" * Extracting: %s\n", entry_path);
 					fflush(stdout);
 				}
 			}
 			wg_free(debug_extract);
 		}
-		if (always_extract_notice) {
+		if (notice_extracting) {
 			printf(" * Extracting: %s\n", entry_path);
 			fflush(stdout);
 		}
@@ -298,9 +300,9 @@ void wg_extract_archive(const char *filename)
 		char size_filename[WG_PATH_MAX];
 		wg_snprintf(size_filename, sizeof(size_filename), "%s", filename);
 		if (strstr(size_filename, ".tar.gz")) {
-			char *f_EXT = strstr(size_filename, ".tar.gz");
-			if (f_EXT)
-				*f_EXT = '\0';
+			char *ext = strstr(size_filename, ".tar.gz");
+			if (ext)
+				*ext = '\0';
 		}
 		wg_extract_tar(filename, size_filename);
 	} else if (strstr(filename, ".tar")) {

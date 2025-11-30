@@ -37,27 +37,17 @@
 
 ## Introduction
 
-## Wanion - A.I on Watchdogs
-![img](https://raw.githubusercontent.com/klantle/watchdogs/refs/heads/dev/__WANION.png)
-
-## "Inspired from XXX"
 > This project started from my personal curiosity a few years back about why pawncc.exe always closed when opened and didn't output any GUI. That curiosity led to a simple discovery through experiments of commanding it (pawncc.exe) from behind the shell.
-- Watchdogs ecosystem is partly inspired by the Next.js framework.
-
-![img](https://raw.githubusercontent.com/klantle/watchdogs/refs/heads/dev/__ACTORIDE.png)
 
 ## Supported Platforms
 - [x] Linux (Debian/Ubuntu based distributions)
-- [x] Windows (MSYS2, WSL, or Docker)
-- [x] macOS (via Docker)
-- [x] Android (via Termux)
-- [x] Github Actions/VPS
-
-## Supported Architectures
-- [x] Qualcomm Snapdragon
-- [x] MediaTek
-- [x] Intel
-- [x] AMD
+- [x] Windows ([MSYS2](https://www.msys2.org/), [WSL](https://github.com/microsoft/WSL), or [Docker](https://www.docker.com/))
+- [x] macOS (via [Docker](https://www.docker.com/))
+- [x] Android (via [Termux](https://github.com/termux/termux-app/releases))
+- [x] [Virtual Private Server](https://en.wikipedia.org/wiki/Virtual_private_server)
+- [x] [Pterodactyl Egg](https://pterodactyl.io/community/config/eggs/creating_a_custom_egg.html)
+- [x] [GitHub Actions](https://github.com/features/actions)
+- [x] [GitHub Codespaces](https://github.com/features/codespaces)
 
 ## Roadmap
 | File              | Description                                                                                           |
@@ -513,27 +503,40 @@ Default (if in root directory):
 ```bash
 alias watch='./watchdogs'
 ```
-
 ## Compiler Reference
 
-* **Historical Background of Pawn Code**
-Pawn originated in the early 1990s as a small, fast, and embeddable scripting language developed by **ITB CompuPhase**, primarily by **Frank Peelen** and **Johan Bosman**. Its design was inspired by C but with simpler syntax and a lightweight virtual machine that executes *Abstract Machine eXecutable (.amx)* bytecode.  
-Initially called **Small**, the language evolved into **Pawn** around 1998, when it became part of CompuPhase’s toolset for embedded systems and game engines. Its purpose was to allow rapid scripting within constrained environments, where resources like memory and processing power were limited.  
-Later, the **SA-MP (San Andreas Multiplayer)** community adopted Pawn as its scripting backbone due to its lightweight structure and flexibility. Over time, community forks like **PawnCC (PCC)** emerged to modernize the compiler, add better platform support (Windows/Linux/macOS), UTF-8 encoding, path handling, and maintain active development after CompuPhase’s version became static.
-<br>
+### Historical Background of Pawn Code
 
-* **Pawncc/PawnCC/Pawn Code/Pawno/Qawno**
-<br>Pawncc is essentially an extension for converting .pwn files into .amx files (a converter). The primary language for SA-MP/Open.MP is [Pawn Code](https://www.compuphase.com/pawn/pawn.htm), and pawno/qawno are Pawn Editors designed to facilitate the integration of Pawncc itself. PawnCC refers to a modified version of Pawncc from pawn-lang - https://github.com/pawn-lang/compiler, which means Pawn Community Compiler (PawnCC or PCC).
-<br>
+Pawn is a scripting language system consisting of a compiler and an abstract machine for building and running programs in the Pawn language. The Pawn system is copyright (c) ITB CompuPhase, 1997-2017.
 
-* **Path Separator**
-<br>You need the -Z+ option if it exists to support specific paths with `\` on Linux and `/` on Windows for cross-platform compatibility. https://github.com/pawn-lang/compiler/wiki/Compatibility-mode
-<br>
+This work is based in part on the "Small C Compiler" by Ron Cain and James E. Hendrix, as published in the book "Dr. Dobb's Toolbook of C", Brady Books, 1986.
 
-* **Include Path**
-<br>There may be instances where the -i"path/" option does not reliably detect include files located in subdirectories within the specified path. To address this, Watchdogs implements its own detection mechanism to recursively scan and add all folders within pawno-qawno/include and gamemodes/.
-<br>By default, Watchdogs disables the automatic `-i` flag for folders under `gamemodes/` or `pawno-qawno/include/` because the compiler can still handle includes correctly even if the flag is not explicitly set. Users can manually enable it by adding a trailing / to the target folder, allowing the compiler to automatically include all subdirectories under that path.
-<br><br>
+**Key Contributors:**
+- Ron Cain and James E. Hendrix: Original Small C Compiler (public domain)
+- Marc Peter: Assembler abstract machine and JIT compiler (BSD-style license)
+- G.W.M. Vissers: NASM port of JIT for Linux/Unix
+- Hongli Lai: Binreloc module (public domain)
+- Aaron Voisine: ezXML library (MIT license)
+- David "Bailopan" Anderson: Bug fixes and memory file module
+- Greg Garner: C++ compilation and floating-point support
+- Dieter Neubauer: 16-bit version support
+- Robert Daniels: ucLinux and Big Endian portability
+- Frank Condello: macOS (CFM Carbon) port
+
+### Pawncc, Pawno, and Qawno
+
+**Pawncc** is a compiler that converts `.pwn` files into `.amx` files. The primary language for SA-MP/Open.MP is [Pawn Code](https://www.compuphase.com/pawn/pawn.htm), with **Pawno** and **Qawno** serving as integrated development editors.
+
+**PawnCC** (Pawn Community Compiler) refers to a community-maintained version available at https://github.com/pawn-lang/compiler.
+
+### Path Separator Compatibility
+
+Use the `-Z+` option to support cross-platform paths with `\` on Linux and `/` on Windows. See [Compatibility mode](https://github.com/pawn-lang/compiler/wiki/Compatibility-mode) for details.
+
+### Include Path Detection
+
+Watchdogs implements recursive detection for include files in subdirectories, as the `-i` flag may not reliably detect nested includes. By default, automatic `-i` flags are disabled for `gamemodes/` and `pawno-qawno/include/` since the compiler handles includes correctly without them. To enable recursive inclusion, append `/` to the target folder path.
+
 
 ### Example Usage
 
@@ -542,22 +545,21 @@ pawncc "input" -o"output.amx" -i"include/"
 ```
 
 ### VSCode Tasks
-
 ```json
 {
   "version": "2.0.0",
   "tasks": [
     {
-      "label": "Compile Pawn Script",
+      "label": "compiler tasks",
       "type": "shell",
       "command": "${workspaceFolder}/pawno/pawncc.exe",
       "args": [
         "${file}",
         "-o${fileDirname}/${fileBasenameNoExtension}.amx",
-        "-ipawno/include/",
-        "-igamemodes/",
-        "-iinclude/",
-        "-d2"
+        "-i pawno/include/",
+        "-i gamemodes/",
+        "-i include/",
+        "-d 2"
       ],
       "group": {
         "kind": "build",

@@ -70,8 +70,16 @@ int wg_run_compiler(const char *args, const char *compile_args,  const char *sec
         STARTUPINFO si = { sizeof(si) };
         SECURITY_ATTRIBUTES sa = { sizeof(sa) };
 #endif
-        struct timespec start = {0}, end = { 0 };
+        struct timespec start = {0},
+                        end = { 0 };
         double compiler_dur;
+
+        const char* compiler_args[] = {
+            second_arg, four_arg,
+            five_arg, six_arg,
+            seven_arg, eight_arg,
+            nine_arg
+        };
 
         FILE *proc_file;
         char size_log[WG_MAX_PATH * 4];
@@ -93,13 +101,6 @@ int wg_run_compiler(const char *args, const char *compile_args,  const char *sec
         int compiler_has_clean = 0, compiler_has_assembler = 0;
         int compiler_has_recursion = 0, compiler_has_verbose = 0;
         int compiler_has_encoding = 0;
-
-        const char* compiler_args[] = {
-            second_arg, four_arg,
-            five_arg, six_arg,
-            seven_arg, eight_arg,
-            nine_arg
-        };
 
         const char *ptr_pawncc = NULL;
         if (!strcmp(wgconfig.wg_os_type, OS_SIGNAL_WINDOWS))
@@ -145,8 +146,7 @@ int wg_run_compiler(const char *args, const char *compile_args,  const char *sec
                 fclose(proc_f);
             }
 
-            if (!wg_toml_config)
-            {
+            if (!wg_toml_config) {
                 pr_error(stdout, "parsing TOML: %s", error_buffer);
                 goto compiler_end;
             }
@@ -283,37 +283,40 @@ not_valid_flag_options:
                         wgconfig.wg_toml_aio_opt = strdup("");
                     }
                 }
+                if (compiler_has_debug && compiler_debugging) {
+                    size_t memm_for = size_debug_memm / size_debug_memm_zero;
+                    for (int i = 0; i < memm_for; i++) {
+                        const char *memm_saving_target = debug_memm[i];
+                        size_t size_memm_saving_targetion = strlen(memm_saving_target);
 
-                if (compiler_has_debug != 0 && compiler_debugging != 0)
-                    {
-                        size_t memm_for = size_debug_memm / size_debug_memm_zero;
-                        for (int i = 0; i < memm_for; i++) {
-                            const char *memm_saving_target = debug_memm[i];
-                            size_t size_memm_saving_targetion = strlen(memm_saving_target);
-                            while ((fetch_string_pos = strstr(wgconfig.wg_toml_aio_opt, memm_saving_target)) != NULL)
-                                memmove(fetch_string_pos,
-                                    fetch_string_pos + size_memm_saving_targetion,
-                                    strlen(fetch_string_pos + size_memm_saving_targetion) + 1);
-                        }
+                        while ((fetch_string_pos = strstr(wgconfig.wg_toml_aio_opt,
+                                          memm_saving_target)) != NULL)
+                            memmove(fetch_string_pos,
+                                fetch_string_pos + size_memm_saving_targetion,
+                                strlen(fetch_string_pos + size_memm_saving_targetion) + 1);
                     }
+                }
 
-                if (compiler_has_debug) strcat(compiler_extra_options, " -d2 ");
-                if (compiler_has_assembler) strcat(compiler_extra_options, " -a ");
-                if (compiler_has_recursion) strcat(compiler_extra_options, " -R+ ");
-                if (compiler_has_verbose) strcat(compiler_extra_options, " -v2 ");
-                if (compiler_has_encoding) strcat(compiler_extra_options, " -C+ ");
+                if (compiler_has_debug)
+                    strcat(compiler_extra_options, " -d2 ");
+                if (compiler_has_assembler)
+                    strcat(compiler_extra_options, " -a ");
+                if (compiler_has_recursion)
+                    strcat(compiler_extra_options, " -R+ ");
+                if (compiler_has_verbose)
+                    strcat(compiler_extra_options, " -v2 ");
+                if (compiler_has_encoding)
+                    strcat(compiler_extra_options, " -C+ ");
 
                 if (strlen(compiler_extra_options) > 0) {
-                    size_t current_len, extra_opt_len;
-                    current_len = strlen(wgconfig.wg_toml_aio_opt);
-                    extra_opt_len = strlen(compiler_extra_options);
+                    size_t current_len = strlen(wgconfig.wg_toml_aio_opt);
+                    size_t extra_opt_len = strlen(compiler_extra_options);
 
-                    if (current_len + extra_opt_len < sizeof(wgconfig.wg_toml_aio_opt)) {
+                    if (current_len + extra_opt_len < sizeof(wgconfig.wg_toml_aio_opt))
                         strcat(wgconfig.wg_toml_aio_opt, compiler_extra_options);
-                    } else {
+                    else
                         strncat(wgconfig.wg_toml_aio_opt, compiler_extra_options,
-                                sizeof(wgconfig.wg_toml_aio_opt) - current_len - 1);
-                    }
+                            sizeof(wgconfig.wg_toml_aio_opt) - current_len - 1);
                 }
 
                 toml_array_t *toml_include_path = toml_array_in(wg_compiler, "include_path");
@@ -540,7 +543,7 @@ not_valid_flag_options:
                         pr_error(stdout, "posix_spawn failed: %s", strerror(process_spawn_result));
                     }
 #endif
-                    char size_container_output[WG_PATH_MAX + 128];
+                    char size_container_output[WG_PATH_MAX * 2];
                     wg_snprintf(size_container_output,
                         sizeof(size_container_output), "%s", wgconfig.wg_toml_gm_output);
                     if (path_exists(".watchdogs/compiler.log")) {
@@ -755,13 +758,13 @@ compiler_done:
                     {
                         char __sef_path_sz[WG_PATH_MAX];
                         wg_snprintf(__sef_path_sz, sizeof(__sef_path_sz), "%s", wg_compiler_input_gamemode_path);
-                        char *f_EXT = strrchr(__sef_path_sz, '.');
-                        if (f_EXT)
-                            *f_EXT = '\0';
+                        char *ext = strrchr(__sef_path_sz, '.');
+                        if (ext)
+                            *ext = '\0';
 
                         wg_snprintf(ptr_io->container_output, sizeof(ptr_io->container_output), "%s", __sef_path_sz);
 
-                        char size_container_output[WG_PATH_MAX + 128];
+                        char size_container_output[WG_MAX_PATH];
                         wg_snprintf(size_container_output, sizeof(size_container_output), "%s.amx", ptr_io->container_output);
 
 #ifdef WG_WINDOWS

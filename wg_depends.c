@@ -14,11 +14,17 @@
 #include "wg_unit.h"
 #include "wg_depends.h"
 
-char working[WG_PATH_MAX * 2];
-char *tag_pointer, *path, *first_slash;
-char *user, *repo_slash, *repo, *git_ext;
-char cmd[WG_MAX_PATH * 4], rm_cmd[WG_PATH_MAX];
-char *depends_filename, *extension;
+char					working		[ WG_PATH_MAX * 2 ];
+char					d_command	[ WG_MAX_PATH * 4 ];
+char					*			tag;
+char					*			path;
+char					*			path_slash;
+char					*			user;
+char					*			repo;
+char					*			repo_slash;
+char					*			git_dir;
+char					*			depends_filename;
+char					*			extension;
 
 void dep_sym_convert (char *path)
 {
@@ -255,10 +261,10 @@ dep_parse_repo (const char *input, struct dep_repo_info *__deps_data)
 		wg_strncpy(working, input, sizeof(working) - 1);
 		working[sizeof(working) - 1] = '\0';
 
-		tag_pointer = strrchr(working, ':');
-		if (tag_pointer) {
-			*tag_pointer = '\0';
-			wg_strncpy(__deps_data->tag, tag_pointer + 1, sizeof(__deps_data->tag) - 1);
+		tag = strrchr(working, ':');
+		if (tag) {
+			*tag = '\0';
+			wg_strncpy(__deps_data->tag, tag + 1, sizeof(__deps_data->tag) - 1);
 
 			if (!strcmp(__deps_data->tag, "latest")) {
 				printf("latest tags ");
@@ -279,12 +285,12 @@ dep_parse_repo (const char *input, struct dep_repo_info *__deps_data)
 			wg_strcpy(__deps_data->domain, "github.com");
 			path += 7;
 		} else {
-			first_slash = strchr(path, __PATH_CHR_SEP_LINUX);
-			if (first_slash && strchr(path, '.') && strchr(path, '.') < first_slash) {
+			path_slash = strchr(path, __PATH_CHR_SEP_LINUX);
+			if (path_slash && strchr(path, '.') && strchr(path, '.') < path_slash) {
 				char domain[128];
 
-				wg_strncpy(domain, path, first_slash - path);
-				domain[first_slash - path] = '\0';
+				wg_strncpy(domain, path, path_slash - path);
+				domain[path_slash - path] = '\0';
 
 				if (strstr(domain, "github")) {
 					wg_strcpy(__deps_data->host, "github");
@@ -295,7 +301,7 @@ dep_parse_repo (const char *input, struct dep_repo_info *__deps_data)
 					wg_strcpy(__deps_data->host, "custom");
 				}
 
-				path = first_slash + 1;
+				path = path_slash + 1;
 			}
 		}
 
@@ -309,9 +315,9 @@ dep_parse_repo (const char *input, struct dep_repo_info *__deps_data)
 
 		wg_strncpy(__deps_data->user, user, sizeof(__deps_data->user) - 1);
 
-		git_ext = strstr(repo, ".git");
-		if (git_ext)
-			*git_ext = '\0';
+		git_dir = strstr(repo, ".git");
+		if (git_dir)
+			*git_dir = '\0';
 		wg_strncpy(__deps_data->repo, repo, sizeof(__deps_data->repo) - 1);
 
 		if (strlen(__deps_data->user) == WG_RETZ || strlen(__deps_data->repo) == WG_RETZ)
@@ -334,7 +340,7 @@ dep_parse_repo (const char *input, struct dep_repo_info *__deps_data)
 static int dep_gh_release_assets (const char *user, const char *repo,
 								  const char *tag, char **out_urls, int max_urls)
 {
-		char api_url[WG_PATH_MAX];
+		char api_url[WG_PATH_MAX * 2];
 		char *json_data = NULL;
 		const char *p;
 		int url_count = 0;
@@ -441,7 +447,7 @@ dep_build_repo_url (const struct dep_repo_info *__deps_data, int is_tag_page,
 static int dep_gh_latest_tag (const char *user, const char *repo,
                               char *out_tag, size_t deps_put_size)
 {
-		char api_url[WG_PATH_MAX];
+		char api_url[WG_PATH_MAX * 2];
 		char *json_data = NULL;
 		const char *p;
 		int ret = 0;
@@ -613,9 +619,9 @@ int dep_add_ncheck_hash (const char *raw_file_path, const char *raw_json_path)
 			goto done;
 
         unsigned char sha1_hash[20];
-        int k = crypto_generate_sha1_hash(res_convert_json_path, sha1_hash);
-        if (k != WG_RETN)
-        	goto done;
+    	if (crypto_generate_sha1_hash(res_convert_json_path, sha1_hash) == WG_RETZ) {
+			goto done;
+		}
 
 		pr_color(stdout,
 				 FCOLOUR_GREEN,
@@ -664,7 +670,14 @@ void dep_implementation_samp_conf (depConfig config) {
 			}
 
 			if (tr_exist && !tr_ln_has_tx) {
-				FILE* temp_file = fopen(".watchdogs/depends_tmp", "w");
+				srand((unsigned int)time(NULL) ^ rand());
+				int rand7 = rand() % 10000000;
+
+				char temp_path[WG_PATH_MAX];
+				snprintf(temp_path, sizeof(temp_path),
+					".watchdogs/000%07d_temp", rand7);
+
+				FILE* temp_file = fopen(temp_path, "w");
 				c_file = fopen(config.dep_config, "r");
 
 				while (fgets(line, sizeof(line), c_file)) {
@@ -730,7 +743,14 @@ void dep_implementation_omp_conf (const char* config_name, const char* deps_name
 				return;
 			}
 
-			fread(buffer, 1, file_size, c_file);
+			size_t file_read = fread(buffer, 1, file_size, c_file);
+			if (file_read != file_size) {
+				pr_error(stdout, "Failed to read the entire file!");
+				wg_free(buffer);
+				fclose(c_file);
+				return;
+			}
+
 			buffer[file_size] = '\0';
 			fclose(c_file);
 
@@ -814,12 +834,18 @@ void dep_add_include (const char *modes,
 		}
 
 		fseek(m_file, 0, SEEK_END);
-		long fileSize = ftell(m_file);
+		long fle_size = ftell(m_file);
 		fseek(m_file, 0, SEEK_SET);
 
-		char *ct_modes = wg_malloc(fileSize + 1);
-		fread(ct_modes, 1, fileSize, m_file);
-		ct_modes[fileSize] = '\0';
+		char *ct_modes = wg_malloc(fle_size + 1);
+		size_t file_read = fread(ct_modes, 1, fle_size, m_file);
+		if (file_read != fle_size) {
+			wg_free(ct_modes);
+			fclose(m_file);
+			return;
+		}
+
+		ct_modes[fle_size] = '\0';
 		fclose(m_file);
 
 		if (strstr(ct_modes, dep_name) != NULL &&
@@ -922,7 +948,6 @@ void dump_file_type (const char *path,
 				     char *exclude, char *cwd,
 				     char *target_dir, int root)
 {
-		char cp_cmd[WG_MAX_PATH * 2];
 		char json_item[WG_PATH_MAX];
 
 		wg_sef_fdir_reset();
@@ -940,18 +965,18 @@ void dump_file_type (const char *path,
 					_is_win32 = 1;
 #endif
 					if (_is_win32) {
-						wg_snprintf(cp_cmd, sizeof(cp_cmd),
+						wg_snprintf(d_command, sizeof(d_command),
 							"move /Y \"%s\" \"%s\\%s\\\"",
 							wgconfig.wg_sef_found_list[i], cwd, target_dir);
 					} else
-						wg_snprintf(cp_cmd, sizeof(cp_cmd), "mv -f \"%s\" \"%s/%s/\"",
+						wg_snprintf(d_command, sizeof(d_command), "mv -f \"%s\" \"%s/%s/\"",
 							wgconfig.wg_sef_found_list[i], cwd, target_dir);
 
 	                struct timespec start = {0}, end = { 0 };
 	                double moving_dur;
 
 	                clock_gettime(CLOCK_MONOTONIC, &start);
-					wg_run_command(cp_cmd);
+					wg_run_command(d_command);
 	                clock_gettime(CLOCK_MONOTONIC, &end);
 
 	                moving_dur = (end.tv_sec - start.tv_sec)
@@ -967,11 +992,11 @@ void dump_file_type (const char *path,
 					_is_win32 = 1;
 #endif
 					if (_is_win32) {
-							wg_snprintf(cp_cmd, sizeof(cp_cmd),
+							wg_snprintf(d_command, sizeof(d_command),
 								"move /Y \"%s\" \"%s\"",
 								wgconfig.wg_sef_found_list[i], cwd);
 					} else
-						wg_snprintf(cp_cmd, sizeof(cp_cmd),
+						wg_snprintf(d_command, sizeof(d_command),
 							"mv -f \"%s\" \"%s\"",
 							wgconfig.wg_sef_found_list[i], cwd);
 
@@ -979,7 +1004,7 @@ void dump_file_type (const char *path,
 	                double moving_dur;
 
 	                clock_gettime(CLOCK_MONOTONIC, &start);
-					wg_run_command(cp_cmd);
+					wg_run_command(d_command);
 	                clock_gettime(CLOCK_MONOTONIC, &end);
 
 	                moving_dur = (end.tv_sec - start.tv_sec)
@@ -1025,7 +1050,6 @@ void dep_cjson_additem (cJSON *p1, int p2, cJSON *p3)
 void dep_move_files (const char *dep_dir)
 {
 		char *deps_include_path = NULL;
-		char size_deps_copy[WG_MAX_PATH * 2];
 		char include_path[WG_MAX_PATH];
 		int i, deps_include_search = 0;
 		char plug_path[WG_PATH_MAX],
@@ -1138,11 +1162,11 @@ void dep_move_files (const char *dep_dir)
 				_is_win32 = 1;
 #endif
 				if (_is_win32) {
-					wg_snprintf(size_deps_copy, sizeof(size_deps_copy),
+					wg_snprintf(d_command, sizeof(d_command),
 						"move /Y \"%s\" \"%s\\%s\\\"",
 						wgconfig.wg_sef_found_list[i], cwd, deps_include_path);
 				} else
-					wg_snprintf(size_deps_copy, sizeof(size_deps_copy),
+					wg_snprintf(d_command, sizeof(d_command),
 						"mv -f \"%s\" \"%s/%s/\"",
 						wgconfig.wg_sef_found_list[i], cwd, deps_include_path);
 
@@ -1150,7 +1174,7 @@ void dep_move_files (const char *dep_dir)
                 double moving_dur;
 
                 clock_gettime(CLOCK_MONOTONIC, &start);
-				wg_run_command(size_deps_copy);
+				wg_run_command(d_command);
                 clock_gettime(CLOCK_MONOTONIC, &end);
 
                 moving_dur = (end.tv_sec - start.tv_sec)
@@ -1244,28 +1268,40 @@ void dep_move_files (const char *dep_dir)
 #ifdef WG_WINDOWS
 		            _is_win32 = 1;
 #endif
-		            if (_is_win32) {
-		                wg_strlcpy(cmd, "xcopy ", sizeof(cmd));
-		                strlcat(cmd, deps_parent_dir, sizeof(cmd));
-		                strlcat(cmd, " ", sizeof(cmd));
-		                strlcat(cmd, dest, sizeof(cmd));
-		                strlcat(cmd, " /E /I /H /Y >nul 2>&1 && rmdir /S /Q ", sizeof(cmd));
-		                strlcat(cmd, deps_parent_dir, sizeof(cmd));
-		                strlcat(cmd, " >nul 2>&1", sizeof(cmd));
-		            } else {
-		                wg_strlcpy(cmd, "cp -r ", sizeof(cmd));
-		                strlcat(cmd, deps_parent_dir, sizeof(cmd));
-		                strlcat(cmd, " ", sizeof(cmd));
-		                strlcat(cmd, dest, sizeof(cmd));
-		                strlcat(cmd, " && rm -rf ", sizeof(cmd));
-		                strlcat(cmd, deps_parent_dir, sizeof(cmd));
-		            }
+					if (_is_win32) {
+						const char *win_parts[] = {
+							"xcopy ",
+							deps_parent_dir,
+							" ",
+							dest,
+							" /E /I /H /Y >nul 2>&1 && rmdir /S /Q ",
+							deps_parent_dir,
+							" >nul 2>&1"
+						};
+						wg_strlcpy(d_command, "", sizeof(d_command));
+						for (int j = 0; j < sizeof(win_parts) / sizeof(win_parts[0]); j++) {
+							strlcat(d_command, win_parts[j], sizeof(d_command));
+						}
+					} else {
+						const char *unix_parts[] = {
+							"cp -r ",
+							deps_parent_dir,
+							" ",
+							dest,
+							" && rm -rf ",
+							deps_parent_dir
+						};
+						wg_strlcpy(d_command, "", sizeof(d_command));
+						for (int j = 0; j < sizeof(unix_parts) / sizeof(unix_parts[0]); j++) {
+							strlcat(d_command, unix_parts[j], sizeof(d_command));
+						}
+					}
 
 		            struct timespec start = {0}, end = { 0 };
 		            double move_duration;
 
 		            clock_gettime(CLOCK_MONOTONIC, &start);
-		            wg_run_command(cmd);
+		            wg_run_command(d_command);
 		            clock_gettime(CLOCK_MONOTONIC, &end);
 
 		            move_duration = (end.tv_sec - start.tv_sec) + 
@@ -1295,14 +1331,14 @@ void dep_move_files (const char *dep_dir)
 		_is_win32 = 1;
 #endif
 		if (_is_win32)
-			wg_snprintf(rm_cmd, sizeof(rm_cmd),
+			wg_snprintf(d_command, sizeof(d_command),
 				"rmdir /s /q \"%s\"",
 				dep_dir);
 		else
-			wg_snprintf(rm_cmd, sizeof(rm_cmd),
+			wg_snprintf(d_command, sizeof(d_command),
 				"rm -rf %s",
 				dep_dir);
-		wg_run_command(rm_cmd);
+		wg_run_command(d_command);
 
 		return;
 }
@@ -1315,13 +1351,13 @@ void wg_apply_depends (const char *depends_name)
 		wg_snprintf(_depends, sizeof(_depends), "%s", depends_name);
 
 		if (strstr(_depends, ".tar.gz")) {
-			char *f_EXT = strstr(_depends, ".tar.gz");
-			if (f_EXT)
-				*f_EXT = '\0';
+			char *ext = strstr(_depends, ".tar.gz");
+			if (ext)
+				*ext = '\0';
 		} if (strstr(_depends, ".zip")) {
-			char *f_EXT = strstr(_depends, ".zip");
-			if (f_EXT)
-				*f_EXT = '\0';
+			char *ext = strstr(_depends, ".zip");
+			if (ext)
+				*ext = '\0';
 		}
 
 		wg_snprintf(dep_dir, sizeof(dep_dir), "%s", _depends);

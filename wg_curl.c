@@ -17,12 +17,12 @@
 #include "wg_unit.h"
 #include "wg_curl.h"
 
-const char* AIO_FETCH_SITES[MAX_NUM_SITES][2] = {
+const char* FETCH_SITES_LIST[MAX_NUM_SITES][2] = {
+	    {"x", "https://x.com/%s"},
 	    {"github", "https://github.com/%s"},
 	    {"gitlab", "https://gitlab.com/%s"},
 	    {"instagram", "https://instagram.com/%s"},
 	    {"tiktok", "https://www.tiktok.com/@%s"},
-	    {"x", "https://x.com/%s"},
 	    {"facebook", "https://www.facebook.com/%s"},
 	    {"linkedin", "https://www.linkedin.com/in/%s"},
 	    {"reddit", "https://www.reddit.com/user/%s"},
@@ -320,12 +320,12 @@ account_tracker_discrepancy(const char *base, char discrepancy[][100], int *cnt)
 	        wg_strcpy(discrepancy[(*cnt)++], size_temp);
 	    }
 
-	    wg_strcpy(discrepancy[(*cnt)++], strcat(strdup(base), "1"));
-	    wg_strcpy(discrepancy[(*cnt)++], strcat(strdup(base), "123"));
-	    wg_strcpy(discrepancy[(*cnt)++], strcat(strdup(base), "007"));
-	    wg_strcpy(discrepancy[(*cnt)++], strcat(strdup(base), "_"));
-	    wg_strcpy(discrepancy[(*cnt)++], strcat(strdup(base), "."));
-	    wg_strcpy(discrepancy[(*cnt)++], strcat(strdup(base), "_dev"));
+		const char *suffixes[] = {"1", "123", "007", "_", ".", "_dev"};
+		for (int i = 0; i < sizeof(suffixes) / sizeof(suffixes[0]); i++) {
+			char *temp = strdup(base);
+			wg_strcpy(discrepancy[(*cnt)++], strcat(temp, suffixes[i]));
+			wg_free(temp);
+		}
 }
 
 void account_tracking_username(CURL *curl, const char *username) {
@@ -339,7 +339,7 @@ void account_tracking_username(CURL *curl, const char *username) {
 
 	    for (int i = 0; i < MAX_NUM_SITES; i++) {
 	        char url[200];
-	        wg_snprintf(url, sizeof(url), AIO_FETCH_SITES[i][1], username);
+	        wg_snprintf(url, sizeof(url), FETCH_SITES_LIST[i][1], username);
 
 	        curl_easy_setopt(curl, CURLOPT_URL, url);
 	        curl_easy_setopt(curl, CURLOPT_HTTPHEADER, headers);
@@ -351,15 +351,17 @@ void account_tracking_username(CURL *curl, const char *username) {
 	        res = curl_easy_perform(curl);
 
 	        if (res != CURLE_OK) {
-	            printf("[%s] %s -> ERROR %s\n", AIO_FETCH_SITES[i][0], url, curl_easy_strerror(res));
+	            printf("[%s] %s -> ERROR %s\n",
+						FETCH_SITES_LIST[i][0],
+						url, curl_easy_strerror(res));
 	        } else {
 	            long status_code;
 	            curl_easy_getinfo(curl, CURLINFO_RESPONSE_CODE, &status_code);
 	            if (status_code == WG_CURL_RESPONSE_OK) {
-	                printf("[%s] %s -> FOUND\n", AIO_FETCH_SITES[i][0], url);
+	                printf("[%s] %s -> FOUND\n", FETCH_SITES_LIST[i][0], url);
 	                fflush(stdout);
 	            } else {
-	                printf("[%s] %s -> NOT FOUND (%ld)\n", AIO_FETCH_SITES[i][0], url, status_code);
+	                printf("[%s] %s -> NOT FOUND (%ld)\n", FETCH_SITES_LIST[i][0], url, status_code);
 	                fflush(stdout);
 	            }
 	        }
@@ -448,20 +450,20 @@ static void update_library_environment(const char *lib_path)
 	    wg_snprintf(grep_cmd, sizeof(grep_cmd),
 	                "grep -q \"LD_LIBRARY_PATH.*%s\" %s", lib_path, config_file);
 
-	    int path_exists = system(grep_cmd);
+	    int path_exists = wg_run_command(grep_cmd);
 
 	    if (path_exists != 0) {
 	        char export_cmd[512];
 	        char backup_cmd[WG_PATH_MAX * 3];
 
 	        wg_snprintf(backup_cmd, sizeof(backup_cmd), "cp %s %s.backup", config_file, config_file);
-	        system(backup_cmd);
+	        wg_run_command(backup_cmd);
 
 	        wg_snprintf(export_cmd, sizeof(export_cmd),
 	                   "echo 'export LD_LIBRARY_PATH=%s:$LD_LIBRARY_PATH' >> %s",
 	                   lib_path, config_file);
 
-	        int ret = system(export_cmd);
+	        int ret = wg_run_command(export_cmd);
 
 	        if (ret == WG_RETZ) {
 	            printf("Successfully updated %s. Please run 'source %s' to apply changes.\n",
@@ -474,11 +476,11 @@ static void update_library_environment(const char *lib_path)
 	    }
 
 	    if (strfind(lib_path, "/usr/")) {
-	        int is_not_sudo = system("sudo echo > /dev/null");
+	        int is_not_sudo = wg_run_command("sudo echo > /dev/null");
 	        if (is_not_sudo == WG_RETZ) {
-	            system("sudo ldconfig");
+	            wg_run_command("sudo ldconfig");
 	        } else {
-	            system("ldconfig");
+	            wg_run_command("ldconfig");
 	        }
 	    }
 }
@@ -712,60 +714,65 @@ static int debug_callback(CURL *handle, curl_infotype type,
 	    }
 	    return WG_RETZ;
 }
-
 int wg_download_file(const char *url, const char *filename)
 {
 #if defined (_DBG_PRINT)
 		pr_color(stdout, FCOLOUR_YELLOW, "-DEBUGGING ");
-	    printf("[function: %s | "
-               "pretty function: %s | "
-               "line: %d | "
-               "file: %s | "
-               "date: %s | "
-               "time: %s | "
-               "timestamp: %s | "
-               "C standard: %ld | "
-               "C version: %s | "
-               "compiler version: %d | "
-               "architecture: %s]:\n",
-                __func__, __PRETTY_FUNCTION__,
-                __LINE__, __FILE__,
-                __DATE__, __TIME__,
-                __TIMESTAMP__,
-                __STDC_VERSION__,
-                __VERSION__,
-                __GNUC__,
+		printf("[function: %s | "
+				"pretty function: %s | "
+				"line: %d | "
+				"file: %s | "
+				"date: %s | "
+				"time: %s | "
+				"timestamp: %s | "
+				"C standard: %ld | "
+				"C version: %s | "
+				"compiler version: %d | "
+				"architecture: %s]:\n",
+					__func__, __PRETTY_FUNCTION__,
+					__LINE__, __FILE__,
+					__DATE__, __TIME__,
+					__TIMESTAMP__,
+					__STDC_VERSION__,
+					__VERSION__,
+					__GNUC__,
 #ifdef __x86_64__
-                "x86_64");
+					"x86_64");
 #elif defined(__i386__)
-                "i386");
+					"i386");
 #elif defined(__arm__)
-                "ARM");
+					"ARM");
 #elif defined(__aarch64__)
-                "ARM64");
+					"ARM64");
 #else
-                "Unknown");
+					"Unknown");
 #endif
 #endif
-		CURL *curl;
-		FILE *c_fp;
+
+		if (!url || !filename) {
+			pr_color(stdout, FCOLOUR_RED, "Error: Invalid URL or filename\n");
+			return -WG_RETN;
+		}
+
 		CURLcode res;
+		CURL *curl = NULL;
+		FILE *c_fp = NULL;
 		long response_code = 0;
 		int retry_count = 0;
 		struct stat file_stat;
 
-		pr_color(stdout, FCOLOUR_GREEN, "Downloading: %s", filename);
+		pr_color(stdout, FCOLOUR_GREEN, "Downloading: %s\n", filename);
 
-		do {
+		while (retry_count < 5) {
 			c_fp = fopen(filename, "wb");
 			if (!c_fp) {
-				pr_color(stdout, FCOLOUR_RED, "\nFailed to open file: %s\n", filename);
+				pr_color(stdout, FCOLOUR_RED, "Failed to open file: %s\n", filename);
 				return -WG_RETN;
 			}
 
 			curl = curl_easy_init();
 			if (!curl) {
-				pr_color(stdout, FCOLOUR_RED, "\nFailed to initialize CURL\n");
+				pr_color(stdout, FCOLOUR_RED, "Failed to initialize CURL\n");
 				fclose(c_fp);
 				return -WG_RETN;
 			}
@@ -773,19 +780,18 @@ int wg_download_file(const char *url, const char *filename)
 			struct curl_slist *headers = NULL;
 
 			if (wgconfig.wg_idepends == WG_RETN) {
-				if (strstr(wgconfig.wg_toml_github_tokens, "DO_HERE") ||
-						   wgconfig.wg_toml_github_tokens == NULL ||
-						   strlen(wgconfig.wg_toml_github_tokens) < 1) {
-						pr_color(stdout, FCOLOUR_GREEN, " ~ can't read github token!...\n");
-						sleep(1);
+				if (!wgconfig.wg_toml_github_tokens || 
+					strstr(wgconfig.wg_toml_github_tokens, "DO_HERE") ||
+					strlen(wgconfig.wg_toml_github_tokens) < 1) {
+					pr_color(stdout, FCOLOUR_YELLOW, " ~ GitHub token not available\n");
+					sleep(1);
 				} else {
-						char auth_header[512];
-						wg_snprintf(auth_header, sizeof(auth_header), "Authorization: token %s", wgconfig.wg_toml_github_tokens);
-						headers = curl_slist_append(headers, auth_header);
-						pr_color(stdout,
-								 FCOLOUR_GREEN,
-								 "\tCreate token: %s...\n",
-								 wg_masked_text(8, wgconfig.wg_toml_github_tokens));
+					char auth_header[512];
+					wg_snprintf(auth_header, sizeof(auth_header), "Authorization: token %s", 
+							wgconfig.wg_toml_github_tokens);
+					headers = curl_slist_append(headers, auth_header);
+					pr_color(stdout, FCOLOUR_GREEN, " ~ Using GitHub token: %s\n",
+							wg_masked_text(8, wgconfig.wg_toml_github_tokens));
 				}
 			}
 
@@ -793,36 +799,34 @@ int wg_download_file(const char *url, const char *filename)
 			headers = curl_slist_append(headers, "Accept: application/vnd.github.v3.raw");
 
 			curl_easy_setopt(curl, CURLOPT_URL, url);
+			curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, write_callback);
 			curl_easy_setopt(curl, CURLOPT_WRITEDATA, c_fp);
 			curl_easy_setopt(curl, CURLOPT_FAILONERROR, 1L);
 			curl_easy_setopt(curl, CURLOPT_HTTPHEADER, headers);
 			curl_easy_setopt(curl, CURLOPT_CONNECTTIMEOUT, 15L);
 			curl_easy_setopt(curl, CURLOPT_TIMEOUT, 300L);
 			curl_easy_setopt(curl, CURLOPT_FOLLOWLOCATION, 1L);
+			curl_easy_setopt(curl, CURLOPT_MAXREDIRS, 5L);
 			curl_easy_setopt(curl, CURLOPT_SSL_VERIFYPEER, 1L);
 			curl_easy_setopt(curl, CURLOPT_NOPROGRESS, 0L);
 
 			static int create_debugging = 0;
 			static int always_create_debugging = 0;
+			
 			if (create_debugging == WG_RETZ) {
 				create_debugging = 1;
-				printf("\x1b[32m %% create debugging http?\x1b[0m\n");
-				char *debug_http = readline("   answer [y/n]: ");
-				if (debug_http) {
-					if (debug_http[0] == 'Y' || debug_http[0] == 'y') {
-						always_create_debugging = 1;
-						curl_easy_setopt(curl, CURLOPT_VERBOSE, 1L);
-						curl_easy_setopt(curl, CURLOPT_DEBUGFUNCTION, debug_callback);
-						curl_easy_setopt(curl, CURLOPT_DEBUGDATA, NULL);
-						fflush(stdout);
-					}
+				pr_color(stdout, FCOLOUR_CYAN, " %% Enable HTTP debugging? ");
+				char *debug_http = readline("[y/n]: ");
+				if (debug_http && (debug_http[0] == 'Y' || debug_http[0] == 'y')) {
+					always_create_debugging = 1;
 				}
+				wg_free(debug_http);
 			}
+			
 			if (always_create_debugging) {
 				curl_easy_setopt(curl, CURLOPT_VERBOSE, 1L);
 				curl_easy_setopt(curl, CURLOPT_DEBUGFUNCTION, debug_callback);
 				curl_easy_setopt(curl, CURLOPT_DEBUGDATA, NULL);
-				fflush(stdout);
 			}
 
 			curl_easy_setopt(curl, CURLOPT_XFERINFOFUNCTION, progress_callback);
@@ -836,115 +840,66 @@ int wg_download_file(const char *url, const char *filename)
 
 			curl_easy_cleanup(curl);
 			curl_slist_free_all(headers);
-
-			if (c_fp)
+			
+			if (c_fp) {
 				fclose(c_fp);
-
-			if (response_code == WG_CURL_RESPONSE_OK) {
-				if (stat(filename, &file_stat) == WG_RETZ && file_stat.st_size > 0) {
-					pr_color(stdout, FCOLOUR_GREEN, "Download successful: %" PRIdMAX " bytes\n", (intmax_t)file_stat.st_size);
-					fflush(stdout);
-
-					if (!is_archive_file(filename)) {
-						printf("File is not an archive!\n");
-						return WG_RETN;
-					}
-					
-					printf("Checking file type for extraction...\n");
-					fflush(stdout);
-					wg_extract_archive(filename);
-
-					char rm_cmd[WG_PATH_MAX];
-					if (wgconfig.wg_idepends == WG_RETN) {
-						static int rm_deps = 0;
-						if (rm_deps == WG_RETZ) {
-							printf("\x1b[32m==> removing" FCOLOUR_CYAN "'%s'\x1b?\x1b[0m\n", filename);
-							char *confirm = readline("   answer [y/n]: ");
-							if (confirm) {
-								if (confirm[0] == 'Y' || confirm[0] == 'y') {
-									rm_deps = 1;
-									if (is_native_windows())
-										wg_snprintf(rm_cmd, sizeof(rm_cmd),
-											"if exist \"%s\" (del /f /q \"%s\" 2>nul || "
-											"rmdir /s /q \"%s\" 2>nul)",
-											filename, filename, filename);
-									else
-										wg_snprintf(rm_cmd, sizeof(rm_cmd),
-											"rm -rf %s",
-											filename);
-									wg_run_command(rm_cmd);
-								}
-								wg_free(confirm);
-							}
-						} else {
-							if (is_native_windows())
-								wg_snprintf(rm_cmd, sizeof(rm_cmd),
-									"if exist \"%s\" (del /f /q \"%s\" 2>nul || "
-									"rmdir /s /q \"%s\" 2>nul)",
-									filename, filename, filename);
-							else
-								wg_snprintf(rm_cmd, sizeof(rm_cmd),
-									"rm -rf %s",
-									filename);
-							wg_run_command(rm_cmd);
-						}
-						return WG_RETZ;
-					} else {
-						printf("\x1b[32m==> removing" FCOLOUR_CYAN "'%s'\x1b?\x1b[0m\n", filename);
-						char *confirm = readline("   answer [y/n]: ");
-						if (confirm) {
-							if (confirm[0] == 'Y' || confirm[0] == 'y') {
-								char rm_cmd[WG_PATH_MAX];
-								if (is_native_windows())
-									wg_snprintf(rm_cmd, sizeof(rm_cmd),
-										"if exist \"%s\" (del /f /q \"%s\" 2>nul || "
-										"rmdir /s /q \"%s\" 2>nul)",
-										filename, filename, filename);
-								else
-									wg_snprintf(rm_cmd, sizeof(rm_cmd),
-										"rm -rf %s",
-										filename);
-								wg_run_command(rm_cmd);
-							}
-							wg_free(confirm);
-						}
-					}
-
-					if (wgconfig.wg_ipawncc && prompt_apply_pawncc()) {
-						char size_filename[WG_PATH_MAX];
-						wg_snprintf(size_filename, sizeof(size_filename), "%s", filename);
-
-						if (strstr(size_filename, ".tar.gz")) {
-							char *f_EXT = strstr(size_filename, ".tar.gz");
-							if (f_EXT)
-								*f_EXT = '\0';
-						} else {
-							char *f_EXT = strrchr(size_filename, '.');
-							if (f_EXT)
-								*f_EXT = '\0';
-						}
-						wg_snprintf(pawncc_dir_src, sizeof(pawncc_dir_src), "%s", size_filename);
-						wg_apply_pawncc();
-					}
-
-					return WG_RETZ;
-				} else {
-					pr_color(stdout, FCOLOUR_RED, "Downloaded file is empty or missing\n");
-					return WG_RETN;
-				}
-			} else {
-				pr_color(stdout, FCOLOUR_RED, "Download failed - "
-						 "HTTP: %ld, "
-						 "CURL: %d, "
-						 "retrying... \n", response_code, res);
+				c_fp = NULL;
 			}
 
+			if (res == CURLE_OK && response_code == WG_CURL_RESPONSE_OK && 
+				stat(filename, &file_stat) == WG_RETZ && 
+				file_stat.st_size > 0) {
+				pr_color(stdout, FCOLOUR_GREEN, "✓ Download successful: %" PRIdMAX " bytes\n", 
+						(intmax_t)file_stat.st_size);
+				fflush(stdout);
+
+				if (!is_archive_file(filename)) {
+					pr_color(stdout, FCOLOUR_YELLOW, "Warning: File is not an archive\n");
+					return WG_RETN;
+				}
+
+				wg_extract_archive(filename);
+
+				if (wgconfig.wg_idepends == WG_RETN) {
+					pr_color(stdout, FCOLOUR_CYAN, "==> Remove archive? ");
+					char *confirm = readline("[y/n]: ");
+					if (confirm && (confirm[0] == 'Y' || confirm[0] == 'y')) {
+						char rm_cmd[WG_PATH_MAX];
+						if (is_native_windows())
+							wg_snprintf(rm_cmd, sizeof(rm_cmd),
+								"if exist \"%s\" (del /f /q \"%s\" 2>nul)", filename, filename);
+						else
+							wg_snprintf(rm_cmd, sizeof(rm_cmd), "rm -f %s", filename);
+						wg_run_command(rm_cmd);
+					}
+					wg_free(confirm);
+				}
+
+				if (wgconfig.wg_ipawncc && prompt_apply_pawncc()) {
+					char size_filename[WG_PATH_MAX];
+					wg_snprintf(size_filename, sizeof(size_filename), "%s", filename);
+
+					char *ext = strstr(size_filename, ".tar.gz");
+					if (ext) {
+						*ext = '\0';
+					} else {
+						ext = strrchr(size_filename, '.');
+						if (ext) *ext = '\0';
+					}
+					
+					wg_snprintf(pawncc_dir_src, sizeof(pawncc_dir_src), "%s", size_filename);
+					wg_apply_pawncc();
+				}
+
+				return WG_RETZ;
+			}
+
+			pr_color(stdout, FCOLOUR_YELLOW, "Attempt %d/5 failed (HTTP: %ld). Retrying in 3s...\n", 
+					retry_count + 1, response_code);
 			++retry_count;
 			sleep(3);
-		} while (retry_count < 5);
+		}
 
-		pr_color(stdout, FCOLOUR_RED, "Download failed after 5 retries\n");
-		chain_goto_main(NULL);
-
+		pr_color(stdout, FCOLOUR_RED, "✗ Download failed after 5 retries\n");
 		return WG_RETN;
 }

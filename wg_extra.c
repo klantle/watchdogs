@@ -37,7 +37,7 @@ void println(FILE *stream, const char *format, ...)
         fflush(stream);
 }
 
-void printf_color(FILE *stream, const char *color, const char *format, ...)
+void printf_colour(FILE *stream, const char *color, const char *format, ...)
 {
         va_list args;
         va_start(args, format);

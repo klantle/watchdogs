@@ -527,7 +527,7 @@ out:
 ret_ptr:
             printf("\033[1;33m== Select a Platform ==\033[0m\n");
             printf("  \033[36m[l]\033[0m Linux\n");
-            printf("  \033[36m[w]\033[0m Windows  \033[90m(WSL/MSYS supported — not Docker-in-WSL)\033[0m\n");
+            printf("  \033[36m[w]\033[0m Windows  \033[90m(WSL/WSL2/MSYS2 supported — not for WSL Docker)\033[0m\n");
             printf("  \033[36m[t]\033[0m Termux\n");
 
             wgconfig.wg_sel_stat = 1;
@@ -582,7 +582,7 @@ loop_igm2:
 ret_ptr2:
             printf("\033[1;33m== Select a Platform ==\033[0m\n");
             printf("  \033[36m[l]\033[0m Linux\n");
-            printf("  \033[36m[w]\033[0m Windows  \033[90m(WSL/MSYS supported — not Docker-in-WSL)\033[0m\n");
+            printf("  \033[36m[w]\033[0m Windows  \033[90m(WSL/WSL2/MSYS2 supported — not for WSL Docker)\033[0m\n");
             printf("  \033[36m[t]\033[0m Termux\n");
 
             wgconfig.wg_sel_stat = 1;

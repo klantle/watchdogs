@@ -1048,8 +1048,8 @@ compiler_done2:
             }
         } else {
             pr_crit(stdout,
-"\033[1;31merror:\033[0m pawncc (our compiler) not found\n"
-"  \033[2mhelp:\033[0m install it before continuing\n");
+                "\033[1;31merror:\033[0m pawncc (our compiler) not found\n"
+                "  \033[2mhelp:\033[0m install it before continuing\n");
             printf("\n  \033[1mInstall now?\033[0m  [\033[32mY\033[0m/\033[31mn\033[0m]: ");
             char *ptr_sigA = readline("");
 

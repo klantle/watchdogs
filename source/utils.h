@@ -72,10 +72,11 @@
 # define FILE_MODE 0777
 # endif
 
-# define wg_malloc(wx) malloc(wx)
-# define wg_calloc(wx, wy) calloc(wx, wy)
-# define wg_realloc(wx, wy) realloc(wx, wy)
-# define wg_free(wx) free(wx)
+#define wg_realloc(wx, wy) \
+    ((wx) ? realloc((wx), (wy)) : malloc((wy)))
+#define wg_malloc(wx) malloc(wx)
+#define wg_calloc(wx, wy) calloc((wx), (wy))
+#define wg_free(wx) do { if (wx) { free((wx)); (wx) = NULL; } } while(0)
 
 # define __PATH_CHR_SEP_LINUX '/'
 # define __PATH_CHR_SEP_WIN32 '\\'
@@ -94,7 +95,7 @@
 # define DT_WHT 14
 # endif
 
-# define WG_PATH_MAX 260
+# define WG_PATH_MAX 260 + 126
 # define WG_MAX_PATH 4096
 
 enum {

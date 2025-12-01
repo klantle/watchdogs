@@ -155,19 +155,29 @@ static int progress_callback(void *ptr, curl_off_t dltotal,
 
 size_t write_callback(void *ptr, size_t size, size_t nmemb, void *userdata)
 {
-		size_t total = size * nmemb;
 		struct buf *b = userdata;
+		
+		if (b->data && ((uintptr_t)b->data & 0x7)) {
+			pr_error(stdout, " Buffer pointer corrupted: %p\n", b->data);
+			return 0;
+		}
+		
+		size_t total = size * nmemb;
 		
 		if (total > 0xFFFFFFF) return 0;
 		
 		size_t required = b->len + total + 1;
+		
 		if (required > b->allocated) {
 			size_t new_alloc = (b->allocated * 3) >> 1;
 			new_alloc = (required > new_alloc) ? required : new_alloc;
 			new_alloc = (new_alloc < 0x4000000) ? new_alloc : 0x4000000;
 			
 			char *p = wg_realloc(b->data, new_alloc);
-			if (!p) return 0;
+			if (!p) {
+				pr_error(stdout, " Realloc failed for %zu bytes\n", new_alloc);
+				return 0;
+			}
 			
 			b->data = p;
 			b->allocated = new_alloc;
@@ -249,34 +259,36 @@ size_t write_memory_callback(void *contents, size_t size, size_t nmemb, void *us
 }
 
 void
-account_tracker_discrepancy(const char *base, char discrepancy[][100], int *cnt) {
-	    int len = strlen(base);
-	    int i;
+account_tracker_discrepancy(const char *base,
+							char discrepancy[][100],
+							int *cnt) {
+		int k;
+	    int dis_base_len = strlen(base);
 
 	    wg_strcpy(discrepancy[(*cnt)++], base);
 
-	    for (i = 0; i < len; i++) {
+	    for (k = 0; k < dis_base_len; k++) {
 	        char size_temp[100];
-	        strncpy(size_temp, base, i);
-	        size_temp[i] = base[i];
-	        size_temp[i+1] = base[i];
-	        wg_strcpy(size_temp + i + 2, base + i + 1);
+	        strncpy(size_temp, base, k);
+	        size_temp[k] = base[k];
+	        size_temp[k+1] = base[k];
+	        wg_strcpy(size_temp + k + 2, base + k + 1);
 	        wg_strcpy(discrepancy[(*cnt)++], size_temp);
 	    }
 
-	    for (i = 2; i <= 5; i++) {
+	    for (k = 2; k <= 5; k++) {
 	        char size_temp[100];
 	        wg_snprintf(size_temp, sizeof(size_temp), "%s", base);
-	        for (int j = 0; j < i; j++) {
-	            size_temp[strlen(size_temp)] = base[len - 1];
+	        for (int j = 0; j < k; j++) {
+	            size_temp[strlen(size_temp)] = base[dis_base_len - 1];
 	        }
 	        wg_strcpy(discrepancy[(*cnt)++], size_temp);
 	    }
 
 		const char *suffixes[] = {"1", "123", "007", "_", ".", "_dev"};
-		for (int i = 0; i < sizeof(suffixes) / sizeof(suffixes[0]); i++) {
+		for (int k = 0; k < sizeof(suffixes) / sizeof(suffixes[0]); k++) {
 			char *temp = strdup(base);
-			wg_strcpy(discrepancy[(*cnt)++], strcat(temp, suffixes[i]));
+			wg_strcpy(discrepancy[(*cnt)++], strcat(temp, suffixes[k]));
 			wg_free(temp);
 		}
 }
@@ -667,6 +679,7 @@ static int debug_callback(CURL *handle, curl_infotype type,
 	    }
 	    return 0;
 }
+
 int wg_download_file(const char *url, const char *filename)
 {
 #if defined (_DBG_PRINT)
@@ -709,24 +722,16 @@ int wg_download_file(const char *url, const char *filename)
 
 		CURLcode res;
 		CURL *curl = NULL;
-		FILE *c_fp = NULL;
 		long response_code = 0;
 		int retry_count = 0;
 		struct stat file_stat;
 
-		pr_color(stdout, FCOLOUR_GREEN, "Downloading: %s\n", filename);
+		pr_color(stdout, FCOLOUR_GREEN, "On it: downloading %s", filename);
 
 		while (retry_count < 5) {
-			c_fp = fopen(filename, "wb");
-			if (!c_fp) {
-				pr_color(stdout, FCOLOUR_RED, "Failed to open file: %s\n", filename);
-				return -1;
-			}
-
 			curl = curl_easy_init();
 			if (!curl) {
 				pr_color(stdout, FCOLOUR_RED, "Failed to initialize CURL\n");
-				fclose(c_fp);
 				return -1;
 			}
 
@@ -736,7 +741,7 @@ int wg_download_file(const char *url, const char *filename)
 				if (!wgconfig.wg_toml_github_tokens || 
 					strstr(wgconfig.wg_toml_github_tokens, "DO_HERE") ||
 					strlen(wgconfig.wg_toml_github_tokens) < 1) {
-					pr_color(stdout, FCOLOUR_YELLOW, " ~ GitHub token not available\n");
+					pr_color(stdout, FCOLOUR_YELLOW, " ~ GitHub token not available");
 					sleep(1);
 				} else {
 					char auth_header[512];
@@ -753,7 +758,10 @@ int wg_download_file(const char *url, const char *filename)
 
 			curl_easy_setopt(curl, CURLOPT_URL, url);
 			curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, write_callback);
-			curl_easy_setopt(curl, CURLOPT_WRITEDATA, c_fp);
+					
+			struct buf download_buffer = { 0 };
+			curl_easy_setopt(curl, CURLOPT_WRITEDATA, &download_buffer);
+
 			curl_easy_setopt(curl, CURLOPT_FAILONERROR, 1L);
 			curl_easy_setopt(curl, CURLOPT_HTTPHEADER, headers);
 			curl_easy_setopt(curl, CURLOPT_CONNECTTIMEOUT, 15L);
@@ -793,66 +801,83 @@ int wg_download_file(const char *url, const char *filename)
 
 			curl_easy_cleanup(curl);
 			curl_slist_free_all(headers);
-			
-			if (c_fp) {
-				fclose(c_fp);
-				c_fp = NULL;
-			}
 
 			if (res == CURLE_OK && response_code == WG_CURL_RESPONSE_OK && 
-				stat(filename, &file_stat) == 0 && 
-				file_stat.st_size > 0) {
-				pr_color(stdout, FCOLOUR_GREEN, "✓ Download successful: %" PRIdMAX " bytes\n", 
-						(intmax_t)file_stat.st_size);
-				fflush(stdout);
-
-				if (!is_archive_file(filename)) {
-					pr_color(stdout, FCOLOUR_YELLOW, "Warning: File is not an archive\n");
-					return 1;
+				download_buffer.len > 0) {
+				
+				FILE *fp = fopen(filename, "wb");
+				if (!fp) {
+					pr_color(stdout, FCOLOUR_RED, "Failed to open file for writing: %s\n", filename);
+					wg_free(download_buffer.data);
+					++retry_count;
+					sleep(3);
+					continue;
 				}
+				
+				fwrite(download_buffer.data, 1, download_buffer.len, fp);
+				fclose(fp);
+				
+				wg_free(download_buffer.data);
+				
+				if (stat(filename, &file_stat) == 0 && file_stat.st_size > 0) {
+					pr_color(stdout, FCOLOUR_GREEN, " Well done! Download successful: %" PRIdMAX " bytes\n", 
+							(intmax_t)file_stat.st_size);
+					fflush(stdout);
 
-				wg_extract_archive(filename);
-
-				if (wgconfig.wg_idepends == 1) {
-					pr_color(stdout, FCOLOUR_CYAN, "==> Remove archive? ");
-					char *confirm = readline("[y/n]: ");
-					if (confirm && (confirm[0] == 'Y' || confirm[0] == 'y')) {
-						char rm_cmd[WG_PATH_MAX];
-						if (is_native_windows())
-							wg_snprintf(rm_cmd, sizeof(rm_cmd),
-								"if exist \"%s\" (del /f /q \"%s\" 2>nul)", filename, filename);
-						else
-							wg_snprintf(rm_cmd, sizeof(rm_cmd), "rm -f %s", filename);
-						wg_run_command(rm_cmd);
+					if (!is_archive_file(filename)) {
+						pr_color(stdout, FCOLOUR_YELLOW, "Warning: File is not an archive\n");
+						return 1;
 					}
-					wg_free(confirm);
-				}
 
-				if (wgconfig.wg_ipawncc && prompt_apply_pawncc()) {
-					char size_filename[WG_PATH_MAX];
-					wg_snprintf(size_filename, sizeof(size_filename), "%s", filename);
+					wg_extract_archive(filename);
 
-					char *ext = strstr(size_filename, ".tar.gz");
-					if (ext) {
-						*ext = '\0';
-					} else {
-						ext = strrchr(size_filename, '.');
-						if (ext) *ext = '\0';
+					if (wgconfig.wg_idepends == 1) {
+						pr_color(stdout, FCOLOUR_CYAN, "==> Remove archive? ");
+						char *confirm = readline("[y/n]: ");
+						if (confirm && (confirm[0] == 'Y' || confirm[0] == 'y')) {
+							char rm_cmd[WG_PATH_MAX];
+							if (is_native_windows())
+								wg_snprintf(rm_cmd, sizeof(rm_cmd),
+									"if exist \"%s\" (del /f /q \"%s\" 2>nul)", filename, filename);
+							else
+								wg_snprintf(rm_cmd, sizeof(rm_cmd), "rm -f %s", filename);
+							wg_run_command(rm_cmd);
+						}
+						wg_free(confirm);
 					}
-					
-					wg_snprintf(pawncc_dir_src, sizeof(pawncc_dir_src), "%s", size_filename);
-					wg_apply_pawncc();
-				}
 
-				return 0;
+					if (wgconfig.wg_ipawncc && prompt_apply_pawncc()) {
+						char size_filename[WG_PATH_MAX];
+						wg_snprintf(size_filename, sizeof(size_filename), "%s", filename);
+
+						char *ext = strstr(size_filename, ".tar.gz");
+						if (ext) {
+							*ext = '\0';
+						} else {
+							ext = strrchr(size_filename, '.');
+							if (ext) *ext = '\0';
+						}
+						
+						wg_snprintf(pawncc_dir_src, sizeof(pawncc_dir_src), "%s", size_filename);
+						wg_apply_pawncc();
+					}
+
+					return 0;
+				}
+			}
+			
+			if (download_buffer.data) {
+				wg_free(download_buffer.data);
 			}
 
-			pr_color(stdout, FCOLOUR_YELLOW, "Attempt %d/5 failed (HTTP: %ld). Retrying in 3s...\n", 
+			pr_color(stdout, FCOLOUR_YELLOW, " Attempt %d/5 failed (HTTP: %ld). Retrying in 3s...\n", 
 					retry_count + 1, response_code);
 			++retry_count;
 			sleep(3);
 		}
 
-		pr_color(stdout, FCOLOUR_RED, "✗ Download failed after 5 retries\n");
+		pr_color(stdout,
+				FCOLOUR_RED, " hell nah! i failed to download it. after retrying: %d\n",
+				retry_count);
 		return 1;
 }

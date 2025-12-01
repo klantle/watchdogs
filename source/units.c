@@ -48,7 +48,7 @@ const char *watchdogs_release = WATCHDOGS_RELEASE;
 struct timespec cmd_start, cmd_end;
 double command_dur;
 
-void chain_main_data(void) {
+void chain_main_data(int debug_info) {
         signal(SIGINT, SIG_DFL);
         wg_sef_fdir_reset();
         wg_toml_configs();
@@ -56,104 +56,106 @@ void chain_main_data(void) {
         wg_u_history();
         wgconfig.wg_sel_stat = 0;
         handle_sigint = 0;
+        if (debug_info == 1) {
 #if defined(_DBG_PRINT)
-        pr_color(stdout, FCOLOUR_YELLOW, "-DEBUGGING ");
-        printf("[function: %s | "
-               "pretty function: %s | "
-               "line: %d | "
-               "file: %s | "
-               "date: %s | "
-               "time: %s | "
-               "timestamp: %s | "
-               "C standard: %ld | "
-               "C version: %s | "
-               "compiler version: %d | "
-               "architecture: %s | "
-               "os_type: %s (CRC32) | "
-               "pointer_samp: %s | "
-               "pointer_openmp: %s | "
-               "f_samp: %s (CRC32) | "
-               "f_openmp: %s (CRC32) | "
-               "toml gamemode input: %s | "
-               "toml gamemode output: %s | "
-               "toml binary: %s | "
-               "toml configs: %s | "
-               "toml logs: %s | "
-               "toml github tokens: %s | "
-               "toml chatbot: %s | "
-               "toml ai models: %s | "
-               "toml ai key: %s\n",
-                __func__, __PRETTY_FUNCTION__,
-                __LINE__, __FILE__,
-                __DATE__, __TIME__,
-                __TIMESTAMP__,
-                __STDC_VERSION__,
-                __VERSION__,
-                __GNUC__,
+            pr_color(stdout, FCOLOUR_YELLOW, "-DEBUGGING ");
+            printf("[function: %s | "
+                "pretty function: %s | "
+                "line: %d | "
+                "file: %s | "
+                "date: %s | "
+                "time: %s | "
+                "timestamp: %s | "
+                "C standard: %ld | "
+                "C version: %s | "
+                "compiler version: %d | "
+                "architecture: %s | "
+                "os_type: %s (CRC32) | "
+                "pointer_samp: %s | "
+                "pointer_openmp: %s | "
+                "f_samp: %s (CRC32) | "
+                "f_openmp: %s (CRC32) | "
+                "toml gamemode input: %s | "
+                "toml gamemode output: %s | "
+                "toml binary: %s | "
+                "toml configs: %s | "
+                "toml logs: %s | "
+                "toml github tokens: %s | "
+                "toml chatbot: %s | "
+                "toml ai models: %s | "
+                "toml ai key: %s\n",
+                    __func__, __PRETTY_FUNCTION__,
+                    __LINE__, __FILE__,
+                    __DATE__, __TIME__,
+                    __TIMESTAMP__,
+                    __STDC_VERSION__,
+                    __VERSION__,
+                    __GNUC__,
 #ifdef __x86_64__
-                "x86_64",
+                    "x86_64",
 #elif defined(__i386__)
-                "i386",
+                    "i386",
 #elif defined(__arm__)
-                "ARM",
+                    "ARM",
 #elif defined(__aarch64__)
-                "ARM64",
+                    "ARM64",
 #else
-                "Unknown",
+                    "Unknown",
 #endif
-                wgconfig.wg_os_type, wgconfig.wg_ptr_samp,
-                wgconfig.wg_ptr_omp, wgconfig.wg_is_samp, wgconfig.wg_is_omp,
-                wgconfig.wg_toml_gm_input, wgconfig.wg_toml_gm_output,
-                wgconfig.wg_toml_binary, wgconfig.wg_toml_config, wgconfig.wg_toml_logs,
-                wgconfig.wg_toml_github_tokens,
-                wgconfig.wg_toml_chatbot_ai,
-                wgconfig.wg_toml_models_ai,
-                wgconfig.wg_toml_key_ai);
-        printf("STDC: %d\n", __STDC__);
-        printf("STDC_HOSTED: %d\n", __STDC_HOSTED__);
-        printf("BYTE_ORDER: ");
+                    wgconfig.wg_os_type, wgconfig.wg_ptr_samp,
+                    wgconfig.wg_ptr_omp, wgconfig.wg_is_samp, wgconfig.wg_is_omp,
+                    wgconfig.wg_toml_gm_input, wgconfig.wg_toml_gm_output,
+                    wgconfig.wg_toml_binary, wgconfig.wg_toml_config, wgconfig.wg_toml_logs,
+                    wgconfig.wg_toml_github_tokens,
+                    wgconfig.wg_toml_chatbot_ai,
+                    wgconfig.wg_toml_models_ai,
+                    wgconfig.wg_toml_key_ai);
+            printf("STDC: %d\n", __STDC__);
+            printf("STDC_HOSTED: %d\n", __STDC_HOSTED__);
+            printf("BYTE_ORDER: ");
 #ifdef __BYTE_ORDER__
 #if __BYTE_ORDER__ == __ORDER_LITTLE_ENDIAN__
-        printf("Little Endian\n");
+            printf("Little Endian\n");
 #elif __BYTE_ORDER__ == __ORDER_BIG_ENDIAN__
-        printf("Big Endian\n");
+            printf("Big Endian\n");
 #else
-        printf("Unknown\n");
+            printf("Unknown\n");
 #endif
 #else
-        printf("Not defined\n");
+            printf("Not defined\n");
 #endif
-        printf("SIZE_OF_PTR: %zu bytes\n", sizeof(void*));
-        printf("SIZE_OF_INT: %zu bytes\n", sizeof(int));
-        printf("SIZE_OF_LONG: %zu bytes\n", sizeof(long));
+            printf("SIZE_OF_PTR: %zu bytes\n", sizeof(void*));
+            printf("SIZE_OF_INT: %zu bytes\n", sizeof(int));
+            printf("SIZE_OF_LONG: %zu bytes\n", sizeof(long));
 #ifdef __LP64__
-        printf("DATA_MODEL: LP64\n");
+            printf("DATA_MODEL: LP64\n");
 #elif defined(__ILP32__)
-        printf("DATA_MODEL: ILP32\n");
+            printf("DATA_MODEL: ILP32\n");
 #endif
 #ifdef __GNUC__
-        printf("GNUC: %d.%d.%d\n", __GNUC__, __GNUC_MINOR__, __GNUC_PATCHLEVEL__);
+            printf("GNUC: %d.%d.%d\n", __GNUC__, __GNUC_MINOR__, __GNUC_PATCHLEVEL__);
 #endif
 
 #ifdef __clang__
-        printf("CLANG: %d.%d.%d\n", __clang_major__, __clang_minor__, __clang_patchlevel__);
+            printf("CLANG: %d.%d.%d\n", __clang_major__, __clang_minor__, __clang_patchlevel__);
 #endif
-        printf("OS: ");
+            printf("OS: ");
 #ifdef __SSE__
-        printf("SSE: Supported\n");
+            printf("SSE: Supported\n");
 #endif
 #ifdef __AVX__
-        printf("AVX: Supported\n");
+            printf("AVX: Supported\n");
 #endif
 #ifdef __FMA__
-        printf("FMA: Supported\n");
+            printf("FMA: Supported\n");
 #endif
 #endif
+            }
 }
 
 int __command__(char *chain_pre_command)
 {
-        chain_main_data();
+        chain_main_data(1);
 
         setlocale(LC_ALL, "en_US.UTF-8");
 
@@ -200,7 +202,7 @@ _ptr_command:
                                              &c_distance);
 
 _reexecute_command:
-        chain_main_data();
+        chain_main_data(1);
         clock_gettime(CLOCK_MONOTONIC, &cmd_start);
         if (strncmp(ptr_command, "help", 4) == 0) {
             wg_console_title("Watchdogs | @ help");
@@ -224,32 +226,52 @@ _reexecute_command:
                         printf("    * innumerable\n");
                     }
                 }
-            } else if (strcmp(args, "exit") == 0) { println(stdout, "exit: exit from watchdogs. | Usage: \"exit\"");
-            } else if (strcmp(args, "kill") == 0) { println(stdout, "kill: refresh terminal watchdogs. | Usage: \"kill\"");
-            } else if (strcmp(args, "title") == 0) { println(stdout, "title: set-title terminal watchdogs. | Usage: \"title\" | [<args>]");
-            } else if (strcmp(args, "sha256") == 0) { println(stdout, "sha256: generate sha256. | Usage: \"sha256\" | [<args>]");
-            } else if (strcmp(args, "crc32") == 0) { println(stdout, "crc32: generate crc32. | Usage: \"crc32\" | [<args>]");
-            } else if (strcmp(args, "djb2") == 0) { println(stdout, "djb2: generate djb2 hash file. | Usage: \"djb2\" | [<args>]");
-            } else if (strcmp(args, "time") == 0) { println(stdout, "time: print current time. | Usage: \"time\"");
-            } else if (strcmp(args, "config") == 0) { println(stdout, "config: re-create watchdogs.toml. Usage: \"config\"");
-            } else if (strcmp(args, "stopwatch") == 0) { println(stdout, "stopwatch: calculating time. Usage: \"stopwatch\" | [<args>]");
-            } else if (strcmp(args, "install") == 0) { println(stdout, "install: download & install depends | Usage: \"install\" |"
-                                                                      "[<args>]\n\t- install user/repo:tag (github only)");
-            } else if (strcmp(args, "hardware") == 0) { println(stdout, "hardware: hardware information. | Usage: \"hardware\"");
-            } else if (strcmp(args, "gamemode") == 0) { println(stdout, "gamemode: download sa-mp gamemode. | Usage: \"gamemode\"");
-            } else if (strcmp(args, "pawncc") == 0) { println(stdout, "pawncc: download sa-mp pawncc. | Usage: \"pawncc\"");
-            } else if (strcmp(args, "log") == 0) { println(stdout, "log: debugging & logging server logs. | Usage: \"log\"");
-            } else if (strcmp(args, "compile") == 0) { println(stdout, "compile: compile your project. | Usage: \"compile\" | [<args>]");
-            } else if (strcmp(args, "running") == 0) { println(stdout, "running: running your project. | Usage: \"running\" | [<args>]");
-            } else if (strcmp(args, "compiles") == 0) { println(stdout, "compiles: compile & running your project. | Usage: \"compiles\" | [<args>]");
-            } else if (strcmp(args, "stop") == 0) { println(stdout, "stop: stopped server task. | Usage: \"stop\"");
-            } else if (strcmp(args, "restart") == 0) { println(stdout, "restart: restart server task. | Usage: \"restart\"");
-            } else if (strcmp(args, "wanion") == 0) { println(stdout, "wanion: ask to wanion. | Usage: \"wanion\" | [<args>] | gemini based");
-            } else if (strcmp(args, "tracker") == 0) { println(stdout, "tracker: account tracking. | Usage: \"tracker\" | [<args>]");
+            } else if (strcmp(args, "exit") == 0) { 
+                println(stdout, "exit: exit from watchdogs. | Usage: \"exit\"\n     Just type 'exit' and you're outta here!");
+            } else if (strcmp(args, "kill") == 0) { 
+                println(stdout, "kill: refresh terminal watchdogs. | Usage: \"kill\"\n     When things get stuck or buggy, this is your fix!");
+            } else if (strcmp(args, "title") == 0) { 
+                println(stdout, "title: set-title terminal watchdogs. | Usage: \"title\" | [<args>]\n     Personalize your terminal window title.");
+            } else if (strcmp(args, "sha256") == 0) { 
+                println(stdout, "sha256: generate sha256. | Usage: \"sha256\" | [<args>]\n     Get that SHA256 hash for your files or text.");
+            } else if (strcmp(args, "crc32") == 0) { 
+                println(stdout, "crc32: generate crc32. | Usage: \"crc32\" | [<args>]\n     Quick CRC32 checksum generation.");
+            } else if (strcmp(args, "djb2") == 0) { 
+                println(stdout, "djb2: generate djb2 hash file. | Usage: \"djb2\" | [<args>]\n     DJB2 hashing algorithm at your service.");
+            } else if (strcmp(args, "time") == 0) { 
+                println(stdout, "time: print current time. | Usage: \"time\"\n     What time is it? Time to check!");
+            } else if (strcmp(args, "config") == 0) { 
+                println(stdout, "config: re-create watchdogs.toml. Usage: \"config\"\n     Reset your config file to default settings.");
+            } else if (strcmp(args, "stopwatch") == 0) { 
+                println(stdout, "stopwatch: calculating time. Usage: \"stopwatch\" | [<args>]\n     Need to time something? This is your stopwatch!");
+            } else if (strcmp(args, "install") == 0) { 
+                println(stdout, "install: download & install depends | Usage: \"install\" | [<args>]\n     Install stuff from GitHub repos. | Example: install user/repo:tag");
+            } else if (strcmp(args, "hardware") == 0) { 
+                println(stdout, "hardware: hardware information. | Usage: \"hardware\"\n     Show off your PC specs!");
+            } else if (strcmp(args, "gamemode") == 0) { 
+                println(stdout, "gamemode: download SA-MP gamemode. | Usage: \"gamemode\"\n     Grab some SA-MP gamemodes quickly.");
+            } else if (strcmp(args, "pawncc") == 0) { 
+                println(stdout, "pawncc: download SA-MP pawncc. | Usage: \"pawncc\"\n     Get the Pawn compiler for SA-MP.");
+            } else if (strcmp(args, "log") == 0) { 
+                println(stdout, "log: debugging & logging server logs. | Usage: \"log\"\n     Keep an eye on your server logs.");
+            } else if (strcmp(args, "compile") == 0) { 
+                println(stdout, "compile: compile your project. | Usage: \"compile\" | [<args>]\n     Turn your code into something runnable!");
+            } else if (strcmp(args, "running") == 0) { 
+                println(stdout, "running: running your project. | Usage: \"running\" | [<args>]\n     Fire up your project and see it in action.");
+            } else if (strcmp(args, "compiles") == 0) { 
+                println(stdout, "compiles: compile & running your project. | Usage: \"compiles\" | [<args>]\n     Two-in-one: compile then run immediately!");
+            } else if (strcmp(args, "stop") == 0) { 
+                println(stdout, "stop: stopped server task. | Usage: \"stop\"\n     Halt everything! Stop your server tasks.");
+            } else if (strcmp(args, "restart") == 0) { 
+                println(stdout, "restart: restart server task. | Usage: \"restart\"\n     Fresh start! Restart your server.");
+            } else if (strcmp(args, "wanion") == 0) { 
+                println(stdout, "wanion: ask to wanion. | Usage: \"wanion\" | [<args>] | gemini based\n     Got questions? Ask Wanion (Gemini AI powered).");
+            } else if (strcmp(args, "tracker") == 0) { 
+                println(stdout, "tracker: account tracking. | Usage: \"tracker\" | [<args>]\n     Track accounts across platforms.");
             } else {
                 printf("wd-help can't found for: '");
                 printf_colour(stdout, FCOLOUR_YELLOW, "%s", args);
-                printf("'\n");
+                printf("'\n     Oops! That command doesn't exist. Try 'help' to see available commands.\n");
             }
             goto chain_done;
         } else if (strcmp(ptr_command, "exit") == 0) {
@@ -266,7 +288,7 @@ _reexecute_command:
             wgconfig.wg_sel_stat = 0;
             wg_compile_running = 0;
 
-            chain_main_data();
+            chain_main_data(1);
 
            if (chain_pre_command && chain_pre_command[0] != '\0')
                 goto chain_done;
@@ -365,7 +387,7 @@ _reexecute_command:
             if (access("watchdogs.toml", F_OK) == 0)
                 remove("watchdogs.toml");
 
-            chain_main_data();
+            chain_main_data(1);
 
             wg_printfile("watchdogs.toml");
 
@@ -1514,7 +1536,7 @@ basic_end:
 }
 
 int main(int argc, char *argv[]) {
-        chain_main_data();
+        chain_main_data(0);
 
         if (argc > 1) {
             int i;

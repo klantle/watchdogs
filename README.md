@@ -67,11 +67,15 @@
 ## Quick Installation
 
 ### One-Line Installation (Linux/Debian)
-> Non Sudo
+
+> without superuser do (sudo)
+
 ```bash
 apt update && apt install make git -y && git clone https://gitlab.com/mywatchdogs/watchdogs watch && cd watch && make init && mv watchdogs .. && cd .. && ./watchdogs
 ```
-> Sudo
+
+> with superuser do (sudo)
+
 ```bash
 sudo apt update && apt install make git -y && git clone https://gitlab.com/mywatchdogs/watchdogs watch && cd watch && make init && mv watchdogs .. && cd .. && ./watchdogs
 ```
@@ -490,6 +494,22 @@ make clean          # Clean build artifacts
 make debug          # Build with debug mode (Linux)
 make debug-termux   # Build with debug mode (Termux)
 make windows-debug  # Build with debug mode (Windows)
+```
+
+### GNU Debugger (GDB)
+
+> I always recommend running your program in debug mode when using GDB — it makes debugging way easier.
+
+```bash
+# step one - start gdb
+gdb ./watchdogs.tmux      # termux
+gdb ./watchdogs.debug     # linux
+gdb ./watchdogs.debug.win # windows
+# step two - run program
+run # just input run
+# if you have a crash | SIGINT,ETC.
+bt      # default
+bt full # full
 ```
 
 ### Command Aliases

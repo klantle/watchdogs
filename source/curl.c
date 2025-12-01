@@ -249,8 +249,8 @@ size_t write_memory_callback(void *contents, size_t size, size_t nmemb, void *us
 			}
 			mem->memory = ptr;
 			mem->allocated = new_alloc;
-    }
-		
+		}
+			
 		memcpy(&mem->memory[mem->size], contents, realsize);
 		mem->size += realsize;
 		mem->memory[mem->size] = '\0';
@@ -268,21 +268,21 @@ account_tracker_discrepancy(const char *base,
 	    wg_strcpy(discrepancy[(*cnt)++], base);
 
 	    for (k = 0; k < dis_base_len; k++) {
-	        char size_temp[100];
-	        strncpy(size_temp, base, k);
-	        size_temp[k] = base[k];
-	        size_temp[k+1] = base[k];
-	        wg_strcpy(size_temp + k + 2, base + k + 1);
-	        wg_strcpy(discrepancy[(*cnt)++], size_temp);
+	        char dis_size_temp[100];
+	        strncpy(dis_size_temp, base, k);
+	        dis_size_temp[k] = base[k];
+	        dis_size_temp[k+1] = base[k];
+	        wg_strcpy(dis_size_temp + k + 2, base + k + 1);
+	        wg_strcpy(discrepancy[(*cnt)++], dis_size_temp);
 	    }
 
 	    for (k = 2; k <= 5; k++) {
-	        char size_temp[100];
-	        wg_snprintf(size_temp, sizeof(size_temp), "%s", base);
+	        char dis_size_temp[100];
+	        wg_snprintf(dis_size_temp, sizeof(dis_size_temp), "%s", base);
 	        for (int j = 0; j < k; j++) {
-	            size_temp[strlen(size_temp)] = base[dis_base_len - 1];
+	            dis_size_temp[strlen(dis_size_temp)] = base[dis_base_len - 1];
 	        }
-	        wg_strcpy(discrepancy[(*cnt)++], size_temp);
+	        wg_strcpy(discrepancy[(*cnt)++], dis_size_temp);
 	    }
 
 		const char *suffixes[] = {"1", "123", "007", "_", ".", "_dev"};
@@ -354,12 +354,11 @@ static void find_compiler_tools(int compiler_type,
 
 static const char *get_compiler_directory(void)
 {
-		struct stat st;
 		const char *dir_path = NULL;
 
-		if (stat("pawno", &st) == 0 && S_ISDIR(st.st_mode)) {
+		if (path_exists("pawno")) {
 				dir_path = "pawno";
-		} else if (stat("qawno", &st) == 0 && S_ISDIR(st.st_mode)) {
+		} else if (path_exists("qawno")) {
 				dir_path = "qawno";
 		} else {
 				if (MKDIR("pawno") == 0)
@@ -459,19 +458,18 @@ static int setup_linux_library(void)
 		const char *selected_path = NULL;
 		char libpawnc_src[WG_PATH_MAX];
 		char dest_path[WG_PATH_MAX];
-		struct stat st;
 		int i, found_lib;
 
 		const char *lib_paths[] =	{
-										"/data/data/com.termux/files/usr/lib/",
-										"/data/data/com.termux/files/usr/local/lib/",
-										"/data/data/com.termux/arm64/usr/lib",
-										"/data/data/com.termux/arm32/usr/lib",
-										"/data/data/com.termux/amd32/usr/lib",
-										"/data/data/com.termux/amd64/usr/lib",
-										"/usr/local/lib",
-										"/usr/local/lib32"
-									};
+			"/usr/local/lib",
+			"/usr/local/lib32",
+			"/data/data/com.termux/files/usr/lib/",
+			"/data/data/com.termux/files/usr/local/lib/",
+			"/data/data/com.termux/arm64/usr/lib",
+			"/data/data/com.termux/arm32/usr/lib",
+			"/data/data/com.termux/amd32/usr/lib",
+			"/data/data/com.termux/amd64/usr/lib"
+		};
 
 		if (!strcmp(wgconfig.wg_toml_os_type, OS_SIGNAL_WINDOWS) ||
 			!strcmp(wgconfig.wg_toml_os_type, OS_SIGNAL_UNKNOWN))
@@ -491,7 +489,7 @@ static int setup_linux_library(void)
 		}
 
 		for (i = 0; i < sizeof(lib_paths) / sizeof(lib_paths[0]); i++) {
-				if (stat(lib_paths[i], &st) == 0 && S_ISDIR(st.st_mode)) {
+				if (path_exists(lib_paths[i])) {
 						selected_path = lib_paths[i];
 						break;
 				}
@@ -877,7 +875,8 @@ int wg_download_file(const char *url, const char *filename)
 		}
 
 		pr_color(stdout,
-				FCOLOUR_RED, " hell nah! i failed to download it. after retrying: %d\n",
-				retry_count);
+				FCOLOUR_RED, " Failed to download %s. after retrying: %d\n",
+				filename, retry_count);
+
 		return 1;
 }

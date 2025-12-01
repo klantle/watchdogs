@@ -49,9 +49,9 @@ uint32_t crypto_string_hash(const char *s);
 
 unsigned long crypto_djb2_hash_file(const char *filename);
 
-int crypto_convert_to_hex(const unsigned char *in, int in_len, char **out);
-
 void crypto_print_hex(const unsigned char *buf, size_t len, int null_terminator);
+
+int crypto_convert_to_hex(const unsigned char *in, int in_len, char **out);
 
 int crypto_generate_sha1_hash(const char *input, unsigned char output[20]);
 

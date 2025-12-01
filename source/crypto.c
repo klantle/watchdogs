@@ -128,6 +128,29 @@ void crypto_print_hex(const unsigned char *buf, size_t len, int null_terminator)
             putchar('\n');
 }
 
+int crypto_convert_to_hex(const unsigned char *in, int in_len, char **out)
+{
+        char *buffer;
+        int i;
+        static const char hex[] = crypto_hex_list;
+
+        if (!in || in_len < 0 || !out)
+                return 0;
+
+        buffer = wg_malloc(in_len * 2 + 1);
+        if (!buffer)
+                return 0;
+
+        for (i = 0; i < in_len; i++) {
+                buffer[i * 2] = hex[(in[i] >> 4) & 0xF];
+                buffer[i * 2 + 1] = hex[in[i] & 0xF];
+        }
+        buffer[in_len * 2] = '\0';
+        *out = buffer;
+
+        return 1;
+}
+
 static void crypto_sha1_transform(SHA1_CTX *ctx, const uint8_t data[SHA1_BLOCK_SIZE]) {
         uint32_t a, b, c, d, e;
         uint32_t w[80];
@@ -616,29 +639,6 @@ int crypto_decrypt_with_password(const unsigned char *in_blob, int in_blob_len,
 
         *out_plain = plain;
         *out_plain_len = plaintext_len;
-
-        return 1;
-}
-
-int crypto_convert_to_hex(const unsigned char *in, int in_len, char **out)
-{
-        char *buffer;
-        int i;
-        static const char hex[] = crypto_hex_list;
-
-        if (!in || in_len < 0 || !out)
-                return 0;
-
-        buffer = wg_malloc(in_len * 2 + 1);
-        if (!buffer)
-                return 0;
-
-        for (i = 0; i < in_len; i++) {
-                buffer[i * 2] = hex[(in[i] >> 4) & 0xF];
-                buffer[i * 2 + 1] = hex[in[i] & 0xF];
-        }
-        buffer[in_len * 2] = '\0';
-        *out = buffer;
 
         return 1;
 }

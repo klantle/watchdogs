@@ -95,15 +95,15 @@ WatchdogConfig wgconfig = {
 };
 
 void wg_sef_fdir_reset(void) {
-	    size_t i, sef_max_entries;
-	    sef_max_entries = sizeof(wgconfig.wg_sef_found_list) /
-	    				  sizeof(wgconfig.wg_sef_found_list[0]);
+		size_t i, sef_max_entries;
+		sef_max_entries = sizeof(wgconfig.wg_sef_found_list) /
+						  sizeof(wgconfig.wg_sef_found_list[0]);
 
-	    for (i = 0; i < sef_max_entries; i++)
-	    	wgconfig.wg_sef_found_list[i][0] = '\0';
+		for (i = 0; i < sef_max_entries; i++)
+			wgconfig.wg_sef_found_list[i][0] = '\0';
 
-	    wgconfig.wg_sef_count = RATE_SEF_EMPTY;
-	    memset(wgconfig.wg_sef_found_list,
+		wgconfig.wg_sef_count = RATE_SEF_EMPTY;
+		memset(wgconfig.wg_sef_found_list,
 			RATE_SEF_EMPTY, sizeof(wgconfig.wg_sef_found_list));
 }
 
@@ -196,36 +196,32 @@ char* wg_masked_text(int reveal, const char *text) {
 }
 
 int wg_mkdir(const char *path) {
-	    char temp[512];
-	    char *p = NULL;
-	    size_t len;
+		char tmp[PATH_MAX];
+		char *p = NULL;
+		size_t len;
 
-	    wg_snprintf(temp, sizeof(temp), "%s", path);
-	    len = strlen(temp);
+		if (!path || !*path) return -1;
 
-	    if (len == 0) {
-	        return -1;
-	    }
+		snprintf(tmp, sizeof(tmp), "%s", path);
+		len = strlen(tmp);
 
-	    for (p = temp + 1; *p; p++) {
-	        if (*p == __PATH_CHR_SEP_LINUX) {
-	            *p = '\0';
-				if (MKDIR(temp) == 0) {
-	                if (errno != EEXIST) {
-	                    return -1;
-	                }
-	            }
-	            *p = __PATH_CHR_SEP_LINUX;
-	        }
-	    }
+		if (tmp[len - 1] == '/') tmp[len - 1] = '\0';
 
-		if (MKDIR(temp) == 0) {
-	        if (errno != EEXIST) {
-	            return -1;
-	        }
-	    }
+		for (p = tmp + 1; *p; p++) {
+			if (*p == '/') {
+				*p = '\0';
+				if (MKDIR(tmp) != 0) {
+					return -1;
+				}
+				*p = '/';
+			}
+		}
 
-	    return 0;
+		if (MKDIR(tmp) != 0) {
+			return -1;
+		}
+
+		return 0;
 }
 
 void wg_escaping_json(char *dest, const char *src, size_t dest_size) {
@@ -287,35 +283,57 @@ __asm__ volatile (
     		pr_error(stdout, "register command too long!");
     		return -1;
     	}
+
 	    char
 			size_command[ WG_MAX_PATH ]
 			; /* 4096 */
+
 	    wg_snprintf(size_command,
 	    			sizeof(size_command),
 					"%s",
 					reg_command);
+
 	    if (reg_command[0] == '\0')
 	    		return 0;
+
 	    return system(size_command);
 }
 
-int is_termux_environment(void)
+int is_pterodactyl_env(void)
 {
-		struct stat st;
+		int is_ptero = 0;
+		if (path_exists("/etc/pterodactyl") ||
+			path_exists("/var/lib/pterodactyl") ||
+			path_exists("/var/lib/pterodactyl/volumes") ||
+			path_exists("/srv/daemon/config/core.json") ||
+			getenv("PTERODACTYL_SERVER_UUID") != NULL ||
+			getenv("PTERODACTYL_NODE_ID") != NULL ||
+			getenv("PTERODACTYL_ALLOC_ID") != NULL ||
+			getenv("PTERODACTYL_SERVER_EXTERNAL_ID") != NULL)
+		{
+			is_ptero = 1;
+		}
+
+		return is_ptero;
+}
+
+int is_termux_env(void)
+{
 		int is_termux = 0;
 #if defined(WG_LINUX)
 		is_termux = 1;
 		return is_termux;
 #endif
-		if (stat("/data/data/com.termux/files/usr/local/lib/", &st) == 0 ||
-			stat("/data/data/com.termux/files/usr/lib/", &st) == 0 ||
-			stat("/data/data/com.termux/arm64/usr/lib", &st) == 0 ||
-			stat("/data/data/com.termux/arm32/usr/lib", &st) == 0 ||
-			stat("/data/data/com.termux/amd32/usr/lib", &st) == 0 ||
-			stat("/data/data/com.termux/amd64/usr/lib", &st) == 0)
+		if (path_exists("/data/data/com.termux/files/usr/local/lib/") == 1 ||
+			path_exists("/data/data/com.termux/files/usr/lib/") == 1 ||
+			path_exists("/data/data/com.termux/arm64/usr/lib") == 1 ||
+			path_exists("/data/data/com.termux/arm32/usr/lib") == 1 ||
+			path_exists("/data/data/com.termux/amd32/usr/lib") == 1 ||
+			path_exists("/data/data/com.termux/amd64/usr/lib") == 1)
 		{
 			is_termux = 1;
 		}
+
 		return is_termux;
 }
 
@@ -780,7 +798,7 @@ int wg_is_special_dir(const char *entry_name)
 			   (entry_name[1] == '.' && entry_name[2] == '\0')));
 }
 
-static int wg_should_ignore_dir(const char *entry_name,
+static int wg_fetch_ignore_dir(const char *entry_name,
 								const char *ignore_dir)
 {
 		if (!ignore_dir)
@@ -795,13 +813,13 @@ static int wg_should_ignore_dir(const char *entry_name,
 static void wg_add_found_path(const char *path)
 {
 		if (wgconfig.wg_sef_count < (sizeof(wgconfig.wg_sef_found_list) /
-								 sizeof(wgconfig.wg_sef_found_list[0]))) {
+								     sizeof(wgconfig.wg_sef_found_list[0]))) {
 				wg_strncpy(wgconfig.wg_sef_found_list[wgconfig.wg_sef_count],
 					path,
 					MAX_SEF_PATH_SIZE);
 				wgconfig.wg_sef_found_list \
-				[wgconfig.wg_sef_count] \
-				[MAX_SEF_PATH_SIZE - 1] = '\0';
+					[wgconfig.wg_sef_count] \
+					[MAX_SEF_PATH_SIZE - 1] = '\0';
 				++wgconfig.wg_sef_count;
 		}
 }
@@ -810,45 +828,48 @@ int wg_sef_fdir(const char *sef_path,
 				const char *sef_name,
 				const char *ignore_dir)
 {
-		char path_buff[MAX_SEF_PATH_SIZE];
+		char
+			size_path[MAX_SEF_PATH_SIZE];
 #ifdef WG_WINDOWS
-		WIN32_FIND_DATA find_data;
 		HANDLE find_handle;
 		char sp[WG_MAX_PATH * 2];
 		const char *entry_name;
+		WIN32_FIND_DATA find_data;
 
 		if (sef_path[strlen(sef_path) - 1] == __PATH_CHR_SEP_WIN32)
-				wg_snprintf(sp,
-						    sizeof(sp), "%s*", sef_path);
+			wg_snprintf(sp,
+				sizeof(sp), "%s*", sef_path);
 		else
-				wg_snprintf(sp,
-						    sizeof(sp), "%s\\*", sef_path);
+			wg_snprintf(sp,
+				sizeof(sp), "%s%s*", sef_path, __PATH_STR_SEP_WIN32);
+
 		find_handle = FindFirstFile(sp, &find_data);
 		if (find_handle == INVALID_HANDLE_VALUE)
-				return 0;
+			return 0;
 
 		do {
-				entry_name = find_data.cFileName;
-				if (wg_is_special_dir(entry_name))
-						continue;
+			entry_name = find_data.cFileName;
+			if (wg_is_special_dir(entry_name))
+				continue;
 
-				__set_path_sep(path_buff, sizeof(path_buff), sef_path, entry_name);
+			__set_path_sep(size_path, sizeof(size_path), sef_path, entry_name);
 
-				if (find_data.dwFileAttributes &
-						FILE_ATTRIBUTE_DIRECTORY) {
-						if (wg_should_ignore_dir(entry_name, ignore_dir))
-								continue;
-						if (wg_sef_fdir(path_buff, sef_name, ignore_dir)) {
-								FindClose(find_handle);
-								return 1;
-						}
-				} else {
-						if (wg_match_filename(entry_name, sef_name)) {
-								wg_add_found_path(path_buff);
-								FindClose(find_handle);
-								return 1;
-						}
+			if (find_data.dwFileAttributes &
+				FILE_ATTRIBUTE_DIRECTORY)
+			{
+				if (wg_fetch_ignore_dir(entry_name, ignore_dir))
+					continue;
+				if (wg_sef_fdir(size_path, sef_name, ignore_dir)) {
+					FindClose(find_handle);
+					return 1;
 				}
+			} else {
+				if (wg_match_filename(entry_name, sef_name)) {
+					wg_add_found_path(size_path);
+					FindClose(find_handle);
+					return 1;
+				}
+			}
 		} while (FindNextFile(find_handle, &find_data));
 
 		FindClose(find_handle);
@@ -860,47 +881,47 @@ int wg_sef_fdir(const char *sef_path,
 
 		dir = opendir(sef_path);
 		if (!dir)
-				return 0;
+			return 0;
 
 		while ((item = readdir(dir)) != NULL) {
-				entry_name = item->d_name;
-				if (wg_is_special_dir(entry_name))
-						continue;
+			entry_name = item->d_name;
+			if (wg_is_special_dir(entry_name))
+				continue;
 
-				__set_path_sep(path_buff, sizeof(path_buff), sef_path, entry_name);
+			__set_path_sep(size_path, sizeof(size_path), sef_path, entry_name);
 
-				if (item->d_type == DT_DIR) {
-						if (wg_should_ignore_dir(entry_name, ignore_dir))
-								continue;
-						if (wg_sef_fdir(path_buff, sef_name, ignore_dir)) {
-								closedir(dir);
-								return 1;
-						}
-				} else if (item->d_type == DT_REG) {
-						if (wg_match_filename(entry_name, sef_name)) {
-								wg_add_found_path(path_buff);
-								closedir(dir);
-								return 1;
-						}
-				} else {
-						if (stat(path_buff, &statbuf) == -1)
-								continue;
-
-						if (S_ISDIR(statbuf.st_mode)) {
-								if (wg_should_ignore_dir(entry_name, ignore_dir))
-										continue;
-								if (wg_sef_fdir(path_buff, sef_name, ignore_dir)) {
-										closedir(dir);
-										return 1;
-								}
-						} else if (S_ISREG(statbuf.st_mode)) {
-								if (wg_match_filename(entry_name, sef_name)) {
-										wg_add_found_path(path_buff);
-										closedir(dir);
-										return 1;
-								}
-						}
+			if (item->d_type == DT_DIR) {
+				if (wg_fetch_ignore_dir(entry_name, ignore_dir))
+					continue;
+				if (wg_sef_fdir(size_path, sef_name, ignore_dir)) {
+						closedir(dir);
+					return 1;
 				}
+			} else if (item->d_type == DT_REG) {
+				if (wg_match_filename(entry_name, sef_name)) {
+					wg_add_found_path(size_path);
+					closedir(dir);
+					return 1;
+				}
+			} else {
+				if (stat(size_path, &statbuf) == -1)
+					continue;
+
+				if (S_ISDIR(statbuf.st_mode)) {
+					if (wg_fetch_ignore_dir(entry_name, ignore_dir))
+						continue;
+					if (wg_sef_fdir(size_path, sef_name, ignore_dir)) {
+						closedir(dir);
+						return 1;
+					}
+				} else if (S_ISREG(statbuf.st_mode)) {
+					if (wg_match_filename(entry_name, sef_name)) {
+						wg_add_found_path(size_path);
+						closedir(dir);
+						return 1;
+					}
+				}
+			}
 		}
 
 		closedir(dir);
@@ -1020,7 +1041,7 @@ static void __toml_base_subdirs(const char *base_path,
 		WIN32_FIND_DATAA find_data;
 		HANDLE find_handle;
 		char sp[WG_MAX_PATH], fp[WG_MAX_PATH * 2];
-		wg_snprintf(sp, sizeof(sp), "%s\\*", base_path);
+		wg_snprintf(sp, sizeof(sp), "%s%s*", base_path, __PATH_STR_SEP_WIN32);
 
 		find_handle = FindFirstFileA(sp, &find_data);
 		if (find_handle == INVALID_HANDLE_VALUE)
@@ -1203,35 +1224,35 @@ int wg_toml_configs(void)
 
 		find_pawncc = wg_find_compiler(wg_os_type);
 		if (!find_pawncc) {
-				if (strcmp(wg_os_type, "windows") == 0)
-						find_pawncc = wg_sef_fdir(".", "pawncc.exe", NULL);
-				else
-						find_pawncc = wg_sef_fdir(".", "pawncc", NULL);
+			if (strcmp(wg_os_type, "windows") == 0)
+					find_pawncc = wg_sef_fdir(".", "pawncc.exe", NULL);
+			else
+					find_pawncc = wg_sef_fdir(".", "pawncc", NULL);
 		}
 
 		find_gamemodes = wg_sef_fdir("gamemodes/", "*.pwn", NULL);
 
 		if (find_pawncc) {
-				wg_check_compiler_options(&compatibility, &optimized_lt);
+			wg_check_compiler_options(&compatibility, &optimized_lt);
 		}
 
 		toml_file = fopen("watchdogs.toml", "r");
 		if (toml_file) {
-				fclose(toml_file);
+			fclose(toml_file);
 		} else {
-				toml_file = fopen("watchdogs.toml", "w");
-				if (!toml_file) {
-						pr_error(stdout, "Failed to create watchdogs.toml");
-						return 1;
-				}
+			toml_file = fopen("watchdogs.toml", "w");
+			if (!toml_file) {
+					pr_error(stdout, "Failed to create watchdogs.toml");
+					return 1;
+			}
 
-				if (find_pawncc)
-					wg_generate_toml_content(toml_file, wg_os_type, find_gamemodes,
-						compatibility, optimized_lt, wgconfig.wg_sef_found_list[1]);
-				else
-					wg_generate_toml_content(toml_file, wg_os_type, find_gamemodes,
-						compatibility, optimized_lt, wgconfig.wg_sef_found_list[0]);
-				fclose(toml_file);
+			if (find_pawncc)
+				wg_generate_toml_content(toml_file, wg_os_type, find_gamemodes,
+					compatibility, optimized_lt, wgconfig.wg_sef_found_list[1]);
+			else
+				wg_generate_toml_content(toml_file, wg_os_type, find_gamemodes,
+					compatibility, optimized_lt, wgconfig.wg_sef_found_list[0]);
+			fclose(toml_file);
 		}
 
 		if (!wg_parsewg_toml_config()) {

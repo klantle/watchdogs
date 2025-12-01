@@ -711,10 +711,10 @@ back_start:
 #else
         wg_snprintf(r_command, sizeof(r_command), "./%s", server_bin);
 #endif
-        end = time(NULL);
-
         ret = wg_run_command(r_command);
         if (ret == 0) {
+                end = time(NULL);
+
                 if (!strcmp(wgconfig.wg_os_type, OS_SIGNAL_LINUX)) {
                         printf("~ logging...\n");
                         sleep(0x3);
@@ -722,6 +722,10 @@ back_start:
                 }
         } else {
                 pr_color(stdout, FCOLOUR_RED, "Server startup failed!\n");
+
+                if (is_pterodactyl_env())
+                        goto server_done;
+
                 elapsed = difftime(end, start);
                 if (elapsed <= 5.0 && ret_serv == 0) {
                         ret_serv = 0x1;
@@ -732,9 +736,13 @@ back_start:
                         _wg_log_acces = path_access(wgconfig.wg_toml_logs);
                         if (_wg_log_acces)
                                 remove(wgconfig.wg_toml_logs);
+                        end = time(NULL);
                         goto back_start;
                 }
         }
+
+server_done:
+        end = time(NULL);
 
         if (handle_sigint == 0)
                 raise(SIGINT);
@@ -959,11 +967,15 @@ back_start:
 #else
         wg_snprintf(r_command, sizeof(r_command), "./%s", server_bin);
 #endif
-        end = time(NULL);
 
         ret = wg_run_command(r_command);
+
         if (ret != 0) {
                 pr_color(stdout, FCOLOUR_RED, "Server startup failed!\n");
+
+                if (is_pterodactyl_env())
+                        goto server_done;
+
                 elapsed = difftime(end, start);
                 if (elapsed <= 5.0 && ret_serv == 0) {
                         ret_serv = 0x1;
@@ -974,10 +986,13 @@ back_start:
                         _wg_log_acces = path_access(wgconfig.wg_toml_logs);
                         if (_wg_log_acces)
                                 remove(wgconfig.wg_toml_logs);
+                        end = time(NULL);
                         goto back_start;
                 }
         }
 
+server_done:
+        end = time(NULL);
         if (handle_sigint)
                 raise(SIGINT);
 

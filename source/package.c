@@ -27,7 +27,7 @@ static int pawncc_handle_termux_installation(void)
 		size_t size_pkg_termux_versions_zero = sizeof(pkg_termux_versions[0]);
 		size_t version_count = size_pkg_termux_versions / size_pkg_termux_versions_zero;
 
-		if (!is_termux_environment())
+		if (!is_termux_env())
 				pr_info(stdout, "Currently not in Termux!");
 
 		char *__version__;

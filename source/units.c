@@ -175,12 +175,12 @@ _ptr_command:
         if (chain_pre_command && chain_pre_command[0] != '\0') {
             ptr_command = strdup(chain_pre_command);
             printf("[" FCOLOUR_CYAN
-            "watchdogs ~ %s" FCOLOUR_DEFAULT "]$ %s\n", wg_get_cwd(), ptr_command);
+                "watchdogs" FCOLOUR_DEFAULT "] $ %s\n", ptr_command);
         } else {
-            while (1) {
+            while (true) {
                 wg_snprintf(ptr_prompt, size_ptrp,
                         "[" FCOLOUR_CYAN
-                        "watchdogs ~ %s" FCOLOUR_DEFAULT "]$ ", wg_get_cwd());
+                        "watchdogs" FCOLOUR_DEFAULT "] $ ");
 
                 ptr_command = readline(ptr_prompt);
 
@@ -797,8 +797,6 @@ back_start:
                         chmod(wgconfig.wg_toml_binary, 0777);
                         wg_snprintf(size_run, sizeof(size_run), "./%s", wgconfig.wg_toml_binary);
 #endif
-                        end = time(NULL);
-
                         int rate_runner_failed = wg_run_command(size_run);
                         if (rate_runner_failed == 0) {
                             if (!strcmp(wgconfig.wg_os_type, OS_SIGNAL_LINUX)) {
@@ -808,6 +806,9 @@ back_start:
                             }
                         } else {
                             pr_color(stdout, FCOLOUR_RED, "Server startup failed!\n");
+                            if (is_pterodactyl_env()) {
+                                goto server_done;
+                            }
                             elapsed = difftime(end, start);
                             if (elapsed <= 5.0 && ret_serv == 0) {
                                 ret_serv = 1;
@@ -818,10 +819,13 @@ back_start:
                                 _wg_log_acces = path_access(wgconfig.wg_toml_logs);
                                 if (_wg_log_acces)
                                   remove(wgconfig.wg_toml_logs);
+                                end = time(NULL);
                                 goto back_start;
                             }
                         }
 
+server_done:
+                        end = time(NULL);
                         if (handle_sigint == 0)
                             raise(SIGINT);
 
@@ -873,11 +877,12 @@ back_start2:
                         chmod(wgconfig.wg_toml_binary, 0777);
                         wg_snprintf(size_run, sizeof(size_run), "./%s", wgconfig.wg_toml_binary);
 #endif
-                        end = time(NULL);
-
                         int rate_runner_failed = wg_run_command(size_run);
                         if (rate_runner_failed != 0) {
                             pr_color(stdout, FCOLOUR_RED, "Server startup failed!\n");
+                            if (is_pterodactyl_env()) {
+                                goto server_done2;
+                            }
                             elapsed = difftime(end, start);
                             if (elapsed <= 5.0 && ret_serv == 0) {
                                 ret_serv = 1;
@@ -888,10 +893,13 @@ back_start2:
                                 _wg_log_acces = path_access(wgconfig.wg_toml_logs);
                                 if (_wg_log_acces)
                                   remove(wgconfig.wg_toml_logs);
+                                end = time(NULL);
                                 goto back_start2;
                             }
                         }
 
+server_done2:
+                        end = time(NULL);
                         if (handle_sigint == 0) {
                             raise(SIGINT);
                         }

@@ -12,6 +12,22 @@
 #include "curl.h"
 #include "units.h"
 
+static void arch_extraction_path(const char *entry_dest, const char *entry_path,
+								  char *out_path, size_t out_size)
+{
+	if (!entry_dest ||
+		!strcmp(entry_dest, ".")||
+		*entry_dest == '\0') {
+		wg_snprintf(out_path, out_size, "%s", entry_path);
+	} else {
+		if (!strncmp(entry_path, entry_dest, strlen(entry_dest))) {
+			wg_snprintf(out_path, out_size, "%s", entry_path);
+		} else {
+			wg_snprintf(out_path, out_size, "%s/%s", entry_dest, entry_path);
+		}
+	}
+}
+
 static int arch_copy_data(struct archive *ar, struct archive *aw)
 {
 	size_t size;
@@ -37,16 +53,14 @@ static int arch_copy_data(struct archive *ar, struct archive *aw)
 }
 
 int wg_extract_tar(const char *tar_path, const char *entry_dest) {
+	int r;
+	int flags;
 	struct archive *a;
 	struct archive *ext;
 	struct archive_entry *entry;
-	int flags;
-	int r;
 
-	flags = ARCHIVE_EXTRACT_TIME;
-	flags |= ARCHIVE_EXTRACT_PERM;
-	flags |= ARCHIVE_EXTRACT_ACL;
-	flags |= ARCHIVE_EXTRACT_FFLAGS;
+	flags = ARCHIVE_EXTRACT_TIME | ARCHIVE_EXTRACT_PERM |
+			ARCHIVE_EXTRACT_ACL | ARCHIVE_EXTRACT_FFLAGS;
 
 	a = archive_read_new();
 	archive_read_support_format_all(a);
@@ -129,22 +143,6 @@ int wg_extract_tar(const char *tar_path, const char *entry_dest) {
 	archive_write_free(ext);
 
 	return 0;
-}
-
-static void build_extraction_path(const char *entry_dest, const char *entry_path,
-								  char *out_path, size_t out_size)
-{
-	if (!entry_dest ||
-		!strcmp(entry_dest, ".")||
-		*entry_dest == '\0') {
-		wg_snprintf(out_path, out_size, "%s", entry_path);
-	} else {
-		if (!strncmp(entry_path, entry_dest, strlen(entry_dest))) {
-			wg_snprintf(out_path, out_size, "%s", entry_path);
-		} else {
-			wg_snprintf(out_path, out_size, "%s/%s", entry_dest, entry_path);
-		}
-	}
 }
 
 static int extract_zip_entry(struct archive *archive_read,
@@ -233,7 +231,7 @@ int wg_extract_zip(const char *zip_file, const char *entry_dest)
 			fflush(stdout);
 		}
 
-		build_extraction_path(entry_dest, entry_path, full_path, sizeof(full_path));
+		arch_extraction_path(entry_dest, entry_path, full_path, sizeof(full_path));
 		archive_entry_set_pathname(item, full_path);
 
 		if (extract_zip_entry(archive_read, archive_write, item) != 0) {
@@ -292,25 +290,24 @@ void wg_extract_archive(const char *filename)
 			"Unknown");
 #endif
 #endif
-	char output_path[WG_PATH_MAX];
-	size_t name_len;
 
-	if (strstr(filename, ".tar.gz")) {
-		printf(" Try Extracting TAR archive: %s\n", filename);
+	size_t name_len;
+	char output_path[WG_PATH_MAX];
+	
+	printf(" Try Extracting %s archive file...\n", filename);
+	fflush(stdout);
+
+	if (strfind(filename, ".tar.gz")) {
 		char size_filename[WG_PATH_MAX];
 		wg_snprintf(size_filename, sizeof(size_filename), "%s", filename);
-		if (strstr(size_filename, ".tar.gz")) {
+		if (strfind(size_filename, ".tar.gz")) {
 			char *ext = strstr(size_filename, ".tar.gz");
-			if (ext)
-				*ext = '\0';
+			if (ext) *ext = '\0';
 		}
 		wg_extract_tar(filename, size_filename);
-	} else if (strstr(filename, ".tar")) {
-		printf(" Try Extracting TAR archive: %s\n", filename);
+	} else if (strfind(filename, ".tar")) {
 		wg_extract_tar(filename, NULL);
-	} else if (strstr(filename, ".zip")) {
-		printf(" Try Extracting ZIP archive: %s\n", filename);
-
+	} else if (strfind(filename, ".zip")) {
 		name_len = strlen(filename);
 		if (name_len > 4 &&
 			!strncmp(filename + name_len - 4, ".zip", 4))
@@ -322,11 +319,12 @@ void wg_extract_archive(const char *filename)
 		}
 		wg_extract_zip(filename, output_path);
 	} else {
-		pr_info(stdout, "Unknown archive type, skipping extraction: %s\n", filename);
+		pr_info(stdout, "Unknown archive, skipping extraction: %s\n", filename);
 		goto done;
 	}
 
 	sleep(1);
+
 done:
 	return;
 }

@@ -466,11 +466,6 @@ install repo/user
 install repo/user:v1.1
 ```
 
-**Install specific branch:**
-```bash
-install --branch main repo/user:v1.1
-```
-
 ### Make Commands Reference
 
 ```bash

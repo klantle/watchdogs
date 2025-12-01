@@ -14,22 +14,14 @@ jobs:
       CXX: clang++
 
     steps:
-    # Repository checkout with depth=1 for faster cloning (shallow clone)
     - uses: actions/checkout@v4
       with:
         fetch-depth: 1
 
-    # System dependencies installation with optimized apt configuration
     - name: Install build dependencies
       run: |
-        # Configure apt for non-interactive operation and cache optimization
         export DEBIAN_FRONTEND=noninteractive
         sudo apt-get update -y
-        
-        # Install core build toolchain and development libraries
-        # build-essential: GCC, G++, make, libc-dev, etc.
-        # procps: process utilities (ps, top, kill, etc.)
-        # clang/lld: LLVM compiler toolchain and linker
         sudo apt-get install -y --no-install-recommends \
           build-essential \
           procps \
@@ -43,41 +35,29 @@ jobs:
           libarchive-dev \
           zlib1g-dev \
           libonig-dev
-        
-        # Clean up apt cache to reduce image size
         sudo apt-get autoremove -y
         sudo apt-get clean
 
-    # Build phase with debug symbols and sanitizers enabled
     - name: Build project (Debug configuration)
       run: |
-        # Build with debug symbols and address sanitizer
-        # This enables: -g (debug symbols) -fsanitize=address (memory error detection)
+        echo "[TASKS - BUILD] RUNNING DEBUG BUILD"
         make debug
-        file watchdogs.debug  # Verify binary type and properties
+        echo "[TASKS - BUILD] BUILD FILE DETAILS"
+        file watchdogs.debug
 
-    # Test execution phase with multiple command validation
     - name: Execute test suite and validation
       run: |
-        # Test 1: Verify help command functionality
-        echo "Testing help command..."
+        echo "[TASKS - BUILD] TESTING HELP COMMAND"
         ./watchdogs.debug help
-        
-        # Test 2: Execute dev watchdogs functionality
-        echo "Testing dev watchdogs command..."
+        echo "[TASKS - BUILD] TESTING WATCHDOGS COMMAND"
         ./watchdogs.debug watchdogs
-        
-        # Test 3: Validate binary dependencies and linking
-        echo "Checking binary dependencies..."
+        echo "[TASKS - BUILD] CHECKING BINARY DEPENDENCIES"
         ldd watchdogs.debug || true
-        
-        # Exit with combined status code from all tests
         exit 0
 
-    # Optional: Binary size and artifact reporting
     - name: Build artifact analysis
       run: |
-        echo "Build artifact statistics:"
+        echo "[TASKS - BUILD] ARTIFACT STATISTICS"
         ls -la watchdogs.debug
         size watchdogs.debug || true
-        echo "Build completed successfully"
+        echo "[TASKS - BUILD] BUILD COMPLETED SUCCESSFULLY"

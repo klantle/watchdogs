@@ -46,6 +46,9 @@
 - [x] Android (via [Termux](https://github.com/termux/termux-app/releases))
 - [x] [Virtual Private Server](https://en.wikipedia.org/wiki/Virtual_private_server)
 - [x] [Pterodactyl Egg](https://pterodactyl.io/community/config/eggs/creating_a_custom_egg.html)
+- [x] [Coder self-hosted](https://coder.com/)
+- [x] [DevPod](https://devpod.sh/)
+- [x] [GitLab CI/CD](https://docs.gitlab.com/ci/)
 - [x] [GitHub Actions](https://github.com/features/actions)
 - [x] [GitHub Codespaces](https://github.com/features/codespaces)
 

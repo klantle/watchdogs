@@ -170,7 +170,8 @@ int wg_run_compiler(const char *args, const char *compile_args,  const char *sec
 
             for (int i = 0; i < aio_extra_options; ++i) {
                 if (compiler_args[i] != NULL) {
-                    if (strfind(compiler_args[i], "--detailed"))
+                    if (strfind(compiler_args[i], "--detailed") ||
+                        strfind(compiler_args[i], "--watchdogs"))
                         ++compiler_has_watchdogs;
                     if (strfind(compiler_args[i], "--debug"))
                         ++compiler_has_debug;

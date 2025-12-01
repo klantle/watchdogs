@@ -96,8 +96,8 @@ int wg_extract_tar(const char *tar_path, const char *entry_dest) {
 		static int notice_extracting = 0;
 		if (extract_notice == 0) {
 			extract_notice = 1;
-			printf("\x1b[32m==> create debug extract archive?\x1b[0m\n");
-			char *debug_extract = readline("   answer [y/n]: ");
+			printf("\x1b[32m==> Create extraction logs? (y/n): \x1b[0m\n");
+			char *debug_extract = readline("   answer (y/n): ");
 			if (debug_extract) {
 				if (debug_extract[0] == 'Y' || debug_extract[0] == 'y') {
 					notice_extracting = 1;
@@ -215,8 +215,8 @@ int wg_extract_zip(const char *zip_file, const char *entry_dest)
 		static int notice_extracting = 0;
 		if (extract_notice == 0) {
 			extract_notice = 1;
-			printf("\x1b[32m==> create debug extract archive?\x1b[0m\n");
-			char *debug_extract = readline("   answer [y/n]: ");
+			printf("\x1b[32m==> Create extraction logs? (y/n): \x1b[0m\n");
+			char *debug_extract = readline("   answer (y/n): ");
 			if (debug_extract) {
 				if (debug_extract[0] == 'Y' || debug_extract[0] == 'y') {
 					notice_extracting = 1;

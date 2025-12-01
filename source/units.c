@@ -208,7 +208,7 @@ _reexecute_command:
             wg_console_title("Watchdogs | @ help");
 
             char *args;
-                args = ptr_command + 4;
+                args = ptr_command + strlen("help");
             while (*args == ' ') ++args;
 
             if (strlen(args) == 0) {
@@ -244,8 +244,8 @@ _reexecute_command:
                 println(stdout, "config: re-create watchdogs.toml. Usage: \"config\"\n     Reset your config file to default settings.");
             } else if (strcmp(args, "stopwatch") == 0) { 
                 println(stdout, "stopwatch: calculating time. Usage: \"stopwatch\" | [<args>]\n     Need to time something? This is your stopwatch!");
-            } else if (strcmp(args, "install") == 0) { 
-                println(stdout, "install: download & install depends | Usage: \"install\" | [<args>]\n     Install stuff from GitHub repos. | Example: install user/repo:tag");
+            } else if (strcmp(args, "download") == 0) {
+                println(stdout, "download: fetch file from URL | Usage: \"download\" | [<args>]\n     Downloads archives from direct links.");
             } else if (strcmp(args, "hardware") == 0) { 
                 println(stdout, "hardware: hardware information. | Usage: \"hardware\"\n     Show off your PC specs!");
             } else if (strcmp(args, "gamemode") == 0) { 
@@ -295,7 +295,7 @@ _reexecute_command:
             else
                 goto _ptr_command;
         } else if (strncmp(ptr_command, "title", 5) == 0) {
-            char *args = ptr_command + 5;
+            char *args = ptr_command + strlen("title");
             while (*args == ' ') ++args;
 
             if (*args == '\0') {
@@ -308,7 +308,7 @@ _reexecute_command:
 
             goto chain_done;
         } else if (strncmp(ptr_command, "sha256", 6) == 0) {
-            char *args = ptr_command + 6;
+            char *args = ptr_command + strlen("sha256");
             while (*args == ' ') ++args;
 
             if (*args == '\0') {
@@ -327,7 +327,7 @@ _reexecute_command:
 
             goto chain_done;
         } else if (strncmp(ptr_command, "crc32", 5) == 0) {
-            char *args = ptr_command + 5;
+            char *args = ptr_command + strlen("crc32");
             while (*args == ' ') ++args;
 
             if (*args == '\0') {
@@ -352,7 +352,7 @@ _reexecute_command:
 
             goto chain_done;
         } else if (strncmp(ptr_command, "djb2", 4) == 0) {
-            char *args = ptr_command + 4;
+            char *args = ptr_command + strlen("djb2");
             while (*args == ' ') ++args;
 
             if (*args == '\0') {
@@ -396,7 +396,7 @@ _reexecute_command:
             struct timespec start, now;
             double stw_elp;
 
-            char *args = ptr_command + 10;
+            char *args = ptr_command + strlen("stopwatch");
             while (*args == ' ') ++args;
 
             if (*args == '\0') {
@@ -447,10 +447,40 @@ _reexecute_command:
             hardware_show_detailed();
 
             goto chain_done;
-        } else if (strncmp(ptr_command, "install", 7) == 0) {
+        } else if (strncmp(ptr_command, "download", 8) == 0) {
+            wg_console_title("Watchdogs | @ downloading files");
+
+            char *args = ptr_command + strlen("download");
+            while (*args == ' ') ++args;
+
+            char links_name[WG_PATH_MAX];
+            const char *size_last_slash;
+
+            if (*args == '\0') {
+                println(stdout, "Usage: download [<direct-link>]");
+            } else {
+                size_last_slash = strrchr(args, __PATH_CHR_SEP_LINUX);
+                if (size_last_slash && *(size_last_slash + 1)) {
+                        wg_snprintf(links_name, sizeof(links_name), "%s", size_last_slash + 1);
+                        if (!strfind(links_name, ".zip") &&
+                            !strfind(links_name, ".tar.gz") &&
+                            !strfind(links_name, ".tar"))
+                                wg_snprintf(links_name + strlen(links_name),
+                                            sizeof(links_name) - strlen(links_name),
+                                            ".zip");
+                        wg_download_file(args, links_name);
+                } else {
+                        pr_color(stdout, FCOLOUR_RED, "");
+                        printf("invalid link name: %s\t\t[Fail]\n", args);
+                        goto chain_done;
+                }
+            }
+            
+            goto chain_done;
+        } if (strncmp(ptr_command, "install", 7) == 0) {
             wg_console_title("Watchdogs | @ install depends");
 
-            char *args = ptr_command + 7;
+            char *args = ptr_command + strlen("install");
             while (*args == ' ') ++args;
 
             if (*args) {
@@ -688,7 +718,7 @@ loop_ipcc3:
             char *eight_arg = NULL;
             char *nine_arg = NULL;
 
-            args = ptr_command + 7;
+            args = ptr_command + strlen("compile");
 
             while (*args == ' ') {
                 args++;
@@ -830,7 +860,7 @@ server_done:
                             raise(SIGINT);
 
                         printf("\x1b[32m==> create debugging runner?\x1b[0m\n");
-                        char *debug_runner = readline("   answer [y/n]: ");
+                        char *debug_runner = readline("   answer (y/n): ");
                         if (strcmp(debug_runner, "Y") == 0 || strcmp(debug_runner, "y") == 0) {
                             ptr_command = strdup("log");
                             wg_free(debug_runner);
@@ -845,7 +875,7 @@ server_done:
                         wg_run_samp_server(args2, wgconfig.wg_toml_binary);
                         restore_server_config();
                         printf("\x1b[32m==> create debugging runner?\x1b[0m\n");
-                        char *debug_runner = readline("   answer [y/n]: ");
+                        char *debug_runner = readline("   answer (y/n): ");
                         if (strcmp(debug_runner, "Y") == 0 || strcmp(debug_runner, "y") == 0) {
                             ptr_command = strdup("log");
                             wg_free(debug_runner);
@@ -905,7 +935,7 @@ server_done2:
                         }
 
                         printf("\x1b[32m==> create debugging runner?\x1b[0m\n");
-                        char *debug_runner = readline("   answer [y/n]: ");
+                        char *debug_runner = readline("   answer (y/n): ");
                         if (strcmp(debug_runner, "Y") == 0 || strcmp(debug_runner, "y") == 0) {
                             ptr_command = strdup("log");
                             wg_free(debug_runner);
@@ -920,7 +950,7 @@ server_done2:
                         wg_run_omp_server(args2, wgconfig.wg_ptr_omp);
                         restore_server_config();
                         printf("\x1b[32m==> create debugging runner?\x1b[0m\n");
-                        char *debug_runner = readline("   answer [y/n]: ");
+                        char *debug_runner = readline("   answer (y/n): ");
                         if (strcmp(debug_runner, "Y") == 0 || strcmp(debug_runner, "y") == 0) {
                             ptr_command = strdup("log");
                             wg_free(debug_runner);
@@ -993,7 +1023,7 @@ n_loop_igm2:
             sleep(2);
             goto _runners_;
         } else if (strncmp(ptr_command, "wanion", 6) == 0) {
-            char *args = ptr_command + 6;
+            char *args = ptr_command + strlen("wanion");
             while (*args == ' ') ++args;
 
             if (*args == '\0') {
@@ -1332,11 +1362,11 @@ wanion_curl_end:
                 goto chain_done;
             }
         } else if (strncmp(ptr_command, "tracker", 7) == 0) {
-            char *args = ptr_command + 7;
+            char *args = ptr_command + strlen("tracker");
             while (*args == ' ') ++args;
 
             if (*args == '\0') {
-                println(stdout, "Usage: tracker [<account name>]");
+                println(stdout, "Usage: tracker [<name>]");
             } else {
                 CURL *curl;
                 curl_global_init(CURL_GLOBAL_DEFAULT);
@@ -1346,8 +1376,8 @@ wanion_curl_end:
                     goto chain_done;
                 }
 
-                char variations[100][100];
                 int variation_count = 0;
+                char variations[100][100];
 
                 account_tracker_discrepancy(args, variations, &variation_count);
 
@@ -1434,7 +1464,7 @@ L"\t\t   W   A   T   C   H   D   O   G   S\n");
         } else if (strcmp(ptr_command, _dist_command) != 0 && c_distance <= 2) {
             wg_console_title("Watchdogs | @ undefined");
             printf("did you mean '" FCOLOUR_YELLOW "%s" FCOLOUR_DEFAULT "'", _dist_command);
-            printf(" [y/n]:");
+            printf(" (y/n):");
             fflush(stdout);
             char *confirm = readline(" ");
             if (!confirm) {
@@ -1444,7 +1474,7 @@ L"\t\t   W   A   T   C   H   D   O   G   S\n");
             }
             if (strlen(confirm) == 0) {
                 wg_free(confirm);
-                confirm = readline(" >>> [y/n]: ");
+                confirm = readline(" >>> (y/n): ");
             }
             if (confirm) {
                 if (strcmp(confirm, "Y") == 0 || strcmp(confirm, "y") == 0) {

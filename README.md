@@ -178,9 +178,7 @@ mv -f watchdogs.tmux .. && cd .. && \
 Available for:
 > /etc/pacman.d/mirrorlist.mingw64 | /etc/pacman.d/mirrorlist.msys | /etc/pacman.d/mirrorlist.ucrt64
 ```bash
-nano /etc/pacman.d/mirrorlist.mingw64
-nano /etc/pacman.d/mirrorlist.msys
-nano /etc/pacman.d/mirrorlist.ucrt64
+nano /etc/pacman.d/mirrorlist.mingw64 && nano /etc/pacman.d/mirrorlist.msys && nano /etc/pacman.d/mirrorlist.ucrt64
 ```
 
 Add mirrors:
@@ -306,69 +304,81 @@ Get help:
 ```yaml
 Usage: help | help [<command>]
 ```
-Watchdogs also directly supports running commands when executing the program and, of course, supports running commands with arguments like
+
+> Watchdogs also directly supports running commands when executing the program and, of course, supports running commands with arguments like
+
 ```yaml
 ./watchdogs help
+./watchdogs whoami
 ./watchdogs help compile
-./watcdhgos compile main.pwn
+./watchdogs compile main.pwn
+```
+
+### Downloading Our Links
+
+> This can be used to install any archive. In this case, it is very advantageous for easily accessing gamemodes, only requiring a third party as an archive provider to serve as the link. Only zip/tar/tar.gz for extracting.
+
+```yaml
+download https://host/name/
+download https://github.com/klantle/watchdogs/archive/refs/heads/dev.zip
 ```
 
 ### Compilation Commands
 
 **Compile default gamemode:**
-```bash
+```yaml
 compile .
 ```
 
 **Compile specific file:**
-```bash
+```yaml
 compile yourmode.pwn
 ```
 
 **Compile with specific path:**
-```bash
+```yaml
 compile path/to/yourmode
 ```
 
 **Compile specific options:**
 > Extend compiler detail & cause
-```bash
+```yaml
 compile . --detailed
 compile path/to/yourmode --detailed
 ```
 > Clean '.amx' after compile
-```bash
+```yaml
 compile . --clean
 compile path/to/yourmode --clean
 ```
 > Options '-d2' Debugging Mode
-```bash
+```yaml
 compile . --debug
 compile path/to/yourmode --debug
 ```
 > Options '-a' - assembler output
-```bash
+```yaml
 compile . --assembler
 compile path/to/yourmode --assembler
 ```
 > Options '-R+' detailed recursion report with call chains
-```bash
+```yaml
 compile . --recursion
 compile path/to/yourmode --recursion
 ```
 > Options '-C+' compact encoding for output file
-```bash
+```yaml
 compile . --encoding
 compile path/to/yourmode --encoding
 ```
 > Option '-v2' verbosity level - verbose
-```bash
+```yaml
 compile . --prolix
 compile path/to/yourmode --prolix
 ```
 
 - Can combined
-```bash
+```yaml
 compile . --opt1 --opt2 --opt3 --opt4
 compile path/to/yourmode --opt1 --opt2 --opt3 --opt4
 ```
@@ -402,17 +412,17 @@ compile path/to/yourmode --opt1 --opt2 --opt3 --opt4
 <br>
 
 **Start server with default gamemode:**
-```bash
+```yaml
 running .
 ```
 
 **Start server with specific gamemode:**
-```bash
+```yaml
 running yourmode
 ```
 
 **Compile and start in one command:**
-```bash
+```yaml
 compiles
 ```
 
@@ -452,23 +462,23 @@ The handling of YSI includes differs due to their structure containing multiple 
 ![img](https://raw.githubusercontent.com/klantle/watchdogs/refs/heads/dev/__DEPS.png)
 
 **Install dependencies from `watchdogs.toml`:**
-```bash
+```yaml
 install
 ```
 
 **Install specific repository:**
-```bash
+```yaml
 install repo/user
 ```
 
 **Install specific version (tags):**
-```bash
+```yaml
 install repo/user:v1.1
 ```
 
 ### Make Commands Reference
 
-```bash
+```yaml
 make                # Install libraries and build
 make linux          # Build for Linux
 make windows        # Build for Windows
@@ -483,7 +493,7 @@ make windows-debug  # Build with debug mode (Windows)
 
 > I always recommend running your program in debug mode when using GDB — it makes debugging way easier.
 
-```bash
+```yaml
 # step one - start gdb
 gdb ./watchdogs.tmux      # termux
 gdb ./watchdogs.debug     # linux
@@ -543,7 +553,7 @@ Watchdogs implements recursive detection for include files in subdirectories, as
 
 ### Example Usage
 
-```bash
+```yaml
 pawncc "input" -o"output.amx" -i"include/"
 ```
 

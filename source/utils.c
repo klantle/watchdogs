@@ -55,14 +55,14 @@ ssize_t sendfile(int out_fd,
 #include "crypto.h"
 
 const char* __command[] = {
-	    "help",       "exit",      "kill",      "title",     "sha256",
-	    "crc32",      "djb2",      "time",      "config",    "stopwatch",
-	    "install",    "hardware",  "gamemode",  "pawncc",    "log",
-	    "compile",    "running",   "compiles",  "stop",      "restart",
-	    "wanion",     "tracker",   "ls",        "ping",      "clear",
-	    "nslookup",   "netstat",   "ipconfig",  "uname",     "hostname",
-	    "whoami",     "arp",       "route",     "df",        "du",
-	    "ps"
+		"help",       "exit",      "kill",      "title",     "sha256",
+		"crc32",      "djb2",      "time",      "config",    "stopwatch",
+		"download",   "install",   "hardware",  "gamemode",  "pawncc",
+		"log",        "compile",   "running",   "compiles",  "stop",
+		"restart",    "wanion",    "tracker",   "ls",        "ping",
+		"clear",      "nslookup",  "netstat",   "ipconfig",  "uname",
+		"hostname",   "whoami",    "arp",       "route",     "df",
+		"du",         "ps"
 };
 
 const size_t
@@ -1052,9 +1052,9 @@ static void __toml_base_subdirs(const char *base_path,
 					if (wg_is_special_dir(find_data.cFileName))
 						continue;
 
-					const char *last_slash = strrchr(base_path, __PATH_CHR_SEP_WIN32);
-					if (last_slash &&
-						strcmp(last_slash + 1,
+					const char *size_last_slash = strrchr(base_path, __PATH_CHR_SEP_WIN32);
+					if (size_last_slash &&
+						strcmp(size_last_slash + 1,
 							   find_data.cFileName) == 0)
 						continue;
 
@@ -1081,9 +1081,9 @@ static void __toml_base_subdirs(const char *base_path,
 					if (wg_is_special_dir(item->d_name))
 						continue;
 
-					const char *last_slash = strrchr(base_path, __PATH_CHR_SEP_LINUX);
-					if (last_slash &&
-						strcmp(last_slash + 1,
+					const char *size_last_slash = strrchr(base_path, __PATH_CHR_SEP_LINUX);
+					if (size_last_slash &&
+						strcmp(size_last_slash + 1,
 							   item->d_name) == 0)
 						continue;
 

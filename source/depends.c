@@ -1374,7 +1374,7 @@ void wg_install_depends (const char *depends_string)
         struct dep_repo_info repo;
         char dep_url[1024];
         char dep_name[256];
-        const char *last_slash;
+        const char *size_last_slash;
         char *token;
         int deps_count = 0;
         int i;
@@ -1429,10 +1429,12 @@ void wg_install_depends (const char *depends_string)
                         }
                 }
 
-                last_slash = strrchr(dep_url, __PATH_CHR_SEP_LINUX);
-                if (last_slash && *(last_slash + 1)) {
-                        wg_snprintf(dep_name, sizeof(dep_name), "%s", last_slash + 1);
-                        if (!strstr(dep_name, ".zip") && !strstr(dep_name, ".tar.gz"))
+                size_last_slash = strrchr(dep_url, __PATH_CHR_SEP_LINUX);
+                if (size_last_slash && *(size_last_slash + 1)) {
+                        wg_snprintf(dep_name, sizeof(dep_name), "%s", size_last_slash + 1);
+                        if (!strfind(dep_name, ".zip") &&
+							!strfind(dep_name, ".tar.gz") &&
+							!strfind(dep_name, ".tar"))
                                 wg_snprintf(dep_name + strlen(dep_name),
                                             sizeof(dep_name) - strlen(dep_name),
                                             ".zip");

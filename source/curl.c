@@ -594,7 +594,7 @@ void wg_apply_pawncc(void)
 
 		pr_info(stdout, "Compiler installed successfully!");
 
-		pr_color(stdout, FCOLOUR_CYAN, "Testing our compiler? [Y/n]");
+		pr_color(stdout, FCOLOUR_CYAN, "Run compiler now? (y/n):");
 		char *compile_now = readline(" ");
 		if (!strcmp(compile_now, "Y") || !strcmp(compile_now, "y")) {
 			wg_free(compile_now);
@@ -619,8 +619,9 @@ static int prompt_apply_pawncc(void)
 {
 		wgconfig.wg_ipawncc = 0;
 
-		pr_color(stdout, FCOLOUR_YELLOW, "Apply pawncc?");
-		char *confirm = readline(" [y/n]: ");
+		printf("\x1b[32m==> Apply pawncc?\x1b[0m\n");
+		char *confirm = readline("   answer (y/n): ");
+
 		fflush(stdout);
 
 		if (!confirm) {
@@ -631,7 +632,7 @@ static int prompt_apply_pawncc(void)
 
 		if (strlen(confirm) == 0) {
 			wg_free(confirm);
-			confirm = readline(" >>> [y/n]: ");
+			confirm = readline(" >>> (y/n): ");
 		}
 
 		if (confirm) {
@@ -775,7 +776,7 @@ int wg_download_file(const char *url, const char *filename)
 			if (create_debugging == 0) {
 				create_debugging = 1;
 				pr_color(stdout, FCOLOUR_CYAN, " %% Enable HTTP debugging? ");
-				char *debug_http = readline("[y/n]: ");
+				char *debug_http = readline("(y/n): ");
 				if (debug_http && (debug_http[0] == 'Y' || debug_http[0] == 'y')) {
 					always_create_debugging = 1;
 				}
@@ -830,8 +831,33 @@ int wg_download_file(const char *url, const char *filename)
 					wg_extract_archive(filename);
 
 					if (wgconfig.wg_idepends == 1) {
+						static int remove_archive = 0;
+						if (remove_archive == 0) {
+							pr_color(stdout, FCOLOUR_CYAN, "==> Remove archive? ");
+							char *confirm = readline("(y/n): ");
+							if (confirm && (confirm[0] == 'Y' || confirm[0] == 'y')) {
+								remove_archive = 1;
+								char rm_cmd[WG_PATH_MAX];
+								if (is_native_windows())
+									wg_snprintf(rm_cmd, sizeof(rm_cmd),
+										"if exist \"%s\" (del /f /q \"%s\" 2>nul)", filename, filename);
+								else
+									wg_snprintf(rm_cmd, sizeof(rm_cmd), "rm -f %s", filename);
+								wg_run_command(rm_cmd);
+							}
+							wg_free(confirm);
+						} else {
+							char rm_cmd[WG_PATH_MAX];
+							if (is_native_windows())
+								wg_snprintf(rm_cmd, sizeof(rm_cmd),
+									"if exist \"%s\" (del /f /q \"%s\" 2>nul)", filename, filename);
+							else
+								wg_snprintf(rm_cmd, sizeof(rm_cmd), "rm -f %s", filename);
+							wg_run_command(rm_cmd);
+						}
+					} else {
 						pr_color(stdout, FCOLOUR_CYAN, "==> Remove archive? ");
-						char *confirm = readline("[y/n]: ");
+						char *confirm = readline("(y/n): ");
 						if (confirm && (confirm[0] == 'Y' || confirm[0] == 'y')) {
 							char rm_cmd[WG_PATH_MAX];
 							if (is_native_windows())

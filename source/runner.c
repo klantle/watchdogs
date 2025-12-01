@@ -251,10 +251,10 @@ void wg_server_crash_check(void) {
                                 fwrite(output_buf, 1, needed, stdout);
                                 fflush(stdout);
 
-                                needed = wg_snprintf(output_buf, sizeof(output_buf), "* downgrading sampvoice now? 3.1 -> 3.0 [Y/n]\n");
+                                printf("\x1b[32m==> downgrading sampvoice? 3.1 -> 3.0? (y/n): \x1b[0m\n");
                                 fwrite(output_buf, 1, needed, stdout);
                                 fflush(stdout);
-                                char *downgrading = readline(" ");
+                                char *downgrading = readline("   answer (y/n): ");
                                 if (strcmp(downgrading, "Y") == 0 || strcmp(downgrading, "y")) {
                                     wg_install_depends("CyberMor/sampvoice:v3.0-alpha");
                                 }
@@ -432,7 +432,7 @@ skip:
             fwrite(output_buf, 1, needed, stdout);
             fflush(stdout);
             
-            char *fixed_now = readline("Fixed it now? [Y/n] ");
+            char *fixed_now = readline("Fix now? (Y/n): ");
 
             if (!strcmp(fixed_now, "Y") || !strcmp(fixed_now, "y")) {
                 if (path_access("server.cfg")) {

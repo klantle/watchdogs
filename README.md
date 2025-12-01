@@ -52,17 +52,17 @@
 ## Roadmap
 | File              | Description                                                                                           |
 | ----------------- | ----------------------------------------------------------------------------------------------------- |
-| **wg_unit**     | This is the main Watchdogs file.                                                                      |
-| **wg_util**     | This file contains utility functions for Watchdogs.                                                   |
-| **wg_hardware** | This file contains hardware-related information for Watchdogs.                                        |
-| **wg_crypto**   | This file handles cryptographic operations such as hashing, encryption, and decryption for Watchdogs. |
-| **wg_curl**     | This file manages cURL connections, file installations, and Pawncc integration for Watchdogs.         |
-| **wg_archive**  | This file handles archive management, including extraction for Watchdogs.                             |
-| **wg_compiler** | This file handles the Pawncc compiler integration for Watchdogs.                                      |
-| **wg_extra**    | This file contains additional functions for Watchdogs.                                        |
-| **wg_depends**  | This file manages dependencies for Watchdogs.                                                         |
-| **wg_package**  | This file handles the installation process for SA-MP/Open.MP and Pawncc within Watchdogs.             |
-| **wg_server**   | This file manages the SA-MP/Open.MP server operations for Watchdogs.                                  |
+| **source/units**     | This is the main Watchdogs file.                                                                      |
+| **source/utils**     | This file contains utility functions for Watchdogs.                                                   |
+| **source/lowlevel** | This file contains hardware-related information for Watchdogs.                                        |
+| **source/crypto**   | This file handles cryptographic operations such as hashing, encryption, and decryption for Watchdogs. |
+| **source/curl**     | This file manages cURL connections, file installations, and Pawncc integration for Watchdogs.         |
+| **source/archive**  | This file handles archive management, including extraction for Watchdogs.                             |
+| **source/compiler** | This file handles the Pawncc compiler integration for Watchdogs.                                      |
+| **source/extra**    | This file contains additional functions for Watchdogs.                                        |
+| **source/depends**  | This file manages dependencies for Watchdogs.                                                         |
+| **source/package**  | This file handles the installation process for SA-MP/Open.MP and Pawncc within Watchdogs.             |
+| **source/server**   | This file manages the SA-MP/Open.MP server operations for Watchdogs.                                  |
 
 ## Quick Installation
 

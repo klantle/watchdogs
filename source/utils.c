@@ -2,58 +2,57 @@
 #include <stdlib.h>
 #include <string.h>
 #include <stdarg.h>
-#include <ctype.h>
 #include <stdbool.h>
-#include <sys/stat.h>
-#include <fcntl.h>
-#include <dirent.h>
-#include <sys/file.h>
-#include <sys/types.h>
+#include <ctype.h>
 #include <math.h>
-#include <limits.h>
 #include <time.h>
 #include <ftw.h>
-#include <curl/curl.h>
-#include <inttypes.h>
+#include <errno.h>
+#include <fcntl.h>
+#include <dirent.h>
+#include <limits.h>
 #include <stddef.h>
 #include <libgen.h>
+#include <inttypes.h>
+#include <sys/file.h>
+#include <sys/stat.h>
+#include <curl/curl.h>
+#include <sys/types.h>
 
-#include "wg_util.h"
+#include "utils.h"
 
 #ifdef WG_LINUX
-#include <termios.h>
+	#include <termios.h>
 #endif
-#if defined(WG_ANDROID)
+	#if defined(WG_ANDROID)
 ssize_t sendfile(int out_fd,
 			int in_fd, off_t *offset, size_t count) {
-	    char buf[8192];
-	    size_t left = count;
-	    while (left > 0) {
-	        ssize_t n = read(in_fd, buf, sizeof(buf));
-	        if (n <= 0) return n;
-	        write(out_fd, buf, n);
-	        left -= n;
-	    }
-	    return count;
+		char buf[8192];
+		size_t left = count;
+		while (left > 0) {
+			ssize_t n = read(in_fd, buf, sizeof(buf));
+			if (n <= 0) return n;
+			write(out_fd, buf, n);
+			left -= n;
+		}
+		return count;
 }
 #elif !defined(WG_ANDROID) && defined(WG_LINUX)
-#include <sys/sendfile.h>
+	#include <sys/sendfile.h>
 #endif
 
 #ifndef _NCURSES
-#include <ncursesw/curses.h>
+	#include <ncursesw/curses.h>
 #else
-#include <ncurses.h>
+	#include <ncurses.h>
 #endif
 #include <readline/readline.h>
 #include <readline/history.h>
 
-#include <errno.h>
-
-#include "wg_extra.h"
-#include "wg_unit.h"
-#include "wg_package.h"
-#include "wg_crypto.h"
+#include "extra.h"
+#include "units.h"
+#include "package.h"
+#include "crypto.h"
 
 const char* __command[] = {
 	    "help",       "exit",      "kill",      "title",     "sha256",
@@ -137,17 +136,17 @@ size_t win_strlcat(char *dst, const char *src, size_t size)
 int win_ftruncate(FILE *file, long length) {
 	    HANDLE hFile = (HANDLE)_get_osfhandle(_fileno(file));
 	    if (hFile == INVALID_HANDLE_VALUE)
-	        return -WG_RETN;
+	        return -1;
 
 	    LARGE_INTEGER li;
 	    li.QuadPart = length;
 
-	    if (SetFilePointerEx(hFile, li, NULL, FILE_BEGIN) == WG_RETZ)
-	        return -WG_RETN;
-	    if (SetEndOfFile(hFile) == WG_RETZ)
-	        return -WG_RETN;
+	    if (SetFilePointerEx(hFile, li, NULL, FILE_BEGIN) == 0)
+	        return -1;
+	    if (SetEndOfFile(hFile) == 0)
+	        return -1;
 
-	    return WG_RETZ;
+	    return 0;
 }
 #endif
 
@@ -157,7 +156,7 @@ char *wg_get_cwd(void) {
 #ifdef WG_WINDOWS
 			DWORD size_len;
 			size_len = GetCurrentDirectoryA(sizeof(wg_work_dir), wg_work_dir);
-			if (size_len == WG_RETZ || size_len >= sizeof(wg_work_dir))
+			if (size_len == 0 || size_len >= sizeof(wg_work_dir))
 				wg_work_dir[0] = '\0';
 #else
 			ssize_t size_len;
@@ -204,33 +203,33 @@ int wg_mkdir(const char *path) {
 	    wg_snprintf(temp, sizeof(temp), "%s", path);
 	    len = strlen(temp);
 
-	    if (len == WG_RETZ) {
-	        return -WG_RETN;
+	    if (len == 0) {
+	        return -1;
 	    }
 
 	    for (p = temp + 1; *p; p++) {
 	        if (*p == __PATH_CHR_SEP_LINUX) {
 	            *p = '\0';
-				if (MKDIR(temp) == WG_RETZ) {
+				if (MKDIR(temp) == 0) {
 	                if (errno != EEXIST) {
-	                    return -WG_RETN;
+	                    return -1;
 	                }
 	            }
 	            *p = __PATH_CHR_SEP_LINUX;
 	        }
 	    }
 
-		if (MKDIR(temp) == WG_RETZ) {
+		if (MKDIR(temp) == 0) {
 	        if (errno != EEXIST) {
-	            return -WG_RETN;
+	            return -1;
 	        }
 	    }
 
-	    return WG_RETZ;
+	    return 0;
 }
 
 void wg_escaping_json(char *dest, const char *src, size_t dest_size) {
-	    if (dest_size == WG_RETZ) return;
+	    if (dest_size == 0) return;
 	    
 	    char *ptr = dest;
 	    size_t remaining = dest_size;
@@ -286,7 +285,7 @@ __asm__ volatile (
 #endif
     	if (strlen(reg_command) >= WG_MAX_PATH) {
     		pr_error(stdout, "register command too long!");
-    		return -WG_RETN;
+    		return -1;
     	}
 	    char
 			size_command[ WG_MAX_PATH ]
@@ -296,26 +295,26 @@ __asm__ volatile (
 					"%s",
 					reg_command);
 	    if (reg_command[0] == '\0')
-	    		return WG_RETZ;
-	    return wg_run_command(size_command);
+	    		return 0;
+	    return system(size_command);
 }
 
 int is_termux_environment(void)
 {
 		struct stat st;
-		int is_termux = WG_RETZ;
+		int is_termux = 0;
 #if defined(WG_LINUX)
-		is_termux = WG_RETN;
+		is_termux = 1;
 		return is_termux;
 #endif
-		if (stat("/data/data/com.termux/files/usr/local/lib/", &st) == WG_RETZ ||
-			stat("/data/data/com.termux/files/usr/lib/", &st) == WG_RETZ ||
-			stat("/data/data/com.termux/arm64/usr/lib", &st) == WG_RETZ ||
-			stat("/data/data/com.termux/arm32/usr/lib", &st) == WG_RETZ ||
-			stat("/data/data/com.termux/amd32/usr/lib", &st) == WG_RETZ ||
-			stat("/data/data/com.termux/amd64/usr/lib", &st) == WG_RETZ)
+		if (stat("/data/data/com.termux/files/usr/local/lib/", &st) == 0 ||
+			stat("/data/data/com.termux/files/usr/lib/", &st) == 0 ||
+			stat("/data/data/com.termux/arm64/usr/lib", &st) == 0 ||
+			stat("/data/data/com.termux/arm32/usr/lib", &st) == 0 ||
+			stat("/data/data/com.termux/amd32/usr/lib", &st) == 0 ||
+			stat("/data/data/com.termux/amd64/usr/lib", &st) == 0)
 		{
-			is_termux = WG_RETN;
+			is_termux = 1;
 		}
 		return is_termux;
 }
@@ -323,14 +322,14 @@ int is_termux_environment(void)
 int is_native_windows(void)
 {
 #if defined(WG_LINUX) || defined(WG_ANDROID)
-		return WG_RETZ;
+		return 0;
 #endif
 		char* msys2_env;
 		msys2_env = getenv("MSYSTEM");
 		if (msys2_env)
-			return WG_RETZ;
+			return 0;
 		else
-			return WG_RETN;
+			return 1;
 }
 
 void wg_printfile(const char *path) {
@@ -397,7 +396,7 @@ int wg_console_title(const char *title)
 	    if (isatty(STDOUT_FILENO))
 	        	printf("\033]0;%s\007", new_title);
 #endif
-		return WG_RETZ;
+		return 0;
 }
 
 void wg_strip_dot_fns(char *dst, size_t dst_sz, const char *src)
@@ -405,7 +404,7 @@ void wg_strip_dot_fns(char *dst, size_t dst_sz, const char *src)
 		char *slash, *dot;
 		size_t len;
 
-		if (!dst || dst_sz == WG_RETZ || !src)
+		if (!dst || dst_sz == 0 || !src)
 				return;
 
 		slash = strchr(src, __PATH_CHR_SEP_LINUX);
@@ -457,7 +456,7 @@ bool strfind(const char *text, const char *pattern) {
 	    size_t m = 0;
 	    while (pattern[m]) m++;
 
-	    if (m == WG_RETZ) return true;
+	    if (m == 0) return true;
 	    if (n < m) return false;
 
 	    unsigned char pat[256];
@@ -514,7 +513,7 @@ char* strreplace(const char *source, const char *old_sub, const char *new_sub) {
 
 	    size_t i = 0, j = 0;
 	    while (source[i]) {
-	        if (strncmp(&source[i], old_sub, old_sub_len) == WG_RETZ) {
+	        if (strncmp(&source[i], old_sub, old_sub_len) == 0) {
 	            strncpy(&result[j], new_sub, new_sub_len);
 	            i += old_sub_len;
 	            j += new_sub_len;
@@ -532,7 +531,7 @@ void wg_escape_quotes(char *dest, size_t size, const char *src)
 		size_t i, j;
 
 		if (!dest ||
-			size == WG_RETZ ||
+			size == 0 ||
 			!src)
 			return;
 
@@ -555,7 +554,7 @@ void wg_escape_quotes(char *dest, size_t size, const char *src)
 void __set_path_sep(char *out, size_t out_sz,
 					const char *dir, const char *entry_name)
 {
-	    if (!out || out_sz == WG_RETZ || !dir || !entry_name) return;
+	    if (!out || out_sz == 0 || !dir || !entry_name) return;
     
 	    size_t dir_len;
 	    int dir_has_sep, has_led_sep;
@@ -639,7 +638,7 @@ const char *wg_find_near_command(const char *command,
 	        if (dist < best_distance) {
 	            best_distance = dist;
 	            best_cmd = commands[i];
-	            if (best_distance == WG_RETZ)
+	            if (best_distance == 0)
 	            	break;
 	        }
 	    }
@@ -659,7 +658,7 @@ const char *wg_fetch_os(void)
 #ifdef WG_LINUX
     	wg_strncpy(os, "linux", sizeof(os));
 #endif
-		if (access("/.dockerenv", F_OK) == WG_RETZ)
+		if (access("/.dockerenv", F_OK) == 0)
 			wg_strncpy(os, "linux", sizeof(os));
 		else if (getenv("WSL_INTEROP") ||
 				 getenv("WSL_DISTRO_NAME"))
@@ -672,31 +671,31 @@ const char *wg_fetch_os(void)
 int dir_exists(const char *path)
 {
 	    struct stat st;
-	    if (stat(path, &st) == WG_RETZ && S_ISDIR(st.st_mode))
-	        return WG_RETN;
-	    return WG_RETZ;
+	    if (stat(path, &st) == 0 && S_ISDIR(st.st_mode))
+	        return 1;
+	    return 0;
 }
 
 int path_exists(const char *path)
 {
 	    struct stat st;
-	    if (stat(path, &st) == WG_RETZ)
-	        return WG_RETN;
-	    return WG_RETZ;
+	    if (stat(path, &st) == 0)
+	        return 1;
+	    return 0;
 }
 
 int dir_writable(const char *path)
 {
-	    if (access(path, W_OK) == WG_RETZ)
-	        return WG_RETN;
-	    return WG_RETZ;
+	    if (access(path, W_OK) == 0)
+	        return 1;
+	    return 0;
 }
 
 int path_access(const char *path)
 {
-	    if (access(path, F_OK) == WG_RETZ)
-	        return WG_RETN;
-	    return WG_RETZ;
+	    if (access(path, F_OK) == 0)
+	        return 1;
+	    return 0;
 }
 
 int file_regular(const char *path)
@@ -704,7 +703,7 @@ int file_regular(const char *path)
 		struct stat st;
 
 		if (stat(path, &st) != 0)
-				return WG_RETZ;
+				return 0;
 
 		return S_ISREG(st.st_mode);
 }
@@ -714,9 +713,9 @@ int file_same_file(const char *a, const char *b)
 		struct stat sa, sb;
 
 		if (stat(a, &sa) != 0)
-				return WG_RETZ;
+				return 0;
 		if (stat(b, &sb) != 0)
-				return WG_RETZ;
+				return 0;
 
 		return (sa.st_ino == sb.st_ino &&
 				sa.st_dev == sb.st_dev);
@@ -729,25 +728,25 @@ int ensure_parent_dir(char *out_parent, size_t n, const char *dest)
 		char *parent;
 
 		if (strlen(dest) >= sizeof(tmp))
-				return -WG_RETN;
+				return -1;
 
 		wg_strncpy(tmp, dest, sizeof(tmp));
 		tmp[sizeof(tmp)-1] = '\0';
 
 		parent = dirname(tmp);
 		if (!parent)
-				return -WG_RETN;
+				return -1;
 
 		wg_strncpy(out_parent, parent, n);
 		out_parent[n-1] = '\0';
 
-		return WG_RETZ;
+		return 0;
 }
 
 int kill_process(const char *entry_name)
 {
 		if (!entry_name)
-			return -WG_RETN;
+			return -1;
 		char reg_command[WG_PATH_MAX];
 #ifndef WG_WINDOWS
 		wg_snprintf(reg_command, sizeof(reg_command),
@@ -767,10 +766,10 @@ wg_match_filename(const char *entry_name, const char *pattern)
 #ifdef WG_WINDOWS
 				return PathMatchSpecA(entry_name, pattern);
 #else
-				return (fnmatch(pattern, entry_name, 0) == WG_RETZ);
+				return (fnmatch(pattern, entry_name, 0) == 0);
 #endif
 		} else {
-				return (strcmp(entry_name, pattern) == WG_RETZ);
+				return (strcmp(entry_name, pattern) == 0);
 		}
 }
 
@@ -785,11 +784,11 @@ static int wg_should_ignore_dir(const char *entry_name,
 								const char *ignore_dir)
 {
 		if (!ignore_dir)
-				return WG_RETZ;
+				return 0;
 #ifdef WG_WINDOWS
-		return (_stricmp(entry_name, ignore_dir) == WG_RETZ);
+		return (_stricmp(entry_name, ignore_dir) == 0);
 #else
-		return (strcmp(entry_name, ignore_dir) == WG_RETZ);
+		return (strcmp(entry_name, ignore_dir) == 0);
 #endif
 }
 
@@ -826,7 +825,7 @@ int wg_sef_fdir(const char *sef_path,
 						    sizeof(sp), "%s\\*", sef_path);
 		find_handle = FindFirstFile(sp, &find_data);
 		if (find_handle == INVALID_HANDLE_VALUE)
-				return WG_RETZ;
+				return 0;
 
 		do {
 				entry_name = find_data.cFileName;
@@ -841,13 +840,13 @@ int wg_sef_fdir(const char *sef_path,
 								continue;
 						if (wg_sef_fdir(path_buff, sef_name, ignore_dir)) {
 								FindClose(find_handle);
-								return WG_RETN;
+								return 1;
 						}
 				} else {
 						if (wg_match_filename(entry_name, sef_name)) {
 								wg_add_found_path(path_buff);
 								FindClose(find_handle);
-								return WG_RETN;
+								return 1;
 						}
 				}
 		} while (FindNextFile(find_handle, &find_data));
@@ -861,7 +860,7 @@ int wg_sef_fdir(const char *sef_path,
 
 		dir = opendir(sef_path);
 		if (!dir)
-				return WG_RETZ;
+				return 0;
 
 		while ((item = readdir(dir)) != NULL) {
 				entry_name = item->d_name;
@@ -875,16 +874,16 @@ int wg_sef_fdir(const char *sef_path,
 								continue;
 						if (wg_sef_fdir(path_buff, sef_name, ignore_dir)) {
 								closedir(dir);
-								return WG_RETN;
+								return 1;
 						}
 				} else if (item->d_type == DT_REG) {
 						if (wg_match_filename(entry_name, sef_name)) {
 								wg_add_found_path(path_buff);
 								closedir(dir);
-								return WG_RETN;
+								return 1;
 						}
 				} else {
-						if (stat(path_buff, &statbuf) == -WG_RETN)
+						if (stat(path_buff, &statbuf) == -1)
 								continue;
 
 						if (S_ISDIR(statbuf.st_mode)) {
@@ -892,13 +891,13 @@ int wg_sef_fdir(const char *sef_path,
 										continue;
 								if (wg_sef_fdir(path_buff, sef_name, ignore_dir)) {
 										closedir(dir);
-										return WG_RETN;
+										return 1;
 								}
 						} else if (S_ISREG(statbuf.st_mode)) {
 								if (wg_match_filename(entry_name, sef_name)) {
 										wg_add_found_path(path_buff);
 										closedir(dir);
-										return WG_RETN;
+										return 1;
 								}
 						}
 				}
@@ -907,7 +906,7 @@ int wg_sef_fdir(const char *sef_path,
 		closedir(dir);
 #endif
 
-		return WG_RETZ;
+		return 0;
 }
 
 static void
@@ -929,7 +928,7 @@ static void wg_check_compiler_options(int *compatibility, int *optimized_lt)
 		FILE *proc_file;
 		char log_line[1024];
 
-		if (path_exists(".watchdogs") == WG_RETZ)
+		if (path_exists(".watchdogs") == 0)
 			MKDIR(".watchdogs");
 
 		if (path_access(".watchdogs/compiler_test.log"))
@@ -975,7 +974,7 @@ static int wg_parsewg_toml_config(void)
 		proc_file = fopen("watchdogs.toml", "r");
 		if (!proc_file) {
 				pr_error(stdout, "Cannot read file %s", "watchdogs.toml");
-				return WG_RETZ;
+				return 0;
 		}
 
 		wg_toml_config = toml_parse_file(proc_file, error_buffer, sizeof(error_buffer));
@@ -983,7 +982,7 @@ static int wg_parsewg_toml_config(void)
 
 		if (!wg_toml_config) {
 				pr_error(stdout, "Parsing TOML: %s", error_buffer);
-				return WG_RETZ;
+				return 0;
 		}
 
 		general_table = toml_table_in(wg_toml_config, "general");
@@ -996,17 +995,17 @@ static int wg_parsewg_toml_config(void)
 		}
 
 		toml_free(wg_toml_config);
-		return WG_RETN;
+		return 1;
 }
 
 static int wg_find_compiler(const char *wg_os_type)
 {
-		int is_windows = (strcmp(wg_os_type, "windows") == WG_RETZ);
+		int is_windows = (strcmp(wg_os_type, "windows") == 0);
 		const char *compiler_name = is_windows ? "pawncc.exe" : "pawncc";
 
-		if (wg_server_env() == WG_RETN) {
+		if (wg_server_env() == 1) {
 				return wg_sef_fdir("pawno", compiler_name, NULL);
-		} else if (wg_server_env() == WG_RETW) {
+		} else if (wg_server_env() == 2) {
 				return wg_sef_fdir("qawno", compiler_name, NULL);
 		} else {
 				return wg_sef_fdir("pawno", compiler_name, NULL);
@@ -1035,7 +1034,7 @@ static void __toml_base_subdirs(const char *base_path,
 					const char *last_slash = strrchr(base_path, __PATH_CHR_SEP_WIN32);
 					if (last_slash &&
 						strcmp(last_slash + 1,
-							   find_data.cFileName) == WG_RETZ)
+							   find_data.cFileName) == 0)
 						continue;
 
 					wg_snprintf(fp, sizeof(fp), "%s/%s",
@@ -1064,7 +1063,7 @@ static void __toml_base_subdirs(const char *base_path,
 					const char *last_slash = strrchr(base_path, __PATH_CHR_SEP_LINUX);
 					if (last_slash &&
 						strcmp(last_slash + 1,
-							   item->d_name) == WG_RETZ)
+							   item->d_name) == 0)
 						continue;
 
 					wg_snprintf(fp, sizeof(fp), "%s/%s",
@@ -1100,9 +1099,9 @@ static void wg_add_include_paths(FILE *file, int *first_item)
 				//__toml_base_subdirs("gamemodes", file, first_item);
 		}
 
-		if (wg_server_env() == WG_RETN)
+		if (wg_server_env() == 1)
 				wg_add_compiler_path(file, "pawno/include/", first_item);
-		else if (wg_server_env() == WG_RETW)
+		else if (wg_server_env() == 2)
 				wg_add_compiler_path(file, "qawno/include/", first_item);
 		else
 				wg_add_compiler_path(file, "pawno/include/", first_item);
@@ -1127,7 +1126,7 @@ static void wg_generate_toml_content(FILE *file, const char *wg_os_type,
 
 		fprintf(file, "[general]\n");
 		fprintf(file, "\tos = \"%s\"\n", wg_os_type);
-		if (_is_samp_ == WG_RETZ) {
+		if (_is_samp_ == 0) {
 			if (!strcmp(wg_os_type, "windows")) {
 				fprintf(file, "\tbinary = \"%s\"\n", "omp-server.exe");
 				fprintf(file, "\tconfig = \"%s\"\n", "config.json");
@@ -1195,16 +1194,16 @@ int wg_toml_configs(void)
 			_is_samp_ = 1;
 		else {
 			static int crit_nf = 0;
-			if (crit_nf == WG_RETZ) {
+			if (crit_nf == 0) {
 				crit_nf = 1;
 				pr_crit(stdout, "can't locate sa-mp/open.mp server!");
-				return WG_RETZ;
+				return 0;
 			}
 		}
 
 		find_pawncc = wg_find_compiler(wg_os_type);
 		if (!find_pawncc) {
-				if (strcmp(wg_os_type, "windows") == WG_RETZ)
+				if (strcmp(wg_os_type, "windows") == 0)
 						find_pawncc = wg_sef_fdir(".", "pawncc.exe", NULL);
 				else
 						find_pawncc = wg_sef_fdir(".", "pawncc", NULL);
@@ -1223,7 +1222,7 @@ int wg_toml_configs(void)
 				toml_file = fopen("watchdogs.toml", "w");
 				if (!toml_file) {
 						pr_error(stdout, "Failed to create watchdogs.toml");
-						return WG_RETN;
+						return 1;
 				}
 
 				if (find_pawncc)
@@ -1237,7 +1236,7 @@ int wg_toml_configs(void)
 
 		if (!wg_parsewg_toml_config()) {
 				pr_error(stdout, "Failed to parse TOML configuration");
-				return WG_RETN;
+				return 1;
 		}
 
 		char error_buffer[256];
@@ -1279,11 +1278,11 @@ int wg_toml_configs(void)
 		if (general_table) {
 				toml_datum_t bin_val = toml_string_in(general_table, "binary");
 				if (bin_val.ok) {
-					if (_is_samp_ == WG_RETN) {
+					if (_is_samp_ == 1) {
 						wgconfig.wg_is_samp = CRC32_TRUE;
 						wgconfig.wg_ptr_samp = strdup(bin_val.u.s);
 					}
-					else if (_is_samp_ == WG_RETZ) {
+					else if (_is_samp_ == 0) {
 						wgconfig.wg_is_omp = CRC32_TRUE;
 						wgconfig.wg_ptr_omp = strdup(bin_val.u.s);
 					}
@@ -1323,13 +1322,13 @@ int wg_toml_configs(void)
 
 		toml_free(wg_toml_config);
 
-		if (strcmp(wgconfig.wg_toml_os_type, "windows") == WG_RETZ) {
+		if (strcmp(wgconfig.wg_toml_os_type, "windows") == 0) {
 			wgconfig.wg_os_type = OS_SIGNAL_WINDOWS;
-		} else if (strcmp(wgconfig.wg_toml_os_type, "linux") == WG_RETZ) {
+		} else if (strcmp(wgconfig.wg_toml_os_type, "linux") == 0) {
 			wgconfig.wg_os_type = OS_SIGNAL_LINUX;
 		}
 
-		return WG_RETZ;
+		return 0;
 }
 
 static int _try_mv_without_sudo(const char *src, const char *dest) {
@@ -1396,7 +1395,7 @@ static int __wg_sef_safety(const char *c_src, const char *c_dest)
 		if (!S_ISDIR(st.st_mode))
 				pr_error(stdout, "destination parent is not a dir: %s", parent);
 
-		return WG_RETN;
+		return 1;
 }
 
 static void __wg_sef_set_permissions(const char *c_dest)
@@ -1423,8 +1422,8 @@ int wg_sef_wmv(const char *c_src, const char *c_dest)
 		int ret, mv_ret;
 
 		ret = __wg_sef_safety(c_src, c_dest);
-		if (ret != WG_RETN)
-				return WG_RETN;
+		if (ret != 1)
+				return 1;
 
 		int is_not_sudo = 0;
 #ifdef WG_WINDOWS
@@ -1432,13 +1431,13 @@ int wg_sef_wmv(const char *c_src, const char *c_dest)
 #else
 		is_not_sudo = wg_run_command("sudo echo > /dev/null");
 #endif
-		if (is_not_sudo == WG_RETN) {
+		if (is_not_sudo == 1) {
 			mv_ret = _try_mv_without_sudo(c_src, c_dest);
 
 			if (!mv_ret) {
 					__wg_sef_set_permissions(c_dest);
 					pr_info(stdout, "* moved without sudo: '%s' -> '%s'", c_src, c_dest);
-					return WG_RETZ;
+					return 0;
 			}
 		} else {
 			mv_ret = __mv_with_sudo(c_src, c_dest);
@@ -1446,11 +1445,11 @@ int wg_sef_wmv(const char *c_src, const char *c_dest)
 			if (!mv_ret) {
 					__wg_sef_set_permissions(c_dest);
 					pr_info(stdout, "* moved with sudo: '%s' -> '%s'", c_src, c_dest);
-					return WG_RETZ;
+					return 0;
 			}
 		}
 
-		return WG_RETN;
+		return 1;
 }
 
 int wg_sef_wcopy(const char *c_src, const char *c_dest)
@@ -1458,8 +1457,8 @@ int wg_sef_wcopy(const char *c_src, const char *c_dest)
 		int ret, cp_ret;
 
 		ret = __wg_sef_safety(c_src, c_dest);
-		if (ret != WG_RETN)
-				return WG_RETN;
+		if (ret != 1)
+				return 1;
 
 		int is_not_sudo = 0;
 #ifdef WG_WINDOWS
@@ -1467,13 +1466,13 @@ int wg_sef_wcopy(const char *c_src, const char *c_dest)
 #else
 		is_not_sudo = wg_run_command("sudo echo > /dev/null");
 #endif
-		if (is_not_sudo == WG_RETN) {
+		if (is_not_sudo == 1) {
 			cp_ret = _try_cp_without_sudo(c_src, c_dest);
 
 			if (!cp_ret) {
 					__wg_sef_set_permissions(c_dest);
 					pr_info(stdout, "* copying without sudo: '%s' -> '%s'", c_src, c_dest);
-					return WG_RETZ;
+					return 0;
 			}
 		} else {
 			cp_ret = __cp_with_sudo(c_src, c_dest);
@@ -1481,9 +1480,9 @@ int wg_sef_wcopy(const char *c_src, const char *c_dest)
 			if (!cp_ret) {
 					__wg_sef_set_permissions(c_dest);
 					pr_info(stdout, "* copying with sudo: '%s' -> '%s'", c_src, c_dest);
-					return WG_RETZ;
+					return 0;
 			}
 		}
 
-		return WG_RETN;
+		return 1;
 }

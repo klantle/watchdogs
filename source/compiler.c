@@ -5,25 +5,27 @@
 #include <unistd.h>
 #include <limits.h>
 #include <time.h>
-#include "wg_util.h"
+
+#include "utils.h"
+
 #ifdef WG_LINUX
-#include <fcntl.h>
-#include <spawn.h>
-#include <sys/types.h>
-#include <sys/wait.h>
+    #include <fcntl.h>
+    #include <spawn.h>
+    #include <sys/types.h>
+    #include <sys/wait.h>
 #endif
 
-#include "wg_extra.h"
-#include "wg_unit.h"
-#include "wg_package.h"
-#include "wg_hardware.h"
-#include "wg_compiler.h"
+#include "units.h"
+#include "extra.h"
+#include "package.h"
+#include "lowlevel.h"
+#include "compiler.h"
 
-static io_compilers wg_compiler_sys = {0};
 #ifndef WG_WINDOWS
-extern char **environ;
-#define POSIX_TIMEOUT 30
+    extern char **environ;
+    #define POSIX_TIMEOUT 30
 #endif
+static io_compilers wg_compiler_sys = {0};
 
 int wg_run_compiler(const char *args, const char *compile_args,  const char *second_arg, const char *four_arg,
                     const char *five_arg, const char *six_arg, const char *seven_arg, const char *eight_arg,
@@ -109,9 +111,9 @@ int wg_run_compiler(const char *args, const char *compile_args,  const char *sec
             ptr_pawncc = "pawncc";
 
         char *path_include = NULL;
-        if (wg_server_env() == WG_RETN)
+        if (wg_server_env() == 1)
             path_include="pawno/include";
-        else if (wg_server_env() == WG_RETW)
+        else if (wg_server_env() == 2)
             path_include="qawno/include";
 
         int _wg_log_acces = path_access(".watchdogs/compiler.log");
@@ -168,13 +170,20 @@ int wg_run_compiler(const char *args, const char *compile_args,  const char *sec
 
             for (int i = 0; i < aio_extra_options; ++i) {
                 if (compiler_args[i] != NULL) {
-                    if (strfind(compiler_args[i], "--detailed")) ++compiler_has_watchdogs;
-                    if (strfind(compiler_args[i], "--debug")) ++compiler_has_debug;
-                    if (strfind(compiler_args[i], "--clean")) ++compiler_has_clean;
-                    if (strfind(compiler_args[i], "--assembler")) ++compiler_has_assembler;
-                    if (strfind(compiler_args[i], "--recursion")) ++compiler_has_recursion;
-                    if (strfind(compiler_args[i], "--prolix")) ++compiler_has_verbose;
-                    if (strfind(compiler_args[i], "--encoding")) ++compiler_has_encoding;
+                    if (strfind(compiler_args[i], "--detailed"))
+                        ++compiler_has_watchdogs;
+                    if (strfind(compiler_args[i], "--debug"))
+                        ++compiler_has_debug;
+                    if (strfind(compiler_args[i], "--clean"))
+                        ++compiler_has_clean;
+                    if (strfind(compiler_args[i], "--assembler"))
+                        ++compiler_has_assembler;
+                    if (strfind(compiler_args[i], "--recursion"))
+                        ++compiler_has_recursion;
+                    if (strfind(compiler_args[i], "--prolix"))
+                        ++compiler_has_verbose;
+                    if (strfind(compiler_args[i], "--encoding"))
+                        ++compiler_has_encoding;
                 }
             }
 
@@ -230,7 +239,7 @@ int wg_run_compiler(const char *args, const char *compile_args,  const char *sec
                             }
                         }
 
-                        if (rate_valid_flag_options == WG_RETZ)
+                        if (rate_valid_flag_options == 0)
                             goto not_valid_flag_options;
 
                         if (toml_option_value.u.s[0] != '-') {
@@ -240,7 +249,7 @@ not_valid_flag_options:
                             pr_color(stdout, FCOLOUR_GREEN, "\"%s\" ", toml_option_value.u.s);
                             println(stdout, "not valid flag options!..");
 
-                            if (rate_valid_flag_options == WG_RETZ)
+                            if (rate_valid_flag_options == 0)
                               goto compiler_end;
                         }
 
@@ -282,30 +291,30 @@ not_valid_flag_options:
                     else {
                         wgconfig.wg_toml_aio_opt = strdup("");
                     }
-                }
-                if (compiler_has_debug && compiler_debugging) {
-                    size_t memm_for = size_debug_memm / size_debug_memm_zero;
-                    for (int i = 0; i < memm_for; i++) {
-                        const char *memm_saving_target = debug_memm[i];
-                        size_t size_memm_saving_targetion = strlen(memm_saving_target);
 
-                        while ((fetch_string_pos = strstr(wgconfig.wg_toml_aio_opt,
-                                          memm_saving_target)) != NULL)
-                            memmove(fetch_string_pos,
-                                fetch_string_pos + size_memm_saving_targetion,
-                                strlen(fetch_string_pos + size_memm_saving_targetion) + 1);
+                    if (compiler_has_debug != 0 && compiler_debugging != 0) {
+                        size_t debug_flag_count = size_debug_memm / size_debug_memm_zero;
+                        for (size_t i = 0; i < debug_flag_count; i++) {
+                            const char *memm_saving_target = debug_memm[i];
+                            size_t size_memm_saving_targetion = strlen(memm_saving_target);
+
+                            while ((fetch_string_pos = strstr(wgconfig.wg_toml_aio_opt, memm_saving_target)) != NULL) {
+                                memmove(fetch_string_pos, fetch_string_pos + size_memm_saving_targetion,
+                                        strlen(fetch_string_pos + size_memm_saving_targetion) + 1);
+                            }
+                        }
                     }
                 }
 
-                if (compiler_has_debug)
+                if (compiler_has_debug > 0)
                     strcat(compiler_extra_options, " -d2 ");
-                if (compiler_has_assembler)
+                if (compiler_has_assembler > 0)
                     strcat(compiler_extra_options, " -a ");
-                if (compiler_has_recursion)
+                if (compiler_has_recursion > 0)
                     strcat(compiler_extra_options, " -R+ ");
-                if (compiler_has_verbose)
+                if (compiler_has_verbose > 0)
                     strcat(compiler_extra_options, " -v2 ");
-                if (compiler_has_encoding)
+                if (compiler_has_encoding > 0)
                     strcat(compiler_extra_options, " -C+ ");
 
                 if (strlen(compiler_extra_options) > 0) {
@@ -498,14 +507,14 @@ not_valid_flag_options:
                     posix_spawnattr_destroy(&spawn_attr);
                     posix_spawn_file_actions_destroy(&process_file_actions);
 
-                    if (process_spawn_result == WG_RETZ) {
+                    if (process_spawn_result == 0) {
                         int process_status;
                         int process_timeout_occurred = 0;
                         clock_gettime(CLOCK_MONOTONIC, &start);
                         for (int i = 0; i < POSIX_TIMEOUT; i++) {
                             int p_result = -1;
                             p_result = waitpid(compiler_process_id, &process_status, WNOHANG);
-                            if (p_result == WG_RETZ)
+                            if (p_result == 0)
                                 usleep(0xC350);
                             else if (p_result == compiler_process_id) {
                                 clock_gettime(CLOCK_MONOTONIC, &end);
@@ -578,8 +587,8 @@ not_valid_flag_options:
                             while (fgets(log_line, sizeof(log_line), proc_file) != NULL) {
                                 if (strfind(log_line, "backtrace"))
                                     pr_color(stdout, FCOLOUR_CYAN,
-"~ backtrace detected - "
-"make sure you are using a newer version of pawncc than the one currently in use.");
+                                        "~ backtrace detected - "
+                                        "make sure you are using a newer version of pawncc than the one currently in use.");
                             }
                             fclose(proc_file);
                         }
@@ -617,12 +626,11 @@ compiler_done:
                         " <P> Finished at %.3fs (%.0f ms)\n",
                         compiler_dur, compiler_dur * 1000.0);
                     if (compiler_dur > 0x64) {
-                        printf(
-"~ This is taking a while, huh?\n"
-"  Make sure you’ve cleared all the warnings,\n"
-"  you're using the latest compiler,\n"
-"  and double-check that your logic\n"
-"  and pawn algorithm tweaks in the gamemode scripts line up.\n");
+                        printf("~ This is taking a while, huh?\n"
+                                "  Make sure you’ve cleared all the warnings,\n"
+                                "  you're using the latest compiler,\n"
+                                "  and double-check that your logic\n"
+                                "  and pawn algorithm tweaks in the gamemode scripts line up.\n");
                         fflush(stdout);
                     }
                 }
@@ -901,14 +909,14 @@ compiler_done:
                         posix_spawnattr_destroy(&spawn_attr);
                         posix_spawn_file_actions_destroy(&process_file_actions);
 
-                        if (process_spawn_result == WG_RETZ) {
+                        if (process_spawn_result == 0) {
                             int process_status;
                             int process_timeout_occurred = 0;
                             clock_gettime(CLOCK_MONOTONIC, &start);
                             for (int i = 0; i < POSIX_TIMEOUT; i++) {
                                 int p_result = -1;
                                 p_result = waitpid(compiler_process_id, &process_status, WNOHANG);
-                                if (p_result == WG_RETZ)
+                                if (p_result == 0)
                                     usleep(0xC350);
                                 else if (p_result == compiler_process_id) {
                                     clock_gettime(CLOCK_MONOTONIC, &end);
@@ -978,8 +986,8 @@ compiler_done:
                                 while (fgets(log_line, sizeof(log_line), proc_file) != NULL) {
                                     if (strfind(log_line, "backtrace"))
                                         pr_color(stdout, FCOLOUR_CYAN,
-"~ backtrace detected - "
-"make sure you are using a newer version of pawncc than the one currently in use.\n");
+                                            "~ backtrace detected - "
+                                            "make sure you are using a newer version of pawncc than the one currently in use.\n");
                                 }
                                 fclose(proc_file);
                             }
@@ -1018,12 +1026,11 @@ compiler_done2:
                             " <P> Finished at %.3fs (%.0f ms)\n",
                             compiler_dur, compiler_dur * 1000.0);
                         if (compiler_dur > 0x64) {
-                            printf(
-"~ It appears to be taking quite some time.\n"
-"  Ensure that all existing warnings have been resolved,\n"
-"  use the latest compiler,\n"
-"  and verify that the logic"
-"  and pawn algorithm optimizations within the gamemode scripts are consistent.\n");
+                            printf("~ This is taking a while, huh?\n"
+                                    "  Make sure you’ve cleared all the warnings,\n"
+                                    "  you're using the latest compiler,\n"
+                                    "  and double-check that your logic\n"
+                                    "  and pawn algorithm tweaks in the gamemode scripts line up.\n");
                             fflush(stdout);
                         }
                     }
@@ -1048,7 +1055,7 @@ compiler_done2:
 
             while (true)
             {
-                if (strcmp(ptr_sigA, "Y") == WG_RETZ || strcmp(ptr_sigA, "y") == WG_RETZ)
+                if (strcmp(ptr_sigA, "Y") == 0 || strcmp(ptr_sigA, "y") == 0)
                 {
                     wg_free(ptr_sigA);
 ret_ptr:
@@ -1067,7 +1074,7 @@ ret_ptr:
                         int ret = wg_install_pawncc("linux");
 loop_ipcc:
                         wg_free(platform);
-                        if (ret == -WG_RETN && wgconfig.wg_sel_stat != 0)
+                        if (ret == -1 && wgconfig.wg_sel_stat != 0)
                             goto loop_ipcc;
                     }
                     if (strfind(platform, "W"))
@@ -1075,7 +1082,7 @@ loop_ipcc:
                         int ret = wg_install_pawncc("windows");
 loop_ipcc2:
                         wg_free(platform);
-                        if (ret == -WG_RETN && wgconfig.wg_sel_stat != 0)
+                        if (ret == -1 && wgconfig.wg_sel_stat != 0)
                             goto loop_ipcc2;
                     }
                     if (strfind(platform, "T"))
@@ -1083,7 +1090,7 @@ loop_ipcc2:
                         int ret = wg_install_pawncc("termux");
 loop_ipcc3:
                         wg_free(platform);
-                        if (ret == -WG_RETN && wgconfig.wg_sel_stat != 0)
+                        if (ret == -1 && wgconfig.wg_sel_stat != 0)
                             goto loop_ipcc3;
                     }
                     if (strfind(platform, "E")) {
@@ -1098,7 +1105,7 @@ loop_ipcc3:
 loop_end:
                     chain_goto_main(NULL);
                 }
-                else if (strcmp(ptr_sigA, "N") == WG_RETZ || strcmp(ptr_sigA, "n") == WG_RETZ)
+                else if (strcmp(ptr_sigA, "N") == 0 || strcmp(ptr_sigA, "n") == 0)
                 {
                     wg_free(ptr_sigA);
                     break;
@@ -1113,5 +1120,5 @@ loop_end:
         }
 
 compiler_end:
-        return WG_RETN;
+        return 1;
 }

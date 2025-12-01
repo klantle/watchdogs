@@ -6,17 +6,17 @@
 #include <archive.h>
 #include <archive_entry.h>
 
-#include "wg_extra.h"
-#include "wg_util.h"
-#include "wg_archive.h"
-#include "wg_curl.h"
-#include "wg_unit.h"
+#include "extra.h"
+#include "utils.h"
+#include "archive.h"
+#include "curl.h"
+#include "units.h"
 
 static int arch_copy_data(struct archive *ar, struct archive *aw)
 {
 	size_t size;
 	la_int64_t offset;
-	int ret = -WG_RETW;
+	int ret = -2;
 	const void *buffer;
 
 	while (true) {
@@ -61,7 +61,7 @@ int wg_extract_tar(const char *tar_path, const char *entry_dest) {
 		fprintf(stderr, "Error opening archive: %s\n", archive_error_string(a));
 		archive_read_free(a);
 		archive_write_free(ext);
-		return -WG_RETN;
+		return -1;
 	}
 
 	while (true) {
@@ -73,14 +73,14 @@ int wg_extract_tar(const char *tar_path, const char *entry_dest) {
 			fprintf(stderr, "Error reading header: %s\n", archive_error_string(a));
 			archive_read_free(a);
 			archive_write_free(ext);
-			return -WG_RETN;
+			return -1;
 		}
 
 		const char *entry_path = archive_entry_pathname(entry);
 
 		static int extract_notice = 0;
 		static int notice_extracting = 0;
-		if (extract_notice == WG_RETZ) {
+		if (extract_notice == 0) {
 			extract_notice = 1;
 			printf("\x1b[32m==> create debug extract archive?\x1b[0m\n");
 			char *debug_extract = readline("   answer [y/n]: ");
@@ -128,7 +128,7 @@ int wg_extract_tar(const char *tar_path, const char *entry_dest) {
 	archive_write_close(ext);
 	archive_write_free(ext);
 
-	return WG_RETZ;
+	return 0;
 }
 
 static void build_extraction_path(const char *entry_dest, const char *entry_path,
@@ -159,7 +159,7 @@ static int extract_zip_entry(struct archive *archive_read,
 	ret = archive_write_header(archive_write, item);
 	if (ret != ARCHIVE_OK) {
 		pr_error(stdout, "Write header error: %s", archive_error_string(archive_write));
-		return -WG_RETN;
+		return -1;
 	}
 
 	while (true) {
@@ -168,17 +168,17 @@ static int extract_zip_entry(struct archive *archive_read,
 			break;
 		if (ret < ARCHIVE_OK) {
 			pr_error(stdout, "Read data error: %s", archive_error_string(archive_read));
-			return -WG_RETW;
+			return -2;
 		}
 
 		ret = archive_write_data_block(archive_write, buffer, size, offset);
 		if (ret < ARCHIVE_OK) {
 			pr_error(stdout, "Write data error: %s", archive_error_string(archive_write));
-			return -WG_RETH;
+			return -3;
 		}
 	}
 
-	return WG_RETZ;
+	return 0;
 }
 
 int wg_extract_zip(const char *zip_file, const char *entry_dest)
@@ -215,7 +215,7 @@ int wg_extract_zip(const char *zip_file, const char *entry_dest)
 
 		static int extract_notice = 0;
 		static int notice_extracting = 0;
-		if (extract_notice == WG_RETZ) {
+		if (extract_notice == 0) {
 			extract_notice = 1;
 			printf("\x1b[32m==> create debug extract archive?\x1b[0m\n");
 			char *debug_extract = readline("   answer [y/n]: ");
@@ -248,14 +248,14 @@ int wg_extract_zip(const char *zip_file, const char *entry_dest)
 	archive_read_free(archive_read);
 	archive_write_free(archive_write);
 
-	return error_occurred ? -WG_RETN : 0;
+	return error_occurred ? -1 : 0;
 
 error:
 	if (archive_read)
 		archive_read_free(archive_read);
 	if (archive_write)
 		archive_write_free(archive_write);
-	return -WG_RETN;
+	return -1;
 }
 
 void wg_extract_archive(const char *filename)

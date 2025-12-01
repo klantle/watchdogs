@@ -7,13 +7,12 @@
 #include <limits.h>
 #include <time.h>
 #include <signal.h>
-
-#include "wg_unit.h"
-#include "wg_extra.h"
-#include "wg_util.h"
-#include "wg_depends.h"
-#include "wg_compiler.h"
-#include "wg_runner.h"
+#include "units.h"
+#include "extra.h"
+#include "utils.h"
+#include "depends.h"
+#include "compiler.h"
+#include "runner.h"
 
 int                 handle_sigint   = 0;
 FILE                *               config_in = NULL;
@@ -62,18 +61,18 @@ void unit_handle_sigint(int sig) {
 }
 
 void wg_stop_server_tasks(void) {
-        if (wg_server_env() == WG_RETN)
+        if (wg_server_env() == 1)
           kill_process(wgconfig.wg_toml_binary);
-        else if (wg_server_env() == WG_RETW)
+        else if (wg_server_env() == 2)
           kill_process(wgconfig.wg_toml_binary);
 }
 
 void wg_display_server_logs(int ret)
 {
         char *log_file = NULL;
-        if (wg_server_env() == WG_RETN)
+        if (wg_server_env() == 1)
             log_file = wgconfig.wg_toml_logs;
-        else if (wg_server_env() == WG_RETW)
+        else if (wg_server_env() == 2)
             log_file = wgconfig.wg_toml_logs;
         wg_printfile(log_file);
         return;
@@ -87,7 +86,7 @@ void wg_server_crash_check(void) {
         char *sampvoice_port = NULL;
         
         FILE *proc_f = NULL;
-        if (wg_server_env() == WG_RETN)
+        if (wg_server_env() == 1)
             proc_f = fopen(wgconfig.wg_toml_logs, "rb");
         else
             proc_f = fopen(wgconfig.wg_toml_logs, "rb");
@@ -166,7 +165,7 @@ void wg_server_crash_check(void) {
             }
             if (strfind(line_buf, "voice server running on port")) {
                 int _sampvoice_port;
-                if (scanf("%*[^v]voice server running on port %d", &_sampvoice_port) != WG_RETN)
+                if (scanf("%*[^v]voice server running on port %d", &_sampvoice_port) != 1)
                     continue;
                 ++sampvoice_server_check;
                 sampvoice_port = (char *)&sampvoice_port;
@@ -256,7 +255,7 @@ void wg_server_crash_check(void) {
                                 fwrite(output_buf, 1, needed, stdout);
                                 fflush(stdout);
                                 char *downgrading = readline(" ");
-                                if (strcmp(downgrading, "Y") == WG_RETZ || strcmp(downgrading, "y")) {
+                                if (strcmp(downgrading, "Y") == 0 || strcmp(downgrading, "y")) {
                                     wg_install_depends("CyberMor/sampvoice:v3.0-alpha");
                                 }
                             }
@@ -311,7 +310,7 @@ void wg_server_crash_check(void) {
                 fwrite(output_buf, 1, needed, stdout);
                 fflush(stdout);
             }
-            if (wg_server_env() == WG_RETN) {
+            if (wg_server_env() == 1) {
                 if (strfind(line_buf, "Your password must be changed from the default password")) {
                     ++server_rcon_pass;
                 }
@@ -398,7 +397,7 @@ void wg_server_crash_check(void) {
         fclose(proc_f);
 
         if (sampvoice_server_check) {
-            if (path_access("server.cfg") == WG_RETZ)
+            if (path_access("server.cfg") == 0)
                 goto skip;
             proc_f = fopen("server.cfg", "rb");
             if (proc_f == NULL)
@@ -407,7 +406,7 @@ void wg_server_crash_check(void) {
             char *_p_sampvoice_port = NULL;
             while (fgets(line_buf, sizeof(line_buf), proc_f)) {
                 if (strfind(line_buf, "svport")) {
-                    if (scanf("sv_port %d", &_sampvoice_port) != WG_RETN)
+                    if (scanf("sv_port %d", &_sampvoice_port) != 1)
                         break;
                     _p_sampvoice_port = (char *)&_sampvoice_port;
                     break;
@@ -499,7 +498,7 @@ skip:
         fwrite(output_buf, 1, needed, stdout);
         fflush(stdout);
         
-        if (problem_stat == WG_RETN && server_crashdetect < 1) {
+        if (problem_stat == 1 && server_crashdetect < 1) {
               needed = wg_snprintf(output_buf, sizeof(output_buf), "INFO: crash found! "
                      "and crashdetect not found.. "
                      "install crashdetect now? ");
@@ -545,18 +544,18 @@ static int update_samp_config(const char *gamemode)
 
     if (wg_run_command(r_command) != 0x0) {
         pr_error(stdout, "Failed to create backup file");
-        return -WG_RETN;
+        return -1;
     }
 
     config_in = fopen(size_config, "r");
     if (!config_in) {
         pr_error(stdout, "Failed to open backup config");
-        return -WG_RETN;
+        return -1;
     }
     config_out = fopen(wgconfig.wg_toml_config, "w+");
     if (!config_out) {
         pr_error(stdout, "Failed to write new config");
-        return -WG_RETN;
+        return -1;
     }
 
     char put_gamemode[WG_PATH_MAX + 0x1A];
@@ -579,14 +578,14 @@ static int update_samp_config(const char *gamemode)
     fclose(config_in);
     fclose(config_out);
 
-    return WG_RETN;
+    return 1;
 }
 
 void restore_server_config(void) {
     char size_config[WG_PATH_MAX];
     wg_snprintf(size_config, sizeof(size_config), ".watchdogs/%s.bak", wgconfig.wg_toml_config);
 
-    if (path_access(size_config) == WG_RETZ)
+    if (path_access(size_config) == 0)
         goto restore_done;
 
     if (is_native_windows())
@@ -654,7 +653,7 @@ void wg_run_samp_server(const char *gamemode, const char *server_bin)
     if (strfind(wgconfig.wg_toml_config, ".json"))
         return;
 
-    int ret = -WG_RETN;
+    int ret = -1;
 
     char put_gamemode[0x100];
     char *ext = strrchr(gamemode, '.');
@@ -675,15 +674,15 @@ void wg_run_samp_server(const char *gamemode, const char *server_bin)
     gamemode = put_gamemode;
 
     wg_sef_fdir_reset();
-    if (wg_sef_fdir(".", gamemode, NULL) == WG_RETZ) {
+    if (wg_sef_fdir(".", gamemode, NULL) == 0) {
         printf("Cannot locate gamemode: ");
         pr_color(stdout, FCOLOUR_CYAN, "%s\n", gamemode);
         chain_goto_main(NULL);
     }
 
     int ret_c = update_samp_config(gamemode);
-    if (ret_c == WG_RETZ ||
-        ret_c == -WG_RETN)
+    if (ret_c == 0 ||
+        ret_c == -1)
         return;
 
     CHMOD(server_bin, FILE_MODE);
@@ -694,7 +693,7 @@ void wg_run_samp_server(const char *gamemode, const char *server_bin)
     sigemptyset(&sa.sa_mask);
     sa.sa_flags = SA_RESTART;
 
-    if (sigaction(SIGINT, &sa, NULL) == -WG_RETN) {
+    if (sigaction(SIGINT, &sa, NULL) == -1) {
         perror("sigaction");
         exit(EXIT_FAILURE);
     }
@@ -715,7 +714,7 @@ back_start:
     end = time(NULL);
 
     ret = wg_run_command(r_command);
-    if (ret == WG_RETZ) {
+    if (ret == 0) {
         if (!strcmp(wgconfig.wg_os_type, OS_SIGNAL_LINUX)) {
             printf("~ logging...\n");
             sleep(0x3);
@@ -724,7 +723,7 @@ back_start:
     } else {
         pr_color(stdout, FCOLOUR_RED, "Server startup failed!\n");
         elapsed = difftime(end, start);
-        if (elapsed <= 5.0 && ret_serv == WG_RETZ) {
+        if (elapsed <= 5.0 && ret_serv == 0) {
             ret_serv = 0x1;
             printf("\ttry starting again..");
             _wg_log_acces = path_access(wgconfig.wg_toml_logs);
@@ -737,7 +736,7 @@ back_start:
         }
     }
 
-    if (handle_sigint == WG_RETZ)
+    if (handle_sigint == 0)
         raise(SIGINT);
 
     return;
@@ -748,7 +747,7 @@ static int update_omp_config(const char *gamemode)
     struct stat st;
     char gamemode_buf[WG_PATH_MAX + 0x1A];
     char put_gamemode[WG_PATH_MAX + 0x1A];
-    int ret = -WG_RETN;
+    int ret = -1;
 
     char size_config[WG_PATH_MAX];
     wg_snprintf(size_config, sizeof(size_config), ".watchdogs/%s.bak", wgconfig.wg_toml_config);
@@ -842,7 +841,7 @@ static int update_omp_config(const char *gamemode)
         goto runner_end;
     }
 
-    ret = WG_RETZ;
+    ret = 0;
 
 runner_end:
     ;
@@ -902,7 +901,7 @@ void wg_run_omp_server(const char *gamemode, const char *server_bin)
     if (strfind(wgconfig.wg_toml_config, ".cfg"))
         return;
 
-    int ret = -WG_RETN;
+    int ret = -1;
 
     char put_gamemode[0x100];
     char *ext = strrchr(gamemode, '.');
@@ -923,15 +922,15 @@ void wg_run_omp_server(const char *gamemode, const char *server_bin)
     gamemode = put_gamemode;
 
     wg_sef_fdir_reset();
-    if (wg_sef_fdir(".", gamemode, NULL) == WG_RETZ) {
+    if (wg_sef_fdir(".", gamemode, NULL) == 0) {
         printf("Cannot locate gamemode: ");
         pr_color(stdout, FCOLOUR_CYAN, "%s\n", gamemode);
         chain_goto_main(NULL);
     }
 
     int ret_c = update_omp_config(gamemode);
-    if (ret_c == WG_RETZ ||
-        ret_c == -WG_RETN)
+    if (ret_c == 0 ||
+        ret_c == -1)
         return;
 
     CHMOD(server_bin, FILE_MODE);
@@ -942,7 +941,7 @@ void wg_run_omp_server(const char *gamemode, const char *server_bin)
     sigemptyset(&sa.sa_mask);
     sa.sa_flags = SA_RESTART;
 
-    if (sigaction(SIGINT, &sa, NULL) == -WG_RETN) {
+    if (sigaction(SIGINT, &sa, NULL) == -1) {
         perror("sigaction");
         exit(EXIT_FAILURE);
     }
@@ -963,10 +962,10 @@ back_start:
     end = time(NULL);
 
     ret = wg_run_command(r_command);
-    if (ret != WG_RETZ) {
+    if (ret != 0) {
         pr_color(stdout, FCOLOUR_RED, "Server startup failed!\n");
         elapsed = difftime(end, start);
-        if (elapsed <= 5.0 && ret_serv == WG_RETZ) {
+        if (elapsed <= 5.0 && ret_serv == 0) {
             ret_serv = 0x1;
             printf("\ttry starting again..");
             _wg_log_acces = path_access(wgconfig.wg_toml_logs);

@@ -8,93 +8,46 @@
 
 #include <curl/curl.h>
 
-#include "wg_extra.h"
-#include "wg_crypto.h"
-#include "wg_archive.h"
-#include "wg_depends.h"
-#include "wg_compiler.h"
-#include "wg_util.h"
-#include "wg_unit.h"
-#include "wg_curl.h"
+#include "extra.h"
+#include "crypto.h"
+#include "archive.h"
+#include "depends.h"
+#include "compiler.h"
+#include "utils.h"
+#include "units.h"
+#include "curl.h"
 
-const char* FETCH_SITES_LIST[MAX_NUM_SITES][2] = {
-	    {"x", "https://x.com/%s"},
-	    {"github", "https://github.com/%s"},
-	    {"gitlab", "https://gitlab.com/%s"},
-	    {"instagram", "https://instagram.com/%s"},
-	    {"tiktok", "https://www.tiktok.com/@%s"},
-	    {"facebook", "https://www.facebook.com/%s"},
-	    {"linkedin", "https://www.linkedin.com/in/%s"},
-	    {"reddit", "https://www.reddit.com/user/%s"},
-	    {"pinterest", "https://www.pinterest.com/%s"},
-	    {"snapchat", "https://www.snapchat.com/add/%s"},
-	    {"telegram", "https://t.me/%s"},
-	    {"spotify", "https://open.spotify.com/user/%s"},
-	    {"soundcloud", "https://soundcloud.com/%s"},
-	    {"youtube", "https://www.youtube.com/@%s"},
-	    {"stackoverflow", "https://stackoverflow.com/users/%s"},
-	    {"devto", "https://dev.to/%s"},
-	    {"bitbucket", "https://bitbucket.org/%s"},
-	    {"sourceforge", "https://sourceforge.net/u/%s"},
-	    {"figma", "https://www.figma.com/@%s"},
-	    {"steam", "https://steamcommunity.com/id/%s"},
-	    {"twitch", "https://www.twitch.tv/%s"},
-	    {"epicgames", "https://www.epicgames.com/id/%s"},
-	    {"codepen", "https://codepen.io/%s"},
-	    {"jsfiddle", "https://jsfiddle.net/user/%s"},
-	    {"replit", "https://replit.com/@%s"},
-	    {"hackerrank", "https://www.hackerrank.com/%s"},
-	    {"leetcode", "https://leetcode.com/%s"},
-	    {"codewars", "https://www.codewars.com/users/%s"},
-	    {"kaggle", "https://www.kaggle.com/%s"},
-	    {"npm", "https://www.npmjs.com/~%s"},
-	    {"docker", "https://hub.docker.com/u/%s"},
-	    {"behance", "https://www.behance.net/%s"},
-	    {"dribbble", "https://dribbble.com/%s"},
-	    {"deviantart", "https://www.deviantart.com/%s"},
-	    {"artstation", "https://www.artstation.com/%s"},
-	    {"medium", "https://medium.com/@%s"},
-	    {"substack", "https://%s.substack.com"},
-	    {"wordpress", "https://%s.wordpress.com"},
-	    {"blogger", "https://%s.blogspot.com"},
-	    {"tumblr", "https://%s.tumblr.com"},
-	    {"discord", "https://discord.com/users/%s"},
-	    {"signal", "https://signal.me/#p/%s"},
-	    {"mastodon", "https://mastodon.social/@%s"},
-	    {"bluesky", "https://bsky.app/profile/%s"},
-	    {"threads", "https://www.threads.net/@%s"},
-	    {"angellist", "https://angel.co/u/%s"},
-	    {"crunchbase", "https://www.crunchbase.com/person/%s"},
-	    {"slideshare", "https://www.slideshare.net/%s"},
-	    {"speakerdeck", "https://speakerdeck.com/%s"},
-	    {"etsy", "https://www.etsy.com/shop/%s"},
-	    {"shopify", "https://%s.myshopify.com"},
-	    {"ebay", "https://www.ebay.com/usr/%s"},
-	    {"discord", "https://discord.gg/%s"},
-	    {"minecraft", "https://namemc.com/profile/%s"},
-	    {"roblox", "https://www.roblox.com/user.aspx?username=%s"},
-	    {"origin", "https://www.origin.com/usa/en-us/profile/%s"},
-	    {"ubisoft", "https://ubisoftconnect.com/en-US/profile/%s"},
-	    {"bandcamp", "https://%s.bandcamp.com"},
-	    {"mixcloud", "https://www.mixcloud.com/%s"},
-	    {"lastfm", "https://www.last.fm/user/%s"},
-	    {"vimeo", "https://vimeo.com/%s"},
-	    {"dailymotion", "https://www.dailymotion.com/%s"},
-	    {"odysee", "https://odysee.com/@%s"},
-	    {"coursera", "https://www.coursera.org/user/%s"},
-	    {"udemy", "https://www.udemy.com/user/%s"},
-	    {"skillshare", "https://www.skillshare.com/profile/%s"},
-	    {"khanacademy", "https://www.khanacademy.org/profile/%s"},
-	    {"keybase", "https://keybase.io/%s"},
-	    {"gravatar", "https://gravatar.com/%s"},
-	    {"flickr", "https://www.flickr.com/people/%s"},
-	    {"goodreads", "https://www.goodreads.com/%s"},
-	    {"letterboxd", "https://letterboxd.com/%s"},
-	    {"trello", "https://trello.com/%s"},
-	    {"linktree", "https://linktr.ee/%s"},
-	    {"cashapp", "https://cash.app/$%s"},
-	    {"venmo", "https://venmo.com/%s"},
-	    {"paypal", "https://paypal.me/%s"}
+const char* __FORUM[MAX_NUM_SITES][2] = {
+		{"github", "https://github.com/%s"},
+		{"gitlab", "https://gitlab.com/%s"},
+		{"gitea", "https://gitea.io/%s"},
+		{"sourceforge", "https://sourceforge.net/u/%s"},
+		{"bitbucket", "https://bitbucket.org/%s"},
+		{"stackoverflow", "https://stackoverflow.com/users/%s"},
+		{"devto", "https://dev.to/%s"},
+		{"hackerrank", "https://www.hackerrank.com/%s"},
+		{"leetcode", "https://leetcode.com/%s"},
+		{"codewars", "https://www.codewars.com/users/%s"},
+		{"codepen", "https://codepen.io/%s"},
+		{"jsfiddle", "https://jsfiddle.net/user/%s"},
+		{"replit", "https://replit.com/@%s"},
+		{"medium", "https://medium.com/@%s"},
+		{"substack", "https://%s.substack.com"},
+		{"wordpress", "https://%s.wordpress.com"},
+		{"blogger", "https://%s.blogspot.com"},
+		{"tumblr", "https://%s.tumblr.com"},
+		{"mastodon", "https://mastodon.social/@%s"},
+		{"bluesky", "https://bsky.app/profile/%s"},
+		{"threads", "https://www.threads.net/@%s"},
+		{"slideshare", "https://www.slideshare.net/%s"},
+		{"speakerdeck", "https://speakerdeck.com/%s"},
+		{"reddit", "https://www.reddit.com/user/%s"},
+		{"discord", "https://discord.com/users/%s"},
+		{"keybase", "https://keybase.io/%s"},
+		{"gravatar", "https://gravatar.com/%s"},
+		{"letterboxd", "https://letterboxd.com/%s"},
+		{"trello", "https://trello.com/%s"},
+		{"linktree", "https://linktr.ee/%s"}
 };
 
 static char
@@ -119,9 +72,9 @@ void verify_cacert_pem(CURL *curl) {
 	    static int cacert_notice = 0;
 
 	    if (is_win32) {
-	        if (access("cacert.pem", F_OK) == WG_RETZ)
+	        if (access("cacert.pem", F_OK) == 0)
 	            curl_easy_setopt(curl, CURLOPT_CAINFO, "cacert.pem");
-	        else if (access("C:/libwatchdogs/cacert.pem", F_OK) == WG_RETZ)
+	        else if (access("C:/libwatchdogs/cacert.pem", F_OK) == 0)
 	            curl_easy_setopt(curl, CURLOPT_CAINFO, "C:/libwatchdogs/cacert.pem");
 	        else {
 	            if (cacert_notice != 1) {
@@ -141,9 +94,9 @@ void verify_cacert_pem(CURL *curl) {
 
 	        wg_snprintf(size_env_home, sizeof(size_env_home), "%s/cacert.pem", env_home);
 
-	        if (access("cacert.pem", F_OK) == WG_RETZ)
+	        if (access("cacert.pem", F_OK) == 0)
 	            curl_easy_setopt(curl, CURLOPT_CAINFO, "cacert.pem");
-	        else if (access(size_env_home, F_OK) == WG_RETZ)
+	        else if (access(size_env_home, F_OK) == 0)
 	            curl_easy_setopt(curl, CURLOPT_CAINFO, size_env_home);
 	        else {
 	            if (cacert_notice != 1) {
@@ -155,9 +108,9 @@ void verify_cacert_pem(CURL *curl) {
 	        }
 	    }
 	    else if (is_linux) {
-	        if (access("cacert.pem", F_OK) == WG_RETZ)
+	        if (access("cacert.pem", F_OK) == 0)
 	            curl_easy_setopt(curl, CURLOPT_CAINFO, "cacert.pem");
-	        else if (access("/etc/ssl/certs/cacert.pem", F_OK) == WG_RETZ)
+	        else if (access("/etc/ssl/certs/cacert.pem", F_OK) == 0)
 	            curl_easy_setopt(curl, CURLOPT_CAINFO, "/etc/ssl/certs/cacert.pem");
 	        else {
 	            if (cacert_notice != 1) {
@@ -197,7 +150,7 @@ static int progress_callback(void *ptr, curl_off_t dltotal,
 			}
 		}
 
-		return WG_RETZ;
+		return 0;
 }
 
 size_t write_callback(void *ptr, size_t size, size_t nmemb, void *userdata)
@@ -205,7 +158,7 @@ size_t write_callback(void *ptr, size_t size, size_t nmemb, void *userdata)
 		size_t total = size * nmemb;
 		struct buf *b = userdata;
 		
-		if (total > 0xFFFFFFF) return WG_RETZ;
+		if (total > 0xFFFFFFF) return 0;
 		
 		size_t required = b->len + total + 1;
 		if (required > b->allocated) {
@@ -214,7 +167,7 @@ size_t write_callback(void *ptr, size_t size, size_t nmemb, void *userdata)
 			new_alloc = (new_alloc < 0x4000000) ? new_alloc : 0x4000000;
 			
 			char *p = wg_realloc(b->data, new_alloc);
-			if (!p) return WG_RETZ;
+			if (!p) return 0;
 			
 			b->data = p;
 			b->allocated = new_alloc;
@@ -236,7 +189,7 @@ size_t write_callback_sites(void *data, size_t size, size_t nmemb, void *userp)
 #if defined(_DBG_PRINT)
         	pr_error(stdout, "Oversized chunk: 0x%zX\n", total_size);
 #endif
-			return WG_RETZ;
+			return 0;
 		}
 		
 		size_t new_capacity = str->len + total_size + 1;
@@ -250,7 +203,7 @@ size_t write_callback_sites(void *data, size_t size, size_t nmemb, void *userp)
 #if defined(_DBG_PRINT)
             	pr_error(stdout, "Allocation failed for 0x%zX bytes\n", new_capacity);
 #endif
-				return WG_RETZ;
+				return 0;
 			}
 			str->ptr = new_ptr;
 			str->allocated = new_capacity;
@@ -269,7 +222,7 @@ size_t write_memory_callback(void *contents, size_t size, size_t nmemb, void *us
 		size_t realsize = size * nmemb;
 		
 		if (!contents || !mem || realsize > 0x10000000)
-			return WG_RETZ;
+			return 0;
 		
 		size_t required = mem->size + realsize + 1;
 		if (required > mem->allocated) {
@@ -282,7 +235,7 @@ size_t write_memory_callback(void *contents, size_t size, size_t nmemb, void *us
 #if defined(_DBG_PRINT)
             	pr_error(stdout, "Memory exhausted at 0x%zX bytes\n", new_alloc);
 #endif
-				return WG_RETZ;
+				return 0;
 			}
 			mem->memory = ptr;
 			mem->allocated = new_alloc;
@@ -339,7 +292,7 @@ void account_tracking_username(CURL *curl, const char *username) {
 
 	    for (int i = 0; i < MAX_NUM_SITES; i++) {
 	        char url[200];
-	        wg_snprintf(url, sizeof(url), FETCH_SITES_LIST[i][1], username);
+	        wg_snprintf(url, sizeof(url), __FORUM[i][1], username);
 
 	        curl_easy_setopt(curl, CURLOPT_URL, url);
 	        curl_easy_setopt(curl, CURLOPT_HTTPHEADER, headers);
@@ -352,16 +305,16 @@ void account_tracking_username(CURL *curl, const char *username) {
 
 	        if (res != CURLE_OK) {
 	            printf("[%s] %s -> ERROR %s\n",
-						FETCH_SITES_LIST[i][0],
+						__FORUM[i][0],
 						url, curl_easy_strerror(res));
 	        } else {
 	            long status_code;
 	            curl_easy_getinfo(curl, CURLINFO_RESPONSE_CODE, &status_code);
 	            if (status_code == WG_CURL_RESPONSE_OK) {
-	                printf("[%s] %s -> FOUND\n", FETCH_SITES_LIST[i][0], url);
+	                printf("[%s] %s -> FOUND\n", __FORUM[i][0], url);
 	                fflush(stdout);
 	            } else {
-	                printf("[%s] %s -> NOT FOUND (%ld)\n", FETCH_SITES_LIST[i][0], url, status_code);
+	                printf("[%s] %s -> NOT FOUND (%ld)\n", __FORUM[i][0], url, status_code);
 	                fflush(stdout);
 	            }
 	        }
@@ -392,12 +345,12 @@ static const char *get_compiler_directory(void)
 		struct stat st;
 		const char *dir_path = NULL;
 
-		if (stat("pawno", &st) == WG_RETZ && S_ISDIR(st.st_mode)) {
+		if (stat("pawno", &st) == 0 && S_ISDIR(st.st_mode)) {
 				dir_path = "pawno";
-		} else if (stat("qawno", &st) == WG_RETZ && S_ISDIR(st.st_mode)) {
+		} else if (stat("qawno", &st) == 0 && S_ISDIR(st.st_mode)) {
 				dir_path = "qawno";
 		} else {
-				if (MKDIR("pawno") == WG_RETZ)
+				if (MKDIR("pawno") == 0)
 						dir_path = "pawno";
 		}
 
@@ -436,7 +389,7 @@ static void update_library_environment(const char *lib_path)
 
 	    if (!shell_rc) {
 	        wg_snprintf(shell_path, sizeof(shell_path), "%s/.zshrc", home_dir);
-	        if (access(shell_path, F_OK) == WG_RETZ) {
+	        if (access(shell_path, F_OK) == 0) {
 	            shell_rc = ".zshrc";
 	        } else {
 	            shell_rc = ".bashrc";
@@ -465,7 +418,7 @@ static void update_library_environment(const char *lib_path)
 
 	        int ret = wg_run_command(export_cmd);
 
-	        if (ret == WG_RETZ) {
+	        if (ret == 0) {
 	            printf("Successfully updated %s. Please run 'source %s' to apply changes.\n",
 	                   shell_rc, config_file);
 	        } else {
@@ -477,7 +430,7 @@ static void update_library_environment(const char *lib_path)
 
 	    if (strfind(lib_path, "/usr/")) {
 	        int is_not_sudo = wg_run_command("sudo echo > /dev/null");
-	        if (is_not_sudo == WG_RETZ) {
+	        if (is_not_sudo == 0) {
 	            wg_run_command("sudo ldconfig");
 	        } else {
 	            wg_run_command("ldconfig");
@@ -489,7 +442,7 @@ static void update_library_environment(const char *lib_path)
 static int setup_linux_library(void)
 {
 #ifdef WG_WINDOWS
-		return WG_RETZ;
+		return 0;
 #else
 		const char *selected_path = NULL;
 		char libpawnc_src[WG_PATH_MAX];
@@ -510,13 +463,13 @@ static int setup_linux_library(void)
 
 		if (!strcmp(wgconfig.wg_toml_os_type, OS_SIGNAL_WINDOWS) ||
 			!strcmp(wgconfig.wg_toml_os_type, OS_SIGNAL_UNKNOWN))
-				return WG_RETZ;
+				return 0;
 
 		char size_pf[WG_PATH_MAX + 56];
 		wg_snprintf(size_pf, sizeof(size_pf), "%s", pawncc_dir_src);
 		found_lib = wg_sef_fdir(size_pf, "libpawnc.so", NULL);
 		if (!found_lib)
-				return WG_RETZ;
+				return 0;
 
 		for (i = 0; i < wgconfig.wg_sef_count; i++) {
 				if (strstr(wgconfig.wg_sef_found_list[i], "libpawnc.so")) {
@@ -526,7 +479,7 @@ static int setup_linux_library(void)
 		}
 
 		for (i = 0; i < sizeof(lib_paths) / sizeof(lib_paths[0]); i++) {
-				if (stat(lib_paths[i], &st) == WG_RETZ && S_ISDIR(st.st_mode)) {
+				if (stat(lib_paths[i], &st) == 0 && S_ISDIR(st.st_mode)) {
 						selected_path = lib_paths[i];
 						break;
 				}
@@ -534,7 +487,7 @@ static int setup_linux_library(void)
 
 		if (!selected_path) {
 				fprintf(stderr, "No valid library path found!\n");
-				return -WG_RETN;
+				return -1;
 		}
 
 		wg_snprintf(dest_path, sizeof(dest_path), "%s/libpawnc.so", selected_path);
@@ -542,7 +495,7 @@ static int setup_linux_library(void)
 
 		update_library_environment(selected_path);
 
-		return WG_RETZ;
+		return 0;
 #endif
 }
 
@@ -666,28 +619,28 @@ static int prompt_apply_pawncc(void)
 			goto done;
 		}
 
-		if (strlen(confirm) == WG_RETZ) {
+		if (strlen(confirm) == 0) {
 			wg_free(confirm);
 			confirm = readline(" >>> [y/n]: ");
 		}
 
 		if (confirm) {
-			if (strcmp(confirm, "Y") == WG_RETZ || strcmp(confirm, "y") == WG_RETZ) {
+			if (strcmp(confirm, "Y") == 0 || strcmp(confirm, "y") == 0) {
 				wg_free(confirm);
-				return WG_RETN;
+				return 1;
 			}
 		}
 
 done:
-		return WG_RETZ;
+		return 0;
 }
 
 int is_archive_file(const char *filename)
 {
 		if (strfind(filename, ".tar") ||
 			strfind(filename, ".zip"))
-			return WG_RETN;
-		return WG_RETZ;
+			return 1;
+		return 0;
 }
 
 static int debug_callback(CURL *handle, curl_infotype type,
@@ -712,7 +665,7 @@ static int debug_callback(CURL *handle, curl_infotype type,
 	    default:
 	        break;
 	    }
-	    return WG_RETZ;
+	    return 0;
 }
 int wg_download_file(const char *url, const char *filename)
 {
@@ -751,7 +704,7 @@ int wg_download_file(const char *url, const char *filename)
 
 		if (!url || !filename) {
 			pr_color(stdout, FCOLOUR_RED, "Error: Invalid URL or filename\n");
-			return -WG_RETN;
+			return -1;
 		}
 
 		CURLcode res;
@@ -767,19 +720,19 @@ int wg_download_file(const char *url, const char *filename)
 			c_fp = fopen(filename, "wb");
 			if (!c_fp) {
 				pr_color(stdout, FCOLOUR_RED, "Failed to open file: %s\n", filename);
-				return -WG_RETN;
+				return -1;
 			}
 
 			curl = curl_easy_init();
 			if (!curl) {
 				pr_color(stdout, FCOLOUR_RED, "Failed to initialize CURL\n");
 				fclose(c_fp);
-				return -WG_RETN;
+				return -1;
 			}
 
 			struct curl_slist *headers = NULL;
 
-			if (wgconfig.wg_idepends == WG_RETN) {
+			if (wgconfig.wg_idepends == 1) {
 				if (!wgconfig.wg_toml_github_tokens || 
 					strstr(wgconfig.wg_toml_github_tokens, "DO_HERE") ||
 					strlen(wgconfig.wg_toml_github_tokens) < 1) {
@@ -813,7 +766,7 @@ int wg_download_file(const char *url, const char *filename)
 			static int create_debugging = 0;
 			static int always_create_debugging = 0;
 			
-			if (create_debugging == WG_RETZ) {
+			if (create_debugging == 0) {
 				create_debugging = 1;
 				pr_color(stdout, FCOLOUR_CYAN, " %% Enable HTTP debugging? ");
 				char *debug_http = readline("[y/n]: ");
@@ -847,7 +800,7 @@ int wg_download_file(const char *url, const char *filename)
 			}
 
 			if (res == CURLE_OK && response_code == WG_CURL_RESPONSE_OK && 
-				stat(filename, &file_stat) == WG_RETZ && 
+				stat(filename, &file_stat) == 0 && 
 				file_stat.st_size > 0) {
 				pr_color(stdout, FCOLOUR_GREEN, "✓ Download successful: %" PRIdMAX " bytes\n", 
 						(intmax_t)file_stat.st_size);
@@ -855,12 +808,12 @@ int wg_download_file(const char *url, const char *filename)
 
 				if (!is_archive_file(filename)) {
 					pr_color(stdout, FCOLOUR_YELLOW, "Warning: File is not an archive\n");
-					return WG_RETN;
+					return 1;
 				}
 
 				wg_extract_archive(filename);
 
-				if (wgconfig.wg_idepends == WG_RETN) {
+				if (wgconfig.wg_idepends == 1) {
 					pr_color(stdout, FCOLOUR_CYAN, "==> Remove archive? ");
 					char *confirm = readline("[y/n]: ");
 					if (confirm && (confirm[0] == 'Y' || confirm[0] == 'y')) {
@@ -891,7 +844,7 @@ int wg_download_file(const char *url, const char *filename)
 					wg_apply_pawncc();
 				}
 
-				return WG_RETZ;
+				return 0;
 			}
 
 			pr_color(stdout, FCOLOUR_YELLOW, "Attempt %d/5 failed (HTTP: %ld). Retrying in 3s...\n", 
@@ -901,5 +854,5 @@ int wg_download_file(const char *url, const char *filename)
 		}
 
 		pr_color(stdout, FCOLOUR_RED, "✗ Download failed after 5 retries\n");
-		return WG_RETN;
+		return 1;
 }

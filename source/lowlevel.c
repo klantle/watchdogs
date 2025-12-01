@@ -2,13 +2,14 @@
 #include <stdlib.h>
 #include <string.h>
 #include <stdarg.h>
-#include "wg_util.h"
-#include "wg_hardware.h"
+
+#include "utils.h"
+#include "lowlevel.h"
 
 #ifdef WG_WINDOWS
-#  include <windows.h>
-#  include <iphlpapi.h>
-#  include <intrin.h>
+    #include <windows.h>
+    #include <iphlpapi.h>
+    #include <intrin.h>
 int
 uname(struct utsname *name)
 {
@@ -19,7 +20,7 @@ uname(struct utsname *name)
         osvi.dwOSVersionInfoSize = sizeof(OSVERSIONINFOEX);
 
         if (!GetVersionEx((OSVERSIONINFO*)&osvi)) {
-                return -WG_RETN;
+                return -1;
         }
 
         GetSystemInfo(&si);
@@ -48,14 +49,14 @@ uname(struct utsname *name)
                         break;
         }
 
-        return WG_RETZ;
+        return 0;
 }
 #else
-#  include <sys/statvfs.h>
-#  include <sys/utsname.h>
-#  include <ifaddrs.h>
-#  include <net/if.h>
-#  include <unistd.h>
+    #include <sys/statvfs.h>
+    #include <sys/utsname.h>
+    #include <ifaddrs.h>
+    #include <net/if.h>
+    #include <unistd.h>
 #endif
 
 
@@ -131,7 +132,7 @@ int
 hardware_cpu_info(HardwareCPU* cpu)
 {
         if (!cpu) {
-                return WG_RETZ;
+                return 0;
         }
 
         memset(cpu, 0, sizeof(HardwareCPU));
@@ -171,14 +172,14 @@ hardware_cpu_info(HardwareCPU* cpu)
                 wg_strcpy(cpu->architecture, "Unknown");
         }
 
-        return WG_RETN;
+        return 1;
 }
 
 int
 hardware_memory_info(HardwareMemory* mem)
 {
         if (!mem) {
-                return WG_RETZ;
+                return 0;
         }
 
         memset(mem, 0, sizeof(HardwareMemory));
@@ -191,17 +192,17 @@ hardware_memory_info(HardwareMemory* mem)
                 mem->avail_phys = memInfo.ullAvailPhys;
                 mem->total_virt = memInfo.ullTotalVirtual;
                 mem->avail_virt = memInfo.ullAvailVirtual;
-                return WG_RETN;
+                return 1;
         }
 
-        return WG_RETZ;
+        return 0;
 }
 
 int
 hardware_disk_info(HardwareDisk* disk, const char* drive)
 {
         if (!disk || !drive) {
-                return WG_RETZ;
+                return 0;
         }
 
         memset(disk, 0, sizeof(HardwareDisk));
@@ -228,10 +229,10 @@ hardware_disk_info(HardwareDisk* disk, const char* drive)
                         wg_strcpy(disk->filesystem, "Unknown");
                 }
 
-                return WG_RETN;
+                return 1;
         }
 
-        return WG_RETZ;
+        return 0;
 }
 
 #else /* UNIX/Linux implementation */
@@ -240,20 +241,20 @@ int
 hardware_cpu_info(HardwareCPU* cpu)
 {
         if (!cpu) {
-                return WG_RETZ;
+                return 0;
         }
 
         memset(cpu, 0, sizeof(HardwareCPU));
 
         FILE *f = fopen("/proc/cpuinfo", "r");
         if (!f) {
-                return WG_RETZ;
+                return 0;
         }
 
         char cpu_line[256];
 
         while (fgets(cpu_line, sizeof(cpu_line), f)) {
-                if (strncmp(cpu_line, "model name", 10) == WG_RETZ) {
+                if (strncmp(cpu_line, "model name", 10) == 0) {
                         char *colon = strchr(cpu_line, ':');
                         if (colon) {
                                 char* start = colon + 2; /* Skip colon and space */
@@ -262,7 +263,7 @@ hardware_cpu_info(HardwareCPU* cpu)
                                 wg_strncpy(cpu->name, start, sizeof(cpu->name)-1);
                         }
                 }
-                else if (strncmp(cpu_line, "vendor_id", 9) == WG_RETZ) {
+                else if (strncmp(cpu_line, "vendor_id", 9) == 0) {
                         char *colon = strchr(cpu_line, ':');
                         if (colon) {
                                 char* start = colon + 2;
@@ -271,13 +272,13 @@ hardware_cpu_info(HardwareCPU* cpu)
                                 wg_strncpy(cpu->vendor, start, sizeof(cpu->vendor)-1);
                         }
                 }
-                else if (strncmp(cpu_line, "cpu cores", 9) == WG_RETZ) {
+                else if (strncmp(cpu_line, "cpu cores", 9) == 0) {
                         char *colon = strchr(cpu_line, ':');
                         if (colon) {
                                 cpu->cores = atoi(colon + 2);
                         }
                 }
-                else if (strncmp(cpu_line, "siblings", 8) == WG_RETZ) {
+                else if (strncmp(cpu_line, "siblings", 8) == 0) {
                         char *colon = strchr(cpu_line, ':');
                         if (colon) {
                                 cpu->threads = atoi(colon + 2);
@@ -289,55 +290,55 @@ hardware_cpu_info(HardwareCPU* cpu)
 
         /* Get architecture */
         struct utsname uts;
-        if (uname(&uts) == WG_RETZ) {
+        if (uname(&uts) == 0) {
                 wg_strncpy(cpu->architecture, uts.machine, sizeof(cpu->architecture)-1);
         }
 
-        return WG_RETN;
+        return 1;
 }
 
 int
 hardware_memory_info(HardwareMemory* mem)
 {
         if (!mem) {
-                return WG_RETZ;
+                return 0;
         }
 
         memset(mem, 0, sizeof(HardwareMemory));
 
         FILE *f = fopen("/proc/meminfo", "r");
         if (!f) {
-                return WG_RETZ;
+                return 0;
         }
 
         char key[64], unit[64];
         unsigned long val;
 
         while (fscanf(f, "%63s %lu %63s", key, &val, unit) == 3) {
-                if (strcmp(key, "MemTotal:") == WG_RETZ) {
+                if (strcmp(key, "MemTotal:") == 0) {
                         mem->total_phys = val * 1024; /* Convert KB to bytes */
                 }
-                else if (strcmp(key, "MemAvailable:") == WG_RETZ) {
+                else if (strcmp(key, "MemAvailable:") == 0) {
                         mem->avail_phys = val * 1024;
                 }
         }
 
         fclose(f);
-        return WG_RETN;
+        return 1;
 }
 
 int
 hardware_disk_info(HardwareDisk* disk, const char* mount_point)
 {
         if (!disk || !mount_point) {
-                return WG_RETZ;
+                return 0;
         }
 
         memset(disk, 0, sizeof(HardwareDisk));
         wg_strncpy(disk->mount_point, mount_point, sizeof(disk->mount_point)-1);
 
         struct statvfs stat;
-        if (statvfs(mount_point, &stat) == WG_RETZ) {
+        if (statvfs(mount_point, &stat) == 0) {
                 disk->total_bytes = (unsigned long long)stat.f_blocks * stat.f_frsize;
                 disk->free_bytes = (unsigned long long)stat.f_bfree * stat.f_frsize;
                 disk->used_bytes = disk->total_bytes - disk->free_bytes;
@@ -348,10 +349,10 @@ hardware_disk_info(HardwareDisk* disk, const char* mount_point)
 
                 wg_strncpy(disk->filesystem, "Unknown", sizeof(disk->filesystem)-1);
 
-                return WG_RETN;
+                return 1;
         }
 
-        return WG_RETZ;
+        return 0;
 }
 
 #endif

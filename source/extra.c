@@ -5,22 +5,22 @@
 #include <time.h>
 #include <stdarg.h>
 #include <fcntl.h>
-#include "wg_util.h"
+#include "utils.h"
 
 #ifdef WG_WINDOWS
-  #define WIN32_LEAN_AND_MEAN
-  #include <windows.h>
-  #include <sys/types.h>
-  #include <sys/stat.h>
+    #define WIN32_LEAN_AND_MEAN
+    #include <windows.h>
+    #include <sys/types.h>
+    #include <sys/stat.h>
 #else
-  #include <sys/types.h>
-  #include <sys/stat.h>
-  #include <unistd.h>
-  #include <errno.h>
+    #include <sys/types.h>
+    #include <sys/stat.h>
+    #include <unistd.h>
+    #include <errno.h>
 #endif
 
-#include "wg_crypto.h"
-#include "wg_extra.h"
+#include "crypto.h"
+#include "extra.h"
 
 char *BG = "\x1b[48;5;235m";
 char *FG = "\x1b[97m";
@@ -102,21 +102,21 @@ static time_t filetime_to_time_t(const FILETIME *ft) {
 #endif
 
 int portable_stat(const char *path, portable_stat_t *out) {
-        if (!path || !out) return -WG_RETN;
+        if (!path || !out) return -1;
         memset(out, 0, sizeof(*out));
 
 #ifdef WG_WINDOWS
         wchar_t wpath[WG_MAX_PATH];
         int len = MultiByteToWideChar(CP_UTF8, 0, path, -1, NULL, 0);
-        if (len == WG_RETZ || len > WG_MAX_PATH) {
-                if (!MultiByteToWideChar(CP_ACP, 0, path, -1, wpath, WG_MAX_PATH)) return -WG_RETN;
+        if (len == 0 || len > WG_MAX_PATH) {
+                if (!MultiByteToWideChar(CP_ACP, 0, path, -1, wpath, WG_MAX_PATH)) return -1;
         } else {
                 MultiByteToWideChar(CP_UTF8, 0, path, -1, wpath, WG_MAX_PATH);
         }
 
         WIN32_FILE_ATTRIBUTE_DATA fad;
         if (!GetFileAttributesExW(wpath, GetFileExInfoStandard, &fad)) {
-                return -WG_RETN;
+                return -1;
         }
 
         uint64_t size = ((uint64_t)fad.nFileSizeHigh << 32) | fad.nFileSizeLow;
@@ -140,19 +140,19 @@ int portable_stat(const char *path, portable_stat_t *out) {
         }
 
         const char *ext = strrchr(path, '.');
-        if (ext && (_stricmp(ext, ".exe") == WG_RETZ ||
-                    _stricmp(ext, ".bat") == WG_RETZ ||
-                    _stricmp(ext, ".com") == WG_RETZ)) {
+        if (ext && (_stricmp(ext, ".exe") == 0 ||
+                    _stricmp(ext, ".bat") == 0 ||
+                    _stricmp(ext, ".com") == 0)) {
                 out->st_mode |= S_IXUSR;
         }
 
         out->st_ino = 0;
         out->st_dev = 0;
 
-        return WG_RETZ;
+        return 0;
 #else
         struct stat st;
-        if (stat(path, &st) != 0) return -WG_RETN;
+        if (stat(path, &st) != 0) return -1;
         out->st_size = (uint64_t)st.st_size;
         out->st_ino  = (uint64_t)st.st_ino;
         out->st_dev  = (uint64_t)st.st_dev;
@@ -165,7 +165,7 @@ int portable_stat(const char *path, portable_stat_t *out) {
         out->st_lmtime = st.st_mtime;
         out->st_mctime = st.st_ctime;
 #endif
-        return WG_RETZ;
+        return 0;
 #endif
 }
 
@@ -482,7 +482,7 @@ void compiler_detailed(const char *pawn_output, int debug,
                        hash, data_size, stack_size);
 
                 portable_stat_t st;
-                if (portable_stat(pawn_output, &st) == WG_RETZ) {
+                if (portable_stat(pawn_output, &st) == 0) {
                         printf("ino    : %llu   |  File   : %lluB\n"
                                "dev    : %llu\n"
                                "read   : %s   |  write  : %s\n"

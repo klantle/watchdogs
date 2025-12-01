@@ -8,7 +8,7 @@ extern "C" {
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include "wg_util.h"
+#include "utils.h"
 
 #if defined(WG_WINDOWS) || defined(_WIN64)
 #define HARDWARE_WINDOWS 1

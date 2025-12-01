@@ -18,8 +18,8 @@ CFLAGS   = -O2 -pipe -fdata-sections -ffunction-sections
 LDFLAGS  = -lm -lcurl -lreadline -lncursesw -larchive
 
 # Source files used in the build
-SRCS = wg_extra.c wg_curl.c wg_unit.c wg_util.c wg_depends.c wg_hardware.c \
-       wg_compiler.c wg_archive.c wg_package.c wg_runner.c wg_crypto.c \
+SRCS = source/extra.c source/curl.c source/units.c source/utils.c source/depends.c source/lowlevel.c \
+       source/compiler.c source/archive.c source/package.c source/runner.c source/crypto.c \
        include/tomlc/toml.c include/cJSON/cJSON.c
 
 # Convert all .c sources -> .o (object files)
@@ -148,12 +148,12 @@ linux:
 	@echo "==> Building for GNU/Linux"
 	@if [ -f "/usr/include/ncurses.h" ]; then \
 		echo "==> ncurses found, building with _NCURSES flag"; \
-		echo "==> Running: $(CC) $(CFLAGS) -I/usr/include/ $(SRCS) -D_NCURSES -o $(TARGET) $(LDFLAGS)"; \
-		$(CC) $(CFLAGS) -I/usr/include/ $(SRCS) -D_NCURSES -o $(TARGET) $(LDFLAGS); \
+		echo "==> Running: $(CC) $(CFLAGS) -I/usr/include/ $(SRCS) -D__LINUX__ -D_NCURSES -o $(TARGET) $(LDFLAGS)"; \
+		$(CC) $(CFLAGS) -I/usr/include/ $(SRCS) -D__LINUX__ -D_NCURSES -o $(TARGET) $(LDFLAGS); \
 	else \
 		echo "==> ncurses not found, building without _NCURSES flag"; \
-		echo "==> Running: $(CC) $(CFLAGS) -I/usr/include/ $(SRCS) -o $(TARGET) $(LDFLAGS)"; \
-		$(CC) $(CFLAGS) -I/usr/include/ $(SRCS) -o $(TARGET) $(LDFLAGS); \
+		echo "==> Running: $(CC) $(CFLAGS) -D__LINUX__ -I/usr/include/ $(SRCS) -o $(TARGET) $(LDFLAGS)"; \
+		$(CC) $(CFLAGS) -D__LINUX__ -I/usr/include/ $(SRCS) -o $(TARGET) $(LDFLAGS); \
 	fi;
 	@echo "==> Linux build complete"
 
@@ -176,7 +176,7 @@ termux:
 windows: $(RESFILE)
 	@echo "-> [LANG = $$LANG]"
 	@echo "==> Building for Windows"
-	$(CC) $(CFLAGS) -I/ucrt64/include $(SRCS) $(RESFILE) -o watchdogs.win $(LDFLAGS) -liphlpapi -lshlwapi
+	$(CC) $(CFLAGS) -I/ucrt64/include $(SRCS) $(RESFILE) -D__WINDOWS__ -o watchdogs.win $(LDFLAGS) -liphlpapi -lshlwapi
 	@echo "==> Windows build complete"
 
 # Debug Build
@@ -185,12 +185,12 @@ debug:
 	@echo "==> Building DEBUG version"
 	@if [ -f "/usr/include/ncurses.h" ]; then \
 		echo "==> ncurses found, building with _NCURSES flag and debug flags"; \
-		echo "==> Running: $(CC) $(CFLAGS) -I/usr/include/ $(SRCS) -g -O0 -D_DBG_PRINT -D_NCURSES -Wall -o watchdogs.debug $(LDFLAGS)"; \
-		$(CC) $(CFLAGS) -I/usr/include/ $(SRCS) -g -O0 -D_DBG_PRINT -D_NCURSES -Wall -fno-omit-frame-pointer -fno-inline -flto -o watchdogs.debug $(LDFLAGS); \
+		echo "==> Running: $(CC) $(CFLAGS) -I/usr/include/ $(SRCS) -D__LINUX__ -g -O0 -D_DBG_PRINT -D_NCURSES -Wall -o watchdogs.debug $(LDFLAGS)"; \
+		$(CC) $(CFLAGS) -I/usr/include/ $(SRCS) -D__LINUX__ -g -O0 -D_DBG_PRINT -D_NCURSES -Wall -fno-omit-frame-pointer -fno-inline -flto -o watchdogs.debug $(LDFLAGS); \
 	else \
 		echo "==> ncurses not found, building without _NCURSES flag and debug flags"; \
-		echo "==> Running: $(CC) $(CFLAGS) -I/usr/include/ $(SRCS) -g -O0 -D_DBG_PRINT -Wall -fno-omit-frame-pointer -fno-inline -flto -o watchdogs.debug $(LDFLAGS)"; \
-		$(CC) $(CFLAGS) -I/usr/include/ $(SRCS) -g -O0 -D_DBG_PRINT -Wall -o watchdogs.debug $(LDFLAGS); \
+		echo "==> Running: $(CC) $(CFLAGS) -I/usr/include/ $(SRCS) -D__LINUX__ -g -O0 -D_DBG_PRINT -Wall -fno-omit-frame-pointer -fno-inline -flto -o watchdogs.debug $(LDFLAGS)"; \
+		$(CC) $(CFLAGS) -I/usr/include/ $(SRCS) -D__LINUX__ -g -O0 -D_DBG_PRINT -Wall -o watchdogs.debug $(LDFLAGS); \
 	fi;
 	@echo "==> Debug build complete"
 
@@ -213,5 +213,5 @@ termux-debug:
 windows-debug: $(RESFILE)
 	@echo "-> [LANG = $$LANG]"
 	@echo "==> Building DEBUG Windows version"
-	$(CC) $(CFLAGS) -I/ucrt64/include $(SRCS) $(RESFILE) -g -O0 -D_DBG_PRINT -Wall -fno-omit-frame-pointer -fno-inline -flto -o watchdogs.debug.win $(LDFLAGS) -liphlpapi -lshlwapi
+	$(CC) $(CFLAGS) -I/ucrt64/include $(SRCS) $(RESFILE) -D__WINDOWS__ -g -O0 -D_DBG_PRINT -Wall -fno-omit-frame-pointer -fno-inline -flto -o watchdogs.debug.win $(LDFLAGS) -liphlpapi -lshlwapi
 	@echo "==> Debug build complete"

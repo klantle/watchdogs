@@ -10,19 +10,21 @@
 # include <dirent.h>
 # include <sys/stat.h>
 # include <sys/types.h>
+
 # if __has_include(<readline/history.h>)
 # include <readline/history.h>
 # include <readline/readline.h>
 # define wg_u_history() using_history()
 # define wg_a_history(cmd) add_history(cmd)
 # endif
-# include "include/cJSON/cJSON.h"
-# include "include/tomlc/toml.h"
 
-# if defined(_WIN32)
+# include "../include/cJSON/cJSON.h"
+# include "../include/tomlc/toml.h"
+
+# if defined(__WINDOWS__)
 # define WG_WINDOWS
 # endif
-# if defined(__linux__)
+# if defined(__LINUX__)
 # define WG_LINUX
 # endif
 # if defined(__ANDROID__)
@@ -80,13 +82,6 @@
 # define __PATH_STR_SEP_LINUX "/"
 # define __PATH_STR_SEP_WIN32 "\\"
 
-enum {
-	WG_RETZ = 0,
-	WG_RETN = 1,
-	WG_RETW = 2,
-	WG_RETH = 3
-};
-
 # ifndef DT_UNKNOWN
 # define DT_UNKNOWN 0
 # define DT_FIFO 1
@@ -134,12 +129,12 @@ enum {
 
 # define wg_server_env() \
 ({ \
-    int ret = WG_RETZ; \
-    if (ret == WG_RETZ) { \
+    int ret = 0; \
+    if (ret == 0) { \
         if (!strcmp(wgconfig.wg_is_samp, CRC32_TRUE)) \
-            ret = WG_RETN; \
+            ret = 1; \
         else if (!strcmp(wgconfig.wg_is_omp, CRC32_TRUE)) \
-            ret = WG_RETW; \
+            ret = 2; \
     } \
     ret; \
 })

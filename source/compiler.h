@@ -1,7 +1,7 @@
 #ifndef COMPILER_H
 #define COMPILER_H
 
-#include "wg_util.h"
+#include "utils.h"
 
 #define WATCHDOGS_COMPILER_ZERO 0
 

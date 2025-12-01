@@ -6,13 +6,13 @@
 #include <sys/stat.h>
 #include <curl/curl.h>
 
-#include "wg_extra.h"
-#include "wg_util.h"
-#include "wg_curl.h"
-#include "wg_archive.h"
-#include "wg_crypto.h"
-#include "wg_unit.h"
-#include "wg_depends.h"
+#include "extra.h"
+#include "utils.h"
+#include "curl.h"
+#include "archive.h"
+#include "crypto.h"
+#include "units.h"
+#include "depends.h"
 
 char					working		[ WG_PATH_MAX * 2 ];
 char					d_command	[ WG_MAX_PATH * 4 ];
@@ -52,7 +52,7 @@ static size_t dep_curl_write_cb (void *contents, size_t size, size_t nmemb, void
 
 		ptr = wg_realloc(mem->data, mem->size + realsize + 1);
 		if (!ptr)
-				return WG_RETZ;
+				return 0;
 
 		mem->data = ptr;
 		memcpy(&mem->data[mem->size], contents, realsize);
@@ -65,7 +65,7 @@ static size_t dep_curl_write_cb (void *contents, size_t size, size_t nmemb, void
 int dep_url_checking (const char *url, const char *github_token)
 {
 		CURL *curl = curl_easy_init();
-		if (!curl) return WG_RETZ;
+		if (!curl) return 0;
 
 		CURLcode res;
 		long response_code = 0;
@@ -106,7 +106,7 @@ int dep_url_checking (const char *url, const char *github_token)
 		res = curl_easy_perform(curl);
 		curl_easy_getinfo(curl, CURLINFO_RESPONSE_CODE, &response_code);
 
-		if (response_code == WG_CURL_RESPONSE_OK && strlen(error_buffer) == WG_RETZ) {
+		if (response_code == WG_CURL_RESPONSE_OK && strlen(error_buffer) == 0) {
 		    printf("cURL result: %s\t\t[V]\n", curl_easy_strerror(res));
 		    printf("Response code: %ld\t\t[V]\n", response_code);
 		} else {
@@ -132,7 +132,7 @@ int dep_http_get_content (const char *url, const char *github_token, char **out_
 
         curl = curl_easy_init();
         if (!curl)
-            return WG_RETZ;
+            return 0;
 
         if (github_token && strlen(github_token) > 0 && !strstr(github_token, "DO_HERE")) {
             char auth_header[512];
@@ -156,13 +156,13 @@ int dep_http_get_content (const char *url, const char *github_token, char **out_
         curl_easy_cleanup(curl);
         curl_slist_free_all(headers);
 
-        if (res != CURLE_OK || buffer.size == WG_RETZ) {
+        if (res != CURLE_OK || buffer.size == 0) {
             wg_free(buffer.data);
-            return WG_RETZ;
+            return 0;
         }
 
         *out_html = buffer.data;
-        return WG_RETN;
+        return 1;
 }
 
 static int is_os_specific_archive (const char *filename)
@@ -178,10 +178,10 @@ NULL
 	    
 	    for (int i = 0; os_patterns[i] != NULL; i++) {
 	        if (strstr(filename, os_patterns[i])) {
-	            return WG_RETN;
+	            return 1;
 	        }
 	    }
-	    return WG_RETZ;
+	    return 0;
 }
 
 static int is_gamemode_archive (const char *filename)
@@ -193,10 +193,10 @@ NULL
 	    
 	    for (int i = 0; gamemode_patterns[i] != NULL; i++) {
 	        if (strstr(filename, gamemode_patterns[i])) {
-	            return WG_RETN;
+	            return 1;
 	        }
 	    }
-	    return WG_RETZ;
+	    return 0;
 }
 
 static char *dep_get_assets (char **deps_assets, int cnt, const char *preferred_os)
@@ -215,9 +215,9 @@ static char *dep_get_assets (char **deps_assets, int cnt, const char *preferred_
 	    };
 	    size_t num_patterns = sizeof(os_patterns) / sizeof(os_patterns[0]);
 
-	    if (cnt == WG_RETZ)
+	    if (cnt == 0)
 	        return NULL;
-	    if (cnt == WG_RETN)
+	    if (cnt == 1)
 	        return strdup(deps_assets[0]);
 
 	    for (i = 0; i < cnt; i++) {
@@ -308,7 +308,7 @@ dep_parse_repo (const char *input, struct dep_repo_info *__deps_data)
 		user = path;
 		repo_slash = strchr(path, __PATH_CHR_SEP_LINUX);
 		if (!repo_slash)
-			return WG_RETZ;
+			return 0;
 
 		*repo_slash = '\0';
 		repo = repo_slash + 1;
@@ -320,8 +320,8 @@ dep_parse_repo (const char *input, struct dep_repo_info *__deps_data)
 			*git_dir = '\0';
 		wg_strncpy(__deps_data->repo, repo, sizeof(__deps_data->repo) - 1);
 
-		if (strlen(__deps_data->user) == WG_RETZ || strlen(__deps_data->repo) == WG_RETZ)
-			return WG_RETZ;
+		if (strlen(__deps_data->user) == 0 || strlen(__deps_data->repo) == 0)
+			return 0;
 
 #if defined(_DBG_PRINT)
 		char size_title[WG_PATH_MAX * 3];
@@ -334,7 +334,7 @@ dep_parse_repo (const char *input, struct dep_repo_info *__deps_data)
 		wg_console_title(size_title);
 #endif
 
-		return WG_RETN;
+		return 1;
 }
 
 static int dep_gh_release_assets (const char *user, const char *repo,
@@ -350,7 +350,7 @@ static int dep_gh_release_assets (const char *user, const char *repo,
 				 "https://", user, repo, tag);
 
 		if (!dep_http_get_content(api_url, wgconfig.wg_toml_github_tokens, &json_data))
-				return WG_RETZ;
+				return 0;
 
 		p = json_data;
 		while (url_count < max_urls && (p = strstr(p, "\"browser_download_url\"")) != NULL) {
@@ -390,14 +390,14 @@ dep_build_repo_url (const struct dep_repo_info *__deps_data, int is_tag_page,
 			wg_strncpy(deps_actual_tag, __deps_data->tag,
 				sizeof(deps_actual_tag) - 1);
 
-			if (strcmp(deps_actual_tag, "latest") == WG_RETZ) {
-				if (strcmp(__deps_data->host, "github") == WG_RETZ && !is_tag_page) {
+			if (strcmp(deps_actual_tag, "latest") == 0) {
+				if (strcmp(__deps_data->host, "github") == 0 && !is_tag_page) {
 					wg_strcpy(deps_actual_tag, "latest");
 				}
 			}
 		}
 
-		if (strcmp(__deps_data->host, "github") == WG_RETZ) {
+		if (strcmp(__deps_data->host, "github") == 0) {
 			if (is_tag_page && deps_actual_tag[0]) {
 				if (!strcmp(deps_actual_tag, "latest")) {
 					wg_snprintf(deps_put_url, deps_put_size,
@@ -457,7 +457,7 @@ static int dep_gh_latest_tag (const char *user, const char *repo,
 				"https://", user, repo);
 
 		if (!dep_http_get_content(api_url, wgconfig.wg_toml_github_tokens, &json_data))
-			return WG_RETZ;
+			return 0;
 
 		p = strstr(json_data,
 				   "\"tag_name\"");
@@ -501,7 +501,7 @@ static int dep_handle_repo(const struct dep_repo_info *dep_repo_info,
 	    char deps_actual_tag[128] = {0};
 	    int use_fallback_branch = 0;
 
-	    if (dep_repo_info->tag[0] && strcmp(dep_repo_info->tag, "latest") == WG_RETZ) {
+	    if (dep_repo_info->tag[0] && strcmp(dep_repo_info->tag, "latest") == 0) {
 	        if (dep_gh_latest_tag(dep_repo_info->user,
 	                            dep_repo_info->repo,
 	                            deps_actual_tag,
@@ -527,7 +527,7 @@ static int dep_handle_repo(const struct dep_repo_info *dep_repo_info,
 
 	            if (dep_url_checking(deps_put_url, wgconfig.wg_toml_github_tokens)) {
 	                ret = 1;
-	                if (j == WG_RETN)
+	                if (j == 1)
 	                    printf("Create master branch (main branch not found)\t\t[V]\n");
 	            }
 	        }
@@ -592,7 +592,7 @@ static int dep_handle_repo(const struct dep_repo_info *dep_repo_info,
 
 	            if (dep_url_checking(deps_put_url, wgconfig.wg_toml_github_tokens)) {
 	                ret = 1;
-	                if (j == WG_RETN)
+	                if (j == 1)
 	                    printf("Create master branch (main branch not found)\t\t[V]\n");
 	            }
 	        }
@@ -619,7 +619,7 @@ int dep_add_ncheck_hash (const char *raw_file_path, const char *raw_json_path)
 			goto done;
 
         unsigned char sha1_hash[20];
-    	if (crypto_generate_sha1_hash(res_convert_json_path, sha1_hash) == WG_RETZ) {
+    	if (crypto_generate_sha1_hash(res_convert_json_path, sha1_hash) == 0) {
 			goto done;
 		}
 
@@ -632,7 +632,7 @@ int dep_add_ncheck_hash (const char *raw_file_path, const char *raw_json_path)
 
 
 done:
-		return WG_RETN;
+		return 1;
 }
 
 void dep_implementation_samp_conf (depConfig config) {
@@ -818,7 +818,7 @@ void dep_implementation_omp_conf (const char* config_name, const char* deps_name
 void dep_add_include (const char *modes,
 					  char *dep_name,
 					  char *dep_after) {
-		if (path_exists(modes) == WG_RETZ) {
+		if (path_exists(modes) == 0) {
 			pr_color(stdout, FCOLOUR_GREEN,
 				"~ can't found %s.. skipping adding include name\t\t[X]\n", modes);
 			return;
@@ -928,11 +928,11 @@ static void dep_pr_include_directive (const char *deps_include)
 				    "#include <%s>",
 				    direct_bnames);
 
-		if (wg_server_env() == WG_RETN) {
+		if (wg_server_env() == 1) {
 			DEP_ADD_INCLUDES(wgconfig.wg_toml_gm_input,
 							 idirective,
 							 "#include <a_samp>");
-		} else if (wg_server_env() == WG_RETW) {
+		} else if (wg_server_env() == 2) {
 			DEP_ADD_INCLUDES(wgconfig.wg_toml_gm_input,
 							 idirective,
 							 "#include <open.mp>");
@@ -1018,15 +1018,15 @@ void dump_file_type (const char *path,
 					wg_snprintf(json_item, sizeof(json_item), "%s", deps_names);
 					dep_add_ncheck_hash(json_item, json_item);
 
-					if (root == WG_RETN)
+					if (root == 1)
 						goto done;
 
-					if (wg_server_env() == WG_RETN &&
+					if (wg_server_env() == 1 &&
 						  strfind(wgconfig.wg_toml_config, "cfg"))
 samp_label:
 							S_ADD_PLUGIN(wgconfig.wg_toml_config,
 								"plugins", deps_bnames);
-					else if (wg_server_env() == WG_RETW &&
+					else if (wg_server_env() == 2 &&
 									strfind(wgconfig.wg_toml_config, "json"))
 									M_ADD_PLUGIN(wgconfig.wg_toml_config,
 												 deps_bnames);
@@ -1078,7 +1078,7 @@ void dep_move_files (const char *dep_dir)
 				    dep_dir);
 #endif
 
-		if (wg_server_env() == WG_RETN) {
+		if (wg_server_env() == 1) {
 #ifdef WG_WINDOWS
 			deps_include_path = "pawno\\include";
 			wg_snprintf(deps_include_full_path,
@@ -1088,7 +1088,7 @@ void dep_move_files (const char *dep_dir)
 			wg_snprintf(deps_include_full_path,
 					sizeof(deps_include_full_path), "%s/pawno/include", dep_dir);
 #endif
-		} else if (wg_server_env() == WG_RETW) {
+		} else if (wg_server_env() == 2) {
 #ifdef WG_WINDOWS
 			deps_include_path = "qawno\\include";
 			wg_snprintf(deps_include_full_path,
@@ -1126,7 +1126,7 @@ void dep_move_files (const char *dep_dir)
 		dump_file_type(dep_dir, "*.dll", "plugins", cwd, "", 1);
 		dump_file_type(dep_dir, "*.so", "plugins", cwd, "", 1);
 
-		if (wg_server_env() == WG_RETW) {
+		if (wg_server_env() == 2) {
 #ifdef WG_WINDOWS
 			wg_snprintf(include_path, sizeof(include_path), "qawno\\include");
 #else
@@ -1227,9 +1227,9 @@ void dep_move_files (const char *dep_dir)
 		            continue;
 
 		        if (S_ISDIR(st.st_mode)) {
-		            if (strcmp(item->d_name, "pawno") == WG_RETZ ||
-						strcmp(item->d_name, "qawno") == WG_RETZ ||
-						strcmp(item->d_name, "include") == WG_RETZ) {
+		            if (strcmp(item->d_name, "pawno") == 0 ||
+						strcmp(item->d_name, "qawno") == 0 ||
+						strcmp(item->d_name, "include") == 0) {
 		                continue;
 		            }
 		            if (stack_index < stack_size - 1) {
@@ -1362,21 +1362,21 @@ void wg_apply_depends (const char *depends_name)
 
 		wg_snprintf(dep_dir, sizeof(dep_dir), "%s", _depends);
 
-		if (wg_server_env() == WG_RETN) {
-			if (dir_exists("pawno/include") == WG_RETZ) {
+		if (wg_server_env() == 1) {
+			if (dir_exists("pawno/include") == 0) {
 				wg_mkdir("pawno/include");
 			}
-			if (dir_exists("plugins") == WG_RETZ) {
+			if (dir_exists("plugins") == 0) {
 				MKDIR("plugins");
 			}
-		} else if (wg_server_env() == WG_RETW) {
-			if (dir_exists("qawno/include") == WG_RETZ) {
+		} else if (wg_server_env() == 2) {
+			if (dir_exists("qawno/include") == 0) {
 				wg_mkdir("qawno/include");
 			}
-			if (dir_exists("plugins") == WG_RETZ) {
+			if (dir_exists("plugins") == 0) {
 				MKDIR("plugins");
 			}
-			if (dir_exists("components") == WG_RETZ) {
+			if (dir_exists("components") == 0) {
 				MKDIR("components");
 			}
 		}

@@ -444,8 +444,15 @@ _reexecute_command:
 
             char *args = ptr_command + strlen("install");
             while (*args == ' ') ++args;
+            char *args2 = NULL;
+            args2 = strtok(args, " ");
 
-            if (*args) {
+            int is_null_args = 0;
+            if (args2 == NULL || (args2[0] == '.' && args2[1] == '\0')) {
+                is_null_args = 1;
+            }
+
+            if (is_null_args != 1) {
                 wg_install_depends(args);
             } else {
                 char errbuf[256];
@@ -1065,8 +1072,10 @@ wanion_retrying:
                 curl_easy_setopt(h, CURLOPT_TCP_KEEPALIVE, 1L);
                 curl_easy_setopt(h, CURLOPT_POSTFIELDS, wanion_json_payload);
                 curl_easy_setopt(h, CURLOPT_ACCEPT_ENCODING, "gzip, deflate");
-                curl_easy_setopt(h, CURLOPT_WRITEFUNCTION, write_callback);
+                buf_init(&b);
+                curl_easy_setopt(h, CURLOPT_WRITEFUNCTION, write_callbacks);
                 curl_easy_setopt(h, CURLOPT_WRITEDATA, &b);
+                buf_free(&b);
                 curl_easy_setopt(h, CURLOPT_TIMEOUT, 30L);
 
                 verify_cacert_pem(h);

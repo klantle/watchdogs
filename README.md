@@ -255,6 +255,7 @@ models = "gemini-2.5-pro"
 webhooks = "DO_HERE"
 
 [compiler]
+
 # Compiler options
 option = ["-Z+", "-O2", "-d2", "-;+", "-(+", "-\\"]
 
@@ -277,6 +278,7 @@ input = "gamemodes/bare.pwn"
 output = "gamemodes/bare.amx"
 
 [depends]
+
 # Personal access tokens (classic) - https://github.com/settings/tokens
 # Access tokens to create installation dependencies,
 # to can download files from private GitHub repositories without making them public.
@@ -326,59 +328,32 @@ send myfiles.tar.gz
 
 ### Compilation Commands
 
-**Compile default gamemode:**
 ```yaml
+# Default Compile
 compile .
-```
-
-**Compile specific file:**
-```yaml
+# Compile with specific file path
 compile yourmode.pwn
-```
-
-**Compile with specific path:**
-```yaml
-compile path/to/yourmode
-```
-
-**Compile specific options:**
-> Extend compiler detail & cause
-```yaml
+compile path/to/yourmode.pwn
+# Compile with specific options
+## Compiler Detailed
 compile . --detailed
-compile path/to/yourmode --detailed
-```
-> Clean '.amx' after compile
-```yaml
+## or
+compile . --watchdogs
+# Remove '.amx' (output) after compile
 compile . --clean
-compile path/to/yourmode --clean
-```
-> Options '-d2' Debugging Mode
-```yaml
+# Debugging mode (-d2 wraps flag)
 compile . --debug
-compile path/to/yourmode --debug
-```
-> Options '-a' - assembler output
-```yaml
+# Assembler Output (-a wraps flag)
 compile . --assembler
-compile path/to/yourmode --assembler
-```
-> Options '-R+' detailed recursion report with call chains
-```yaml
+# Recursion report (-R+ wraps flag)
 compile . --recursion
-compile path/to/yourmode --recursion
-```
-> Options '-C+' compact encoding for output file
-```yaml
-compile . --encoding
-compile path/to/yourmode --encoding
-```
-> Option '-v2' verbosity level - verbose
-```yaml
+# Encoding compact (-C+ wraps flag)
+compile . --compact
+# Verbosity level (-v2 wraps flag)
 compile . --prolix
-compile path/to/yourmode --prolix
 ```
 
-- Can combined
+> Combined support
 ```yaml
 compile . --opt1 --opt2 --opt3 --opt4
 compile path/to/yourmode --opt1 --opt2 --opt3 --opt4
@@ -464,7 +439,7 @@ The handling of YSI includes differs due to their structure containing multiple 
 
 **Install dependencies from `watchdogs.toml`:**
 ```yaml
-install
+install .
 ```
 
 **Install specific repository:**
@@ -492,19 +467,101 @@ make windows-debug  # Build with debug mode (Windows)
 
 ### GNU Debugger (GDB)
 
-> I always recommend running your program in debug mode when using GDB.
+> I always recommend running your program in debug build when using GDB.
 
 ```yaml
-# Step one - start the gdb
-gdb ./watchdogs.tmux      # termux
-gdb ./watchdogs.debug     # linux
-gdb ./watchdogs.debug.win # windows
-# Step two - run a program
-run # just input run
-# if you have a crash - SIGINT, ETC.
-# just run 'bt' command.
-bt      # default
-bt full # full
+# Step 1 - Start the debugger (GDB) with your program
+# Choose the correct executable depending on your platform:
+gdb ./watchdogs.debug        # For Linux
+gdb ./watchdogs.debug.tmux   # For Termux (Android - Termux)
+gdb ./watchdogs.debug.win    # For Windows (if using GDB on Windows)
+
+# Step 2 - Run the program inside GDB
+# This starts the program under the debugger’s control.
+run                           # Simply type 'run' and press Enter
+
+# Step 3 - Handling crashes or interruptions
+# If the program crashes (e.g., segmentation fault) or you manually interrupt it (Ctrl+C),
+# GDB will pause execution and show a prompt.
+
+# Step 4 - Inspect the state of the program with a backtrace
+# A backtrace shows the function call stack at the point of the crash.
+bt           # Basic backtrace (shows function names)
+bt full      # Full backtrace (shows function names, variables, and arguments)
+```
+
+> Comparing
+- without debug build
+```js
+Thread 1 "watchdogs" received signal SIGSEGV, Segmentation fault.
+Download failed: Invalid argument.  Continuing without source file ./string/../sysdeps/x86_64/multiarch/memmove-vec-unaligned-erms.S.
+__memcpy_avx_unaligned_erms () at ../sysdeps/x86_64/multiarch/memmove-vec-unaligned-erms.S:660
+warning: 660    ../sysdeps/x86_64/multiarch/memmove-vec-unaligned-erms.S: No such file or directory
+(gdb) bt
+#0  __memcpy_avx_unaligned_erms () at ../sysdeps/x86_64/multiarch/memmove-vec-unaligned-erms.S:660
+#1  0x000055555555c53c in write_callbacks ()
+#2  0x00007ffff7f5741c in ?? () from /lib/x86_64-linux-gnu/libcurl.so.4
+#3  0x00007ffff7f557f8 in ?? () from /lib/x86_64-linux-gnu/libcurl.so.4
+#4  0x00007ffff7f6c4b5 in ?? () from /lib/x86_64-linux-gnu/libcurl.so.4
+#5  0x00007ffff7f50fb3 in ?? () from /lib/x86_64-linux-gnu/libcurl.so.4
+#6  0x00007ffff7f540e5 in curl_multi_perform () from /lib/x86_64-linux-gnu/libcurl.so.4
+#7  0x00007ffff7f243ab in curl_easy_perform () from /lib/x86_64-linux-gnu/libcurl.so.4
+#8  0x0000555555564883 in dep_http_get_content ()
+#9  0x00005555555677bb in wg_install_depends ()
+#10 0x0000555555561061 in __command__ ()
+#11 0x000055555556177c in chain_goto_main ()
+#12 0x000055555555b67d in main ()
+(gdb) bt full
+#0  __memcpy_avx_unaligned_erms () at ../sysdeps/x86_64/multiarch/memmove-vec-unaligned-erms.S:660
+No locals.
+#1  0x000055555555c53c in write_callbacks ()
+No symbol table info available.
+#2  0x00007ffff7f5741c in ?? () from /lib/x86_64-linux-gnu/libcurl.so.4
+No symbol table info available.
+#3  0x00007ffff7f557f8 in ?? () from /lib/x86_64-linux-gnu/libcurl.so.4
+No symbol table info available.
+#4  0x00007ffff7f6c4b5 in ?? () from /lib/x86_64-linux-gnu/libcurl.so.4
+No symbol table info available.
+#5  0x00007ffff7f50fb3 in ?? () from /lib/x86_64-linux-gnu/libcurl.so.4
+No symbol table info available.
+#6  0x00007ffff7f540e5 in curl_multi_perform () from /lib/x86_64-linux-gnu/libcurl.so.4
+No symbol table info available.
+#7  0x00007ffff7f243ab in curl_easy_perform () from /lib/x86_64-linux-gnu/libcurl.so.4
+No symbol table info available.
+#8  0x0000555555564883 in dep_http_get_content ()
+No symbol table info available.
+#9  0x00005555555677bb in wg_install_depends ()
+No symbol table info available.
+#10 0x0000555555561061 in __command__ ()
+No symbol table info available.
+--Type <RET> for more, q to quit, c to continue without paging--exit
+#11 0x000055555556177c in chain_goto_main ()
+No symbol table info available.
+#12 0x000055555555b67d in main ()
+No symbol table info available.
+```
+- with debug build
+```js
+Thread 1 "watchdogs.debug" received signal SIGSEGV, Segmentation fault.
+__memcpy_avx_unaligned_erms () at ../sysdeps/x86_64/multiarch/memmove-vec-unaligned-erms.S:660
+warning: 660    ../sysdeps/x86_64/multiarch/memmove-vec-unaligned-erms.S: No such file or directory
+(gdb) bt
+#0  __memcpy_avx_unaligned_erms () at ../sysdeps/x86_64/multiarch/memmove-vec-unaligned-erms.S:660
+#1  0x000055555555cd09 in write_callbacks (ptr=0x55555572e685, size=1, nmemb=8501, userdata=0x7fffffff5a80) at source/curl.c:210
+#2  0x00007ffff7f5741c in ?? () from /lib/x86_64-linux-gnu/libcurl.so.4
+#3  0x00007ffff7f557f8 in ?? () from /lib/x86_64-linux-gnu/libcurl.so.4
+#4  0x00007ffff7f6c4b5 in ?? () from /lib/x86_64-linux-gnu/libcurl.so.4
+#5  0x00007ffff7f50fb3 in ?? () from /lib/x86_64-linux-gnu/libcurl.so.4
+#6  0x00007ffff7f540e5 in curl_multi_perform () from /lib/x86_64-linux-gnu/libcurl.so.4
+#7  0x00007ffff7f243ab in curl_easy_perform () from /lib/x86_64-linux-gnu/libcurl.so.4
+#8  0x00005555555698dd in dep_http_get_content (url=0x7fffffff5d00 "https://api.github.com/repos/Y-Less/sscanf/releases/latest", github_token=0x5555556cbf40 "DO_HERE", out_html=0x7fffffff5ce0)
+    at source/depends.c:176
+#9  0x000055555556ac71 in dep_gh_latest_tag (user=0x7fffffff6230 "Y-Less", repo=0x7fffffff62b0 "sscanf", out_tag=0x7fffffff5fe0 "", deps_put_size=128) at source/depends.c:535
+#10 0x000055555556af65 in dep_handle_repo (dep_repo_info=0x7fffffff61d0, deps_put_url=0x7fffffff66e0 "\001", deps_put_size=1024) at source/depends.c:588
+#11 0x000055555556e317 in wg_install_depends (depends_string=0x5555557135f0 "Y-Less/sscanf:latest samp-incognito/samp-streamer-plugin:latest") at source/depends.c:1627
+#12 0x00005555555611d3 in __command__ (chain_pre_command=0x0) at source/units.c:517
+#13 0x0000555555564c64 in chain_goto_main (chain_pre_command=0x0) at source/units.c:1602
+#14 0x0000555555564f67 in main (argc=1, argv=0x7fffffffcf48) at source/units.c:1666
 ```
 
 ### Command Aliases

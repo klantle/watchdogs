@@ -142,9 +142,9 @@ int dep_url_checking(const char *url, const char *github_token)
 int dep_http_get_content(const char *url, const char *github_token, char **out_html)
 {
         CURL *curl;
-        struct dep_curl_buffer buffer = { 0 }; /* Buffer for downloaded content */
         CURLcode res;
         struct curl_slist *headers = NULL;
+        struct dep_curl_buffer buffer = { 0 }; /* Buffer for downloaded content */
 
         curl = curl_easy_init();
         if (!curl)
@@ -163,8 +163,10 @@ int dep_http_get_content(const char *url, const char *github_token, char **out_h
 
         /* Configure download options */
         curl_easy_setopt(curl, CURLOPT_URL, url);
-        curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, write_callback);
+        memory_struct_init((void *)&buffer);
+        curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, write_memory_callback);
         curl_easy_setopt(curl, CURLOPT_WRITEDATA, (void *)&buffer);
+        memory_struct_free((void *)&buffer);
         curl_easy_setopt(curl, CURLOPT_FOLLOWLOCATION, 1L);
         curl_easy_setopt(curl, CURLOPT_CONNECTTIMEOUT, 15L);
         curl_easy_setopt(curl, CURLOPT_TIMEOUT, 60L);

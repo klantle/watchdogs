@@ -167,135 +167,129 @@ static int progress_callback(void *ptr, curl_off_t dltotal,
         return 0;
 }
 
-/* 
- * Write callback for CURL - handles incoming data during downloads
- * Dynamically allocates memory as data arrives
+/**
+ * Initialize buffer structure with default capacity
  */
-size_t write_callback(void *ptr, size_t size, size_t nmemb, void *userdata)
+void buf_init(struct buf *b) {
+        b->data = wg_malloc(4096);
+        b->len = 0;
+        b->allocated = (b->data) ? 4096 : 0;
+}
+
+/**
+ * Free buffer memory and reset structure
+ */
+void buf_free(struct buf *b) {
+        wg_free(b->data);
+        b->data = NULL;
+        b->len = 0;
+        b->allocated = 0;
+}
+
+/**
+ * CURL write callback function for handling incoming data
+ * Dynamically allocates memory as data arrives with safe boundary checks
+ */
+size_t write_callbacks(void *ptr, size_t size, size_t nmemb, void *userdata)
 {
         struct buf *b = userdata;
-        
-        /* Sanity check: ensure buffer pointer is properly aligned */
+
+        /* Validate buffer pointer alignment */
         if (b->data && ((uintptr_t)b->data & 0x7)) {
-                pr_error(stdout, " Buffer pointer corrupted: %p\n", b->data);
+                fprintf(stderr, " Buffer pointer corrupted: %p\n", b->data);
                 return 0;
         }
-        
+
         size_t total = size * nmemb;
-        
-        /* Safety check: prevent excessively large chunks */
+
+        /* Prevent processing excessively large chunks */
         if (total > 0xFFFFFFF) return 0;
-        
+
         size_t required = b->len + total + 1;
-        
-        /* Reallocate buffer if more space needed */
+
+        /* Reallocate buffer if additional space is needed */
         if (required > b->allocated) {
-                /* Grow by 50% or to required size, whichever is larger */
+                /* Grow buffer by 50% or to required size, whichever is larger */
                 size_t new_alloc = (b->allocated * 3) >> 1;
                 new_alloc = (required > new_alloc) ? required : new_alloc;
                 /* Cap maximum allocation at 64MB */
                 new_alloc = (new_alloc < 0x4000000) ? new_alloc : 0x4000000;
-                
-                char *p = wg_realloc(b->data, new_alloc);
+
+                char *p = realloc(b->data, new_alloc);
                 if (!p) {
-                        pr_error(stdout, " Realloc failed for %zu bytes\n", new_alloc);
+#if defined(_DBG_PRINT)
+                        fprintf(stderr, " Realloc failed for %zu bytes\n", new_alloc);
+#endif
                         return 0;
                 }
-                
+
                 b->data = p;
                 b->allocated = new_alloc;
         }
-        
-        /* Copy incoming data to buffer */
+
         memcpy(b->data + b->len, ptr, total);
         b->len += total;
-        b->data[b->len] = 0; /* Null-terminate */
-        
+        b->data[b->len] = 0; /* Null-terminate string */
+
         return total;
 }
 
-/* 
- * Write callback specifically for website content fetching
- * Similar to write_callback but with different growth strategy
+/**
+ * Initialize memory structure with default allocation
  */
-size_t write_callback_sites(void *data, size_t size, size_t nmemb, void *userp) 
-{
-        size_t total_size = size * nmemb;
-        struct string *str = (struct string *)userp;
-        
-        /* Safety check: prevent oversized chunks */
-        if (total_size > 0x8000000) {
-#if defined(_DBG_PRINT)
-                pr_error(stdout, "Oversized chunk: 0x%zX\n", total_size);
-#endif
-                return 0;
-        }
-        
-        /* Calculate required capacity and reallocate if needed */
-        size_t new_capacity = str->len + total_size + 1;
-        if (new_capacity > str->allocated) {
-                /* Grow by 50% or to required size */
-                size_t growth = str->allocated + (str->allocated >> 1);
-                new_capacity = (new_capacity > growth) ? new_capacity : growth;
-                /* Cap at 32MB */
-                new_capacity = (new_capacity < 0x2000000) ? new_capacity : 0x2000000;
-                
-                char *new_ptr = wg_realloc(str->ptr, new_capacity);
-                if (!new_ptr) {
-#if defined(_DBG_PRINT)
-                        pr_error(stdout, "Allocation failed for 0x%zX bytes\n", new_capacity);
-#endif
-                        return 0;
-                }
-                str->ptr = new_ptr;
-                str->allocated = new_capacity;
-        }
-        
-        /* Append data to buffer */
-        memcpy(str->ptr + str->len, data, total_size);
-        str->len += total_size;
-        str->ptr[str->len] = '\0';
-        
-        return total_size;
+void memory_struct_init(struct memory_struct *mem) {
+        mem->memory = wg_malloc(0x1000); // Initial allocation of 4KB
+        mem->size = 0;
+        mem->allocated = mem->memory ? 0x1000 : 0;
 }
 
-/* 
- * Generic memory write callback for CURL
- * Stores downloaded content in dynamically allocated memory
+/**
+ * Free memory structure and release allocated memory
+ */
+void memory_struct_free(struct memory_struct *mem) {
+        wg_free(mem->memory);
+        mem->memory = NULL;
+        mem->size = 0;
+        mem->allocated = 0;
+}
+
+/**
+ * Generic memory write callback for CURL operations
+ * Stores downloaded content in dynamically allocated memory with safety checks
  */
 size_t write_memory_callback(void *contents, size_t size, size_t nmemb, void *userp)
 {
         struct memory_struct *mem = userp;
         size_t realsize = size * nmemb;
-        
-        /* Input validation */
-        if (!contents || !mem || realsize > 0x10000000)
+
+        /* Input validation and size limit check */
+        if (!contents || !mem || realsize > 0x10000000) /* Limit large chunks >256/MB */
                 return 0;
-        
-        size_t required = mem->size + realsize + 1;
+
+        size_t required = mem->size + realsize + 1; /* +1 for null-terminator */
+
+        /* Reallocate buffer if capacity is insufficient */
         if (required > mem->allocated) {
-                /* Double allocation or start with 4KB */
-                size_t new_alloc = mem->allocated ? (mem->allocated * 2) : 0x1000;
-                new_alloc = (required > new_alloc) ? required : new_alloc;
-                /* Cap at 128MB */
-                new_alloc = (new_alloc < 0x8000000) ? new_alloc : 0x8000000;
-                
-                char *ptr = wg_realloc(mem->memory, new_alloc);
+                size_t new_alloc = mem->allocated ? (mem->allocated * 2) : 0x1000; /* Start with 4/KB */
+                if (new_alloc < required) new_alloc = required;
+                if (new_alloc > 0x8000000) new_alloc = 0x8000000; /* Cap at 128/MB */
+
+                char *ptr = realloc(mem->memory, new_alloc);
                 if (!ptr) {
 #if defined(_DBG_PRINT)
-                        pr_error(stdout, "Memory exhausted at 0x%zX bytes\n", new_alloc);
+                        fprintf(stdout, "Memory exhausted at %zu bytes\n", new_alloc);
 #endif
                         return 0;
                 }
                 mem->memory = ptr;
                 mem->allocated = new_alloc;
         }
-                
+
         /* Copy data to memory buffer */
-        memcpy(&mem->memory[mem->size], contents, realsize);
+        memcpy(mem->memory + mem->size, contents, realsize);
         mem->size += realsize;
-        mem->memory[mem->size] = '\0';
-        
+        mem->memory[mem->size] = '\0'; /* Null terminate string */
+
         return realsize;
 }
 
@@ -306,38 +300,46 @@ size_t write_memory_callback(void *contents, size_t size, size_t nmemb, void *us
 void account_tracker_discrepancy(const char *base,
                                         char discrepancy[][100],
                                         int *cnt) {
-        int k;
+        int character_position;
         int dis_base_len = strlen(base);
 
         /* Add original username */
         wg_strcpy(discrepancy[(*cnt)++], base);
 
         /* Create variations with duplicate characters (e.g., "heello" from "hello") */
-        for (k = 0; k < dis_base_len; k++) {
+        for (character_position = 0; character_position < dis_base_len; character_position++) {
                 char dis_size_temp[100];
-                strncpy(dis_size_temp, base, k);
-                dis_size_temp[k] = base[k];
-                dis_size_temp[k+1] = base[k]; /* Duplicate character */
-                wg_strcpy(dis_size_temp + k + 2, base + k + 1);
+                strncpy(dis_size_temp, base, character_position);
+                dis_size_temp[character_position] = base[character_position];
+                dis_size_temp[character_position+1] = base[character_position]; /* Duplicate character */
+                wg_strcpy(dis_size_temp + character_position + 2, base + character_position + 1);
                 wg_strcpy(discrepancy[(*cnt)++], dis_size_temp);
         }
 
         /* Add trailing character repetitions (e.g., "hello111") */
-        for (k = 2; k <= 5; k++) {
+        for (character_position = 2; character_position <= 5; character_position++) {
                 char dis_size_temp[100];
                 wg_snprintf(dis_size_temp, sizeof(dis_size_temp), "%s", base);
-                for (int j = 0; j < k; j++) {
+                for (int j = 0; j < character_position; j++) {
                         dis_size_temp[strlen(dis_size_temp)] = base[dis_base_len - 1];
                 }
                 wg_strcpy(discrepancy[(*cnt)++], dis_size_temp);
         }
 
         /* Add common suffixes */
-        const char *suffixes[] = {"1", "123", "007", "_", ".", "_dev"};
-        for (int k = 0; k < sizeof(suffixes) / sizeof(suffixes[0]); k++) {
-                char *temp = strdup(base);
-                wg_strcpy(discrepancy[(*cnt)++], strcat(temp, suffixes[k]));
-                wg_free(temp);
+        const char *suffixes[] = {
+                "!", "@",
+                "@", "$",
+                "%%", "^",
+                "_", "-",
+                "."
+        };
+        for (int character_position = 0;
+             character_position < sizeof(suffixes) / sizeof(suffixes[0]);
+             ++character_position) {
+                char dis_size_temp[100];
+                wg_snprintf(dis_size_temp, sizeof(dis_size_temp), "%s%s", base, suffixes[character_position]);
+                wg_strcpy(discrepancy[(*cnt)++], dis_size_temp);
         }
 }
 
@@ -347,9 +349,8 @@ void account_tracker_discrepancy(const char *base,
  */
 void account_tracking_username(CURL *curl, const char *username) {
         CURLcode res;
-        struct string response;
-        response.ptr = wg_malloc(1);
-        response.len = 0;
+        
+        struct memory_struct response;
 
         struct curl_slist *headers = NULL;
         headers = curl_slist_append(headers, "User-Agent: Mozilla/5.0");
@@ -361,7 +362,9 @@ void account_tracking_username(CURL *curl, const char *username) {
 
                 curl_easy_setopt(curl, CURLOPT_URL, url);
                 curl_easy_setopt(curl, CURLOPT_HTTPHEADER, headers);
-                curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, write_callback_sites);
+
+                memory_struct_init(&response);
+                curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, write_memory_callback);
                 curl_easy_setopt(curl, CURLOPT_WRITEDATA, (void *)&response);
 
                 verify_cacert_pem(curl);
@@ -370,21 +373,23 @@ void account_tracking_username(CURL *curl, const char *username) {
 
                 if (res != CURLE_OK) {
                         printf("[%s] %s -> ERROR %s\n",
-                                        __FORUM[i][0],
-                                        url, curl_easy_strerror(res));
+                                __FORUM[i][0], url, curl_easy_strerror(res));
                 } else {
                         long status_code;
                         curl_easy_getinfo(curl, CURLINFO_RESPONSE_CODE, &status_code);
+
                         if (status_code == WG_CURL_RESPONSE_OK) {
                                 printf("[%s] %s -> FOUND\n", __FORUM[i][0], url);
-                                fflush(stdout);
                         } else {
-                                printf("[%s] %s -> NOT FOUND (%ld)\n", __FORUM[i][0], url, status_code);
-                                fflush(stdout);
+                                printf("[%s] %s -> NOT FOUND (%ld)\n",
+                                __FORUM[i][0], url, status_code);
                         }
                 }
-                response.len = 0;
+
+                memory_struct_free(&response);
         }
+
+        curl_slist_free_all(headers);
 }
 
 /* 
@@ -875,7 +880,7 @@ int wg_download_file(const char *url, const char *filename)
 
                 /* Configure CURL options */
                 curl_easy_setopt(curl, CURLOPT_URL, url);
-                curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, write_callback);
+                curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, write_memory_callback);
                                 
                 struct buf download_buffer = { 0 };
                 curl_easy_setopt(curl, CURLOPT_WRITEDATA, &download_buffer);

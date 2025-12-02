@@ -1221,9 +1221,9 @@ __toml_add_directory_path(FILE *toml_file, int *first, const char *path)
 {
 		/* Add comma before element if not first */
 		if (!*first)
-				fprintf(toml_file, ",\n        ");
+				fprintf(toml_file, ",\n\t");
 		else {
-				fprintf(toml_file, "\n        "); /* First element formatting */
+				fprintf(toml_file, "\n\t"); /* First element formatting */
 				*first = 0; /* No longer first */
 		}
 
@@ -1426,39 +1426,50 @@ static void __toml_base_subdirs(const char *base_path,
  * Adds compiler path to TOML file if path exists and is accessible.
  * Manages comma formatting for array elements in TOML syntax.
  */
-static void wg_add_compiler_path(FILE *file, const char *path, int *first_item)
+int wg_add_compiler_path(FILE *file, const char *path, int *first_item)
 {
 		if (path_access(path)) { /* Check if path exists */
 				if (!*first_item)
 						fprintf(file, ","); /* Add comma before element */
-				fprintf(file, "\n        \"%s\"", path); /* Write quoted path */
+				fprintf(file, "\n\t\"%s\"", path); /* Write quoted path */
 				//*first_item = 0; /* Commented out: would mark as not first */
 				//__toml_base_subdirs(path, file, first_item); /* Commented: recursive add */
+		} else {
+				return 2; /* Path doesn't exist */
 		}
+		return 1; /* Success */
 }
 
 /*
  * Adds standard include paths to TOML configuration based on server environment.
  * Includes gamemodes directory and compiler-specific include directories.
  */
-static void wg_add_include_paths(FILE *file, int *first_item)
+int wg_add_include_paths(FILE *file, int *first_item)
 {
 		/* Add gamemodes directory if it exists */
+		int ret = -1;
 		if (path_access("gamemodes")) {
+				ret = 1;
 				if (!*first_item)
 						fprintf(file, ",");
-				fprintf(file, "\n        \"gamemodes/\"");
+				fprintf(file, "\n\t\"gamemodes/\"");
 				*first_item = 0; /* Mark as not first anymore */
 				//__toml_base_subdirs("gamemodes", file, first_item); /* Commented */
 		}
 
 		/* Add compiler include directory based on server type */
+		int ret2 = -1;
 		if (wg_server_env() == 1) /* SA-MP */
-				wg_add_compiler_path(file, "pawno/include/", first_item);
+				ret2 = wg_add_compiler_path(file, "pawno/include/", first_item);
 		else if (wg_server_env() == 2) /* OpenMP */
-				wg_add_compiler_path(file, "qawno/include/", first_item);
+				ret2 = wg_add_compiler_path(file, "qawno/include/", first_item);
 		else /* Default */
-				wg_add_compiler_path(file, "pawno/include/", first_item);
+				ret2 = wg_add_compiler_path(file, "pawno/include/", first_item);
+
+		if (ret != 1 && ret2 != 1)
+			return 2;
+
+		return 1; /* Success */
 }
 
 /* Static variable to cache server type detection result */
@@ -1488,65 +1499,66 @@ static void wg_generate_toml_content(FILE *file, const char *wg_os_type,
 
 		/* Write [general] section */
 		fprintf(file, "[general]\n");
-		fprintf(file, "\tos = \"%s\"\n", wg_os_type);
+		fprintf(file, "os = \"%s\"\n", wg_os_type);
 		/* Set binary and config paths based on server type */
 		if (_is_samp_ == 0) { /* OpenMP */
 			if (!strcmp(wg_os_type, "windows")) {
-				fprintf(file, "\tbinary = \"%s\"\n", "omp-server.exe");
-				fprintf(file, "\tconfig = \"%s\"\n", "config.json");
+				fprintf(file, "binary = \"%s\"\n", "omp-server.exe");
+				fprintf(file, "config = \"%s\"\n", "config.json");
 			} else if (!strcmp(wg_os_type, "linux")) {
-				fprintf(file, "\tbinary = \"%s\"\n", "omp-server");
+				fprintf(file, "binary = \"%s\"\n", "omp-server");
 			}
-			fprintf(file, "\tconfig = \"%s\"\n", "config.json");
-			fprintf(file, "\tlogs = \"%s\"\n", "log.txt");
+			fprintf(file, "config = \"%s\"\n", "config.json");
+			fprintf(file, "logs = \"%s\"\n", "log.txt");
 		} else { /* SA-MP */
 			if (!strcmp(wg_os_type, "windows")) {
-				fprintf(file, "\tbinary = \"%s\"\n", "samp-server.exe");
+				fprintf(file, "binary = \"%s\"\n", "samp-server.exe");
 			} else if (!strcmp(wg_os_type, "linux")) {
-				fprintf(file, "\tbinary = \"%s\"\n", "samp-server.exe");
+				fprintf(file, "binary = \"%s\"\n", "samp-server.exe");
 			}
-			fprintf(file, "\tconfig = \"%s\"\n", "server.cfg");
-			fprintf(file, "\tlogs = \"%s\"\n", "server_log.txt");
+			fprintf(file, "config = \"%s\"\n", "server.cfg");
+			fprintf(file, "logs = \"%s\"\n", "server_log.txt");
 		}
 		/* AI and chatbot settings */
-		fprintf(file, "\tkeys = \"API_KEY\"\n");
-		fprintf(file, "\tchatbot = \"gemini\"\n");
-		fprintf(file, "\tmodels = \"gemini-2.5-pro\"\n");
-		fprintf(file, "\twebhooks = \"DO_HERE\"\n");
+		fprintf(file, "keys = \"API_KEY\"\n");
+		fprintf(file, "chatbot = \"gemini\"\n");
+		fprintf(file, "models = \"gemini-2.5-pro\"\n");
+		fprintf(file, "webhooks = \"DO_HERE\"\n");
 
 		/* Write [compiler] section */
 		fprintf(file, "[compiler]\n");
 
 		/* Set compiler options based on detected capabilities */
 		if (compatible && optimized_lt) {
-				fprintf(file, "\toption = [\"-Z+\", \"-d2\", \"-O2\", \"-;+\", \"-(+\"]\n");
+				fprintf(file, "option = [\"-Z+\", \"-d2\", \"-O2\", \"-;+\", \"-(+\"]\n");
 		} else if (compatible) {
-				fprintf(file, "\toption = [\"-Z+\", \"-d2\", \"-;+\", \"-(+\"]\n");
+				fprintf(file, "option = [\"-Z+\", \"-d2\", \"-;+\", \"-(+\"]\n");
 		} else {
-				fprintf(file, "\toption = [\"-d3\", \"-;+\", \"-(+\"]\n");
+				fprintf(file, "option = [\"-d3\", \"-;+\", \"-(+\"]\n");
 		}
 
 		/* Include paths array */
-		fprintf(file, "\tinclude_path = [");
-		wg_add_include_paths(file, &first_item); /* Add actual paths */
-		fprintf(file, "\n\t]\n");
+		fprintf(file, "include_path = [");
+		int ret = wg_add_include_paths(file, &first_item); /* Add actual paths */
+		if (ret != 1) fprintf(file, "]\n");
+		else fprintf(file, "\n]\n");
 
 		/* Input and output file paths */
 		if (has_gamemodes && sef_path[0]) {
 				/* Use found gamemode file */
-				fprintf(file, "\tinput = \"%s.pwn\"\n", sef_path);
-				fprintf(file, "\toutput = \"%s.amx\"\n", sef_path);
+				fprintf(file, "input = \"%s.pwn\"\n", sef_path);
+				fprintf(file, "output = \"%s.amx\"\n", sef_path);
 		} else {
 				/* Default bare gamemode */
-				fprintf(file, "\tinput = \"gamemodes/bare.pwn\"\n");
-				fprintf(file, "\toutput = \"gamemodes/bare.amx\"\n");
+				fprintf(file, "input = \"gamemodes/bare.pwn\"\n");
+				fprintf(file, "output = \"gamemodes/bare.amx\"\n");
 		}
 
 		/* Write [depends] section */
 		fprintf(file, "[depends]\n");
-		fprintf(file, "\tgithub_tokens = \"DO_HERE\"\n");
+		fprintf(file, "github_tokens = \"DO_HERE\"\n");
 		/* Dependency repositories */
-		fprintf(file, "\taio_repo = [\"Y-Less/sscanf:latest\", "
+		fprintf(file, "aio_repo = [\"Y-Less/sscanf:latest\", "
 					  "\"samp-incognito/samp-streamer-plugin:latest\"]");
 }
 

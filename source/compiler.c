@@ -110,7 +110,7 @@ int wg_run_compiler(const char *args, const char *compile_args,  const char *sec
         int compiler_has_watchdogs = 0, compiler_has_debug = 0; /* Feature flags */
         int compiler_has_clean = 0, compiler_has_assembler = 0; /* Compilation mode flags */
         int compiler_has_recursion = 0, compiler_has_verbose = 0; /* Output control flags */
-        int compiler_has_encoding = 0; /* Character encoding flag */
+        int compiler_has_compact = 0; /* Character encoding compact flag */
 
         /* Determine the compiler executable name based on operating system */
         const char *ptr_pawncc = NULL;
@@ -199,8 +199,8 @@ int wg_run_compiler(const char *args, const char *compile_args,  const char *sec
                         ++compiler_has_recursion; /* Enable recursion detection */
                     if (strfind(compiler_args[i], "--prolix", true))
                         ++compiler_has_verbose; /* Enable verbose output */
-                    if (strfind(compiler_args[i], "--encoding", true))
-                        ++compiler_has_encoding; /* Enable specific character encoding */
+                    if (strfind(compiler_args[i], "--compact", true))
+                        ++compiler_has_compact; /* Enable specific character encoding compact */
                 }
             }
 
@@ -344,7 +344,7 @@ not_valid_flag_options:
                     strcat(compiler_extra_options, " -R+ ");
                 if (compiler_has_verbose > 0)
                     strcat(compiler_extra_options, " -v2 ");
-                if (compiler_has_encoding > 0)
+                if (compiler_has_compact > 0)
                     strcat(compiler_extra_options, " -C+ ");
 
                 /* Safely concatenate extra options ensuring buffer doesn't overflow */

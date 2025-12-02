@@ -84,11 +84,11 @@ back:
 
 		char *selection = readline("==> ");
 
-		if (strfind(selection, "A"))
+		if (strfind(selection, "A", false))
 		{
 			wg_strncpy(architecture, "arm32", sizeof(architecture));
 			wg_free(selection);
-		} else if (strfind(selection, "B")) {
+		} else if (strfind(selection, "B", false)) {
 			wg_strncpy(architecture, "arm64", sizeof(architecture));
 			wg_free(selection);
 		} else {

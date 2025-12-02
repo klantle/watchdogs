@@ -597,8 +597,8 @@ int dep_add_ncheck_hash (const char *raw_file_path, const char *raw_json_path)
 		dep_sym_convert(res_convert_json_path);
 
 
-		if (strfind(res_convert_json_path, "pawno") ||
-			strfind(res_convert_json_path, "qawno"))
+		if (strfind(res_convert_json_path, "pawno", false) ||
+			strfind(res_convert_json_path, "qawno", false))
 			goto done;
 
         unsigned char sha1_hash[20];
@@ -1005,12 +1005,12 @@ void dump_file_type (const char *path,
 						goto done;
 
 					if (wg_server_env() == 1 &&
-						  strfind(wgconfig.wg_toml_config, "cfg"))
+						  strfind(wgconfig.wg_toml_config, ".cfg", true))
 samp_label:
 							S_ADD_PLUGIN(wgconfig.wg_toml_config,
 								"plugins", deps_bnames);
 					else if (wg_server_env() == 2 &&
-									strfind(wgconfig.wg_toml_config, "json"))
+									strfind(wgconfig.wg_toml_config, ".json", true))
 									M_ADD_PLUGIN(wgconfig.wg_toml_config,
 												 deps_bnames);
 					else
@@ -1432,9 +1432,9 @@ void wg_install_depends (const char *depends_string)
                 size_last_slash = strrchr(dep_url, __PATH_CHR_SEP_LINUX);
                 if (size_last_slash && *(size_last_slash + 1)) {
                         wg_snprintf(dep_name, sizeof(dep_name), "%s", size_last_slash + 1);
-                        if (!strfind(dep_name, ".zip") &&
-							!strfind(dep_name, ".tar.gz") &&
-							!strfind(dep_name, ".tar"))
+                        if (!endswith(dep_name, ".tar.gz", true) &&
+							!endswith(dep_name, ".tar", true) &&
+							!endswith(dep_name, ".zip", true))
                                 wg_snprintf(dep_name + strlen(dep_name),
                                             sizeof(dep_name) - strlen(dep_name),
                                             ".zip");

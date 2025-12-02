@@ -293,35 +293,43 @@ void wg_extract_archive(const char *filename)
 
 	size_t name_len;
 	char output_path[WG_PATH_MAX];
-	
+
 	printf(" Try Extracting %s archive file...\n", filename);
 	fflush(stdout);
 
-	if (strfind(filename, ".tar.gz")) {
-		char size_filename[WG_PATH_MAX];
-		wg_snprintf(size_filename, sizeof(size_filename), "%s", filename);
-		if (strfind(size_filename, ".tar.gz")) {
-			char *ext = strstr(size_filename, ".tar.gz");
-			if (ext) *ext = '\0';
-		}
-		wg_extract_tar(filename, size_filename);
-	} else if (strfind(filename, ".tar")) {
-		wg_extract_tar(filename, NULL);
-	} else if (strfind(filename, ".zip")) {
-		name_len = strlen(filename);
-		if (name_len > 4 &&
-			!strncmp(filename + name_len - 4, ".zip", 4))
-		{
-			wg_strncpy(output_path, filename, name_len - 4);
-			output_path[name_len - 4] = '\0';
-		} else {
-			wg_strcpy(output_path, filename);
-		}
-		wg_extract_zip(filename, output_path);
-	} else {
+	if (endswith(filename, ".tar.gz", true)) {
+		wg_snprintf(output_path, sizeof(output_path), "%s", filename);
+		output_path[strlen(filename) - 7] = '\0';
+
+		if (wgconfig.wg_downloading_file == 1 && path_exists("scripts"))
+			wg_extract_tar(filename, "scripts");
+		else
+			wg_extract_tar(filename, output_path);
+	}
+	else if (endswith(filename, ".tar", true)) {
+		wg_snprintf(output_path, sizeof(output_path), "%s", filename);
+		output_path[strlen(filename) - 4] = '\0';
+
+		if (wgconfig.wg_downloading_file == 1 && path_exists("scripts"))
+			wg_extract_tar(filename, "scripts");
+		else
+			wg_extract_tar(filename, output_path);
+	}
+	else if (endswith(filename, ".zip", true)) {
+		wg_snprintf(output_path, sizeof(output_path), "%s", filename);
+		output_path[strlen(filename) - 4] = '\0';
+
+		if (wgconfig.wg_downloading_file == 1 && path_exists("scripts"))
+			wg_extract_zip(filename, "scripts");
+		else
+			wg_extract_zip(filename, output_path);
+	}
+	else {
 		pr_info(stdout, "Unknown archive, skipping extraction: %s\n", filename);
 		goto done;
 	}
+
+	wgconfig.wg_downloading_file = 0;
 
 	sleep(1);
 

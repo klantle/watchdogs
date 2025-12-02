@@ -154,6 +154,7 @@ typedef struct {
     char * wg_ptr_samp;
     char * wg_ptr_omp;
     int    wg_compiler_stat;
+    int    wg_downloading_file;
     size_t wg_sef_count;
     char   wg_sef_found_list \
             [MAX_SEF_ENTRIES] \
@@ -195,7 +196,8 @@ int wg_console_title(const char *__title);
 void wg_strip_dot_fns(char *dst, size_t dst_sz, const char *src);
 unsigned char wg_tolower(unsigned char c);
 bool wg_strcase(const char *text, const char *pattern);
-bool strfind(const char *text, const char *pattern);
+bool endswith(const char *str, const char *suffix, bool nocase);
+bool strfind(const char *text, const char *pattern, bool nocase);
 char* strreplace(const char *source, const char *old_sub, const char *new_sub);
 void wg_escape_quotes(char *dest, size_t size, const char *src);
 extern const char* wg_find_near_command(const char *ptr_command, const char *__commands[], size_t num_cmds, int *out_distance);

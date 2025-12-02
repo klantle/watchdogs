@@ -391,9 +391,9 @@ static void update_library_environment(const char *lib_path)
 
 	    char *shell = getenv("SHELL");
 	    if (shell) {
-	        if (strfind(shell, "zsh")) {
+	        if (strfind(shell, "zsh", false)) {
 	            shell_rc = ".zshrc";
-	        } else if (strfind(shell, "bash")) {
+	        } else if (strfind(shell, "bash", false)) {
 	            shell_rc = ".bashrc";
 	        }
 	    }
@@ -439,7 +439,7 @@ static void update_library_environment(const char *lib_path)
 	        printf("Library path already exists in %s\n", shell_rc);
 	    }
 
-	    if (strfind(lib_path, "/usr/")) {
+	    if (strfind(lib_path, "/usr/", false)) {
 	        int is_not_sudo = wg_run_command("sudo echo > /dev/null");
 	        if (is_not_sudo == 0) {
 	            wg_run_command("sudo ldconfig");
@@ -648,9 +648,11 @@ done:
 
 int is_archive_file(const char *filename)
 {
-		if (strfind(filename, ".tar") ||
-			strfind(filename, ".zip"))
+		if (endswith(filename, ".zip", true) ||
+			endswith(filename, ".tar", true) ||
+			endswith(filename, ".tar.gz", true)) {
 			return 1;
+		}
 		return 0;
 }
 
@@ -667,7 +669,7 @@ static int debug_callback(CURL *handle, curl_infotype type,
 	    case CURLINFO_SSL_DATA_OUT:
 	    	break;
 	    case CURLINFO_HEADER_IN:
-	        if (strfind(data, "location: ") || strfind(data, "content-security-policy: "))
+	        if (strfind(data, "location: ", false) || strfind(data, "content-security-policy: ", false))
 	        	break;
 	        printf("<= Recv header: %.*s", (int)size, data);
 	        break;

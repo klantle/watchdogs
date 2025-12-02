@@ -78,6 +78,7 @@ WatchdogConfig wgconfig = {
 	    .wg_idepends = 0,
 	    .wg_os_type = CRC32_FALSE,
 	    .wg_sel_stat = 0,
+		.wg_downloading_file = 0,
 	    .wg_is_samp = CRC32_FALSE,
 	    .wg_is_omp = CRC32_FALSE,
 	    .wg_ptr_samp = NULL,
@@ -464,51 +465,48 @@ unsigned char wg_tolower(unsigned char c) {
     	return (unsigned char)(c + ((c - 'A') <= ('Z' - 'A') ? 32 : 0));
 }
 
-__attribute__((pure))
-bool strfind(const char *text, const char *pattern) {
-	    if (!text || !pattern)
-	        return false;
+bool endswith(const char *str, const char *suffix, bool nocase) {
+		if (!str || !suffix) return false;
 
-	    size_t n = 0;
-	    while (text[n]) n++;
-	    size_t m = 0;
-	    while (pattern[m]) m++;
+		size_t lenstr = strlen(str);
+		size_t lensuf = strlen(suffix);
 
-	    if (m == 0) return true;
-	    if (n < m) return false;
+		if (lensuf > lenstr) return false;
 
-	    unsigned char pat[256];
-	    uint8_t skip[256];
+		const char *p = str + (lenstr - lensuf);
 
-	    for (size_t i = 0; i < m; i++)
-	        pat[i] = wg_tolower((unsigned char)pattern[i]);
+		return nocase
+			? strncasecmp(p, suffix, lensuf) == 0
+			: memcmp(p, suffix, lensuf) == 0;
+}
 
-	    for (size_t i = 0; i < 256; i++)
-	        skip[i] = (uint8_t)m;
+bool strfind(const char *text, const char *pattern, bool nocase) {
+		if (!text || !pattern) return false;
 
-	    for (size_t i = 0; i < m - 1; i++)
-	        skip[pat[i]] = (uint8_t)(m - 1 - i);
+		size_t m = strlen(pattern);
+		if (m == 0) return true;
 
-	    const unsigned char *txt = (const unsigned char *)text;
-	    size_t i = 0;
+		const char *p = text;
 
-	    while (i <= n - m) {
-	        unsigned char current_char = wg_tolower(txt[i + m - 1]);
+		while (*p) {
+			const char *pos;
+			pos = strstr(p, (const char[]){ nocase ? tolower(*pattern) : *pattern, 0 });
 
-	        if (current_char == pat[m - 1]) {
-	            int j = (int)m - 2;
-	            while (j >= 0 && pat[j] == wg_tolower(txt[i + j])) {
-	                j--;
-	            }
-	            if (j < 0) {
-	                return true;
-	            }
-	        }
+			if (!pos)
+				return false;
 
-	        i += skip[current_char];
-	    }
+			if (nocase) {
+				if (strncasecmp(pos, pattern, m) == 0)
+					return true;
+			} else {
+				if (memcmp(pos, pattern, m) == 0)
+					return true;
+			}
 
-	    return false;
+			p = pos + 1;
+		}
+
+		return false;
 }
 
 __attribute__((pure))

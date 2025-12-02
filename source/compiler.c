@@ -170,20 +170,20 @@ int wg_run_compiler(const char *args, const char *compile_args,  const char *sec
 
             for (int i = 0; i < aio_extra_options; ++i) {
                 if (compiler_args[i] != NULL) {
-                    if (strfind(compiler_args[i], "--detailed") ||
-                        strfind(compiler_args[i], "--watchdogs"))
+                    if (strfind(compiler_args[i], "--detailed", true) ||
+                        strfind(compiler_args[i], "--watchdogs", true))
                         ++compiler_has_watchdogs;
-                    if (strfind(compiler_args[i], "--debug"))
+                    if (strfind(compiler_args[i], "--debug", true))
                         ++compiler_has_debug;
-                    if (strfind(compiler_args[i], "--clean"))
+                    if (strfind(compiler_args[i], "--clean", true))
                         ++compiler_has_clean;
-                    if (strfind(compiler_args[i], "--assembler"))
+                    if (strfind(compiler_args[i], "--assembler", true))
                         ++compiler_has_assembler;
-                    if (strfind(compiler_args[i], "--recursion"))
+                    if (strfind(compiler_args[i], "--recursion", true))
                         ++compiler_has_recursion;
-                    if (strfind(compiler_args[i], "--prolix"))
+                    if (strfind(compiler_args[i], "--prolix", true))
                         ++compiler_has_verbose;
-                    if (strfind(compiler_args[i], "--encoding"))
+                    if (strfind(compiler_args[i], "--encoding", true))
                         ++compiler_has_encoding;
                 }
             }
@@ -229,11 +229,11 @@ int wg_run_compiler(const char *args, const char *compile_args,  const char *sec
                         if (proc_file != NULL) {
                             rewind(proc_file);
                             while (fgets(size_log, sizeof(size_log), proc_file) != NULL) {
-                                if (strfind(size_log, "error while loading shared libraries:")) {
+                                if (strfind(size_log, "error while loading shared libraries:", false)) {
                                     wg_printfile(".watchdogs/compiler_test.log");
                                     goto compiler_end;
                                 }
-                                if (strstr(size_log, flag_to_search)) {
+                                if (strfind(size_log, flag_to_search, true)) {
                                     rate_valid_flag_options = 1;
                                     break;
                                 }
@@ -254,7 +254,7 @@ not_valid_flag_options:
                               goto compiler_end;
                         }
 
-                        if (strfind(toml_option_value.u.s, "-d"))
+                        if (strfind(toml_option_value.u.s, "-d", true))
                           ++compiler_debugging;
 
                         size_t old_len = merged  ? strlen(merged) : 0,
@@ -586,7 +586,7 @@ not_valid_flag_options:
 
                         if (proc_file != NULL) {
                             while (fgets(log_line, sizeof(log_line), proc_file) != NULL) {
-                                if (strfind(log_line, "backtrace"))
+                                if (strfind(log_line, "backtrace", false))
                                     pr_color(stdout, FCOLOUR_CYAN,
                                         "~ backtrace detected - "
                                         "make sure you are using a newer version of pawncc than the one currently in use.");
@@ -985,7 +985,7 @@ compiler_done:
 
                             if (proc_file != NULL) {
                                 while (fgets(log_line, sizeof(log_line), proc_file) != NULL) {
-                                    if (strfind(log_line, "backtrace"))
+                                    if (strfind(log_line, "backtrace", false))
                                         pr_color(stdout, FCOLOUR_CYAN,
                                             "~ backtrace detected - "
                                             "make sure you are using a newer version of pawncc than the one currently in use.\n");
@@ -1070,7 +1070,7 @@ ret_ptr:
 
                     char *platform = readline("==> ");
 
-                    if (strfind(platform, "L"))
+                    if (strfind(platform, "L", false))
                     {
                         int ret = wg_install_pawncc("linux");
 loop_ipcc:
@@ -1078,7 +1078,7 @@ loop_ipcc:
                         if (ret == -1 && wgconfig.wg_sel_stat != 0)
                             goto loop_ipcc;
                     }
-                    if (strfind(platform, "W"))
+                    if (strfind(platform, "W", false))
                     {
                         int ret = wg_install_pawncc("windows");
 loop_ipcc2:
@@ -1086,7 +1086,7 @@ loop_ipcc2:
                         if (ret == -1 && wgconfig.wg_sel_stat != 0)
                             goto loop_ipcc2;
                     }
-                    if (strfind(platform, "T"))
+                    if (strfind(platform, "T", false))
                     {
                         int ret = wg_install_pawncc("termux");
 loop_ipcc3:
@@ -1094,7 +1094,7 @@ loop_ipcc3:
                         if (ret == -1 && wgconfig.wg_sel_stat != 0)
                             goto loop_ipcc3;
                     }
-                    if (strfind(platform, "E")) {
+                    if (strfind(platform, "E", false)) {
                         wg_free(platform);
                         goto loop_end;
                     }

@@ -174,7 +174,7 @@ int wg_run_compiler(const char *args, const char *compile_args,  const char *sec
 
             /* Test compiler execution to verify it works correctly */
             wg_snprintf(run_cmd, sizeof(run_cmd),
-                "%s > .watchdogs/compiler_test.log",
+                "%s > .watchdogs/compiler_test.log 2>&1",
                 wg_compiler_input_pawncc_path);
             wg_run_command(run_cmd);
 

@@ -222,25 +222,37 @@ mv -f watchdogs.win .. && cd .. && \
 
 ```toml
 [general]
+
 # Operating system type
 os = "linux"
+
 # SA-MP/Open.MP binary
 binary = "samp-server.exe"
+
 # SA-MP/Open.MP Config
 config = "server.cfg"
+
 # SA-MP/Open.MP logs file
 logs = "server_log.txt"
-# A.I (Wanion) for Watchdogs
-# api keys
+
+# A.I (Wanion) in Watchdogs
+# What is this for? These API Keys and AI Data are for querying the Gemini or Groq AI via POST requests and receiving POST-based responses (using cURL). This is intended for fast question extraction and quick answers and not to replace MS VSCode GitHub Copilot.
+# api keys/tokens
 # https://aistudio.google.com/api-keys
 # https://console.groq.com/keys
 keys = "API_KEY"
+
 # chatbot - "gemini" "groq"
 chatbot = "gemini"
+
 # models - llama | gpt | qwen
 # groq models: https://console.groq.com/docs/models
 # gemini models: https://ai.google.dev/gemini-api/docs/models
 models = "gemini-2.5-pro"
+
+# discord webhooks - optional
+# https://support.discord.com/hc/en-us/articles/228383668-Intro-to-Webhooks
+webhooks = "DO_HERE"
 
 [compiler]
 # Compiler options
@@ -301,6 +313,15 @@ Usage: help | help [<command>]
 ```yaml
 download https://host/name/
 download https://github.com/klantle/watchdogs/archive/refs/heads/dev.zip
+```
+
+### Upload/Send Our Files
+
+> What is this for? This is intended to send your file to a Discord channel using cURL, via Discord Webhooks, to a specific channel listed under `[general]` with the key `webhooks`.
+
+```yaml
+send myfiles.amx
+send myfiles.tar.gz
 ```
 
 ### Compilation Commands
@@ -471,16 +492,17 @@ make windows-debug  # Build with debug mode (Windows)
 
 ### GNU Debugger (GDB)
 
-> I always recommend running your program in debug mode when using GDB — it makes debugging way easier.
+> I always recommend running your program in debug mode when using GDB.
 
 ```yaml
-# step one - start gdb
+# Step one - start the gdb
 gdb ./watchdogs.tmux      # termux
 gdb ./watchdogs.debug     # linux
 gdb ./watchdogs.debug.win # windows
-# step two - run program
+# Step two - run a program
 run # just input run
-# if you have a crash | SIGINT,ETC.
+# if you have a crash - SIGINT, ETC.
+# just run 'bt' command.
 bt      # default
 bt full # full
 ```

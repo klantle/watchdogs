@@ -59,14 +59,14 @@ const char* __command[] = {
 		"crc32",      "djb2",      "time",      "config",    "download",
 		"install",    "hardware",  "gamemode",  "pawncc",    "log",
 		"compile",    "running",   "compiles",  "stop",      "restart",
-		"wanion",     "tracker",   "ls",        "ping",      "clear",
-		"nslookup",   "netstat",   "ipconfig",  "uname",     "hostname",
-		"whoami",     "arp",       "route",     "df",        "du",
-		"ps",         "top",       "free",      "uptime",    "date",
-		"cal",        "bc",        "dd",        "telnet",    "ssh",
-		"curl",       "wget",      "git",       "zip",       "unzip",
-		"tar",        "7z",        "rar",       "md5sum",    "sha1sum",
-		"sha256sum",  "sha512sum", "djb2sum"
+		"wanion",     "tracker",   "send",      "ls",        "ping",
+		"clear",      "nslookup",  "netstat",   "ipconfig",  "uname",
+		"hostname",   "whoami",    "arp",       "route",     "df",
+		"du",         "ps",        "top",       "free",      "uptime",
+		"date",       "cal",       "bc",        "dd",        "telnet",
+		"ssh",        "curl",      "wget",      "git",       "zip",
+		"unzip",      "tar",       "7z",        "rar",       "md5sum",
+		"sha1sum",    "sha256sum", "sha512sum", "djb2sum"
 };
 
 const size_t
@@ -96,7 +96,8 @@ WatchdogConfig wgconfig = {
 	    .wg_toml_gm_output = NULL,
 		.wg_toml_key_ai = NULL,
 		.wg_toml_chatbot_ai = NULL,
-		.wg_toml_models_ai = NULL
+		.wg_toml_models_ai = NULL,
+		.wg_toml_webhooks = NULL
 };
 
 /*
@@ -1250,7 +1251,7 @@ static void wg_check_compiler_options(int *compatibility, int *optimized_lt)
 
 		/* Run compiler test command */
 		wg_snprintf(run_cmd, sizeof(run_cmd),
-					"%s -0000000U > .watchdogs/compiler_test.log",
+					"%s -0000000U > .watchdogs/compiler_test.log 2>&1",
 					wgconfig.wg_sef_found_list[0]);
 		wg_run_command(run_cmd);
 
@@ -1511,6 +1512,7 @@ static void wg_generate_toml_content(FILE *file, const char *wg_os_type,
 		fprintf(file, "\tkeys = \"API_KEY\"\n");
 		fprintf(file, "\tchatbot = \"gemini\"\n");
 		fprintf(file, "\tmodels = \"gemini-2.5-pro\"\n");
+		fprintf(file, "\twebhooks = \"DO_HERE\"\n");
 
 		/* Write [compiler] section */
 		fprintf(file, "[compiler]\n");
@@ -1709,6 +1711,11 @@ int wg_toml_configs(void)
 				if (models_val.ok) {
 					wgconfig.wg_toml_models_ai = strdup(models_val.u.s);
 					wg_free(models_val.u.s);
+				}
+				toml_datum_t webhooks_val = toml_string_in(general_table, "webhooks");
+				if (webhooks_val.ok) {
+					wgconfig.wg_toml_webhooks = strdup(webhooks_val.u.s);
+					wg_free(webhooks_val.u.s);
 				}
 		}
 

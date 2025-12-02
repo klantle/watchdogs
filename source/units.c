@@ -222,7 +222,7 @@ _reexecute_command:
                         printf("  - system:\n");
                     }
                     printf("    @ [=| %-15s]\n", __command[i]);
-                    if (strcmp(__command[i], "ps") == 0) {
+                    if (strcmp(__command[i], "djb2sum") == 0) {
                         printf("    * innumerable\n");
                     }
                 }
@@ -266,6 +266,8 @@ _reexecute_command:
                 println(stdout, "wanion: ask to wanion. | Usage: \"wanion\" | [<args>] | gemini based\n     Got questions? Ask Wanion (Gemini AI powered).");
             } else if (strcmp(args, "tracker") == 0) { 
                 println(stdout, "tracker: account tracking. | Usage: \"tracker\" | [<args>]\n     Track accounts across platforms.");
+            } else if (strcmp(args, "send") == 0) { 
+                println(stdout, "send: send file to Discord channel via webhook. | Usage: \"send <file> <webhook_url>\"\n     Uploads a file directly to a Discord channel using a webhook.");
             } else {
                 printf("wd-help can't found for: '");
                 printf_colour(stdout, FCOLOUR_YELLOW, "%s", args);
@@ -1341,11 +1343,11 @@ wanion_curl_end:
 
                 account_tracker_discrepancy(args, variations, &variation_count);
 
-                printf("[INFO] Search base: %s\n", args);
-                printf("[INFO] Generated %d Variations\n\n", variation_count);
+                printf("[TRACKER] Search base: %s\n", args);
+                printf("[TRACKER] Generated %d Variations\n\n", variation_count);
 
                 for (int i = 0; i < variation_count; i++) {
-                    printf("=== CHECKING ACCOUNTS: %s ===\n", variations[i]);
+                    printf("=== TRACKING ACCOUNTS: %s ===\n", variations[i]);
                     account_tracking_username(curl, variations[i]);
                     printf("\n");
                 }
@@ -1354,6 +1356,58 @@ wanion_curl_end:
                 curl_global_cleanup();
             }
 
+            goto chain_done;
+        } else if (strncmp(ptr_command, "send", 4) == 0) {
+            char *args = ptr_command + strlen("send");
+            while (*args == ' ') ++args;
+            
+            if (*args == '\0') {
+                println(stdout, "Usage: send [<file_path>]");
+            } else {
+                if (!wgconfig.wg_toml_webhooks || 
+                        strstr(wgconfig.wg_toml_webhooks, "DO_HERE") ||
+                        strlen(wgconfig.wg_toml_webhooks) < 1) {
+                        pr_color(stdout, FCOLOUR_YELLOW, " ~ Discord webhooks not available");
+                        goto send_done;
+                }
+
+                char *filename = args;
+                if (strrchr(args, '/') && strrchr(args, '\\'))
+                    filename = (strrchr(args, '/') > strrchr(args, '\\')) ? \
+                        strrchr(args, '/') + 1 : strrchr(args, '\\') + 1;
+                else if (strrchr(args, '/')) filename = strrchr(args, '/') + 1;
+                else if (strrchr(args, '\\')) filename = strrchr(args, '\\') + 1;
+
+                CURL *curl = curl_easy_init();
+                if (curl) {
+                    CURLcode res;
+                    curl_mime *mime = curl_mime_init(curl);
+                    if (!mime) {
+                        fprintf(stderr, "Failed to create MIME handle\n");
+                        curl_easy_cleanup(curl);
+                        goto send_done;
+                    }
+
+                    curl_mimepart *part = curl_mime_addpart(mime);
+                    curl_mime_name(part, "file");
+                    curl_mime_filedata(part, args); 
+                    curl_mime_filename(part, filename);
+
+                    curl_easy_setopt(curl, CURLOPT_URL, wgconfig.wg_toml_webhooks);
+                    curl_easy_setopt(curl, CURLOPT_MIMEPOST, mime);
+
+                    res = curl_easy_perform(curl);
+                    if (res != CURLE_OK)
+                        fprintf(stderr, "curl_easy_perform() failed: %s\n", curl_easy_strerror(res));
+
+                    curl_mime_free(mime);
+                    curl_easy_cleanup(curl);
+                }
+
+                curl_global_cleanup();
+            }
+
+send_done:
             goto chain_done;
         } else if (strcmp(ptr_command, "watchdogs") == 0) {
 #ifndef WG_WINDOWS

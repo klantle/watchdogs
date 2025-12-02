@@ -167,6 +167,7 @@ typedef struct {
     char * wg_toml_key_ai;
     char * wg_toml_chatbot_ai;
     char * wg_toml_models_ai;
+    char * wg_toml_webhooks;
 } WatchdogConfig;
 
 extern WatchdogConfig wgconfig;

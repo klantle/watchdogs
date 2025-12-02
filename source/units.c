@@ -242,8 +242,6 @@ _reexecute_command:
                 println(stdout, "time: print current time. | Usage: \"time\"\n     What time is it? Time to check!");
             } else if (strcmp(args, "config") == 0) { 
                 println(stdout, "config: re-create watchdogs.toml. Usage: \"config\"\n     Reset your config file to default settings.");
-            } else if (strcmp(args, "stopwatch") == 0) { 
-                println(stdout, "stopwatch: calculating time. Usage: \"stopwatch\" | [<args>]\n     Need to time something? This is your stopwatch!");
             } else if (strcmp(args, "download") == 0) {
                 println(stdout, "download: fetch file from URL | Usage: \"download\" | [<args>]\n     Downloads archives from direct links.");
             } else if (strcmp(args, "hardware") == 0) { 
@@ -390,46 +388,6 @@ _reexecute_command:
             chain_main_data(1);
 
             wg_printfile("watchdogs.toml");
-
-            goto chain_done;
-        } else if (strncmp(ptr_command, "stopwatch", 9) == 0) {
-            struct timespec start, now;
-            double stw_elp;
-
-            char *args = ptr_command + strlen("stopwatch");
-            while (*args == ' ') ++args;
-
-            if (*args == '\0') {
-                println(stdout, "Usage: stopwatch [<sec>]");
-            } else {
-                int ts, hh, mm, ss;
-                ts = atoi(args);
-                if ( ts <= 0 ) {
-                    println(stdout, "Usage: stopwatch [<sec>]");
-                    goto chain_done;
-                }
-                clock_gettime(CLOCK_MONOTONIC, &start);
-                while (true) {
-                    clock_gettime(CLOCK_MONOTONIC, &now);
-                    stw_elp = (now.tv_sec - start.tv_sec)
-                            + (now.tv_nsec - start.tv_nsec) / 1e9;
-                    if (stw_elp >= ts) {
-                        wg_console_title("S T O P W A T C H : DONE");
-                        break;
-                    }
-                    hh = (int)(stw_elp / 3600),
-                    mm = (int)((stw_elp - hh*3600)/60),
-                    ss = (int)(stw_elp) % 60;
-                    char title_set[128];
-                    wg_snprintf(title_set, sizeof(title_set),
-                        "S T O P W A T C H : "
-                        "%02d:%02d:%02d / %d sec",
-                        hh, mm, ss, ts);
-                    wg_console_title(title_set);
-                    struct timespec ts = {0, 10000000};
-                    nanosleep(&ts, NULL);
-                }
-            }
 
             goto chain_done;
         } else if (strcmp(ptr_command, "hardware") == 0) {

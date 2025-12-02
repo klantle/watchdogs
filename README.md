@@ -1,24 +1,4 @@
-<!-- markdownlint-disable MD033 MD041 -->
-<div align="center">
-  <h3>
-    <a href="https://gitlab.com/mywatchdogs/watchdogs" >
-         工具链 | 辅助工具 | 快速工具 | 自由工具
-    </a>
-  </h3>
-</div>
-<div align="center">
-  <img src="https://readme-typing-svg.demolab.com?lines=Welcome!;Discord+Server:;to+get+help+and+support&font=Fira+Code&center=true&width=380&height=50&duration=4000&pause=1000" alt="Typing SVG">
-</div>
-<div align="center">
-  <a href="https://discord.gg/HrWUySYS8Z" alt="Discord" title="Discord Server">
-    <img src="https://img.shields.io/discord/819650821314052106?color=7289DA&logo=discord&logoColor=white&style=for-the-badge"/>
-  </a>
-</div>
-<!-- markdownlint-enable MD033 -->
-
-![img](https://raw.githubusercontent.com/klantle/watchdogs/refs/heads/dev/__WATCH.png)
-
----
+# Watchdogs
 
 ## Page
 

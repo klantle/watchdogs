@@ -27,11 +27,13 @@
 #endif
 static io_compilers wg_compiler_sys = {0};
 
+/* Main compiler execution function that orchestrates the entire compilation process */
 int wg_run_compiler(const char *args, const char *compile_args,  const char *second_arg, const char *four_arg,
                     const char *five_arg, const char *six_arg, const char *seven_arg, const char *eight_arg,
                     const char *nine_arg)
 {
 #if defined (_DBG_PRINT)
+        /* Debugging information block - prints comprehensive environment details when debug mode is enabled */
         pr_color(stdout, FCOLOUR_YELLOW, "-DEBUGGING ");
         printf("[function: %s | "
                "pretty function: %s | "
@@ -63,19 +65,22 @@ int wg_run_compiler(const char *args, const char *compile_args,  const char *sec
                 "Unknown");
 #endif
 #endif
-        const int aio_extra_options = 7;
-        wgconfig.wg_compiler_stat = 0;
-        io_compilers comp;
-        io_compilers *ptr_io = &comp;
+        const int aio_extra_options = 7; /* Number of extra compiler options to process */
+        wgconfig.wg_compiler_stat = 0; /* Reset compiler status flag */
+        io_compilers comp; /* Local compiler configuration structure */
+        io_compilers *ptr_io = &comp; /* Pointer to compiler configuration for easy access */
 #ifdef WG_WINDOWS
+        /* Windows-specific process handling structures */
         PROCESS_INFORMATION pi;
         STARTUPINFO si = { sizeof(si) };
         SECURITY_ATTRIBUTES sa = { sizeof(sa) };
 #endif
+        /* Timing structures for measuring compilation duration */
         struct timespec start = {0},
                         end = { 0 };
-        double compiler_dur;
+        double compiler_dur; /* Compilation duration in seconds */
 
+        /* Array of compiler arguments for easy iteration and processing */
         const char* compiler_args[] = {
             second_arg, four_arg,
             five_arg, six_arg,
@@ -83,53 +88,61 @@ int wg_run_compiler(const char *args, const char *compile_args,  const char *sec
             nine_arg
         };
 
-        FILE *proc_file;
-        char size_log[WG_MAX_PATH * 4];
-        char run_cmd[WG_PATH_MAX + 258];
-        char include_aio_path[WG_PATH_MAX * 2] = { 0 };
-        char _compiler_input_[WG_MAX_PATH + WG_PATH_MAX] = { 0 };
+        FILE *proc_file; /* File pointer for process output handling */
+        char size_log[WG_MAX_PATH * 4]; /* Buffer for log file reading */
+        char run_cmd[WG_PATH_MAX + 258]; /* Buffer for constructing system commands */
+        char include_aio_path[WG_PATH_MAX * 2] = { 0 }; /* Buffer for include paths concatenation */
+        char _compiler_input_[WG_MAX_PATH + WG_PATH_MAX] = { 0 }; /* Buffer for final compiler command */
 
+        /* Pointers for path manipulation - extracting directory and filename */
         char *compiler_last_slash = NULL;
         char *compiler_back_slash = NULL;
 
-        char *fetch_string_pos = NULL;
-        char compiler_extra_options[WG_PATH_MAX] = { 0 };
+        char *fetch_string_pos = NULL; /* Pointer for string searching operations */
+        char compiler_extra_options[WG_PATH_MAX] = { 0 }; /* Buffer for additional compiler flags */
+        /* Array of debug memory flags that need special handling */
         const char *debug_memm[] = {"-d1", "-d3"};
         size_t size_debug_memm = sizeof(debug_memm);
         size_t size_debug_memm_zero = sizeof(debug_memm[0]);
 
-        int compiler_debugging = 0;
-        int compiler_has_watchdogs = 0, compiler_has_debug = 0;
-        int compiler_has_clean = 0, compiler_has_assembler = 0;
-        int compiler_has_recursion = 0, compiler_has_verbose = 0;
-        int compiler_has_encoding = 0;
+        /* Flag variables tracking specific compiler options */
+        int compiler_debugging = 0; /* Debug mode flag */
+        int compiler_has_watchdogs = 0, compiler_has_debug = 0; /* Feature flags */
+        int compiler_has_clean = 0, compiler_has_assembler = 0; /* Compilation mode flags */
+        int compiler_has_recursion = 0, compiler_has_verbose = 0; /* Output control flags */
+        int compiler_has_encoding = 0; /* Character encoding flag */
 
+        /* Determine the compiler executable name based on operating system */
         const char *ptr_pawncc = NULL;
         if (!strcmp(wgconfig.wg_os_type, OS_SIGNAL_WINDOWS))
             ptr_pawncc = "pawncc.exe";
         else if (!strcmp(wgconfig.wg_os_type, OS_SIGNAL_LINUX))
             ptr_pawncc = "pawncc";
 
+        /* Determine include path based on server environment configuration */
         char *path_include = NULL;
         if (wg_server_env() == 1)
             path_include="pawno/include";
         else if (wg_server_env() == 2)
             path_include="qawno/include";
 
+        /* Check and clean up existing compiler log file */
         int _wg_log_acces = path_access(".watchdogs/compiler.log");
         if (_wg_log_acces)
             remove(".watchdogs/compiler.log");
         
+        /* Create fresh compiler log file for this compilation session */
         FILE *wg_log_files = fopen(".watchdogs/compiler.log", "w");
         if (wg_log_files != NULL)
             fclose(wg_log_files);
         else
             pr_error(stdout, "can't create .watchdogs/compiler.log!");
 
-        compiler_memory_clean();
+        compiler_memory_clean(); /* Perform memory cleanup before compilation */
 
+        /* Search for pawncc compiler executable in current directory */
         int __find_pawncc = wg_sef_fdir(".", ptr_pawncc, NULL);
-        if (__find_pawncc)
+        if (__find_pawncc) /* Compiler found - proceed with compilation */
         {
             FILE *proc_f;
             proc_f = fopen("watchdogs.toml", "r");
@@ -138,6 +151,7 @@ int wg_run_compiler(const char *args, const char *compile_args,  const char *sec
                 goto compiler_end;
             }
 
+            /* Parse TOML configuration file for compiler settings */
             char error_buffer[256];
             toml_table_t *wg_toml_config;
             wg_toml_config = toml_parse_file(proc_f,
@@ -158,6 +172,7 @@ int wg_run_compiler(const char *args, const char *compile_args,  const char *sec
             wg_snprintf(wg_compiler_input_pawncc_path,
                     sizeof(wg_compiler_input_pawncc_path), "%s", wgconfig.wg_sef_found_list[0]);
 
+            /* Test compiler execution to verify it works correctly */
             wg_snprintf(run_cmd, sizeof(run_cmd),
                 "%s > .watchdogs/compiler_test.log",
                 wg_compiler_input_pawncc_path);
@@ -168,33 +183,36 @@ int wg_run_compiler(const char *args, const char *compile_args,  const char *sec
                 pr_error(stdout, "Failed to open .watchdogs/compiler_test.log");
             }
 
+            /* Process and categorize compiler arguments from command line */
             for (int i = 0; i < aio_extra_options; ++i) {
                 if (compiler_args[i] != NULL) {
                     if (strfind(compiler_args[i], "--detailed", true) ||
                         strfind(compiler_args[i], "--watchdogs", true))
-                        ++compiler_has_watchdogs;
+                        ++compiler_has_watchdogs; /* Enable detailed watchdogs analysis */
                     if (strfind(compiler_args[i], "--debug", true))
-                        ++compiler_has_debug;
+                        ++compiler_has_debug; /* Enable debug compilation mode */
                     if (strfind(compiler_args[i], "--clean", true))
-                        ++compiler_has_clean;
+                        ++compiler_has_clean; /* Enable clean compilation (remove output on error) */
                     if (strfind(compiler_args[i], "--assembler", true))
-                        ++compiler_has_assembler;
+                        ++compiler_has_assembler; /* Enable assembler output */
                     if (strfind(compiler_args[i], "--recursion", true))
-                        ++compiler_has_recursion;
+                        ++compiler_has_recursion; /* Enable recursion detection */
                     if (strfind(compiler_args[i], "--prolix", true))
-                        ++compiler_has_verbose;
+                        ++compiler_has_verbose; /* Enable verbose output */
                     if (strfind(compiler_args[i], "--encoding", true))
-                        ++compiler_has_encoding;
+                        ++compiler_has_encoding; /* Enable specific character encoding */
                 }
             }
 
+            /* Extract compiler-specific configuration from TOML */
             toml_table_t *wg_compiler = toml_table_in(wg_toml_config, "compiler");
 #if defined(_DBG_PRINT)
             if (!wg_compiler)
                 printf("%s not exists in line:%d", "compiler", __LINE__);
 #endif
-            if (wg_compiler)
+            if (wg_compiler) /* Process compiler configuration if present */
             {
+                /* Read compiler options array from TOML configuration */
                 toml_array_t *option_arr = toml_array_in(wg_compiler, "option");
 #if defined(_DBG_PRINT)
                 if (!option_arr)
@@ -202,10 +220,11 @@ int wg_run_compiler(const char *args, const char *compile_args,  const char *sec
 #endif
                 if (option_arr)
                 {
-                    char *merged = NULL;
+                    char *merged = NULL; /* Dynamic string to accumulate compiler flags */
                     size_t toml_array_size;
                     toml_array_size = toml_array_nelem(option_arr);
 
+                    /* Process each compiler option from TOML configuration */
                     for (size_t i = 0; i < toml_array_size; i++)
                     {
                         toml_datum_t toml_option_value;
@@ -213,8 +232,9 @@ int wg_run_compiler(const char *args, const char *compile_args,  const char *sec
                         if (!toml_option_value.ok)
                             continue;
 
-                        int rate_valid_flag_options = 0;
+                        int rate_valid_flag_options = 0; /* Flag validity checker */
 
+                        /* Extract flag prefix for validation against compiler help */
                         char flag_to_search[3] = { 0 };
                         size_t size_flag_to_search = sizeof(flag_to_search);
                         if (strlen(toml_option_value.u.s) >= 2) {
@@ -226,6 +246,7 @@ int wg_run_compiler(const char *args, const char *compile_args,  const char *sec
                             wg_strncpy(flag_to_search, toml_option_value.u.s, size_flag_to_search - 1);
                         }
 
+                        /* Validate flag by checking against compiler help output */
                         if (proc_file != NULL) {
                             rewind(proc_file);
                             while (fgets(size_log, sizeof(size_log), proc_file) != NULL) {
@@ -234,7 +255,7 @@ int wg_run_compiler(const char *args, const char *compile_args,  const char *sec
                                     goto compiler_end;
                                 }
                                 if (strfind(size_log, flag_to_search, true)) {
-                                    rate_valid_flag_options = 1;
+                                    rate_valid_flag_options = 1; /* Flag is valid */
                                     break;
                                 }
                             }
@@ -243,6 +264,7 @@ int wg_run_compiler(const char *args, const char *compile_args,  const char *sec
                         if (rate_valid_flag_options == 0)
                             goto not_valid_flag_options;
 
+                        /* Ensure option starts with dash indicating it's a flag */
                         if (toml_option_value.u.s[0] != '-') {
 not_valid_flag_options:
                             printf("[WARN]: "
@@ -254,9 +276,11 @@ not_valid_flag_options:
                               goto compiler_end;
                         }
 
+                        /* Track if debug flag is present */
                         if (strfind(toml_option_value.u.s, "-d", true))
                           ++compiler_debugging;
 
+                        /* Dynamically build concatenated compiler options string */
                         size_t old_len = merged  ? strlen(merged) : 0,
                                new_len = old_len + strlen(toml_option_value.u.s) + 2;
 
@@ -280,12 +304,14 @@ not_valid_flag_options:
                         toml_option_value.u.s = NULL;
                     }
 
+                    /* Clean up temporary test files */
                     if (proc_file) {
                         fclose(proc_file);
                         if (path_access(".watchdogs/compiler_test.log"))
                             remove(".watchdogs/compiler_test.log");
                     }
 
+                    /* Store accumulated compiler options in global config */
                     if (merged) {
                         wgconfig.wg_toml_aio_opt = merged;
                     }
@@ -293,12 +319,14 @@ not_valid_flag_options:
                         wgconfig.wg_toml_aio_opt = strdup("");
                     }
 
+                    /* Special handling: remove conflicting debug flags when debug mode is enabled */
                     if (compiler_has_debug != 0 && compiler_debugging != 0) {
                         size_t debug_flag_count = size_debug_memm / size_debug_memm_zero;
                         for (size_t i = 0; i < debug_flag_count; i++) {
                             const char *memm_saving_target = debug_memm[i];
                             size_t size_memm_saving_targetion = strlen(memm_saving_target);
 
+                            /* Remove specific debug flags to prevent conflicts */
                             while ((fetch_string_pos = strstr(wgconfig.wg_toml_aio_opt, memm_saving_target)) != NULL) {
                                 memmove(fetch_string_pos, fetch_string_pos + size_memm_saving_targetion,
                                         strlen(fetch_string_pos + size_memm_saving_targetion) + 1);
@@ -307,6 +335,7 @@ not_valid_flag_options:
                     }
                 }
 
+                /* Append command-line specified options to TOML options */
                 if (compiler_has_debug > 0)
                     strcat(compiler_extra_options, " -d2 ");
                 if (compiler_has_assembler > 0)
@@ -318,6 +347,7 @@ not_valid_flag_options:
                 if (compiler_has_encoding > 0)
                     strcat(compiler_extra_options, " -C+ ");
 
+                /* Safely concatenate extra options ensuring buffer doesn't overflow */
                 if (strlen(compiler_extra_options) > 0) {
                     size_t current_len = strlen(wgconfig.wg_toml_aio_opt);
                     size_t extra_opt_len = strlen(compiler_extra_options);
@@ -329,6 +359,7 @@ not_valid_flag_options:
                             sizeof(wgconfig.wg_toml_aio_opt) - current_len - 1);
                 }
 
+                /* Process include paths from TOML configuration */
                 toml_array_t *toml_include_path = toml_array_in(wg_compiler, "include_path");
 #if defined(_DBG_PRINT)
                 if (!toml_include_path)
@@ -339,6 +370,7 @@ not_valid_flag_options:
                     int toml_array_size;
                     toml_array_size = toml_array_nelem(toml_include_path);
 
+                    /* Build compiler include path arguments from TOML array */
                     for (int i = 0; i < toml_array_size; i++)
                     {
                         toml_datum_t path_val = toml_string_at(toml_include_path, i);
@@ -349,6 +381,7 @@ not_valid_flag_options:
                             if (size_path_val[0] == '\0')
                                 continue;
 
+                            /* Add space separator between multiple include paths */
                             if (i > 0)
                             {
                                 size_t cur = strlen(include_aio_path);
@@ -360,6 +393,7 @@ not_valid_flag_options:
                                 }
                             }
 
+                            /* Format include path in compiler-specific format (-i"path") */
                             size_t cur = strlen(include_aio_path);
                             if (cur < sizeof(include_aio_path) - 1)
                             {
@@ -373,8 +407,10 @@ not_valid_flag_options:
                     }
                 }
 
+                /* Main compilation logic block - handles both default and specific file compilation */
                 if (args == NULL || *args == '\0' || (args[0] == '.' && args[1] == '\0'))
                 {
+                    /* Default compilation: use gamemode from TOML configuration */
 #ifdef WG_WINDOWS
                     sa.bInheritHandle = TRUE;
                     HANDLE hFile = CreateFileA(
@@ -395,6 +431,7 @@ not_valid_flag_options:
                         si.hStdError = hFile;
                     }
 
+                    /* Construct full compiler command string for Windows */
                     int ret_command = 0;
                     ret_command = wg_snprintf(_compiler_input_,
                               sizeof(_compiler_input_),
@@ -412,6 +449,7 @@ not_valid_flag_options:
                     if (ret_command > 0 && ret_command < (int)sizeof(_compiler_input_)) {
                         BOOL win32_process_succes;
                         clock_gettime(CLOCK_MONOTONIC, &start);
+                        /* Execute compiler as external process on Windows */
                         win32_process_succes = CreateProcessA(
                                 NULL,
                                 _compiler_input_,
@@ -446,6 +484,7 @@ not_valid_flag_options:
                         CloseHandle(hFile);
                     }
 #else
+                    /* POSIX/Linux compilation path */
                     int ret_command = 0;
                     ret_command = wg_snprintf(_compiler_input_, sizeof(_compiler_input_),
                         "%s %s %s%s %s%s %s%s",
@@ -465,6 +504,7 @@ not_valid_flag_options:
                     pr_color(stdout, FCOLOUR_YELLOW, "-DEBUGGING\n");
                     printf("[COMPILER]:\n\t%s\n", _compiler_input_);
 #endif
+                    /* Tokenize command for posix_spawn argument array */
                     int i = 0;
                     char *wg_compiler_unix_args[WG_MAX_PATH + 256];
                     char *compiler_unix_token = strtok(_compiler_input_, " ");
@@ -474,6 +514,7 @@ not_valid_flag_options:
                     }
                     wg_compiler_unix_args[i] = NULL;
 
+                    /* Setup file actions to redirect output to log file */
                     posix_spawn_file_actions_t process_file_actions;
                     posix_spawn_file_actions_init(&process_file_actions);
                     int posix_logging_file = open(".watchdogs/compiler.log", O_WRONLY | O_CREAT | O_TRUNC, 0644);
@@ -488,6 +529,7 @@ not_valid_flag_options:
                                 posix_logging_file);
                     }
 
+                    /* Configure spawn attributes with signal handling */
                     posix_spawnattr_t spawn_attr;
                     posix_spawnattr_init(&spawn_attr);
 
@@ -498,6 +540,7 @@ not_valid_flag_options:
 
                     pid_t compiler_process_id;
 
+                    /* Execute compiler using posix_spawn for better control */
                     int process_spawn_result = posix_spawnp(&compiler_process_id,
                                 wg_compiler_unix_args[0],
                                 &process_file_actions,
@@ -512,11 +555,12 @@ not_valid_flag_options:
                         int process_status;
                         int process_timeout_occurred = 0;
                         clock_gettime(CLOCK_MONOTONIC, &start);
+                        /* Monitor process with timeout to prevent hanging */
                         for (int i = 0; i < POSIX_TIMEOUT; i++) {
                             int p_result = -1;
                             p_result = waitpid(compiler_process_id, &process_status, WNOHANG);
                             if (p_result == 0)
-                                usleep(0xC350);
+                                usleep(0xC350); /* Sleep 50ms if process still running */
                             else if (p_result == compiler_process_id) {
                                 clock_gettime(CLOCK_MONOTONIC, &end);
                                 break;
@@ -526,6 +570,7 @@ not_valid_flag_options:
                                 pr_error(stdout, "waitpid error");
                                 break;
                             }
+                            /* Kill process if timeout exceeded */
                             if (i == POSIX_TIMEOUT - 1) {
                                 clock_gettime(CLOCK_MONOTONIC, &end);
                                 kill(compiler_process_id, SIGTERM);
@@ -538,6 +583,7 @@ not_valid_flag_options:
                             }
                         }
                         if (!process_timeout_occurred) {
+                            /* Analyze process exit status */
                             if (WIFEXITED(process_status)) {
                                 int proc_exit_code = 0;
                                 proc_exit_code = WEXITSTATUS(process_status);
@@ -556,22 +602,27 @@ not_valid_flag_options:
                     char size_container_output[WG_PATH_MAX * 2];
                     wg_snprintf(size_container_output,
                         sizeof(size_container_output), "%s", wgconfig.wg_toml_gm_output);
+                    /* Post-compilation processing based on output and flags */
                     if (path_exists(".watchdogs/compiler.log")) {
                         printf("\n");
                         char *ca = NULL;
                         ca = size_container_output;
                         int cb = 0;
                         cb = compiler_debugging;
+                        /* Handle different output modes based on command-line flags */
                         if (compiler_has_watchdogs && compiler_has_clean) {
+                            /* Detailed analysis with cleanup on error */
                             cause_compiler_expl(".watchdogs/compiler.log", ca, cb);
                             if (path_exists(ca)) {
-                                    remove(ca);
+                                    remove(ca); /* Remove output file on error */
                             }
                             goto compiler_done;
                         } else if (compiler_has_watchdogs) {
+                            /* Detailed analysis without cleanup */
                             cause_compiler_expl(".watchdogs/compiler.log", ca, cb);
                             goto compiler_done;
                         } else if (compiler_has_clean) {
+                            /* Simple output with cleanup on error */
                             wg_printfile(".watchdogs/compiler.log");
                             if (path_exists(ca)) {
                                     remove(ca);
@@ -579,8 +630,10 @@ not_valid_flag_options:
                             goto compiler_done;
                         }
 
+                        /* Default: just print compiler output */
                         wg_printfile(".watchdogs/compiler.log");
 
+                        /* Check for specific compiler issues in output */
                         char log_line[WG_MAX_PATH * 4];
                         proc_file = fopen(".watchdogs/compiler.log", "r");
 
@@ -595,6 +648,7 @@ not_valid_flag_options:
                         }
                     }
 compiler_done:
+                    /* Check if compilation had errors by scanning log file */
                     proc_f = fopen(".watchdogs/compiler.log", "r");
                     if (proc_f)
                     {
@@ -610,15 +664,17 @@ compiler_done:
                         fclose(proc_f);
                         if (compiler_has_err)
                         {
+                            /* Cleanup output file if compilation failed */
                             if (size_container_output[0] != '\0' && path_access(size_container_output))
                                 remove(size_container_output);
-                            wgconfig.wg_compiler_stat = 1;
+                            wgconfig.wg_compiler_stat = 1; /* Set error status */
                         }
                     }
                     else {
                         pr_error(stdout, "Failed to open .watchdogs/compiler.log");
                     }
 
+                    /* Calculate and display compilation duration */
                     compiler_dur = (end.tv_sec - start.tv_sec)
                                         + (end.tv_nsec - start.tv_nsec) / 1e9;
 
@@ -626,9 +682,10 @@ compiler_done:
                     pr_color(stdout, FCOLOUR_CYAN,
                         " <P> Finished at %.3fs (%.0f ms)\n",
                         compiler_dur, compiler_dur * 1000.0);
+                    /* Provide helpful message for long compilations */
                     if (compiler_dur > 0x64) {
                         printf("~ This is taking a while, huh?\n"
-                                "  Make sure you’ve cleared all the warnings,\n"
+                                "  Make sure you've cleared all the warnings,\n"
                                 "  you're using the latest compiler,\n"
                                 "  and double-check that your logic\n"
                                 "  and pawn algorithm tweaks in the gamemode scripts line up.\n");
@@ -637,9 +694,11 @@ compiler_done:
                 }
                 else
                 {
+                    /* Specific file compilation: process provided file path */
                     wg_strncpy(ptr_io->compiler_size_temp, compile_args, sizeof(ptr_io->compiler_size_temp) - 1);
                     ptr_io->compiler_size_temp[sizeof(ptr_io->compiler_size_temp) - 1] = '\0';
 
+                    /* Extract directory and filename from provided path */
                     compiler_last_slash = strrchr(ptr_io->compiler_size_temp, '/');
                     compiler_back_slash = strrchr(ptr_io->compiler_size_temp, '\\');
 
@@ -648,6 +707,7 @@ compiler_done:
 
                     if (compiler_last_slash)
                     {
+                        /* Path contains directory separator - split into components */
                         size_t compiler_dir_len;
                         compiler_dir_len = (size_t)(compiler_last_slash - ptr_io->compiler_size_temp);
 
@@ -667,12 +727,14 @@ compiler_done:
                         memcpy(ptr_io->compiler_size_file_name, compiler_filename_start, compiler_filename_len);
                         ptr_io->compiler_size_file_name[compiler_filename_len] = '\0';
 
+                        /* Reconstruct full path ensuring buffer safety */
                         size_t total_needed;
                         total_needed = strlen(ptr_io->compiler_direct_path) + 1 +
                                     strlen(ptr_io->compiler_size_file_name) + 1;
 
                         if (total_needed > sizeof(ptr_io->compiler_size_input_path))
                         {
+                            /* Fallback to default gamemodes directory if path too long */
                             wg_strncpy(ptr_io->compiler_direct_path, "gamemodes",
                                 sizeof(ptr_io->compiler_direct_path) - 1);
                             ptr_io->compiler_direct_path[sizeof(ptr_io->compiler_direct_path) - 1] = '\0';
@@ -695,6 +757,7 @@ compiler_done:
                             ptr_io->compiler_size_input_path[sizeof(ptr_io->compiler_size_input_path) - 1] = '\0';
                         }
                      }  else {
+                            /* No directory in path - treat as filename in current directory */
                             wg_strncpy(ptr_io->compiler_size_file_name, ptr_io->compiler_size_temp,
                                 sizeof(ptr_io->compiler_size_file_name) - 1);
                             ptr_io->compiler_size_file_name[sizeof(ptr_io->compiler_size_file_name) - 1] = '\0';
@@ -710,9 +773,11 @@ compiler_done:
                             }
                         }
 
+                    /* Search for the specified file in determined directory */
                     int compiler_finding_compile_args = 0;
                     compiler_finding_compile_args = wg_sef_fdir(ptr_io->compiler_direct_path, ptr_io->compiler_size_file_name, NULL);
 
+                    /* Fallback search in gamemodes directory if not found initially */
                     if (!compiler_finding_compile_args &&
                         strcmp(ptr_io->compiler_direct_path, "gamemodes") != 0)
                     {
@@ -737,6 +802,7 @@ compiler_done:
                         }
                     }
 
+                    /* Additional fallback for current directory search */
                     if (!compiler_finding_compile_args && !strcmp(ptr_io->compiler_direct_path, "."))
                     {
                         compiler_finding_compile_args = wg_sef_fdir("gamemodes",
@@ -763,13 +829,14 @@ compiler_done:
                     wg_snprintf(wg_compiler_input_gamemode_path,
                             sizeof(wg_compiler_input_gamemode_path), "%s", wgconfig.wg_sef_found_list[1]);
 
+                    /* Execute compilation if file was found */
                     if (compiler_finding_compile_args)
                     {
                         char __sef_path_sz[WG_PATH_MAX];
                         wg_snprintf(__sef_path_sz, sizeof(__sef_path_sz), "%s", wg_compiler_input_gamemode_path);
                         char *ext = strrchr(__sef_path_sz, '.');
                         if (ext)
-                            *ext = '\0';
+                            *ext = '\0'; /* Remove extension for output filename */
 
                         wg_snprintf(ptr_io->container_output, sizeof(ptr_io->container_output), "%s", __sef_path_sz);
 
@@ -777,6 +844,7 @@ compiler_done:
                         wg_snprintf(size_container_output, sizeof(size_container_output), "%s.amx", ptr_io->container_output);
 
 #ifdef WG_WINDOWS
+                        /* Windows-specific compilation execution */
                         sa.bInheritHandle = TRUE;
                         HANDLE hFile = CreateFileA(
                                 ".watchdogs/compiler.log",
@@ -848,6 +916,7 @@ compiler_done:
                             CloseHandle(hFile);
                         }
 #else
+                        /* POSIX-specific compilation execution */
                         int ret_command = 0;
                         ret_command = wg_snprintf(_compiler_input_, sizeof(_compiler_input_),
                             "%s %s %s%s %s%s %s%s",
@@ -955,6 +1024,7 @@ compiler_done:
                             pr_error(stdout, "posix_spawn failed: %s", strerror(process_spawn_result));
                         }
 #endif
+                        /* Post-compilation output handling for specific file compilation */
                         if (path_exists(".watchdogs/compiler.log")) {
                             printf("\n");
                             char *ca = NULL;
@@ -995,6 +1065,7 @@ compiler_done:
                         }
 
 compiler_done2:
+                        /* Error detection and cleanup for specific file compilation */
                         proc_f = fopen(".watchdogs/compiler.log", "r");
                         if (proc_f)
                         {
@@ -1019,6 +1090,7 @@ compiler_done2:
                             pr_error(stdout, "Failed to open .watchdogs/compiler.log");
                         }
 
+                        /* Display compilation metrics */
                         compiler_dur = (end.tv_sec - start.tv_sec)
                                             + (end.tv_nsec - start.tv_nsec) / 1e9;
 
@@ -1028,7 +1100,7 @@ compiler_done2:
                             compiler_dur, compiler_dur * 1000.0);
                         if (compiler_dur > 0x64) {
                             printf("~ This is taking a while, huh?\n"
-                                    "  Make sure you’ve cleared all the warnings,\n"
+                                    "  Make sure you've cleared all the warnings,\n"
                                     "  you're using the latest compiler,\n"
                                     "  and double-check that your logic\n"
                                     "  and pawn algorithm tweaks in the gamemode scripts line up.\n");
@@ -1037,17 +1109,19 @@ compiler_done2:
                     }
                     else
                     {
+                        /* File not found - display error */
                         printf("Cannot locate input: ");
                         pr_color(stdout, FCOLOUR_CYAN, "%s\n", compile_args);
                         goto compiler_end;
                     }
                 }
 
-                toml_free(wg_toml_config);
+                toml_free(wg_toml_config); /* Free TOML parsing resources */
 
                 goto compiler_end;
             }
         } else {
+            /* Compiler not found - offer installation */
             pr_crit(stdout,
                 "\033[1;31merror:\033[0m pawncc (our compiler) not found\n"
                 "  \033[2mhelp:\033[0m install it before continuing\n");
@@ -1070,6 +1144,7 @@ ret_ptr:
 
                     char *platform = readline("==> ");
 
+                    /* Platform-specific compiler installation */
                     if (strfind(platform, "L", false))
                     {
                         int ret = wg_install_pawncc("linux");
@@ -1104,12 +1179,12 @@ loop_ipcc3:
                         goto ret_ptr;
                     }
 loop_end:
-                    chain_goto_main(NULL);
+                    chain_goto_main(NULL); /* Return to main menu after installation */
                 }
                 else if (strcmp(ptr_sigA, "N") == 0 || strcmp(ptr_sigA, "n") == 0)
                 {
                     wg_free(ptr_sigA);
-                    break;
+                    break; /* Exit without installation */
                 }
                 else
                 {
@@ -1121,5 +1196,5 @@ loop_end:
         }
 
 compiler_end:
-        return 1;
+        return 1; /* Return success status */
 }

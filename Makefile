@@ -59,7 +59,6 @@ init:
 		pacman -Sy --noconfirm && \
 		pacman -S --needed --noconfirm \
 			curl clang base-devel \
-			pacman -S mingw-w64-x86_64-toolchain \
 			mingw-w64-ucrt-x86_64-gcc \
 			mingw-w64-ucrt-x86_64-lld \
 			mingw-w64-ucrt-x86_64-libc++ \

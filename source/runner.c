@@ -14,31 +14,47 @@
 #include "compiler.h"
 #include "runner.h"
 
-int                 handle_sigint   = 0;
-FILE                *               config_in = NULL;
-FILE                *               config_out = NULL;
-cJSON               *               cJSON_server_root = NULL;
-cJSON               *               pawn = NULL;
-cJSON               *               cJSON_MS_Obj = NULL;
-char                *               cJSON_Data = NULL;
-char                *               cjsON_PrInted_data = NULL;
-char                                r_command[WG_MAX_PATH + WG_PATH_MAX * 2];
+/* Global variables for server management and configuration handling */
+int                 handle_sigint   = 0;           /* Signal interrupt handling flag */
+FILE                *               config_in = NULL;      /* Input configuration file pointer */
+FILE                *               config_out = NULL;     /* Output configuration file pointer */
+cJSON               *               cJSON_server_root = NULL; /* Root JSON object for server config */
+cJSON               *               pawn = NULL;           /* Pawn-specific JSON configuration */
+cJSON               *               cJSON_MS_Obj = NULL;   /* Main script object in JSON */
+char                *               cJSON_Data = NULL;     /* Raw JSON data buffer */
+char                *               cjsON_PrInted_data = NULL; /* Pretty-printed JSON string */
+char                                r_command[WG_MAX_PATH + WG_PATH_MAX * 2]; /* Command buffer */
 
+/*
+ * Performs cleanup operations for server processes and configuration restoration.
+ * Sets interrupt flag, stops server tasks, and restores original configuration files.
+ * Used during graceful shutdown or error recovery scenarios.
+ */
 void try_cleanup_server(void) {
-        handle_sigint = 1;
-        wg_stop_server_tasks();
-        restore_server_config();
+        handle_sigint = 1;            /* Mark that interrupt is being handled */
+        wg_stop_server_tasks();       /* Terminate running server processes */
+        restore_server_config();      /* Revert configuration files to original state */
         return;
 }
 
+/*
+ * Signal handler for SIGINT (Ctrl+C) to gracefully terminate server processes.
+ * Initiates cleanup, creates crash detection marker, and restarts the watchdogs
+ * interface. Platform-specific restart commands ensure proper process management.
+ */
 void unit_handle_sigint(int sig) {
-        try_cleanup_server();
+        try_cleanup_server();         /* Clean up server processes and configs */
+        
         struct timespec stop_all_timer;
-        clock_gettime(CLOCK_MONOTONIC, &stop_all_timer);
+        clock_gettime(CLOCK_MONOTONIC, &stop_all_timer); /* Record termination time */
+        
+        /* Create crash detection marker file for debugging */
         FILE *crashdetect_file = NULL;
         crashdetect_file = fopen(".watchdogs/crashdetect", "w");
         if (crashdetect_file != NULL)
             fclose(crashdetect_file);
+        
+        /* Platform-specific restart of watchdogs interface */
 #ifdef __ANDROID__
 #ifndef _DBG_PRINT
         wg_run_command("exit && ./watchdogs.tmux");
@@ -60,35 +76,52 @@ void unit_handle_sigint(int sig) {
 #endif
 }
 
+/*
+ * Stops running server tasks by sending termination signals.
+ * Identifies server type (SA-MP or OpenMP) and kills corresponding process.
+ * Uses platform-appropriate kill commands for process termination.
+ */
 void wg_stop_server_tasks(void) {
-        if (wg_server_env() == 1)
+        if (wg_server_env() == 1)           /* SA-MP server environment */
           kill_process(wgconfig.wg_toml_binary);
-        else if (wg_server_env() == 2)
+        else if (wg_server_env() == 2)      /* OpenMP server environment */
           kill_process(wgconfig.wg_toml_binary);
 }
 
+/*
+ * Displays server log files to stdout for real-time monitoring.
+ * Determines appropriate log file based on server environment
+ * and outputs its contents using file printing utility.
+ */
 void wg_display_server_logs(int ret)
 {
         char *log_file = NULL;
-        if (wg_server_env() == 1)
+        if (wg_server_env() == 1)            /* SA-MP log file */
             log_file = wgconfig.wg_toml_logs;
-        else if (wg_server_env() == 2)
+        else if (wg_server_env() == 2)       /* OpenMP log file */
             log_file = wgconfig.wg_toml_logs;
-        wg_printfile(log_file);
+        wg_printfile(log_file);              /* Output log contents */
         return;
 }
 
+/*
+ * Analyzes server log files to detect crashes, errors, and configuration issues.
+ * Performs pattern matching for common error types, provides diagnostics,
+ * and offers automated fixes for detected problems. Includes specialized
+ * detection for runtime errors, plugin failures, memory issues, and configuration mismatches.
+ */
 void wg_server_crash_check(void) {
-        int problem_stat = 0;
-        int server_crashdetect = 0;
-        int server_rcon_pass = 0;
-        int sampvoice_server_check = 0;
-        char *sampvoice_port = NULL;
+        int problem_stat = 0;                /* General problem detection flag */
+        int server_crashdetect = 0;          /* CrashDetect plugin detection */
+        int server_rcon_pass = 0;            /* RCON password issue detection */
+        int sampvoice_server_check = 0;      /* SampVoice plugin status */
+        char *sampvoice_port = NULL;         /* Detected SampVoice port */
         
+        /* Open server log file for analysis */
         FILE *proc_f = NULL;
-        if (wg_server_env() == 1)
+        if (wg_server_env() == 1)            /* SA-MP server logs */
             proc_f = fopen(wgconfig.wg_toml_logs, "rb");
-        else
+        else                                  /* OpenMP server logs */
             proc_f = fopen(wgconfig.wg_toml_logs, "rb");
 
         if (proc_f == NULL) {
@@ -96,25 +129,29 @@ void wg_server_crash_check(void) {
             return;
         }
 
-        int needed;
-        char output_buf[WG_MAX_PATH + 26];
-        char line_buf[WG_MAX_PATH * 4];
+        int needed;                          /* Buffer size calculation */
+        char output_buf[WG_MAX_PATH + 26];   /* Formatted output buffer */
+        char line_buf[WG_MAX_PATH * 4];      /* Line read buffer */
         
+        /* Print analysis header */
         needed = wg_snprintf(output_buf, sizeof(output_buf),
                 "====================================================================\n");
         fwrite(output_buf, 1, needed, stdout);
         fflush(stdout);
         
+        /* Process log file line by line for pattern matching */
         while (fgets(line_buf, sizeof(line_buf), proc_f))
         {
+            /* Runtime error detection - common Pawn script errors */
             if (strfind(line_buf, "run time error", false) || strfind(line_buf, "Run time error", false))
             {
-                problem_stat = 1;
+                problem_stat = 1;            /* Mark general problem found */
                 needed = wg_snprintf(output_buf, sizeof(output_buf), "@ Runtime error detected\n\t");
                 fwrite(output_buf, 1, needed, stdout);
                 pr_color(stdout, FCOLOUR_BLUE, line_buf);
                 fflush(stdout);
 
+                /* Specific runtime error subtypes */
                 if (strfind(line_buf, "division by zero", false)) {
                     needed = wg_snprintf(output_buf, sizeof(output_buf), "@ Division by zero error found\n\t");
                     fwrite(output_buf, 1, needed, stdout);
@@ -128,27 +165,35 @@ void wg_server_crash_check(void) {
                     fflush(stdout);
                 }
             }
+            
+            /* Outdated include file detection requiring recompilation */
             if (strfind(line_buf, "The script might need to be recompiled with the latest include file.", false)) {
                 needed = wg_snprintf(output_buf, sizeof(output_buf), "@ Needed for recompiled\n\t");
                 fwrite(output_buf, 1, needed, stdout);
                 pr_color(stdout, FCOLOUR_BLUE, line_buf);
                 fflush(stdout);
+                
+                /* Interactive recompilation prompt */
                 char *recompiled = readline("Recompiled scripts now?");
                 if (!strcmp(recompiled, "Y") || !strcmp(recompiled, "y")) {
                     wg_free(recompiled);
                     pr_color(stdout, FCOLOUR_CYAN, "~ pawn file name (press enter for from config toml - enter E/e to exit):");
                     char *gamemode_compile = readline(" ");
                     if (strlen(gamemode_compile) < 1) {
+                        /* Compile with default configuration */
                         const char *args[] = { NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL };
                         wg_run_compiler(args[0], args[1], args[2], args[3], args[4], args[5], args[6], args[7], args[8]);
                         wg_free(gamemode_compile);
                     } else {
+                        /* Compile with specified gamemode */
                         const char *args[] = { NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL };
                         wg_run_compiler(args[0], gamemode_compile, args[2], args[3], args[4], args[5], args[6], args[7], args[8]);
                         wg_free(gamemode_compile);
                     }
                 } else { wg_free(recompiled); }
             }
+            
+            /* Filesystem error specific to OpenMP on WSL */
             if (strfind(line_buf, "terminate called after throwing an instance of 'ghc::filesystem::filesystem_error", false)) {
                 needed = wg_snprintf(output_buf, sizeof(output_buf), "@ Filesystem C++ Error Detected\n\t");
                 fwrite(output_buf, 1, needed, stdout);
@@ -156,13 +201,15 @@ void wg_server_crash_check(void) {
                 fflush(stdout);
                 needed = wg_snprintf(output_buf, sizeof(output_buf),
                         "\tAre you currently using the WSL ecosystem?\n"
-                        "\tYou need to move the Open.MP server folder from the /mnt area (your Windows directory) to “~” (your WSL HOME).\n"
+                        "\tYou need to move the Open.MP server folder from the /mnt area (your Windows directory) to \"~\" (your WSL HOME).\n"
                         "\tThis is because Open.MP C++ filesystem cannot properly read directories inside the /mnt area,\n"
                         "\twhich isn't part of the directory model targeted by the Linux build.\n"
                         "\t* You must run it outside the /mnt area.\n");
                 fwrite(output_buf, 1, needed, stdout);
                 fflush(stdout);
             }
+            
+            /* SampVoice plugin port detection */
             if (strfind(line_buf, "voice server running on port", false)) {
                 int _sampvoice_port;
                 if (scanf("%*[^v]voice server running on port %d", &_sampvoice_port) != 1)
@@ -170,6 +217,8 @@ void wg_server_crash_check(void) {
                 ++sampvoice_server_check;
                 sampvoice_port = (char *)&sampvoice_port;
             }
+            
+            /* Missing gamemode file detection */
             if (strfind(line_buf, "I couldn't load any gamemode scripts.", false)) {
                 needed = wg_snprintf(output_buf, sizeof(output_buf), "@ Can't found gamemode detected\n\t");
                 fwrite(output_buf, 1, needed, stdout);
@@ -183,6 +232,8 @@ void wg_server_crash_check(void) {
                 fwrite(output_buf, 1, needed, stdout);
                 fflush(stdout);
             }
+            
+            /* Memory address references in logs */
             if (strfind(line_buf, "0x", false)) {
                 needed = wg_snprintf(output_buf, sizeof(output_buf), "@ Hexadecimal address found\n\t");
                 fwrite(output_buf, 1, needed, stdout);
@@ -195,15 +246,18 @@ void wg_server_crash_check(void) {
                 pr_color(stdout, FCOLOUR_BLUE, line_buf);
                 fflush(stdout);
             }
+            
+            /* CrashDetect plugin specific diagnostics */
             if (problem_stat) {
                 if (strfind(line_buf, "[debug]", false) || strfind(line_buf, "crashdetect", false))
                 {
-                    ++server_crashdetect;
+                    ++server_crashdetect;    /* Count crashdetect references */
                     needed = wg_snprintf(output_buf, sizeof(output_buf), "@ Crashdetect: Crashdetect debug information found\n\t");
                     fwrite(output_buf, 1, needed, stdout);
                     pr_color(stdout, FCOLOUR_BLUE, line_buf);
                     fflush(stdout);
 
+                    /* CrashDetect backtrace analysis */
                     if (strfind(line_buf, "AMX backtrace", false)) {
                         needed = wg_snprintf(output_buf, sizeof(output_buf), "@ Crashdetect: AMX backtrace detected in crash log\n\t");
                         fwrite(output_buf, 1, needed, stdout);
@@ -228,6 +282,8 @@ void wg_server_crash_check(void) {
                         pr_color(stdout, FCOLOUR_BLUE, line_buf);
                         fflush(stdout);
                     }
+                    
+                    /* SampVoice and Pawn.Raknet conflict detection */
                     if (strfind(line_buf, "Native backtrace", false)) {
                         needed = wg_snprintf(output_buf, sizeof(output_buf), "@ Crashdetect: Native backtrace detected\n\t");
                         fwrite(output_buf, 1, needed, stdout);
@@ -262,6 +318,8 @@ void wg_server_crash_check(void) {
                         }
                     }
                 }
+                
+                /* Memory and stack error patterns */
                 if (strfind(line_buf, "stack", false)) {
                     needed = wg_snprintf(output_buf, sizeof(output_buf), "@ Stack-related issue detected\n\t");
                     fwrite(output_buf, 1, needed, stdout);
@@ -293,6 +351,8 @@ void wg_server_crash_check(void) {
                     fflush(stdout);
                 }
             }
+            
+            /* Array bounds checking error */
             if (strfind(line_buf, "out of bounds", false)) {
                 needed = wg_snprintf(output_buf, sizeof(output_buf), "@ out of bounds detected\n\t");
                 fwrite(output_buf, 1, needed, stdout);
@@ -310,11 +370,15 @@ void wg_server_crash_check(void) {
                 fwrite(output_buf, 1, needed, stdout);
                 fflush(stdout);
             }
+            
+            /* SA-MP specific RCON password warning */
             if (wg_server_env() == 1) {
                 if (strfind(line_buf, "Your password must be changed from the default password", false)) {
                     ++server_rcon_pass;
                 }
             }
+            
+            /* General warning and failure patterns */
             if (strfind(line_buf, "warning", false) || strfind(line_buf, "Warning", false)) {
                 needed = wg_snprintf(output_buf, sizeof(output_buf), "@ Warning message found\n\t");
                 fwrite(output_buf, 1, needed, stdout);
@@ -333,6 +397,8 @@ void wg_server_crash_check(void) {
                 pr_color(stdout, FCOLOUR_BLUE, line_buf);
                 fflush(stdout);
             }
+            
+            /* Plugin loading and management issues */
             if (strfind(line_buf, "plugin", false) || strfind(line_buf, "Plugin", false)) {
                 if (strfind(line_buf, "failed to load", false) || strfind(line_buf, "Failed.", false)) {
                     needed = wg_snprintf(output_buf, sizeof(output_buf), "@ Plugin load failure or failed detected\n\t");
@@ -365,6 +431,8 @@ void wg_server_crash_check(void) {
                     fflush(stdout);
                 }
             }
+            
+            /* Database connection issues */
             if (strfind(line_buf, "database", false) || strfind(line_buf, "mysql", false)) {
                 if (strfind(line_buf, "connection failed", false) || strfind(line_buf, "can't connect", false)) {
                     needed = wg_snprintf(output_buf, sizeof(output_buf), "@ Database connection failure detected\n\t");
@@ -379,6 +447,8 @@ void wg_server_crash_check(void) {
                     fflush(stdout);
                 }
             }
+            
+            /* Memory allocation failures */
             if (strfind(line_buf, "out of memory", false) || strfind(line_buf, "memory allocation", false)) {
                 needed = wg_snprintf(output_buf, sizeof(output_buf), "@ Memory allocation failure detected\n\t");
                 fwrite(output_buf, 1, needed, stdout);
@@ -394,11 +464,12 @@ void wg_server_crash_check(void) {
             fflush(stdout);
         }
 
-        fclose(proc_f);
+        fclose(proc_f);  /* Close log file after analysis */
 
+        /* SampVoice port mismatch detection between config and logs */
         if (sampvoice_server_check) {
             if (path_access("server.cfg") == 0)
-                goto skip;
+                goto skip;  /* Skip if server.cfg doesn't exist */
             proc_f = fopen("server.cfg", "rb");
             if (proc_f == NULL)
                 goto skip;
@@ -426,6 +497,7 @@ void wg_server_crash_check(void) {
         }
 
 skip:
+        /* RCON password fix for default password warning */
         if (server_rcon_pass) {
             needed = wg_snprintf(output_buf, sizeof(output_buf),
               "@ Rcon Pass Error found\n\t* Error: Your password must be changed from the default password..\n");
@@ -493,11 +565,13 @@ skip:
             wg_free(fixed_now);
         }
         
+        /* Analysis footer */
         needed = wg_snprintf(output_buf, sizeof(output_buf),
               "====================================================================\n");
         fwrite(output_buf, 1, needed, stdout);
         fflush(stdout);
         
+        /* CrashDetect installation prompt if crashes detected but plugin missing */
         if (problem_stat == 1 && server_crashdetect < 1) {
               needed = wg_snprintf(output_buf, sizeof(output_buf), "INFO: crash found! "
                      "and crashdetect not found.. "
@@ -520,17 +594,24 @@ skip:
         }
 }
 
+/*
+ * Updates SA-MP server configuration file (server.cfg) with specified gamemode.
+ * Creates backup of original config, modifies gamemode0 line, and writes new config.
+ * Handles file renaming and backup preservation for safe modification.
+ */
 static int update_samp_config(const char *gamemode)
 {
         FILE *config_in, *config_out;
-        char line[0x400];
+        char line[0x400];  /* Line buffer for config processing */
 
         char size_config[WG_PATH_MAX];
         wg_snprintf(size_config, sizeof(size_config), ".watchdogs/%s.bak", wgconfig.wg_toml_config);
 
+        /* Remove existing backup if present */
         if (path_access(size_config))
                 remove(size_config);
 
+        /* Create backup of original configuration file */
         if (is_native_windows())
                 wg_snprintf(r_command, sizeof(r_command),
                         "ren %s %s",
@@ -547,23 +628,27 @@ static int update_samp_config(const char *gamemode)
                 return -1;
         }
 
+        /* Open backup file for reading */
         config_in = fopen(size_config, "r");
         if (!config_in) {
                 pr_error(stdout, "Failed to open backup config");
                 return -1;
         }
+        /* Create new configuration file */
         config_out = fopen(wgconfig.wg_toml_config, "w+");
         if (!config_out) {
                 pr_error(stdout, "Failed to write new config");
                 return -1;
         }
 
+        /* Process gamemode filename - remove extension if present */
         char put_gamemode[WG_PATH_MAX + 0x1A];
         wg_snprintf(put_gamemode, sizeof(put_gamemode), "%s", gamemode);
         char *ext = strrchr(put_gamemode, '.');
         if (ext) *ext = '\0';
         gamemode = put_gamemode;
 
+        /* Read backup and write new config with modified gamemode */
         while (fgets(line, sizeof(line), config_in)) {
                   if (strfind(line, "gamemode0", true)) {
                   char size_gamemode[WG_PATH_MAX * 0x2];
@@ -572,7 +657,7 @@ static int update_samp_config(const char *gamemode)
                   fputs(size_gamemode, config_out);
                   continue;
                   }
-                  fputs(line, config_out);
+                  fputs(line, config_out);  /* Copy other lines unchanged */
         }
 
         fclose(config_in);
@@ -581,13 +666,20 @@ static int update_samp_config(const char *gamemode)
         return 1;
 }
 
+/*
+ * Restores original server configuration from backup file.
+ * Deletes modified configuration and restores backup with proper file operations.
+ * Ensures clean state after temporary configuration changes.
+ */
 void restore_server_config(void) {
         char size_config[WG_PATH_MAX];
         wg_snprintf(size_config, sizeof(size_config), ".watchdogs/%s.bak", wgconfig.wg_toml_config);
 
+        /* Skip if no backup exists */
         if (path_access(size_config) == 0)
                 goto restore_done;
 
+        /* Delete current configuration file */
         if (is_native_windows())
                 wg_snprintf(r_command, sizeof(r_command),
                 "if exist \"%s\" (del /f /q \"%s\" 2>nul || "
@@ -600,6 +692,7 @@ void restore_server_config(void) {
 
         wg_run_command(r_command);
 
+        /* Restore backup to original configuration file */
         if (is_native_windows())
                 wg_snprintf(r_command, sizeof(r_command),
                         "ren %s %s",
@@ -616,9 +709,16 @@ void restore_server_config(void) {
 restore_done:
         return;
 }
+
+/*
+ * Executes SA-MP server with specified gamemode.
+ * Updates configuration, sets up signal handling, and launches server process.
+ * Includes error handling, gamemode validation, and cleanup routines.
+ */
 void wg_run_samp_server(const char *gamemode, const char *server_bin)
 {
 #if defined (_DBG_PRINT)
+        /* Debug information printing */
         pr_color(stdout, FCOLOUR_YELLOW, "-DEBUGGING ");
         printf("[function: %s | "
                    "pretty function: %s | "
@@ -650,11 +750,13 @@ void wg_run_samp_server(const char *gamemode, const char *server_bin)
                 "Unknown");
 #endif
 #endif
+        /* Validate configuration file type */
         if (strfind(wgconfig.wg_toml_config, ".json", true))
                 return;
 
         int ret = -1;
 
+        /* Process gamemode filename to ensure .amx extension */
         char put_gamemode[0x100];
         char *ext = strrchr(gamemode, '.');
         if (ext) {
@@ -673,6 +775,7 @@ void wg_run_samp_server(const char *gamemode, const char *server_bin)
 
         gamemode = put_gamemode;
 
+        /* Search for gamemode file in current directory */
         wg_sef_fdir_reset();
         if (wg_sef_fdir(".", gamemode, NULL) == 0) {
                 printf("Cannot locate gamemode: ");
@@ -680,13 +783,15 @@ void wg_run_samp_server(const char *gamemode, const char *server_bin)
                 chain_goto_main(NULL);
         }
 
+        /* Update server configuration with new gamemode */
         int ret_c = update_samp_config(gamemode);
         if (ret_c == 0 ||
                 ret_c == -1)
                 return;
 
-        CHMOD(server_bin, FILE_MODE);
+        CHMOD(server_bin, FILE_MODE);  /* Set executable permissions */
 
+        /* Set up signal handler for graceful termination */
         struct sigaction sa;
 
         sa.sa_handler = unit_handle_sigint;
@@ -706,6 +811,7 @@ void wg_run_samp_server(const char *gamemode, const char *server_bin)
         int _wg_log_acces = -0x1;
 back_start:
         start = time(NULL);
+        /* Construct and execute server command */
 #ifdef WG_WINDOWS
         wg_snprintf(r_command, sizeof(r_command), "%s", server_bin);
 #else
@@ -715,6 +821,7 @@ back_start:
         if (ret == 0) {
                 end = time(NULL);
 
+                /* Display server logs for Linux systems */
                 if (!strcmp(wgconfig.wg_os_type, OS_SIGNAL_LINUX)) {
                         printf("~ logging...\n");
                         sleep(0x3);
@@ -723,9 +830,11 @@ back_start:
         } else {
                 pr_color(stdout, FCOLOUR_RED, "Server startup failed!\n");
 
+                /* Skip retry logic in Pterodactyl environments */
                 if (is_pterodactyl_env())
                         goto server_done;
 
+                /* Retry logic with time-based condition */
                 elapsed = difftime(end, start);
                 if (elapsed <= 5.0 && ret_serv == 0) {
                         ret_serv = 0x1;
@@ -744,12 +853,19 @@ back_start:
 server_done:
         end = time(NULL);
 
+        /* Trigger cleanup if not already handled */
         if (handle_sigint == 0)
                 raise(SIGINT);
 
         return;
 }
 
+/*
+ * Updates OpenMP server configuration (JSON format) with specified gamemode.
+ * Uses cJSON library for JSON manipulation, creates backup, modifies pawn
+ * script array, and writes updated configuration. Handles memory allocation
+ * and cleanup for JSON operations.
+ */
 static int update_omp_config(const char *gamemode)
 {
         struct stat st;
@@ -760,9 +876,11 @@ static int update_omp_config(const char *gamemode)
         char size_config[WG_PATH_MAX];
         wg_snprintf(size_config, sizeof(size_config), ".watchdogs/%s.bak", wgconfig.wg_toml_config);
 
+        /* Remove existing backup */
         if (path_access(size_config))
                 remove(size_config);
 
+        /* Create backup of current configuration */
         if (is_native_windows())
                 wg_snprintf(r_command, sizeof(r_command),
                         "ren %s %s",
@@ -779,11 +897,13 @@ static int update_omp_config(const char *gamemode)
                 goto runner_end;
         }
 
+        /* Get file size for memory allocation */
         if (stat(size_config, &st) != 0x0) {
                 pr_error(stdout, "Failed to get file status");
                 goto runner_end;
         }
 
+        /* Read backup file into memory */
         config_in = fopen(size_config, "rb");
         if (!config_in) {
                 pr_error(stdout, "Failed to open %s", size_config);
@@ -809,22 +929,26 @@ static int update_omp_config(const char *gamemode)
         fclose(config_in);
         config_in = NULL;
 
+        /* Parse JSON configuration */
         cJSON_server_root = cJSON_Parse(cJSON_Data);
         if (!cJSON_server_root) {
                 pr_error(stdout, "JSON parse error: %s", cJSON_GetErrorPtr());
                 goto runner_end;
         }
 
+        /* Access pawn section of configuration */
         pawn = cJSON_GetObjectItem(cJSON_server_root, "pawn");
         if (!pawn) {
                 pr_error(stdout, "Missing 'pawn' section in config!");
                 goto runner_cleanup;
         }
 
+        /* Process gamemode filename */
         wg_snprintf(put_gamemode, sizeof(put_gamemode), "%s", gamemode);
         char *ext = strrchr(put_gamemode, '.');
         if (ext) *ext = '\0';
 
+        /* Update main script array in JSON */
         cJSON_DeleteItemFromObject(pawn, "cJSON_MS_Obj");
 
         cJSON_MS_Obj = cJSON_CreateArray();
@@ -832,6 +956,7 @@ static int update_omp_config(const char *gamemode)
         cJSON_AddItemToArray(cJSON_MS_Obj, cJSON_CreateString(gamemode_buf));
         cJSON_AddItemToObject(pawn, "cJSON_MS_Obj", cJSON_MS_Obj);
 
+        /* Write updated configuration */
         config_out = fopen(wgconfig.wg_toml_config, "w");
         if (!config_out) {
                 pr_error(stdout, "Failed to write %s", wgconfig.wg_toml_config);
@@ -854,6 +979,7 @@ static int update_omp_config(const char *gamemode)
 runner_end:
         ;
 runner_cleanup:
+        /* Comprehensive cleanup of allocated resources */
         if (config_out)
                 fclose(config_out);
         if (config_in)
@@ -868,13 +994,23 @@ runner_cleanup:
         return ret;
 }
 
+/*
+ * Restores OpenMP configuration using generic server config restoration.
+ * Alias function for consistency with SA-MP restoration interface.
+ */
 void restore_omp_config(void) {
         restore_server_config();
 }
 
+/*
+ * Executes OpenMP server with specified gamemode.
+ * Similar to SA-MP execution but with JSON configuration handling.
+ * Includes gamemode validation, configuration updates, and process management.
+ */
 void wg_run_omp_server(const char *gamemode, const char *server_bin)
 {
 #if defined (_DBG_PRINT)
+        /* Debug information output */
         pr_color(stdout, FCOLOUR_YELLOW, "-DEBUGGING ");
         printf("[function: %s | "
                    "pretty function: %s | "
@@ -906,11 +1042,13 @@ void wg_run_omp_server(const char *gamemode, const char *server_bin)
                 "Unknown");
 #endif
 #endif
+        /* Validate configuration file type */
         if (strfind(wgconfig.wg_toml_config, ".cfg", true))
                 return;
 
         int ret = -1;
 
+        /* Process gamemode filename */
         char put_gamemode[0x100];
         char *ext = strrchr(gamemode, '.');
         if (ext) {
@@ -929,6 +1067,7 @@ void wg_run_omp_server(const char *gamemode, const char *server_bin)
 
         gamemode = put_gamemode;
 
+        /* Verify gamemode file exists */
         wg_sef_fdir_reset();
         if (wg_sef_fdir(".", gamemode, NULL) == 0) {
                 printf("Cannot locate gamemode: ");
@@ -936,13 +1075,15 @@ void wg_run_omp_server(const char *gamemode, const char *server_bin)
                 chain_goto_main(NULL);
         }
 
+        /* Update OpenMP JSON configuration */
         int ret_c = update_omp_config(gamemode);
         if (ret_c == 0 ||
                 ret_c == -1)
                 return;
 
-        CHMOD(server_bin, FILE_MODE);
+        CHMOD(server_bin, FILE_MODE);  /* Set executable permissions */
 
+        /* Setup signal handling */
         struct sigaction sa;
 
         sa.sa_handler = unit_handle_sigint;
@@ -962,6 +1103,7 @@ void wg_run_omp_server(const char *gamemode, const char *server_bin)
         int _wg_log_acces = -0x1;
 back_start:
         start = time(NULL);
+        /* Construct server execution command */
 #ifdef WG_WINDOWS
         wg_snprintf(r_command, sizeof(r_command), "%s", server_bin);
 #else

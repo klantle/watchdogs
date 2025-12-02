@@ -27,145 +27,188 @@ char *FG = "\x1b[97m";
 char *BORD = "\x1b[33m";
 char *RST = "\x1b[0m";
 
+/*
+ * Prints formatted output followed by a newline character to specified stream.
+ * Wrapper around vprintf that automatically appends newline and flushes stream.
+ * Uses variable argument lists to support printf-style formatting.
+ */
 void println(FILE *stream, const char *format, ...)
 {
-        va_list args;
-        va_start(args, format);
-        vprintf(format, args);
-        printf("\n");
-        va_end(args);
-        fflush(stream);
+        va_list args;  /* Variable argument list handler */
+        va_start(args, format);  /* Initialize argument list */
+        vprintf(format, args);   /* Print formatted string with variable arguments */
+        printf("\n");            /* Append newline character */
+        va_end(args);            /* Clean up argument list */
+        fflush(stream);          /* Ensure output is written immediately */
 }
 
+/*
+ * Prints colored formatted output to specified stream, then resets to default color.
+ * Applies ANSI color code before printing and resets to default color afterwards.
+ * Supports variable arguments like printf for flexible formatting.
+ */
 void printf_colour(FILE *stream, const char *color, const char *format, ...)
 {
         va_list args;
         va_start(args, format);
-        printf("%s", color);
-        vprintf(format, args);
-        printf("%s", FCOLOUR_DEFAULT);
+        printf("%s", color);     /* Apply ANSI color escape sequence */
+        vprintf(format, args);   /* Print formatted content with variable arguments */
+        printf("%s", FCOLOUR_DEFAULT);  /* Reset to default terminal color */
         va_end(args);
-        fflush(stream);
+        fflush(stream);          /* Force immediate output */
 }
 
+/*
+ * Prints informational message with "[INFO]" prefix and newline.
+ * Standardized format for informational messages with automatic newline.
+ */
 void printf_info(FILE *stream, const char *format, ...)
 {
         va_list args;
         va_start(args, format);
-        printf("[INFO] ");
-        vprintf(format, args);
-        printf("\n");
+        printf("[INFO] ");       /* Standard informational prefix */
+        vprintf(format, args);   /* Print message content */
+        printf("\n");            /* Ensure line break */
         va_end(args);
         fflush(stream);
 }
 
+/*
+ * Prints warning message with "[WARNING]" prefix and newline.
+ * Standardized format for warning messages with automatic newline.
+ */
 void printf_warning(FILE *stream, const char *format, ...)
 {
         va_list args;
         va_start(args, format);
-        printf("[WARNING] ");
-        vprintf(format, args);
-        printf("\n");
+        printf("[WARNING] ");    /* Standard warning prefix */
+        vprintf(format, args);   /* Print warning message */
+        printf("\n");            /* Ensure line break */
         va_end(args);
         fflush(stream);
 }
 
+/*
+ * Prints error message with "[ERROR]" prefix and newline.
+ * Standardized format for error messages with automatic newline.
+ */
 void printf_error(FILE *stream, const char *format, ...)
 {
         va_list args;
         va_start(args, format);
-        printf("[ERROR] ");
-        vprintf(format, args);
-        printf("\n");
+        printf("[ERROR] ");      /* Standard error prefix */
+        vprintf(format, args);   /* Print error message */
+        printf("\n");            /* Ensure line break */
         va_end(args);
         fflush(stream);
 }
 
+/*
+ * Prints critical error message with "[CRIT]" prefix and newline.
+ * Standardized format for critical error messages with automatic newline.
+ */
 void printf_crit(FILE *stream, const char *format, ...)
 {
         va_list args;
         va_start(args, format);
-        printf("[CRIT] ");
-        vprintf(format, args);
-        printf("\n");
+        printf("[CRIT] ");       /* Standard critical error prefix */
+        vprintf(format, args);   /* Print critical message */
+        printf("\n");            /* Ensure line break */
         va_end(args);
         fflush(stream);
 }
 
 #ifdef WG_WINDOWS
+/*
+ * Converts Windows FILETIME structure to Unix time_t (seconds since epoch).
+ * FILETIME represents 100-nanosecond intervals since January 1, 1601 (UTC).
+ * Adjusts for epoch difference and converts to seconds.
+ */
 static time_t filetime_to_time_t(const FILETIME *ft) {
-        const uint64_t EPOCH_DIFF = 116444736000000000ULL;
-        uint64_t v = ((uint64_t)ft->dwHighDateTime << 32) | ft->dwLowDateTime;
-        if (v < EPOCH_DIFF) return (time_t)0;
-        return (time_t)((v - EPOCH_DIFF) / 10000000ULL);
+        const uint64_t EPOCH_DIFF = 116444736000000000ULL;  /* Seconds between 1601 and 1970 epochs */
+        uint64_t v = ((uint64_t)ft->dwHighDateTime << 32) | ft->dwLowDateTime;  /* Combine 64-bit value */
+        if (v < EPOCH_DIFF) return (time_t)0;  /* Handle pre-epoch timestamps */
+        return (time_t)((v - EPOCH_DIFF) / 10000000ULL);  /* Convert to seconds (100ns -> seconds) */
 }
 #endif
 
+/*
+ * Cross-platform file statistics function that works on both Windows and Unix-like systems.
+ * Retrieves file metadata including size, timestamps, permissions, and identifiers.
+ * Returns 0 on success, -1 on error with errno set appropriately.
+ */
 int portable_stat(const char *path, portable_stat_t *out) {
-        if (!path || !out) return -1;
-        memset(out, 0, sizeof(*out));
+        if (!path || !out) return -1;  /* Validate input parameters */
+        memset(out, 0, sizeof(*out));  /* Initialize output structure to zero */
 
 #ifdef WG_WINDOWS
+        /* Windows implementation using Win32 API */
         wchar_t wpath[WG_MAX_PATH];
-        int len = MultiByteToWideChar(CP_UTF8, 0, path, -1, NULL, 0);
+        int len = MultiByteToWideChar(CP_UTF8, 0, path, -1, NULL, 0);  /* Calculate required buffer size */
+        
+        /* Convert path to wide characters, fall back to ANSI if UTF-8 conversion fails */
         if (len == 0 || len > WG_MAX_PATH) {
-                if (!MultiByteToWideChar(CP_ACP, 0, path, -1, wpath, WG_MAX_PATH)) return -1;
+                if (!MultiByteToWideChar(CP_ACP, 0, path, -1, wpath, WG_MAX_PATH)) return -1;  /* ANSI fallback */
         } else {
-                MultiByteToWideChar(CP_UTF8, 0, path, -1, wpath, WG_MAX_PATH);
+                MultiByteToWideChar(CP_UTF8, 0, path, -1, wpath, WG_MAX_PATH);  /* UTF-8 conversion */
         }
 
         WIN32_FILE_ATTRIBUTE_DATA fad;
         if (!GetFileAttributesExW(wpath, GetFileExInfoStandard, &fad)) {
-                return -1;
+                return -1;  /* Failed to get file attributes */
         }
 
+        /* Combine high and low parts to get 64-bit file size */
         uint64_t size = ((uint64_t)fad.nFileSizeHigh << 32) | fad.nFileSizeLow;
         out->st_size = size;
 
-        out->st_latime = filetime_to_time_t(&fad.ftLastAccessTime);
-        out->st_lmtime = filetime_to_time_t(&fad.ftLastWriteTime);
-        out->st_mctime = filetime_to_time_t(&fad.ftCreationTime);
+        /* Convert Windows FILETIME timestamps to Unix time_t */
+        out->st_latime = filetime_to_time_t(&fad.ftLastAccessTime);   /* Last access time */
+        out->st_lmtime = filetime_to_time_t(&fad.ftLastWriteTime);    /* Last modification time */
+        out->st_mctime = filetime_to_time_t(&fad.ftCreationTime);     /* Creation/change time */
 
         DWORD attrs = fad.dwFileAttributes;
+        /* Set file type flags based on Windows attributes */
         if (attrs & FILE_ATTRIBUTE_DIRECTORY) {
-                out->st_mode |= S_IFDIR;
+                out->st_mode |= S_IFDIR;  /* Directory flag */
         } else {
-                out->st_mode |= S_IFREG;
+                out->st_mode |= S_IFREG;  /* Regular file flag */
         }
 
+        /* Set permission flags based on read-only attribute */
         if (attrs & FILE_ATTRIBUTE_READONLY) {
-                out->st_mode |= S_IRUSR;
+                out->st_mode |= S_IRUSR;  /* Read-only: only read permission */
         } else {
-                out->st_mode |= (S_IRUSR | S_IWUSR);
+                out->st_mode |= (S_IRUSR | S_IWUSR);  /* Read-write: both permissions */
         }
 
+        /* Set execute permission for known executable file extensions */
         const char *ext = strrchr(path, '.');
         if (ext && (_stricmp(ext, ".exe") == 0 ||
                     _stricmp(ext, ".bat") == 0 ||
                     _stricmp(ext, ".com") == 0)) {
-                out->st_mode |= S_IXUSR;
+                out->st_mode |= S_IXUSR;  /* Execute permission */
         }
 
-        out->st_ino = 0;
-        out->st_dev = 0;
+        out->st_ino = 0;  /* Windows doesn't have inode numbers */
+        out->st_dev = 0;  /* Windows doesn't have device IDs in the same way */
 
-        return 0;
+        return 0;  /* Success */
 #else
+        /* Unix/Linux/macOS implementation using standard stat() */
         struct stat st;
-        if (stat(path, &st) != 0) return -1;
-        out->st_size = (uint64_t)st.st_size;
-        out->st_ino  = (uint64_t)st.st_ino;
-        out->st_dev  = (uint64_t)st.st_dev;
-        out->st_mode = (unsigned int)st.st_mode;
-        out->st_latime = st.st_atime;
-#ifdef __APPLE__
-        out->st_lmtime = st.st_mtime;
-        out->st_mctime = st.st_ctime;
-#else
-        out->st_lmtime = st.st_mtime;
-        out->st_mctime = st.st_ctime;
-#endif
-        return 0;
+        if (stat(path, &st) != 0) return -1;  /* Standard stat call failed */
+        
+        /* Map standard stat structure to portable structure */
+        out->st_size = (uint64_t)st.st_size;     /* File size in bytes */
+        out->st_ino  = (uint64_t)st.st_ino;      /* Inode number */
+        out->st_dev  = (uint64_t)st.st_dev;      /* Device ID */
+        out->st_mode = (unsigned int)st.st_mode; /* Permission and type bits */
+        out->st_latime = st.st_atime;            /* Last access time */
+        out->st_lmtime = st.st_mtime;  /* Last modification time */
+        out->st_mctime = st.st_ctime;  /* Last status change time */
+
+        return 0;  /* Success */
 #endif
 }
 
@@ -450,30 +493,48 @@ causeExplanation ccs[] =
 {NULL, NULL}
 };
 
+/*
+ * Searches for known compiler warning and error patterns in a line of compiler output.
+ * Iterates through the global constant array 'ccs' (Compiler Code Strings) which contains
+ * pattern strings and their corresponding human-readable descriptions. Returns the
+ * description for the first matching pattern, or NULL if no known pattern is found.
+ */
 static const char *wg_find_warn_err(const char *line)
 {
       int cindex;
+      /* Iterate through the compiler code strings array until a NULL terminator is found */
       for (cindex = 0; ccs[cindex].cs_t; ++cindex) {
+        /* Check if the current pattern exists anywhere in the input line */
         if (strstr(line, ccs[cindex].cs_t))
-            return ccs[cindex].cs_i;
+            return ccs[cindex].cs_i; /* Return the human-readable description */
       }
-      return NULL;
+      return NULL; /* No known pattern matched */
 }
 
+/*
+ * Displays detailed compilation results including file statistics, memory usage breakdown,
+ * and DJB2 hash of the compiled output file. Updates console title with compilation status.
+ * Only shows detailed information when debug mode is enabled and the output file exists.
+ */
 void compiler_detailed(const char *pawn_output, int debug,
                        int wcnt, int ecnt, const char *compiler_ver,
                        int header_size, int code_size, int data_size,
                        int stack_size, int total_size)
 {
       char size_compiler[256];
+      /* Create console title string showing compilation completion status with error/warning counts */
       wg_snprintf(size_compiler, sizeof(size_compiler),
                   "COMPILE COMPLETE :) | WITH ~%d ERROR | ~%d WARNING",
                   ecnt, wcnt);
       wg_console_title(size_compiler);
 
+      /* Check if the compiled output file exists and debug information is requested */
       int amx_access = path_access(pawn_output);
       if (amx_access && debug != 0) {
+                /* Calculate DJB2 hash of the compiled output file for verification */
                 unsigned long hash = crypto_djb2_hash_file(pawn_output);
+                
+                /* Display memory usage breakdown of the compiled AMX file */
                 printf("Header : %dB  |  Total        : %dB\n"
                        "Code   : %dB  |  hash (djb2)  : %#lx\n"
                        "Data   : %dB\n"
@@ -481,8 +542,10 @@ void compiler_detailed(const char *pawn_output, int debug,
                        header_size, total_size, code_size,
                        hash, data_size, stack_size);
 
+                /* Retrieve and display detailed file system statistics */
                 portable_stat_t st;
                 if (portable_stat(pawn_output, &st) == 0) {
+                        /* Display comprehensive file metadata including permissions, timestamps, and identifiers */
                         printf("ino    : %llu   |  File   : %lluB\n"
                                "dev    : %llu\n"
                                "read   : %s   |  write  : %s\n"
@@ -490,31 +553,40 @@ void compiler_detailed(const char *pawn_output, int debug,
                                "atime  : %llu\n"
                                "mtime  : %llu\n"
                                "ctime  : %llu\n",
-                               (unsigned long long)st.st_ino,
-                               (unsigned long long)st.st_size,
-                               (unsigned long long)st.st_dev,
-                               (st.st_mode & S_IRUSR) ? "Y" : "N",
-                               (st.st_mode & S_IWUSR) ? "Y" : "N",
-                               (st.st_mode & S_IXUSR) ? "Y" : "N",
-                               st.st_mode,
-                               (unsigned long long)st.st_latime,
-                               (unsigned long long)st.st_lmtime,
-                               (unsigned long long)st.st_mctime
+                               (unsigned long long)st.st_ino,      /* Inode number */
+                               (unsigned long long)st.st_size,     /* File size in bytes */
+                               (unsigned long long)st.st_dev,      /* Device ID */
+                               (st.st_mode & S_IRUSR) ? "Y" : "N", /* Read permission for owner */
+                               (st.st_mode & S_IWUSR) ? "Y" : "N", /* Write permission for owner */
+                               (st.st_mode & S_IXUSR) ? "Y" : "N", /* Execute permission for owner */
+                               st.st_mode,                         /* Full permission mode in octal */
+                               (unsigned long long)st.st_latime,   /* Last access time */
+                               (unsigned long long)st.st_lmtime,   /* Last modification time */
+                               (unsigned long long)st.st_mctime    /* Last status change time */
                         );
                 }
       }
 
-      fflush(stdout);
-      printf("\n");
+      fflush(stdout);  /* Ensure all output is written before continuing */
+      printf("\n");    /* Add blank line for separation */
+      
+      /* Display Pawn compiler copyright information */
       printf("* Pawn Compiler %s - Copyright (c) 1997-2006, ITB CompuPhase\n", compiler_ver);
 
       return;
 }
 
+/*
+ * Analyzes compiler log file to extract errors, warnings, and compilation statistics.
+ * Parses the log line-by-line, categorizes issues, provides descriptive explanations
+ * for known error patterns, and displays comprehensive compilation summary.
+ * Includes detailed debugging information when compiled with debug flags.
+ */
 void cause_compiler_expl(const char *log_file,
                          const char *pawn_output,
                          int debug)
 {
+/* Debug information section - only compiled when _DBG_PRINT macro is defined */
 #if defined (_DBG_PRINT)
         pr_color(stdout, FCOLOUR_YELLOW, "-DEBUGGING ");
         printf("[function: %s | "
@@ -547,24 +619,29 @@ void cause_compiler_expl(const char *log_file,
                 "Unknown");
 #endif
 #endif
+      /* Open compiler log file for reading */
       FILE *plog = fopen(log_file, "r");
       if (!plog)
-        return;
+        return; /* Exit if log file cannot be opened */
 
-      char line[WG_MAX_PATH];
-      int wcnt = 0, ecnt = 0;
-      int header_size = 0, code_size = 0, data_size = 0;
-      int stack_size = 0, total_size = 0;
-      char compiler_ver[64] = { 0 };
+      char line[WG_MAX_PATH];        /* Buffer for reading each log line */
+      int wcnt = 0, ecnt = 0;        /* Warning and error counters */
+      int header_size = 0, code_size = 0, data_size = 0; /* AMX memory section sizes */
+      int stack_size = 0, total_size = 0;                /* Stack and total memory usage */
+      char compiler_ver[64] = { 0 }; /* Buffer for compiler version string */
 
+      /* Process each line of the compiler log file */
       while (fgets(line, sizeof(line), plog)) {
+        /* Skip summary lines that don't contain actual error/warning information */
         if (wg_strcase(line, "Warnings.") ||
             wg_strcase(line, "Warning.") ||
             wg_strcase(line, "Errors.")  ||
             wg_strcase(line, "Error."))
             continue;
 
+        /* Parse memory usage statistics from compiler output */
         if (wg_strcase(line, "Header size:")) {
+            /* Extract header size value after colon and convert to integer */
             header_size = strtol(strchr(line, ':') + 1, NULL, 10);
             continue;
         } else if (wg_strcase(line, "Code size:")) {
@@ -580,34 +657,41 @@ void cause_compiler_expl(const char *log_file,
             total_size = strtol(strchr(line, ':') + 1, NULL, 10);
             continue;
         } else if (wg_strcase(line, "Pawn compiler ")) {
+            /* Extract compiler version from version string */
             const char *p = strstr(line, "Pawn compiler ");
             if (p) sscanf(p, "Pawn compiler %63s", compiler_ver);
             continue;
         }
 
+        /* Output the original compiler message line to stdout */
         fwrite(line, 1, strlen(line), stdout);
 
+        /* Count warnings and errors based on keyword presence in line */
         if (wg_strcase(line, "warning")) ++wcnt;
         if (wg_strcase(line, "error")) ++ecnt;
 
+        /* Look for known compiler error/warning patterns and provide explanations */
         const char *description = wg_find_warn_err(line);
         if (description) {
             const char *found = NULL;
             int mk_pos = 0;
+            /* Find the exact position of the error pattern in the line */
             for (int i = 0; ccs[i].cs_t; ++i) {
                 if ((found = strstr(line, ccs[i].cs_t))) {
-                    mk_pos = found - line;
+                    mk_pos = found - line; /* Calculate column position */
                     break;
                 }
             }
+            /* Print caret indicator under the error location with colored explanation */
             for (int i = 0; i < mk_pos; i++)
-                putchar(' ');
+                putchar(' '); /* Space to align caret with error location */
             pr_color(stdout, FCOLOUR_BLUE, "^ %s :(\n", description);
         }
       }
 
-      fclose(plog);
+      fclose(plog); /* Close the log file */
 
+      /* Display detailed compilation summary with all collected statistics */
       compiler_detailed(pawn_output, debug, wcnt, ecnt,
                         compiler_ver, header_size, code_size,
                         data_size, stack_size, total_size);

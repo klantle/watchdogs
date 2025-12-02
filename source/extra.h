@@ -98,6 +98,7 @@ typedef struct {
 } causeExplanation;
 
 int portable_stat(const char *path, portable_stat_t *out);
+int portable_stat(const char *path, portable_stat_t *out);
 void cause_compiler_expl(const char *log_file, const char *pawn_output, int debug);
 
 #define pr_color printf_colour

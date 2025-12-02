@@ -5,6 +5,7 @@
         "array": "c",
         "string_view": "c",
         "initializer_list": "c",
-        "types.h": "c"
+        "types.h": "c",
+        "system_error": "c"
     }
 }

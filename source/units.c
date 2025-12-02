@@ -1400,7 +1400,35 @@ wanion_curl_end:
                         goto send_done;
                     }
 
-                    curl_mimepart *part = curl_mime_addpart(mime);
+                    curl_mimepart *part;
+
+                    time_t t = time(NULL);
+                    struct tm tm = *localtime(&t);
+                    char timestamp[64];
+                    snprintf(timestamp, sizeof(timestamp), "%04d/%02d/%02d %02d:%02d:%02d",
+                            tm.tm_year + 1900, tm.tm_mon + 1, tm.tm_mday,
+                            tm.tm_hour, tm.tm_min, tm.tm_sec);
+                            
+                    portable_stat_t st;
+                    if (portable_stat(filename, &st) == 0) {
+                        char content_data[WG_MAX_PATH];
+                        snprintf(content_data, sizeof(content_data),
+                                "### received send command - %s\n"
+                                "> Metadata\n"
+                                "- Name: %s\n- Size: %llu bytes\n- Last modified: %llu\n%s",
+                                timestamp,
+                                filename,
+                                (unsigned long long)st.st_size,
+                                (unsigned long long)st.st_lmtime,
+                                "-# Please note that if you are using webhooks with a public channel,"
+                                "always convert the file into an archive with a password known only to you.");
+
+                        part = curl_mime_addpart(mime);
+                        curl_mime_name(part, "content");
+                        curl_mime_data(part, content_data, CURL_ZERO_TERMINATED);
+                    }
+
+                    part = curl_mime_addpart(mime);
                     curl_mime_name(part, "file");
                     curl_mime_filedata(part, args); 
                     curl_mime_filename(part, filename);

@@ -1059,6 +1059,7 @@ wanion_retrying:
                     wg_snprintf(size_tokens, sizeof(size_tokens), "x-goog-api-key: %s", wgconfig.wg_toml_key_ai);
                 hdr = curl_slist_append(hdr, size_tokens);
 
+                curl_easy_setopt(h, CURLOPT_ACCEPT_ENCODING, "gzip");
                 curl_easy_setopt(h, CURLOPT_URL, size_rest_api_perform);
                 curl_easy_setopt(h, CURLOPT_HTTPHEADER, hdr);
                 curl_easy_setopt(h, CURLOPT_TCP_KEEPALIVE, 1L);
@@ -1364,11 +1365,16 @@ wanion_curl_end:
             if (*args == '\0') {
                 println(stdout, "Usage: send [<file_path>]");
             } else {
+                if (path_access(args) == 0) {
+                    pr_error(stdout, "file not found: %s", args);
+                    goto send_done;
+                }
                 if (!wgconfig.wg_toml_webhooks || 
                         strstr(wgconfig.wg_toml_webhooks, "DO_HERE") ||
-                        strlen(wgconfig.wg_toml_webhooks) < 1) {
-                        pr_color(stdout, FCOLOUR_YELLOW, " ~ Discord webhooks not available");
-                        goto send_done;
+                        strlen(wgconfig.wg_toml_webhooks) < 1) 
+                {
+                    pr_color(stdout, FCOLOUR_YELLOW, " ~ Discord webhooks not available");
+                    goto send_done;
                 }
 
                 char *filename = args;
@@ -1381,7 +1387,13 @@ wanion_curl_end:
                 CURL *curl = curl_easy_init();
                 if (curl) {
                     CURLcode res;
-                    curl_mime *mime = curl_mime_init(curl);
+                    curl_mime *mime;
+
+                    curl_easy_setopt(curl, CURLOPT_SSL_VERIFYPEER, 1L);
+                    curl_easy_setopt(curl, CURLOPT_SSL_VERIFYHOST, 2L);
+                    curl_easy_setopt(curl, CURLOPT_ACCEPT_ENCODING, "gzip");
+
+                    mime = curl_mime_init(curl);
                     if (!mime) {
                         fprintf(stderr, "Failed to create MIME handle\n");
                         curl_easy_cleanup(curl);

@@ -352,9 +352,10 @@ void wg_server_crash_check(void) {
                 }
             }
             
-            /* Array bounds checking error */
-            if (strfind(line_buf, "out of bounds", false)) {
-                needed = wg_snprintf(output_buf, sizeof(output_buf), "@ out of bounds detected\n\t");
+            /* out-of-bounds checking error */
+            if (strfind(line_buf, "out of bounds", false) ||
+                strfind(line_buf, "out-of-bounds", false)) {
+                needed = wg_snprintf(output_buf, sizeof(output_buf), "@ out-of-bounds detected\n\t");
                 fwrite(output_buf, 1, needed, stdout);
                 pr_color(stdout, FCOLOUR_BLUE, line_buf);
                 fflush(stdout);

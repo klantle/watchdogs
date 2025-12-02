@@ -840,7 +840,7 @@ int wg_download_file(const char *url, const char *filename)
         int retry_count = 0;
         struct stat file_stat;
 
-        pr_color(stdout, FCOLOUR_GREEN, "On it: downloading %s", filename);
+        pr_color(stdout, FCOLOUR_GREEN, "Try Downloading %s", filename);
 
         /* Retry loop with up to 5 attempts */
         while (retry_count < 5) {
@@ -880,6 +880,7 @@ int wg_download_file(const char *url, const char *filename)
                 struct buf download_buffer = { 0 };
                 curl_easy_setopt(curl, CURLOPT_WRITEDATA, &download_buffer);
 
+                curl_easy_setopt(curl, CURLOPT_ACCEPT_ENCODING, "gzip");
                 curl_easy_setopt(curl, CURLOPT_FAILONERROR, 1L);
                 curl_easy_setopt(curl, CURLOPT_HTTPHEADER, headers);
                 curl_easy_setopt(curl, CURLOPT_CONNECTTIMEOUT, 15L);
@@ -887,6 +888,7 @@ int wg_download_file(const char *url, const char *filename)
                 curl_easy_setopt(curl, CURLOPT_FOLLOWLOCATION, 1L);
                 curl_easy_setopt(curl, CURLOPT_MAXREDIRS, 5L);
                 curl_easy_setopt(curl, CURLOPT_SSL_VERIFYPEER, 1L);
+                curl_easy_setopt(curl, CURLOPT_SSL_VERIFYHOST, 2L);
                 curl_easy_setopt(curl, CURLOPT_NOPROGRESS, 0L);
 
                 /* Prompt for HTTP debugging on first download */

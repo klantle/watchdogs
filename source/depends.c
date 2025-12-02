@@ -1131,9 +1131,7 @@ void dump_file_type(const char *path,
                                 moving_dur = (end.tv_sec - start.tv_sec)
                                                    + (end.tv_nsec - start.tv_nsec) / 1e9;
 
-                                pr_color(stdout,
-                                                 FCOLOUR_CYAN,
-                                                 " [MOVING] Plugins %s -> %s - %s [Finished at %.3fs]\n",
+                                pr_color(stdout, FCOLOUR_CYAN, " [MOVING] Plugins %s -> %s - %s [Finished at %.3fs]\n",
                                                  wgconfig.wg_sef_found_list[i], cwd, target_dir, moving_dur);
                         } else {
                                 /* Move to current directory */
@@ -1160,9 +1158,7 @@ void dump_file_type(const char *path,
                                 moving_dur = (end.tv_sec - start.tv_sec)
                                                    + (end.tv_nsec - start.tv_nsec) / 1e9;
 
-                                pr_color(stdout,
-                                                 FCOLOUR_CYAN,
-                                                 " [MOVING] Plugins %s -> %s [Finished at %.3fs]\n",
+                                pr_color(stdout, FCOLOUR_CYAN, " [MOVING] Plugins %s -> %s [Finished at %.3fs]\n",
                                                  wgconfig.wg_sef_found_list[i], cwd, moving_dur);
 
                                 wg_snprintf(json_item, sizeof(json_item), "%s", deps_names);
@@ -1349,9 +1345,7 @@ void dep_move_files(const char *dep_dir)
                         moving_dur = (end.tv_sec - start.tv_sec)
                                            + (end.tv_nsec - start.tv_nsec) / 1e9;
 
-                        pr_color(stdout,
-                                         FCOLOUR_CYAN,
-                                         " [MOVING] Include %s -> %s - %s [Finished at %.3fs]\n",
+                        pr_color(stdout, FCOLOUR_CYAN, " [MOVING] Include %s -> %s - %s [Finished at %.3fs]\n",
                                          wgconfig.wg_sef_found_list[i], cwd, deps_include_path, moving_dur);
 
                         dep_add_ncheck_hash(fi_depends_name, fi_depends_name);
@@ -1360,27 +1354,27 @@ void dep_move_files(const char *dep_dir)
         }
 
         /* Stack-based directory traversal for finding nested include files */
-        int stack_size = WG_MAX_PATH;
-        int stack_index = -1;
-        char **dir_stack = wg_malloc(stack_size * sizeof(char*));
+        int moving_stack_size = WG_MAX_PATH;
+        int moving_stack_index = -1;
+        char **moving_dir_stack = wg_malloc(moving_stack_size * sizeof(char*));
 
-        for (int i = 0; i < stack_size; i++) {
-                dir_stack[i] = wg_malloc(WG_PATH_MAX);
+        for (int i = 0; i < moving_stack_size; i++) {
+                moving_dir_stack[i] = wg_malloc(WG_PATH_MAX);
         }
 
         /* Start with dependency directory */
-        stack_index++;
-        wg_snprintf(dir_stack[stack_index], WG_PATH_MAX, "%s", dep_dir);
+        moving_stack_index++;
+        wg_snprintf(moving_dir_stack[moving_stack_index], WG_PATH_MAX, "%s", dep_dir);
 
         /* Depth-first search for include files */
-        while (stack_index >= 0) {
-                char working_directory[WG_PATH_MAX];
-                wg_strlcpy(working_directory,
-                        dir_stack[stack_index],
-                        sizeof(working_directory));
-                stack_index--;
+        while (moving_stack_index >= 0) {
+                char root_dir[WG_PATH_MAX];
+                wg_strlcpy(root_dir,
+                        moving_dir_stack[moving_stack_index],
+                        sizeof(root_dir));
+                moving_stack_index--;
 
-                DIR *dir = opendir(working_directory);
+                DIR *dir = opendir(root_dir);
                 if (!dir)
                         continue;
 
@@ -1392,7 +1386,7 @@ void dep_move_files(const char *dep_dir)
                                 continue;
 
                         /* Construct full path */
-                        wg_strlcpy(depends_ipath, working_directory, sizeof(depends_ipath));
+                        wg_strlcpy(depends_ipath, root_dir, sizeof(depends_ipath));
                         strlcat(depends_ipath, __PATH_STR_SEP_LINUX, sizeof(depends_ipath));
                         strlcat(depends_ipath, item->d_name, sizeof(depends_ipath));
 
@@ -1407,9 +1401,9 @@ void dep_move_files(const char *dep_dir)
                                         continue;
                                 }
                                 /* Push directory onto stack for later processing */
-                                if (stack_index < stack_size - 1) {
-                                        stack_index++;
-                                        wg_strlcpy(dir_stack[stack_index], depends_ipath, WG_MAX_PATH);
+                                if (moving_stack_index < moving_stack_size - 1) {
+                                        moving_stack_index++;
+                                        wg_strlcpy(moving_dir_stack[moving_stack_index], depends_ipath, WG_MAX_PATH);
                                 }
                                 continue;
                         }
@@ -1420,7 +1414,7 @@ void dep_move_files(const char *dep_dir)
                                 continue;
 
                         /* Extract parent directory name */
-                        wg_strlcpy(deps_parent_dir, working_directory, sizeof(deps_parent_dir));
+                        wg_strlcpy(deps_parent_dir, root_dir, sizeof(deps_parent_dir));
                         char *depends_filename = NULL;
 #ifdef WG_WIDOWS
                         depends_filename = strrchr(deps_parent_dir, __PATH_CHR_SEP_WIN32);
@@ -1488,9 +1482,7 @@ void dep_move_files(const char *dep_dir)
                                 move_duration = (end.tv_sec - start.tv_sec) + 
                                                                 (end.tv_nsec - start.tv_nsec) / 1e9;
 
-                                pr_color(stdout,
-                                                 FCOLOUR_CYAN,
-                                                 " [MOVING] Include %s -> %s [Finished at %.3fs]\n",
+                                pr_color(stdout, FCOLOUR_CYAN, " [MOVING] Include %s -> %s [Finished at %.3fs]\n",
                                                  deps_parent_dir, dest, move_duration);
                         }
 
@@ -1503,10 +1495,10 @@ void dep_move_files(const char *dep_dir)
         }
 
         /* Clean up directory stack */
-        for (int i = 0; i < stack_size; i++) {
-                wg_free(dir_stack[i]);
+        for (int i = 0; i < moving_stack_size; i++) {
+                wg_free(moving_dir_stack[i]);
         }
-        wg_free(dir_stack);
+        wg_free(moving_dir_stack);
 
         /* Remove extracted dependency directory */
         int _is_win32 = 0;
@@ -1683,10 +1675,8 @@ void wg_install_depends(const char *depends_string)
                 depends_dur = (end.tv_sec - start.tv_sec)
                                         + (end.tv_nsec - start.tv_nsec) / 1e9;
 
-                pr_color(stdout,
-                                 FCOLOUR_CYAN,
-                                 " <D> Finished at %.3fs (%.0f ms)\n",
-                                 depends_dur, depends_dur * 1000.0);
+                pr_color(stdout, FCOLOUR_CYAN, " <D> Finished at %.3fs (%.0f ms)\n",
+                        depends_dur, depends_dur * 1000.0);
         }
 
 done:

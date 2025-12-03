@@ -178,7 +178,7 @@ _ptr_command:
                 "watchdogs" FCOLOUR_DEFAULT "] $ %s\n", ptr_command);
         } else {
             while (true) {
-                wg_snprintf(ptr_prompt, size_ptrp,
+                snprintf(ptr_prompt, size_ptrp,
                         "[" FCOLOUR_CYAN
                         "watchdogs" FCOLOUR_DEFAULT "] $ ");
 
@@ -304,7 +304,7 @@ _reexecute_command:
                 println(stdout, "Usage: title [<title>]");
             } else {
                 char title_set[WG_PATH_MAX * 2];
-                wg_snprintf(title_set, sizeof(title_set), "%s", args);
+                snprintf(title_set, sizeof(title_set), "%s", args);
                 wg_console_title(title_set);
             }
 
@@ -345,7 +345,7 @@ _reexecute_command:
                 crc32_generate = crypto_generate_crc32(args, sizeof(args) - 1);
 
                 char crc_str[11];
-                wg_sprintf(crc_str, "%08X", crc32_generate);
+                sprintf(crc_str, "%08X", crc32_generate);
 
                 printf("         Crypto Input : %s\n", args);
                 printf("Crypto Output (CRC32) : ");
@@ -425,11 +425,11 @@ _reexecute_command:
             } else {
                 size_last_slash = strrchr(args, __PATH_CHR_SEP_LINUX);
                 if (size_last_slash && *(size_last_slash + 1)) {
-                        wg_snprintf(links_name, sizeof(links_name), "%s", size_last_slash + 1);
+                        snprintf(links_name, sizeof(links_name), "%s", size_last_slash + 1);
                         if (!strfind(links_name, ".zip", true) &&
                             !strfind(links_name, ".tar.gz", true) &&
                             !strfind(links_name, ".tar", true))
-                                wg_snprintf(links_name + strlen(links_name),
+                                snprintf(links_name + strlen(links_name),
                                             sizeof(links_name) - strlen(links_name),
                                             ".zip");
                         wg_download_file(args, links_name);
@@ -493,7 +493,7 @@ _reexecute_command:
                             if (!merged)
                                     goto free_val;
 
-                            wg_snprintf(merged, strlen(val.u.s) + 1, "%s", val.u.s);
+                            snprintf(merged, strlen(val.u.s) + 1, "%s", val.u.s);
                     } else {
                             char *tmp;
                             size_t old_len = strlen(merged);
@@ -504,7 +504,7 @@ _reexecute_command:
                                     goto free_val;
 
                             merged = tmp;
-                            wg_snprintf(merged + old_len, new_len - old_len, " %s", val.u.s);
+                            snprintf(merged + old_len, new_len - old_len, " %s", val.u.s);
                     }
 
 free_val:
@@ -741,7 +741,7 @@ _runners_:
                 else
                     size_arg1 = args2;
 
-                size_t needed = wg_snprintf(NULL, 0,
+                size_t needed = snprintf(NULL, 0,
                                 "Watchdogs | "
                                 "@ running | "
                                 "args: %s | "
@@ -750,8 +750,8 @@ _runners_:
                                 size_arg1,
                                 wgconfig.wg_toml_config) + 1;
                 char *title_running_info = wg_malloc(needed);
-                if (!title_running_info) { return 1; }
-                wg_snprintf(title_running_info, needed,
+                if (!title_running_info) { goto chain_done; }
+                snprintf(title_running_info, needed,
                                     "Watchdogs | "
                                     "@ running | "
                                     "args: %s | "
@@ -793,10 +793,10 @@ start_main:
 back_start:
                         start = time(NULL);
 #ifdef WG_WINDOWS
-                        wg_snprintf(size_run, sizeof(size_run), "%s", wgconfig.wg_toml_binary);
+                        snprintf(size_run, sizeof(size_run), "%s", wgconfig.wg_toml_binary);
 #else
                         chmod(wgconfig.wg_toml_binary, 0777);
-                        wg_snprintf(size_run, sizeof(size_run), "./%s", wgconfig.wg_toml_binary);
+                        snprintf(size_run, sizeof(size_run), "./%s", wgconfig.wg_toml_binary);
 #endif
                         int rate_runner_failed = wg_run_command(size_run);
                         if (rate_runner_failed == 0) {
@@ -873,10 +873,10 @@ start_main2:
 back_start2:
                         start = time(NULL);
 #ifdef WG_WINDOWS
-                        wg_snprintf(size_run, sizeof(size_run), "%s", wgconfig.wg_toml_binary);
+                        snprintf(size_run, sizeof(size_run), "%s", wgconfig.wg_toml_binary);
 #else
                         chmod(wgconfig.wg_toml_binary, 0777);
-                        wg_snprintf(size_run, sizeof(size_run), "./%s", wgconfig.wg_toml_binary);
+                        snprintf(size_run, sizeof(size_run), "./%s", wgconfig.wg_toml_binary);
 #endif
                         int rate_runner_failed = wg_run_command(size_run);
                         if (rate_runner_failed != 0) {
@@ -1005,13 +1005,13 @@ n_loop_igm2:
                 int is_chatbot_groq_based = 0;
                 if (strcmp(wgconfig.wg_toml_chatbot_ai, "gemini") == 0)
 rest_def:
-                    wg_snprintf(size_rest_api_perform, sizeof(size_rest_api_perform),
+                    snprintf(size_rest_api_perform, sizeof(size_rest_api_perform),
                                       "https://generativelanguage.googleapis.com/"
                                       "v1beta/models/%s:generateContent",
                                       wgconfig.wg_toml_models_ai);
                 else if (strcmp(wgconfig.wg_toml_chatbot_ai, "groq") == 0) {
                     is_chatbot_groq_based = 1;
-                    wg_snprintf(size_rest_api_perform, sizeof(size_rest_api_perform),
+                    snprintf(size_rest_api_perform, sizeof(size_rest_api_perform),
                                       "https://api.groq.com/"
                                       "openai/v1/chat/completions");
                 } else { goto rest_def; }
@@ -1024,7 +1024,7 @@ rest_def:
 
                 char wanion_json_payload[WG_MAX_PATH * 2];
                 if (is_chatbot_groq_based == 1) {
-                    wg_snprintf(wanion_json_payload, sizeof(wanion_json_payload),
+                    snprintf(wanion_json_payload, sizeof(wanion_json_payload),
                              /* prompt here */
                              "{"
                              "\"model\":\"%s\","
@@ -1036,7 +1036,7 @@ rest_def:
                              wgconfig.wg_toml_models_ai,
                              wanion_escaped_argument);
                 } else {
-                    wg_snprintf(wanion_json_payload, sizeof(wanion_json_payload),
+                    snprintf(wanion_json_payload, sizeof(wanion_json_payload),
                              /* prompt here */
                              "{"
                              "\"contents\":[{\"role\":\"user\","
@@ -1063,9 +1063,9 @@ wanion_retrying:
                 struct curl_slist *hdr = curl_slist_append(NULL, "Content-Type: application/json");
                 char size_tokens[WG_PATH_MAX + 26];
                 if (is_chatbot_groq_based == 1)
-                    wg_snprintf(size_tokens, sizeof(size_tokens), "Authorization: Bearer %s", wgconfig.wg_toml_key_ai);
+                    snprintf(size_tokens, sizeof(size_tokens), "Authorization: Bearer %s", wgconfig.wg_toml_key_ai);
                 else
-                    wg_snprintf(size_tokens, sizeof(size_tokens), "x-goog-api-key: %s", wgconfig.wg_toml_key_ai);
+                    snprintf(size_tokens, sizeof(size_tokens), "x-goog-api-key: %s", wgconfig.wg_toml_key_ai);
                 hdr = curl_slist_append(hdr, size_tokens);
 
                 curl_easy_setopt(h, CURLOPT_ACCEPT_ENCODING, "gzip");
@@ -1559,10 +1559,10 @@ L"\t\t   W   A   T   C   H   D   O   G   S\n");
             }
         } else {
             char _p_command[WG_PATH_MAX * 2];
-            wg_snprintf(_p_command, WG_PATH_MAX, "%s", ptr_command);
+            snprintf(_p_command, WG_PATH_MAX, "%s", ptr_command);
             if (!strcmp(_p_command, "clear")) {
                 if (is_native_windows())
-                    wg_snprintf(_p_command, WG_PATH_MAX, "cls");
+                    snprintf(_p_command, WG_PATH_MAX, "cls");
             }
             int ret = -3;
             ret = wg_run_command(_p_command);
@@ -1584,7 +1584,7 @@ chain_done:
         return -1;
 }
 
-void chain_goto_main(void *chain_pre_command) {
+void chain_ret_main(void *chain_pre_command) {
         wg_console_title(NULL);
         int ret = -3;
         if (chain_pre_command != NULL ) {
@@ -1650,10 +1650,7 @@ int main(int argc, char *argv[]) {
 
             char *chain_size_prompt;
             chain_size_prompt = wg_malloc(chain_total_len);
-            if (!chain_size_prompt) {
-                pr_error(stdout, "Failed to allocate memory for command");
-                return 1;
-            }
+            if (!chain_size_prompt) { return 0; }
 
             chain_size_prompt[0] = '\0';
             for (i = 1; i < argc; ++i) {
@@ -1662,12 +1659,12 @@ int main(int argc, char *argv[]) {
                 strcat(chain_size_prompt, argv[i]);
             }
 
-            chain_goto_main(chain_size_prompt);
+            chain_ret_main(chain_size_prompt);
 
             wg_free(chain_size_prompt);
             return 0;
         } else {
-            chain_goto_main(NULL);
+            chain_ret_main(NULL);
         }
 
         return 0;

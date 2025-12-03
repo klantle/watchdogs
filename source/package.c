@@ -86,11 +86,11 @@ ret_pawncc:
 
 		/* Map common ARM architecture names to Termux-specific identifiers */
 		if (strcmp(uname_data.machine, "aarch64") == 0) {
-			wg_strncpy(architecture, "arm64", sizeof(architecture)); /* 64-bit ARM */
+			strncpy(architecture, "arm64", sizeof(architecture)); /* 64-bit ARM */
 			goto done; /* Skip manual architecture selection */
 		} else if (strcmp(uname_data.machine, "armv7l") == 0 ||
 			   strcmp(uname_data.machine, "armv8l") == 0) {
-			wg_strncpy(architecture, "arm32", sizeof(architecture)); /* 32-bit ARM */
+			strncpy(architecture, "arm32", sizeof(architecture)); /* 32-bit ARM */
 			goto done; /* Skip manual architecture selection */
 		}
 
@@ -109,10 +109,10 @@ back:
 		/* Process architecture selection with case-insensitive string matching */
 		if (strfind(selection, "A", true)) /* Check for 'A' or 'a' */
 		{
-			wg_strncpy(architecture, "arm32", sizeof(architecture));
+			strncpy(architecture, "arm32", sizeof(architecture));
 			wg_free(selection);
 		} else if (strfind(selection, "B", true)) { /* Check for 'B' or 'b' */
-			wg_strncpy(architecture, "arm64", sizeof(architecture));
+			strncpy(architecture, "arm64", sizeof(architecture));
 			wg_free(selection);
 		} else {
 			/* Invalid architecture selection */
@@ -127,7 +127,7 @@ back:
 /* Label for constructing download URL after selections are made */
 done:
 		/* Construct GitHub release download URL for Termux Pawn compiler */
-		wg_snprintf(url, sizeof(url),
+		snprintf(url, sizeof(url),
 			 "https://github.com/"
 			 "mxp96/" /* Repository owner */
 			 "compiler/" /* Repository name */
@@ -140,7 +140,7 @@ done:
 			 architecture); /* Selected architecture (arm32/arm64) */
 
 		/* Construct local filename for downloaded archive */
-		wg_snprintf(filename, sizeof(filename), "pawncc-%s-%s.zip",
+		snprintf(filename, sizeof(filename), "pawncc-%s-%s.zip",
 				    pkg_termux_versions[version_index], architecture);
 
 		wgconfig.wg_ipawncc = 1; /* Set flag indicating PawnCC installation is in progress */
@@ -225,7 +225,7 @@ get_back:
 		archive_ext = (strcmp(platform, "linux") == 0) ? "tar.gz" : "zip";
 
 		/* Construct GitHub release download URL */
-		wg_snprintf(url, sizeof(url),
+		snprintf(url, sizeof(url),
 			 "%s/releases/download/v%s/pawnc-%s-%s.%s",
 			 pkg_repo_base, /* Base repository URL */
 			 versions[version_index], /* Version tag (v3.10.11, etc.) */
@@ -234,7 +234,7 @@ get_back:
 			 archive_ext); /* Archive extension (tar.gz/zip) */
 
 		/* Construct local filename for downloaded archive */
-		wg_snprintf(filename, sizeof(filename), "pawnc-%s-%s.%s",
+		snprintf(filename, sizeof(filename), "pawnc-%s-%s.%s",
 				    versions[version_index], platform, archive_ext);
 
 		wgconfig.wg_ipawncc = 1; /* Set PawnCC installation flag */

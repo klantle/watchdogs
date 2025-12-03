@@ -27,13 +27,13 @@ static void arch_extraction_path(const char *entry_dest, const char *entry_path,
         if (!entry_dest ||
                 !strcmp(entry_dest, ".")||
                 *entry_dest == '\0') {
-                wg_snprintf(out_path, out_size, "%s", entry_path);  /* Use entry path as-is */
+                snprintf(out_path, out_size, "%s", entry_path);  /* Use entry path as-is */
         } else {
                 /* Check if entry path already starts with destination to avoid duplication */
                 if (!strncmp(entry_path, entry_dest, strlen(entry_dest))) {
-                        wg_snprintf(out_path, out_size, "%s", entry_path);  /* Path already contains destination */
+                        snprintf(out_path, out_size, "%s", entry_path);  /* Path already contains destination */
                 } else {
-                        wg_snprintf(out_path, out_size, "%s/%s", entry_dest, entry_path);  /* Combine dest + entry path */
+                        snprintf(out_path, out_size, "%s/%s", entry_dest, entry_path);  /* Combine dest + entry path */
                 }
         }
 }
@@ -402,7 +402,7 @@ int wg_extract_tar(const char *tar_path, const char *entry_dest) {
                 static int notice_extracting = 0;
                 if (extract_notice == 0) {
                         extract_notice = 1;
-                        printf("\x1b[32m==> Create extraction logs? (y/n): \x1b[0m\n");
+                        printf("\x1b[32m==> Create extraction logs?\x1b[0m\n");
                         char *debug_extract = readline("   answer (y/n): ");
                         if (debug_extract) {
                                 if (debug_extract[0] == 'Y' || debug_extract[0] == 'y') {
@@ -544,7 +544,7 @@ int wg_extract_zip(const char *zip_file, const char *entry_dest)
                 static int notice_extracting = 0;
                 if (extract_notice == 0) {
                         extract_notice = 1;
-                        printf("\x1b[32m==> Create extraction logs? (y/n): \x1b[0m\n");
+                        printf("\x1b[32m==> Create extraction logs?\x1b[0m\n");
                         char *debug_extract = readline("   answer (y/n): ");
                         if (debug_extract) {
                                 if (debug_extract[0] == 'Y' || debug_extract[0] == 'y') {
@@ -638,36 +638,48 @@ void wg_extract_archive(const char *filename)
         /* Detect archive type by file extension and route to appropriate extractor */
         if (strend(filename, ".tar.gz", true)) {
                 /* For .tar.gz files: create destination directory by removing extension */
-                wg_snprintf(output_path, sizeof(output_path), "%s", filename);
+                snprintf(output_path, sizeof(output_path), "%s", filename);
                 output_path[strlen(filename) - 7] = '\0';  /* Remove ".tar.gz" (7 characters) */
 
                 /* Special handling for downloaded files going to "scripts" directory */
                 if (wgconfig.wg_downloading_file == 1 && path_exists("scripts"))
                         wg_extract_tar(filename, "scripts");
-                else
-                        wg_extract_tar(filename, output_path);
+                else {
+                        if (wg_mkdir(".watchdogs/scripts")) {
+                                pr_info(stdout, "Extracting into .watchdogs/scripts...");
+                                wg_extract_tar(filename, ".watchdogs/scripts");
+                        }
+                }
         }
         else if (strend(filename, ".tar", true)) {
                 /* For .tar files: create destination directory by removing extension */
-                wg_snprintf(output_path, sizeof(output_path), "%s", filename);
+                snprintf(output_path, sizeof(output_path), "%s", filename);
                 output_path[strlen(filename) - 4] = '\0';  /* Remove ".tar" (4 characters) */
 
                 /* Special handling for downloaded files going to "scripts" directory */
                 if (wgconfig.wg_downloading_file == 1 && path_exists("scripts"))
                         wg_extract_tar(filename, "scripts");
-                else
-                        wg_extract_tar(filename, output_path);
+                else {
+                        if (wg_mkdir(".watchdogs/scripts")) {
+                                pr_info(stdout, "Extracting into .watchdogs/scripts...");
+                                wg_extract_tar(filename, ".watchdogs/scripts");
+                        }
+                }
         }
         else if (strend(filename, ".zip", true)) {
                 /* For .zip files: create destination directory by removing extension */
-                wg_snprintf(output_path, sizeof(output_path), "%s", filename);
+                snprintf(output_path, sizeof(output_path), "%s", filename);
                 output_path[strlen(filename) - 4] = '\0';  /* Remove ".zip" (4 characters) */
 
                 /* Special handling for downloaded files going to "scripts" directory */
                 if (wgconfig.wg_downloading_file == 1 && path_exists("scripts"))
                         wg_extract_zip(filename, "scripts");
-                else
-                        wg_extract_zip(filename, output_path);
+                else {
+                        if (wg_mkdir(".watchdogs/scripts")) {
+                                pr_info(stdout, "Extracting into .watchdogs/scripts...");
+                                wg_extract_zip(filename, ".watchdogs/scripts");
+                        }
+                }
         }
         else {
                 /* Unknown archive format - inform user and skip extraction */

@@ -189,13 +189,69 @@ int win_ftruncate(FILE *file, long length) {
 }
 #endif
 
+/**
+ * Allocate memory with error checking.
+ * If allocation fails, prints an error message and returns NULL.
+ */
+void* wg_malloc(size_t size) {
+		void* ptr = malloc(size);
+		if (!ptr) {
+			fprintf(stderr, "malloc failed: %zu bytes\n", size);
+			return NULL;
+		}
+		return ptr;
+}
+
+/**
+ * Allocate and zero-initialize memory with error checking.
+ * If allocation fails, prints an error message and returns NULL.
+ */
+void* wg_calloc(size_t count, size_t size) {
+		void* ptr = calloc(count, size);
+		if (!ptr) {
+			fprintf(stderr, "calloc failed: %zu elements x %zu bytes\n", count, size);
+			return NULL;
+		}
+		return ptr;
+}
+
+/**
+ * Reallocate memory with error checking. If ptr is NULL, behaves like malloc.
+ * If reallocation fails, prints an error message and returns NULL.
+ * Note: Original pointer is NOT freed on failure to allow cleanup by caller.
+ */
+void* wg_realloc(void* ptr, size_t size) {
+		void* new_ptr = (ptr ? realloc(ptr, size) : malloc(size));
+		if (!new_ptr) {
+			fprintf(stderr, "realloc failed: %zu bytes\n", size);
+			return NULL;
+		}
+		return new_ptr;
+}
+
+
+/**
+ * Safely free memory. Checks if pointer is not NULL before freeing
+ * to avoid double-free issues.
+ */
+void wg_free(void* ptr) {
+		if (ptr) {
+			free(ptr);
+			/* Note: Unlike the macro version, this doesn't set pointer to NULL.
+			* Caller is responsible for setting pointer to NULL after calling:
+			*   wg_free(ptr);
+			*   ptr = NULL;
+			*/
+		}
+}
+
 /*
  * Retrieves current working directory with caching mechanism. Returns a static buffer
  * containing the working directory, initializing it on first call. Uses OS-specific
  * methods: GetCurrentDirectoryA on Windows or readlink on /proc/self/cwd on Linux.
  * Result is cached for subsequent calls.
  */
-char *wg_get_cwd(void) {
+char *wg_fetch_pwd(void) {
 	static char wg_work_dir[WG_PATH_MAX]; /* Static buffer for caching working directory */
 		/* Initialize buffer only if empty (first call) */
 		if (wg_work_dir[0] == '\0') {
@@ -238,8 +294,9 @@ char* wg_masked_text(int reveal, const char *text) {
 	    char *masked;
 	    /* Allocate memory for masked string plus null terminator */
 	    masked = wg_malloc((size_t)len + 1);
-	    if (!masked)
-	    	return NULL; /* Allocation failed */
+		if (!masked) {
+			chain_ret_main(NULL);
+		}
 
 	    /* Copy visible characters if any should be revealed */
 	    if (reveal > 0)
@@ -374,7 +431,7 @@ __asm__ volatile (
 			; /* Buffer for safe command storage */
 
 	    /* Copy command to safe buffer with size limitation */
-	    wg_snprintf(size_command,
+	    snprintf(size_command,
 	    			sizeof(size_command),
 					"%s",
 					reg_command);
@@ -575,7 +632,7 @@ void wg_strip_dot_fns(char *dst, size_t dst_sz, const char *src)
 		}
 
 		/* Otherwise copy full string */
-		wg_snprintf(dst, dst_sz, "%s", src);
+		snprintf(dst, dst_sz, "%s", src);
 }
 
 /*
@@ -688,7 +745,8 @@ char* strreplace(const char *source, const char *old_sub, const char *new_sub) {
 
 	    /* Allocate memory for result string */
 	    char *result = wg_malloc(result_len + 1);
-	    if (!result) return NULL;
+		if (!result)
+			chain_ret_main(NULL);
 
 	    /* Perform replacement copy */
 	    size_t i = 0, j = 0;
@@ -773,15 +831,15 @@ void __set_path_sep(char *out, size_t out_sz,
 		if (dir_has_sep) {
 				if (has_led_sep)
 					/* Directory has sep, entry has sep: remove one */
-					wg_snprintf(out, out_sz, "%s%s", dir, entry_name + 1);
-				else wg_snprintf(out, out_sz, "%s%s", dir, entry_name);
+					snprintf(out, out_sz, "%s%s", dir, entry_name + 1);
+				else snprintf(out, out_sz, "%s%s", dir, entry_name);
 		} else {
 				if (has_led_sep)
 					/* No sep in dir, sep in entry: use as-is */
-					wg_snprintf(out, out_sz, "%s%s", dir, entry_name);
+					snprintf(out, out_sz, "%s%s", dir, entry_name);
 				else
 					/* No seps: add separator between */
-					wg_snprintf(out, out_sz, "%s%s%s", dir, __PATH_SEP, entry_name);
+					snprintf(out, out_sz, "%s%s%s", dir, __PATH_SEP, entry_name);
 		}
 
 		out[out_sz - 1] = '\0'; /* Ensure null termination */
@@ -821,7 +879,8 @@ static int __command_suggest(const char *s1, const char *s2) {
 	            int del = prev[j] + 1;        /* Deletion cost */
 	            int ins = curr[j - 1] + 1;    /* Insertion cost */
 	            int sub = prev[j - 1] + cost; /* Substitution cost */
-	            int val = min3(del, ins, sub); /* Minimum of three operations */
+	            int val = ((del) < (ins) ? ((del) < (sub) ? \
+					(del) : (sub)) : ((ins) < (sub) ? (ins) : (sub))); /* Minimum of three operations */
 	            curr[j] = val;
 	            if (val < min_row) min_row = val; /* Update row minimum */
 	        }
@@ -878,18 +937,18 @@ const char *wg_fetch_os(void)
 {
     	static char os[64] = "unknown"; /* Static buffer for OS string */
 #ifdef WG_WINDOWS
-    	wg_strncpy(os, "windows", sizeof(os));
+    	strncpy(os, "windows", sizeof(os));
 #endif
 #ifdef WG_LINUX
-    	wg_strncpy(os, "linux", sizeof(os));
+    	strncpy(os, "linux", sizeof(os));
 #endif
 		/* Container detection: check for Docker environment file */
 		if (access("/.dockerenv", F_OK) == 0)
-			wg_strncpy(os, "linux", sizeof(os));
+			strncpy(os, "linux", sizeof(os));
 		/* WSL detection: check for WSL environment variables */
 		else if (getenv("WSL_INTEROP") ||
 				 getenv("WSL_DISTRO_NAME"))
-				wg_strncpy(os, "windows", sizeof(os));
+				strncpy(os, "windows", sizeof(os));
 
 		os[sizeof(os)-1] = '\0'; /* Ensure null termination */
 		return os;
@@ -990,7 +1049,7 @@ int ensure_parent_dir(char *out_parent, size_t n, const char *dest)
 				return -1;
 
 		/* Copy to temporary buffer for dirname modification */
-		wg_strncpy(tmp, dest, sizeof(tmp));
+		strncpy(tmp, dest, sizeof(tmp));
 		tmp[sizeof(tmp)-1] = '\0';
 
 		/* Extract parent directory */
@@ -999,7 +1058,7 @@ int ensure_parent_dir(char *out_parent, size_t n, const char *dest)
 				return -1; /* dirname failed */
 
 		/* Copy result to output buffer */
-		wg_strncpy(out_parent, parent, n);
+		strncpy(out_parent, parent, n);
 		out_parent[n-1] = '\0'; /* Ensure null termination */
 
 		return 0; /* Success */
@@ -1010,20 +1069,20 @@ int ensure_parent_dir(char *out_parent, size_t n, const char *dest)
  * On Unix: uses pkill with SIGTERM. On Windows: uses taskkill.exe.
  * Constructs and executes appropriate system command.
  */
-int kill_process(const char *entry_name)
+int end_process(const char *process)
 {
-		if (!entry_name)
+		if (!process)
 			return -1; /* Invalid input */
 		char reg_command[WG_PATH_MAX];
 #ifndef WG_WINDOWS
 		/* Unix: pkill command with signal termination */
-		wg_snprintf(reg_command, sizeof(reg_command),
-				"pkill -SIGTERM \"%s\" > /dev/null", entry_name);
+		snprintf(reg_command, sizeof(reg_command),
+				"pkill -SIGTERM \"%s\" > /dev/null", process);
 #else
 		/* Windows: taskkill command with quiet mode */
-		wg_snprintf(reg_command, sizeof(reg_command),
+		snprintf(reg_command, sizeof(reg_command),
 				"C:\\Windows\\System32\\taskkill.exe "
-				"/IM \"%s\" >nul 2>&1", entry_name);
+				"/IM \"%s\" >nul 2>&1", process);
 #endif
 		return wg_run_command(reg_command); /* Execute kill command */
 }
@@ -1124,7 +1183,7 @@ static void wg_add_found_path(const char *path)
 		if (wgconfig.wg_sef_count < (sizeof(wgconfig.wg_sef_found_list) /
 								     sizeof(wgconfig.wg_sef_found_list[0]))) {
 				/* Copy path to next available slot */
-				wg_strncpy(wgconfig.wg_sef_found_list[wgconfig.wg_sef_count],
+				strncpy(wgconfig.wg_sef_found_list[wgconfig.wg_sef_count],
 					path,
 					MAX_SEF_PATH_SIZE);
 				/* Ensure null termination */
@@ -1156,10 +1215,10 @@ int wg_sef_fdir(const char *sef_path,
 
 		/* Construct search pattern with wildcard */
 		if (sef_path[strlen(sef_path) - 1] == __PATH_CHR_SEP_WIN32)
-			wg_snprintf(sp,
+			snprintf(sp,
 				sizeof(sp), "%s*", sef_path);
 		else
-			wg_snprintf(sp,
+			snprintf(sp,
 				sizeof(sp), "%s%s*", sef_path, __PATH_STR_SEP_WIN32);
 
 		find_handle = FindFirstFile(sp, &find_data);
@@ -1294,7 +1353,7 @@ static void wg_check_compiler_options(int *compatibility, int *optimized_lt)
 			remove(".watchdogs/compiler_test.log");
 
 		/* Run compiler test command */
-		wg_snprintf(run_cmd, sizeof(run_cmd),
+		snprintf(run_cmd, sizeof(run_cmd),
 					"%s -0000000U > .watchdogs/compiler_test.log 2>&1",
 					wgconfig.wg_sef_found_list[0]);
 		wg_run_command(run_cmd);
@@ -1404,7 +1463,7 @@ static void __toml_base_subdirs(const char *base_path,
 		WIN32_FIND_DATAA find_data;
 		HANDLE find_handle;
 		char sp[WG_MAX_PATH], fp[WG_MAX_PATH * 2];
-		wg_snprintf(sp, sizeof(sp), "%s%s*", base_path, __PATH_STR_SEP_WIN32);
+		snprintf(sp, sizeof(sp), "%s%s*", base_path, __PATH_STR_SEP_WIN32);
 
 		find_handle = FindFirstFileA(sp, &find_data);
 		if (find_handle == INVALID_HANDLE_VALUE)
@@ -1423,7 +1482,7 @@ static void __toml_base_subdirs(const char *base_path,
 						continue;
 
 					/* Construct full subdirectory path */
-					wg_snprintf(fp, sizeof(fp), "%s/%s",
+					snprintf(fp, sizeof(fp), "%s/%s",
 								base_path, find_data.cFileName);
 
 					__toml_add_directory_path(toml_file, first, fp); /* Add to TOML */
@@ -1454,7 +1513,7 @@ static void __toml_base_subdirs(const char *base_path,
 							   item->d_name) == 0)
 						continue;
 
-					wg_snprintf(fp, sizeof(fp), "%s/%s",
+					snprintf(fp, sizeof(fp), "%s/%s",
 								base_path, item->d_name);
 
 					__toml_add_directory_path(toml_file, first, fp);
@@ -1530,9 +1589,9 @@ static void wg_generate_toml_content(FILE *file, const char *wg_os_type,
 		int first_item = 1;
 		/* Process sef_path: remove extension and normalize separators */
 		if (sef_path[0]) {
-			char *ext = strrchr(sef_path, '.');
-			if (ext)
-					*ext = '\0'; /* Remove file extension */
+			char *extension = strrchr(sef_path, '.');
+			if (extension)
+					*extension = '\0'; /* Remove file extension */
 		}
 		/* Convert Windows backslashes to forward slashes */
 		char *p;
@@ -1693,7 +1752,7 @@ int wg_toml_configs(void)
 
 		if (!wg_toml_config) {
 			pr_error(stdout, "parsing TOML: %s", error_buffer);
-			chain_goto_main(NULL); /* Error handling */
+			chain_ret_main(NULL); /* Error handling */
 		}
 
 		/* Extract dependencies section */
@@ -1796,9 +1855,9 @@ static int _try_mv_without_sudo(const char *src, const char *dest) {
 	    char size_mv[WG_PATH_MAX];
 	    /* Platform-specific move commands */
 	    if (is_native_windows())
-	        wg_snprintf(size_mv, sizeof(size_mv), "move /-Y %s %s", src, dest);
+	        snprintf(size_mv, sizeof(size_mv), "move /-Y %s %s", src, dest);
 	    else
-	        wg_snprintf(size_mv, sizeof(size_mv), "mv -f %s %s", src, dest);
+	        snprintf(size_mv, sizeof(size_mv), "mv -f %s %s", src, dest);
 	    int ret = wg_run_command(size_mv);
 	    return ret;
 }
@@ -1811,9 +1870,9 @@ static int _try_mv_without_sudo(const char *src, const char *dest) {
 static int __mv_with_sudo(const char *src, const char *dest) {
 	    char size_mv[WG_PATH_MAX];
 	    if (is_native_windows())
-	        wg_snprintf(size_mv, sizeof(size_mv), "move /-Y %s %s", src, dest);
+	        snprintf(size_mv, sizeof(size_mv), "move /-Y %s %s", src, dest);
 	    else
-	        wg_snprintf(size_mv, sizeof(size_mv), "sudo mv -f %s %s", src, dest);
+	        snprintf(size_mv, sizeof(size_mv), "sudo mv -f %s %s", src, dest);
 	    int ret = wg_run_command(size_mv);
 	    return ret;
 }
@@ -1826,9 +1885,9 @@ static int __mv_with_sudo(const char *src, const char *dest) {
 static int _try_cp_without_sudo(const char *src, const char *dest) {
 	    char size_cp[WG_PATH_MAX];
 	    if (is_native_windows())
-	        wg_snprintf(size_cp, sizeof(size_cp), "xcopy /-Y %s %s", src, dest);
+	        snprintf(size_cp, sizeof(size_cp), "xcopy /-Y %s %s", src, dest);
 	    else
-	        wg_snprintf(size_cp, sizeof(size_cp), "cp -f %s %s", src, dest);
+	        snprintf(size_cp, sizeof(size_cp), "cp -f %s %s", src, dest);
 	    int ret = wg_run_command(size_cp);
 	    return ret;
 }
@@ -1841,9 +1900,9 @@ static int _try_cp_without_sudo(const char *src, const char *dest) {
 static int __cp_with_sudo(const char *src, const char *dest) {
 	    char size_cp[WG_PATH_MAX];
 	    if (is_native_windows())
-	        wg_snprintf(size_cp, sizeof(size_cp), "xcopy /-Y %s %s", src, dest);
+	        snprintf(size_cp, sizeof(size_cp), "xcopy /-Y %s %s", src, dest);
 	    else
-	        wg_snprintf(size_cp, sizeof(size_cp), "sudo cp -f %s %s", src, dest);
+	        snprintf(size_cp, sizeof(size_cp), "sudo cp -f %s %s", src, dest);
 	    int ret = wg_run_command(size_cp);
 	    return ret;
 }

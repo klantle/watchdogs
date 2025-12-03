@@ -297,6 +297,7 @@ output = "gamemodes/bare.amx"
 # Access tokens to create installation dependencies,
 # to can download files from private GitHub repositories without making them public.
 github_tokens = "DO_HERE"
+
 # Dependency repositories (max 101)
 aio_repo = [
     "Y-Less/sscanf:latest",
@@ -523,7 +524,7 @@ warning: 660    ../sysdeps/x86_64/multiarch/memmove-vec-unaligned-erms.S: No suc
 #8  0x0000555555564883 in dep_http_get_content ()
 #9  0x00005555555677bb in wg_install_depends ()
 #10 0x0000555555561061 in __command__ ()
-#11 0x000055555556177c in chain_goto_main ()
+#11 0x000055555556177c in chain_ret_main ()
 #12 0x000055555555b67d in main ()
 (gdb) bt full
 #0  __memcpy_avx_unaligned_erms () at ../sysdeps/x86_64/multiarch/memmove-vec-unaligned-erms.S:660
@@ -549,7 +550,7 @@ No symbol table info available.
 #10 0x0000555555561061 in __command__ ()
 No symbol table info available.
 --Type <RET> for more, q to quit, c to continue without paging--exit
-#11 0x000055555556177c in chain_goto_main ()
+#11 0x000055555556177c in chain_ret_main ()
 No symbol table info available.
 #12 0x000055555555b67d in main ()
 No symbol table info available.
@@ -574,7 +575,7 @@ warning: 660    ../sysdeps/x86_64/multiarch/memmove-vec-unaligned-erms.S: No suc
 #10 0x000055555556af65 in dep_handle_repo (dep_repo_info=0x7fffffff61d0, deps_put_url=0x7fffffff66e0 "\001", deps_put_size=1024) at source/depends.c:588
 #11 0x000055555556e317 in wg_install_depends (depends_string=0x5555557135f0 "Y-Less/sscanf:latest samp-incognito/samp-streamer-plugin:latest") at source/depends.c:1627
 #12 0x00005555555611d3 in __command__ (chain_pre_command=0x0) at source/units.c:517
-#13 0x0000555555564c64 in chain_goto_main (chain_pre_command=0x0) at source/units.c:1602
+#13 0x0000555555564c64 in chain_ret_main (chain_pre_command=0x0) at source/units.c:1602
 #14 0x0000555555564f67 in main (argc=1, argv=0x7fffffffcf48) at source/units.c:1666
 ```
 

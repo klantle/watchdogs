@@ -71,12 +71,6 @@
 # define FILE_MODE 0777
 # endif
 
-#define wg_realloc(wx, wy) \
-    ((wx) ? realloc((wx), (wy)) : malloc((wy)))
-#define wg_malloc(wx) malloc(wx)
-#define wg_calloc(wx, wy) calloc((wx), (wy))
-#define wg_free(wx) do { if (wx) { free((wx)); (wx) = NULL; } } while(0)
-
 # define __PATH_CHR_SEP_LINUX '/'
 # define __PATH_CHR_SEP_WIN32 '\\'
 # define __PATH_STR_SEP_LINUX "/"
@@ -103,9 +97,9 @@ enum {
     MAX_SEF_PATH_SIZE = WG_PATH_MAX
 };
 
-# define COMPILER_SAMP    0x01
-# define COMPILER_OPENMP  0x02
-# define COMPILER_DEFAULT 0x00
+# define COMPILER_SAMP    (0x01)
+# define COMPILER_OPENMP  (0x02)
+# define COMPILER_DEFAULT (0x00)
 
 # define CRC32_TRUE              "fdfc4c8d"
 # define CRC32_FALSE             "2bcd6830"
@@ -115,29 +109,17 @@ enum {
 # define OS_SIGNAL_LINUX   CRC32_FALSE
 # define OS_SIGNAL_UNKNOWN CRC32_UNKNOWN
 
-# define findstr strfind
-# define wg_strcpy strcpy
-# define wg_strncpy strncpy
-# define wg_strlcpy strlcpy
-# define wg_sprintf sprintf
-# define wg_snprintf snprintf
-
-# ifndef min3
-# define min3(a, b, c) \
-    ((a) < (b) ? ((a) < (c) ? (a) : (c)) : ((b) < (c) ? (b) : (c)))
-# endif
-
 # define wg_server_env() \
-({ \
-    int ret = 0; \
-    if (ret == 0) { \
-        if (!strcmp(wgconfig.wg_is_samp, CRC32_TRUE)) \
-            ret = 1; \
-        else if (!strcmp(wgconfig.wg_is_omp, CRC32_TRUE)) \
-            ret = 2; \
-    } \
-    ret; \
-})
+    ({ \
+        int ret = 0; \
+        if (ret == 0) { \
+            if (!strcmp(wgconfig.wg_is_samp, CRC32_TRUE)) \
+                ret = 1; \
+            else if (!strcmp(wgconfig.wg_is_omp, CRC32_TRUE)) \
+                ret = 2; \
+        } \
+        ret; \
+    })
 
 typedef struct {
     char * wg_toml_os_type;
@@ -183,7 +165,11 @@ int win_ftruncate(FILE *file, long length);
 struct struct_of { int (*title)(const char *); };
 extern const char* __command[];
 extern const size_t __command_len;
-char *wg_get_cwd(void);
+void* wg_malloc(size_t size);
+void* wg_calloc(size_t count, size_t size);
+void* wg_realloc(void* ptr, size_t size);
+void wg_free(void* ptr);
+char *wg_fetch_pwd(void);
 char* wg_masked_text(int reveal, const char *text);
 int wg_mkdir(const char *path);
 void wg_escaping_json(char *dest, const char *src, size_t dest_size);
@@ -199,8 +185,9 @@ bool strend(const char *str, const char *suffix, bool nocase);
 bool strfind(const char *text, const char *pattern, bool nocase);
 char* strreplace(const char *source, const char *old_sub, const char *new_sub);
 void wg_escape_quotes(char *dest, size_t size, const char *src);
-extern const char* wg_find_near_command(const char *ptr_command, const char *__commands[], size_t num_cmds, int *out_distance);
-int kill_process(const char *name);
+extern const char* wg_find_near_command(const char *ptr_command,
+    const char *__commands[], size_t num_cmds, int *out_distance);
+int end_process(const char *process);
 int
 wg_match_wildcard(const char *str, const char *pat);
 const char *wg_fetch_os(void);

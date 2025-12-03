@@ -183,10 +183,10 @@ int portable_stat(const char *path, portable_stat_t *out) {
         }
 
         /* Set execute permission for known executable file extensions */
-        const char *ext = strrchr(path, '.');
-        if (ext && (_stricmp(ext, ".exe") == 0 ||
-                    _stricmp(ext, ".bat") == 0 ||
-                    _stricmp(ext, ".com") == 0)) {
+        const char *extension = strrchr(path, '.');
+        if (extension && (_stricmp(extension, ".exe") == 0 ||
+                    _stricmp(extension, ".bat") == 0 ||
+                    _stricmp(extension, ".com") == 0)) {
                 out->st_mode |= S_IXUSR;  /* Execute permission */
         }
 
@@ -523,7 +523,7 @@ void compiler_detailed(const char *pawn_output, int debug,
 {
       char size_compiler[256];
       /* Create console title string showing compilation completion status with error/warning counts */
-      wg_snprintf(size_compiler, sizeof(size_compiler),
+      snprintf(size_compiler, sizeof(size_compiler),
                   "COMPILE COMPLETE :) | WITH ~%d ERROR | ~%d WARNING",
                   ecnt, wcnt);
       wg_console_title(size_compiler);

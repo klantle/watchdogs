@@ -1029,23 +1029,60 @@ int kill_process(const char *entry_name)
 }
 
 /*
- * Matches filename against pattern with wildcard support.
- * On Windows: uses PathMatchSpecA API. On Unix: uses fnmatch.
- * Falls back to exact string comparison if no wildcards in pattern.
+ * Matches filename against pattern with '*' and '?' wildcard support.
+ * Fully portable, no OS-specific dependencies.
+ */
+int
+wg_match_wildcard(const char *str, const char *pat)
+{
+		const char *s = str;
+		const char *p = pat;
+		const char *star = NULL;
+		const char *ss = NULL;
+
+		while (*s) {
+			if (*p == '?' || *p == *s) {
+				/* Characters match or pattern has '?': consume both */
+				s++; 
+				p++;
+			}
+			else if (*p == '*') {
+				/* Record position of '*' and the position in str */
+				star = p++;
+				ss = s;
+			}
+			else if (star) {
+				/* Mismatch: backtrack to last '*' and match one more char */
+				p = star + 1;
+				s = ++ss;
+			}
+			else {
+				/* No '*' to fallback to: mismatch */
+				return 0;
+			}
+		}
+
+		/* Skip trailing '*' in pattern */
+		while (*p == '*')
+			p++;
+
+		return (*p == '\0');
+}
+
+/*
+ * Matches filename against pattern, optimizing for no-wildcard case.
+ * If pattern has no '*' or '?', performs fast exact comparison.
+ * Otherwise, uses wildcard matching function.
  */
 static int
 wg_match_filename(const char *entry_name, const char *pattern)
 {
-		/* Check if pattern contains wildcards */
-		if (strchr(pattern, '*') || strchr(pattern, '?')) {
-#ifdef WG_WINDOWS
-				return PathMatchSpecA(entry_name, pattern); /* Windows wildcard match */
-#else
-				return (fnmatch(pattern, entry_name, 0) == 0); /* Unix fnmatch */
-#endif
-		} else {
-				return (strcmp(entry_name, pattern) == 0); /* Exact string match */
-		}
+		/* No wildcard: do fast exact compare */
+		if (!strchr(pattern, '*') && !strchr(pattern, '?'))
+			return strcmp(entry_name, pattern) == 0;
+
+		/* With wildcard */
+		return wg_match_wildcard(entry_name, pattern);
 }
 
 /*

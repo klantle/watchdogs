@@ -36,7 +36,6 @@
 # include <time.h>
 # include <direct.h>
 # include <windows.h>
-# include <shlwapi.h>
 # include <strings.h>
 # define __PATH_SEP "\\"
 # define IS_PATH_SEP(c) ((c) == '/' || (c) == '\\')
@@ -202,6 +201,9 @@ char* strreplace(const char *source, const char *old_sub, const char *new_sub);
 void wg_escape_quotes(char *dest, size_t size, const char *src);
 extern const char* wg_find_near_command(const char *ptr_command, const char *__commands[], size_t num_cmds, int *out_distance);
 int kill_process(const char *name);
+int
+wg_match_wildcard(const char *str, const char *pat);
+const char *wg_fetch_os(void);
 int dir_exists(const char *path);
 int path_exists(const char *path);
 int dir_writable(const char *path);

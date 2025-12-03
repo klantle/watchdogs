@@ -145,7 +145,7 @@ void wg_server_crash_check(void) {
         while (fgets(line_buf, sizeof(line_buf), proc_f))
         {
             /* Runtime error detection - common Pawn script errors */
-            if (strfind(line_buf, "run time error", false) || strfind(line_buf, "Run time error", false))
+            if (strfind(line_buf, "run time error", true) || strfind(line_buf, "Run time error", true))
             {
                 problem_stat = 1;            /* Mark general problem found */
                 needed = wg_snprintf(output_buf, sizeof(output_buf), "@ Runtime error detected\n\t");
@@ -154,13 +154,13 @@ void wg_server_crash_check(void) {
                 fflush(stdout);
 
                 /* Specific runtime error subtypes */
-                if (strfind(line_buf, "division by zero", false)) {
+                if (strfind(line_buf, "division by zero", true)) {
                     needed = wg_snprintf(output_buf, sizeof(output_buf), "@ Division by zero error found\n\t");
                     fwrite(output_buf, 1, needed, stdout);
                     pr_color(stdout, FCOLOUR_BLUE, line_buf);
                     fflush(stdout);
                 }
-                if (strfind(line_buf, "invalid index", false)) {
+                if (strfind(line_buf, "invalid index", true)) {
                     needed = wg_snprintf(output_buf, sizeof(output_buf), "@ Invalid index error found\n\t");
                     fwrite(output_buf, 1, needed, stdout);
                     pr_color(stdout, FCOLOUR_BLUE, line_buf);
@@ -169,7 +169,7 @@ void wg_server_crash_check(void) {
             }
             
             /* Outdated include file detection requiring recompilation */
-            if (strfind(line_buf, "The script might need to be recompiled with the latest include file.", false)) {
+            if (strfind(line_buf, "The script might need to be recompiled with the latest include file.", true)) {
                 needed = wg_snprintf(output_buf, sizeof(output_buf), "@ Needed for recompiled\n\t");
                 fwrite(output_buf, 1, needed, stdout);
                 pr_color(stdout, FCOLOUR_BLUE, line_buf);
@@ -196,7 +196,7 @@ void wg_server_crash_check(void) {
             }
             
             /* Filesystem error specific to OpenMP on WSL */
-            if (strfind(line_buf, "terminate called after throwing an instance of 'ghc::filesystem::filesystem_error", false)) {
+            if (strfind(line_buf, "terminate called after throwing an instance of 'ghc::filesystem::filesystem_error", true)) {
                 needed = wg_snprintf(output_buf, sizeof(output_buf), "@ Filesystem C++ Error Detected\n\t");
                 fwrite(output_buf, 1, needed, stdout);
                 pr_color(stdout, FCOLOUR_BLUE, line_buf);
@@ -212,7 +212,7 @@ void wg_server_crash_check(void) {
             }
             
             /* SampVoice plugin port detection */
-            if (strfind(line_buf, "voice server running on port", false)) {
+            if (strfind(line_buf, "voice server running on port", true)) {
                 int _sampvoice_port;
                 if (scanf("%*[^v]voice server running on port %d", &_sampvoice_port) != 1)
                     continue;
@@ -221,7 +221,7 @@ void wg_server_crash_check(void) {
             }
             
             /* Missing gamemode file detection */
-            if (strfind(line_buf, "I couldn't load any gamemode scripts.", false)) {
+            if (strfind(line_buf, "I couldn't load any gamemode scripts.", true)) {
                 needed = wg_snprintf(output_buf, sizeof(output_buf), "@ Can't found gamemode detected\n\t");
                 fwrite(output_buf, 1, needed, stdout);
                 pr_color(stdout, FCOLOUR_BLUE, line_buf);
@@ -236,13 +236,13 @@ void wg_server_crash_check(void) {
             }
             
             /* Memory address references in logs */
-            if (strfind(line_buf, "0x", false)) {
+            if (strfind(line_buf, "0x", true)) {
                 needed = wg_snprintf(output_buf, sizeof(output_buf), "@ Hexadecimal address found\n\t");
                 fwrite(output_buf, 1, needed, stdout);
                 pr_color(stdout, FCOLOUR_BLUE, line_buf);
                 fflush(stdout);
             }
-            if (strfind(line_buf, "address", false) || strfind(line_buf, "Address", false)) {
+            if (strfind(line_buf, "address", true) || strfind(line_buf, "Address", true)) {
                 needed = wg_snprintf(output_buf, sizeof(output_buf), "@ Memory address reference found\n\t");
                 fwrite(output_buf, 1, needed, stdout);
                 pr_color(stdout, FCOLOUR_BLUE, line_buf);
@@ -251,7 +251,7 @@ void wg_server_crash_check(void) {
             
             /* CrashDetect plugin specific diagnostics */
             if (problem_stat) {
-                if (strfind(line_buf, "[debug]", false) || strfind(line_buf, "crashdetect", false))
+                if (strfind(line_buf, "[debug]", true) || strfind(line_buf, "crashdetect", true))
                 {
                     ++server_crashdetect;    /* Count crashdetect references */
                     needed = wg_snprintf(output_buf, sizeof(output_buf), "@ Crashdetect: Crashdetect debug information found\n\t");
@@ -260,25 +260,25 @@ void wg_server_crash_check(void) {
                     fflush(stdout);
 
                     /* CrashDetect backtrace analysis */
-                    if (strfind(line_buf, "AMX backtrace", false)) {
+                    if (strfind(line_buf, "AMX backtrace", true)) {
                         needed = wg_snprintf(output_buf, sizeof(output_buf), "@ Crashdetect: AMX backtrace detected in crash log\n\t");
                         fwrite(output_buf, 1, needed, stdout);
                         pr_color(stdout, FCOLOUR_BLUE, line_buf);
                         fflush(stdout);
                     }
-                    if (strfind(line_buf, "native stack trace", false)) {
+                    if (strfind(line_buf, "native stack trace", true)) {
                         needed = wg_snprintf(output_buf, sizeof(output_buf), "@ Crashdetect: Native stack trace detected\n\t");
                         fwrite(output_buf, 1, needed, stdout);
                         pr_color(stdout, FCOLOUR_BLUE, line_buf);
                         fflush(stdout);
                     }
-                    if (strfind(line_buf, "heap", false)) {
+                    if (strfind(line_buf, "heap", true)) {
                         needed = wg_snprintf(output_buf, sizeof(output_buf), "@ Crashdetect: Heap-related issue mentioned\n\t");
                         fwrite(output_buf, 1, needed, stdout);
                         pr_color(stdout, FCOLOUR_BLUE, line_buf);
                         fflush(stdout);
                     }
-                    if (strfind(line_buf, "[debug]", false)) {
+                    if (strfind(line_buf, "[debug]", true)) {
                         needed = wg_snprintf(output_buf, sizeof(output_buf), "@ Crashdetect: Debug Detected\n\t");
                         fwrite(output_buf, 1, needed, stdout);
                         pr_color(stdout, FCOLOUR_BLUE, line_buf);
@@ -286,14 +286,14 @@ void wg_server_crash_check(void) {
                     }
                     
                     /* SampVoice and Pawn.Raknet conflict detection */
-                    if (strfind(line_buf, "Native backtrace", false)) {
+                    if (strfind(line_buf, "Native backtrace", true)) {
                         needed = wg_snprintf(output_buf, sizeof(output_buf), "@ Crashdetect: Native backtrace detected\n\t");
                         fwrite(output_buf, 1, needed, stdout);
                         pr_color(stdout, FCOLOUR_BLUE, line_buf);
                         fflush(stdout);
 
-                        if (strfind(line_buf, "sampvoice", false)) {
-                            if(strfind(line_buf, "pawnraknet", false)) {
+                        if (strfind(line_buf, "sampvoice", true)) {
+                            if(strfind(line_buf, "pawnraknet", true)) {
                                 needed = wg_snprintf(output_buf, sizeof(output_buf), "@ Crashdetect: Crash potent detected\n\t");
                                 fwrite(output_buf, 1, needed, stdout);
                                 pr_color(stdout, FCOLOUR_BLUE, line_buf);
@@ -322,31 +322,31 @@ void wg_server_crash_check(void) {
                 }
                 
                 /* Memory and stack error patterns */
-                if (strfind(line_buf, "stack", false)) {
+                if (strfind(line_buf, "stack", true)) {
                     needed = wg_snprintf(output_buf, sizeof(output_buf), "@ Stack-related issue detected\n\t");
                     fwrite(output_buf, 1, needed, stdout);
                     pr_color(stdout, FCOLOUR_BLUE, line_buf);
                     fflush(stdout);
                 }
-                if (strfind(line_buf, "memory", false)) {
+                if (strfind(line_buf, "memory", true)) {
                     needed = wg_snprintf(output_buf, sizeof(output_buf), "@ Memory-related issue detected\n\t");
                     fwrite(output_buf, 1, needed, stdout);
                     pr_color(stdout, FCOLOUR_BLUE, line_buf);
                     fflush(stdout);
                 }
-                if (strfind(line_buf, "access violation", false)) {
+                if (strfind(line_buf, "access violation", true)) {
                     needed = wg_snprintf(output_buf, sizeof(output_buf), "@ Access violation detected\n\t");
                     fwrite(output_buf, 1, needed, stdout);
                     pr_color(stdout, FCOLOUR_BLUE, line_buf);
                     fflush(stdout);
                 }
-                if (strfind(line_buf, "buffer overrun", false) || strfind(line_buf, "buffer overflow", false)) {
+                if (strfind(line_buf, "buffer overrun", true) || strfind(line_buf, "buffer overflow", true)) {
                     needed = wg_snprintf(output_buf, sizeof(output_buf), "@ Buffer overflow detected\n\t");
                     fwrite(output_buf, 1, needed, stdout);
                     pr_color(stdout, FCOLOUR_BLUE, line_buf);
                     fflush(stdout);
                 }
-                if (strfind(line_buf, "null pointer", false)) {
+                if (strfind(line_buf, "null pointer", true)) {
                     needed = wg_snprintf(output_buf, sizeof(output_buf), "@ Null pointer exception detected\n\t");
                     fwrite(output_buf, 1, needed, stdout);
                     pr_color(stdout, FCOLOUR_BLUE, line_buf);
@@ -355,8 +355,8 @@ void wg_server_crash_check(void) {
             }
             
             /* out-of-bounds checking error */
-            if (strfind(line_buf, "out of bounds", false) ||
-                strfind(line_buf, "out-of-bounds", false)) {
+            if (strfind(line_buf, "out of bounds", true) ||
+                strfind(line_buf, "out-of-bounds", true)) {
                 needed = wg_snprintf(output_buf, sizeof(output_buf), "@ out-of-bounds detected\n\t");
                 fwrite(output_buf, 1, needed, stdout);
                 pr_color(stdout, FCOLOUR_BLUE, line_buf);
@@ -376,25 +376,25 @@ void wg_server_crash_check(void) {
             
             /* SA-MP specific RCON password warning */
             if (wg_server_env() == 1) {
-                if (strfind(line_buf, "Your password must be changed from the default password", false)) {
+                if (strfind(line_buf, "Your password must be changed from the default password", true)) {
                     ++server_rcon_pass;
                 }
             }
             
             /* General warning and failure patterns */
-            if (strfind(line_buf, "warning", false) || strfind(line_buf, "Warning", false)) {
+            if (strfind(line_buf, "warning", true) || strfind(line_buf, "Warning", true)) {
                 needed = wg_snprintf(output_buf, sizeof(output_buf), "@ Warning message found\n\t");
                 fwrite(output_buf, 1, needed, stdout);
                 pr_color(stdout, FCOLOUR_BLUE, line_buf);
                 fflush(stdout);
             }
-            if (strfind(line_buf, "failed", false) || strfind(line_buf, "Failed", false)) {
+            if (strfind(line_buf, "failed", true) || strfind(line_buf, "Failed", true)) {
                 needed = wg_snprintf(output_buf, sizeof(output_buf), "@ Failure or Failed message detected\n\t");
                 fwrite(output_buf, 1, needed, stdout);
                 pr_color(stdout, FCOLOUR_BLUE, line_buf);
                 fflush(stdout);
             }
-            if (strfind(line_buf, "timeout", false) || strfind(line_buf, "Timeout", false)) {
+            if (strfind(line_buf, "timeout", true) || strfind(line_buf, "Timeout", true)) {
                 needed = wg_snprintf(output_buf, sizeof(output_buf), "@ Timeout event detected\n\t");
                 fwrite(output_buf, 1, needed, stdout);
                 pr_color(stdout, FCOLOUR_BLUE, line_buf);
@@ -402,8 +402,8 @@ void wg_server_crash_check(void) {
             }
             
             /* Plugin loading and management issues */
-            if (strfind(line_buf, "plugin", false) || strfind(line_buf, "Plugin", false)) {
-                if (strfind(line_buf, "failed to load", false) || strfind(line_buf, "Failed.", false)) {
+            if (strfind(line_buf, "plugin", true) || strfind(line_buf, "Plugin", true)) {
+                if (strfind(line_buf, "failed to load", true) || strfind(line_buf, "Failed.", true)) {
                     needed = wg_snprintf(output_buf, sizeof(output_buf), "@ Plugin load failure or failed detected\n\t");
                     fwrite(output_buf, 1, needed, stdout);
                     pr_color(stdout, FCOLOUR_BLUE, line_buf);
@@ -418,7 +418,7 @@ void wg_server_crash_check(void) {
                     fwrite(output_buf, 1, needed, stdout);
                     fflush(stdout);
                 }
-                if (strfind(line_buf, "unloaded", false)) {
+                if (strfind(line_buf, "unloaded", true)) {
                     needed = wg_snprintf(output_buf, sizeof(output_buf), "@ Plugin unloaded detected\n\t");
                     fwrite(output_buf, 1, needed, stdout);
                     pr_color(stdout, FCOLOUR_BLUE, line_buf);
@@ -436,14 +436,14 @@ void wg_server_crash_check(void) {
             }
             
             /* Database connection issues */
-            if (strfind(line_buf, "database", false) || strfind(line_buf, "mysql", false)) {
-                if (strfind(line_buf, "connection failed", false) || strfind(line_buf, "can't connect", false)) {
+            if (strfind(line_buf, "database", true) || strfind(line_buf, "mysql", true)) {
+                if (strfind(line_buf, "connection failed", true) || strfind(line_buf, "can't connect", true)) {
                     needed = wg_snprintf(output_buf, sizeof(output_buf), "@ Database connection failure detected\n\t");
                     fwrite(output_buf, 1, needed, stdout);
                     pr_color(stdout, FCOLOUR_BLUE, line_buf);
                     fflush(stdout);
                 }
-                if (strfind(line_buf, "error", false) || strfind(line_buf, "failed", false)) {
+                if (strfind(line_buf, "error", true) || strfind(line_buf, "failed", true)) {
                     needed = wg_snprintf(output_buf, sizeof(output_buf), "@ Error or Failed database | mysql found\n\t");
                     fwrite(output_buf, 1, needed, stdout);
                     pr_color(stdout, FCOLOUR_BLUE, line_buf);
@@ -452,13 +452,13 @@ void wg_server_crash_check(void) {
             }
             
             /* Memory allocation failures */
-            if (strfind(line_buf, "out of memory", false) || strfind(line_buf, "memory allocation", false)) {
+            if (strfind(line_buf, "out of memory", true) || strfind(line_buf, "memory allocation", true)) {
                 needed = wg_snprintf(output_buf, sizeof(output_buf), "@ Memory allocation failure detected\n\t");
                 fwrite(output_buf, 1, needed, stdout);
                 pr_color(stdout, FCOLOUR_BLUE, line_buf);
                 fflush(stdout);
             }
-            if (strfind(line_buf, "malloc", false) || strfind(line_buf, "free", false) || strfind(line_buf, "realloc", false) || strfind(line_buf, "calloc", false)) {
+            if (strfind(line_buf, "malloc", true) || strfind(line_buf, "free", true) || strfind(line_buf, "realloc", true) || strfind(line_buf, "calloc", true)) {
                 needed = wg_snprintf(output_buf, sizeof(output_buf), "@ Memory management function referenced\n\t");
                 fwrite(output_buf, 1, needed, stdout);
                 pr_color(stdout, FCOLOUR_BLUE, line_buf);
@@ -479,7 +479,7 @@ void wg_server_crash_check(void) {
             int _sampvoice_port = 0;
             char *_p_sampvoice_port = NULL;
             while (fgets(line_buf, sizeof(line_buf), proc_f)) {
-                if (strfind(line_buf, "sv_port", false)) {
+                if (strfind(line_buf, "sv_port", true)) {
                     if (scanf("sv_port %d", &_sampvoice_port) != 1)
                         break;
                     _p_sampvoice_port = (char *)&_sampvoice_port;
@@ -597,7 +597,7 @@ skip:
               
               char *confirm;
               confirm = readline("Y/n ");
-              if (strfind(confirm, "y", false)) {
+              if (strfind(confirm, "y", true)) {
                   wg_free(confirm);
                   wg_install_depends("Y-Less/samp-plugin-crashdetect:latest");
               } else {

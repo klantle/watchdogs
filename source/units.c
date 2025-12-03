@@ -424,9 +424,9 @@ _reexecute_command:
                 size_last_slash = strrchr(args, __PATH_CHR_SEP_LINUX);
                 if (size_last_slash && *(size_last_slash + 1)) {
                         wg_snprintf(links_name, sizeof(links_name), "%s", size_last_slash + 1);
-                        if (!strfind(links_name, ".zip", false) &&
-                            !strfind(links_name, ".tar.gz", false) &&
-                            !strfind(links_name, ".tar", false))
+                        if (!strfind(links_name, ".zip", true) &&
+                            !strfind(links_name, ".tar.gz", true) &&
+                            !strfind(links_name, ".tar", true))
                                 wg_snprintf(links_name + strlen(links_name),
                                             sizeof(links_name) - strlen(links_name),
                                             ".zip");
@@ -533,7 +533,7 @@ ret_ptr:
 
             char *platform = readline("==> ");
 
-            if (strfind(platform, "L", false)) {
+            if (strfind(platform, "L", true)) {
                 wg_free(ptr_command);
                 wg_free(platform);
                 int ret = wg_install_server("linux");
@@ -547,7 +547,7 @@ loop_igm:
                     else
                         goto _ptr_command;
                 }
-            } else if (strfind(platform, "W", false)) {
+            } else if (strfind(platform, "W", true)) {
                 wg_free(ptr_command);
                 wg_free(platform);
                 int ret = wg_install_server("windows");
@@ -561,7 +561,7 @@ loop_igm2:
                     else
                         goto _ptr_command;
                 }
-            } else if (strfind(platform, "E", false)) {
+            } else if (strfind(platform, "E", true)) {
                 wg_free(ptr_command);
                 wg_free(platform);
                 if (chain_pre_command && chain_pre_command[0] != '\0')
@@ -588,7 +588,7 @@ ret_ptr2:
 
             char *platform = readline("==> ");
 
-            if (strfind(platform, "L", false)) {
+            if (strfind(platform, "L", true)) {
                 wg_free(ptr_command);
                 wg_free(platform);
                 ptr_command = NULL;
@@ -603,7 +603,7 @@ loop_ipcc:
                     else
                         goto _ptr_command;
                 }
-            } else if (strfind(platform, "W", false)) {
+            } else if (strfind(platform, "W", true)) {
                 wg_free(ptr_command);
                 wg_free(platform);
                 ptr_command = NULL;
@@ -618,7 +618,7 @@ loop_ipcc2:
                     else
                         goto _ptr_command;
                 }
-            } else if (strfind(platform, "T", false)) {
+            } else if (strfind(platform, "T", true)) {
                 wg_free(ptr_command);
                 wg_free(platform);
                 ptr_command = NULL;
@@ -633,7 +633,7 @@ loop_ipcc3:
                     else
                         goto _ptr_command;
                 }
-            } else if (strfind(platform, "E", false)) {
+            } else if (strfind(platform, "E", true)) {
                 wg_free(ptr_command);
                 wg_free(platform);
                 if (chain_pre_command && chain_pre_command[0] != '\0')
@@ -1099,8 +1099,8 @@ wanion_retrying:
                 if (http_code != 200) {
                     fprintf(stderr, "API returned HTTP %ld:\n%s\n", http_code, b.data);
                     int rate_api_limit = 0;
-                    if (strfind(b.data, "You exceeded your current quota, please check your plan and billing details", false) ||
-                        strfind(b.data, "Too Many Requests", false))
+                    if (strfind(b.data, "You exceeded your current quota, please check your plan and billing details", true) ||
+                        strfind(b.data, "Too Many Requests", true))
                         ++rate_api_limit;
                     if (rate_api_limit)
                         printf("~ limit detected!\n");

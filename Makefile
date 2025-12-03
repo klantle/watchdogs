@@ -144,7 +144,7 @@ clean:
 
 # Linux
 linux:
-	@echo "-> [LANG = $$LANG]"
+	@echo "==> LANG = $$LANG"
 	@echo "==> Building for GNU/Linux"
 	@if [ -f "/usr/include/ncurses.h" ]; then \
 		echo "==> ncurses found, building with _NCURSES flag"; \
@@ -159,7 +159,7 @@ linux:
 
 # Termux / Android
 termux:
-	@echo "-> [LANG = $$LANG]"
+	@echo "==> LANG = $$LANG"
 	@echo "==> Building for Termux (Android)"
 	@if [ -f "/usr/include/ncurses.h" ] || [ -f "/data/data/com.termux/files/usr/include/ncurses" ]; then \
 		echo "==> ncurses found, building with _NCURSES flag"; \
@@ -174,14 +174,14 @@ termux:
 
 # Windows (MSYS2 UCRT)
 windows: $(RESFILE)
-	@echo "-> [LANG = $$LANG]"
+	@echo "==> LANG = $$LANG"
 	@echo "==> Building for Windows"
-	$(CC) $(CFLAGS) -I/ucrt64/include $(SRCS) $(RESFILE) -D__WINDOWS__ -o watchdogs.win $(LDFLAGS) -liphlpapi -lshlwapi
+	$(CC) $(CFLAGS) -I/ucrt64/include $(SRCS) $(RESFILE) -D__WINDOWS__ -o watchdogs.win $(LDFLAGS) -flto -ffunction-sections -fdata-sections -Wl,--gc-sections
 	@echo "==> Windows build complete"
 
 # Debug Build
 debug:
-	@echo "-> [LANG = $$LANG]"
+	@echo "==> LANG = $$LANG"
 	@echo "==> Building DEBUG version"
 	@if [ -f "/usr/include/ncurses.h" ]; then \
 		echo "==> ncurses found, building with _NCURSES flag and debug flags"; \
@@ -196,7 +196,7 @@ debug:
 
 # Termux Debug Build
 termux-debug:
-	@echo "-> [LANG = $$LANG]"
+	@echo "==> LANG = $$LANG"
 	@echo "==> Building DEBUG Termux version"
 	@if [ -f "/usr/include/ncurses.h" ] || [ -f "/data/data/com.termux/files/usr/include/ncurses" ]; then \
 		echo "==> ncurses found, building with _NCURSES flag and debug flags"; \
@@ -211,7 +211,7 @@ termux-debug:
 
 # Windows Debug Build
 windows-debug: $(RESFILE)
-	@echo "-> [LANG = $$LANG]"
+	@echo "==> LANG = $$LANG"
 	@echo "==> Building DEBUG Windows version"
-	$(CC) $(CFLAGS) -I/ucrt64/include $(SRCS) $(RESFILE) -D__WINDOWS__ -g -O0 -D_DBG_PRINT -Wall -fno-omit-frame-pointer -fno-inline -flto -o watchdogs.debug.win $(LDFLAGS) -liphlpapi -lshlwapi
+	$(CC) $(CFLAGS) -I/ucrt64/include $(SRCS) $(RESFILE) -D__WINDOWS__ -g -O0 -D_DBG_PRINT -Wall -fno-omit-frame-pointer -fno-inline -flto -ffunction-sections -fdata-sections -Wl,--gc-sections -o watchdogs.debug.win $(LDFLAGS)
 	@echo "==> Debug build complete"

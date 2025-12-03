@@ -711,8 +711,8 @@ int dep_add_ncheck_hash(const char *raw_file_path, const char *raw_json_path)
         dep_sym_convert(res_convert_json_path);
 
         /* Skip hash generation for compiler directories */
-        if (strfind(res_convert_json_path, "pawno", false) ||
-                strfind(res_convert_json_path, "qawno", false))
+        if (strfind(res_convert_json_path, "pawno", true) ||
+                strfind(res_convert_json_path, "qawno", true))
                 goto done;
 
         unsigned char sha1_hash[20];

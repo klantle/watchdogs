@@ -107,11 +107,11 @@ back:
 		char *selection = readline("==> "); /* Get user's architecture choice */
 
 		/* Process architecture selection with case-insensitive string matching */
-		if (strfind(selection, "A", false)) /* Check for 'A' or 'a' */
+		if (strfind(selection, "A", true)) /* Check for 'A' or 'a' */
 		{
 			wg_strncpy(architecture, "arm32", sizeof(architecture));
 			wg_free(selection);
-		} else if (strfind(selection, "B", false)) { /* Check for 'B' or 'b' */
+		} else if (strfind(selection, "B", true)) { /* Check for 'B' or 'b' */
 			wg_strncpy(architecture, "arm64", sizeof(architecture));
 			wg_free(selection);
 		} else {

@@ -620,40 +620,47 @@ bool strend(const char *str, const char *suffix, bool nocase) {
 }
 
 /*
- * Finds substring in text with optional case-insensitive search.
- * Implements naive substring search with case conversion options.
- * Handles empty pattern edge case and performs character-by-character
- * comparison with case-insensitive support.
+ * Finds a substring inside a text with optional case-insensitive search.
+ * Implements a simple linear scan comparing characters one-by-one.
+ * Handles empty pattern (always matches), NULL pointers, and both
+ * case-sensitive and case-insensitive modes.
  */
-bool strfind(const char *text, const char *pattern, bool nocase) {
-		if (!text || !pattern) return false;
+bool strfind(const char *text, const char *pattern, bool nocase)
+{
+		if (!text || !pattern)
+			return false;
 
 		size_t m = strlen(pattern);
-		if (m == 0) return true; /* Empty pattern always matches */
+		if (m == 0)
+			return true; /* Empty pattern always matches */
 
 		const char *p = text;
 
 		while (*p) {
-			/* Create single-character string for first pattern char */
-			const char *pos;
-			pos = strstr(p, (const char[]){ nocase ? tolower(*pattern) : *pattern, 0 });
+			/* Compare first character */
+			char c1 = *p;
+			char c2 = *pattern;
 
-			if (!pos)
-				return false; /* First character not found */
-
-			/* Check full match at this position */
 			if (nocase) {
-				if (strncasecmp(pos, pattern, m) == 0)
-					return true;
-			} else {
-				if (memcmp(pos, pattern, m) == 0)
-					return true;
+				c1 = tolower((unsigned char)c1);
+				c2 = tolower((unsigned char)c2);
 			}
 
-			p = pos + 1; /* Continue search from next position */
+			if (c1 == c2) {
+				/* First character matches — check full pattern */
+				if (nocase) {
+					if (strncasecmp(p, pattern, m) == 0)
+						return true;
+				} else {
+					if (memcmp(p, pattern, m) == 0)
+						return true;
+				}
+			}
+
+			p++; /* Continue scanning text */
 		}
 
-		return false; /* Pattern not found */
+		return false;
 }
 
 /* Pure function attribute indicates no side effects and depends only on parameters */

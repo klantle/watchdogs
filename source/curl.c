@@ -468,9 +468,9 @@ static void update_library_environment(const char *lib_path)
         /* Detect shell type from SHELL environment variable */
         char *shell = getenv("SHELL");
         if (shell) {
-                if (strfind(shell, "zsh", false)) {
+                if (strfind(shell, "zsh", true)) {
                         shell_rc = ".zshrc";
-                } else if (strfind(shell, "bash", false)) {
+                } else if (strfind(shell, "bash", true)) {
                         shell_rc = ".bashrc";
                 }
         }
@@ -521,7 +521,7 @@ static void update_library_environment(const char *lib_path)
         }
 
         /* Update system library cache if needed */
-        if (strfind(lib_path, "/usr/", false)) {
+        if (strfind(lib_path, "/usr/", true)) {
                 int is_not_sudo = wg_run_command("sudo echo > /dev/null");
                 if (is_not_sudo == 0) {
                         wg_run_command("sudo ldconfig");
@@ -782,7 +782,7 @@ static int debug_callback(CURL *handle, curl_infotype type,
                 break;
         case CURLINFO_HEADER_IN:
                 /* Filter out common headers to reduce noise */
-                if (strfind(data, "location: ", false) || strfind(data, "content-security-policy: ", false))
+                if (strfind(data, "location: ", true) || strfind(data, "content-security-policy: ", true))
                         break;
                 printf("<= Recv header: %.*s", (int)size, data);
                 break;

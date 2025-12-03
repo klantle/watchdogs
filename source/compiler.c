@@ -250,7 +250,7 @@ int wg_run_compiler(const char *args, const char *compile_args,  const char *sec
                         if (proc_file != NULL) {
                             rewind(proc_file);
                             while (fgets(size_log, sizeof(size_log), proc_file) != NULL) {
-                                if (strfind(size_log, "error while loading shared libraries:", false)) {
+                                if (strfind(size_log, "error while loading shared libraries:", true)) {
                                     wg_printfile(".watchdogs/compiler_test.log");
                                     goto compiler_end;
                                 }
@@ -639,7 +639,7 @@ not_valid_flag_options:
 
                         if (proc_file != NULL) {
                             while (fgets(log_line, sizeof(log_line), proc_file) != NULL) {
-                                if (strfind(log_line, "backtrace", false))
+                                if (strfind(log_line, "backtrace", true))
                                     pr_color(stdout, FCOLOUR_CYAN,
                                         "~ backtrace detected - "
                                         "make sure you are using a newer version of pawncc than the one currently in use.");
@@ -1055,7 +1055,7 @@ compiler_done:
 
                             if (proc_file != NULL) {
                                 while (fgets(log_line, sizeof(log_line), proc_file) != NULL) {
-                                    if (strfind(log_line, "backtrace", false))
+                                    if (strfind(log_line, "backtrace", true))
                                         pr_color(stdout, FCOLOUR_CYAN,
                                             "~ backtrace detected - "
                                             "make sure you are using a newer version of pawncc than the one currently in use.\n");
@@ -1145,7 +1145,7 @@ ret_ptr:
                     char *platform = readline("==> ");
 
                     /* Platform-specific compiler installation */
-                    if (strfind(platform, "L", false))
+                    if (strfind(platform, "L", true))
                     {
                         int ret = wg_install_pawncc("linux");
 loop_ipcc:
@@ -1153,7 +1153,7 @@ loop_ipcc:
                         if (ret == -1 && wgconfig.wg_sel_stat != 0)
                             goto loop_ipcc;
                     }
-                    if (strfind(platform, "W", false))
+                    if (strfind(platform, "W", true))
                     {
                         int ret = wg_install_pawncc("windows");
 loop_ipcc2:
@@ -1161,7 +1161,7 @@ loop_ipcc2:
                         if (ret == -1 && wgconfig.wg_sel_stat != 0)
                             goto loop_ipcc2;
                     }
-                    if (strfind(platform, "T", false))
+                    if (strfind(platform, "T", true))
                     {
                         int ret = wg_install_pawncc("termux");
 loop_ipcc3:
@@ -1169,7 +1169,7 @@ loop_ipcc3:
                         if (ret == -1 && wgconfig.wg_sel_stat != 0)
                             goto loop_ipcc3;
                     }
-                    if (strfind(platform, "E", false)) {
+                    if (strfind(platform, "E", true)) {
                         wg_free(platform);
                         goto loop_end;
                     }

@@ -1,0 +1,13 @@
+stages:
+  - build
+  - test
+  - analyze
+
+variables:
+  CC: clang
+  CXX: clang++
+
+include:
+  - local: '.gitlab/ci/build.yml'
+  - local: '.gitlab/ci/test.yml'
+  - local: '.gitlab/ci/analyze.yml'

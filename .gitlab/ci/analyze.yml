@@ -1,0 +1,9 @@
+analyze-job:
+  stage: analyze
+  needs: ["test-job"]
+  image: ubuntu:latest
+
+  script:
+    - echo "[TASKS - INFO] Size and stats:"
+    - ls -lah watchdogs.debug
+    - size watchdogs.debug || true

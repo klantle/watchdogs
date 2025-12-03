@@ -1,24 +1,4 @@
-<!-- markdownlint-disable MD033 MD041 -->
-<div align="center">
-  <h3>
-    <a href="https://gitlab.com/mywatchdogs/watchdogs" >
-         工具链 | 辅助工具 | 快速工具 | 自由工具
-    </a>
-  </h3>
-</div>
-<div align="center">
-  <img src="https://readme-typing-svg.demolab.com?lines=Welcome!;Discord+Server:;to+get+help+and+support&font=Fira+Code&center=true&width=380&height=50&duration=4000&pause=1000" alt="Typing SVG">
-</div>
-<div align="center">
-  <a href="https://discord.gg/HrWUySYS8Z" alt="Discord" title="Discord Server">
-    <img src="https://img.shields.io/discord/819650821314052106?color=7289DA&logo=discord&logoColor=white&style=for-the-badge"/>
-  </a>
-</div>
-<!-- markdownlint-enable MD033 -->
-
-![img](https://raw.githubusercontent.com/klantle/watchdogs/refs/heads/main/__WATCH.png)
-
----
+# Watchdogs
 
 ## Page
 
@@ -26,10 +6,10 @@
 2. [Quick Installation](#quick-installation)
 3. [Platform-Specific Installation](#platform-specific-installation)
    - [Docker](#docker)
+   - [Linux](#linux-bash)
    - [Termux](#termux)
    - [MSYS2](#msys2)
-   - [Windows native](#Native)
-   - [Linux (Bash)](#linux-bash)
+   - [Windows Native](#Native)
 4. [Configuration](#configuration)
 6. [Usage Guide](#usage-guide)
 6. [Compiler Reference](#compiler-reference)
@@ -38,56 +18,33 @@
 
 ## Introduction
 
-## Wanion - A.I on Watchdogs
-![img](https://raw.githubusercontent.com/klantle/watchdogs/refs/heads/main/__WANION.png)
-
-## "Inspired from XXX"
 > This project started from my personal curiosity a few years back about why pawncc.exe always closed when opened and didn't output any GUI. That curiosity led to a simple discovery through experiments of commanding it (pawncc.exe) from behind the shell.
-> This project is built purely from our own thinking and effort, not merely by imitation. We have never claimed to be inspired by similar projects that themselves draw inspiration from others.
-
-![img](https://raw.githubusercontent.com/klantle/watchdogs/refs/heads/main/__ACTORIDE.png)
 
 ## Supported Platforms
 - [x] Linux (Debian/Ubuntu based distributions)
-- [x] Windows (via Native, MSYS2, WSL, or Docker)
-- [x] macOS (via Docker)
-- [x] Android (via Termux)
-- [x] Github Actions/VPS
-
-## Supported Architectures
-- [x] Qualcomm Snapdragon
-- [x] MediaTek  
-- [x] Intel
-- [x] AMD
-
-## Prerequisites
-- GNU Make
-- Git
-- Bash shell environment
-
-## Roadmap
-| File              | Description                                                                                           |
-| ----------------- | ----------------------------------------------------------------------------------------------------- |
-| **wd_unit**     | This is the main Watchdogs file.                                                                      |
-| **wd_util**     | This file contains utility functions for Watchdogs.                                                   |
-| **wd_hardware** | This file contains hardware-related information for Watchdogs.                                        |
-| **wd_crypto**   | This file handles cryptographic operations such as hashing, encryption, and decryption for Watchdogs. |
-| **wd_curl**     | This file manages cURL connections, file installations, and Pawncc integration for Watchdogs.         |
-| **wd_archive**  | This file handles archive management, including extraction for Watchdogs.                             |
-| **wd_compiler** | This file handles the Pawncc compiler integration for Watchdogs.                                      |
-| **wd_extra**    | This file contains additional functions for Watchdogs.                                        |
-| **wd_depends**  | This file manages dependencies for Watchdogs.                                                         |
-| **wd_package**  | This file handles the installation process for SA-MP/Open.MP and Pawncc within Watchdogs.             |
-| **wd_server**   | This file manages the SA-MP/Open.MP server operations for Watchdogs.                                  |
+- [x] Windows ([MSYS2](https://www.msys2.org/), [WSL](https://github.com/microsoft/WSL), or [Docker](https://www.docker.com/))
+- [x] macOS (via [Docker](https://www.docker.com/))
+- [x] Android (via [Termux](https://github.com/termux/termux-app/releases))
+- [x] [Virtual Private Server](https://en.wikipedia.org/wiki/Virtual_private_server)
+- [x] [Pterodactyl Egg](https://pterodactyl.io/community/config/eggs/creating_a_custom_egg.html)
+- [x] [Coder self-hosted](https://coder.com/)
+- [x] [DevPod](https://devpod.sh/)
+- [x] [GitLab CI/CD](https://docs.gitlab.com/ci/)
+- [x] [GitHub Actions](https://github.com/features/actions)
+- [x] [GitHub Codespaces](https://github.com/features/codespaces)
 
 ## Quick Installation
 
 ### One-Line Installation (Linux/Debian)
-> Non Sudo
+
+> without superuser do (sudo)
+
 ```bash
 apt update && apt install make git -y && git clone https://gitlab.com/mywatchdogs/watchdogs watch && cd watch && make init && mv watchdogs .. && cd .. && ./watchdogs
 ```
-> Sudo
+
+> with superuser do (sudo)
+
 ```bash
 sudo apt update && apt install make git -y && git clone https://gitlab.com/mywatchdogs/watchdogs watch && cd watch && make init && mv watchdogs .. && cd .. && ./watchdogs
 ```
@@ -118,16 +75,19 @@ docker run -it ubuntu
 
 #### Common Docker Commands
 ```bash
-docker ps -a                               # List all containers
-docker start <container-name>              # Start a container
-docker exec -it <container-name> /bin/bash # Enter a running container
-docker stop <container-name>               # Stop a container
-docker rm -f <container-name>              # Remove a container
+docker ps -a                               # List of any container
+docker start <container-name>              # Start the container
+docker exec -it <container-name> /bin/bash # Enter running container
+docker stop <container-name>               # Stop the container
+docker rm -f <container-name>              # Remove the container
 ```
 
-### Linux (Bash)
+### Linux
 
 #### Installation Steps
+
+> Just drag and drop.
+
 ```bash
 # 1. Update package lists
 apt update
@@ -136,7 +96,7 @@ apt update
 apt install curl make git
 
 # 3. Installing cURL cacert.pem
-curl -L -o /etc/ssl/certs/cacert.pem "https://github.com/klantle/libwatchdogs/raw/refs/heads/main/libwatchdogs/cacert.pem"
+curl -L -o /etc/ssl/certs/cacert.pem "https://github.com/klantle/libwatchdogs/raw/refs/heads/dev/libwatchdogs/cacert.pem"
 
 # 4. Clone repository
 git clone https://gitlab.com/mywatchdogs/watchdogs watch
@@ -156,6 +116,7 @@ mv -f watchdogs .. && cd .. && \
 ### Termux
 
 > We highly recommend using the Termux distribution directly from GitHub instead of the Google Play Store to ensure compatibility with the latest Termux features and to enjoy the freedom offered outside the Play Store. https://github.com/termux/termux-app/releases
+> Just drag and drop.
 
 #### Installation Steps
 ```bash
@@ -175,7 +136,7 @@ apt upgrade
 pkg install curl make git
 
 # 6. Installing cURL cacert.pem
-curl -L -o $HOME/cacert.pem "https://github.com/klantle/libwatchdogs/raw/refs/heads/main/libwatchdogs/cacert.pem"
+curl -L -o $HOME/cacert.pem "https://github.com/klantle/libwatchdogs/raw/refs/heads/dev/libwatchdogs/cacert.pem"
 
 # 7. Clone repository
 git clone https://gitlab.com/mywatchdogs/watchdogs watch
@@ -194,12 +155,11 @@ mv -f watchdogs.tmux .. && cd .. && \
 
 ### MSYS2
 
-#### Mirror Configuration (if needed)
-Edit mirror lists:
+#### More mirror list (if needed)
+Available for:
+> /etc/pacman.d/mirrorlist.mingw64 | /etc/pacman.d/mirrorlist.msys | /etc/pacman.d/mirrorlist.ucrt64
 ```bash
-nano /etc/pacman.d/mirrorlist.mingw64
-nano /etc/pacman.d/mirrorlist.msys
-nano /etc/pacman.d/mirrorlist.ucrt64
+nano /etc/pacman.d/mirrorlist.mingw64 && nano /etc/pacman.d/mirrorlist.msys && nano /etc/pacman.d/mirrorlist.ucrt64
 ```
 
 Add mirrors:
@@ -229,6 +189,7 @@ Server = https://downloads.sourceforge.net/project/msys2/REPOS/msys/$arch
 > Save and Exit: **CTRL + X & Y + ENTER**
 
 #### Installation Steps
+> Just drag and drop.
 
 ```bash
 # 1. Sync package database & Upgrade package
@@ -242,7 +203,7 @@ git clone https://gitlab.com/mywatchdogs/watchdogs watch
 
 # 4. Installing cURL cacert.pem
 mkdir C:/libwatchdogs # Create if not exist
-curl -L -o C:/libwatchdogs/cacert.pem "https://github.com/klantle/libwatchdogs/raw/refs/heads/main/libwatchdogs/cacert.pem"
+curl -L -o C:/libwatchdogs/cacert.pem "https://github.com/klantle/libwatchdogs/raw/refs/heads/dev/libwatchdogs/cacert.pem"
 
 # 5. Navigate to directory
 cd watch
@@ -295,11 +256,11 @@ cd /c/users/desktop_name/downloads/your_project
 ```
 > Download stable binary
 ```bash
-curl -L -o watchdogs.win "https://gitlab.com/-/project/75403219/uploads/4df1edcf86ae27b290f7253e09a4ba8b/watchdogs.win"
+curl -L -o watchdogs.win "https://gitlab.com/-/project/75403219/uploads/49b8a96058cdb82c5f36fdf9fb7c8481/watchdogs.win"
 ```
 > Debug Mode
 ```bash
-curl -L -o watchdogs.win "https://gitlab.com/-/project/75403219/uploads/15745d5fd0cc1c0c536cd83d2fc457c7/watchdogs.debug.win"
+curl -L -o watchdogs.win "https://gitlab.com/-/project/75403219/uploads/b5eea2bb70e45ef236fcd81a9ba4d7b0/watchdogs.debug.win"
 ```
 > Install library - under 20/MB.
 ```bash
@@ -313,25 +274,40 @@ bash -c 'if [ -d "watch" ]; then rm -rf "watch"; fi; git clone https://github.co
 
 ```toml
 [general]
+
 # Operating system type
 os = "linux"
+
 # SA-MP/Open.MP binary
 binary = "samp-server.exe"
+
 # SA-MP/Open.MP Config
 config = "server.cfg"
-# A.I (Wanion) for Watchdogs
-# api keys
+
+# SA-MP/Open.MP logs file
+logs = "server_log.txt"
+
+# A.I (Wanion) in Watchdogs
+# What is this for? These API Keys and AI Data are for querying the Gemini or Groq AI via POST requests and receiving POST-based responses (using cURL). This is intended for fast question extraction and quick answers and not to replace MS VSCode GitHub Copilot.
+# api keys/tokens
 # https://aistudio.google.com/api-keys
 # https://console.groq.com/keys
 keys = "API_KEY"
+
 # chatbot - "gemini" "groq"
 chatbot = "gemini"
+
 # models - llama | gpt | qwen
 # groq models: https://console.groq.com/docs/models
 # gemini models: https://ai.google.dev/gemini-api/docs/models
 models = "gemini-2.5-pro"
 
+# discord webhooks - optional
+# https://support.discord.com/hc/en-us/articles/228383668-Intro-to-Webhooks
+webhooks = "DO_HERE"
+
 [compiler]
+
 # Compiler options
 option = ["-Z+", "-O2", "-d2", "-;+", "-(+", "-\\"]
 
@@ -354,6 +330,7 @@ input = "gamemodes/bare.pwn"
 output = "gamemodes/bare.amx"
 
 [depends]
+
 # Personal access tokens (classic) - https://github.com/settings/tokens
 # Access tokens to create installation dependencies,
 # to can download files from private GitHub repositories without making them public.
@@ -365,76 +342,6 @@ aio_repo = [
 ]
 ```
 
-### VS Code Integration
-1. Create folder ".vscode"
-2. Create file "tasks.json" in .vscode
-
-```json
-{
-  "version": "2.0.0",
-  "tasks": [
-    {
-      "label": "watchdogs",
-      "type": "shell",
-      "command": "${workspaceRoot}/watchdogs",
-      "group": {
-        "kind": "build",
-        "isDefault": true
-      }
-    }
-  ]
-}
-```
-For Windows native:
-```json
-{
-  "version": "2.0.0",
-  "tasks": [
-    {
-      "label": "watchdogs",
-      "type": "shell",
-      "command": "${workspaceRoot}/run-native.bat",
-      "group": {
-        "kind": "build",
-        "isDefault": true
-      }
-    }
-  ]
-}
-```
-
-### Sublime Text
-> ANSI (Optional) https://github.com/aziz/SublimeANSI
-1. Go to Tools > Build System > New Build System
-2. Replace the code with:
-> (FYI): You cannot run watchdogs without args (inline command) because in Sublime Text, it is not possible to run shell I/O processes simultaneously with terminal linkup like in cmd.exe or powershell.exe in VSCode.
-
-> Windows native
-```json
-{
-  "cmd": ["path/to/run-native.bat", "arg1", "arg2"]
-}
-```
-```json
-{
-  "cmd": ["C:///", "compile", "bare.pwn"]
-}
-```
-> Linux
-```json
-{
-  "cmd": ["path/to/watchdogs", "arg1", "arg2"]
-}
-```
-```json
-{
-  "cmd": ["/home///", "compile", "bare.pwn"]
-}
-```
-
-3. Save - **CTRL + S**
-4. Run: **CTRL + SHIFT & B**
-
 ## Usage Guide
 
 ### Basic Operations
@@ -443,69 +350,63 @@ Get help:
 ```yaml
 Usage: help | help [<command>]
 ```
-Watchdogs also directly supports running commands when executing the program and, of course, supports running commands with arguments like
+
+> Watchdogs also directly supports running commands when executing the program and, of course, supports running commands with arguments like
+
 ```yaml
 ./watchdogs help
+./watchdogs whoami
 ./watchdogs help compile
-./watcdhgos compile main.pwn
+./watchdogs compile main.pwn
+```
+
+### Downloading Our Links
+
+> This can be used to install any archive. In this case, it is very advantageous for easily accessing gamemodes, only requiring a third party as an archive provider to serve as the link. Only zip/tar/tar.gz for extracting.
+
+```yaml
+download https://host/name/
+download https://github.com/klantle/watchdogs/archive/refs/heads/dev.zip
+```
+
+### Upload/Send Our Files
+
+> What is this for? This is intended to send your file to a Discord channel using cURL, via Discord Webhooks, to a specific channel listed under `[general]` with the key `webhooks`.
+
+```yaml
+send myfiles.amx
+send myfiles.tar.gz
 ```
 
 ### Compilation Commands
 
-**Compile default gamemode:**
-```bash
+```yaml
+# Default Compile
 compile .
-```
-
-**Compile specific file:**
-```bash
+# Compile with specific file path
 compile yourmode.pwn
-```
-
-**Compile with specific path:**
-```bash
-compile path/to/yourmode
-```
-
-**Compile specific options:**
-> Extend compiler detail & cause
-```bash
+compile path/to/yourmode.pwn
+# Compile with specific options
+## Compiler Detailed
+compile . --detailed
+## or
 compile . --watchdogs
-compile path/to/yourmode --watchdogs
-```
-> Clean '.amx' after compile
-```bash
+# Remove '.amx' (output) after compile
 compile . --clean
-compile path/to/yourmode --clean
-```
-> Options '-d2' Debugging Mode
-```bash
+# Debugging mode (-d2 wraps flag)
 compile . --debug
-compile path/to/yourmode --debug
-```
-> Options '-a' - assembler output
-```bash
+# Assembler Output (-a wraps flag)
 compile . --assembler
-compile path/to/yourmode --assembler
-```
-> Options '-R+' detailed recursion report with call chains
-```bash
+# Recursion report (-R+ wraps flag)
 compile . --recursion
-compile path/to/yourmode --recursion
-```
-> Options '-C+' compact encoding for output file
-```bash
-compile . --encoding
-compile path/to/yourmode --encoding
-```
-> Option '-v2' verbosity level - verbose
-```bash
-compile . --verbose
-compile path/to/yourmode --verbose
+# Encoding compact (-C+ wraps flag)
+compile . --compact
+# Verbosity level (-v2 wraps flag)
+compile . --prolix
 ```
 
-- Can combined
-```bash
+> Combined support
+```yaml
 compile . --opt1 --opt2 --opt3 --opt4
 compile path/to/yourmode --opt1 --opt2 --opt3 --opt4
 ```
@@ -513,28 +414,70 @@ compile path/to/yourmode --opt1 --opt2 --opt3 --opt4
 ### Server Management
 
 * **Algorithm**
+```
+--------------------     --------------------------
+|                  |     |                        |
+|       ARGS       | --> |        FILTERING       |                -
+|                  |     |                        |
+--------------------     --------------------------
+                                     |
+                                     v
+---------------------    --------------------------
+|                   |    |                        |
+|  LOGGING OUTPUT   |    |   EXIST FILE VALIDATE  |                -
+|                   |    |                        |
+---------------------    --------------------------
+         ^                           |
+         |                           v
+--------------------     --------------------------
+|                  |     |                        |
+|  RUNNING BINARY  | <-- |     EDITING CONFIG     |                -
+|                  |     |    if args not null    |
+--------------------     --------------------------
+```
 <br>It operates as usual by running the samp-server or open.mp server binary according to its default name in watchdogs.toml.
   In the `[<args>]` section, how it works is by modifying the `gamemode0` parameter in server.cfg for SA-MP or the `main_scripts` parameter in config.json for Open.MP.
 <br>
 
 **Start server with default gamemode:**
-```bash
+```yaml
 running .
 ```
 
 **Start server with specific gamemode:**
-```bash
+```yaml
 running yourmode
 ```
 
 **Compile and start in one command:**
-```bash
+```yaml
 compiles
 ```
 
 ### Dependency Management
 
 * **Algorithm**
+```
+--------------------     --------------------------
+|                  |     |                        |
+|     BASE URL     | --> |      URL CHECKING      |                -
+|                  |     |                        |
+--------------------     --------------------------
+                                    |
+                                    v
+---------------------    --------------------------
+|                   |    |                        |
+|     APPLYING      |    |  PATTERNS - FILTERING  |                -
+|                   |    |                        |
+---------------------    --------------------------
+         ^                          |
+         |                          v
+--------------------     --------------------------
+|                  |     |                        |
+|  FILES CHECKING  | <-- |       INSTALLING       |                -
+|                  |     |                        |
+--------------------     --------------------------
+```
 <br>You no longer need to use regex just to detect files available in the tag you provided as a depends link. The existing files will now be automatically detected through HTML web interaction by watchdogs-depends, which scans for available files from the fallback URL `user/repo:tag`. Additionally, if you are in a Windows watchdogs environment, it will automatically search for and target only archives containing “windows” in their name - and do the opposite for Linux.
 <br><br>
 Serves as an assistant for installing various files required by SA-MP/Open.MP. When installing dependencies that contain a `plugins/` folder and include files, it will install them into the `plugins/` and `/pawno-qawno/include` directories, respectively. It also handles gamemode components (root watchdogs). Watchdogs will automatically add the include names to the gamemode based on the main gamemode filename specified in the `input` key within `watchdogs.toml`. Furthermore, Watchdogs assists in installing the plugin names and their respective formats into `config.json` (from watchdogs.toml) - (for Open.MP) or `server.cfg` (from watchdogs.toml) - (for SA-MP). Note that the `components/` directory is not required for Open.MP.
@@ -544,31 +487,26 @@ For plugin files located in the root directory of the dependency archive (for bo
 The handling of YSI includes differs due to their structure containing multiple nested folders of include files. In this case, the entire folder containing these includes is moved directly to the target path (e.g., `pawno/include` or `qawno/include`), streamlining the process.
 <br>
 
-![img](https://raw.githubusercontent.com/klantle/watchdogs/refs/heads/main/__DEPS.png)
+![img](https://raw.githubusercontent.com/klantle/watchdogs/refs/heads/dev/__DEPS.png)
 
 **Install dependencies from `watchdogs.toml`:**
-```bash
-install
+```yaml
+install .
 ```
 
 **Install specific repository:**
-```bash
+```yaml
 install repo/user
 ```
 
 **Install specific version (tags):**
-```bash
+```yaml
 install repo/user:v1.1
-```
-
-**Install specific branch:**
-```bash
-install --branch main repo/user:v1.1
 ```
 
 ### Make Commands Reference
 
-```bash
+```yaml
 make                # Install libraries and build
 make linux          # Build for Linux
 make windows        # Build for Windows
@@ -579,12 +517,103 @@ make debug-termux   # Build with debug mode (Termux)
 make windows-debug  # Build with debug mode (Windows)
 ```
 
-### XTerm Usage
+### GNU Debugger (GDB)
 
-```bash
-xterm -hold -e ./watchdogs          # Linux
-xterm -hold -e ./watchdogs.win      # Windows  
-xterm -hold -e ./watchdogs.tmux     # Termux
+> I always recommend running your program in debug build when using GDB.
+
+```yaml
+# Step 1 - Start the debugger (GDB) with your program
+# Choose the correct executable depending on your platform:
+gdb ./watchdogs.debug        # For Linux
+gdb ./watchdogs.debug.tmux   # For Termux (Android - Termux)
+gdb ./watchdogs.debug.win    # For Windows (if using GDB on Windows)
+
+# Step 2 - Run the program inside GDB
+# This starts the program under the debugger’s control.
+run                           # Simply type 'run' and press Enter
+
+# Step 3 - Handling crashes or interruptions
+# If the program crashes (e.g., segmentation fault) or you manually interrupt it (Ctrl+C),
+# GDB will pause execution and show a prompt.
+
+# Step 4 - Inspect the state of the program with a backtrace
+# A backtrace shows the function call stack at the point of the crash.
+bt           # Basic backtrace (shows function names)
+bt full      # Full backtrace (shows function names, variables, and arguments)
+```
+
+> Comparing
+- without debug build
+```js
+Thread 1 "watchdogs" received signal SIGSEGV, Segmentation fault.
+Download failed: Invalid argument.  Continuing without source file ./string/../sysdeps/x86_64/multiarch/memmove-vec-unaligned-erms.S.
+__memcpy_avx_unaligned_erms () at ../sysdeps/x86_64/multiarch/memmove-vec-unaligned-erms.S:660
+warning: 660    ../sysdeps/x86_64/multiarch/memmove-vec-unaligned-erms.S: No such file or directory
+(gdb) bt
+#0  __memcpy_avx_unaligned_erms () at ../sysdeps/x86_64/multiarch/memmove-vec-unaligned-erms.S:660
+#1  0x000055555555c53c in write_callbacks ()
+#2  0x00007ffff7f5741c in ?? () from /lib/x86_64-linux-gnu/libcurl.so.4
+#3  0x00007ffff7f557f8 in ?? () from /lib/x86_64-linux-gnu/libcurl.so.4
+#4  0x00007ffff7f6c4b5 in ?? () from /lib/x86_64-linux-gnu/libcurl.so.4
+#5  0x00007ffff7f50fb3 in ?? () from /lib/x86_64-linux-gnu/libcurl.so.4
+#6  0x00007ffff7f540e5 in curl_multi_perform () from /lib/x86_64-linux-gnu/libcurl.so.4
+#7  0x00007ffff7f243ab in curl_easy_perform () from /lib/x86_64-linux-gnu/libcurl.so.4
+#8  0x0000555555564883 in dep_http_get_content ()
+#9  0x00005555555677bb in wg_install_depends ()
+#10 0x0000555555561061 in __command__ ()
+#11 0x000055555556177c in chain_goto_main ()
+#12 0x000055555555b67d in main ()
+(gdb) bt full
+#0  __memcpy_avx_unaligned_erms () at ../sysdeps/x86_64/multiarch/memmove-vec-unaligned-erms.S:660
+No locals.
+#1  0x000055555555c53c in write_callbacks ()
+No symbol table info available.
+#2  0x00007ffff7f5741c in ?? () from /lib/x86_64-linux-gnu/libcurl.so.4
+No symbol table info available.
+#3  0x00007ffff7f557f8 in ?? () from /lib/x86_64-linux-gnu/libcurl.so.4
+No symbol table info available.
+#4  0x00007ffff7f6c4b5 in ?? () from /lib/x86_64-linux-gnu/libcurl.so.4
+No symbol table info available.
+#5  0x00007ffff7f50fb3 in ?? () from /lib/x86_64-linux-gnu/libcurl.so.4
+No symbol table info available.
+#6  0x00007ffff7f540e5 in curl_multi_perform () from /lib/x86_64-linux-gnu/libcurl.so.4
+No symbol table info available.
+#7  0x00007ffff7f243ab in curl_easy_perform () from /lib/x86_64-linux-gnu/libcurl.so.4
+No symbol table info available.
+#8  0x0000555555564883 in dep_http_get_content ()
+No symbol table info available.
+#9  0x00005555555677bb in wg_install_depends ()
+No symbol table info available.
+#10 0x0000555555561061 in __command__ ()
+No symbol table info available.
+--Type <RET> for more, q to quit, c to continue without paging--exit
+#11 0x000055555556177c in chain_goto_main ()
+No symbol table info available.
+#12 0x000055555555b67d in main ()
+No symbol table info available.
+```
+- with debug build
+```js
+Thread 1 "watchdogs.debug" received signal SIGSEGV, Segmentation fault.
+__memcpy_avx_unaligned_erms () at ../sysdeps/x86_64/multiarch/memmove-vec-unaligned-erms.S:660
+warning: 660    ../sysdeps/x86_64/multiarch/memmove-vec-unaligned-erms.S: No such file or directory
+(gdb) bt
+#0  __memcpy_avx_unaligned_erms () at ../sysdeps/x86_64/multiarch/memmove-vec-unaligned-erms.S:660
+#1  0x000055555555cd09 in write_callbacks (ptr=0x55555572e685, size=1, nmemb=8501, userdata=0x7fffffff5a80) at source/curl.c:210
+#2  0x00007ffff7f5741c in ?? () from /lib/x86_64-linux-gnu/libcurl.so.4
+#3  0x00007ffff7f557f8 in ?? () from /lib/x86_64-linux-gnu/libcurl.so.4
+#4  0x00007ffff7f6c4b5 in ?? () from /lib/x86_64-linux-gnu/libcurl.so.4
+#5  0x00007ffff7f50fb3 in ?? () from /lib/x86_64-linux-gnu/libcurl.so.4
+#6  0x00007ffff7f540e5 in curl_multi_perform () from /lib/x86_64-linux-gnu/libcurl.so.4
+#7  0x00007ffff7f243ab in curl_easy_perform () from /lib/x86_64-linux-gnu/libcurl.so.4
+#8  0x00005555555698dd in dep_http_get_content (url=0x7fffffff5d00 "https://api.github.com/repos/Y-Less/sscanf/releases/latest", github_token=0x5555556cbf40 "DO_HERE", out_html=0x7fffffff5ce0)
+    at source/depends.c:176
+#9  0x000055555556ac71 in dep_gh_latest_tag (user=0x7fffffff6230 "Y-Less", repo=0x7fffffff62b0 "sscanf", out_tag=0x7fffffff5fe0 "", deps_put_size=128) at source/depends.c:535
+#10 0x000055555556af65 in dep_handle_repo (dep_repo_info=0x7fffffff61d0, deps_put_url=0x7fffffff66e0 "\001", deps_put_size=1024) at source/depends.c:588
+#11 0x000055555556e317 in wg_install_depends (depends_string=0x5555557135f0 "Y-Less/sscanf:latest samp-incognito/samp-streamer-plugin:latest") at source/depends.c:1627
+#12 0x00005555555611d3 in __command__ (chain_pre_command=0x0) at source/units.c:517
+#13 0x0000555555564c64 in chain_goto_main (chain_pre_command=0x0) at source/units.c:1602
+#14 0x0000555555564f67 in main (argc=1, argv=0x7fffffffcf48) at source/units.c:1666
 ```
 
 ### Command Aliases
@@ -598,51 +627,63 @@ Default (if in root directory):
 ```bash
 alias watch='./watchdogs'
 ```
-
 ## Compiler Reference
 
-* **Historical Background of Pawn Code**  
-Pawn originated in the early 1990s as a small, fast, and embeddable scripting language developed by **ITB CompuPhase**, primarily by **Frank Peelen** and **Johan Bosman**. Its design was inspired by C but with simpler syntax and a lightweight virtual machine that executes *Abstract Machine eXecutable (.amx)* bytecode.  
-Initially called **Small**, the language evolved into **Pawn** around 1998, when it became part of CompuPhase’s toolset for embedded systems and game engines. Its purpose was to allow rapid scripting within constrained environments, where resources like memory and processing power were limited.  
-Later, the **SA-MP (San Andreas Multiplayer)** community adopted Pawn as its scripting backbone due to its lightweight structure and flexibility. Over time, community forks like **PawnCC (PCC)** emerged to modernize the compiler, add better platform support (Windows/Linux/macOS), UTF-8 encoding, path handling, and maintain active development after CompuPhase’s version became static.
-<br>
+### Historical Background of Pawn Code
 
-* **Pawncc/PawnCC/Pawn Code/Pawno/Qawno**
-<br>Pawncc is essentially an extension for converting .pwn files into .amx files (a converter). The primary language for SA-MP/Open.MP is [Pawn Code](https://www.compuphase.com/pawn/pawn.htm), and pawno/qawno are Pawn Editors designed to facilitate the integration of Pawncc itself. PawnCC refers to a modified version of Pawncc from pawn-lang - https://github.com/pawn-lang/compiler, which means Pawn Community Compiler (PawnCC or PCC).
-<br>
+Pawn is a scripting language system consisting of a compiler and an abstract machine for building and running programs in the Pawn language. The Pawn system is copyright (c) ITB CompuPhase, 1997-2017.
 
-* **Path Separator**
-<br>You need the -Z+ option if it exists to support specific paths with `\` on Linux and `/` on Windows for cross-platform compatibility. https://github.com/pawn-lang/compiler/wiki/Compatibility-mode
-<br>
+This work is based in part on the "Small C Compiler" by Ron Cain and James E. Hendrix, as published in the book "Dr. Dobb's Toolbook of C", Brady Books, 1986.
 
-* **Include Path**
-<br>There may be instances where the -i"path/" option does not reliably detect include files located in subdirectories within the specified path. To address this, Watchdogs implements its own detection mechanism to recursively scan and add all folders within pawno-qawno/include and gamemodes/.
-<br>By default, Watchdogs disables the automatic `-i` flag for folders under `gamemodes/` or `pawno-qawno/include/` because the compiler can still handle includes correctly even if the flag is not explicitly set. Users can manually enable it by adding a trailing / to the target folder, allowing the compiler to automatically include all subdirectories under that path.
-<br><br>
+**Key Contributors:**
+- Ron Cain and James E. Hendrix: Original Small C Compiler (public domain)
+- Marc Peter: Assembler abstract machine and JIT compiler (BSD-style license)
+- G.W.M. Vissers: NASM port of JIT for Linux/Unix
+- Hongli Lai: Binreloc module (public domain)
+- Aaron Voisine: ezXML library (MIT license)
+- David "Bailopan" Anderson: Bug fixes and memory file module
+- Greg Garner: C++ compilation and floating-point support
+- Dieter Neubauer: 16-bit version support
+- Robert Daniels: ucLinux and Big Endian portability
+- Frank Condello: macOS (CFM Carbon) port
+
+### Pawncc, Pawno, and Qawno
+
+**Pawncc** is a compiler that converts `.pwn` files into `.amx` files. The primary language for SA-MP/Open.MP is [Pawn Code](https://www.compuphase.com/pawn/pawn.htm), with **Pawno** and **Qawno** serving as integrated development editors.
+
+**PawnCC** (Pawn Community Compiler) refers to a community-maintained version available at https://github.com/pawn-lang/compiler.
+
+### Path Separator Compatibility
+
+Use the `-Z+` option to support cross-platform paths with `\` on Linux and `/` on Windows. See [Compatibility mode](https://github.com/pawn-lang/compiler/wiki/Compatibility-mode) for details.
+
+### Include Path Detection
+
+Watchdogs implements recursive detection for include files in subdirectories, as the `-i` flag may not reliably detect nested includes. By default, automatic `-i` flags are disabled for `gamemodes/` and `pawno-qawno/include/` since the compiler handles includes correctly without them. To enable recursive inclusion, append `/` to the target folder path.
+
 
 ### Example Usage
 
-```bash
+```yaml
 pawncc "input" -o"output.amx" -i"include/"
 ```
 
 ### VSCode Tasks
-
 ```json
 {
   "version": "2.0.0",
   "tasks": [
     {
-      "label": "Compile Pawn Script",
+      "label": "compiler tasks",
       "type": "shell",
       "command": "${workspaceFolder}/pawno/pawncc.exe",
       "args": [
         "${file}",
         "-o${fileDirname}/${fileBasenameNoExtension}.amx",
-        "-ipawno/include/",
-        "-igamemodes/",
-        "-iinclude/",
-        "-d2"
+        "-i pawno/include/",
+        "-i gamemodes/",
+        "-i include/",
+        "-d 2"
       ],
       "group": {
         "kind": "build",

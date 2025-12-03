@@ -1,0 +1,30 @@
+build-job:
+  stage: build
+  image: ubuntu:latest
+
+  before_script:
+    - export DEBIAN_FRONTEND=noninteractive
+    - apt-get update -y
+    - apt-get install -y --no-install-recommends \
+        build-essential \
+        procps \
+        clang \
+        lld \
+        make \
+        libssl-dev \
+        libcurl4-openssl-dev \
+        libncursesw5-dev \
+        libreadline-dev \
+        libarchive-dev \
+        zlib1g-dev \
+        libonig-dev
+
+  script:
+    - echo "[TASKS - BUILD] Compiling with debug flags..."
+    - make debug
+    - file watchdogs.debug
+
+  artifacts:
+    paths:
+      - watchdogs.debug
+    expire_in: 1 week

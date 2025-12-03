@@ -14,7 +14,7 @@ BEGIN
         BLOCK "040904b0"
         BEGIN
             VALUE "CompanyName", "Watchdogs"
-            VALUE "FileDescription", "~Watchdogs"
+            VALUE "FileDescription", "A Toolchain"
             VALUE "FileVersion", "25.11.01.0"
             VALUE "InternalName", "watchdogs"
             VALUE "ProductName", "Watchdogs"

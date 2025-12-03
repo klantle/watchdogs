@@ -1,0 +1,12 @@
+{
+    "files.associations": {
+        "history.h": "c",
+        "units.h": "c",
+        "array": "c",
+        "string_view": "c",
+        "initializer_list": "c",
+        "types.h": "c",
+        "system_error": "c",
+        "random": "c"
+    }
+}

@@ -1,0 +1,63 @@
+name: C/C++ CI
+
+on:
+  push:
+    branches: [ "main" ]
+  pull_request:
+    branches: [ "main" ]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    env:
+      CC: clang
+      CXX: clang++
+
+    steps:
+    - uses: actions/checkout@v4
+      with:
+        fetch-depth: 1
+
+    - name: Install build dependencies
+      run: |
+        export DEBIAN_FRONTEND=noninteractive
+        sudo apt-get update -y
+        sudo apt-get install -y --no-install-recommends \
+          build-essential \
+          procps \
+          clang \
+          lld \
+          make \
+          libssl-dev \
+          libcurl4-openssl-dev \
+          libncursesw5-dev \
+          libreadline-dev \
+          libarchive-dev \
+          zlib1g-dev \
+          libonig-dev
+        sudo apt-get autoremove -y
+        sudo apt-get clean
+
+    - name: Build project (Debug configuration)
+      run: |
+        echo "[TASKS - BUILD] RUNNING DEBUG BUILD"
+        make debug
+        echo "[TASKS - BUILD] BUILD FILE DETAILS"
+        file watchdogs.debug
+
+    - name: Execute test suite and validation
+      run: |
+        echo "[TASKS - BUILD] TESTING HELP COMMAND"
+        ./watchdogs.debug help
+        echo "[TASKS - BUILD] TESTING WATCHDOGS COMMAND"
+        ./watchdogs.debug watchdogs
+        echo "[TASKS - BUILD] CHECKING BINARY DEPENDENCIES"
+        ldd watchdogs.debug || true
+        exit 0
+
+    - name: Build artifact analysis
+      run: |
+        echo "[TASKS - BUILD] ARTIFACT STATISTICS"
+        ls -la watchdogs.debug
+        size watchdogs.debug || true
+        echo "[TASKS - BUILD] BUILD COMPLETED SUCCESSFULLY"

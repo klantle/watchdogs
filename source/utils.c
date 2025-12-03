@@ -55,18 +55,18 @@ ssize_t sendfile(int out_fd,
 #include "crypto.h"
 
 const char* __command[] = {
-		"help",       "exit",      "kill",      "title",     "sha256",
-		"crc32",      "djb2",      "time",      "config",    "download",
-		"replicate",  "hardware",  "gamemode",  "pawncc",    "log",
-		"compile",    "running",   "compiles",  "stop",      "restart",
-		"wanion",     "tracker",   "send",      "ls",        "ping",
-		"clear",      "nslookup",  "netstat",   "ipconfig",  "uname",
-		"hostname",   "whoami",    "arp",       "route",     "df",
-		"du",         "ps",        "top",       "free",      "uptime",
-		"date",       "cal",       "bc",        "dd",        "telnet",
-		"ssh",        "curl",      "wget",      "git",       "zip",
-		"unzip",      "tar",       "7z",        "rar",       "md5sum",
-		"sha1sum",    "sha256sum", "sha512sum", "djb2sum"
+		"help",       "exit",      "kill",       "title",     "sha256",
+		"crc32",      "djb2",      "time",       "config",    "download",
+		"replicate",  "hardware",  "gamemode",   "pawncc",    "log",
+		"compile",    "running",   "compiles",   "stop",      "restart",
+		"wanion",     "tracker",   "compress",   "send",      "ls",
+		"ping",       "clear",     "nslookup",   "netstat",   "ipconfig",
+		"uname",      "hostname",  "whoami",     "arp",       "route",
+		"df",         "du",        "ps",         "top",       "free",
+		"uptime",     "date",      "cal",        "bc",        "dd",
+		"telnet",     "ssh",       "curl",       "wget",      "git",
+		"zip",        "unzip",     "tar",        "7z",        "rar",
+		"md5sum",     "sha1sum",   "sha256sum",  "sha512sum", "djb2sum"
 };
 
 const size_t
@@ -804,18 +804,18 @@ void wg_escape_quotes(char *dest, size_t size, const char *src)
  * in entry name. Ensures no duplicate separators and null-terminates result.
  */
 void __set_path_sep(char *out, size_t out_sz,
-					const char *dir, const char *entry_name)
+					const char *open_dir, const char *entry_name)
 {
-	    if (!out || out_sz == 0 || !dir || !entry_name) return;
+	    if (!out || out_sz == 0 || !open_dir || !entry_name) return;
     
 	    size_t dir_len;
 	    int dir_has_sep, has_led_sep;
 	    size_t entry_len = strlen(entry_name);
 
-		dir_len = strlen(dir);
+		dir_len = strlen(open_dir);
 		/* Check if directory ends with separator */
 		dir_has_sep = (dir_len > 0 &&
-					   IS_PATH_SEP(dir[dir_len - 1]));
+					   IS_PATH_SEP(open_dir[dir_len - 1]));
 		/* Check if entry starts with separator */
 		has_led_sep = IS_PATH_SEP(entry_name[0]);
 
@@ -831,15 +831,15 @@ void __set_path_sep(char *out, size_t out_sz,
 		if (dir_has_sep) {
 				if (has_led_sep)
 					/* Directory has sep, entry has sep: remove one */
-					snprintf(out, out_sz, "%s%s", dir, entry_name + 1);
-				else snprintf(out, out_sz, "%s%s", dir, entry_name);
+					snprintf(out, out_sz, "%s%s", open_dir, entry_name + 1);
+				else snprintf(out, out_sz, "%s%s", open_dir, entry_name);
 		} else {
 				if (has_led_sep)
-					/* No sep in dir, sep in entry: use as-is */
-					snprintf(out, out_sz, "%s%s", dir, entry_name);
+					/* No sep in open_dir, sep in entry: use as-is */
+					snprintf(out, out_sz, "%s%s", open_dir, entry_name);
 				else
 					/* No seps: add separator between */
-					snprintf(out, out_sz, "%s%s%s", dir, __PATH_SEP, entry_name);
+					snprintf(out, out_sz, "%s%s%s", open_dir, __PATH_SEP, entry_name);
 		}
 
 		out[out_sz - 1] = '\0'; /* Ensure null termination */
@@ -1255,16 +1255,16 @@ int wg_sef_fdir(const char *sef_path,
 		FindClose(find_handle);
 #else
 		/* Unix implementation using opendir/readdir */
-		DIR *dir;
+		DIR *open_dir;
 		struct dirent *item;
 		struct stat statbuf;
 		const char *entry_name;
 
-		dir = opendir(sef_path);
-		if (!dir)
+		open_dir = opendir(sef_path);
+		if (!open_dir)
 			return 0; /* Can't open directory */
 
-		while ((item = readdir(dir)) != NULL) {
+		while ((item = readdir(open_dir)) != NULL) {
 			entry_name = item->d_name;
 			if (wg_is_special_dir(entry_name))
 				continue; /* Skip "." and ".." */
@@ -1277,13 +1277,13 @@ int wg_sef_fdir(const char *sef_path,
 					continue;
 				/* Recursive search */
 				if (wg_sef_fdir(size_path, sef_name, ignore_dir)) {
-						closedir(dir);
+						closedir(open_dir);
 					return 1;
 				}
 			} else if (item->d_type == DT_REG) { /* Regular file */
 				if (wg_match_filename(entry_name, sef_name)) {
 					wg_add_found_path(size_path);
-					closedir(dir);
+					closedir(open_dir);
 					return 1;
 				}
 			} else {
@@ -1295,20 +1295,20 @@ int wg_sef_fdir(const char *sef_path,
 					if (wg_fetch_ignore_dir(entry_name, ignore_dir))
 						continue;
 					if (wg_sef_fdir(size_path, sef_name, ignore_dir)) {
-						closedir(dir);
+						closedir(open_dir);
 						return 1;
 					}
 				} else if (S_ISREG(statbuf.st_mode)) { /* Actually a regular file */
 					if (wg_match_filename(entry_name, sef_name)) {
 						wg_add_found_path(size_path);
-						closedir(dir);
+						closedir(open_dir);
 						return 1;
 					}
 				}
 			}
 		}
 
-		closedir(dir);
+		closedir(open_dir);
 #endif
 
 		return 0; /* Not found in this directory */
@@ -1493,15 +1493,15 @@ static void __toml_base_subdirs(const char *base_path,
 		FindClose(find_handle);
 #else
 		/* Unix directory enumeration */
-		DIR *dir;
+		DIR *open_dir;
 		struct dirent *item;
 		char fp[WG_MAX_PATH * 4];
 
-		dir = opendir(base_path);
-		if (!dir)
+		open_dir = opendir(base_path);
+		if (!open_dir)
 			return;
 
-		while ((item = readdir(dir)) != NULL) {
+		while ((item = readdir(open_dir)) != NULL) {
 				if (item->d_type == DT_DIR) { /* Directory entry */
 					if (wg_is_special_dir(item->d_name))
 						continue;
@@ -1521,7 +1521,7 @@ static void __toml_base_subdirs(const char *base_path,
 				}
 		}
 
-		closedir(dir);
+		closedir(open_dir);
 #endif
 }
 
@@ -1936,11 +1936,11 @@ static int __wg_sef_safety(const char *c_src, const char *c_dest)
 				pr_info(stdout, "source and dest are the same file: %s", c_src);
 		/* Parent directory validation */
 		if (ensure_parent_dir(parent, sizeof(parent), c_dest))
-				pr_error(stdout, "cannot determine parent dir of dest");
+				pr_error(stdout, "cannot determine parent open_dir of dest");
 		if (stat(parent, &st))
-				pr_error(stdout, "destination dir does not exist: %s", parent);
+				pr_error(stdout, "destination open_dir does not exist: %s", parent);
 		if (!S_ISDIR(st.st_mode))
-				pr_error(stdout, "destination parent is not a dir: %s", parent);
+				pr_error(stdout, "destination parent is not a open_dir: %s", parent);
 
 		return 1; /* All checks passed */
 }

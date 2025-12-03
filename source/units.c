@@ -227,49 +227,51 @@ _reexecute_command:
                     }
                 }
             } else if (strcmp(args, "exit") == 0) { 
-                println(stdout, "exit: exit from watchdogs. | Usage: \"exit\"\n     Just type 'exit' and you're outta here!");
+                println(stdout, "exit: exit from watchdogs. | Usage: \"exit\"\n\tJust type 'exit' and you're outta here!");
             } else if (strcmp(args, "kill") == 0) { 
-                println(stdout, "kill: refresh terminal watchdogs. | Usage: \"kill\"\n     When things get stuck or buggy, this is your fix!");
+                println(stdout, "kill: refresh terminal watchdogs. | Usage: \"kill\"\n\tWhen things get stuck or buggy, this is your fix!");
             } else if (strcmp(args, "title") == 0) { 
-                println(stdout, "title: set-title terminal watchdogs. | Usage: \"title\" | [<args>]\n     Personalize your terminal window title.");
+                println(stdout, "title: set-title terminal watchdogs. | Usage: \"title\" | [<args>]\n\tPersonalize your terminal window title.");
             } else if (strcmp(args, "sha256") == 0) { 
-                println(stdout, "sha256: generate sha256. | Usage: \"sha256\" | [<args>]\n     Get that SHA256 hash for your files or text.");
+                println(stdout, "sha256: generate sha256. | Usage: \"sha256\" | [<args>]\n\tGet that SHA256 hash for your files or text.");
             } else if (strcmp(args, "crc32") == 0) { 
-                println(stdout, "crc32: generate crc32. | Usage: \"crc32\" | [<args>]\n     Quick CRC32 checksum generation.");
+                println(stdout, "crc32: generate crc32. | Usage: \"crc32\" | [<args>]\n\tQuick CRC32 checksum generation.");
             } else if (strcmp(args, "djb2") == 0) { 
-                println(stdout, "djb2: generate djb2 hash file. | Usage: \"djb2\" | [<args>]\n     DJB2 hashing algorithm at your service.");
+                println(stdout, "djb2: generate djb2 hash file. | Usage: \"djb2\" | [<args>]\n\tDJB2 hashing algorithm at your service.");
             } else if (strcmp(args, "time") == 0) { 
-                println(stdout, "time: print current time. | Usage: \"time\"\n     What time is it? Time to check!");
+                println(stdout, "time: print current time. | Usage: \"time\"\n\tWhat time is it? Time to check!");
             } else if (strcmp(args, "config") == 0) { 
-                println(stdout, "config: re-create watchdogs.toml. Usage: \"config\"\n     Reset your config file to default settings.");
+                println(stdout, "config: re-create watchdogs.toml. Usage: \"config\"\n\tReset your config file to default settings.");
             } else if (strcmp(args, "download") == 0) {
-                println(stdout, "download: fetch file from URL | Usage: \"download\" | [<args>]\n     Downloads archives from direct links.");
+                println(stdout, "download: fetch file from URL | Usage: \"download\" | [<args>]\n\tDownloads archives from direct links.");
             } else if (strcmp(args, "hardware") == 0) { 
-                println(stdout, "hardware: hardware information. | Usage: \"hardware\"\n     Show off your PC specs!");
+                println(stdout, "hardware: hardware information. | Usage: \"hardware\"\n\tShow off your PC specs!");
             } else if (strcmp(args, "replicate") == 0) { 
-                println(stdout, "replicate: installer dependencies. | Usage: \"replicate\"\n     Downloads & Install Our Dependencies.");
+                println(stdout, "replicate: installer dependencies. | Usage: \"replicate\"\n\tDownloads & Install Our Dependencies.");
             } else if (strcmp(args, "gamemode") == 0) { 
-                println(stdout, "gamemode: download SA-MP gamemode. | Usage: \"gamemode\"\n     Grab some SA-MP gamemodes quickly.");
+                println(stdout, "gamemode: download SA-MP gamemode. | Usage: \"gamemode\"\n\tGrab some SA-MP gamemodes quickly.");
             } else if (strcmp(args, "pawncc") == 0) { 
-                println(stdout, "pawncc: download SA-MP pawncc. | Usage: \"pawncc\"\n     Get the Pawn compiler for SA-MP.");
+                println(stdout, "pawncc: download SA-MP pawncc. | Usage: \"pawncc\"\n\tGet the Pawn compiler for SA-MP.");
             } else if (strcmp(args, "log") == 0) { 
-                println(stdout, "log: debugging & logging server logs. | Usage: \"log\"\n     Keep an eye on your server logs.");
+                println(stdout, "log: debugging & logging server logs. | Usage: \"log\"\n\tKeep an eye on your server logs.");
             } else if (strcmp(args, "compile") == 0) { 
-                println(stdout, "compile: compile your project. | Usage: \"compile\" | [<args>]\n     Turn your code into something runnable!");
+                println(stdout, "compile: compile your project. | Usage: \"compile\" | [<args>]\n\tTurn your code into something runnable!");
             } else if (strcmp(args, "running") == 0) { 
-                println(stdout, "running: running your project. | Usage: \"running\" | [<args>]\n     Fire up your project and see it in action.");
+                println(stdout, "running: running your project. | Usage: \"running\" | [<args>]\n\tFire up your project and see it in action.");
             } else if (strcmp(args, "compiles") == 0) { 
-                println(stdout, "compiles: compile & running your project. | Usage: \"compiles\" | [<args>]\n     Two-in-one: compile then run immediately!");
+                println(stdout, "compiles: compile & running your project. | Usage: \"compiles\" | [<args>]\n\tTwo-in-one: compile then run immediately!");
             } else if (strcmp(args, "stop") == 0) { 
-                println(stdout, "stop: stopped server task. | Usage: \"stop\"\n     Halt everything! Stop your server tasks.");
+                println(stdout, "stop: stopped server task. | Usage: \"stop\"\n\tHalt everything! Stop your server tasks.");
             } else if (strcmp(args, "restart") == 0) { 
-                println(stdout, "restart: restart server task. | Usage: \"restart\"\n     Fresh start! Restart your server.");
+                println(stdout, "restart: restart server task. | Usage: \"restart\"\n\tFresh start! Restart your server.");
             } else if (strcmp(args, "wanion") == 0) { 
-                println(stdout, "wanion: ask to wanion. | Usage: \"wanion\" | [<args>] | gemini based\n     Got questions? Ask Wanion (Gemini AI powered).");
+                println(stdout, "wanion: ask to wanion. | Usage: \"wanion\" | [<args>] | gemini based\n\tGot questions? Ask Wanion (Gemini AI powered).");
             } else if (strcmp(args, "tracker") == 0) { 
-                println(stdout, "tracker: account tracking. | Usage: \"tracker\" | [<args>]\n     Track accounts across platforms.");
+                println(stdout, "tracker: account tracking. | Usage: \"tracker\" | [<args>]\n\tTrack accounts across platforms.");
+            } else if (strcmp(args, "compress") == 0) {
+                println(stdout, "compress: create a compressed archive from a file or folder. | Usage: \"compress <input> <output>\"\n\tGenerates a compressed file (e.g., .zip/.tar.gz) from the specified source.");
             } else if (strcmp(args, "send") == 0) { 
-                println(stdout, "send: send file to Discord channel via webhook. | Usage: \"send <file> <webhook_url>\"\n     Uploads a file directly to a Discord channel using a webhook.");
+                println(stdout, "send: send file to Discord channel via webhook. | Usage: \"send <file> <webhook_url>\"\n\tUploads a file directly to a Discord channel using a webhook.");
             } else {
                 printf("wg-help can't found for: '");
                 printf_colour(stdout, FCOLOUR_YELLOW, "%s", args);
@@ -1367,6 +1369,78 @@ wanion_curl_end:
                 curl_easy_cleanup(curl);
                 curl_global_cleanup();
             }
+
+            goto chain_done;
+        } else if (strncmp(ptr_command, "compress", strlen("compress")) == 0) {
+            char *args = ptr_command + strlen("compress");
+            while (*args == ' ') args++;
+
+            if (*args == '\0') {
+                printf("Usage: compress --file <input> --output <output> --type <format>\n");
+                printf("Example:\n\tcompress --file myfile.txt "
+                    "--output myarchive.zip --type zip\n\t"
+                    "compress --file myfolder/ "
+                    "--output myarchive.tar.gz --type gz\n");
+                goto chain_done;
+            }
+
+            char *raw_input = NULL, *raw_output = NULL, *raw_type = NULL;
+
+            char *fetch_args = strtok(args, " ");
+            while (fetch_args) {
+                if (strcmp(fetch_args, "--file") == 0) {
+                    fetch_args = strtok(NULL, " ");
+                    if (fetch_args) raw_input = fetch_args;
+                }
+                else if (strcmp(fetch_args, "--output") == 0) {
+                    fetch_args = strtok(NULL, " ");
+                    if (fetch_args) raw_output = fetch_args;
+                }
+                else if (strcmp(fetch_args, "--type") == 0) {
+                    fetch_args = strtok(NULL, " ");
+                    if (fetch_args) raw_type = fetch_args;
+                }
+                fetch_args = strtok(NULL, " ");
+            }
+
+            if (!raw_input || !raw_output || !raw_type) {
+                printf("Missing arguments!\n");
+                printf("Usage: compress "
+                    "--file <input> --output <output> --type <zip|tar|gz|bz2|xz>\n");
+                printf("Example:\n\tcompress --file myfile.txt "
+                    "--output myarchive.zip --type zip\n\t"
+                    "compress --file myfolder/ "
+                    "--output myarchive.tar.gz --type gz\n");
+                goto chain_done;
+            }
+
+            CompressionFormat fmt;
+
+            if (strcmp(raw_type, "zip") == 0)
+                fmt = COMPRESS_ZIP;
+            else if (strcmp(raw_type, "tar") == 0)
+                fmt = COMPRESS_TAR;
+            else if (strcmp(raw_type, "gz") == 0)
+                fmt = COMPRESS_TAR_GZ;
+            else if (strcmp(raw_type, "bz2") == 0)
+                fmt = COMPRESS_TAR_BZ2;
+            else if (strcmp(raw_type, "xz") == 0)
+                fmt = COMPRESS_TAR_XZ;
+            else {
+                printf("Unknown type: %s\n", raw_type);
+                printf("Supported: zip, tar, gz, bz2, xz\n");
+                goto chain_done;
+            }
+
+            const char
+                *fetch_items[] = { raw_input };
+
+            int ret = compress_to_archive(raw_output, fetch_items, 1, fmt);
+            if (ret == 0)
+                pr_info(stdout, "Converter file/folder "
+                    "to archive (Compression) successfully: %s\n", raw_output);
+            else
+                pr_error(stdout, "Compression failed!\n");
 
             goto chain_done;
         } else if (strncmp(ptr_command, "send", strlen("send")) == 0) {

@@ -8,6 +8,7 @@
         "types.h": "c",
         "system_error": "c",
         "random": "c",
-        "signal.h": "c"
+        "signal.h": "c",
+        "package.h": "c"
     }
 }

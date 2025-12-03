@@ -1591,7 +1591,7 @@ void wg_install_depends(const char *depends_string)
         char dep_url[1024];
         char dep_name[WG_PATH_MAX];
         const char *size_last_slash;
-        char *token;
+        char *fetch_buffer;
         int deps_count = 0;
         int i;
 
@@ -1614,10 +1614,10 @@ void wg_install_depends(const char *depends_string)
         /* Tokenize dependency string */
         snprintf(buffer, sizeof(buffer), "%s", depends_string);
 
-        token = strtok(buffer, " ");
-        while (token && deps_count < MAX_DEPENDS) {
-                depends[deps_count++] = token;
-                token = strtok(NULL, " ");
+        fetch_buffer = strtok(buffer, " ");
+        while (fetch_buffer && deps_count < MAX_DEPENDS) {
+                depends[deps_count++] = fetch_buffer;
+                fetch_buffer = strtok(NULL, " ");
         }
 
         if (!deps_count) {

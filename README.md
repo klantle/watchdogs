@@ -9,6 +9,7 @@
    - [Linux](#linux-bash)
    - [Termux](#termux)
    - [MSYS2](#msys2)
+   - [GitHub Codespaces](#codespaces)
 4. [Configuration](#configuration)
 6. [Usage Guide](#usage-guide)
 6. [Compiler Reference](#compiler-reference)
@@ -46,6 +47,126 @@ apt update && apt install make git -y && git clone https://gitlab.com/mywatchdog
 
 ```bash
 sudo apt update && apt install make git -y && git clone https://gitlab.com/mywatchdogs/watchdogs watch && cd watch && make init && mv watchdogs .. && cd .. && ./watchdogs
+```
+
+## Makefile fatal Issue
+```bash
+# ==> Detecting environment...
+# Detected Docker environment
+# Detected Linux
+# Reading package lists... Done
+# E: Could not open lock file /var/lib/apt/lists/lock - open (13: Permission denied)
+# E: Unable to lock directory /var/lib/apt/lists/
+make: *** [Makefile:67: init] Error 100
+#                        ^ [point]   ^ [point]
+# Fix: run it with elevated privileges.
+# Use:
+sudo make init
+# or:
+sudo make
+```
+
+## Known Android/Termux fatal Issue
+```bash
+## Issue 1: Termux Storage Setup on Android 11+
+# Error observed:
+# /data/data/com.termux/files/usr/bin/termux-setup-storage: line 29: 
+# 27032 Aborted am broadcast --user 0 --es com.termux.app.reload_style storage -a com.termux.app.reload_style com.termux > /dev/null
+# Cause: Android 11+ enforces scoped storage; some broadcasts fail in Termux.
+# Fix:
+pkg install termux-am
+# Optional: Update Termux manually via GitHub release APK if Play Store/F-Droid version is outdated
+# Universal APK:
+# https://github.com/termux/termux-app/releases/download/v0.118.3/termux-app_v0.118.3+github-debug_universal.apk
+# ARM64:
+# https://github.com/termux/termux-app/releases/download/v0.118.3/termux-app_v0.118.3+github-debug_arm64-v8a.apk
+# ARMv7:
+# https://github.com/termux/termux-app/releases/download/v0.118.3/termux-app_v0.118.3+github-debug_armeabi-v7a.apk
+# x86:
+# https://github.com/termux/termux-app/releases/download/v0.118.3/termux-app_v0.118.3+github-debug_x86.apk
+# x86_64:
+# https://github.com/termux/termux-app/releases/download/v0.118.3/termux-app_v0.118.3+github-debug_x86_64.apk
+# Note: If you see "there is a problem parsing the package", try using a different APK release matching your device architecture.
+
+## Issue 2: Partial package download / missing files
+# Example:
+# Could not open file /data/data/com.termux/cache/apt/archives/partial/*.deb - open (2: No such file or directory)
+# Cause: Corrupt or incomplete package cache
+# Fix:
+apt clean && apt update
+# Explanation:
+# - 'apt clean' removes cached packages, including partial downloads.
+# - 'apt update' refreshes repository metadata for fresh downloads.
+
+## Issue 3: Clearsigned file invalid / NOSPLIT error
+# Example:
+# E: Failed to fetch https://deb.kcubeterm.me/termux-main/dists/stable/InRelease  
+# Clearsigned file isn't valid, got 'NOSPLIT'
+# Cause: Repository metadata corrupted or network requires authentication
+# Fix:
+termux-change-repo
+# - Select a different mirror for main repo and x11-repo if available
+# - Run 'apt update' after switching
+# To enable X11 repo:
+pkg install x11-repo
+# Note: If installation still fails, consider using the latest Termux release from GitHub.
+
+## =========================================================
+## Additional Fix: "There is a problem parsing the package" still occurs
+## =========================================================
+# Possible causes:
+# 1. Android blocks the installer (security policy)
+# 2. OEM ROM enforces extra signature verification
+# 3. Android 12/13/14 blocks APK installation from certain sources
+# 4. Package monitor or custom ROM restrictions (e.g., MIUI, Vivo, Oppo, Samsung Knox)
+#
+# Optional bypass solutions using elevated privileges or installer tools:
+
+## Option A: Shizuku
+# - Allows certain apps to bypass package installer restrictions without root
+# Usage:
+# 1. Install Shizuku from Play Store
+# 2. Enable Wireless Debugging and start Shizuku
+# 3. Use a compatible installer app (Installer++, Shizuku Enhanced Installer)
+# 4. Try installing Termux APK again
+
+## Option B: Magisk (Root)
+# - Full root removes installer restrictions
+# - Install APK using adb or package manager:
+# adb install termux-app_v0.118.3+github-debug_arm64-v8a.apk
+# pm install -r termux.apk (on rooted device)
+
+## Option C: KingoRoot or KingRoot (One-click root)
+# - Useful for older devices without Magisk
+# - Once rooted, use a root-enabled installer:
+#   - SAI (Split APKs Installer)
+#   - Lucky Patcher Installer Mode
+# Can bypass parsing errors
+
+## Option D: Alternative installer apps
+# - Some installers bypass OEM package verification:
+#   - SAI (Split APKs Installer)
+#   - APKMirror Installer
+#   - APKPure Installer
+#   - MT Manager (Root mode)
+# Install Termux APK using one of these tools
+
+## Option E: GitHub Codespaces (Alternative Environment)
+# - If Termux installation continues to fail, you can use GitHub Codespaces in Android browser
+# - Steps:
+#   1. Go to https://github.com/features/codespaces
+#   2. Open a repository you want to work with
+#   3. Click "Code" > "Codespaces" > "Create Codespaces on main/dev"
+#   4. Choose main/dev branch and open in Browser mode
+# - This allows a lightweight Linux-like environment without installing Termux
+# - Simple usage: you can run shell, git, and code directly in the browser
+
+## Notes:
+# - Parsing errors can occur even with the correct APK if Android OEM modifies PackageParser
+# - Shizuku or root (Magisk/KingoRoot/KingRoot) may be required on restricted ROMs
+# - Always verify APK integrity via SHA256 from GitHub releases
+# - If issues persist, use a different release matching your device ABI
+# - GitHub Codespaces is a reliable fallback when local Termux installation fails
 ```
 
 ## Platform-Specific Installation
@@ -94,6 +215,26 @@ docker exec -it <container-name> /bin/bash # Enter running container
 docker stop <container-name>               # Stop the container
 docker rm -f <container-name>              # Remove the container
 ```
+
+### Codespaces
+
+> GitHub Codespaces/Codespaces Setup.
+
+1. Click the "**<> Code**" button.
+2. Select "**Codespaces**".
+3. Choose "**Create codespace on dev**" to create a new Codespace on the *dev* branch.
+4. Once the Codespace opens in the VSCode interface:
+   - Click the **three-line menu** (≡) in the top-left corner.
+   - Select **Terminal**.
+   - Click **New Terminal**.
+   - In the terminal, you can drag:
+     ```bash
+     sudo apt update && sudo apt upgrade &&
+     sudo apt install make &&
+     sudo make && make linux &&
+     chmod +x watchdogs &&
+     ./watchdogs
+     ```
 
 ### Linux
 

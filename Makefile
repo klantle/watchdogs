@@ -176,7 +176,7 @@ termux:
 windows: $(RESFILE)
 	@echo "==> LANG = $$LANG"
 	@echo "==> Building for Windows"
-	$(CC) $(CFLAGS) -I/ucrt64/include $(SRCS) $(RESFILE) -D__WINDOWS__ -o watchdogs.win $(LDFLAGS) -flto -ffunction-sections -fdata-sections -Wl,--gc-sections
+	$(CC) $(CFLAGS) -I/ucrt64/include $(SRCS) $(RESFILE) -D__WINDOWS__ -o watchdogs.win $(LDFLAGS) -ffunction-sections -fdata-sections -Wl,--gc-sections
 	@echo "==> Windows build complete"
 
 # Debug Build
@@ -186,10 +186,10 @@ debug:
 	@if [ -f "/usr/include/ncurses.h" ]; then \
 		echo "==> ncurses found, building with _NCURSES flag and debug flags"; \
 		echo "==> Running: $(CC) $(CFLAGS) -I/usr/include/ $(SRCS) -D__LINUX__ -g -O0 -D_DBG_PRINT -D_NCURSES -Wall -o watchdogs.debug $(LDFLAGS)"; \
-		$(CC) $(CFLAGS) -I/usr/include/ $(SRCS) -D__LINUX__ -g -O0 -D_DBG_PRINT -D_NCURSES -Wall -fno-omit-frame-pointer -fno-inline -flto -o watchdogs.debug $(LDFLAGS); \
+		$(CC) $(CFLAGS) -I/usr/include/ $(SRCS) -D__LINUX__ -g -O0 -D_DBG_PRINT -D_NCURSES -Wall -fno-omit-frame-pointer -fno-inline -o watchdogs.debug $(LDFLAGS); \
 	else \
 		echo "==> ncurses not found, building without _NCURSES flag and debug flags"; \
-		echo "==> Running: $(CC) $(CFLAGS) -I/usr/include/ $(SRCS) -D__LINUX__ -g -O0 -D_DBG_PRINT -Wall -fno-omit-frame-pointer -fno-inline -flto -o watchdogs.debug $(LDFLAGS)"; \
+		echo "==> Running: $(CC) $(CFLAGS) -I/usr/include/ $(SRCS) -D__LINUX__ -g -O0 -D_DBG_PRINT -Wall -fno-omit-frame-pointer -fno-inline -o watchdogs.debug $(LDFLAGS)"; \
 		$(CC) $(CFLAGS) -I/usr/include/ $(SRCS) -D__LINUX__ -g -O0 -D_DBG_PRINT -Wall -o watchdogs.debug $(LDFLAGS); \
 	fi;
 	@echo "==> Debug build complete"
@@ -200,11 +200,11 @@ termux-debug:
 	@echo "==> Building DEBUG Termux version"
 	@if [ -f "/usr/include/ncurses.h" ] || [ -f "/data/data/com.termux/files/usr/include/ncurses" ]; then \
 		echo "==> ncurses found, building with _NCURSES flag and debug flags"; \
-		echo "==> Running: $(CC) -g -O0 -Wall -fno-omit-frame-pointer -fno-inline -flto -I$$PREFIX/include -I$$PREFIX/lib -D__ANDROID__ -D_NCURSES $(SRCS) -landroid-spawn -o watchdogs.debug.tmux $(LDFLAGS)"; \
+		echo "==> Running: $(CC) -g -O0 -Wall -fno-omit-frame-pointer -fno-inline -I$$PREFIX/include -I$$PREFIX/lib -D__ANDROID__ -D_NCURSES $(SRCS) -landroid-spawn -o watchdogs.debug.tmux $(LDFLAGS)"; \
 		$(CC) -g -O0 -Wall -fno-omit-frame-pointer -fno-inline -I$$PREFIX/include -I$$PREFIX/lib -D__ANDROID__ -D_NCURSES $(SRCS) -landroid-spawn -o watchdogs.debug.tmux $(LDFLAGS); \
 	else \
 		echo "==> ncurses not found, building without _NCURSES flag and debug flags"; \
-		echo "==> Running: $(CC) -g -O0 -Wall -fno-omit-frame-pointer -fno-inline -flto -I$$PREFIX/include -I$$PREFIX/lib -D__ANDROID__ $(SRCS) -landroid-spawn -o watchdogs.debug.tmux $(LDFLAGS)"; \
+		echo "==> Running: $(CC) -g -O0 -Wall -fno-omit-frame-pointer -fno-inline -I$$PREFIX/include -I$$PREFIX/lib -D__ANDROID__ $(SRCS) -landroid-spawn -o watchdogs.debug.tmux $(LDFLAGS)"; \
 		$(CC) -g -O0 -Wall -fno-omit-frame-pointer -fno-inline -I$$PREFIX/include -I$$PREFIX/lib -D__ANDROID__ $(SRCS) -landroid-spawn -o watchdogs.debug.tmux $(LDFLAGS); \
 	fi;
 	@echo "==> Termux debug build complete"
@@ -213,5 +213,5 @@ termux-debug:
 windows-debug: $(RESFILE)
 	@echo "==> LANG = $$LANG"
 	@echo "==> Building DEBUG Windows version"
-	$(CC) $(CFLAGS) -I/ucrt64/include $(SRCS) $(RESFILE) -D__WINDOWS__ -g -O0 -D_DBG_PRINT -Wall -fno-omit-frame-pointer -fno-inline -flto -ffunction-sections -fdata-sections -Wl,--gc-sections -o watchdogs.debug.win $(LDFLAGS)
+	$(CC) $(CFLAGS) -I/ucrt64/include $(SRCS) $(RESFILE) -D__WINDOWS__ -g -O0 -D_DBG_PRINT -Wall -fno-omit-frame-pointer -fno-inline -ffunction-sections -fdata-sections -Wl,--gc-sections -o watchdogs.debug.win $(LDFLAGS)
 	@echo "==> Debug build complete"

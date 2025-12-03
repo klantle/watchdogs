@@ -244,7 +244,7 @@ const char *os_patterns[] = {
         "windows", "win", ".exe", "msvc", "mingw"
 #else
         "ubuntu", "debian", "cent", "centos", "cent_os", "fedora", "arch", "archlinux",
-        "alphine", "redhat", "redhatenterprise", "redhatenterpriselinux", "linuxmint", "mint"
+        "alphine", "redhat", "redhatenterprise", "redhatenterpriselinux", "linuxmint", "mint",
 #endif
         "src", "source"  /* Source code indicators */
 };

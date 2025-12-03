@@ -58,6 +58,11 @@ sudo apt update && apt install make git -y && git clone https://gitlab.com/mywat
 
 #### Setup Commands
 ```bash
+# Downloading - apt (example)
+sudo apt install docker.io
+```
+
+```bash
 # Add user to docker group (Linux)
 sudo usermod -aG docker $USER
 newgrp docker
@@ -70,6 +75,15 @@ sudo systemctl start docker
 #### Run Ubuntu
 ```bash
 docker run -it ubuntu
+```
+### Saving image
+```bash
+# Specific session name
+docker run -it --name session_name ubuntu
+# Example
+docker run -it --name my_ubuntu ubuntu
+# And you can running again
+docker start my_ubuntu
 ```
 
 #### Common Docker Commands

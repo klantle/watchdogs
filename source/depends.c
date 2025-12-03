@@ -17,15 +17,15 @@
 /* Global buffers for dependency management operations */
 char working[WG_PATH_MAX * 2];          /* Working buffer for path manipulation */
 char d_command[WG_MAX_PATH * 4];        /* Buffer for system commands */
-char *tag;                                                  /* Version tag for dependencies */
-char *path;                                                 /* Path component of dependency URL */
-char *path_slash;                                   /* Pointer to path separator */
-char *user;                                                 /* Repository owner/username */
-char *repo;                                                 /* Repository name */
-char *repo_slash;                                   /* Pointer to repository separator */
-char *git_dir;                                          /* Pointer to .git extension */
-char *depends_filename;                         /* Extracted filename */
-char *extension;                                        /* File extension */
+char *tag;                              /* Version tag for dependencies */
+char *path;                             /* Path component of dependency URL */
+char *path_slash;                       /* Pointer to path separator */
+char *user;                             /* Repository owner/username */
+char *repo;                             /* Repository name */
+char *repo_slash;                       /* Pointer to repository separator */
+char *git_dir;                          /* Pointer to .git extension */
+char *depends_filename;                 /* Extracted filename */
+char *extension;                        /* File extension */
 
 /* 
  * Convert Windows path separators to Unix/Linux style
@@ -33,10 +33,10 @@ char *extension;                                        /* File extension */
  */
 void dep_sym_convert(char *path)
 {
-        char *p;
-        for (p = path; *p; p++) {
-                if (*p == __PATH_CHR_SEP_WIN32)
-                        *p = __PATH_CHR_SEP_LINUX;
+        char *pos;
+        for (pos = path; *pos; ++pos) {
+                if (*pos == __PATH_CHR_SEP_WIN32)
+                        *pos = __PATH_CHR_SEP_LINUX;
         }
 }
 
@@ -196,15 +196,14 @@ int dep_http_get_content(const char *url, const char *github_token, char **out_h
  */
 static int is_os_specific_archive(const char *filename)
 {
-        const char *os_patterns[] = {
-                "windows", "win", ".exe", "msvc", "mingw",
-                "macos", "mac", "darwin", "osx", "linux",
-                "ubuntu", "debian", "cent", "centos", "cent_os", "fedora", "arch", "archlinux",
-                "alphine", "redhat", "redhatenterprise", "redhatenterpriselinux", "linuxmint", "mint",
-                "x86", "x64", "x86_64", "amd64", "arm", "arm64", "aarch64",
-                NULL
-        };
-        
+const char *os_patterns[] = {
+        "windows", "win", ".exe", "msvc", "mingw",
+        "macos", "mac", "darwin", "osx", "linux",
+        "ubuntu", "debian", "cent", "centos", "cent_os", "fedora", "arch", "archlinux",
+        "alphine", "redhat", "redhatenterprise", "redhatenterpriselinux", "linuxmint", "mint",
+        "x86", "x64", "x86_64", "amd64", "arm", "arm64", "aarch64",
+        NULL
+};      
         /* Check if filename contains any OS pattern */
         for (int i = 0; os_patterns[i] != NULL; i++) {
                 if (strstr(filename, os_patterns[i])) {
@@ -220,11 +219,10 @@ static int is_os_specific_archive(const char *filename)
  */
 static int is_gamemode_archive(const char *filename)
 {
-        const char *gamemode_patterns[] = {
-                "server", "_server",
-                NULL
-        };
-        
+const char *gamemode_patterns[] = {
+        "server", "_server",
+        NULL
+};        
         for (int i = 0; gamemode_patterns[i] != NULL; i++) {
                 if (strstr(filename, gamemode_patterns[i])) {
                         return 1;
@@ -241,17 +239,15 @@ static char *dep_get_assets(char **deps_assets, int cnt, const char *preferred_o
 {
         int i, j;
         /* Platform-specific patterns for asset selection */
-        const char *os_patterns[] = {
+const char *os_patterns[] = {
 #ifdef WG_WINDOWS
-                "windows", "win", ".exe", "msvc", "mingw",
-#elif defined(__APPLE__)
-                "macos", "mac", "darwin", "osx", 
+        "windows", "win", ".exe", "msvc", "mingw"
 #else
-                "ubuntu", "debian", "cent", "centos", "cent_os", "fedora", "arch", "archlinux",
-                "alphine", "redhat", "redhatenterprise", "redhatenterpriselinux", "linuxmint", "mint",
+        "ubuntu", "debian", "cent", "centos", "cent_os", "fedora", "arch", "archlinux",
+        "alphine", "redhat", "redhatenterprise", "redhatenterpriselinux", "linuxmint", "mint"
 #endif
-                "src", "source"  /* Source code indicators */
-        };
+        "src", "source"  /* Source code indicators */
+};
         size_t num_patterns = sizeof(os_patterns) / sizeof(os_patterns[0]);
 
         if (cnt == 0)
@@ -397,7 +393,7 @@ dep_parse_repo(const char *input, struct dep_repo_info *__deps_data)
  * Retrieves downloadable assets for a specific release tag
  */
 static int dep_gh_release_assets(const char *user, const char *repo,
-                                                                 const char *tag, char **out_urls, int max_urls)
+                                 const char *tag, char **out_urls, int max_urls)
 {
         char api_url[WG_PATH_MAX * 2];
         char *json_data = NULL;
@@ -448,7 +444,7 @@ static int dep_gh_release_assets(const char *user, const char *repo,
  */
 static void
 dep_build_repo_url(const struct dep_repo_info *__deps_data, int is_tag_page,
-                                   char *deps_put_url, size_t deps_put_size)
+                   char *deps_put_url, size_t deps_put_size)
 {
         char deps_actual_tag[128] = { 0 };
 
@@ -521,7 +517,7 @@ dep_build_repo_url(const struct dep_repo_info *__deps_data, int is_tag_page,
  * Uses GitHub API to get the most recent release tag
  */
 static int dep_gh_latest_tag(const char *user, const char *repo,
-                                                          char *out_tag, size_t deps_put_size)
+                             char *out_tag, size_t deps_put_size)
 {
         char api_url[WG_PATH_MAX * 2];
         char *json_data = NULL;
@@ -577,8 +573,8 @@ static int dep_gh_latest_tag(const char *user, const char *repo,
  * Handles latest tag resolution, asset selection, and fallback strategies
  */
 static int dep_handle_repo(const struct dep_repo_info *dep_repo_info,
-                                                  char *deps_put_url,
-                                                  size_t deps_put_size)
+                        char *deps_put_url,
+                        size_t deps_put_size)
 {
         int ret = 0;
         const char *deps_repo_branch[] = {"main", "master"}; /* Common branch names */
@@ -588,14 +584,14 @@ static int dep_handle_repo(const struct dep_repo_info *dep_repo_info,
         /* Handle "latest" tag by resolving to actual tag name */
         if (dep_repo_info->tag[0] && strcmp(dep_repo_info->tag, "latest") == 0) {
                 if (dep_gh_latest_tag(dep_repo_info->user,
-                                                        dep_repo_info->repo,
-                                                        deps_actual_tag,
-                                                        sizeof(deps_actual_tag))) {
+                        dep_repo_info->repo,
+                        deps_actual_tag,
+                        sizeof(deps_actual_tag))) {
                         printf("Create latest tag: %s (~instead of latest)\t\t[All good]\n", deps_actual_tag);
                 } else {
                         pr_error(stdout, "Failed to get latest tag for %s/%s,"
-                                                         "Falling back to main branch\t\t[Fail]",
-                                                         dep_repo_info->user, dep_repo_info->repo);
+                                        "Falling back to main branch\t\t[Fail]",
+                                        dep_repo_info->user, dep_repo_info->repo);
                         use_fallback_branch = 1;
                 }
         } else {
@@ -607,14 +603,12 @@ static int dep_handle_repo(const struct dep_repo_info *dep_repo_info,
                 for (int j = 0; j < 2 && !ret; j++) {
                         wg_snprintf(deps_put_url, deps_put_size,
                                         "https://github.com/%s/%s/archive/refs/heads/%s.zip",
-                                        dep_repo_info->user,
-                                        dep_repo_info->repo,
+                                        dep_repo_info->user, dep_repo_info->repo,
                                         deps_repo_branch[j]);
 
                         if (dep_url_checking(deps_put_url, wgconfig.wg_toml_github_tokens)) {
                                 ret = 1;
-                                if (j == 1)
-                                        printf("Create master branch (main branch not found)\t\t[All good]\n");
+                                if (j == 1) printf("Create master branch (main branch not found)\t\t[All good]\n");
                         }
                 }
                 return ret;
@@ -624,10 +618,8 @@ static int dep_handle_repo(const struct dep_repo_info *dep_repo_info,
         if (deps_actual_tag[0]) {
                 char *deps_assets[10] = {0};
                 int deps_asset_count = dep_gh_release_assets(dep_repo_info->user,
-                                                                                                         dep_repo_info->repo,
-                                                                                                         deps_actual_tag,
-                                                                                                         deps_assets,
-                                                                                                         10);
+                                                        dep_repo_info->repo, deps_actual_tag,
+                                                        deps_assets, 10);
 
                 /* If release has downloadable assets */
                 if (deps_asset_count > 0) {
@@ -721,10 +713,9 @@ int dep_add_ncheck_hash(const char *raw_file_path, const char *raw_json_path)
         }
 
         /* Display generated hash */
-        pr_color(stdout,
-                         FCOLOUR_GREEN,
-                         "Create hash (CRC32) for '%s': ",
-                         res_convert_json_path);
+        pr_color(stdout, FCOLOUR_GREEN,
+                "Create hash (CRC32) for '%s': ",
+                res_convert_json_path);
         crypto_print_hex(sha1_hash, sizeof(sha1_hash), 0);
         printf("\t\t[All good]\n");
 
@@ -734,34 +725,33 @@ done:
 
 /* 
  * Add plugin dependency to SA-MP server.cfg configuration
- * Updates plugins line with new dependency
+ * Updates plugins line (c_line) with new dependency
  */
 void dep_implementation_samp_conf(depConfig config) {
         if (wg_server_env() != 1)
                 return;
 
-        pr_color(stdout,
-                         FCOLOUR_GREEN,
-                         "Create Depends '%s' into '%s'\t\t[All good]\n",
-                         config.dep_added, config.dep_config);
+        pr_color(stdout, FCOLOUR_GREEN,
+                "Create Depends '%s' into '%s'\t\t[All good]\n",
+                config.dep_added, config.dep_config);
 
         FILE* c_file = fopen(config.dep_config, "r");
         if (c_file) {
-                char line[256];
                 int t_exist = 0;
                 int tr_exist = 0;
                 int tr_ln_has_tx = 0;
+                char c_line[WG_PATH_MAX];
 
                 /* Read existing configuration */
-                while (fgets(line, sizeof(line), c_file)) {
-                        line[strcspn(line, "\n")] = 0;
-                        if (strstr(line, config.dep_added) != NULL) {
+                while (fgets(c_line, sizeof(c_line), c_file)) {
+                        c_line[strcspn(c_line, "\n")] = 0;
+                        if (strstr(c_line, config.dep_added) != NULL) {
                                 t_exist = 1; /* Dependency already exists */
                         }
-                        if (strstr(line, config.dep_target) != NULL) {
-                                tr_exist = 1; /* Target line exists */
-                                if (strstr(line, config.dep_added) != NULL) {
-                                        tr_ln_has_tx = 1; /* Dependency already on target line */
+                        if (strstr(c_line, config.dep_target) != NULL) {
+                                tr_exist = 1; /* Target c_line exists */
+                                if (strstr(c_line, config.dep_added) != NULL) {
+                                        tr_ln_has_tx = 1; /* Dependency already on target c_line */
                                 }
                         }
                 }
@@ -772,7 +762,7 @@ void dep_implementation_samp_conf(depConfig config) {
                 }
 
                 if (tr_exist && !tr_ln_has_tx) {
-                        /* Add to existing plugins line */
+                        /* Add to existing plugins c_line */
                         srand((unsigned int)time(NULL) ^ rand());
                         int rand7 = rand() % 10000000;
 
@@ -783,17 +773,17 @@ void dep_implementation_samp_conf(depConfig config) {
                         FILE* temp_file = fopen(temp_path, "w");
                         c_file = fopen(config.dep_config, "r");
 
-                        while (fgets(line, sizeof(line), c_file)) {
-                                char clean_line[256];
-                                wg_strcpy(clean_line, line);
+                        while (fgets(c_line, sizeof(c_line), c_file)) {
+                                char clean_line[WG_PATH_MAX];
+                                wg_strcpy(clean_line, c_line);
                                 clean_line[strcspn(clean_line, "\n")] = 0;
 
                                 if (strstr(clean_line, config.dep_target) != NULL &&
                                         strstr(clean_line, config.dep_added) == NULL) {
-                                        /* Append dependency to existing plugins line */
+                                        /* Append dependency to existing plugins c_line */
                                         fprintf(temp_file, "%s %s\n", clean_line, config.dep_added);
                                 } else {
-                                        fputs(line, temp_file);
+                                        fputs(c_line, temp_file);
                                 }
                         }
 
@@ -804,7 +794,7 @@ void dep_implementation_samp_conf(depConfig config) {
                         remove(config.dep_config);
                         rename(".watchdogs/depends_tmp", config.dep_config);
                 } else if (!tr_exist) {
-                        /* Create new plugins line */
+                        /* Create new plugins c_line */
                         c_file = fopen(config.dep_config, "a");
                         fprintf(c_file, "%s %s\n",
                                         config.dep_target,
@@ -835,10 +825,9 @@ void dep_implementation_omp_conf(const char* config_name, const char* deps_name)
         if (wg_server_env() != 2)
                 return;
 
-        pr_color(stdout,
-                         FCOLOUR_GREEN,
-                         "Create Depends '%s' into '%s'\t\t[All good]\n",
-                         deps_name, config_name);
+        pr_color(stdout, FCOLOUR_GREEN,
+                "Create Depends '%s' into '%s'\t\t[All good]\n",
+                deps_name, config_name);
 
         FILE* c_file = fopen(config_name, "r");
         cJSON* s_root = NULL;
@@ -889,8 +878,8 @@ void dep_implementation_omp_conf(const char* config_name, const char* deps_name)
         if (!legacy_plugins) {
                 legacy_plugins = cJSON_CreateArray();
                 cJSON_AddItemToObject(pawn,
-                                                          "legacy_plugins",
-                                                          legacy_plugins);
+                                "legacy_plugins",
+                                legacy_plugins);
         }
 
         /* Ensure legacy_plugins is an array */
@@ -898,8 +887,8 @@ void dep_implementation_omp_conf(const char* config_name, const char* deps_name)
                 cJSON_DeleteItemFromObject(pawn, "legacy_plugins");
                 legacy_plugins = cJSON_CreateArray();
                 cJSON_AddItemToObject(pawn,
-                                                          "legacy_plugins",
-                                                          legacy_plugins);
+                                "legacy_plugins",
+                                legacy_plugins);
         }
 
         /* Check if plugin already exists */
@@ -942,17 +931,16 @@ void dep_implementation_omp_conf(const char* config_name, const char* deps_name)
  * Inserts #include statement in appropriate location
  */
 void dep_add_include(const char *modes,
-                                         char *dep_name,
-                                         char *dep_after) {
+                char *dep_name,
+                char *dep_after) {
         if (path_exists(modes) == 0) {
                 pr_color(stdout, FCOLOUR_GREEN,
                         "~ can't found %s.. skipping adding include name\t\t[Fail]\n", modes);
                 return;
         }
-        pr_color(stdout,
-                         FCOLOUR_GREEN,
-                         "Create include '%s' into '%s' after '%s'\t\t[All good]\n",
-                         dep_name, modes, dep_after);
+        pr_color(stdout, FCOLOUR_GREEN,
+                "Create include '%s' into '%s' after '%s'\t\t[All good]\n",
+                dep_name, modes, dep_after);
 
         FILE *m_file = fopen(modes, "r");
         if (m_file == NULL) {
@@ -983,8 +971,7 @@ void dep_add_include(const char *modes,
         }
 
         /* Find position to insert include */
-        char *e_dep_after_pos = strstr(ct_modes,
-                                                                   dep_after);
+        char *e_dep_after_pos = strstr(ct_modes, dep_after);
 
         FILE *n_file = fopen(modes, "w");
         if (n_file == NULL) {
@@ -1031,7 +1018,7 @@ void dep_add_include(const char *modes,
  */
 static void dep_pr_include_directive(const char *deps_include)
 {
-        char error_buffer[256];
+        char error_buffer[WG_PATH_MAX];
         toml_table_t *wg_toml_config;
         char depends_name[WG_PATH_MAX];
         char idirective[WG_MAX_PATH];
@@ -1092,9 +1079,9 @@ static void dep_pr_include_directive(const char *deps_include)
  * Handles file relocation and configuration updates
  */
 void dump_file_type(const char *path,
-                                        char *pattern,
-                                        char *exclude, char *cwd,
-                                        char *target_dir, int root)
+                char *pattern,
+                char *exclude, char *cwd,
+                char *target_dir, int root)
 {
         char json_item[WG_PATH_MAX];
 
@@ -1106,62 +1093,69 @@ void dump_file_type(const char *path,
         if (found) {
                 for (int i = 0; i < wgconfig.wg_sef_count; ++i) {
                         const char *deps_names  = dep_get_fname(wgconfig.wg_sef_found_list[i]),
-                                           *deps_bnames = dep_get_bname(wgconfig.wg_sef_found_list[i]);
+                                *deps_bnames = dep_get_bname(wgconfig.wg_sef_found_list[i]);
 
                         /* Move to target directory if specified */
                         if (target_dir[0] != '\0') {
-                                int _is_win32 = 0;
+                                int windows_userin32 = 0;
 #ifdef WG_WINDOWS
-                                _is_win32 = 1;
+                                windows_userin32 = 1;
 #endif
-                                if (_is_win32) {
+                                if (windows_userin32) {
                                         wg_snprintf(d_command, sizeof(d_command),
-                                                "move /Y \"%s\" \"%s\\%s\\\"",
+                                                "move "
+                                                "/Y "
+                                                "\"%s\" \"%s\\%s\\\"",
                                                 wgconfig.wg_sef_found_list[i], cwd, target_dir);
                                 } else
-                                        wg_snprintf(d_command, sizeof(d_command), "mv -f \"%s\" \"%s/%s/\"",
+                                        wg_snprintf(d_command, sizeof(d_command),
+                                                "mv "
+                                                "-f "
+                                                "\"%s\" \"%s/%s/\"",
                                                 wgconfig.wg_sef_found_list[i], cwd, target_dir);
 
                                 struct timespec start = {0}, end = { 0 };
-                                double moving_dur;
+                                double calculate_moving_dur;
 
                                 /* Time the move operation */
                                 clock_gettime(CLOCK_MONOTONIC, &start);
                                 wg_run_command(d_command);
                                 clock_gettime(CLOCK_MONOTONIC, &end);
 
-                                moving_dur = (end.tv_sec - start.tv_sec)
-                                                   + (end.tv_nsec - start.tv_nsec) / 1e9;
+                                calculate_moving_dur = (end.tv_sec - start.tv_sec) + (end.tv_nsec - start.tv_nsec) / 1e9;
 
                                 pr_color(stdout, FCOLOUR_CYAN, " [MOVING] Plugins %s -> %s - %s [Finished at %.3fs]\n",
-                                                 wgconfig.wg_sef_found_list[i], cwd, target_dir, moving_dur);
+                                                 wgconfig.wg_sef_found_list[i], cwd, target_dir, calculate_moving_dur);
                         } else {
                                 /* Move to current directory */
-                                int _is_win32 = 0;
+                                int windows_userin32 = 0;
 #ifdef WG_WINDOWS
-                                _is_win32 = 1;
+                                windows_userin32 = 1;
 #endif
-                                if (_is_win32) {
+                                if (windows_userin32) {
                                         wg_snprintf(d_command, sizeof(d_command),
-                                                "move /Y \"%s\" \"%s\"",
+                                                "move "
+                                                "/Y "
+                                                "\"%s\" \"%s\"",
                                                 wgconfig.wg_sef_found_list[i], cwd);
                                 } else
                                         wg_snprintf(d_command, sizeof(d_command),
-                                                "mv -f \"%s\" \"%s\"",
+                                                "mv "
+                                                "-f "
+                                                "\"%s\" \"%s\"",
                                                 wgconfig.wg_sef_found_list[i], cwd);
 
                                 struct timespec start = {0}, end = { 0 };
-                                double moving_dur;
+                                double calculate_moving_dur;
 
                                 clock_gettime(CLOCK_MONOTONIC, &start);
                                 wg_run_command(d_command);
                                 clock_gettime(CLOCK_MONOTONIC, &end);
 
-                                moving_dur = (end.tv_sec - start.tv_sec)
-                                                   + (end.tv_nsec - start.tv_nsec) / 1e9;
+                                calculate_moving_dur = (end.tv_sec - start.tv_sec) + (end.tv_nsec - start.tv_nsec) / 1e9;
 
                                 pr_color(stdout, FCOLOUR_CYAN, " [MOVING] Plugins %s -> %s [Finished at %.3fs]\n",
-                                                 wgconfig.wg_sef_found_list[i], cwd, moving_dur);
+                                                 wgconfig.wg_sef_found_list[i], cwd, calculate_moving_dur);
 
                                 wg_snprintf(json_item, sizeof(json_item), "%s", deps_names);
                                 dep_add_ncheck_hash(json_item, json_item);
@@ -1176,9 +1170,9 @@ samp_label:
                                           S_ADD_PLUGIN(wgconfig.wg_toml_config,
                                                 "plugins", deps_bnames);
                                 else if (wg_server_env() == 2 &&
-                                                                strfind(wgconfig.wg_toml_config, ".json", true))
-                                                                M_ADD_PLUGIN(wgconfig.wg_toml_config,
-                                                                                         deps_bnames);
+                                        strfind(wgconfig.wg_toml_config, ".json", true))
+                                        M_ADD_PLUGIN(wgconfig.wg_toml_config,
+                                                deps_bnames);
                                 else
                                                 goto samp_label;
                         }
@@ -1219,22 +1213,22 @@ void dep_move_files(const char *dep_dir)
         /* Construct platform-specific paths */
 #ifdef WG_WINDOWS
         wg_snprintf(plug_path,
-                                sizeof(plug_path),
-                                "%s\\plugins",
-                                dep_dir);
+                        sizeof(plug_path),
+                        "%s\\plugins",
+                        dep_dir);
         wg_snprintf(comp_path,
-                                sizeof(comp_path),
-                                "%s\\components",
-                                dep_dir);
+                        sizeof(comp_path),
+                        "%s\\components",
+                        dep_dir);
 #else
         wg_snprintf(plug_path,
-                                sizeof(plug_path),
-                                "%s\\plugins",
-                                dep_dir);
+                        sizeof(plug_path),
+                        "%s\\plugins",
+                        dep_dir);
         wg_snprintf(comp_path,
-                                sizeof(comp_path),
-                                "%s\\components",
-                                dep_dir);
+                        sizeof(comp_path),
+                        "%s\\components",
+                        dep_dir);
 #endif
 
         /* Determine include path based on server environment */
@@ -1242,21 +1236,21 @@ void dep_move_files(const char *dep_dir)
 #ifdef WG_WINDOWS
                 deps_include_path = "pawno\\include";
                 wg_snprintf(deps_include_full_path,
-                                sizeof(deps_include_full_path), "%s\\pawno\\include", dep_dir);
+                        sizeof(deps_include_full_path), "%s\\pawno\\include", dep_dir);
 #else
                 deps_include_path = "pawno/include";
                 wg_snprintf(deps_include_full_path,
-                                sizeof(deps_include_full_path), "%s/pawno/include", dep_dir);
+                        sizeof(deps_include_full_path), "%s/pawno/include", dep_dir);
 #endif
         } else if (wg_server_env() == 2) {
 #ifdef WG_WINDOWS
                 deps_include_path = "qawno\\include";
                 wg_snprintf(deps_include_full_path,
-                                sizeof(deps_include_full_path), "%s\\qawno\\include", dep_dir);
+                        sizeof(deps_include_full_path), "%s\\qawno\\include", dep_dir);
 #else
                 deps_include_path = "qawno/include";
                 wg_snprintf(deps_include_full_path,
-                                sizeof(deps_include_full_path), "%s/qawno/include", dep_dir);
+                        sizeof(deps_include_full_path), "%s/qawno/include", dep_dir);
 #endif
         }
 
@@ -1324,31 +1318,34 @@ void dep_move_files(const char *dep_dir)
                         const char *fi_depends_name;
                         fi_depends_name = dep_get_fname(wgconfig.wg_sef_found_list[i]);
 
-                        int _is_win32 = 0;
+                        int windows_userin32 = 0;
 #ifdef WG_WINDOWS
-                        _is_win32 = 1;
+                        windows_userin32 = 1;
 #endif
-                        if (_is_win32) {
+                        if (windows_userin32) {
                                 wg_snprintf(d_command, sizeof(d_command),
-                                        "move /Y \"%s\" \"%s\\%s\\\"",
+                                        "move "
+                                        "/Y "
+                                        "\"%s\" \"%s\\%s\\\"",
                                         wgconfig.wg_sef_found_list[i], cwd, deps_include_path);
                         } else
                                 wg_snprintf(d_command, sizeof(d_command),
-                                        "mv -f \"%s\" \"%s/%s/\"",
+                                        "mv "
+                                        "-f "
+                                        "\"%s\" \"%s/%s/\"",
                                         wgconfig.wg_sef_found_list[i], cwd, deps_include_path);
 
                         struct timespec start = {0}, end = { 0 };
-                        double moving_dur;
+                        double calculate_moving_dur;
 
                         clock_gettime(CLOCK_MONOTONIC, &start);
                         wg_run_command(d_command);
                         clock_gettime(CLOCK_MONOTONIC, &end);
 
-                        moving_dur = (end.tv_sec - start.tv_sec)
-                                           + (end.tv_nsec - start.tv_nsec) / 1e9;
+                        calculate_moving_dur = (end.tv_sec - start.tv_sec) + (end.tv_nsec - start.tv_nsec) / 1e9;
 
                         pr_color(stdout, FCOLOUR_CYAN, " [MOVING] Include %s -> %s - %s [Finished at %.3fs]\n",
-                                         wgconfig.wg_sef_found_list[i], cwd, deps_include_path, moving_dur);
+                                wgconfig.wg_sef_found_list[i], cwd, deps_include_path, calculate_moving_dur);
 
                         dep_add_ncheck_hash(fi_depends_name, fi_depends_name);
                         dep_pr_include_directive(fi_depends_name);
@@ -1356,8 +1353,8 @@ void dep_move_files(const char *dep_dir)
         }
 
         /* Stack-based directory traversal for finding nested include files */
-        int moving_stack_size = WG_MAX_PATH;
         int moving_stack_index = -1;
+        int moving_stack_size = WG_MAX_PATH;
         char **moving_dir_stack = wg_malloc(moving_stack_size * sizeof(char*));
 
         for (int i = 0; i < moving_stack_size; i++) {
@@ -1372,7 +1369,8 @@ void dep_move_files(const char *dep_dir)
         while (moving_stack_index >= 0) {
                 char root_dir[WG_PATH_MAX];
                 wg_strlcpy(root_dir,
-                        moving_dir_stack[moving_stack_index],
+                        moving_dir_stack \
+                                [moving_stack_index],
                         sizeof(root_dir));
                 moving_stack_index--;
 
@@ -1405,7 +1403,8 @@ void dep_move_files(const char *dep_dir)
                                 /* Push directory onto stack for later processing */
                                 if (moving_stack_index < moving_stack_size - 1) {
                                         moving_stack_index++;
-                                        wg_strlcpy(moving_dir_stack[moving_stack_index], depends_ipath, WG_MAX_PATH);
+                                        wg_strlcpy(moving_dir_stack[moving_stack_index],
+                                                depends_ipath, WG_MAX_PATH);
                                 }
                                 continue;
                         }
@@ -1439,11 +1438,11 @@ void dep_move_files(const char *dep_dir)
 
                         /* Move or copy directory containing include files */
                         if (rename(deps_parent_dir, dest)) {
-                                int _is_win32 = 0;
+                                int windows_userin32 = 0;
 #ifdef WG_WINDOWS
-                                _is_win32 = 1;
+                                windows_userin32 = 1;
 #endif
-                                if (_is_win32) {
+                                if (windows_userin32) {
                                         /* Windows: copy directory tree and remove original */
                                         const char *win_parts[] = {
                                                 "xcopy ",
@@ -1481,8 +1480,7 @@ void dep_move_files(const char *dep_dir)
                                 wg_run_command(d_command);
                                 clock_gettime(CLOCK_MONOTONIC, &end);
 
-                                move_duration = (end.tv_sec - start.tv_sec) + 
-                                                                (end.tv_nsec - start.tv_nsec) / 1e9;
+                                move_duration = (end.tv_sec - start.tv_sec) + (end.tv_nsec - start.tv_nsec) / 1e9;
 
                                 pr_color(stdout, FCOLOUR_CYAN, " [MOVING] Include %s -> %s [Finished at %.3fs]\n",
                                                  deps_parent_dir, dest, move_duration);
@@ -1503,17 +1501,22 @@ void dep_move_files(const char *dep_dir)
         wg_free(moving_dir_stack);
 
         /* Remove extracted dependency directory */
-        int _is_win32 = 0;
+        int windows_userin32 = 0;
 #ifdef WG_WINDOWS
-        _is_win32 = 1;
+        windows_userin32 = 1;
 #endif
-        if (_is_win32)
+        if (windows_userin32)
                 wg_snprintf(d_command, sizeof(d_command),
-                        "rmdir /s /q \"%s\"",
+                        "rmdir "
+                        "/s "
+                        "/q "
+                        "\"%s\"",
                         dep_dir);
         else
                 wg_snprintf(d_command, sizeof(d_command),
-                        "rm -rf %s",
+                        "rm "
+                        "-rf "
+                        "%s",
                         dep_dir);
         wg_run_command(d_command);
 
@@ -1578,7 +1581,7 @@ void wg_install_depends(const char *depends_string)
         const char *depends[MAX_DEPENDS];
         struct dep_repo_info repo;
         char dep_url[1024];
-        char dep_name[256];
+        char dep_name[WG_PATH_MAX];
         const char *size_last_slash;
         char *token;
         int deps_count = 0;
@@ -1674,8 +1677,7 @@ void wg_install_depends(const char *depends_string)
                 wg_apply_depends(dep_name);
                 clock_gettime(CLOCK_MONOTONIC, &end);
 
-                depends_dur = (end.tv_sec - start.tv_sec)
-                                        + (end.tv_nsec - start.tv_nsec) / 1e9;
+                depends_dur = (end.tv_sec - start.tv_sec) + (end.tv_nsec - start.tv_nsec) / 1e9;
 
                 pr_color(stdout, FCOLOUR_CYAN, " <D> Finished at %.3fs (%.0f ms)\n",
                         depends_dur, depends_dur * 1000.0);

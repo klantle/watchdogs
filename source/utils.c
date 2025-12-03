@@ -1480,7 +1480,7 @@ int wg_add_include_paths(FILE *file, int *first_item)
 }
 
 /* Static variable to cache server type detection result */
-static int _is_samp_ = -1; /* -1 = not determined, 0 = OpenMP, 1 = SA-MP */
+static int samp_user = -1; /* -1 = not determined, 0 = OpenMP, 1 = SA-MP */
 /*
  * Generates complete TOML configuration file content based on detected environment.
  * Creates [general], [compiler], and [depends] sections with appropriate values
@@ -1508,7 +1508,7 @@ static void wg_generate_toml_content(FILE *file, const char *wg_os_type,
 		fprintf(file, "[general]\n");
 		fprintf(file, "os = \"%s\"\n", wg_os_type);
 		/* Set binary and config paths based on server type */
-		if (_is_samp_ == 0) { /* OpenMP */
+		if (samp_user == 0) { /* OpenMP */
 			if (!strcmp(wg_os_type, "windows")) {
 				fprintf(file, "binary = \"%s\"\n", "omp-server.exe");
 				fprintf(file, "config = \"%s\"\n", "config.json");
@@ -1588,10 +1588,10 @@ int wg_toml_configs(void)
 		/* Determine server type by checking directories and files */
 		if (dir_exists("qawno") &&
 			dir_exists("components"))
-			_is_samp_ = 0; /* OpenMP */
+			samp_user = 0; /* OpenMP */
 		else if (dir_exists("pawno") &&
 			path_exists("server.cfg"))
-			_is_samp_ = 1; /* SA-MP */
+			samp_user = 1; /* SA-MP */
 		else {
 			static int crit_nf = 0;
 			if (crit_nf == 0) {
@@ -1691,11 +1691,11 @@ int wg_toml_configs(void)
 				toml_datum_t bin_val = toml_string_in(general_table, "binary");
 				if (bin_val.ok) {
 					/* Store binary path based on server type */
-					if (_is_samp_ == 1) {
+					if (samp_user == 1) {
 						wgconfig.wg_is_samp = CRC32_TRUE;
 						wgconfig.wg_ptr_samp = strdup(bin_val.u.s);
 					}
-					else if (_is_samp_ == 0) {
+					else if (samp_user == 0) {
 						wgconfig.wg_is_omp = CRC32_TRUE;
 						wgconfig.wg_ptr_omp = strdup(bin_val.u.s);
 					}

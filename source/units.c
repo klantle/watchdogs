@@ -204,7 +204,7 @@ _ptr_command:
 _reexecute_command:
         chain_main_data(1);
         clock_gettime(CLOCK_MONOTONIC, &cmd_start);
-        if (strncmp(ptr_command, "help", 4) == 0) {
+        if (strncmp(ptr_command, "help", strlen("help")) == 0) {
             wg_console_title("Watchdogs | @ help");
 
             char *args;
@@ -296,7 +296,7 @@ _reexecute_command:
                 goto chain_done;
             else
                 goto _ptr_command;
-        } else if (strncmp(ptr_command, "title", 5) == 0) {
+        } else if (strncmp(ptr_command, "title", strlen("title")) == 0) {
             char *args = ptr_command + strlen("title");
             while (*args == ' ') ++args;
 
@@ -309,7 +309,7 @@ _reexecute_command:
             }
 
             goto chain_done;
-        } else if (strncmp(ptr_command, "sha256", 6) == 0) {
+        } else if (strncmp(ptr_command, "sha256", strlen("sha256")) == 0) {
             char *args = ptr_command + strlen("sha256");
             while (*args == ' ') ++args;
 
@@ -328,7 +328,7 @@ _reexecute_command:
             }
 
             goto chain_done;
-        } else if (strncmp(ptr_command, "crc32", 5) == 0) {
+        } else if (strncmp(ptr_command, "crc32", strlen("crc32")) == 0) {
             char *args = ptr_command + strlen("crc32");
             while (*args == ' ') ++args;
 
@@ -353,7 +353,7 @@ _reexecute_command:
             }
 
             goto chain_done;
-        } else if (strncmp(ptr_command, "djb2", 4) == 0) {
+        } else if (strncmp(ptr_command, "djb2", strlen("djb2")) == 0) {
             char *args = ptr_command + strlen("djb2");
             while (*args == ' ') ++args;
 
@@ -409,7 +409,7 @@ _reexecute_command:
             hardware_show_detailed();
 
             goto chain_done;
-        } else if (strncmp(ptr_command, "download", 8) == 0) {
+        } else if (strncmp(ptr_command, "download", strlen("download")) == 0) {
             wg_console_title("Watchdogs | @ downloading files");
 
             char *args = ptr_command + strlen("download");
@@ -441,7 +441,7 @@ _reexecute_command:
             }
             
             goto chain_done;
-        } if (strncmp(ptr_command, "replicate", 9) == 0) {
+        } if (strncmp(ptr_command, "replicate", strlen("replicate")) == 0) {
             wg_console_title("Watchdogs | @ replicate depends");
 
             char *args = ptr_command + strlen("replicate");
@@ -676,7 +676,7 @@ loop_ipcc3:
         } else if (strcmp(ptr_command, "0000WGDEBUGGINGSERVER") == 0) {
             wg_server_crash_check();
             return 3;
-        } else if (strncmp(ptr_command, "compile", 7) == 0) {
+        } else if (strncmp(ptr_command, "compile", strlen("compile")) == 0) {
             wg_console_title("Watchdogs | @ compile | logging file: .watchdogs/compiler.log");
 
             char *args;
@@ -709,7 +709,7 @@ loop_ipcc3:
                             nine_arg);
 
             goto chain_done;
-        } if (strncmp(ptr_command, "running", 7) == 0) {
+        } if (strncmp(ptr_command, "running", strlen("running")) == 0) {
 _runners_:
                 wg_stop_server_tasks();
 
@@ -993,7 +993,7 @@ n_loop_igm2:
             wg_stop_server_tasks();
             sleep(2);
             goto _runners_;
-        } else if (strncmp(ptr_command, "wanion", 6) == 0) {
+        } else if (strncmp(ptr_command, "wanion", strlen("wanion")) == 0) {
             char *args = ptr_command + strlen("wanion");
             while (*args == ' ') ++args;
 
@@ -1335,7 +1335,7 @@ wanion_curl_end:
                 curl_easy_cleanup(h);
                 goto chain_done;
             }
-        } else if (strncmp(ptr_command, "tracker", 7) == 0) {
+        } else if (strncmp(ptr_command, "tracker", strlen("tracker")) == 0) {
             char *args = ptr_command + strlen("tracker");
             while (*args == ' ') ++args;
 
@@ -1369,7 +1369,7 @@ wanion_curl_end:
             }
 
             goto chain_done;
-        } else if (strncmp(ptr_command, "send", 4) == 0) {
+        } else if (strncmp(ptr_command, "send", strlen("send")) == 0) {
             char *args = ptr_command + strlen("send");
             while (*args == ' ') ++args;
             

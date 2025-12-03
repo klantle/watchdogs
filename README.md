@@ -33,6 +33,12 @@
 - [x] [GitHub Actions](https://github.com/features/actions)
 - [x] [GitHub Codespaces](https://github.com/features/codespaces)
 
+## Repository
+
+- [x] Upstream: [GitLab.com](https://gitlab.com/mywatchdogs/watchdogs)
+- [x] Mirror 1: [GitHub.com](https://github.com/klantle/watchdogs)
+- [x] Mirror 2: [Codeberg.org](https://codeberg.org/voidarch/watchdogs)
+
 ## Quick Installation
 
 ### One-Line Installation (Linux/Debian)

@@ -14,7 +14,7 @@ STRIP          ?= llvm-strip
 WINDRES        ?= windres         # Windows resource compiler
 
 # Basic compile & link flags
-CFLAGS   = -O2 -pipe -fdata-sections -ffunction-sections
+CFLAGS   = -Os -pipe -fdata-sections -ffunction-sections
 LDFLAGS  = -lm -lcurl -lreadline -lncursesw -larchive
 
 # Source files used in the build

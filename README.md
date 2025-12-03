@@ -9,7 +9,6 @@
    - [Linux](#linux-bash)
    - [Termux](#termux)
    - [MSYS2](#msys2)
-   - [Windows Native](#Native)
 4. [Configuration](#configuration)
 6. [Usage Guide](#usage-guide)
 6. [Compiler Reference](#compiler-reference)
@@ -216,57 +215,6 @@ chmod +x watchdogs.win && \
 mv -f watchdogs.win .. && cd .. && \
 ./watchdogs.win
 ```
-
-### Native
-
-#### Installation Steps
-
-> needed [msys2](https://www.msys2.org/) for compile.
-
-```bash
-# 1. Sync package database
-pacman -Sy
-
-# 2. Install required packages
-pacman -S make git
-
-# 3. Clone repository
-git clone https://gitlab.com/mywatchdogs/watchdogs watch
-
-# 4. Navigate to directory
-cd watch
-
-# 5. Installing Library & Build from source
-make init && make windows
-
-# 6. Installing .dll library - under 20/MB
-bash -c 'if [ -d "watch" ]; then rm -rf "watch"; fi; git clone https://github.com/klantle/libwatchdogs watch; cd watch; if [ -d "/c/libwatchdogs" ]; then rm -rf "/c/libwatchdogs"; fi; mv -f libwatchdogs /c/; mv -f run-native.bat ..; cd ..; rm -rf watch'
-
-# 7. You can run '.bat' (out of msys2, where .bat & watchdogs.win)
-~
-```
-
-### Windows native with Git Bash only
-> Download Git first in https://git-scm.com/install/windows
-> Run Git Bash
-
-> cd to your_project directory
-```bash
-cd /c/users/desktop_name/downloads/your_project
-```
-> Download stable binary
-```bash
-curl -L -o watchdogs.win "https://gitlab.com/-/project/75403219/uploads/10f59e7fa47e9e031d1c381950139d9a/watchdogs.win"
-```
-> Debug Mode
-```bash
-curl -L -o watchdogs.debug.win "https://gitlab.com/-/project/75403219/uploads/7bea33350f481aba3a1c637ad2b61da0/watchdogs.debug.win"
-```
-> Install library - under 20/MB.
-```bash
-bash -c 'if [ -d "watch" ]; then rm -rf "watch"; fi; git clone https://github.com/klantle/libwatchdogs watch; cd watch; if [ -d "/c/libwatchdogs" ]; then rm -rf "/c/libwatchdogs"; fi; mv -f libwatchdogs /c/; mv -f run-native.bat ..; cd ..; rm -rf watch'
-```
-> **Exit from Git Bash and run '.bat' in your_project on Windows File Explorer - Git Bash supported run it!.**
 
 ## Configuration
 
@@ -491,17 +439,17 @@ The handling of YSI includes differs due to their structure containing multiple 
 
 **Install dependencies from `watchdogs.toml`:**
 ```yaml
-install .
+replicate .
 ```
 
 **Install specific repository:**
 ```yaml
-install repo/user
+replicate repo/user
 ```
 
 **Install specific version (tags):**
 ```yaml
-install repo/user:v1.1
+replicate repo/user:v1.1
 ```
 
 ### Make Commands Reference

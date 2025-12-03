@@ -246,6 +246,8 @@ _reexecute_command:
                 println(stdout, "download: fetch file from URL | Usage: \"download\" | [<args>]\n     Downloads archives from direct links.");
             } else if (strcmp(args, "hardware") == 0) { 
                 println(stdout, "hardware: hardware information. | Usage: \"hardware\"\n     Show off your PC specs!");
+            } else if (strcmp(args, "replicate") == 0) { 
+                println(stdout, "replicate: installer dependencies. | Usage: \"replicate\"\n     Downloads & Install Our Dependencies.");
             } else if (strcmp(args, "gamemode") == 0) { 
                 println(stdout, "gamemode: download SA-MP gamemode. | Usage: \"gamemode\"\n     Grab some SA-MP gamemodes quickly.");
             } else if (strcmp(args, "pawncc") == 0) { 
@@ -439,10 +441,10 @@ _reexecute_command:
             }
             
             goto chain_done;
-        } if (strncmp(ptr_command, "install", 7) == 0) {
-            wg_console_title("Watchdogs | @ install depends");
+        } if (strncmp(ptr_command, "replicate", 9) == 0) {
+            wg_console_title("Watchdogs | @ replicate depends");
 
-            char *args = ptr_command + strlen("install");
+            char *args = ptr_command + strlen("replicate");
             while (*args == ' ') ++args;
             char *args2 = NULL;
             args2 = strtok(args, " ");
@@ -928,8 +930,8 @@ server_done2:
                         wg_free(debug_runner);                    }
                 } else {
                     pr_crit(stdout,
-"\033[1;31merror:\033[0m sa-mp/open.mp server not found!\n"
-"  \033[2mhelp:\033[0m install it before continuing\n");
+                        "\033[1;31merror:\033[0m sa-mp/open.mp server not found!\n"
+                        "  \033[2mhelp:\033[0m install it before continuing\n");
                     printf("\n  \033[1mInstall now?\033[0m  [\033[32mY\033[0m/\033[31mn\033[0m]: ");
 
                     char *ptr_sigA;

@@ -57,7 +57,7 @@ ssize_t sendfile(int out_fd,
 const char* __command[] = {
 		"help",       "exit",      "kill",      "title",     "sha256",
 		"crc32",      "djb2",      "time",      "config",    "download",
-		"install",    "hardware",  "gamemode",  "pawncc",    "log",
+		"replicate",  "hardware",  "gamemode",  "pawncc",    "log",
 		"compile",    "running",   "compiles",  "stop",      "restart",
 		"wanion",     "tracker",   "send",      "ls",        "ping",
 		"clear",      "nslookup",  "netstat",   "ipconfig",  "uname",

@@ -7,9 +7,11 @@
 #include <limits.h>
 #include <time.h>
 #include <signal.h>
+
 #include "units.h"
 #include "extra.h"
 #include "utils.h"
+#include "crypto.h"
 #include "depends.h"
 #include "compiler.h"
 #include "runner.h"
@@ -530,7 +532,20 @@ skip:
                                 if (server_n_content) {
                                     wg_strncpy(server_n_content, server_f_content, pos - server_f_content);
                                     server_n_content[pos - server_f_content] = '\0';
-                                    strcat(server_n_content, "rcon_password changeme2");
+                                    
+                                    static int init_crc32 = 0;
+                                    if (init_crc32 != 1) {
+                                    init_crc32 = 1;
+                                        crypto_crc32_init_table();
+                                    }
+
+                                    uint32_t crc32_generate;
+                                    crc32_generate = crypto_generate_crc32("000d8sK1abC0pqZ7Dd", sizeof("000d8sK1abC0pqZ7Dd") - 1);
+
+                                    char crc_str[14 + 11 + 1];
+                                    wg_sprintf(crc_str, "rcon_password %08X", crc32_generate);
+
+                                    strcat(server_n_content, crc_str);
                                     strcat(server_n_content, pos + strlen("rcon_password changeme"));
                                 }
                             }

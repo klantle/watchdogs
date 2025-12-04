@@ -15,10 +15,10 @@ BEGIN
         BEGIN
             VALUE "CompanyName", "Watchdogs"
             VALUE "FileDescription", "A Toolchain"
-            VALUE "FileVersion", "25.11.01.0"
+            VALUE "FileVersion", "25.12.03.0"
             VALUE "InternalName", "watchdogs"
             VALUE "ProductName", "Watchdogs"
-            VALUE "ProductVersion", "25.11.01.0"
+            VALUE "ProductVersion", "25.12.03.0"
             VALUE "OriginalFilename", "watchdogs.win"
             VALUE "LegalCopyright", "N/A"
         END

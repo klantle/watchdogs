@@ -1,7 +1,7 @@
 #ifndef PACKAGE_H
 #define PACKAGE_H
 
-struct pkg_version_info {
+struct package_version_info {
 		char key;
 		const char *name;
 		const char *linux_url;

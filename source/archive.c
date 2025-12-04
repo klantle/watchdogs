@@ -13,6 +13,7 @@
 #include "utils.h"
 #include "archive.h"
 #include "curl.h"
+#include "debug.h"
 #include "units.h"
 
 /*
@@ -21,19 +22,19 @@
  * Ensures proper path concatenation without duplicate directory components.
  */
 static void arch_extraction_path(const char *entry_dest, const char *entry_path,
-                                char *out_path, size_t out_size)
+                                char *exit_path, size_t exit_size)
 {
         /* Handle cases where no specific destination is provided */
         if (!entry_dest ||
                 !strcmp(entry_dest, ".") ||
                 *entry_dest == '\0') {
-                snprintf(out_path, out_size, "%s", entry_path);  /* Use entry path as-is */
+                snprintf(exit_path, exit_size, "%s", entry_path);  /* Use entry path as-is */
         } else {
                 /* Check if entry path already starts with destination to avoid duplication */
                 if (!strncmp(entry_path, entry_dest, strlen(entry_dest))) {
-                        snprintf(out_path, out_size, "%s", entry_path);  /* Path already contains destination */
+                        snprintf(exit_path, exit_size, "%s", entry_path);  /* Path already contains destination */
                 } else {
-                        snprintf(out_path, out_size, "%s/%s", entry_dest, entry_path);  /* Combine dest + entry path */
+                        snprintf(exit_path, exit_size, "%s/%s", entry_dest, entry_path);  /* Combine dest + entry path */
                 }
         }
 }
@@ -197,9 +198,9 @@ int compress_to_archive(const char *archive_path,
                 if (len < 0) {
                         fprintf(stderr, "Failed to read file %s: %s\n", 
                                 filename, strerror(errno));
-                        char fetch_error[WG_PATH_MAX];
-                        snprintf(fetch_error, sizeof(fetch_error), "%s", strerror(errno));
-                        if (strfind(fetch_error, "Is a directory", true)) {
+                        char procure_error[WG_PATH_MAX];
+                        snprintf(procure_error, sizeof(procure_error), "%s", strerror(errno));
+                        if (strfind(procure_error, "Is a directory", true)) {
                                 fprintf(stderr, "Fallback to Directory Mode: %s\n", filename);
                                 ret = -2;
                                 goto fallback;
@@ -237,14 +238,19 @@ fallback:
 int wg_path_recursive(struct archive *a, const char *root, const char *path) {
         struct archive_entry *entry;
         struct stat st;
-        char size_path[1024];
+        stat(path, &st);
+        char paths[1024];
 
         /* Create full absolute path */
-        snprintf(size_path, sizeof(size_path), "%s/%s", root, path);
+        snprintf(paths, sizeof(paths), "%s/%s", root, path);
 
         /* Get file status (metadata) */
-        if (lstat(size_path, &st) != 0) {
-                fprintf(stderr, "stat failed: %s: %s\n", size_path, strerror(errno));
+#ifdef WG_WINDOWS
+        if (stat(paths, &st) != 0) {
+#else
+        if (lstat(paths, &st) != 0) {
+#endif
+                fprintf(stderr, "stat failed: %s: %s\n", paths, strerror(errno));
                 return -1;
         }
 
@@ -262,7 +268,7 @@ int wg_path_recursive(struct archive *a, const char *root, const char *path) {
 
         /* If it's a REGULAR FILE → write its contents */
         if (S_ISREG(st.st_mode)) {
-                int fd = open(size_path, O_RDONLY);
+                int fd = open(paths, O_RDONLY);
                 char buf[8192];
                 ssize_t len;
 
@@ -277,19 +283,18 @@ int wg_path_recursive(struct archive *a, const char *root, const char *path) {
 
         /* If it's a DIRECTORY → enter recursively */
         if (S_ISDIR(st.st_mode)) {
-                DIR *open_dir = opendir(size_path);
-                struct dirent *dp;
+                DIR *open_dir = opendir(paths);
+                struct dirent *dir_read;
 
-                if (!open_dir)
-                        return -1;
+                if (!open_dir) return -1;
 
-                while ((dp = readdir(open_dir)) != NULL) {
-                        if (wg_is_special_dir(dp->d_name))
+                while ((dir_read = readdir(open_dir)) != NULL) {
+                        if (wg_is_special_dir(dir_read->d_name))
                                 continue;
 
                         char child[WG_MAX_PATH];
                         snprintf(child, sizeof(child),
-                                "%s/%s", path, dp->d_name);
+                                "%s/%s", path, dir_read->d_name);
 
                         /* Recursive call for child */
                         wg_path_recursive(a, root, child);
@@ -474,8 +479,8 @@ int wg_extract_tar(const char *tar_path, const char *entry_dest) {
  * Returns 0 on success, negative values on various types of errors.
  */
 static int extract_zip_entry(struct archive *archive_read,
-                                                         struct archive *archive_write,
-                                                         struct archive_entry *item)
+                        struct archive *archive_write,
+                        struct archive_entry *item)
 {
         int ret;
         const void *buffer;
@@ -519,7 +524,7 @@ int wg_extract_zip(const char *zip_file, const char *entry_dest)
         struct archive *archive_read;
         struct archive *archive_write;
         struct archive_entry *item;
-        char size_path[1024 * 1024];  /* Buffer for full extraction path */
+        char paths[1024 * 1024];  /* Buffer for full extraction path */
         int ret;
         int error_occurred = 0;  /* Track if any extraction errors occurred */
 
@@ -573,8 +578,8 @@ int wg_extract_zip(const char *zip_file, const char *entry_dest)
                 }
 
                 /* Construct full extraction path with destination directory */
-                arch_extraction_path(entry_dest, entry_path, size_path, sizeof(size_path));
-                archive_entry_set_pathname(item, size_path);  /* Update entry's extraction path */
+                arch_extraction_path(entry_dest, entry_path, paths, sizeof(paths));
+                archive_entry_set_pathname(item, paths);  /* Update entry's extraction path */
 
                 /* Extract the current entry */
                 if (extract_zip_entry(archive_read, archive_write, item) != 0) {
@@ -608,41 +613,10 @@ error:
  */
 void wg_extract_archive(const char *filename)
 {
-/* Debug information section - only compiled when _DBG_PRINT is defined */
-#if defined (_DBG_PRINT)
-        pr_color(stdout, FCOLOUR_YELLOW, "-DEBUGGING ");
-        printf("[function: %s | "
-                   "pretty function: %s | "
-                   "line: %d | "
-                   "file: %s | "
-                   "date: %s | "
-                   "time: %s | "
-                   "timestamp: %s | "
-                   "C standard: %ld | "
-                   "C version: %s | "
-                   "compiler version: %d | "
-                   "architecture: %s]:\n",
-                        __func__, __PRETTY_FUNCTION__,
-                        __LINE__, __FILE__,
-                        __DATE__, __TIME__,
-                        __TIMESTAMP__,
-                        __STDC_VERSION__,
-                        __VERSION__,
-                        __GNUC__,
-#ifdef __x86_64__
-                        "x86_64");
-#elif defined(__i386__)
-                        "i386");
-#elif defined(__arm__)
-                        "ARM");
-#elif defined(__aarch64__)
-                        "ARM64");
-#else
-                        "Unknown");
-#endif
-#endif
+        /* Debug information section */
+        __debug_function();
 
-        char output_path[WG_PATH_MAX];  /* Buffer for destination directory name */
+        char ext_paths[WG_PATH_MAX];  /* Buffer for destination directory name */
 
         printf(" Try Extracting %s archive file...\n", filename);
         fflush(stdout);
@@ -650,47 +624,59 @@ void wg_extract_archive(const char *filename)
         /* Detect archive type by file extension and route to appropriate extractor */
         if (strend(filename, ".tar.gz", true)) {
                 /* For .tar.gz files: create destination directory by removing extension */
-                snprintf(output_path, sizeof(output_path), "%s", filename);
-                output_path[strlen(filename) - 7] = '\0';  /* Remove ".tar.gz" (7 characters) */
+                snprintf(ext_paths, sizeof(ext_paths), "%s", filename);
+                ext_paths[strlen(filename) - 7] = '\0';  /* Remove ".tar.gz" (7 characters) */
 
                 /* Special handling for downloaded files going to "scripts" directory */
-                if (wgconfig.wg_downloading_file == 1 && path_exists("scripts"))
-                        wg_extract_tar(filename, "scripts");
-                else {
-                        if (wg_mkdir(".watchdogs/scripts")) {
-                                pr_info(stdout, "Extracting into .watchdogs/scripts...");
-                                wg_extract_tar(filename, ".watchdogs/scripts");
+                if (wgconfig.wg_idownload == 1) {
+                        if (path_exists("scripts")) {
+                                wg_extract_tar(filename, "scripts");
+                        } else {
+                                if (wg_mkdir(".watchdogs/scripts")) {
+                                        pr_info(stdout, "Extracting into .watchdogs/scripts...");
+                                        wg_extract_tar(filename, ".watchdogs/scripts");
+                                }
                         }
+                } else {
+                        wg_extract_tar(filename, NULL);
                 }
         }
         else if (strend(filename, ".tar", true)) {
                 /* For .tar files: create destination directory by removing extension */
-                snprintf(output_path, sizeof(output_path), "%s", filename);
-                output_path[strlen(filename) - 4] = '\0';  /* Remove ".tar" (4 characters) */
+                snprintf(ext_paths, sizeof(ext_paths), "%s", filename);
+                ext_paths[strlen(filename) - 4] = '\0';  /* Remove ".tar" (4 characters) */
 
                 /* Special handling for downloaded files going to "scripts" directory */
-                if (wgconfig.wg_downloading_file == 1 && path_exists("scripts"))
-                        wg_extract_tar(filename, "scripts");
-                else {
-                        if (wg_mkdir(".watchdogs/scripts")) {
-                                pr_info(stdout, "Extracting into .watchdogs/scripts...");
-                                wg_extract_tar(filename, ".watchdogs/scripts");
+                if (wgconfig.wg_idownload == 1) {
+                        if (path_exists("scripts")) {
+                                wg_extract_tar(filename, "scripts");
+                        } else {
+                                if (wg_mkdir(".watchdogs/scripts")) {
+                                        pr_info(stdout, "Extracting into .watchdogs/scripts...");
+                                        wg_extract_tar(filename, ".watchdogs/scripts");
+                                }
                         }
+                } else {
+                        wg_extract_tar(filename, NULL);
                 }
         }
         else if (strend(filename, ".zip", true)) {
                 /* For .zip files: create destination directory by removing extension */
-                snprintf(output_path, sizeof(output_path), "%s", filename);
-                output_path[strlen(filename) - 4] = '\0';  /* Remove ".zip" (4 characters) */
+                snprintf(ext_paths, sizeof(ext_paths), "%s", filename);
+                ext_paths[strlen(filename) - 4] = '\0';  /* Remove ".zip" (4 characters) */
 
                 /* Special handling for downloaded files going to "scripts" directory */
-                if (wgconfig.wg_downloading_file == 1 && path_exists("scripts"))
-                        wg_extract_zip(filename, "scripts");
-                else {
-                        if (wg_mkdir(".watchdogs/scripts")) {
-                                pr_info(stdout, "Extracting into .watchdogs/scripts...");
-                                wg_extract_zip(filename, ".watchdogs/scripts");
+                if (wgconfig.wg_idownload == 1) {
+                        if (path_exists("scripts")) {
+                                wg_extract_zip(filename, "scripts");
+                        } else {
+                                if (wg_mkdir(".watchdogs/scripts")) {
+                                        pr_info(stdout, "Extracting into .watchdogs/scripts...");
+                                        wg_extract_zip(filename, ".watchdogs/scripts");
+                                }
                         }
+                } else {
+                        wg_extract_zip(filename, NULL);
                 }
         }
         else {
@@ -699,7 +685,7 @@ void wg_extract_archive(const char *filename)
                 goto done;  /* Skip to cleanup/return */
         }
 
-        wgconfig.wg_downloading_file = 0;  /* Reset downloading flag after extraction */
+        wgconfig.wg_idownload = 0;  /* Reset downloading flag after extraction */
 
         sleep(1);  /* Brief pause to ensure file system operations complete */
 

@@ -6,18 +6,20 @@
 #include <sys/stat.h>
 #include <limits.h>
 #include <time.h>
+#include <fcntl.h>
 #include <signal.h>
 
 #include "units.h"
 #include "extra.h"
 #include "utils.h"
 #include "crypto.h"
-#include "depends.h"
+#include "depend.h"
 #include "compiler.h"
+#include "debug.h"
 #include "runner.h"
 
 /* Global variables for server management and configuration handling */
-int                 handle_sigint   = 0;           /* Signal interrupt handling flag */
+int                 sigint_handler   = 0;           /* Signal interrupt handling flag */
 FILE                *               config_in = NULL;      /* Input configuration file pointer */
 FILE                *               config_out = NULL;     /* Output configuration file pointer */
 cJSON               *               cJSON_server_root = NULL; /* Root JSON object for server config */
@@ -25,7 +27,12 @@ cJSON               *               pawn = NULL;           /* Pawn-specific JSON
 cJSON               *               cJSON_MS_Obj = NULL;   /* Main script object in JSON */
 char                *               cJSON_Data = NULL;     /* Raw JSON data buffer */
 char                *               cjsON_PrInted_data = NULL; /* Pretty-printed JSON string */
-char                                r_command[WG_MAX_PATH + WG_PATH_MAX * 2]; /* Command buffer */
+char                                runner_command[WG_MAX_PATH + WG_PATH_MAX * 2]; /* Command buffer */
+int                                 rate_problem_stat = 0;      /* General problem detection flag */
+int                                 server_crashdetect = 0; /* CrashDetect plugin detection */
+int                                 server_rcon_pass = 0;   /* RCON password issue detection */
+int                                 rate_sampvoice_server = 0; /* SampVoice plugin status */
+char                                *sampvoice_port = NULL;  /* Detected SampVoice port */
 
 /*
  * Performs cleanup operations for server processes and configuration restoration.
@@ -33,7 +40,7 @@ char                                r_command[WG_MAX_PATH + WG_PATH_MAX * 2]; /*
  * Used during graceful shutdown or error recovery scenarios.
  */
 void try_cleanup_server(void) {
-        handle_sigint = 1;            /* Mark that interrupt is being handled */
+        sigint_handler = 1;            /* Mark that interrupt is being handled */
         wg_stop_server_tasks();       /* Terminate running server processes */
         restore_server_config();      /* Revert configuration files to original state */
         return;
@@ -44,7 +51,7 @@ void try_cleanup_server(void) {
  * Initiates cleanup, creates crash detection marker, and restarts the watchdogs
  * interface. Platform-specific restart commands ensure proper process management.
  */
-void unit_handle_sigint(int sig) {
+void unit_sigint_handler(int sig) {
         try_cleanup_server();         /* Clean up server processes and configs */
         
         struct timespec stop_all_timer;
@@ -113,12 +120,6 @@ void wg_display_server_logs(int ret)
  * detection for runtime errors, plugin failures, memory issues, and configuration mismatches.
  */
 void wg_server_crash_check(void) {
-        int problem_stat = 0;                /* General problem detection flag */
-        int server_crashdetect = 0;          /* CrashDetect plugin detection */
-        int server_rcon_pass = 0;            /* RCON password issue detection */
-        int sampvoice_server_check = 0;      /* SampVoice plugin status */
-        char *sampvoice_port = NULL;         /* Detected SampVoice port */
-        
         /* Open server log file for analysis */
         FILE *proc_f = NULL;
         if (wg_server_env() == 1)            /* SA-MP server logs */
@@ -147,7 +148,7 @@ void wg_server_crash_check(void) {
             /* Runtime error detection - common Pawn script errors */
             if (strfind(line_buf, "run time error", true) || strfind(line_buf, "Run time error", true))
             {
-                problem_stat = 1;            /* Mark general problem found */
+                rate_problem_stat = 1;            /* Mark general problem found */
                 needed = snprintf(output_buf, sizeof(output_buf), "@ Runtime error detected\n\t");
                 fwrite(output_buf, 1, needed, stdout);
                 pr_color(stdout, FCOLOUR_BLUE, line_buf);
@@ -216,7 +217,7 @@ void wg_server_crash_check(void) {
                 int _sampvoice_port;
                 if (scanf("%*[^v]voice server running on port %d", &_sampvoice_port) != 1)
                     continue;
-                ++sampvoice_server_check;
+                ++rate_sampvoice_server;
                 sampvoice_port = (char *)&sampvoice_port;
             }
             
@@ -250,7 +251,7 @@ void wg_server_crash_check(void) {
             }
             
             /* CrashDetect plugin specific diagnostics */
-            if (problem_stat) {
+            if (rate_problem_stat) {
                 if (strfind(line_buf, "[debug]", true) || strfind(line_buf, "crashdetect", true))
                 {
                     ++server_crashdetect;    /* Count crashdetect references */
@@ -314,7 +315,7 @@ void wg_server_crash_check(void) {
                                 fflush(stdout);
                                 char *downgrading = readline("   answer (y/n): ");
                                 if (strcmp(downgrading, "Y") == 0 || strcmp(downgrading, "y")) {
-                                    wg_install_depends("CyberMor/sampvoice:v3.0-alpha");
+                                    wg_install_depends("CyberMor/sampvoice?v3.0-alpha", "master");
                                 }
                             }
                         }
@@ -412,7 +413,7 @@ void wg_server_crash_check(void) {
                         "\tIf you need to reinstall a plugin that failed, you can use the command:\n"
                         "\t\tinstall user/repo:tags\n"
                         "\tExample:\n"
-                        "\t\tinstall Y-Less/sscanf:latest\n"
+                        "\t\tinstall Y-Less/sscanf?newer\n"
                         "\tYou can also recheck the username shown on the failed plugin using the command:\n"
                         "\t\ttracker name\n");
                     fwrite(output_buf, 1, needed, stdout);
@@ -470,7 +471,7 @@ void wg_server_crash_check(void) {
         fclose(proc_f);  /* Close log file after analysis */
 
         /* SampVoice port mismatch detection between config and logs */
-        if (sampvoice_server_check) {
+        if (rate_sampvoice_server) {
             if (path_access("server.cfg") == 0)
                 goto skip;  /* Skip if server.cfg doesn't exist */
             proc_f = fopen("server.cfg", "rb");
@@ -589,7 +590,7 @@ wg_skip_fixed:
         fflush(stdout);
         
         /* CrashDetect installation prompt if crashes detected but plugin missing */
-        if (problem_stat == 1 && server_crashdetect < 1) {
+        if (rate_problem_stat == 1 && server_crashdetect < 1) {
               needed = snprintf(output_buf, sizeof(output_buf), "INFO: crash found! "
                      "and crashdetect not found.. "
                      "install crashdetect now? (Auto-fix) ");
@@ -600,7 +601,7 @@ wg_skip_fixed:
               confirm = readline("Y/n ");
               if (strfind(confirm, "y", true)) {
                   wg_free(confirm);
-                  wg_install_depends("Y-Less/samp-plugin-crashdetect:latest");
+                  wg_install_depends("Y-Less/samp-plugin-crashdetect?newer", "master");
               } else {
                   wg_free(confirm);
                   int _wg_crash_ck = path_access(".watchdogs/crashdetect");
@@ -622,7 +623,8 @@ static int update_samp_config(const char *gamemode)
         char line[0x400];  /* Line buffer for config processing */
 
         char size_config[WG_PATH_MAX];
-        snprintf(size_config, sizeof(size_config), ".watchdogs/%s.bak", wgconfig.wg_toml_config);
+        snprintf(size_config, sizeof(size_config),
+                ".watchdogs/%s.bak", wgconfig.wg_toml_config);
 
         /* Remove existing backup if present */
         if (path_access(size_config))
@@ -630,27 +632,38 @@ static int update_samp_config(const char *gamemode)
 
         /* Create backup of original configuration file */
         if (is_native_windows())
-                snprintf(r_command, sizeof(r_command),
+                snprintf(runner_command, sizeof(runner_command),
                         "ren %s %s",
                         wgconfig.wg_toml_config,
                         size_config);
         else
-                snprintf(r_command, sizeof(r_command),
+                snprintf(runner_command, sizeof(runner_command),
                         "mv -f %s %s",
                         wgconfig.wg_toml_config,
                         size_config);
 
-        if (wg_run_command(r_command) != 0x0) {
+        if (wg_run_command(runner_command) != 0x0) {
                 pr_error(stdout, "Failed to create backup file");
                 return -1;
         }
-
-        /* Open backup file for reading */
-        config_in = fopen(size_config, "r");
-        if (!config_in) {
-                pr_error(stdout, "Failed to open backup config");
+        
+        /* Open bak config */
+#ifdef _WIN32
+    int fd = open(size_config, O_RDONLY);
+#else
+    int fd = open(size_config, O_RDONLY | O_NOFOLLOW);
+#endif
+        if (fd < 0) {
+                pr_error(stdout, "cannot open backup");
                 return -1;
         }
+
+        config_in = fdopen(fd, "r");
+        if (!config_in) {
+                close(fd);
+                return -1;
+        }
+
         /* Create new configuration file */
         config_out = fopen(wgconfig.wg_toml_config, "w+");
         if (!config_out) {
@@ -698,30 +711,30 @@ void restore_server_config(void) {
 
         /* Delete current configuration file */
         if (is_native_windows())
-                snprintf(r_command, sizeof(r_command),
+                snprintf(runner_command, sizeof(runner_command),
                 "if exist \"%s\" (del /f /q \"%s\" 2>nul || "
                 "rmdir /s /q \"%s\" 2>nul)",
                 wgconfig.wg_toml_config, wgconfig.wg_toml_config, wgconfig.wg_toml_config);
         else
-                snprintf(r_command, sizeof(r_command),
+                snprintf(runner_command, sizeof(runner_command),
                 "rm -rf %s",
                 wgconfig.wg_toml_config);
 
-        wg_run_command(r_command);
+        wg_run_command(runner_command);
 
         /* Restore backup to original configuration file */
         if (is_native_windows())
-                snprintf(r_command, sizeof(r_command),
+                snprintf(runner_command, sizeof(runner_command),
                         "ren %s %s",
                         size_config,
                         wgconfig.wg_toml_config);
         else
-                snprintf(r_command, sizeof(r_command),
+                snprintf(runner_command, sizeof(runner_command),
                         "mv -f %s %s",
                         size_config,
                         wgconfig.wg_toml_config);
 
-        wg_run_command(r_command);
+        wg_run_command(runner_command);
 
 restore_done:
         return;
@@ -734,39 +747,9 @@ restore_done:
  */
 void wg_run_samp_server(const char *gamemode, const char *server_bin)
 {
-#if defined (_DBG_PRINT)
-        /* Debug information printing */
-        pr_color(stdout, FCOLOUR_YELLOW, "-DEBUGGING ");
-        printf("[function: %s | "
-                   "pretty function: %s | "
-                   "line: %d | "
-                   "file: %s | "
-                   "date: %s | "
-                   "time: %s | "
-                   "timestamp: %s | "
-                   "C standard: %ld | "
-                   "C version: %s | "
-                   "compiler version: %d | "
-                   "architecture: %s]:\n",
-                __func__, __PRETTY_FUNCTION__,
-                __LINE__, __FILE__,
-                __DATE__, __TIME__,
-                __TIMESTAMP__,
-                __STDC_VERSION__,
-                __VERSION__,
-                __GNUC__,
-#ifdef __x86_64__
-                "x86_64");
-#elif defined(__i386__)
-                "i386");
-#elif defined(__arm__)
-                "ARM");
-#elif defined(__aarch64__)
-                "ARM64");
-#else
-                "Unknown");
-#endif
-#endif
+        /* Debug information section */
+        __debug_function();
+
         /* Validate configuration file type */
         if (strfind(wgconfig.wg_toml_config, ".json", true))
                 return;
@@ -811,7 +794,7 @@ void wg_run_samp_server(const char *gamemode, const char *server_bin)
         /* Set up signal handler for graceful termination */
         struct sigaction sa;
 
-        sa.sa_handler = unit_handle_sigint;
+        sa.sa_handler = unit_sigint_handler;
         sigemptyset(&sa.sa_mask);
         sa.sa_flags = SA_RESTART;
 
@@ -830,11 +813,11 @@ back_start:
         start = time(NULL);
         /* Construct and execute server command */
 #ifdef WG_WINDOWS
-        snprintf(r_command, sizeof(r_command), "%s", server_bin);
+        snprintf(runner_command, sizeof(runner_command), "%s", server_bin);
 #else
-        snprintf(r_command, sizeof(r_command), "./%s", server_bin);
+        snprintf(runner_command, sizeof(runner_command), "./%s", server_bin);
 #endif
-        ret = wg_run_command(r_command);
+        ret = wg_run_command(runner_command);
         if (ret == 0) {
                 end = time(NULL);
 
@@ -871,7 +854,7 @@ server_done:
         end = time(NULL);
 
         /* Trigger cleanup if not already handled */
-        if (handle_sigint == 0)
+        if (sigint_handler == 0)
                 raise(SIGINT);
 
         return;
@@ -891,7 +874,8 @@ static int update_omp_config(const char *gamemode)
         int ret = -1;
 
         char size_config[WG_PATH_MAX];
-        snprintf(size_config, sizeof(size_config), ".watchdogs/%s.bak", wgconfig.wg_toml_config);
+        snprintf(size_config, sizeof(size_config),
+                ".watchdogs/%s.bak", wgconfig.wg_toml_config);
 
         /* Remove existing backup */
         if (path_access(size_config))
@@ -899,31 +883,42 @@ static int update_omp_config(const char *gamemode)
 
         /* Create backup of current configuration */
         if (is_native_windows())
-                snprintf(r_command, sizeof(r_command),
+                snprintf(runner_command, sizeof(runner_command),
                         "ren %s %s",
                         wgconfig.wg_toml_config,
                         size_config);
         else
-                snprintf(r_command, sizeof(r_command),
+                snprintf(runner_command, sizeof(runner_command),
                         "mv -f %s %s",
                         wgconfig.wg_toml_config,
                         size_config);
 
-        if (wg_run_command(r_command) != 0x0) {
+        if (wg_run_command(runner_command) != 0x0) {
                 pr_error(stdout, "Failed to create backup file");
                 goto runner_end;
         }
 
-        /* Get file size for memory allocation */
-        if (stat(size_config, &st) != 0x0) {
-                pr_error(stdout, "Failed to get file status");
+        /* Open bak config */
+#ifdef _WIN32
+    int fd = open(size_config, O_RDONLY);
+#else
+    int fd = open(size_config, O_RDONLY | O_NOFOLLOW);
+#endif
+        if (fd < 0) {
+                pr_error(stdout, "Failed to open %s", size_config);
                 goto runner_end;
         }
 
-        /* Read backup file into memory */
-        config_in = fopen(size_config, "rb");
+        if (fstat(fd, &st) != 0) {
+                pr_error(stdout, "Failed to stat %s", size_config);
+                close(fd);
+                goto runner_end;
+        }
+
+        config_in = fdopen(fd, "rb");
         if (!config_in) {
-                pr_error(stdout, "Failed to open %s", size_config);
+                pr_error(stdout, "fdopen failed");
+                close(fd);
                 goto runner_end;
         }
 
@@ -1025,39 +1020,9 @@ void restore_omp_config(void) {
  */
 void wg_run_omp_server(const char *gamemode, const char *server_bin)
 {
-#if defined (_DBG_PRINT)
-        /* Debug information output */
-        pr_color(stdout, FCOLOUR_YELLOW, "-DEBUGGING ");
-        printf("[function: %s | "
-                   "pretty function: %s | "
-                   "line: %d | "
-                   "file: %s | "
-                   "date: %s | "
-                   "time: %s | "
-                   "timestamp: %s | "
-                   "C standard: %ld | "
-                   "C version: %s | "
-                   "compiler version: %d | "
-                   "architecture: %s]:\n",
-                __func__, __PRETTY_FUNCTION__,
-                __LINE__, __FILE__,
-                __DATE__, __TIME__,
-                __TIMESTAMP__,
-                __STDC_VERSION__,
-                __VERSION__,
-                __GNUC__,
-#ifdef __x86_64__
-                "x86_64");
-#elif defined(__i386__)
-                "i386");
-#elif defined(__arm__)
-                "ARM");
-#elif defined(__aarch64__)
-                "ARM64");
-#else
-                "Unknown");
-#endif
-#endif
+        /* Debug information section */
+        __debug_function();
+
         /* Validate configuration file type */
         if (strfind(wgconfig.wg_toml_config, ".cfg", true))
                 return;
@@ -1102,7 +1067,7 @@ void wg_run_omp_server(const char *gamemode, const char *server_bin)
         /* Setup signal handling */
         struct sigaction sa;
 
-        sa.sa_handler = unit_handle_sigint;
+        sa.sa_handler = unit_sigint_handler;
         sigemptyset(&sa.sa_mask);
         sa.sa_flags = SA_RESTART;
 
@@ -1121,12 +1086,12 @@ back_start:
         start = time(NULL);
         /* Construct server execution command */
 #ifdef WG_WINDOWS
-        snprintf(r_command, sizeof(r_command), "%s", server_bin);
+        snprintf(runner_command, sizeof(runner_command), "%s", server_bin);
 #else
-        snprintf(r_command, sizeof(r_command), "./%s", server_bin);
+        snprintf(runner_command, sizeof(runner_command), "./%s", server_bin);
 #endif
 
-        ret = wg_run_command(r_command);
+        ret = wg_run_command(runner_command);
 
         if (ret != 0) {
                 pr_color(stdout, FCOLOUR_RED, "Server startup failed!\n");
@@ -1151,7 +1116,7 @@ back_start:
 
 server_done:
         end = time(NULL);
-        if (handle_sigint)
+        if (sigint_handler)
                 raise(SIGINT);
 
         return;

@@ -55,7 +55,7 @@ apt update && apt install make git -y && git clone https://gitlab.com/mywatchdog
 sudo apt update && apt install make git -y && git clone https://gitlab.com/mywatchdogs/watchdogs watch && cd watch && make init && mv watchdogs .. && cd .. && ./watchdogs
 ```
 
-## Makefile fatal Issue
+## Known Makefile fatal Issue
 ```bash
 # ==> Detecting environment...
 # Detected Docker environment
@@ -70,6 +70,47 @@ make: *** [Makefile:67: init] Error 100
 sudo make init
 # or:
 sudo make
+```
+
+# Known Windows MSYS (GDB Build) Issue
+> Issue (1) - module issue
+```yaml
+For help, type "help".
+Type "apropos word" to search for commands related to "word"...
+Python Exception <class 'ModuleNotFoundError'>: No module named 'libstdcxx'
+/etc/gdbinit:6: Error in sourced command file:
+Error occurred in Python: No module named 'libstdcxx'
+Reading symbols from ./watchdogs.debug.win...
+```
+- Fix with
+```bash
+if [ -f "/etc/gdbinit" ]; then \
+  sed -i '/libstdcxx/d' /etc/gdbinit; \
+fi; \
+echo "set auto-load safe-path /" > ~/.gdbinit;
+```
+> Issue (2) - stuck issue
+```yaml
+-DEBUGGER [function: __debug_main_chain | pretty function: __debug_main_chain | line: 88 | file: source/units.c | date: Dec  4 2025 | time: 12:52:28 | timestamp: Thu Dec  4 12:44:22 2025 | C standard: 202311 | C version: 15.2.0 | compiler version: 15 | architecture: x86_64 | os_type: fdfc4c8d (CRC32) | pointer_samp: samp-server.exe | pointer_openmp: (null) | f_samp: fdfc4c8d (CRC32) | f_openmp: 2bcd6830 (CRC32) | toml gamemode input: gamemodes/bare.pwn | toml gamemode output: gamemodes/bare.amx | toml binary: samp-server.exe | toml configs: server.cfg | toml logs: server_log.txt | toml github tokens: DO_HERE | toml chatbot: gemini | toml ai models: gemini-2.5-pro | toml ai key: API_KEY
+STDC: 1
+STDC_HOSTED: 1
+BYTE_ORDER: Little Endian
+SIZE_OF_PTR: 8 bytes
+SIZE_OF_INT: 4 bytes
+SIZE_OF_LONG: 4 bytes
+GNUC: 15.2.0
+OS: SSE: Supported
+[watchdogs] $ help
+whoami
+        exit
+[Thread 6388.0x1c8c exited with code 0]
+[Thread 6388.0x1e84 exited with code 0]
+[Thread 6388.0x206c exited with code 0]
+```
+- Fix with
+```bash
+pacman -S winpty &&
+winpty gdb ./watchdogs.debug.win
 ```
 
 ## Known Android/Termux fatal Issue
@@ -401,6 +442,7 @@ logs = "server_log.txt"
 # api keys/tokens
 # https://aistudio.google.com/api-keys
 # https://console.groq.com/keys
+# [Optional]
 keys = "API_KEY"
 
 # chatbot - "gemini" "groq"
@@ -413,6 +455,7 @@ models = "gemini-2.5-pro"
 
 # discord webhooks - optional
 # https://support.discord.com/hc/en-us/articles/228383668-Intro-to-Webhooks
+# [Optional]
 webhooks = "DO_HERE"
 
 [compiler]
@@ -443,12 +486,13 @@ output = "gamemodes/bare.amx"
 # Personal access tokens (classic) - https://github.com/settings/tokens
 # Access tokens to create installation dependencies,
 # to can download files from private GitHub repositories without making them public.
+# [Optional]
 github_tokens = "DO_HERE"
 
 # Dependency repositories (max 101)
 aio_repo = [
-    "Y-Less/sscanf:latest",
-    "samp-incognito/samp-streamer-plugin:latest"
+    "Y-Less/sscanf?newer",
+    "samp-incognito/samp-streamer-plugin?newer"
 ]
 ```
 
@@ -469,6 +513,8 @@ Usage: help | help [<command>]
 ./watchdogs help compile
 ./watchdogs compile main.pwn
 ```
+
+> If you are using Watchdogs, and Watchdogs restricts terminal access like it did in your daily workflow before using Watchdogs, you don’t need to use that as a reason to avoid Watchdogs. Watchdogs automatically falls back to the system shell for commands that are not directly registered within the Watchdogs system. This means that if, for example, you run a command like `clear` or `rm` also `mv` and `cp` with arguments (options like flags in the executed command), it will still run in the terminal even within a Watchdogs instance.
 
 ### Downloading Our Links
 
@@ -566,6 +612,8 @@ compiles
 
 ### Dependency Management
 
+> Based on GitHub.
+
 * **Algorithm**
 ```
 --------------------     --------------------------
@@ -596,8 +644,9 @@ For plugin files located in the root directory of the dependency archive (for bo
 <br><br>
 The handling of YSI includes differs due to their structure containing multiple nested folders of include files. In this case, the entire folder containing these includes is moved directly to the target path (e.g., `pawno/include` or `qawno/include`), streamlining the process.
 <br>
+> Please be aware that Watchdogs are used to check whether the user is running a specific SA-MP/Open.MP from their respective ecosystem folders, and pawno/qawno is one of them. We hope you stay aligned on this, and do not rename the pawno/qawno folder to keep the Watchdogs detection system stable. However, if you do rename the pawno/qawno folder to something else, you may need to modify the Watchdogs source accordingly.
 
-![img](https://raw.githubusercontent.com/klantle/watchdogs/refs/heads/dev/__DEPS.png)
+![img](https://raw.githubusercontent.com/klantle/watchdogs/refs/heads/dev/images/REPLICATE.png)
 
 **Install dependencies from `watchdogs.toml`:**
 ```yaml
@@ -611,7 +660,16 @@ replicate repo/user
 
 **Install specific version (tags):**
 ```yaml
-replicate repo/user:v1.1
+replicate repo/user?v1.1
+```
+- Auto-latest
+```yaml
+replicate repo/user?newer
+```
+
+**Install specific branch:**
+```yaml
+replicate repo/user --branch master
 ```
 
 ### Make Commands Reference
@@ -673,34 +731,6 @@ warning: 660    ../sysdeps/x86_64/multiarch/memmove-vec-unaligned-erms.S: No suc
 #10 0x0000555555561061 in __command__ ()
 #11 0x000055555556177c in chain_ret_main ()
 #12 0x000055555555b67d in main ()
-(gdb) bt full
-#0  __memcpy_avx_unaligned_erms () at ../sysdeps/x86_64/multiarch/memmove-vec-unaligned-erms.S:660
-No locals.
-#1  0x000055555555c53c in write_callbacks ()
-No symbol table info available.
-#2  0x00007ffff7f5741c in ?? () from /lib/x86_64-linux-gnu/libcurl.so.4
-No symbol table info available.
-#3  0x00007ffff7f557f8 in ?? () from /lib/x86_64-linux-gnu/libcurl.so.4
-No symbol table info available.
-#4  0x00007ffff7f6c4b5 in ?? () from /lib/x86_64-linux-gnu/libcurl.so.4
-No symbol table info available.
-#5  0x00007ffff7f50fb3 in ?? () from /lib/x86_64-linux-gnu/libcurl.so.4
-No symbol table info available.
-#6  0x00007ffff7f540e5 in curl_multi_perform () from /lib/x86_64-linux-gnu/libcurl.so.4
-No symbol table info available.
-#7  0x00007ffff7f243ab in curl_easy_perform () from /lib/x86_64-linux-gnu/libcurl.so.4
-No symbol table info available.
-#8  0x0000555555564883 in dep_http_get_content ()
-No symbol table info available.
-#9  0x00005555555677bb in wg_install_depends ()
-No symbol table info available.
-#10 0x0000555555561061 in __command__ ()
-No symbol table info available.
---Type <RET> for more, q to quit, c to continue without paging--exit
-#11 0x000055555556177c in chain_ret_main ()
-No symbol table info available.
-#12 0x000055555555b67d in main ()
-No symbol table info available.
 ```
 - with debug build
 ```js
@@ -717,10 +747,10 @@ warning: 660    ../sysdeps/x86_64/multiarch/memmove-vec-unaligned-erms.S: No suc
 #6  0x00007ffff7f540e5 in curl_multi_perform () from /lib/x86_64-linux-gnu/libcurl.so.4
 #7  0x00007ffff7f243ab in curl_easy_perform () from /lib/x86_64-linux-gnu/libcurl.so.4
 #8  0x00005555555698dd in dep_http_get_content (url=0x7fffffff5d00 "https://api.github.com/repos/Y-Less/sscanf/releases/latest", github_token=0x5555556cbf40 "DO_HERE", out_html=0x7fffffff5ce0)
-    at source/depends.c:176
-#9  0x000055555556ac71 in dep_gh_latest_tag (user=0x7fffffff6230 "Y-Less", repo=0x7fffffff62b0 "sscanf", out_tag=0x7fffffff5fe0 "", deps_put_size=128) at source/depends.c:535
-#10 0x000055555556af65 in dep_handle_repo (dep_repo_info=0x7fffffff61d0, deps_put_url=0x7fffffff66e0 "\001", deps_put_size=1024) at source/depends.c:588
-#11 0x000055555556e317 in wg_install_depends (depends_string=0x5555557135f0 "Y-Less/sscanf:latest samp-incognito/samp-streamer-plugin:latest") at source/depends.c:1627
+    at source/depend.c:176
+#9  0x000055555556ac71 in dep_gh_latest_tag (user=0x7fffffff6230 "Y-Less", repo=0x7fffffff62b0 "sscanf", out_tag=0x7fffffff5fe0 "", deps_put_size=128) at source/depend.c:535
+#10 0x000055555556af65 in dep_handle_repo (dep_repo_info=0x7fffffff61d0, deps_put_url=0x7fffffff66e0 "\001", deps_put_size=1024) at source/depend.c:588
+#11 0x000055555556e317 in wg_install_depends (depends_string=0x5555557135f0 "Y-Less/sscanf?newer samp-incognito/samp-streamer-plugin?newer") at source/depend.c:1627
 #12 0x00005555555611d3 in __command__ (chain_pre_command=0x0) at source/units.c:517
 #13 0x0000555555564c64 in chain_ret_main (chain_pre_command=0x0) at source/units.c:1602
 #14 0x0000555555564f67 in main (argc=1, argv=0x7fffffffcf48) at source/units.c:1666

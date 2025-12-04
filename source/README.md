@@ -4,6 +4,7 @@
 | **source/units**     | This is the main Watchdogs file.                                                                      |
 | **source/utils**     | This file contains utility functions for Watchdogs.                                                   |
 | **source/lowlevel** | This file contains hardware-related information for Watchdogs.                                        |
+| **source/debug**    | This file sending system information.                                                               |
 | **source/crypto**   | This file handles cryptographic operations such as hashing, encryption, and decryption for Watchdogs. |
 | **source/curl**     | This file manages cURL connections, file installations, and Pawncc integration for Watchdogs.         |
 | **source/archive**  | This file handles archive management, including extraction for Watchdogs.                             |

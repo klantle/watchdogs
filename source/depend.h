@@ -1,13 +1,13 @@
-#ifndef DEPENDS_H
-#define DEPENDS_H
+#ifndef DEPENDENCY_H
+#define DEPENDENCY_H
 
 #define MAX_DEPENDS (102)
 
-struct dep_curl_buffer {
+struct dency_curl_buffer {
 		char *data;
 		size_t size;
 };
-struct dep_repo_info {
+struct dency_repo_info {
 		char host[32];
 		char domain[64];
 		char user[128];
@@ -15,10 +15,10 @@ struct dep_repo_info {
 		char tag[128];
 };
 typedef struct {
-		const char *dep_config;
-		const char *dep_target;
-		const char *dep_added;
-} depConfig;
+		const char *dency_config;
+		const char *dency_target;
+		const char *dency_added;
+} dencyconfig;
 
 #define PATH_SEPARATOR(path) \
     ({ \
@@ -27,6 +27,6 @@ typedef struct {
         (sep_linux && sep_win32) ? ((sep_linux > sep_win32) ? sep_linux : sep_win32) : (sep_linux ? sep_linux : sep_win32); \
     })
 
-void wg_install_depends(const char *depends_string);
+void wg_install_depends(const char *depends_string, const char *dependencies_branch);
 
 #endif

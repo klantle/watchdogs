@@ -74,15 +74,11 @@ const size_t
 sizeof(__command) / sizeof(__command[0]);
 
 WatchdogConfig wgconfig = {
-	    .wg_toml_os_type = NULL,
-	    .wg_toml_binary = NULL,
-	    .wg_toml_config = NULL,
-		.wg_toml_logs = NULL,
 	    .wg_ipawncc = 0,
 	    .wg_idepends = 0,
+		.wg_idownload = 0,
 	    .wg_os_type = CRC32_FALSE,
 	    .wg_sel_stat = 0,
-		.wg_downloading_file = 0,
 	    .wg_is_samp = CRC32_FALSE,
 	    .wg_is_omp = CRC32_FALSE,
 	    .wg_ptr_samp = NULL,
@@ -90,10 +86,14 @@ WatchdogConfig wgconfig = {
 	    .wg_compiler_stat = 0,
 	    .wg_sef_count = RATE_SEF_EMPTY,
 	    .wg_sef_found_list = { { RATE_SEF_EMPTY } },
+	    .wg_toml_os_type = NULL,
+	    .wg_toml_binary = NULL,
+	    .wg_toml_config = NULL,
+		.wg_toml_logs = NULL,
 	    .wg_toml_aio_opt = NULL,
 	    .wg_toml_aio_repo = NULL,
-	    .wg_toml_gm_input = NULL,
-	    .wg_toml_gm_output = NULL,
+	    .wg_toml_proj_input = NULL,
+	    .wg_toml_proj_output = NULL,
 		.wg_toml_key_ai = NULL,
 		.wg_toml_chatbot_ai = NULL,
 		.wg_toml_models_ai = NULL,
@@ -251,7 +251,7 @@ void wg_free(void* ptr) {
  * methods: GetCurrentDirectoryA on Windows or readlink on /proc/self/cwd on Linux.
  * Result is cached for subsequent calls.
  */
-char *wg_fetch_pwd(void) {
+char *wg_procure_pwd(void) {
 	static char wg_work_dir[WG_PATH_MAX]; /* Static buffer for caching working directory */
 		/* Initialize buffer only if empty (first call) */
 		if (wg_work_dir[0] == '\0') {
@@ -476,7 +476,7 @@ int is_pterodactyl_env(void)
 int is_termux_env(void)
 {
 		int is_termux = 0;
-#if defined(WG_LINUX)
+#if defined(WG_ANDROID)
 		is_termux = 1; /* Assume Termux on Linux for this configuration */
 		return is_termux;
 #endif
@@ -933,7 +933,7 @@ const char *wg_find_near_command(const char *command,
  * Uses compile-time defines and runtime checks for Docker and WSL environments.
  * Returns static string "windows", "linux", or "unknown" with container detection.
  */
-const char *wg_fetch_os(void)
+const char *wg_procure_os(void)
 {
     	static char os[64] = "unknown"; /* Static buffer for OS string */
 #ifdef WG_WINDOWS
@@ -1160,7 +1160,7 @@ int wg_is_special_dir(const char *entry_name)
  * Compares entry name with ignore directory using case-insensitive
  * comparison on Windows, case-sensitive on Unix.
  */
-static int wg_fetch_ignore_dir(const char *entry_name,
+static int wg_procure_ignore_dir(const char *entry_name,
 								const char *ignore_dir)
 {
 		if (!ignore_dir)
@@ -1236,7 +1236,7 @@ int wg_sef_fdir(const char *sef_path,
 			if (find_data.dwFileAttributes &
 				FILE_ATTRIBUTE_DIRECTORY) /* Directory */
 			{
-				if (wg_fetch_ignore_dir(entry_name, ignore_dir))
+				if (wg_procure_ignore_dir(entry_name, ignore_dir))
 					continue; /* Skip ignored directory */
 				/* Recursively search subdirectory */
 				if (wg_sef_fdir(size_path, sef_name, ignore_dir)) {
@@ -1273,7 +1273,7 @@ int wg_sef_fdir(const char *sef_path,
 			__set_path_sep(size_path, sizeof(size_path), sef_path, entry_name);
 
 			if (item->d_type == DT_DIR) { /* Directory entry */
-				if (wg_fetch_ignore_dir(entry_name, ignore_dir))
+				if (wg_procure_ignore_dir(entry_name, ignore_dir))
 					continue;
 				/* Recursive search */
 				if (wg_sef_fdir(size_path, sef_name, ignore_dir)) {
@@ -1292,7 +1292,7 @@ int wg_sef_fdir(const char *sef_path,
 					continue; /* Can't stat */
 
 				if (S_ISDIR(statbuf.st_mode)) { /* Actually a directory */
-					if (wg_fetch_ignore_dir(entry_name, ignore_dir))
+					if (wg_procure_ignore_dir(entry_name, ignore_dir))
 						continue;
 					if (wg_sef_fdir(size_path, sef_name, ignore_dir)) {
 						closedir(open_dir);
@@ -1394,7 +1394,7 @@ static void wg_check_compiler_options(int *compatibility, int *optimized_lt)
 static int wg_parsewg_toml_config(void)
 {
 		FILE *proc_file;
-		char error_buffer[256];
+        char error_buffer[WG_PATH_MAX];
 		toml_table_t *wg_toml_config;
 		toml_table_t *general_table;
 
@@ -1661,8 +1661,8 @@ static void wg_generate_toml_content(FILE *file, const char *wg_os_type,
 		fprintf(file, "[depends]\n");
 		fprintf(file, "github_tokens = \"DO_HERE\"\n");
 		/* Dependency repositories */
-		fprintf(file, "aio_repo = [\"Y-Less/sscanf:latest\", "
-					  "\"samp-incognito/samp-streamer-plugin:latest\"]");
+		fprintf(file, "aio_repo = [\"Y-Less/sscanf?newer\", "
+					  "\"samp-incognito/samp-streamer-plugin?newer\"]");
 }
 
 /*
@@ -1679,7 +1679,7 @@ int wg_toml_configs(void)
 		const char *wg_os_type;
 		FILE *toml_file;
 
-		wg_os_type = wg_fetch_os(); /* Detect OS */
+		wg_os_type = wg_procure_os(); /* Detect OS */
 
 		/* Determine server type by checking directories and files */
 		if (dir_exists("qawno") &&
@@ -1692,7 +1692,7 @@ int wg_toml_configs(void)
 			static int crit_nf = 0;
 			if (crit_nf == 0) {
 				crit_nf = 1;
-				pr_crit(stdout, "can't locate sa-mp/open.mp server!");
+				pr_error(stdout, "can't locate sa-mp/open.mp server!");
 				return 0; /* Can't determine server type */
 			}
 		}
@@ -1744,7 +1744,7 @@ int wg_toml_configs(void)
 		}
 
 		/* Re-parse for additional configuration extraction */
-		char error_buffer[256];
+        char error_buffer[WG_PATH_MAX];
 		toml_table_t *wg_toml_config;
 		FILE *proc_f = fopen("watchdogs.toml", "r");
 		wg_toml_config = toml_parse_file(proc_f, error_buffer, sizeof(error_buffer));
@@ -1771,12 +1771,12 @@ int wg_toml_configs(void)
 		if (wg_toml_compiler) {
 				toml_datum_t input_val = toml_string_in(wg_toml_compiler, "input");
 				if (input_val.ok) {
-					wgconfig.wg_toml_gm_input = strdup(input_val.u.s);
+					wgconfig.wg_toml_proj_input = strdup(input_val.u.s);
 					wg_free(input_val.u.s);
 				}
 				toml_datum_t output_val = toml_string_in(wg_toml_compiler, "output");
 				if (output_val.ok) {
-					wgconfig.wg_toml_gm_output = strdup(output_val.u.s);
+					wgconfig.wg_toml_proj_output = strdup(output_val.u.s);
 					wg_free(output_val.u.s);
 				}
 		}
@@ -1996,7 +1996,7 @@ int wg_sef_wmv(const char *c_src, const char *c_dest)
 
 			if (!mv_ret) {
 					__wg_sef_set_permissions(c_dest); /* Set permissions */
-					pr_info(stdout, "* moved without sudo: '%s' -> '%s'", c_src, c_dest);
+					pr_info(stdout, "moved without sudo: '%s' -> '%s'", c_src, c_dest);
 					return 0; /* Success without sudo */
 			}
 		} else {
@@ -2005,7 +2005,7 @@ int wg_sef_wmv(const char *c_src, const char *c_dest)
 
 			if (!mv_ret) {
 					__wg_sef_set_permissions(c_dest);
-					pr_info(stdout, "* moved with sudo: '%s' -> '%s'", c_src, c_dest);
+					pr_info(stdout, "moved with sudo: '%s' -> '%s'", c_src, c_dest);
 					return 0; /* Success with sudo */
 			}
 		}
@@ -2040,7 +2040,7 @@ int wg_sef_wcopy(const char *c_src, const char *c_dest)
 
 			if (!cp_ret) {
 					__wg_sef_set_permissions(c_dest);
-					pr_info(stdout, "* copying without sudo: '%s' -> '%s'", c_src, c_dest);
+					pr_info(stdout, "copying without sudo: '%s' -> '%s'", c_src, c_dest);
 					return 0; /* Success without sudo */
 			}
 		} else {
@@ -2049,7 +2049,7 @@ int wg_sef_wcopy(const char *c_src, const char *c_dest)
 
 			if (!cp_ret) {
 					__wg_sef_set_permissions(c_dest);
-					pr_info(stdout, "* copying with sudo: '%s' -> '%s'", c_src, c_dest);
+					pr_info(stdout, "copying with sudo: '%s' -> '%s'", c_src, c_dest);
 					return 0; /* Success with sudo */
 			}
 		}

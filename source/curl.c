@@ -9,12 +9,13 @@
 #include <curl/curl.h>
 
 #include "extra.h"
+#include "utils.h"
 #include "crypto.h"
 #include "archive.h"
-#include "depends.h"
+#include "depend.h"
 #include "compiler.h"
-#include "utils.h"
 #include "units.h"
+#include "debug.h"
 #include "curl.h"
 
 /* Array of online platform names and their URL patterns for account tracking */
@@ -59,25 +60,18 @@ static char pawncc_dir_src[WG_PATH_MAX];
  * Searches for cacert.pem in platform-specific locations
  */
 void verify_cacert_pem(CURL *curl) {
-        int is_win32 = 0;
-#ifdef WG_WINDOWS
-        is_win32 = 1;
-#endif
-
-        int is_android = 0;
+        int platform = 0;
 #ifdef WG_ANDROID
-        is_android = 2;
+        platform = 1;
+#elif defined(WG_LINUX)
+        platform = 2;
+#elif defined(WG_WINDOWS)
+        platform = 3;
 #endif
-
-        int is_linux = 0;
-#ifdef WG_LINUX
-        is_linux = 3;
-#endif
-
         static int cacert_notice = 0; /* Track if warning already shown */
 
         /* Windows-specific certificate locations */
-        if (is_win32) {
+        if (platform == 3) {
                 if (access("cacert.pem", F_OK) == 0)
                         curl_easy_setopt(curl, CURLOPT_CAINFO, "cacert.pem");
                 else if (access("C:/libwatchdogs/cacert.pem", F_OK) == 0)
@@ -85,37 +79,35 @@ void verify_cacert_pem(CURL *curl) {
                 else {
                         if (cacert_notice != 1) {
                                 cacert_notice = 1;
-                                pr_color(stdout,
-                                                 FCOLOUR_YELLOW,
-                                                 "curl: i can't found cacert.pem. SSL verification may fail.\n");
+                                pr_color(stdout, FCOLOUR_GREEN,
+                                        "cURL: can't locate cacert.pem - SSL verification may fail.\n");
                         }
                 }
         }
         /* Android-specific certificate locations */
-        else if (is_android) {
-                const char *env_home = getenv("HOME");
-                if (env_home == NULL || env_home[0] == '\0') {
-                        env_home = "/data/data/com.termux/files/home";
+        else if (platform == 1) {
+                const char *prefix = getenv("PREFIX");
+                if (!prefix || prefix[0] == '\0') {
+                        prefix = "/data/data/com.termux/files/usr";
                 }
-                char size_env_home[WG_PATH_MAX + 6];
 
-                snprintf(size_env_home, sizeof(size_env_home), "%s/cacert.pem", env_home);
+                char ca1[WG_PATH_MAX];
+                char ca2[WG_PATH_MAX];
 
-                if (access("cacert.pem", F_OK) == 0)
-                        curl_easy_setopt(curl, CURLOPT_CAINFO, "cacert.pem");
-                else if (access(size_env_home, F_OK) == 0)
-                        curl_easy_setopt(curl, CURLOPT_CAINFO, size_env_home);
+                snprintf(ca1, sizeof(ca1), "%s/etc/tls/cert.pem", prefix);
+                snprintf(ca2, sizeof(ca2), "%s/etc/ssl/certs/ca-certificates.crt", prefix);
+
+                if (access(ca1, F_OK) == 0)
+                        curl_easy_setopt(curl, CURLOPT_CAINFO, ca1);
+                else if (access(ca2, F_OK) == 0)
+                        curl_easy_setopt(curl, CURLOPT_CAINFO, ca2);
                 else {
-                        if (cacert_notice != 1) {
-                                cacert_notice = 1;
-                                pr_color(stdout,
-                                                 FCOLOUR_YELLOW,
-                                                 "curl: i can't found cacert.pem. SSL verification may fail.\n");
-                        }
+                        pr_color(stdout, FCOLOUR_GREEN,
+                                "cURL: can't locate cacert.pem - SSL verification may fail.\n");
                 }
         }
         /* Linux-specific certificate locations */
-        else if (is_linux) {
+        else if (platform == 2) {
                 if (access("cacert.pem", F_OK) == 0)
                         curl_easy_setopt(curl, CURLOPT_CAINFO, "cacert.pem");
                 else if (access("/etc/ssl/certs/cacert.pem", F_OK) == 0)
@@ -123,9 +115,8 @@ void verify_cacert_pem(CURL *curl) {
                 else {
                         if (cacert_notice != 1) {
                                 cacert_notice = 1;
-                                pr_color(stdout,
-                                                 FCOLOUR_GREEN,
-                                                 "curl: i can't found cacert.pem. SSL verification may fail.\n");
+                                pr_color(stdout, FCOLOUR_GREEN,
+                                        "cURL: can't locate cacert.pem - SSL verification may fail.\n");
                         }
                 }
         }
@@ -136,12 +127,16 @@ void verify_cacert_pem(CURL *curl) {
  * Shows percentage and spinner animation during file transfer
  */
 static int progress_callback(void *ptr, curl_off_t dltotal,
-                                                         curl_off_t dlnow, curl_off_t ultotal,
-                                                         curl_off_t ulnow)
+                        curl_off_t dlnow, curl_off_t ultotal,
+                        curl_off_t ulnow)
 {
         static int last_percent = -1; /* Track last displayed percentage */
         static int dot_index = 0;         /* Index for spinner animation */
-        static const char term_spinner[] = "-\\|/"; /* Spinner characters */
+        static const char term_spinner[] = /* Spinner characters */
+                                           "-"
+                                           "\\"
+                                           "|"
+                                           "/";
 
         int percent;
 
@@ -171,12 +166,12 @@ static int progress_callback(void *ptr, curl_off_t dltotal,
  * Initialize buffer structure with default capacity
  */
 void buf_init(struct buf *b) {
-        b->data = wg_malloc(4096);
+        b->data = wg_malloc(WG_MAX_PATH);
         if (!b->data) {
                 chain_ret_main(NULL);
         }
         b->len = 0;
-        b->allocated = (b->data) ? 4096 : 0;
+        b->allocated = (b->data) ? WG_MAX_PATH : 0;
 }
 
 /**
@@ -241,12 +236,12 @@ size_t write_callbacks(void *ptr, size_t size, size_t nmemb, void *userdata)
  * Initialize memory structure with default allocation
  */
 void memory_struct_init(struct memory_struct *mem) {
-        mem->memory = wg_malloc(0x1000); // Initial allocation of 4KB
+        mem->memory = wg_malloc(WG_MAX_PATH);
         if (!mem->memory) {
                 chain_ret_main(NULL);
         }
         mem->size = 0;
-        mem->allocated = mem->memory ? 0x1000 : 0;
+        mem->allocated = mem->memory ? WG_MAX_PATH : 0;
 }
 
 /**
@@ -469,7 +464,7 @@ static void update_library_environment(const char *lib_path)
         }
 
         const char *shell_rc = NULL;
-        char shell_path[256];
+        char shell_path[WG_PATH_MAX];
 
         /* Detect shell type from SHELL environment variable */
         char *shell = getenv("SHELL");
@@ -491,7 +486,7 @@ static void update_library_environment(const char *lib_path)
                 }
         }
 
-        char config_file[256];
+        char config_file[WG_PATH_MAX];
         snprintf(config_file, sizeof(config_file), "%s/%s", home_dir, shell_rc);
 
         /* Check if library path already exists in config file */
@@ -700,7 +695,7 @@ void wg_apply_pawncc(void)
 
         memset(pawncc_dir_src, 0, sizeof(pawncc_dir_src));
 
-        pr_info(stdout, "Compiler installed successfully!");
+        pr_info(stdout, "Congratulations! compiler installed successfully.");
 
         /* Prompt to run compiler immediately */
         pr_color(stdout, FCOLOUR_CYAN, "Run compiler now? (y/n):");
@@ -710,12 +705,57 @@ void wg_apply_pawncc(void)
                 pr_color(stdout, FCOLOUR_CYAN, "~ input pawn files (press enter for from config toml - enter E/e to exit):");
                 char *gamemode_compile = readline(" ");
                 if (strlen(gamemode_compile) < 1) {
+                        if (path_exists(wgconfig.wg_toml_proj_input) == 0) {
+                                pr_error(stdout, "File not dound.. creating...");
+                                if (dir_exists("gamemodes") == 0)
+                                        MKDIR("gamemodes");
+                                FILE *test = fopen("gamemodes/test.pwn", "w+");
+                                if (test) {
+                                        wgconfig.wg_toml_proj_input = strdup("gamemodes/test.pwn");
+                                        fclose(test);
+                                        test = fopen("gamemodes/test.pwn", "rb+");
+                                        if (test) {
+                                                fwrite("native printf(const format[], {Float,_}:...);\n", 1,
+                                                        strlen("native printf(const format[], {Float,_}:...);") + 1, test);
+                                                fwrite("main() {\n", 1,
+                                                        strlen("main() {") + 1, test);
+                                                fwrite("\tprintf(\"Hello, World!\");\n", 1,
+                                                        strlen("\tprintf(\"Hello, World!\");\n"), test);
+                                                fwrite("}", 1, strlen("}"), test);
+
+                                                fclose(test);
+                                        }
+                                }
+                        }
                         const char *args[] = { NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL };
                         wg_run_compiler(args[0], args[1], args[2], args[3], args[4], args[5], args[6], args[7], args[8]);
                         wg_free(gamemode_compile);
                 } else {
-                        const char *args[] = { NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL };
-                        wg_run_compiler(args[0], gamemode_compile, args[2], args[3], args[4], args[5], args[6], args[7], args[8]);
+                        if (path_exists(gamemode_compile) == 0) {
+                                pr_error(stdout, "File not dound.. creating...");
+                                if (dir_exists("gamemodes") == 0)
+                                        MKDIR("gamemodes");
+                                char size_gamemode[WG_PATH_MAX];
+                                snprintf(size_gamemode, sizeof(size_gamemode), "gamemodes/%s.pwn", gamemode_compile);
+                                FILE *test = fopen(size_gamemode, "w+");
+                                if (test) {
+                                        gamemode_compile = strdup(size_gamemode);
+                                        fclose(test);
+                                        test = fopen(size_gamemode, "rb+");
+                                        if (test) {
+                                                fwrite("native printf(const format[], {Float,_}:...);\n", 1,
+                                                        strlen("native printf(const format[], {Float,_}:...);") + 1, test);
+                                                fwrite("main() {\n", 1,
+                                                        strlen("main() {") + 1, test);
+                                                fwrite("\tprintf(\"Hello, World!\");\n", 1,
+                                                        strlen("\tprintf(\"Hello, World!\");\n"), test);
+                                                fwrite("}", 1, strlen("}"), test);
+                                                
+                                                fclose(test);
+                                        }
+                                }
+                        }
+                        wg_run_compiler(gamemode_compile, gamemode_compile, NULL, NULL, NULL, NULL, NULL, NULL, NULL);
                         wg_free(gamemode_compile);
                 }
         } else { wg_free(compile_now); }
@@ -806,39 +846,8 @@ static int debug_callback(CURL *handle, curl_infotype type,
  */
 int wg_download_file(const char *url, const char *filename)
 {
-#if defined (_DBG_PRINT)
-        /* Debug information block - prints compilation environment details */
-        pr_color(stdout, FCOLOUR_YELLOW, "-DEBUGGING ");
-        printf("[function: %s | "
-                        "pretty function: %s | "
-                        "line: %d | "
-                        "file: %s | "
-                        "date: %s | "
-                        "time: %s | "
-                        "timestamp: %s | "
-                        "C standard: %ld | "
-                        "C version: %s | "
-                        "compiler version: %d | "
-                        "architecture: %s]:\n",
-                                __func__, __PRETTY_FUNCTION__,
-                                __LINE__, __FILE__,
-                                __DATE__, __TIME__,
-                                __TIMESTAMP__,
-                                __STDC_VERSION__,
-                                __VERSION__,
-                                __GNUC__,
-#ifdef __x86_64__
-                                "x86_64");
-#elif defined(__i386__)
-                                "i386");
-#elif defined(__arm__)
-                                "ARM");
-#elif defined(__aarch64__)
-                                "ARM64");
-#else
-                                "Unknown");
-#endif
-#endif
+        /* Debug information section */
+        __debug_function();
 
         if (!url || !filename) {
                 pr_color(stdout, FCOLOUR_RED, "Error: Invalid URL or filename\n");
@@ -866,7 +875,7 @@ int wg_download_file(const char *url, const char *filename)
                 /* Add GitHub authentication header if available */
                 if (wgconfig.wg_idepends == 1) {
                         if (!wgconfig.wg_toml_github_tokens || 
-                                strstr(wgconfig.wg_toml_github_tokens, "DO_HERE") ||
+                                strfind(wgconfig.wg_toml_github_tokens, "DO_HERE", true) ||
                                 strlen(wgconfig.wg_toml_github_tokens) < 1) {
                                 pr_color(stdout, FCOLOUR_YELLOW, " ~ GitHub token not available");
                                 sleep(1);
@@ -1046,9 +1055,8 @@ int wg_download_file(const char *url, const char *filename)
         }
 
         /* Final failure message after all retries */
-        pr_color(stdout,
-                        FCOLOUR_RED, " Failed to download %s. after retrying: %d\n",
-                        filename, retry_count);
+        pr_color(stdout, FCOLOUR_RED, " Failed to download %s. after retrying: %d\n",
+                filename, retry_count);
 
         return 1;
 }

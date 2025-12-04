@@ -1,5 +1,5 @@
-#ifndef HARDWARE_INFO_H
-#define HARDWARE_INFO_H
+#ifndef HARDWARE_H
+#define HARDWARE_H
 
 #ifdef __cplusplus
 extern "C" {
@@ -82,7 +82,7 @@ typedef struct {
 } HardwareMemory;
 
 typedef struct {
-        char mount_point[256];
+        char mount_point[WG_PATH_MAX];
         char filesystem[32];
         unsigned long long total_bytes;
         unsigned long long free_bytes;
@@ -104,11 +104,11 @@ typedef struct {
 
 #ifdef WG_WINDOWS
 struct utsname {
-        char sysname[256];
-        char nodename[256];
-        char release[256];
-        char version[256];
-        char machine[256];
+        char sysname[WG_PATH_MAX];
+        char nodename[WG_PATH_MAX];
+        char release[WG_PATH_MAX];
+        char version[WG_PATH_MAX];
+        char machine[WG_PATH_MAX];
 };
 int uname(struct utsname *name);
 #endif

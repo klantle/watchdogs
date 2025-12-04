@@ -1,5 +1,5 @@
-#ifndef SERVER_H
-#define SERVER_H
+#ifndef RUNNER_H
+#define RUNNER_H
 
 #ifdef WG_WINDOWS
 /*
@@ -30,8 +30,8 @@ static inline int _sigaction_stub(int sig, const struct sigaction *act, struct s
 }
 #endif
 #endif
-extern int handle_sigint;
-void unit_handle_sigint(int sig);
+extern int sigint_handler;
+void unit_sigint_handler(int sig);
 void wg_stop_server_tasks(void);
 void wg_display_server_logs(int ret);
 void wg_server_crash_check(void);

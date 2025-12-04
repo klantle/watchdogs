@@ -251,7 +251,7 @@ hardware_cpu_info(HardwareCPU* cpu)
                 return 0;
         }
 
-        char cpu_line[256];
+        char cpu_line[WG_PATH_MAX];
 
         while (fgets(cpu_line, sizeof(cpu_line), f)) {
                 if (strncmp(cpu_line, "model name", 10) == 0) {

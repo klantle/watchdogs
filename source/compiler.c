@@ -19,6 +19,7 @@
 #include "extra.h"
 #include "package.h"
 #include "lowlevel.h"
+#include "debug.h"
 #include "compiler.h"
 
 #ifndef WG_WINDOWS
@@ -32,39 +33,9 @@ int wg_run_compiler(const char *args, const char *compile_args,  const char *sec
                     const char *five_arg, const char *six_arg, const char *seven_arg, const char *eight_arg,
                     const char *nine_arg)
 {
-#if defined (_DBG_PRINT)
-        /* Debugging information block - prints comprehensive environment details when debug mode is enabled */
-        pr_color(stdout, FCOLOUR_YELLOW, "-DEBUGGING ");
-        printf("[function: %s | "
-               "pretty function: %s | "
-               "line: %d | "
-               "file: %s | "
-               "date: %s | "
-               "time: %s | "
-               "timestamp: %s | "
-               "C standard: %ld | "
-               "C version: %s | "
-               "compiler version: %d | "
-               "architecture: %s]:\n",
-                __func__, __PRETTY_FUNCTION__,
-                __LINE__, __FILE__,
-                __DATE__, __TIME__,
-                __TIMESTAMP__,
-                __STDC_VERSION__,
-                __VERSION__,
-                __GNUC__,
-#ifdef __x86_64__
-                "x86_64");
-#elif defined(__i386__)
-                "i386");
-#elif defined(__arm__)
-                "ARM");
-#elif defined(__aarch64__)
-                "ARM64");
-#else
-                "Unknown");
-#endif
-#endif
+		/* Debug information section */
+        __debug_function();
+		
         const int aio_extra_options = 7; /* Number of extra compiler options to process */
         wgconfig.wg_compiler_stat = 0; /* Reset compiler status flag */
         io_compilers comp; /* Local compiler configuration structure */
@@ -98,7 +69,7 @@ int wg_run_compiler(const char *args, const char *compile_args,  const char *sec
         char *compiler_last_slash = NULL;
         char *compiler_back_slash = NULL;
 
-        char *fetch_string_pos = NULL; /* Pointer for string searching operations */
+        char *procure_string_pos = NULL; /* Pointer for string searching operations */
         char compiler_extra_options[WG_PATH_MAX] = { 0 }; /* Buffer for additional compiler flags */
         /* Array of debug memory flags that need special handling */
         const char *debug_memm[] = {"-d1", "-d3"};
@@ -152,11 +123,9 @@ int wg_run_compiler(const char *args, const char *compile_args,  const char *sec
             }
 
             /* Parse TOML configuration file for compiler settings */
-            char error_buffer[256];
+            char error_buffer[WG_PATH_MAX];
             toml_table_t *wg_toml_config;
-            wg_toml_config = toml_parse_file(proc_f,
-                       error_buffer,
-                       sizeof(error_buffer));
+            wg_toml_config = toml_parse_file(proc_f, error_buffer, sizeof(error_buffer));
 
             if (proc_f) {
                 fclose(proc_f);
@@ -320,18 +289,156 @@ not_valid_flag_options:
                         wgconfig.wg_toml_aio_opt = strdup("");
                     }
 
-                    /* Special handling: remove conflicting debug flags when debug mode is enabled */
+                    /* 
+                    * Special handling: remove conflicting debug flags when debug mode is enabled
+                    * Security-enhanced version with bounds checking and error handling
+                    */
                     if (compiler_has_debug != 0 && compiler_debugging != 0) {
+                        /* Validate array sizes to prevent division by zero */
+                        if (size_debug_memm == 0 || size_debug_memm_zero == 0) {
+                            pr_error(stdout, "Invalid debug flag array configuration");
+                            goto compiler_end;
+                        }
+                        
+                        /* Prevent integer overflow in division */
+                        if (size_debug_memm < size_debug_memm_zero || 
+                            size_debug_memm % size_debug_memm_zero != 0) {
+                            pr_error(stdout, "Debug flag array size mismatch");
+                            goto compiler_end;
+                        }
+                        
                         size_t debug_flag_count = size_debug_memm / size_debug_memm_zero;
+                        
+                        /* Validate maximum reasonable flag count */
+                        const size_t MAX_DEBUG_FLAGS = 256;
+                        if (debug_flag_count > MAX_DEBUG_FLAGS) {
+                            pr_error(stdout, "Excessive debug flag count: %zu", debug_flag_count);
+                            goto compiler_end;
+                        }
+                        
+                        /* Ensure wgconfig.wg_toml_aio_opt is valid */
+                        if (wgconfig.wg_toml_aio_opt == NULL) {
+                            pr_error(stdout, "Configuration string is NULL");
+                            goto compiler_end;
+                        }
+                        
+                        /* Track original buffer for potential rollback */
+                        char *original_config = strdup(wgconfig.wg_toml_aio_opt);
+                        if (original_config == NULL) {
+                            pr_error(stdout, "Memory allocation failed for config backup");
+                            goto compiler_end;
+                        }
+                        
+                        /* Calculate safe working buffer size */
+                        size_t config_buffer_size = strlen(wgconfig.wg_toml_aio_opt) + 1;
+                        size_t max_safe_shifts = config_buffer_size * 2; // Prevent infinite loops
+                        
                         for (size_t i = 0; i < debug_flag_count; i++) {
-                            const char *memm_saving_target = debug_memm[i];
-                            size_t size_memm_saving_targetion = strlen(memm_saving_target);
-
-                            /* Remove specific debug flags to prevent conflicts */
-                            while ((fetch_string_pos = strstr(wgconfig.wg_toml_aio_opt, memm_saving_target)) != NULL) {
-                                memmove(fetch_string_pos, fetch_string_pos + size_memm_saving_targetion,
-                                        strlen(fetch_string_pos + size_memm_saving_targetion) + 1);
+                            /* Validate array bounds */
+                            if (i >= (size_debug_memm / sizeof(debug_memm[0]))) {
+                                pr_warning(stdout, "Debug flag index %zu out of bounds", i);
+                                continue;
                             }
+                            
+                            const char *debug_flag = debug_memm[i];
+                            
+                            /* Validate flag string */
+                            if (debug_flag == NULL) {
+                                pr_warning(stdout, "NULL debug flag at index %zu", i);
+                                continue;
+                            }
+                            
+                            size_t flag_length = strlen(debug_flag);
+                            
+                            /* Skip empty flags */
+                            if (flag_length == 0) {
+                                continue;
+                            }
+                            
+                            /* Prevent overly long flags that could be malicious */
+                            const size_t MAX_FLAG_LENGTH = WG_MAX_PATH;
+                            if (flag_length > MAX_FLAG_LENGTH) {
+                                pr_warning(stdout, "Suspiciously long debug flag at index %zu", i);
+                                continue;
+                            }
+                            
+                            /* Safe in-place removal with loop prevention */
+                            char *config_ptr = wgconfig.wg_toml_aio_opt;
+                            size_t shift_count = 0;
+                            
+                            while (shift_count < max_safe_shifts) {
+                                char *flag_pos = strstr(config_ptr, debug_flag);
+                                
+                                if (flag_pos == NULL) {
+                                    break; // No more occurrences
+                                }
+                                
+                                /* Verify flag is a complete token (not part of another flag) */
+                                bool is_complete_token = true;
+                                
+                                // Check character before flag
+                                if (flag_pos > wgconfig.wg_toml_aio_opt) {
+                                    char prev_char = *(flag_pos - 1);
+                                    if (isalnum((unsigned char)prev_char) || prev_char == '_') {
+                                        is_complete_token = false;
+                                    }
+                                }
+                                
+                                // Check character after flag
+                                char next_char = *(flag_pos + flag_length);
+                                if (isalnum((unsigned char)next_char) || next_char == '_') {
+                                    is_complete_token = false;
+                                }
+                                
+                                if (!is_complete_token) {
+                                    config_ptr = flag_pos + 1;
+                                    continue;
+                                }
+                                
+                                /* Calculate remaining length safely */
+                                char *after_flag = flag_pos + flag_length;
+                                size_t remaining_length = strlen(after_flag);
+                                
+                                /* Perform safe memory move with bounds checking */
+                                if ((flag_pos - wgconfig.wg_toml_aio_opt) + remaining_length + 1 
+                                    < config_buffer_size) {
+                                    memmove(flag_pos, after_flag, remaining_length + 1);
+                                    
+                                    /* Recalculate buffer size after modification */
+                                    config_buffer_size = strlen(wgconfig.wg_toml_aio_opt) + 1;
+                                } else {
+                                    pr_error(stdout, "Buffer overflow detected during flag removal");
+                                    // Restore original config on error
+                                    strncpy(wgconfig.wg_toml_aio_opt, original_config, config_buffer_size);
+                                    wg_free(original_config);
+                                    goto compiler_end;
+                                }
+                                
+                                ++shift_count;
+                            }
+                            
+                            if (shift_count >= max_safe_shifts) {
+                                pr_warning(stdout, "Excessive flag removals for '%s', possible loop", debug_flag);
+                            }
+                        }
+                        
+                        /* Sanity check: ensure string is still null-terminated */
+                        wgconfig.wg_toml_aio_opt[config_buffer_size - 1] = '\0';
+                        
+                        /* Log changes for audit trail */
+                        if (strcmp(original_config, wgconfig.wg_toml_aio_opt) != 0) {
+#if defined (_DBG_PRINT)
+                            pr_info(stdout,"Debug flags removed. Original: '%s', Modified: '%s'", 
+                                    original_config, wgconfig.wg_toml_aio_opt);
+#endif
+                        }
+                        
+                        wg_free(original_config);
+                        
+                        /* Final validation */
+                        if (strlen(wgconfig.wg_toml_aio_opt) >= config_buffer_size) {
+                            pr_error(stdout, "Configuration string corruption detected");
+                            goto compiler_end;
                         }
                     }
                 }
@@ -347,6 +454,13 @@ not_valid_flag_options:
                     strcat(compiler_extra_options, " -v2 ");
                 if (compiler_has_compact > 0)
                     strcat(compiler_extra_options, " -C+ ");
+                
+                int rate_debugger = 0;
+#if defined(_DBG_PRINT)
+                ++rate_debugger;
+#endif
+                if (compiler_has_watchdogs)
+                    ++rate_debugger;
 
                 /* Safely concatenate extra options ensuring buffer doesn't overflow */
                 if (strlen(compiler_extra_options) > 0) {
@@ -409,7 +523,7 @@ not_valid_flag_options:
                 }
 
                 /* Main compilation logic block - handles both default and specific file compilation */
-                if (args == NULL || *args == '\0' || (args[0] == '.' && args[1] == '\0'))
+                if (compile_args == NULL || *compile_args == '\0' || (compile_args[0] == '.' && compile_args[1] == '\0'))
                 {
                     /* Default compilation: use gamemode from TOML configuration */
 #ifdef WG_WINDOWS
@@ -438,15 +552,15 @@ not_valid_flag_options:
                               sizeof(_compiler_input_),
                                     "%s %s -o%s %s %s -i%s",
                                     wg_compiler_input_pawncc_path,
-                                    wgconfig.wg_toml_gm_input,
-                                    wgconfig.wg_toml_gm_output,
+                                    wgconfig.wg_toml_proj_input,
+                                    wgconfig.wg_toml_proj_output,
                                     wgconfig.wg_toml_aio_opt,
                                     include_aio_path,
                                     path_include);
-#if defined(_DBG_PRINT)
-                    pr_color(stdout, FCOLOUR_YELLOW, "-DEBUGGING\n");
-                    printf("[COMPILER]:\n\t%s\n", _compiler_input_);
-#endif
+                    if (rate_debugger > 0) {
+                        pr_color(stdout, FCOLOUR_YELLOW, "-DEBUGGER\n");
+                        printf("[COMPILER]:\n\t%s\n", _compiler_input_);
+                    }
                     if (ret_command > 0 && ret_command < (int)sizeof(_compiler_input_)) {
                         BOOL win32_process_succes;
                         clock_gettime(CLOCK_MONOTONIC, &start);
@@ -490,9 +604,9 @@ not_valid_flag_options:
                     ret_command = snprintf(_compiler_input_, sizeof(_compiler_input_),
                         "%s %s %s%s %s%s %s%s",
                         wg_compiler_input_pawncc_path,
-                        wgconfig.wg_toml_gm_input,
+                        wgconfig.wg_toml_proj_input,
                         "-o",
-                        wgconfig.wg_toml_gm_output,
+                        wgconfig.wg_toml_proj_output,
                         wgconfig.wg_toml_aio_opt,
                         include_aio_path,
                         "-i",
@@ -501,10 +615,10 @@ not_valid_flag_options:
                         pr_error(stdout, "ret_compiler too long! %s (L: %d)", __func__, __LINE__);
                         goto compiler_end;
                     }
-#if defined(_DBG_PRINT)
-                    pr_color(stdout, FCOLOUR_YELLOW, "-DEBUGGING\n");
-                    printf("[COMPILER]:\n\t%s\n", _compiler_input_);
-#endif
+                    if (rate_debugger > 0) {
+                        pr_color(stdout, FCOLOUR_YELLOW, "-DEBUGGER\n");
+                        printf("[COMPILER]:\n\t%s\n", _compiler_input_);
+                    }
                     /* Tokenize command for posix_spawn argument array */
                     int i = 0;
                     char *wg_compiler_unix_args[WG_MAX_PATH + 256];
@@ -602,7 +716,7 @@ not_valid_flag_options:
 #endif
                     char size_container_output[WG_PATH_MAX * 2];
                     snprintf(size_container_output,
-                        sizeof(size_container_output), "%s", wgconfig.wg_toml_gm_output);
+                        sizeof(size_container_output), "%s", wgconfig.wg_toml_proj_output);
                     /* Post-compilation processing based on output and flags */
                     if (path_exists(".watchdogs/compiler.log")) {
                         printf("\n");
@@ -876,10 +990,10 @@ compiler_done:
                                         wgconfig.wg_toml_aio_opt,
                                         include_aio_path,
                                         path_include);
-#if defined(_DBG_PRINT)
-                        pr_color(stdout, FCOLOUR_YELLOW, "-DEBUGGING\n");
-                        printf("[COMPILER]:\n\t%s\n", _compiler_input_);
-#endif
+                        if (rate_debugger > 0) {
+                            pr_color(stdout, FCOLOUR_YELLOW, "-DEBUGGER\n");
+                            printf("[COMPILER]:\n\t%s\n", _compiler_input_);
+                        }
                         if (ret_command > 0 && ret_command < (int)sizeof(_compiler_input_)) {
                             BOOL win32_process_succes;
                             clock_gettime(CLOCK_MONOTONIC, &start);
@@ -933,10 +1047,10 @@ compiler_done:
                             pr_error(stdout, "ret_compiler too long! %s (L: %d)", __func__, __LINE__);
                             goto compiler_end;
                         }
-#if defined(_DBG_PRINT)
-                        pr_color(stdout, FCOLOUR_YELLOW, "-DEBUGGING\n");
-                        printf("[COMPILER]:\n\t%s\n", _compiler_input_);
-#endif
+                        if (rate_debugger > 0) {
+                            pr_color(stdout, FCOLOUR_YELLOW, "-DEBUGGER\n");
+                            printf("[COMPILER]:\n\t%s\n", _compiler_input_);
+                        }
                         int i = 0;
                         char *wg_compiler_unix_args[WG_MAX_PATH + 256];
                         char *compiler_unix_token = strtok(_compiler_input_, " ");
@@ -1123,9 +1237,9 @@ compiler_done2:
             }
         } else {
             /* Compiler not found - offer installation */
-            pr_crit(stdout,
+            pr_error(stdout,
                 "\033[1;31merror:\033[0m pawncc (our compiler) not found\n"
-                "  \033[2mhelp:\033[0m install it before continuing\n");
+                "  \033[2mhelp:\033[0m install it before continuing");
             printf("\n  \033[1mInstall now?\033[0m  [\033[32mY\033[0m/\033[31mn\033[0m]: ");
             char *ptr_sigA = readline("");
 
@@ -1149,32 +1263,26 @@ ret_ptr:
                     if (strfind(platform, "L", true))
                     {
                         int ret = wg_install_pawncc("linux");
-loop_ipcc:
                         wg_free(platform);
+loop_ipcc:
                         if (ret == -1 && wgconfig.wg_sel_stat != 0)
                             goto loop_ipcc;
-                    }
-                    if (strfind(platform, "W", true))
-                    {
+                    } else if (strfind(platform, "W", true)) {
                         int ret = wg_install_pawncc("windows");
-loop_ipcc2:
                         wg_free(platform);
+loop_ipcc2:
                         if (ret == -1 && wgconfig.wg_sel_stat != 0)
                             goto loop_ipcc2;
-                    }
-                    if (strfind(platform, "T", true))
-                    {
+                    } else if (strfind(platform, "T", true)) {
                         int ret = wg_install_pawncc("termux");
-loop_ipcc3:
                         wg_free(platform);
+loop_ipcc3:
                         if (ret == -1 && wgconfig.wg_sel_stat != 0)
                             goto loop_ipcc3;
-                    }
-                    if (strfind(platform, "E", true)) {
+                    } else if (strfind(platform, "E", true)) {
                         wg_free(platform);
                         goto loop_end;
-                    }
-                    else {
+                    } else {
                         pr_error(stdout, "Invalid platform selection. Input 'E/e' to exit");
                         wg_free(platform);
                         goto ret_ptr;

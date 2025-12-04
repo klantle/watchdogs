@@ -47,7 +47,7 @@ endif
 
 # Source & object files
 
-SRCS = source/extra.c source/curl.c source/units.c source/utils.c source/depends.c source/lowlevel.c \
+SRCS = source/extra.c source/debug.c source/curl.c source/units.c source/utils.c source/depend.c source/lowlevel.c \
        source/compiler.c source/archive.c source/package.c source/runner.c source/crypto.c \
        include/tomlc/toml.c include/cJSON/cJSON.c
 
@@ -57,31 +57,12 @@ OBJS = $(SRCS:.c=.o)
 RCFILE  = VERSION.rc
 RESFILE = VERSION.res
 
-.PHONY: init all clean linux termux windows strip compress debug termux-debug windows-debug
+.PHONY: init clean linux termux windows strip compress debug termux-debug windows-debug
 
 
 # Initialization routine for automatic toolchain setup
-
 init:
 	@echo "==> Detecting environment..."
-	@if [ -f "/.dockerenv" ]; then \
-	    echo "Detected Docker environment"; \
-	    if ! command -v sudo >/dev/null 2>&1; then \
-	    	echo "Installing sudo..."; \
-	    	if command -v apt >/dev/null 2>&1; then \
-				apt update -y && apt install -y sudo; \
-			elif command -v dnf >/dev/null 2>&1; then \
-				dnf install -y sudo; \
-			elif command -v yum >/dev/null 2>&1; then \
-				yum install -y sudo; \
-			elif command -v zypper >/dev/null 2>&1; then \
-				zypper refresh && zypper install -y -t sudo; \
-			elif command -v pacman >/dev/null 2>&1; then \
-				pacman -Sy --noconfirm && pacman -S --needed --noconfirm sudo; \
-			fi; \
-	    fi; \
-	fi; \
-	\
 	UNAME_S=$$(uname -s); \
 	\
 	if echo "$$UNAME_S" | grep -qi "MINGW64_NT"; then \
@@ -100,29 +81,37 @@ init:
 	\
 	elif echo "$$UNAME_S" | grep -qi "Linux" && [ -d "/data/data/com.termux" ]; then \
 		echo "Detected Termux"; \
-		pkg update -y && pkg install -y unstable-repo coreutils procps clang curl libarchive libandroid-spawn ncurses readline; \
+		pkg update -y && pkg install -y \
+			unstable-repo coreutils binutils procps clang curl \
+			libarchive libandroid-spawn ncurses readline upx; \
 	\
 	elif echo "$$UNAME_S" | grep -qi "Linux"; then \
 		echo "Detected Linux"; \
 		if command -v apt >/dev/null 2>&1; then \
-			apt update -y && apt install -y build-essential curl procps clang lld make \
+			apt update -y && apt install -y \
+				build-essential curl procps clang lld make binutils \
 				libcurl4-openssl-dev libatomic1 libreadline-dev libarchive-dev \
-				libncursesw5-dev libncurses5-dev zlib1g-dev; \
+				libncursesw5-dev libncurses5-dev zlib1g-dev upx-ucl upx; \
 		elif command -v dnf >/dev/null 2>&1; then \
 			dnf groupinstall -y "Development Tools" && \
-			dnf install -y clang lld libatomic libcxx-devel ncurses-devel curl-devel \
-				readline-devel libarchive-devel zlib-devel; \
+			dnf install -y \
+				clang lld libatomic libcxx-devel ncurses-devel curl-devel \
+				readline-devel libarchive-devel zlib-devel binutils upx; \
 		elif command -v yum >/dev/null 2>&1; then \
 			yum groupinstall -y "Development Tools" && \
-			yum install -y clang lld libcxx-devel ncurses-devel curl-devel \
-				readline-devel libarchive-devel zlib-devel; \
+			yum install -y \
+				clang lld libcxx-devel ncurses-devel curl-devel \
+				readline-devel libarchive-devel zlib-devel binutils upx; \
 		elif command -v zypper >/dev/null 2>&1; then \
 			zypper refresh && zypper install -y -t pattern devel_basis && \
-			zypper install -y curl clang lld libc++-devel ncurses-devel \
-				libcurl-devel readline-devel libarchive-devel zlib-devel; \
+			zypper install -y \
+				curl clang lld libc++-devel ncurses-devel \
+				libcurl-devel readline-devel libarchive-devel zlib-devel \
+				binutils upx; \
 		elif command -v pacman >/dev/null 2>&1; then \
 			pacman -Sy --noconfirm && pacman -S --needed --noconfirm \
-				libatomic base-devel clang lld libc++ ncurses readline curl libarchive zlib; \
+				libatomic base-devel clang lld libc++ ncurses readline \
+				curl libarchive zlib binutils upx; \
 		else \
 			echo "Unsupported distribution"; \
 			exit 1; \
@@ -134,10 +123,6 @@ init:
 
 
 # Generic build pipeline
-
-all: $(OUTPUT)
-	@echo "Build complete: $(OUTPUT)"
-	@$(MAKE) compress OUTPUT=$(OUTPUT)
 
 $(OUTPUT): $(OBJS) $(RESFILE)
 	@echo "Linking $(OUTPUT)"
@@ -166,7 +151,7 @@ strip:
 compress:
 	@if [ -f "$(OUTPUT)" ] && command -v upx >/dev/null 2>&1; then \
 		echo "Compressing $(OUTPUT) with UPX"; \
-		upx --best --lzma $(OUTPUT) || true; \
+		upx -v --best --lzma "$(OUTPUT)"; \
 	else \
 		echo "Skipping compression"; \
 	fi

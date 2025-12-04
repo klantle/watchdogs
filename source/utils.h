@@ -28,6 +28,7 @@
 # define WG_LINUX
 # endif
 # if defined(__ANDROID__)
+# define WG_LINUX
 # define WG_ANDROID
 # endif
 

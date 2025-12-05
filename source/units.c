@@ -19,18 +19,13 @@
 #include <signal.h>
 #include <curl/curl.h>
 
-#ifndef _NCURSES
-    #include <ncursesw/curses.h>
-#else
-    #include <ncurses.h>
-#endif
 #ifdef WG_LINUX
     #include <spawn.h>
 #endif
 
 #include "extra.h"
 #include "utils.h"
-#include "lowlevel.h"
+#include "kernel.h"
 #include "crypto.h"
 #include "package.h"
 #include "archive.h"
@@ -53,30 +48,54 @@ int __command__(char *chain_pre_command)
 {
         __debug_main_chain(1);
 
-        setlocale(LC_ALL, "en_US.UTF-8");
-
-        if (path_access(".watchdogs/crashdetect")) {
-            remove(".watchdogs/crashdetect");
-        }
-
         int wg_compile_running = 0;
 
         char ptr_prompt[WG_MAX_PATH * 2];
-        size_t size_ptrp = sizeof(ptr_prompt);
+        size_t size_ptr_command = sizeof(ptr_prompt);
         char *ptr_command;
-        int c_distance = INT_MAX;
-        const char *_dist_command;
+        const char *command_distance;
+        int dist = INT_MAX;
 
 _ptr_command:
         if (chain_pre_command && chain_pre_command[0] != '\0') {
             ptr_command = strdup(chain_pre_command);
             printf("[" FCOLOUR_CYAN
-                "watchdogs" FCOLOUR_DEFAULT "] $ %s\n", ptr_command);
+                "community@watchdogs" FCOLOUR_DEFAULT "] > %s\n", ptr_command);
         } else {
+            static int help_information = 0;
+            if (help_information == 0) {
+                    ++help_information;
+                    printf("Usage: help <command> [options]\n\n");
+                    printf("Commands:\n");
+                    printf("  help             show this help message\n");
+                    printf("  exit             exit from watchdogs\n");
+                    printf("  kill             refresh terminal watchdogs\n");
+                    printf("  title            set-title terminal watchdogs\n");
+                    printf("  sha256           generate sha256 hash\n");
+                    printf("  crc32            generate crc32 checksum\n");
+                    printf("  djb2             generate djb2 hash file\n");
+                    printf("  time             print current time\n");
+                    printf("  config           re-create watchdogs.toml\n");
+                    printf("  download         fetch file from URL\n");
+                    printf("  hardware         hardware information\n");
+                    printf("  replicate        installer dependencies\n");
+                    printf("  gamemode         download SA-MP gamemode\n");
+                    printf("  pawncc           download SA-MP pawncc\n");
+                    printf("  log              debugging & logging server logs\n");
+                    printf("  compile          compile your project\n");
+                    printf("  running          running your project\n");
+                    printf("  compiles         compile & running your project\n");
+                    printf("  stop             stopped server task\n");
+                    printf("  restart          restart server task\n");
+                    printf("  wanion           ask to wanion (gemini based)\n");
+                    printf("  tracker          account tracking\n");
+                    printf("  compress         create a compressed archive\n");
+                    printf("  send             send file to Discord channel via webhook\n");
+            }
             while (true) {
-                snprintf(ptr_prompt, size_ptrp,
+                snprintf(ptr_prompt, size_ptr_command,
                         "[" FCOLOUR_CYAN
-                        "watchdogs" FCOLOUR_DEFAULT "] $ ");
+                        "community@watchdogs" FCOLOUR_DEFAULT "] > ");
 
                 ptr_command = readline(ptr_prompt);
 
@@ -92,10 +111,7 @@ _ptr_command:
 
         wg_a_history(ptr_command);
 
-        _dist_command = wg_find_near_command(ptr_command,
-                                             __command,
-                                             __command_len,
-                                             &c_distance);
+        command_distance = wg_find_near_command(ptr_command, __command, __command_len, &dist);
 
 _reexecute_command:
         __debug_main_chain(1);
@@ -148,8 +164,8 @@ _reexecute_command:
                 println(stdout, "gamemode: download SA-MP gamemode. | Usage: \"gamemode\"\n\tGrab some SA-MP gamemodes quickly.");
             } else if (strcmp(args, "pawncc") == 0) { 
                 println(stdout, "pawncc: download SA-MP pawncc. | Usage: \"pawncc\"\n\tGet the Pawn compiler for SA-MP.");
-            } else if (strcmp(args, "log") == 0) { 
-                println(stdout, "log: debugging & logging server logs. | Usage: \"log\"\n\tKeep an eye on your server logs.");
+            } else if (strcmp(args, "debug") == 0) { 
+                println(stdout, "debug: debugging & logging server debug. | Usage: \"debug\"\n\tKeep an eye on your server logs.");
             } else if (strcmp(args, "compile") == 0) { 
                 println(stdout, "compile: compile your project. | Usage: \"compile\" | [<args>]\n\tTurn your code into something runnable!");
             } else if (strcmp(args, "running") == 0) { 
@@ -165,9 +181,11 @@ _reexecute_command:
             } else if (strcmp(args, "tracker") == 0) { 
                 println(stdout, "tracker: account tracking. | Usage: \"tracker\" | [<args>]\n\tTrack accounts across platforms.");
             } else if (strcmp(args, "compress") == 0) {
-                println(stdout, "compress: create a compressed archive from a file or folder. | Usage: \"compress <input> <output>\"\n\tGenerates a compressed file (e.g., .zip/.tar.gz) from the specified source.");
+                println(stdout, "compress: create a compressed archive from a file or folder. | "
+                    "Usage: \"compress <input> <output>\"\n\tGenerates a compressed file (e.g., .zip/.tar.gz) from the specified source.");
             } else if (strcmp(args, "send") == 0) { 
-                println(stdout, "send: send file to Discord channel via webhook. | Usage: \"send <file> <webhook_url>\"\n\tUploads a file directly to a Discord channel using a webhook.");
+                println(stdout, "send: send file to Discord channel via webhook. | "
+                    "Usage: \"send <file> <webhook_url>\"\n\tUploads a file directly to a Discord channel using a webhook.");
             } else {
                 printf("help can't found for: '");
                 pr_color(stdout, FCOLOUR_YELLOW, "%s", args);
@@ -179,11 +197,7 @@ _reexecute_command:
         } else if (strcmp(ptr_command, "kill") == 0) {
             wg_console_title("Watchdogs | @ kill");
 
-            if (!is_native_windows()) {
-                wg_run_command("clear");
-            } else {
-                wg_run_command("cls");
-            }
+            wg_clear_screen();
 
             wgconfig.wg_sel_stat = 0;
             wg_compile_running = 0;
@@ -365,9 +379,9 @@ _reexecute_command:
             } else {
                 char errbuf[WG_PATH_MAX];
                 toml_table_t *wg_toml_config;
-                FILE *proc_f = fopen("watchdogs.toml", "r");
-                wg_toml_config = toml_parse_file(proc_f, errbuf, sizeof(errbuf));
-                if (proc_f) fclose(proc_f);
+                FILE *this_proc_file = fopen("watchdogs.toml", "r");
+                wg_toml_config = toml_parse_file(this_proc_file, errbuf, sizeof(errbuf));
+                if (this_proc_file) fclose(this_proc_file);
 
                 if (!wg_toml_config) {
                     pr_error(stdout, "parsing TOML: %s", errbuf);
@@ -559,8 +573,8 @@ loop_ipcc3:
             }
 
             goto chain_done;
-        } else if (strcmp(ptr_command, "log") == 0) {
-            wg_console_title("Watchdogs | @ log");
+        } else if (strcmp(ptr_command, "debug") == 0) {
+            wg_console_title("Watchdogs | @ debug");
             printf("running logs command: 0000WGDEBUGGINGSERVER...\n");
 #ifdef __ANDROID__
 #ifndef _DBG_PRINT
@@ -655,7 +669,7 @@ _runners_:
                                 "@ running | "
                                 "args: %s | "
                                 "config: %s | "
-                                "CTRL + C to stop. | \"log\" for debugging",
+                                "CTRL + C to stop. | \"debug\" for debugging",
                                 size_arg1,
                                 wgconfig.wg_toml_config) + 1;
                 char *title_running_info = wg_malloc(needed);
@@ -665,7 +679,7 @@ _runners_:
                                     "@ running | "
                                     "args: %s | "
                                     "config: %s | "
-                                    "CTRL + C to stop. | \"log\" for debugging",
+                                    "CTRL + C to stop. | \"debug\" for debugging",
                                     size_arg1,
                                     wgconfig.wg_toml_config);
                 if (title_running_info) {
@@ -715,6 +729,10 @@ back_start:
                                     wg_display_server_logs(0);
                             }
                         } else {
+                            /* Skip retry logic in Pterodactyl environments */
+                            /* so why? -- Pterodactyl hosting doesn't need this,
+                            *  because when your server restarts in Pterodactyl it will automatically retry
+                            */
                             pr_color(stdout, FCOLOUR_RED, "Server startup failed!\n");
                             if (is_pterodactyl_env()) {
                                 goto server_done;
@@ -742,7 +760,7 @@ server_done:
                         printf("\x1b[32m==> create debugging runner?\x1b[0m\n");
                         char *debug_runner = readline("   answer (y/n): ");
                         if (strcmp(debug_runner, "Y") == 0 || strcmp(debug_runner, "y") == 0) {
-                            ptr_command = strdup("log");
+                            ptr_command = strdup("debug");
                             wg_free(debug_runner);
                             goto _reexecute_command;
                         }
@@ -757,7 +775,7 @@ server_done:
                         printf("\x1b[32m==> create debugging runner?\x1b[0m\n");
                         char *debug_runner = readline("   answer (y/n): ");
                         if (strcmp(debug_runner, "Y") == 0 || strcmp(debug_runner, "y") == 0) {
-                            ptr_command = strdup("log");
+                            ptr_command = strdup("debug");
                             wg_free(debug_runner);
                             goto _reexecute_command;
                         }
@@ -789,6 +807,10 @@ back_start2:
 #endif
                         int rate_runner_failed = wg_run_command(size_run);
                         if (rate_runner_failed != 0) {
+                            /* Skip retry logic in Pterodactyl environments */
+                            /* so why? -- Pterodactyl hosting doesn't need this,
+                            *  because when your server restarts in Pterodactyl it will automatically retry
+                            */
                             pr_color(stdout, FCOLOUR_RED, "Server startup failed!\n");
                             if (is_pterodactyl_env()) {
                                 goto server_done2;
@@ -817,7 +839,7 @@ server_done2:
                         printf("\x1b[32m==> create debugging runner?\x1b[0m\n");
                         char *debug_runner = readline("   answer (y/n): ");
                         if (strcmp(debug_runner, "Y") == 0 || strcmp(debug_runner, "y") == 0) {
-                            ptr_command = strdup("log");
+                            ptr_command = strdup("debug");
                             wg_free(debug_runner);
                             goto _reexecute_command;
                         }
@@ -832,7 +854,7 @@ server_done2:
                         printf("\x1b[32m==> create debugging runner?\x1b[0m\n");
                         char *debug_runner = readline("   answer (y/n): ");
                         if (strcmp(debug_runner, "Y") == 0 || strcmp(debug_runner, "y") == 0) {
-                            ptr_command = strdup("log");
+                            ptr_command = strdup("debug");
                             wg_free(debug_runner);
                             goto _reexecute_command;
                         }
@@ -968,11 +990,11 @@ wanion_retrying:
 #if defined(_DBG_PRINT)
                 printf("json payload: %s\n", wanion_json_payload);
 #endif
-                struct timespec start = {0}, end = { 0 };
+                struct timespec start = { 0 }, end = { 0 };
                 double wanion_dur;
 
                 clock_gettime(CLOCK_MONOTONIC, &start);
-                struct buf b = {0};
+                struct buf b = { 0 };
                 CURL *h = curl_easy_init();
                 if (!h) {
                     clock_gettime(CLOCK_MONOTONIC, &end);
@@ -1517,9 +1539,9 @@ L"\t\t   W   A   T   C   H   D   O   G   S\n");
                 goto chain_done;
             else
                 goto _ptr_command;
-        } else if (strcmp(ptr_command, _dist_command) != 0 && c_distance <= 2) {
+        } else if (strcmp(ptr_command, command_distance) != 0 && dist <= 2) {
             wg_console_title("Watchdogs | @ undefined");
-            printf("did you mean '" FCOLOUR_YELLOW "%s" FCOLOUR_DEFAULT "'", _dist_command);
+            printf("did you mean '" FCOLOUR_YELLOW "%s" FCOLOUR_DEFAULT "'", command_distance);
             printf(" (y/n):");
             fflush(stdout);
             char *confirm = readline(" ");
@@ -1535,7 +1557,7 @@ L"\t\t   W   A   T   C   H   D   O   G   S\n");
             if (confirm) {
                 if (strcmp(confirm, "Y") == 0 || strcmp(confirm, "y") == 0) {
                     wg_free(confirm);
-                    ptr_command = strdup(_dist_command);
+                    ptr_command = strdup(command_distance);
                     goto _reexecute_command;
                 } else if (strcmp(confirm, "N") == 0 || strcmp(confirm, "n") == 0) {
                     wg_free(confirm);

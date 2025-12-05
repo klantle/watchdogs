@@ -243,147 +243,187 @@ fallback:
         return ret;
 }
 
-/**
- * Recursively adds a file or directory to an archive.
- * Walks through the directory tree and adds all files/subdirectories.
- */
 int wg_path_recursive(struct archive *archive, const char *root, const char *path) {
-        struct archive_entry *entry;
+        struct archive_entry *entry = NULL;
         struct stat path_stat;
-        char full_path[1024];
-        int fd;
+        char full_path[WG_MAX_PATH];
+        int fd = -1;
         struct stat fd_stat;
+        ssize_t read_len;
+        char buffer[8192];
+        DIR *dirp = NULL;
+        struct dirent *dent;
+        char child_path[WG_MAX_PATH];
 
-        /* Create full absolute path */
-        snprintf(full_path, sizeof(full_path), "%s/%s", root, path);
+        /* Build full path */
+        if (snprintf(full_path, sizeof(full_path), "%s/%s",
+            root, path) >= sizeof(full_path))
+        {
+            fprintf(stderr, "Path too long: %s/%s\n", root, path);
+            return -1;
+        }
 
-        /* Get file status (metadata) - use lstat to avoid following symlinks */
+        /* Use lstat to avoid following symlinks (except on Windows) */
 #ifdef WG_WINDOWS
+        /* Windows stat() doesn't follow symlinks by default like Linux does */
         if (stat(full_path, &path_stat) != 0) {
 #else
         if (lstat(full_path, &path_stat) != 0) {
 #endif
-                fprintf(stderr, "stat failed: %s: %s\n", full_path, strerror(errno));
-                return -1;
+            fprintf(stderr, "stat failed: %s: %s\n", full_path, strerror(errno));
+            return -1;
         }
 
-        /* For regular files, open first to avoid TOCTOU */
+        /* Handle regular files with TOCTOU protection */
         if (S_ISREG(path_stat.st_mode)) {
-                /* Open file with O_NOFOLLOW if available to prevent symlink attacks */
-#ifdef O_NOFOLLOW
-                fd = open(full_path, O_RDONLY | O_NOFOLLOW);
+            /* Open file with O_NOFOLLOW if available to prevent symlink attacks */
+#ifdef WG_WINDOWS
+        /* Windows doesn't have O_NOFOLLOW or O_CLOEXEC */
+        fd = open(full_path, O_RDONLY | O_BINARY);
 #else
-                fd = open(full_path, O_RDONLY);
+        /* Linux/Unix: use O_NOFOLLOW if available, handle O_CLOEXEC gracefully */
+#ifdef O_NOFOLLOW
+#ifdef O_CLOEXEC
+            fd = open(full_path, O_RDONLY | O_NOFOLLOW | O_CLOEXEC);
+#else
+            fd = open(full_path, O_RDONLY | O_NOFOLLOW);
 #endif
-                if (fd < 0) {
-                        fprintf(stderr, "open failed: %s: %s\n", full_path, strerror(errno));
-                        return -1;
-                }
-                
-                /* Verify file type using file descriptor */
-                if (fstat(fd, &fd_stat) != 0) {
-                        fprintf(stderr, "fstat failed: %s: %s\n", full_path, strerror(errno));
-                        close(fd);
-                        return -1;
-                }
-                
-                /* Verify it's still a regular file */
-                if (!S_ISREG(fd_stat.st_mode)) {
-                        fprintf(stderr, "File type changed: %s\n", full_path);
-                        close(fd);
-                        return -1;
-                }
-                
-                /* Optional: Verify inode and device consistency */
-                if (path_stat.st_ino != fd_stat.st_ino || path_stat.st_dev != fd_stat.st_dev) {
-                        fprintf(stderr, "File changed during processing: %s\n", full_path);
-                        close(fd);
-                        return -1;
-                }
-                
-                /* Update stat with verified information */
-                path_stat = fd_stat;
-                
-                /* Create a new archive entry */
-                entry = archive_entry_new();
-                archive_entry_set_pathname(entry, path);
-                archive_entry_copy_stat(entry, &path_stat);
-                
-                /* Write entry header to archive */
-                if (archive_write_header(archive, entry) != ARCHIVE_OK) {
-                        fprintf(stderr, "write_header failed: %s\n", archive_error_string(archive));
-                        archive_entry_free(entry);
-                        close(fd);
-                        return -1;
-                }
-                
-                /* Write file contents */
-                char buffer[8192];
-                ssize_t len;
-                while ((len = read(fd, buffer, sizeof(buffer))) > 0) {
-                        if (archive_write_data(archive, buffer, len) < 0) {
-                                fprintf(stderr, "write_data failed: %s\n", archive_error_string(archive));
-                                archive_entry_free(entry);
-                                close(fd);
-                                return -1;
-                        }
-                }
-                
+#else
+#ifdef O_CLOEXEC
+            fd = open(full_path, O_RDONLY | O_CLOEXEC);
+#else
+            fd = open(full_path, O_RDONLY);
+#endif
+#endif
+#endif
+            if (fd < 0) {
+                fprintf(stderr, "open failed: %s: %s\n", full_path, strerror(errno));
+                return -1;
+            }
+            
+            /* CRITICAL: fstat on file descriptor BEFORE any operations */
+            if (fstat(fd, &fd_stat) != 0) {
+                fprintf(stderr, "fstat failed: %s: %s\n", full_path, strerror(errno));
                 close(fd);
-                archive_entry_free(entry);
-                
-                /* Check for read errors */
-                if (len < 0) {
-                        fprintf(stderr, "read failed: %s: %s\n", full_path, strerror(errno));
+                return -1;
+            }
+
+            /* Verify it's still a regular file (not changed to symlink/device) */
+            if (!S_ISREG(fd_stat.st_mode)) {
+                fprintf(stderr, "File type changed (not regular): %s\n", full_path);
+                close(fd);
+                return -1;
+            }
+
+            /* Optional: Verify inode/device consistency to detect file replacement */
+            if (path_stat.st_ino != fd_stat.st_ino || path_stat.st_dev != fd_stat.st_dev) {
+                fprintf(stderr, "File changed during processing: %s\n", full_path);
+                close(fd);
+                return -1;
+            }
+
+            /* Note: fchmod is usually not needed for archiving operations */
+            /* Remove or comment out unless you have specific requirements */
+            /*
+            #ifndef WG_WINDOWS
+                if (fchmod(fd, S_IRUSR) == -1) {
+                        fprintf(stderr, "fchmod failed: %s: %s\n", full_path, strerror(errno));
+                        close(fd);
                         return -1;
                 }
-                
-                return 0;
+            #endif
+            */
+
+            /* Use stat from file descriptor (more reliable) */
+            path_stat = fd_stat;
+
+            /* Create archive entry */
+            entry = archive_entry_new();
+            if (!entry) {
+                fprintf(stderr, "Failed to create archive entry\n");
+                close(fd);
+                return -1;
+            }
+            
+            archive_entry_set_pathname(entry, path);
+            archive_entry_copy_stat(entry, &path_stat);
+
+            if (archive_write_header(archive, entry) != ARCHIVE_OK) {
+                fprintf(stderr, "archive_write_header failed: %s\n", archive_error_string(archive));
+                archive_entry_free(entry);
+                close(fd);
+                return -1;
+            }
+
+            /* Write file data to archive */
+            while ((read_len = read(fd, buffer, sizeof(buffer))) > 0) {
+                if (archive_write_data(archive, buffer, read_len) < 0) {
+                    fprintf(stderr, "archive_write_data failed: %s\n", archive_error_string(archive));
+                    archive_entry_free(entry);
+                    close(fd);
+                    return -1;
+                }
+            }
+
+            if (read_len < 0) {
+                fprintf(stderr, "read failed: %s: %s\n", full_path, strerror(errno));
+            }
+
+            close(fd);
+            archive_entry_free(entry);
+            return (read_len < 0) ? -1 : 0;
+        }
+
+        /* Handle directories and other file types (symlinks, devices, etc.) */
+        entry = archive_entry_new();
+        if (!entry) {
+            fprintf(stderr, "Failed to create archive entry\n");
+            return -1;
         }
         
-        /* For directories and other file types, use the original stat */
-        /* Create a new archive entry */
-        entry = archive_entry_new();
         archive_entry_set_pathname(entry, path);
         archive_entry_copy_stat(entry, &path_stat);
-        
-        /* Write entry header to archive */
+
         if (archive_write_header(archive, entry) != ARCHIVE_OK) {
-                fprintf(stderr, "write_header failed: %s\n", archive_error_string(archive));
-                archive_entry_free(entry);
-                return -1;
+            fprintf(stderr, "archive_write_header failed: %s\n", archive_error_string(archive));
+            archive_entry_free(entry);
+            return -1;
         }
-        
+
         archive_entry_free(entry);
-        
-        /* If it's a DIRECTORY → enter recursively */
+
+        /* Recursively process directory contents */
         if (S_ISDIR(path_stat.st_mode)) {
-                DIR *dir_stream = opendir(full_path);
-                struct dirent *dir_entry;
-                
-                if (!dir_stream) {
-                        fprintf(stderr, "opendir failed: %s: %s\n", full_path, strerror(errno));
-                        return -1;
+            dirp = opendir(full_path);
+            if (!dirp) {
+                fprintf(stderr, "opendir failed: %s: %s\n", full_path, strerror(errno));
+                return -1;
+            }
+
+            while ((dent = readdir(dirp)) != NULL) {
+                /* Skip "." and ".." entries */
+                if (wg_is_special_dir(dent->d_name))
+                    continue;
+
+                /* Build child path */
+                if (snprintf(child_path, sizeof(child_path), "%s/%s",
+                    path, dent->d_name) >= sizeof(child_path))
+                {
+                    fprintf(stderr, "Child path too long: %s/%s\n", path, dent->d_name);
+                    closedir(dirp);
+                    return -1;
                 }
-                
-                while ((dir_entry = readdir(dir_stream)) != NULL) {
-                        if (wg_is_special_dir(dir_entry->d_name))
-                                continue;
-                        
-                        char child_path[WG_MAX_PATH];
-                        snprintf(child_path, sizeof(child_path),
-                                "%s/%s", path, dir_entry->d_name);
-                        
-                        /* Recursive call for child */
-                        if (wg_path_recursive(archive, root, child_path) != 0) {
-                                closedir(dir_stream);
-                                return -1;
-                        }
+
+                /* Recursive call */
+                if (wg_path_recursive(archive, root, child_path) != 0) {
+                    closedir(dirp);
+                    return -1;
                 }
-                
-                closedir(dir_stream);
+            }
+
+            closedir(dirp);
         }
-        
+
         return 0;
 }
 
@@ -699,7 +739,7 @@ void wg_extract_archive(const char *filename)
 
         char ext_paths[WG_PATH_MAX];  /* Buffer for destination directory name */
 
-        printf(" Try Extracting %s archive file...\n", filename);
+        pr_color(stdout, FCOLOUR_CYAN, " Try Extracting %s archive file...", filename);
         fflush(stdout);
 
         /* Detect archive type by file extension and route to appropriate extractor */

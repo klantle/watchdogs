@@ -436,7 +436,7 @@ causeExplanation ccs[] =
 /* === WARNINGS (Potentially Problematic Code) ===  */
 
 /* literal array/string passed to a non-const parameter */
-{"literal array/string passed to a non", "Did you forget that the parameter isn’t a const parameter? Also, make sure you’re using the latest version of the standard library."},
+{"literal array/string passed to a non", "Did you forget that the parameter isn't a const parameter? Also, make sure you're using the latest version of the standard library."},
 
 /* A symbol name is too long and is being truncated. */
 {"is truncated to", "A symbol name (variable, function, etc.) exceeds the maximum allowed length and will be truncated, which may cause link errors."},

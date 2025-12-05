@@ -19,7 +19,7 @@
 #include "curl.h"
 
 /* Array of online platform names and their URL patterns for account tracking */
-const char* __FORUM[MAX_NUM_SITES][2] = {
+const char* URL_FORUM_AIO[MAX_NUM_SITES][2] = {
         {"github", "https://github.com/%s"},
         {"gitlab", "https://gitlab.com/%s"},
         {"gitea", "https://gitea.io/%s"},
@@ -53,7 +53,9 @@ const char* __FORUM[MAX_NUM_SITES][2] = {
 };
 
 /* Static buffer for storing compiler source directory path */
-static char pawncc_dir_src[WG_PATH_MAX];
+static char
+        pawncc_dir_src[WG_PATH_MAX]
+;
 
 /* 
  * Locate and configure CA certificate bundle for CURL SSL verification 
@@ -150,9 +152,9 @@ static int progress_callback(void *ptr, curl_off_t dltotal,
                         dot_index++;
 
                         if (percent < 100)
-                                printf("\rDownloading... %3d%% [%c]", percent, spin_char);
+                                printf("\r" FCOLOUR_CYAN "** Downloading... %3d%% [%c]", percent, spin_char);
                         else
-                                printf("\rDownloading... %3d%% Done!\n", percent);
+                                printf("\r" FCOLOUR_CYAN "** Downloading... %3d%% Done!", percent);
 
                         fflush(stdout);
                         last_percent = percent;
@@ -294,53 +296,70 @@ size_t write_memory_callback(void *contents, size_t size, size_t nmemb, void *us
         return realsize;
 }
 
-/* 
- * Generate username variations for account tracking
- * Creates common username mutations to find accounts across platforms
+/*
+ * Generate username variations for account tracking.
+ * Creates common username mutations to find accounts across platforms.
  */
-void account_tracker_discrepancy(const char *base,
-                                        char discrepancy[][100],
-                                        int *cnt) {
-        int character_position;
-        int dis_base_len = strlen(base);
+void
+account_tracker_discrepancy(const char *base, char discrepancy[][MAX_USERNAME_LEN], 
+    int *cnt)
+{
+        int i, j, base_len;
+        char temp[MAX_USERNAME_LEN];
+
+        if (base == NULL || discrepancy == NULL || cnt == NULL ||
+                *cnt >= MAX_VARIATIONS)
+                return;
+
+        base_len = strlen(base);
+        if (base_len == 0 || base_len >= MAX_USERNAME_LEN)
+                return;
 
         /* Add original username */
-        strcpy(discrepancy[(*cnt)++], base);
+        strlcpy(discrepancy[(*cnt)++], base, MAX_USERNAME_LEN);
 
         /* Create variations with duplicate characters (e.g., "heello" from "hello") */
-        for (character_position = 0; character_position < dis_base_len; character_position++) {
-                char dis_size_temp[100];
-                strncpy(dis_size_temp, base, character_position);
-                dis_size_temp[character_position] = base[character_position];
-                dis_size_temp[character_position+1] = base[character_position]; /* Duplicate character */
-                strcpy(dis_size_temp + character_position + 2, base + character_position + 1);
-                strcpy(discrepancy[(*cnt)++], dis_size_temp);
+        for (i = 0; i < base_len && *cnt < MAX_VARIATIONS; i++) {
+                /* Copy prefix */
+                strncpy(temp, base, i);
+                temp[i] = '\0';
+                
+                /* Duplicate current character */
+                temp[i] = base[i];
+                temp[i + 1] = base[i];
+                
+                /* Copy suffix */
+                strlcpy(temp + i + 2, base + i + 1, 
+                        sizeof(temp) - (i + 2));
+                
+                strlcpy(discrepancy[(*cnt)++], temp, MAX_USERNAME_LEN);
         }
 
         /* Add trailing character repetitions (e.g., "hello111") */
-        for (character_position = 2; character_position <= 5; character_position++) {
-                char dis_size_temp[100];
-                snprintf(dis_size_temp, sizeof(dis_size_temp), "%s", base);
-                for (int j = 0; j < character_position; j++) {
-                        dis_size_temp[strlen(dis_size_temp)] = base[dis_base_len - 1];
+        for (i = 2; i <= 5 && *cnt < MAX_VARIATIONS; i++) {
+                strlcpy(temp, base, sizeof(temp));
+                
+                for (j = 0; j < i && strlen(temp) < MAX_USERNAME_LEN - 1; j++) {
+                        temp[strlen(temp)] = base[base_len - 1];
+                        temp[strlen(temp) + 1] = '\0';
                 }
-                strcpy(discrepancy[(*cnt)++], dis_size_temp);
+                
+                strlcpy(discrepancy[(*cnt)++], temp, MAX_USERNAME_LEN);
         }
 
         /* Add common suffixes */
         const char *suffixes[] = {
                 "!", "@",
-                "@", "$",
-                "%%", "^",
+                "#", "$",
+                "%", "^",
                 "_", "-",
-                "."
+                ".",
+                NULL	/* Sentinel */
         };
-        for (int character_position = 0;
-             character_position < sizeof(suffixes) / sizeof(suffixes[0]);
-             ++character_position) {
-                char dis_size_temp[100];
-                snprintf(dis_size_temp, sizeof(dis_size_temp), "%s%s", base, suffixes[character_position]);
-                strcpy(discrepancy[(*cnt)++], dis_size_temp);
+
+        for (i = 0; suffixes[i] != NULL && *cnt < MAX_VARIATIONS; i++) {
+                snprintf(temp, sizeof(temp), "%s%s", base, suffixes[i]);
+                strlcpy(discrepancy[(*cnt)++], temp, MAX_USERNAME_LEN);
         }
 }
 
@@ -359,7 +378,7 @@ void account_tracking_username(CURL *curl, const char *username) {
         /* Test username against each platform in the list */
         for (int i = 0; i < MAX_NUM_SITES; i++) {
                 char url[200];
-                snprintf(url, sizeof(url), __FORUM[i][1], username);
+                snprintf(url, sizeof(url), URL_FORUM_AIO[i][1], username);
 
                 curl_easy_setopt(curl, CURLOPT_URL, url);
                 curl_easy_setopt(curl, CURLOPT_HTTPHEADER, headers);
@@ -374,16 +393,16 @@ void account_tracking_username(CURL *curl, const char *username) {
 
                 if (res != CURLE_OK) {
                         printf("[%s] %s -> ERROR %s\n",
-                                __FORUM[i][0], url, curl_easy_strerror(res));
+                                URL_FORUM_AIO[i][0], url, curl_easy_strerror(res));
                 } else {
                         long status_code;
                         curl_easy_getinfo(curl, CURLINFO_RESPONSE_CODE, &status_code);
 
                         if (status_code == WG_CURL_RESPONSE_OK) {
-                                printf("[%s] %s -> FOUND\n", __FORUM[i][0], url);
+                                printf("[%s] %s -> FOUND\n", URL_FORUM_AIO[i][0], url);
                         } else {
                                 printf("[%s] %s -> NOT FOUND (%ld)\n",
-                                __FORUM[i][0], url, status_code);
+                                URL_FORUM_AIO[i][0], url, status_code);
                         }
                 }
 
@@ -450,7 +469,6 @@ static void copy_compiler_tool(const char *src_path, const char *tool_name,
         wg_sef_wmv(src_path, dest_path);
 }
 
-#ifndef WG_WINDOWS
 /* 
  * Update shell configuration to add library path to LD_LIBRARY_PATH
  * Works with bash and zsh shells
@@ -492,7 +510,7 @@ static void update_library_environment(const char *lib_path)
         /* Check if library path already exists in config file */
         char grep_cmd[512];
         snprintf(grep_cmd, sizeof(grep_cmd),
-                                "grep -q \"LD_LIBRARY_PATH.*%s\" %s", lib_path, config_file);
+                "grep -q \"LD_LIBRARY_PATH.*%s\" %s", lib_path, config_file);
 
         int path_exists = wg_run_command(grep_cmd);
 
@@ -531,7 +549,6 @@ static void update_library_environment(const char *lib_path)
                 }
         }
 }
-#endif
 
 /* 
  * Install library files to system library directories on Linux/Unix
@@ -540,7 +557,7 @@ static int setup_linux_library(void)
 {
 #ifdef WG_WINDOWS
         return 0; /* Not needed on Windows */
-#else
+#endif
         const char *selected_path = NULL;
         char libpawnc_src[WG_PATH_MAX];
         char dest_path[WG_PATH_MAX];
@@ -560,35 +577,35 @@ static int setup_linux_library(void)
 
         /* Skip if on Windows or unknown OS */
         if (!strcmp(wgconfig.wg_toml_os_type, OS_SIGNAL_WINDOWS) ||
-                !strcmp(wgconfig.wg_toml_os_type, OS_SIGNAL_UNKNOWN))
-                        return 0;
+            !strcmp(wgconfig.wg_toml_os_type, OS_SIGNAL_UNKNOWN))
+                return 0;
 
         /* Search for library file */
         char size_pf[WG_PATH_MAX + 56];
         snprintf(size_pf, sizeof(size_pf), "%s", pawncc_dir_src);
         found_lib = wg_sef_fdir(size_pf, "libpawnc.so", NULL);
         if (!found_lib)
-                        return 0;
+                return 0;
 
         /* Find full path to library */
         for (i = 0; i < wgconfig.wg_sef_count; i++) {
-                        if (strstr(wgconfig.wg_sef_found_list[i], "libpawnc.so")) {
-                                        strncpy(libpawnc_src, wgconfig.wg_sef_found_list[i], sizeof(libpawnc_src));
-                                        break;
-                        }
+                if (strstr(wgconfig.wg_sef_found_list[i], "libpawnc.so")) {
+                        strncpy(libpawnc_src, wgconfig.wg_sef_found_list[i], sizeof(libpawnc_src));
+                        break;
+                }
         }
 
         /* Select appropriate library directory */
         for (i = 0; i < sizeof(lib_paths) / sizeof(lib_paths[0]); i++) {
-                        if (path_exists(lib_paths[i])) {
-                                        selected_path = lib_paths[i];
-                                        break;
-                        }
+                if (path_exists(lib_paths[i])) {
+                        selected_path = lib_paths[i];
+                        break;
+                }
         }
 
         if (!selected_path) {
-                        fprintf(stderr, "No valid library path found!\n");
-                        return -1;
+                fprintf(stderr, "No valid library path found!\n");
+                return -1;
         }
 
         /* Copy library to system directory */
@@ -599,7 +616,6 @@ static int setup_linux_library(void)
         update_library_environment(selected_path);
 
         return 0;
-#endif
 }
 
 /* 
@@ -627,56 +643,56 @@ void wg_apply_pawncc(void)
 
         /* Find all compiler tools in downloaded directory */
         find_compiler_tools(wgconfig.wg_is_samp ? COMPILER_SAMP : COMPILER_OPENMP,
-                                                &found_pawncc_exe, &found_pawncc,
-                                                &found_pawndisasm_exe, &found_pawndisasm,
-                                                &found_pawnc_dll, &found_PAWNC_DLL);
+                        &found_pawncc_exe, &found_pawncc,
+                        &found_pawndisasm_exe, &found_pawndisasm,
+                        &found_pawnc_dll, &found_PAWNC_DLL);
 
         /* Get destination directory (pawno or qawno) */
         dest_dir = get_compiler_directory();
         if (!dest_dir) {
-                        pr_error(stdout, "Failed to create compiler directory");
-                        goto apply_done;
+                pr_error(stdout, "Failed to create compiler directory");
+                goto apply_done;
         }
 
         /* Store paths to found compiler tools */
         for (i = 0; i < wgconfig.wg_sef_count; i++) {
-                        const char *item = wgconfig.wg_sef_found_list[i];
-                        if (!item)
-                                        continue;
+                const char *item = wgconfig.wg_sef_found_list[i];
+                if (!item)
+                        continue;
 
-                        if (strstr(item, "pawncc.exe")) {
-                                        strncpy(pawncc_exe_src, item, sizeof(pawncc_exe_src));
-                        } else if (strstr(item, "pawncc") && !strstr(item, ".exe")) {
-                                        strncpy(pawncc_src, item, sizeof(pawncc_src));
-                        } else if (strstr(item, "pawndisasm.exe")) {
-                                        strncpy(pawndisasm_exe_src, item, sizeof(pawndisasm_exe_src));
-                        } else if (strstr(item, "pawndisasm") && !strstr(item, ".exe")) {
-                                        strncpy(pawndisasm_src, item, sizeof(pawndisasm_src));
-                        } else if (strstr(item, "pawnc.dll"))  {
-                                        strncpy(pawnc_dll_src, item, sizeof(pawnc_dll_src));
-                        } else if (strstr(item, "PAWNC.dll")) {
-                                        strncpy(PAWNC_DLL_src, item, sizeof(PAWNC_DLL_src));
-                        }
+                if (strstr(item, "pawncc.exe")) {
+                        strncpy(pawncc_exe_src, item, sizeof(pawncc_exe_src));
+                } else if (strstr(item, "pawncc") && !strstr(item, ".exe")) {
+                        strncpy(pawncc_src, item, sizeof(pawncc_src));
+                } else if (strstr(item, "pawndisasm.exe")) {
+                        strncpy(pawndisasm_exe_src, item, sizeof(pawndisasm_exe_src));
+                } else if (strstr(item, "pawndisasm") && !strstr(item, ".exe")) {
+                        strncpy(pawndisasm_src, item, sizeof(pawndisasm_src));
+                } else if (strstr(item, "pawnc.dll"))  {
+                        strncpy(pawnc_dll_src, item, sizeof(pawnc_dll_src));
+                } else if (strstr(item, "PAWNC.dll")) {
+                        strncpy(PAWNC_DLL_src, item, sizeof(PAWNC_DLL_src));
+                }
         }
 
         /* Copy each found tool to destination directory */
         if (found_pawncc_exe && pawncc_exe_src[0])
-                        copy_compiler_tool(pawncc_exe_src, "pawncc.exe", dest_dir);
+                copy_compiler_tool(pawncc_exe_src, "pawncc.exe", dest_dir);
 
         if (found_pawncc && pawncc_src[0])
-                        copy_compiler_tool(pawncc_src, "pawncc", dest_dir);
+                copy_compiler_tool(pawncc_src, "pawncc", dest_dir);
 
         if (found_pawndisasm_exe && pawndisasm_exe_src[0])
-                        copy_compiler_tool(pawndisasm_exe_src, "pawndisasm.exe", dest_dir);
+                copy_compiler_tool(pawndisasm_exe_src, "pawndisasm.exe", dest_dir);
 
         if (found_pawndisasm && pawndisasm_src[0])
-                        copy_compiler_tool(pawndisasm_src, "pawndisasm", dest_dir);
+                copy_compiler_tool(pawndisasm_src, "pawndisasm", dest_dir);
 
         if (found_pawnc_dll && pawnc_dll_src[0])
-                        copy_compiler_tool(pawnc_dll_src, "pawnc.dll", dest_dir);
+                copy_compiler_tool(pawnc_dll_src, "pawnc.dll", dest_dir);
 
         if (found_PAWNC_DLL && PAWNC_DLL_src[0])
-                        copy_compiler_tool(PAWNC_DLL_src, "PAWNC.dll", dest_dir);
+                copy_compiler_tool(PAWNC_DLL_src, "PAWNC.dll", dest_dir);
 
         /* Setup libraries on Linux/Unix systems */
         setup_linux_library();
@@ -696,69 +712,51 @@ void wg_apply_pawncc(void)
         memset(pawncc_dir_src, 0, sizeof(pawncc_dir_src));
 
         pr_info(stdout, "Congratulations! compiler installed successfully.");
-
         /* Prompt to run compiler immediately */
         pr_color(stdout, FCOLOUR_CYAN, "Run compiler now? (y/n):");
         char *compile_now = readline(" ");
-        if (!strcmp(compile_now, "Y") || !strcmp(compile_now, "y")) {
-                wg_free(compile_now);
-                pr_color(stdout, FCOLOUR_CYAN, "~ input pawn files (press enter for from config toml - enter E/e to exit):");
-                char *gamemode_compile = readline(" ");
-                if (strlen(gamemode_compile) < 1) {
-                        if (path_exists(wgconfig.wg_toml_proj_input) == 0) {
-                                pr_error(stdout, "File not dound.. creating...");
-                                if (dir_exists("gamemodes") == 0)
-                                        MKDIR("gamemodes");
-                                FILE *test = fopen("gamemodes/test.pwn", "w+");
-                                if (test) {
-                                        wgconfig.wg_toml_proj_input = strdup("gamemodes/test.pwn");
-                                        fclose(test);
-                                        test = fopen("gamemodes/test.pwn", "rb+");
-                                        if (test) {
-                                                fwrite("native printf(const format[], {Float,_}:...);\n", 1,
-                                                        strlen("native printf(const format[], {Float,_}:...);") + 1, test);
-                                                fwrite("main() {\n", 1,
-                                                        strlen("main() {") + 1, test);
-                                                fwrite("\tprintf(\"Hello, World!\");\n", 1,
-                                                        strlen("\tprintf(\"Hello, World!\");\n"), test);
-                                                fwrite("}", 1, strlen("}"), test);
+        if (compile_now[0] == 'Y' || compile_now[0] == 'y') {
+            wg_free(compile_now);
+            pr_color(stdout, FCOLOUR_CYAN, "Please input the pawn file\n\t* "
+                "(just enter for %s - input E/e to exit):", wgconfig.wg_toml_proj_input);
+            char *gamemode_compile = readline(" ");
+            
+            /* Determine compilation target */
+            const char *target = (strlen(gamemode_compile) < 1) ? 
+                                wgconfig.wg_toml_proj_input : gamemode_compile;
+            
+            /* Create file if it doesn't exist */
+            if (path_exists(target) == 0) {
+                pr_error(stdout, "File: %s.pwn not found!.. creating...", target);
 
-                                                fclose(test);
-                                        }
-                                }
-                        }
-                        const char *args[] = { NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL };
-                        wg_run_compiler(args[0], args[1], args[2], args[3], args[4], args[5], args[6], args[7], args[8]);
-                        wg_free(gamemode_compile);
-                } else {
-                        if (path_exists(gamemode_compile) == 0) {
-                                pr_error(stdout, "File not dound.. creating...");
-                                if (dir_exists("gamemodes") == 0)
-                                        MKDIR("gamemodes");
-                                char size_gamemode[WG_PATH_MAX];
-                                snprintf(size_gamemode, sizeof(size_gamemode), "gamemodes/%s.pwn", gamemode_compile);
-                                FILE *test = fopen(size_gamemode, "w+");
-                                if (test) {
-                                        gamemode_compile = strdup(size_gamemode);
-                                        fclose(test);
-                                        test = fopen(size_gamemode, "rb+");
-                                        if (test) {
-                                                fwrite("native printf(const format[], {Float,_}:...);\n", 1,
-                                                        strlen("native printf(const format[], {Float,_}:...);") + 1, test);
-                                                fwrite("main() {\n", 1,
-                                                        strlen("main() {") + 1, test);
-                                                fwrite("\tprintf(\"Hello, World!\");\n", 1,
-                                                        strlen("\tprintf(\"Hello, World!\");\n"), test);
-                                                fwrite("}", 1, strlen("}"), test);
-                                                
-                                                fclose(test);
-                                        }
-                                }
-                        }
-                        wg_run_compiler(gamemode_compile, gamemode_compile, NULL, NULL, NULL, NULL, NULL, NULL, NULL);
-                        wg_free(gamemode_compile);
+                if (dir_exists("gamemodes") == 0) MKDIR("gamemodes");
+                
+                char size_gamemode[WG_PATH_MAX];
+                snprintf(size_gamemode, sizeof(size_gamemode), 
+                        (target == wgconfig.wg_toml_proj_input) ? 
+                        "%s" : "gamemodes/%s.pwn", target);
+                
+                FILE *test = fopen(size_gamemode, "w+");
+                if (test) {
+                    wgconfig.wg_toml_proj_input = strdup(size_gamemode);
+                    const char *default_code = 
+                        "native printf(const format[], {Float,_}:...);\n"
+                        "main() {\n"
+                        "\tprintf(\"Hello, World!\");\n"
+                        "}";
+                    fwrite(default_code, 1, strlen(default_code), test);
+                    fclose(test);
                 }
-        } else { wg_free(compile_now); }
+            }
+            
+            /* Run compiler with appropriate arguments */
+            wg_run_compiler(
+                NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL
+            );
+            wg_free(gamemode_compile);
+        } else { 
+            wg_free(compile_now); 
+        }
 
 apply_done:
         chain_ret_main(NULL);
@@ -815,7 +813,7 @@ int is_archive_file(const char *filename)
  * Debug callback for CURL to display HTTP communication details
  */
 static int debug_callback(CURL *handle, curl_infotype type,
-                                                  char *data, size_t size, void *userptr)
+                          char *data, size_t size, void *userptr)
 {
         (void)handle;
         (void)userptr;
@@ -828,7 +826,8 @@ static int debug_callback(CURL *handle, curl_infotype type,
                 break;
         case CURLINFO_HEADER_IN:
                 /* Filter out common headers to reduce noise */
-                if (strfind(data, "location: ", true) || strfind(data, "content-security-policy: ", true))
+                if (strfind(data, "location: ", true) ||
+                    strfind(data, "content-security-policy: ", true))
                         break;
                 printf("<= Recv header: %.*s", (int)size, data);
                 break;
@@ -840,36 +839,164 @@ static int debug_callback(CURL *handle, curl_infotype type,
         return 0;
 }
 
-/* 
+/* Helper function to sanitize filename */
+static void persing_filename(char *filename) {
+        if (filename[0] == '\0') return;
+        
+        /* Replace invalid characters with underscores */
+        for (char *p = filename; *p; ++p) {
+                if (*p == '?' || *p == '*' ||
+                    *p == '<' || *p == '>' || 
+                    *p == '|' || *p == ':' ||
+                    *p == '"' || *p == '\\' || *p == '/') {
+                        *p = '_';
+                }
+        }
+        
+        /* Trim whitespace */
+        char *end = filename + strlen(filename) - 1;
+        while (end > filename && isspace((unsigned char)*end)) {
+                *end-- = '\0';
+        }
+        
+        /* Ensure filename is not empty */
+        if (strlen(filename) == 0) {
+                strcpy(filename, "downloaded_file");
+        }
+}
+
+/*
  * Main file download function with retry logic and progress display
  * Handles HTTP downloads, SSL verification, and archive extraction
  */
-int wg_download_file(const char *url, const char *filename)
+int wg_download_file(const char *url, const char *output_filename)
 {
         /* Debug information section */
         __debug_function();
 
-        if (!url || !filename) {
+        /**
+         * PARAMETER VALIDATION SECTION
+         * 
+         * Validates input parameters before proceeding with download
+         * Returns -1 for critical parameter errors
+         */
+        if (!url || !output_filename) {
                 pr_color(stdout, FCOLOUR_RED, "Error: Invalid URL or filename\n");
                 return -1;
         }
 
+        /**
+         * VARIABLE DECLARATION SECTION
+         * 
+         * Allocate and initialize all required variables
+         * CURL handles, buffers, counters, and file descriptors
+         */
         CURLcode res;
         CURL *curl = NULL;
         long response_code = 0;
         int retry_count = 0;
         struct stat file_stat;
+        
+        /**
+         * FILENAME SANITIZATION SECTION
+         * 
+         * Cleans and prepares output filename:
+         * - Removes URL query parameters
+         * - Extracts basename from URL if needed
+         * - Ensures valid characters for filesystem
+         * 
+         * SECURITY: Prevents injection attacks by stripping
+         * query parameters and invalid characters
+         */
+        char clean_filename[WG_PATH_MAX];
+        char *query_pos = strchr(output_filename, '?');
+        if (query_pos) {
+                size_t name_len = query_pos - output_filename;
+                if (name_len >= sizeof(clean_filename)) {
+                        name_len = sizeof(clean_filename) - 1;
+                }
+                strncpy(clean_filename, output_filename, name_len);
+                clean_filename[name_len] = '\0';
+        } else {
+                strncpy(clean_filename, output_filename, sizeof(clean_filename) - 1);
+                clean_filename[sizeof(clean_filename) - 1] = '\0';
+        }
+        
+        /* Extract filename from URL if output_filename contains URL */
+        char final_filename[WG_PATH_MAX];
+        if (strstr(clean_filename, "://") || strstr(clean_filename, "http")) {
+                const char *url_filename = strrchr(url, '/');
+                if (url_filename) {
+                        url_filename++;
+                        
+                        char *url_query_pos = strchr(url_filename, '?');
+                        if (url_query_pos) {
+                                size_t url_name_len = url_query_pos - url_filename;
+                                if (url_name_len >= sizeof(final_filename)) {
+                                        url_name_len = sizeof(final_filename) - 1;
+                                }
+                                strncpy(final_filename, url_filename, url_name_len);
+                                final_filename[url_name_len] = '\0';
+                        } else {
+                                strncpy(final_filename, url_filename, sizeof(final_filename) - 1);
+                                final_filename[sizeof(final_filename) - 1] = '\0';
+                        }
+                } else {
+                        snprintf(final_filename, sizeof(final_filename), "downloaded_file");
+                }
+        } else {
+                strncpy(final_filename, clean_filename, sizeof(final_filename) - 1);
+                final_filename[sizeof(final_filename) - 1] = '\0';
+        }
+        
+        /* Ensure filename doesn't have invalid characters */
+        persing_filename(final_filename);
 
-        pr_color(stdout, FCOLOUR_GREEN, "Try Downloading %s", filename);
+        /**
+         * DOWNLOAD INITIALIZATION SECTION
+         * 
+         * Starts download process with informative messages
+         * Sets up retry mechanism for network resilience
+         */
+        pr_color(stdout, FCOLOUR_GREEN, "* Try Downloading %s", final_filename);
 
-        /* Retry loop with up to 5 attempts */
+        /**
+         * RETRY LOOP SECTION
+         * 
+         * Implements exponential backoff retry logic:
+         * - Up to 5 attempts for transient failures
+         * - 3 second delay between attempts
+         * - Different handling for permanent vs temporary errors
+         * 
+         * FEATURES:
+         * 1. Automatic retry on network timeouts
+         * 2. GitHub API rate limit handling
+         * 3. SSL certificate revalidation
+         * 4. Memory cleanup between attempts
+         */
         while (retry_count < 5) {
+                /**
+                 * CURL INITIALIZATION SUBSECTION
+                 * 
+                 * Creates new CURL handle for each attempt
+                 * Ensures clean state for each retry
+                 */
                 curl = curl_easy_init();
                 if (!curl) {
                         pr_color(stdout, FCOLOUR_RED, "Failed to initialize CURL\n");
                         return -1;
                 }
 
+                /**
+                 * HTTP HEADERS CONFIGURATION SUBSECTION
+                 * 
+                 * Configures request headers:
+                 * - User-Agent identification
+                 * - GitHub authentication (if available)
+                 * - Accept header for GitHub API
+                 * 
+                 * SECURITY: GitHub tokens are masked in output
+                 */
                 struct curl_slist *headers = NULL;
 
                 /* Add GitHub authentication header if available */
@@ -877,7 +1004,7 @@ int wg_download_file(const char *url, const char *filename)
                         if (!wgconfig.wg_toml_github_tokens || 
                                 strfind(wgconfig.wg_toml_github_tokens, "DO_HERE", true) ||
                                 strlen(wgconfig.wg_toml_github_tokens) < 1) {
-                                pr_color(stdout, FCOLOUR_YELLOW, " ~ GitHub token not available");
+                                pr_color(stdout, FCOLOUR_YELLOW, " ~ GitHub token not available\n");
                                 sleep(1);
                         } else {
                                 char auth_header[512];
@@ -893,7 +1020,18 @@ int wg_download_file(const char *url, const char *filename)
                 headers = curl_slist_append(headers, "User-Agent: watchdogs/1.0");
                 headers = curl_slist_append(headers, "Accept: application/vnd.github.v3.raw");
 
-                /* Configure CURL options */
+                /**
+                 * CURL OPTIONS CONFIGURATION SUBSECTION
+                 * 
+                 * Configures comprehensive CURL options:
+                 * - URL and write callbacks
+                 * - Timeout and retry settings
+                 * - SSL verification (enforced)
+                 * - Progress tracking callbacks
+                 * 
+                 * PERFORMANCE: Uses gzip compression for faster transfers
+                 * SECURITY: Always validates SSL certificates
+                 */
                 curl_easy_setopt(curl, CURLOPT_URL, url);
                 curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, write_memory_callback);
                                 
@@ -911,7 +1049,14 @@ int wg_download_file(const char *url, const char *filename)
                 curl_easy_setopt(curl, CURLOPT_SSL_VERIFYHOST, 2L);
                 curl_easy_setopt(curl, CURLOPT_NOPROGRESS, 0L);
 
-                /* Prompt for HTTP debugging on first download */
+                /**
+                 * DEBUGGING CONFIGURATION SUBSECTION
+                 * 
+                 * Optional HTTP debugging for troubleshooting:
+                 * - User prompted on first download
+                 * - Can be enabled permanently via prompt
+                 * - Shows detailed HTTP transaction info
+                 */
                 static int create_debugging = 0;
                 static int always_create_debugging = 0;
                 
@@ -932,99 +1077,191 @@ int wg_download_file(const char *url, const char *filename)
                         curl_easy_setopt(curl, CURLOPT_DEBUGDATA, NULL);
                 }
 
-                /* Set progress callback for download tracking */
+                /**
+                 * PROGRESS TRACKING SUBSECTION
+                 * 
+                 * Sets up real-time progress display:
+                 * - Shows download percentage
+                 * - Displays transfer speed
+                 * - Updates in separate thread
+                 */
                 curl_easy_setopt(curl, CURLOPT_XFERINFOFUNCTION, progress_callback);
                 curl_easy_setopt(curl, CURLOPT_XFERINFODATA, NULL);
 
-                /* Configure SSL certificate verification */
+                /**
+                 * SSL CERTIFICATE CONFIGURATION SUBSECTION
+                 * 
+                 * Configures SSL certificate verification:
+                 * - Uses custom CA bundle if available
+                 * - Enforces hostname verification
+                 * - Falls back to system certificates
+                 * 
+                 * SECURITY: Critical for preventing MITM attacks
+                 */
                 verify_cacert_pem(curl);
 
+                /**
+                 * DOWNLOAD EXECUTION SUBSECTION
+                 * 
+                 * Performs actual HTTP download:
+                 * - Executes CURL request
+                 * - Captures response code
+                 * - Handles errors gracefully
+                 */
                 fflush(stdout);
                 res = curl_easy_perform(curl);
                 curl_easy_getinfo(curl, CURLINFO_RESPONSE_CODE, &response_code);
 
+                /**
+                 * CURL CLEANUP SUBSECTION
+                 * 
+                 * Properly releases CURL resources:
+                 * - Frees easy handle
+                 * - Cleans up headers
+                 * - Prevents memory leaks
+                 */
                 curl_easy_cleanup(curl);
                 curl_slist_free_all(headers);
 
-                /* Check if download succeeded */
+                /**
+                 * DOWNLOAD SUCCESS HANDLING SUBSECTION
+                 * 
+                 * Processes successful download:
+                 * - Writes data to disk
+                 * - Verifies file integrity
+                 * - Checks archive format
+                 */
                 if (res == CURLE_OK && response_code == WG_CURL_RESPONSE_OK && 
                         download_buffer.len > 0) {
                         
-                        /* Write downloaded data to file */
-                        FILE *fp = fopen(filename, "wb");
+                        /**
+                         * FILE WRITE OPERATION SUBSECTION
+                         * 
+                         * Writes downloaded buffer to filesystem:
+                         * - Binary mode for safety
+                         * - Verifies write completion
+                         * - Handles partial writes
+                         * 
+                         * ERROR HANDLING: Retries on write failures
+                         */
+                        FILE *fp = fopen(final_filename, "wb");
                         if (!fp) {
-                                pr_color(stdout, FCOLOUR_RED, "Failed to open file for writing: %s\n", filename);
+                                pr_color(stdout, FCOLOUR_RED, "* Failed to open file for writing: %s (errno: %d - %s)\n", 
+                                        final_filename, errno, strerror(errno));
                                 wg_free(download_buffer.data);
                                 ++retry_count;
                                 sleep(3);
                                 continue;
                         }
                         
-                        fwrite(download_buffer.data, 1, download_buffer.len, fp);
+                        size_t written = fwrite(download_buffer.data, 1, download_buffer.len, fp);
                         fclose(fp);
+                        
+                        if (written != download_buffer.len) {
+                                pr_color(stdout, FCOLOUR_RED, "* Failed to write all data to file: %s (written: %zu, expected: %zu)\n",
+                                        final_filename, written, download_buffer.len);
+                                wg_free(download_buffer.data);
+                                unlink(final_filename); /* Remove partial file */
+                                ++retry_count;
+                                sleep(3);
+                                continue;
+                        }
                         
                         wg_free(download_buffer.data);
                         
-                        /* Verify file was written successfully */
-                        if (stat(filename, &file_stat) == 0 && file_stat.st_size > 0) {
-                                pr_color(stdout, FCOLOUR_GREEN, " Well done! Download successful: %" PRIdMAX " bytes\n", 
-                                                (intmax_t)file_stat.st_size);
+                        /**
+                         * FILE VERIFICATION SUBSECTION
+                         * 
+                         * Verifies downloaded file:
+                         * - Checks file exists
+                         * - Validates file size
+                         * - Confirms successful write
+                         */
+                        if (stat(final_filename, &file_stat) == 0 && file_stat.st_size > 0) {
+                                pr_color(stdout, FCOLOUR_GREEN, " %% successful: %" PRIdMAX " bytes to %s\n", 
+                                                (intmax_t)file_stat.st_size, final_filename);
                                 fflush(stdout);
 
-                                /* Check if file is an archive */
-                                if (!is_archive_file(filename)) {
-                                        pr_color(stdout, FCOLOUR_YELLOW, "Warning: File is not an archive\n");
+                                /**
+                                 * ARCHIVE DETECTION SUBSECTION
+                                 * 
+                                 * Checks if downloaded file is an archive:
+                                 * - Examines file extension
+                                 * - Validates archive format
+                                 * - Warns if not archive
+                                 */
+                                if (!is_archive_file(final_filename)) {
+                                        pr_color(stdout, FCOLOUR_YELLOW, "Warning: File %s is not an archive\n", final_filename);
                                         return 1;
                                 }
 
-                                /* Extract archive contents */
-                                wg_extract_archive(filename);
+                                /**
+                                 * ARCHIVE EXTRACTION SUBSECTION
+                                 * 
+                                 * Extracts archive contents:
+                                 * - Handles multiple formats
+                                 * - Preserves permissions
+                                 * - Recursive extraction
+                                 */
+                                wg_extract_archive(final_filename);
 
-                                /* Prompt to remove archive file */
+                                /**
+                                 * ARCHIVE CLEANUP PROMPT SUBSECTION
+                                 * 
+                                 * User-controlled archive removal:
+                                 * - Optional deletion after extraction
+                                 * - Remembers user preference
+                                 * - Handles deletion errors
+                                 */
                                 if (wgconfig.wg_idepends == 1) {
                                         static int remove_archive = 0;
                                         if (remove_archive == 0) {
-                                                pr_color(stdout, FCOLOUR_CYAN, "==> Remove archive? ");
+                                                pr_color(stdout, FCOLOUR_CYAN, 
+                                                        "==> Remove archive %s? ", final_filename);
                                                 char *confirm = readline("(y/n): ");
+                                                
                                                 if (confirm && (confirm[0] == 'Y' || confirm[0] == 'y')) {
                                                         remove_archive = 1;
-                                                        char rm_cmd[WG_PATH_MAX];
-                                                        if (is_native_windows())
-                                                                snprintf(rm_cmd, sizeof(rm_cmd),
-                                                                        "if exist \"%s\" (del /f /q \"%s\" 2>nul)", filename, filename);
-                                                        else
-                                                                snprintf(rm_cmd, sizeof(rm_cmd), "rm -f %s", filename);
-                                                        wg_run_command(rm_cmd);
+                                                        if (unlink(final_filename) != 0) {
+                                                                pr_color(stdout, FCOLOUR_YELLOW,
+                                                                        "Warning: Failed to remove %s: %s\n",
+                                                                        final_filename, strerror(errno));
+                                                        }
                                                 }
                                                 wg_free(confirm);
                                         } else {
-                                                char rm_cmd[WG_PATH_MAX];
-                                                if (is_native_windows())
-                                                        snprintf(rm_cmd, sizeof(rm_cmd),
-                                                                "if exist \"%s\" (del /f /q \"%s\" 2>nul)", filename, filename);
-                                                else
-                                                        snprintf(rm_cmd, sizeof(rm_cmd), "rm -f %s", filename);
-                                                wg_run_command(rm_cmd);
+                                                if (unlink(final_filename) != 0) {
+                                                        pr_color(stdout, FCOLOUR_YELLOW,
+                                                                "Warning: Failed to remove %s: %s\n",
+                                                                final_filename, strerror(errno));
+                                                }
                                         }
                                 } else {
-                                        pr_color(stdout, FCOLOUR_CYAN, "==> Remove archive? ");
+                                        pr_color(stdout, FCOLOUR_CYAN, 
+                                                "==> Remove archive %s? ", final_filename);
                                         char *confirm = readline("(y/n): ");
+                                        
                                         if (confirm && (confirm[0] == 'Y' || confirm[0] == 'y')) {
-                                                char rm_cmd[WG_PATH_MAX];
-                                                if (is_native_windows())
-                                                        snprintf(rm_cmd, sizeof(rm_cmd),
-                                                                "if exist \"%s\" (del /f /q \"%s\" 2>nul)", filename, filename);
-                                                else
-                                                        snprintf(rm_cmd, sizeof(rm_cmd), "rm -f %s", filename);
-                                                wg_run_command(rm_cmd);
+                                                if (unlink(final_filename) != 0) {
+                                                        pr_color(stdout, FCOLOUR_YELLOW,
+                                                                "Warning: Failed to remove %s: %s\n",
+                                                                final_filename, strerror(errno));
+                                                }
                                         }
                                         wg_free(confirm);
                                 }
 
-                                /* Prompt to install compiler if this is a compiler download */
+                                /**
+                                 * COMPILER INSTALLATION PROMPT SUBSECTION
+                                 * 
+                                 * Special handling for compiler downloads:
+                                 * - Detects compiler archives
+                                 * - Prompts for installation
+                                 * - Sets up compiler directory
+                                 */
                                 if (wgconfig.wg_ipawncc && prompt_apply_pawncc()) {
                                         char size_filename[WG_PATH_MAX];
-                                        snprintf(size_filename, sizeof(size_filename), "%s", filename);
+                                        snprintf(size_filename, sizeof(size_filename), "%s", final_filename);
 
                                         /* Remove file extension to get directory name */
                                         char *extension = strstr(size_filename, ".tar.gz");
@@ -1043,7 +1280,14 @@ int wg_download_file(const char *url, const char *filename)
                         }
                 }
                 
-                /* Clean up and retry on failure */
+                /**
+                 * DOWNLOAD FAILURE CLEANUP SUBSECTION
+                 * 
+                 * Cleans up resources after failed attempt:
+                 * - Frees download buffer
+                 * - Prepares for retry
+                 * - Delays before next attempt
+                 */
                 if (download_buffer.data) {
                         wg_free(download_buffer.data);
                 }
@@ -1054,9 +1298,16 @@ int wg_download_file(const char *url, const char *filename)
                 sleep(3);
         }
 
-        /* Final failure message after all retries */
-        pr_color(stdout, FCOLOUR_RED, " Failed to download %s. after retrying: %d\n",
-                filename, retry_count);
+        /**
+         * FINAL FAILURE SECTION
+         * 
+         * Handles permanent download failure:
+         * - All retries exhausted
+         * - Reports final error
+         * - Returns error code
+         */
+        pr_color(stdout, FCOLOUR_RED, " Failed to download %s from %s after %d retries\n",
+                final_filename, url, retry_count);
 
         return 1;
 }

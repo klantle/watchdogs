@@ -188,6 +188,7 @@ char* wg_masked_text(int reveal, const char *text);
 int wg_mkdir(const char *path);
 void wg_escaping_json(char *dest, const char *src, size_t dest_size);
 int wg_run_command(const char *cmd);
+void wg_clear_screen(void);
 
 int is_pterodactyl_env(void);
 int is_termux_env(void);

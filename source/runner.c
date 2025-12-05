@@ -121,13 +121,13 @@ void wg_display_server_logs(int ret)
  */
 void wg_server_crash_check(void) {
         /* Open server log file for analysis */
-        FILE *proc_f = NULL;
+        FILE *this_proc_file = NULL;
         if (wg_server_env() == 1)            /* SA-MP server logs */
-            proc_f = fopen(wgconfig.wg_toml_logs, "rb");
+            this_proc_file = fopen(wgconfig.wg_toml_logs, "rb");
         else                                  /* OpenMP server logs */
-            proc_f = fopen(wgconfig.wg_toml_logs, "rb");
+            this_proc_file = fopen(wgconfig.wg_toml_logs, "rb");
 
-        if (proc_f == NULL) {
+        if (this_proc_file == NULL) {
             pr_error(stdout, "log file not found!. %s (L: %d)", __func__, __LINE__);
             return;
         }
@@ -143,7 +143,7 @@ void wg_server_crash_check(void) {
         fflush(stdout);
         
         /* Process log file line by line for pattern matching */
-        while (fgets(line_buf, sizeof(line_buf), proc_f))
+        while (fgets(line_buf, sizeof(line_buf), this_proc_file))
         {
             /* Runtime error detection - common Pawn script errors */
             if (strfind(line_buf, "run time error", true) || strfind(line_buf, "Run time error", true))
@@ -151,20 +151,20 @@ void wg_server_crash_check(void) {
                 rate_problem_stat = 1;            /* Mark general problem found */
                 needed = snprintf(output_buf, sizeof(output_buf), "@ Runtime error detected\n\t");
                 fwrite(output_buf, 1, needed, stdout);
-                pr_color(stdout, FCOLOUR_BLUE, line_buf);
+                pr_color(stdout, FCOLOUR_BLUE, "%s", line_buf);
                 fflush(stdout);
 
                 /* Specific runtime error subtypes */
                 if (strfind(line_buf, "division by zero", true)) {
                     needed = snprintf(output_buf, sizeof(output_buf), "@ Division by zero error found\n\t");
                     fwrite(output_buf, 1, needed, stdout);
-                    pr_color(stdout, FCOLOUR_BLUE, line_buf);
+                    pr_color(stdout, FCOLOUR_BLUE, "%s", line_buf);
                     fflush(stdout);
                 }
                 if (strfind(line_buf, "invalid index", true)) {
                     needed = snprintf(output_buf, sizeof(output_buf), "@ Invalid index error found\n\t");
                     fwrite(output_buf, 1, needed, stdout);
-                    pr_color(stdout, FCOLOUR_BLUE, line_buf);
+                    pr_color(stdout, FCOLOUR_BLUE, "%s", line_buf);
                     fflush(stdout);
                 }
             }
@@ -173,14 +173,14 @@ void wg_server_crash_check(void) {
             if (strfind(line_buf, "The script might need to be recompiled with the latest include file.", true)) {
                 needed = snprintf(output_buf, sizeof(output_buf), "@ Needed for recompiled\n\t");
                 fwrite(output_buf, 1, needed, stdout);
-                pr_color(stdout, FCOLOUR_BLUE, line_buf);
+                pr_color(stdout, FCOLOUR_BLUE, "%s", line_buf);
                 fflush(stdout);
                 
                 /* Interactive recompilation prompt */
                 char *recompiled = readline("Recompiled scripts now? (Auto-fix)");
                 if (!strcmp(recompiled, "Y") || !strcmp(recompiled, "y")) {
                     wg_free(recompiled);
-                    pr_color(stdout, FCOLOUR_CYAN, "~ pawn file name (press enter for from config toml - enter E/e to exit):");
+                        pr_color(stdout, FCOLOUR_CYAN, "Please input the pawn file\n\t* (just enter for %s - input E/e to exit):", wgconfig.wg_toml_proj_input);
                     char *gamemode_compile = readline("Y/n: ");
                     if (strlen(gamemode_compile) < 1) {
                         /* Compile with default configuration */
@@ -200,7 +200,7 @@ void wg_server_crash_check(void) {
             if (strfind(line_buf, "terminate called after throwing an instance of 'ghc::filesystem::filesystem_error", true)) {
                 needed = snprintf(output_buf, sizeof(output_buf), "@ Filesystem C++ Error Detected\n\t");
                 fwrite(output_buf, 1, needed, stdout);
-                pr_color(stdout, FCOLOUR_BLUE, line_buf);
+                pr_color(stdout, FCOLOUR_BLUE, "%s", line_buf);
                 fflush(stdout);
                 needed = snprintf(output_buf, sizeof(output_buf),
                         "\tAre you currently using the WSL ecosystem?\n"
@@ -225,7 +225,7 @@ void wg_server_crash_check(void) {
             if (strfind(line_buf, "I couldn't load any gamemode scripts.", true)) {
                 needed = snprintf(output_buf, sizeof(output_buf), "@ Can't found gamemode detected\n\t");
                 fwrite(output_buf, 1, needed, stdout);
-                pr_color(stdout, FCOLOUR_BLUE, line_buf);
+                pr_color(stdout, FCOLOUR_BLUE, "%s", line_buf);
                 fflush(stdout);
                 needed = snprintf(output_buf, sizeof(output_buf), 
                         "\tYou need to ensure that the name specified "
@@ -240,13 +240,13 @@ void wg_server_crash_check(void) {
             if (strfind(line_buf, "0x", true)) {
                 needed = snprintf(output_buf, sizeof(output_buf), "@ Hexadecimal address found\n\t");
                 fwrite(output_buf, 1, needed, stdout);
-                pr_color(stdout, FCOLOUR_BLUE, line_buf);
+                pr_color(stdout, FCOLOUR_BLUE, "%s", line_buf);
                 fflush(stdout);
             }
             if (strfind(line_buf, "address", true) || strfind(line_buf, "Address", true)) {
                 needed = snprintf(output_buf, sizeof(output_buf), "@ Memory address reference found\n\t");
                 fwrite(output_buf, 1, needed, stdout);
-                pr_color(stdout, FCOLOUR_BLUE, line_buf);
+                pr_color(stdout, FCOLOUR_BLUE, "%s", line_buf);
                 fflush(stdout);
             }
             
@@ -257,32 +257,32 @@ void wg_server_crash_check(void) {
                     ++server_crashdetect;    /* Count crashdetect references */
                     needed = snprintf(output_buf, sizeof(output_buf), "@ Crashdetect: Crashdetect debug information found\n\t");
                     fwrite(output_buf, 1, needed, stdout);
-                    pr_color(stdout, FCOLOUR_BLUE, line_buf);
+                    pr_color(stdout, FCOLOUR_BLUE, "%s", line_buf);
                     fflush(stdout);
 
                     /* CrashDetect backtrace analysis */
                     if (strfind(line_buf, "AMX backtrace", true)) {
                         needed = snprintf(output_buf, sizeof(output_buf), "@ Crashdetect: AMX backtrace detected in crash log\n\t");
                         fwrite(output_buf, 1, needed, stdout);
-                        pr_color(stdout, FCOLOUR_BLUE, line_buf);
+                        pr_color(stdout, FCOLOUR_BLUE, "%s", line_buf);
                         fflush(stdout);
                     }
                     if (strfind(line_buf, "native stack trace", true)) {
                         needed = snprintf(output_buf, sizeof(output_buf), "@ Crashdetect: Native stack trace detected\n\t");
                         fwrite(output_buf, 1, needed, stdout);
-                        pr_color(stdout, FCOLOUR_BLUE, line_buf);
+                        pr_color(stdout, FCOLOUR_BLUE, "%s", line_buf);
                         fflush(stdout);
                     }
                     if (strfind(line_buf, "heap", true)) {
                         needed = snprintf(output_buf, sizeof(output_buf), "@ Crashdetect: Heap-related issue mentioned\n\t");
                         fwrite(output_buf, 1, needed, stdout);
-                        pr_color(stdout, FCOLOUR_BLUE, line_buf);
+                        pr_color(stdout, FCOLOUR_BLUE, "%s", line_buf);
                         fflush(stdout);
                     }
                     if (strfind(line_buf, "[debug]", true)) {
                         needed = snprintf(output_buf, sizeof(output_buf), "@ Crashdetect: Debug Detected\n\t");
                         fwrite(output_buf, 1, needed, stdout);
-                        pr_color(stdout, FCOLOUR_BLUE, line_buf);
+                        pr_color(stdout, FCOLOUR_BLUE, "%s", line_buf);
                         fflush(stdout);
                     }
                     
@@ -290,14 +290,14 @@ void wg_server_crash_check(void) {
                     if (strfind(line_buf, "Native backtrace", true)) {
                         needed = snprintf(output_buf, sizeof(output_buf), "@ Crashdetect: Native backtrace detected\n\t");
                         fwrite(output_buf, 1, needed, stdout);
-                        pr_color(stdout, FCOLOUR_BLUE, line_buf);
+                        pr_color(stdout, FCOLOUR_BLUE, "%s", line_buf);
                         fflush(stdout);
 
                         if (strfind(line_buf, "sampvoice", true)) {
                             if(strfind(line_buf, "pawnraknet", true)) {
                                 needed = snprintf(output_buf, sizeof(output_buf), "@ Crashdetect: Crash potent detected\n\t");
                                 fwrite(output_buf, 1, needed, stdout);
-                                pr_color(stdout, FCOLOUR_BLUE, line_buf);
+                                pr_color(stdout, FCOLOUR_BLUE, "%s", line_buf);
                                 fflush(stdout);
                                 needed = snprintf(output_buf, sizeof(output_buf),
                                     "\tWe have detected a crash and identified two plugins as potential causes,\n"
@@ -326,31 +326,31 @@ void wg_server_crash_check(void) {
                 if (strfind(line_buf, "stack", true)) {
                     needed = snprintf(output_buf, sizeof(output_buf), "@ Stack-related issue detected\n\t");
                     fwrite(output_buf, 1, needed, stdout);
-                    pr_color(stdout, FCOLOUR_BLUE, line_buf);
+                    pr_color(stdout, FCOLOUR_BLUE, "%s", line_buf);
                     fflush(stdout);
                 }
                 if (strfind(line_buf, "memory", true)) {
                     needed = snprintf(output_buf, sizeof(output_buf), "@ Memory-related issue detected\n\t");
                     fwrite(output_buf, 1, needed, stdout);
-                    pr_color(stdout, FCOLOUR_BLUE, line_buf);
+                    pr_color(stdout, FCOLOUR_BLUE, "%s", line_buf);
                     fflush(stdout);
                 }
                 if (strfind(line_buf, "access violation", true)) {
                     needed = snprintf(output_buf, sizeof(output_buf), "@ Access violation detected\n\t");
                     fwrite(output_buf, 1, needed, stdout);
-                    pr_color(stdout, FCOLOUR_BLUE, line_buf);
+                    pr_color(stdout, FCOLOUR_BLUE, "%s", line_buf);
                     fflush(stdout);
                 }
                 if (strfind(line_buf, "buffer overrun", true) || strfind(line_buf, "buffer overflow", true)) {
                     needed = snprintf(output_buf, sizeof(output_buf), "@ Buffer overflow detected\n\t");
                     fwrite(output_buf, 1, needed, stdout);
-                    pr_color(stdout, FCOLOUR_BLUE, line_buf);
+                    pr_color(stdout, FCOLOUR_BLUE, "%s", line_buf);
                     fflush(stdout);
                 }
                 if (strfind(line_buf, "null pointer", true)) {
                     needed = snprintf(output_buf, sizeof(output_buf), "@ Null pointer exception detected\n\t");
                     fwrite(output_buf, 1, needed, stdout);
-                    pr_color(stdout, FCOLOUR_BLUE, line_buf);
+                    pr_color(stdout, FCOLOUR_BLUE, "%s", line_buf);
                     fflush(stdout);
                 }
             }
@@ -360,7 +360,7 @@ void wg_server_crash_check(void) {
                 strfind(line_buf, "out-of-bounds", true)) {
                 needed = snprintf(output_buf, sizeof(output_buf), "@ out-of-bounds detected\n\t");
                 fwrite(output_buf, 1, needed, stdout);
-                pr_color(stdout, FCOLOUR_BLUE, line_buf);
+                pr_color(stdout, FCOLOUR_BLUE, "%s", line_buf);
                 fflush(stdout);
                 needed = snprintf(output_buf, sizeof(output_buf),
                     "\tnew array[3];\n"
@@ -386,19 +386,19 @@ void wg_server_crash_check(void) {
             if (strfind(line_buf, "warning", true) || strfind(line_buf, "Warning", true)) {
                 needed = snprintf(output_buf, sizeof(output_buf), "@ Warning message found\n\t");
                 fwrite(output_buf, 1, needed, stdout);
-                pr_color(stdout, FCOLOUR_BLUE, line_buf);
+                pr_color(stdout, FCOLOUR_BLUE, "%s", line_buf);
                 fflush(stdout);
             }
             if (strfind(line_buf, "failed", true) || strfind(line_buf, "Failed", true)) {
                 needed = snprintf(output_buf, sizeof(output_buf), "@ Failure or Failed message detected\n\t");
                 fwrite(output_buf, 1, needed, stdout);
-                pr_color(stdout, FCOLOUR_BLUE, line_buf);
+                pr_color(stdout, FCOLOUR_BLUE, "%s", line_buf);
                 fflush(stdout);
             }
             if (strfind(line_buf, "timeout", true) || strfind(line_buf, "Timeout", true)) {
                 needed = snprintf(output_buf, sizeof(output_buf), "@ Timeout event detected\n\t");
                 fwrite(output_buf, 1, needed, stdout);
-                pr_color(stdout, FCOLOUR_BLUE, line_buf);
+                pr_color(stdout, FCOLOUR_BLUE, "%s", line_buf);
                 fflush(stdout);
             }
             
@@ -407,7 +407,7 @@ void wg_server_crash_check(void) {
                 if (strfind(line_buf, "failed to load", true) || strfind(line_buf, "Failed.", true)) {
                     needed = snprintf(output_buf, sizeof(output_buf), "@ Plugin load failure or failed detected\n\t");
                     fwrite(output_buf, 1, needed, stdout);
-                    pr_color(stdout, FCOLOUR_BLUE, line_buf);
+                    pr_color(stdout, FCOLOUR_BLUE, "%s", line_buf);
                     fflush(stdout);
                     needed = snprintf(output_buf, sizeof(output_buf),
                         "\tIf you need to reinstall a plugin that failed, you can use the command:\n"
@@ -422,7 +422,7 @@ void wg_server_crash_check(void) {
                 if (strfind(line_buf, "unloaded", true)) {
                     needed = snprintf(output_buf, sizeof(output_buf), "@ Plugin unloaded detected\n\t");
                     fwrite(output_buf, 1, needed, stdout);
-                    pr_color(stdout, FCOLOUR_BLUE, line_buf);
+                    pr_color(stdout, FCOLOUR_BLUE, "%s", line_buf);
                     fflush(stdout);
                     needed = snprintf(output_buf, sizeof(output_buf),
                         "\tLOADED (Active/In Use):\n"
@@ -441,13 +441,13 @@ void wg_server_crash_check(void) {
                 if (strfind(line_buf, "connection failed", true) || strfind(line_buf, "can't connect", true)) {
                     needed = snprintf(output_buf, sizeof(output_buf), "@ Database connection failure detected\n\t");
                     fwrite(output_buf, 1, needed, stdout);
-                    pr_color(stdout, FCOLOUR_BLUE, line_buf);
+                    pr_color(stdout, FCOLOUR_BLUE, "%s", line_buf);
                     fflush(stdout);
                 }
                 if (strfind(line_buf, "error", true) || strfind(line_buf, "failed", true)) {
                     needed = snprintf(output_buf, sizeof(output_buf), "@ Error or Failed database | mysql found\n\t");
                     fwrite(output_buf, 1, needed, stdout);
-                    pr_color(stdout, FCOLOUR_BLUE, line_buf);
+                    pr_color(stdout, FCOLOUR_BLUE, "%s", line_buf);
                     fflush(stdout);
                 }
             }
@@ -456,30 +456,30 @@ void wg_server_crash_check(void) {
             if (strfind(line_buf, "out of memory", true) || strfind(line_buf, "memory allocation", true)) {
                 needed = snprintf(output_buf, sizeof(output_buf), "@ Memory allocation failure detected\n\t");
                 fwrite(output_buf, 1, needed, stdout);
-                pr_color(stdout, FCOLOUR_BLUE, line_buf);
+                pr_color(stdout, FCOLOUR_BLUE, "%s", line_buf);
                 fflush(stdout);
             }
             if (strfind(line_buf, "malloc", true) || strfind(line_buf, "free", true) || strfind(line_buf, "realloc", true) || strfind(line_buf, "calloc", true)) {
                 needed = snprintf(output_buf, sizeof(output_buf), "@ Memory management function referenced\n\t");
                 fwrite(output_buf, 1, needed, stdout);
-                pr_color(stdout, FCOLOUR_BLUE, line_buf);
+                pr_color(stdout, FCOLOUR_BLUE, "%s", line_buf);
                 fflush(stdout);
             }
             fflush(stdout);
         }
 
-        fclose(proc_f);  /* Close log file after analysis */
+        fclose(this_proc_file);  /* Close log file after analysis */
 
         /* SampVoice port mismatch detection between config and logs */
         if (rate_sampvoice_server) {
             if (path_access("server.cfg") == 0)
                 goto skip;  /* Skip if server.cfg doesn't exist */
-            proc_f = fopen("server.cfg", "rb");
-            if (proc_f == NULL)
+            this_proc_file = fopen("server.cfg", "rb");
+            if (this_proc_file == NULL)
                 goto skip;
             int _sampvoice_port = 0;
             char *_p_sampvoice_port = NULL;
-            while (fgets(line_buf, sizeof(line_buf), proc_f)) {
+            while (fgets(line_buf, sizeof(line_buf), this_proc_file)) {
                 if (strfind(line_buf, "sv_port", true)) {
                     if (scanf("sv_port %d", &_sampvoice_port) != 1)
                         break;
@@ -831,6 +831,9 @@ back_start:
                 pr_color(stdout, FCOLOUR_RED, "Server startup failed!\n");
 
                 /* Skip retry logic in Pterodactyl environments */
+                /* so why? -- Pterodactyl hosting doesn't need this,
+                *  because when your server restarts in Pterodactyl it will automatically retry
+                */
                 if (is_pterodactyl_env())
                         goto server_done;
 
@@ -1096,6 +1099,10 @@ back_start:
         if (ret != 0) {
                 pr_color(stdout, FCOLOUR_RED, "Server startup failed!\n");
 
+                /* Skip retry logic in Pterodactyl environments */
+                /* so why? -- Pterodactyl hosting doesn't need this,
+                *  because when your server restarts in Pterodactyl it will automatically retry
+                */
                 if (is_pterodactyl_env())
                         goto server_done;
 

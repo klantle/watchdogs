@@ -566,7 +566,9 @@ Usage: help | help [<command>]
 ./watchdogs compile main.pwn
 ```
 
-> If you are using Watchdogs, and Watchdogs restricts terminal access like it did in your daily workflow before using Watchdogs, you don’t need to use that as a reason to avoid Watchdogs. Watchdogs automatically falls back to the system shell for commands that are not directly registered within the Watchdogs system. This means that if, for example, you run a command like `clear` or `rm` also `mv` and `cp` with arguments (options like flags in the executed command), it will still run in the terminal even within a Watchdogs instance.
+> You are using Watchdogs, and Watchdogs restricts terminal access like it did in your daily workflow before using Watchdogs, you don't need to use that as a reason to avoid Watchdogs. Watchdogs automatically falls back to the system shell for commands that are not directly registered within the Watchdogs system. This means that if, -for example, you run a command like `clear`, `rm`, `mv`, or `cp` with arguments (options like flags in the executed command), it will still run in the terminal even within a Watchdogs instance.
+
+> Be careful: commands executed this way are still subject to the normal risks of the system shell. Improper use of commands, especially those that modify or delete files (like rm), can affect your system. Always cross-check commands and arguments before running them.
 
 ### Downloading Our Links
 
@@ -588,30 +590,60 @@ send myfiles.tar.gz
 
 ### Compilation Commands
 
+> Example `yourmode.pwn`:
+```c++
+#include "a_samp"
+
+main() {
+  printf("Hello, World!");
+}
+```
+
+> Compile `yourmode`:
 ```yaml
 # Default Compile
 compile .
+
 # Compile with specific file path
 compile yourmode.pwn
 compile path/to/yourmode.pwn
+
 # Compile with specific options
 ## Compiler Detailed
 compile . --detailed
 ## or
 compile . --watchdogs
+
 # Remove '.amx' (output) after compile
 compile . --clean
+
 # Debugging mode (-d2 wraps flag)
 compile . --debug
+
 # Assembler Output (-a wraps flag)
 compile . --assembler
+
 # Recursion report (-R+ wraps flag)
 compile . --recursion
+
 # Encoding compact (-C+ wraps flag)
 compile . --compact
+
 # Verbosity level (-v2 wraps flag)
 compile . --prolix
 ```
+
+> If you're trying to compile your existing gamemode that's outside the current watchdogs directory, it might still work. This is because watchdogs automatically adds the include path for the area you want to compile in the compile command.
+
+> For example, if you run `compile ../gamemodes/bare.pwn`, watchdogs will later provide the path for `../pawno/include/` and `../qawno/include/` so that the includes in `../pawno/include/ `and `../qawno/include` can be detected, searched for, and used in `../gamemodes/bare.pwn.`
+
+> So this is very useful for compiling in Termux without having to move your project folders around! compile `../storage/downloads/my_project/gamemodes/bare.pwn` - however you need to make sure that you're compiling the `.pwn` path that's located within the `gamemodes/` folder to ensure that the include paths remain verified.
+
+```yaml
+compile ../path/to/project/yourmode.pwn
+```
+
+![img](https://raw.githubusercontent.com/klantle/watchdogs/refs/heads/main/images/PATH.png)
 
 > Combined support
 ```yaml
@@ -749,7 +781,7 @@ gdb ./watchdogs.debug.tmux   # For Termux (Android - Termux)
 gdb ./watchdogs.debug.win    # For Windows (if using GDB on Windows)
 
 # Step 2 - Run the program inside GDB
-# This starts the program under the debugger’s control.
+# This starts the program under the debugger's control.
 run                           # Simply type 'run' and press Enter
 
 # Step 3 - Handling crashes or interruptions
@@ -760,52 +792,6 @@ run                           # Simply type 'run' and press Enter
 # A backtrace shows the function call stack at the point of the crash.
 bt           # Basic backtrace (shows function names)
 bt full      # Full backtrace (shows function names, variables, and arguments)
-```
-
-> Comparing
-- without debug build
-```js
-Thread 1 "watchdogs" received signal SIGSEGV, Segmentation fault.
-Download failed: Invalid argument.  Continuing without source file ./string/../sysdeps/x86_64/multiarch/memmove-vec-unaligned-erms.S.
-__memcpy_avx_unaligned_erms () at ../sysdeps/x86_64/multiarch/memmove-vec-unaligned-erms.S:660
-warning: 660    ../sysdeps/x86_64/multiarch/memmove-vec-unaligned-erms.S: No such file or directory
-(gdb) bt
-#0  __memcpy_avx_unaligned_erms () at ../sysdeps/x86_64/multiarch/memmove-vec-unaligned-erms.S:660
-#1  0x000055555555c53c in write_callbacks ()
-#2  0x00007ffff7f5741c in ?? () from /lib/x86_64-linux-gnu/libcurl.so.4
-#3  0x00007ffff7f557f8 in ?? () from /lib/x86_64-linux-gnu/libcurl.so.4
-#4  0x00007ffff7f6c4b5 in ?? () from /lib/x86_64-linux-gnu/libcurl.so.4
-#5  0x00007ffff7f50fb3 in ?? () from /lib/x86_64-linux-gnu/libcurl.so.4
-#6  0x00007ffff7f540e5 in curl_multi_perform () from /lib/x86_64-linux-gnu/libcurl.so.4
-#7  0x00007ffff7f243ab in curl_easy_perform () from /lib/x86_64-linux-gnu/libcurl.so.4
-#8  0x0000555555564883 in dep_http_get_content ()
-#9  0x00005555555677bb in wg_install_depends ()
-#10 0x0000555555561061 in __command__ ()
-#11 0x000055555556177c in chain_ret_main ()
-#12 0x000055555555b67d in main ()
-```
-- with debug build
-```js
-Thread 1 "watchdogs.debug" received signal SIGSEGV, Segmentation fault.
-__memcpy_avx_unaligned_erms () at ../sysdeps/x86_64/multiarch/memmove-vec-unaligned-erms.S:660
-warning: 660    ../sysdeps/x86_64/multiarch/memmove-vec-unaligned-erms.S: No such file or directory
-(gdb) bt
-#0  __memcpy_avx_unaligned_erms () at ../sysdeps/x86_64/multiarch/memmove-vec-unaligned-erms.S:660
-#1  0x000055555555cd09 in write_callbacks (ptr=0x55555572e685, size=1, nmemb=8501, userdata=0x7fffffff5a80) at source/curl.c:210
-#2  0x00007ffff7f5741c in ?? () from /lib/x86_64-linux-gnu/libcurl.so.4
-#3  0x00007ffff7f557f8 in ?? () from /lib/x86_64-linux-gnu/libcurl.so.4
-#4  0x00007ffff7f6c4b5 in ?? () from /lib/x86_64-linux-gnu/libcurl.so.4
-#5  0x00007ffff7f50fb3 in ?? () from /lib/x86_64-linux-gnu/libcurl.so.4
-#6  0x00007ffff7f540e5 in curl_multi_perform () from /lib/x86_64-linux-gnu/libcurl.so.4
-#7  0x00007ffff7f243ab in curl_easy_perform () from /lib/x86_64-linux-gnu/libcurl.so.4
-#8  0x00005555555698dd in dep_http_get_content (url=0x7fffffff5d00 "https://api.github.com/repos/Y-Less/sscanf/releases/latest", github_token=0x5555556cbf40 "DO_HERE", out_html=0x7fffffff5ce0)
-    at source/depend.c:176
-#9  0x000055555556ac71 in dep_gh_latest_tag (user=0x7fffffff6230 "Y-Less", repo=0x7fffffff62b0 "sscanf", out_tag=0x7fffffff5fe0 "", deps_put_size=128) at source/depend.c:535
-#10 0x000055555556af65 in dep_handle_repo (dep_repo_info=0x7fffffff61d0, deps_put_url=0x7fffffff66e0 "\001", deps_put_size=1024) at source/depend.c:588
-#11 0x000055555556e317 in wg_install_depends (depends_string=0x5555557135f0 "Y-Less/sscanf?newer samp-incognito/samp-streamer-plugin?newer") at source/depend.c:1627
-#12 0x00005555555611d3 in __command__ (chain_pre_command=0x0) at source/units.c:517
-#13 0x0000555555564c64 in chain_ret_main (chain_pre_command=0x0) at source/units.c:1602
-#14 0x0000555555564f67 in main (argc=1, argv=0x7fffffffcf48) at source/units.c:1666
 ```
 
 ### Command Aliases

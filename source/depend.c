@@ -69,7 +69,7 @@ int dency_url_checking(const char *url, const char *github_token)
         CURLcode res;
         long response_code = 0;
         struct curl_slist *headers = NULL;
-        char error_buffer[CURL_ERROR_SIZE] = { 0 };
+        char wg_buf_err[CURL_ERROR_SIZE] = { 0 };
 
         printf("\tCreate & Checking URL: %s...\t\t[All good]\n", url);
         
@@ -104,7 +104,7 @@ int dency_url_checking(const char *url, const char *github_token)
         curl_easy_getinfo(curl, CURLINFO_RESPONSE_CODE, &response_code);
 
         /* Configure error buffer for detailed error reporting */
-        curl_easy_setopt(curl, CURLOPT_ERRORBUFFER, error_buffer);
+        curl_easy_setopt(curl, CURLOPT_ERRORBUFFER, wg_buf_err);
 
         /* Configure SSL certificate verification */
         verify_cacert_pem(curl);
@@ -116,12 +116,12 @@ int dency_url_checking(const char *url, const char *github_token)
         curl_easy_getinfo(curl, CURLINFO_RESPONSE_CODE, &response_code);
 
         /* Display results with success/failure indicators */
-        if (response_code == WG_CURL_RESPONSE_OK && strlen(error_buffer) == 0) {
+        if (response_code == WG_CURL_RESPONSE_OK && strlen(wg_buf_err) == 0) {
                 printf("cURL result: %s\t\t[All good]\n", curl_easy_strerror(res));
                 printf("Response code: %ld\t\t[All good]\n", response_code);
         } else {
-                if (strlen(error_buffer) > 0) {
-                        printf("Error: %s\t\t[Fail]\n", error_buffer);
+                if (strlen(wg_buf_err) > 0) {
+                        printf("Error: %s\t\t[Fail]\n", wg_buf_err);
                 } else {
                         printf("cURL result: %s\t\t[Fail]\n", curl_easy_strerror(res));
                 }
@@ -585,7 +585,7 @@ static int dency_handle_repo(const struct dency_repo_info *dency_repo_info,
 {
         int ret = 0;
         const char *pkg_repo_branch[] = { dependencies_branch, "main", "master" }; // Common branch name
-        char pkg_actual_tag[128] = {0};
+        char pkg_actual_tag[128] = { 0 };
         int use_fallback_branch = 0;
 
         /* Handle "latest" tag by resolving to actual tag name */
@@ -625,7 +625,7 @@ static int dency_handle_repo(const struct dency_repo_info *dency_repo_info,
 
         /* Process tagged releases */
         if (pkg_actual_tag[0]) {
-                char *pkg_assets[10] = {0};
+                char *pkg_assets[10] = { 0 };
                 int pkg_asset_count = dency_gh_release_assets(dency_repo_info->user,
                                                         dency_repo_info->repo, pkg_actual_tag,
                                                         pkg_assets, 10);
@@ -1021,7 +1021,7 @@ void dency_add_include(const char *modes, char *dency_name, char *dency_after) {
  */
 static void dency_include_prints(const char *pkg_include)
 {
-        char error_buffer[WG_PATH_MAX];
+        char wg_buf_err[WG_PATH_MAX];
         toml_table_t *wg_toml_config;
         char depends_name[WG_PATH_MAX];
         char idirective[WG_MAX_PATH];
@@ -1033,12 +1033,12 @@ static void dency_include_prints(const char *pkg_include)
         const char *direct_bnames = dency_get_basename(depends_name);
 
         /* Parse TOML configuration */
-        FILE *proc_f = fopen("watchdogs.toml", "r");
-        wg_toml_config = toml_parse_file(proc_f, error_buffer, sizeof(error_buffer));
-        if (proc_f) fclose(proc_f);
+        FILE *this_proc_file = fopen("watchdogs.toml", "r");
+        wg_toml_config = toml_parse_file(this_proc_file, wg_buf_err, sizeof(wg_buf_err));
+        if (this_proc_file) fclose(this_proc_file);
 
         if (!wg_toml_config) {
-                pr_error(stdout, "parsing TOML: %s", error_buffer);
+                pr_error(stdout, "parsing TOML: %s", wg_buf_err);
                 return;
         }
 
@@ -1111,7 +1111,7 @@ void dump_file_type(const char *path,
                                         "-f \"%s\" \"%s/%s/\"",
                                         wgconfig.wg_sef_found_list[i], cwd, place_dir);
 #endif
-                                struct timespec __time_start = {0}, __time_end = { 0 };
+                                struct timespec __time_start = { 0 }, __time_end = { 0 };
                                 double rate_duration;
 
                                 /* Time the move operation */
@@ -1137,7 +1137,7 @@ void dump_file_type(const char *path,
                                         "-f \"%s\" \"%s\"",
                                         wgconfig.wg_sef_found_list[i], cwd);
 #endif
-                                struct timespec __time_start = {0}, __time_end = { 0 };
+                                struct timespec __time_start = { 0 }, __time_end = { 0 };
                                 double rate_duration;
 
                                 clock_gettime(CLOCK_MONOTONIC, &__time_start);
@@ -1321,7 +1321,7 @@ void dency_move_files(const char *dency_dir)
                                 "-f \"%s\" \"%s/%s/\"",
                                 wgconfig.wg_sef_found_list[i], cwd, pkg_include_path);
 #endif
-                        struct timespec __time_start = {0}, __time_end = { 0 };
+                        struct timespec __time_start = { 0 }, __time_end = { 0 };
                         double rate_duration;
 
                         clock_gettime(CLOCK_MONOTONIC, &__time_start);
@@ -1444,7 +1444,7 @@ void dency_move_files(const char *dency_dir)
                                 for (j = 0; j < size_unix_parts / size_unix_parts_zero; j++)
                                         strlcat(dency_command, unix_parts[j], sizeof(dency_command));
 #endif
-                                struct timespec __time_start = {0}, __time_end = { 0 };
+                                struct timespec __time_start = { 0 }, __time_end = { 0 };
                                 double move_duration;
 
                                 clock_gettime(CLOCK_MONOTONIC, &__time_start);
@@ -1642,7 +1642,7 @@ void wg_install_depends(const char *dependencies_str, const char *dependencies_b
 
                 wgconfig.wg_idepends = 1;
 
-                struct timespec __time_start = {0}, __time_end = { 0 };
+                struct timespec __time_start = { 0 }, __time_end = { 0 };
                 double dency_install_duration;
 
                 /* Time the dependency installation process */

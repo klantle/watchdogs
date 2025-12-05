@@ -41,11 +41,6 @@ ssize_t sendfile(int out_fd,
 	#include <sys/sendfile.h>
 #endif
 
-#ifndef _NCURSES
-	#include <ncursesw/curses.h>
-#else
-	#include <ncurses.h>
-#endif
 #include <readline/readline.h>
 #include <readline/history.h>
 
@@ -57,16 +52,9 @@ ssize_t sendfile(int out_fd,
 const char* __command[] = {
 		"help",       "exit",      "kill",       "title",     "sha256",
 		"crc32",      "djb2",      "time",       "config",    "download",
-		"replicate",  "hardware",  "gamemode",   "pawncc",    "log",
+		"replicate",  "hardware",  "gamemode",   "pawncc",    "debug",
 		"compile",    "running",   "compiles",   "stop",      "restart",
-		"wanion",     "tracker",   "compress",   "send",      "ls",
-		"ping",       "clear",     "nslookup",   "netstat",   "ipconfig",
-		"uname",      "hostname",  "whoami",     "arp",       "route",
-		"df",         "du",        "ps",         "top",       "free",
-		"uptime",     "date",      "cal",        "bc",        "dd",
-		"telnet",     "ssh",       "curl",       "wget",      "git",
-		"zip",        "unzip",     "tar",        "7z",        "rar",
-		"md5sum",     "sha1sum",   "sha256sum",  "sha512sum", "djb2sum"
+		"wanion",     "tracker",   "compress",   "send"
 };
 
 const size_t
@@ -402,7 +390,8 @@ void wg_escaping_json(char *dest, const char *src, size_t dest_size) {
  * Validates command length and prevents buffer overflow in command construction.
  */
 int wg_run_command(const char *reg_command) {
-/* Platform-specific assembly to clear registers before system call */
+		/* Platform-specific assembly to clear registers before system call */
+		/* See https://gcc.gnu.org/onlinedocs/gcc/Extended-Asm.html */
 #if defined(WG_ANDROID)
 __asm__ volatile(
 	    "mov x0, #0\n\t"  /* Clear register x0 */
@@ -420,28 +409,72 @@ __asm__ volatile (
 	    : "%eax", "%ebx"      /* Clobbered registers */
 );
 #endif
+	    /* Handle empty command case */
+	    if (reg_command[0] == '\0')
+	    		return -1;
+
     	/* Validate command length to prevent buffer overflow */
-    	if (strlen(reg_command) >= WG_MAX_PATH) {
-    		pr_error(stdout, "register command too long!");
-    		return -1;
-    	}
+		if (strlen(reg_command) >= WG_MAX_PATH || strlen(reg_command) <= 0) {
+			pr_warning(stdout, "Potent lengt detected! from wg_run_command(\"%s\")", reg_command);
+			return -1;
+		}
 
 	    char
-			size_command[ WG_MAX_PATH ]
+			size_command[ WG_MAX_PATH ] = { 0 }
 			; /* Buffer for safe command storage */
 
 	    /* Copy command to safe buffer with size limitation */
-	    snprintf(size_command,
-	    			sizeof(size_command),
+	    snprintf(size_command, sizeof(size_command),
 					"%s",
 					reg_command);
 
-	    /* Handle empty command case */
-	    if (reg_command[0] == '\0')
-	    		return 0;
+		/* Handling exploit potent */
+		for (char *p = size_command; *p; p++) {
+			 /* arbitrary potent */
+			if (*p == ';' || *p == '`' || *p == '$') {
+				return -1;
+			}
+		}
 
 	    /* Execute command using system() call */
-	    return system(size_command);
+		if (strfind(size_command, "sudo", true)) {
+			static int sudo_warning = 0;
+			if (sudo_warning != 1) {
+				sudo_warning = 1;
+				printf("\n");
+				printf("\t=== SUDO SECURITY WARNING ===\n");
+				printf("\tYou are about to run commands with ROOT privileges!\n");
+				printf("\tThis can DAMAGE your system if used incorrectly.\n");
+				printf("\n");
+				printf("\t* Always verify commands before pressing Enter\n");
+				printf("\t* Never run untrusted scripts with sudo\n");
+				printf("\t* Use 'sudo -k' to clear privileges when done\n");
+				printf("\n");
+				printf("\tType 'man sudo_root' for safety guidelines.\n");
+				printf("\t===========================================\n");
+				printf("\n");
+			}
+		}
+
+		int ret = system(size_command);
+		return ret;
+}
+
+/*
+ * Clear Console Screen.
+ * Windows & Linux
+ * Windows: cls (cmd.exe based)
+ * Linux: clear (bash/zsh based)
+ */
+void wg_clear_screen(void) {
+		/* Check if user in Windows */
+		if (is_native_windows()) {
+			wg_run_command("cls");
+		} else {
+			/* if not */
+			wg_run_command("clear");
+		}
+		return; /* back */
 }
 
 /*
@@ -1341,7 +1374,7 @@ __toml_add_directory_path(FILE *toml_file, int *first, const char *path)
 static void wg_check_compiler_options(int *compatibility, int *optimized_lt)
 {
 		char run_cmd[WG_PATH_MAX * 2];
-		FILE *proc_file;
+		FILE *this_proc_fileile;
 		char log_line[1024];
 
 		/* Ensure test directory exists */
@@ -1360,10 +1393,10 @@ static void wg_check_compiler_options(int *compatibility, int *optimized_lt)
 
 		/* Parse log file for compiler characteristics */
 		int found_Z = 0, found_ver = 0;
-		proc_file = fopen(".watchdogs/compiler_test.log", "r");
+		this_proc_fileile = fopen(".watchdogs/compiler_test.log", "r");
 
-		if (proc_file) {
-			while (fgets(log_line, sizeof(log_line), proc_file) != NULL) {
+		if (this_proc_fileile) {
+			while (fgets(log_line, sizeof(log_line), this_proc_fileile) != NULL) {
 				if (!found_Z && strstr(log_line, "-Z"))
 					found_Z = 1; /* Compiler supports -Z option */
 				if (!found_ver && strstr(log_line, "3.10.11"))
@@ -1376,7 +1409,7 @@ static void wg_check_compiler_options(int *compatibility, int *optimized_lt)
 			if (found_ver)
 				*optimized_lt = 1; /* Has optimized version */
 
-			fclose(proc_file);
+			fclose(this_proc_fileile);
 		} else {
 			pr_error(stdout, "Failed to open .watchdogs/compiler_test.log");
 		}
@@ -1393,23 +1426,23 @@ static void wg_check_compiler_options(int *compatibility, int *optimized_lt)
  */
 static int wg_parsewg_toml_config(void)
 {
-		FILE *proc_file;
-        char error_buffer[WG_PATH_MAX];
+		FILE *this_proc_fileile;
+        char wg_buf_err[WG_PATH_MAX];
 		toml_table_t *wg_toml_config;
 		toml_table_t *general_table;
 
-		proc_file = fopen("watchdogs.toml", "r");
-		if (!proc_file) {
+		this_proc_fileile = fopen("watchdogs.toml", "r");
+		if (!this_proc_fileile) {
 				pr_error(stdout, "Cannot read file %s", "watchdogs.toml");
 				return 0;
 		}
 
 		/* Parse TOML file */
-		wg_toml_config = toml_parse_file(proc_file, error_buffer, sizeof(error_buffer));
-		fclose(proc_file);
+		wg_toml_config = toml_parse_file(this_proc_fileile, wg_buf_err, sizeof(wg_buf_err));
+		fclose(this_proc_fileile);
 
 		if (!wg_toml_config) {
-				pr_error(stdout, "Parsing TOML: %s", error_buffer);
+				pr_error(stdout, "Parsing TOML: %s", wg_buf_err);
 				return 0;
 		}
 
@@ -1692,7 +1725,7 @@ int wg_toml_configs(void)
 			static int crit_nf = 0;
 			if (crit_nf == 0) {
 				crit_nf = 1;
-				pr_error(stdout, "can't locate sa-mp/open.mp server!");
+				pr_warning(stdout, "can't locate sa-mp/open.mp server!");
 				return 0; /* Can't determine server type */
 			}
 		}
@@ -1744,14 +1777,14 @@ int wg_toml_configs(void)
 		}
 
 		/* Re-parse for additional configuration extraction */
-        char error_buffer[WG_PATH_MAX];
+        char wg_buf_err[WG_PATH_MAX];
 		toml_table_t *wg_toml_config;
-		FILE *proc_f = fopen("watchdogs.toml", "r");
-		wg_toml_config = toml_parse_file(proc_f, error_buffer, sizeof(error_buffer));
-		if (proc_f) fclose(proc_f);
+		FILE *this_proc_file = fopen("watchdogs.toml", "r");
+		wg_toml_config = toml_parse_file(this_proc_file, wg_buf_err, sizeof(wg_buf_err));
+		if (this_proc_file) fclose(this_proc_file);
 
 		if (!wg_toml_config) {
-			pr_error(stdout, "parsing TOML: %s", error_buffer);
+			pr_error(stdout, "parsing TOML: %s", wg_buf_err);
 			chain_ret_main(NULL); /* Error handling */
 		}
 

@@ -1,5 +1,8 @@
 name: C/C++ CI
-
+permissions:
+  contents: read
+  pull-requests: write
+  
 on:
   push:
     branches: [ "main" ]
@@ -30,7 +33,6 @@ jobs:
           make \
           libssl-dev \
           libcurl4-openssl-dev \
-          libncursesw5-dev \
           libreadline-dev \
           libarchive-dev \
           zlib1g-dev \

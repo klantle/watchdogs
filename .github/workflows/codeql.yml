@@ -44,7 +44,7 @@ jobs:
         sudo apt install -y \
           build-essential curl procps clang lld make binutils \
           libcurl4-openssl-dev libatomic1 libreadline-dev libarchive-dev \
-          libncursesw5-dev libncurses5-dev zlib1g-dev upx-ucl upx
+          zlib1g-dev upx-ucl upx
 
     - name: Run manual build steps
       if: matrix.build-mode == 'manual'

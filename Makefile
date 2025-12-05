@@ -27,7 +27,7 @@ WINDRES  ?= windres
 # Default optimization flags (for release mode)
 
 CFLAGS   = -Os -pipe -fdata-sections -ffunction-sections
-LDFLAGS  = -lm -lcurl -lreadline -lncursesw -larchive
+LDFLAGS  = -lm -lcurl -lreadline -larchive
 
 
 # Debug-mode override
@@ -47,7 +47,7 @@ endif
 
 # Source & object files
 
-SRCS = source/extra.c source/debug.c source/curl.c source/units.c source/utils.c source/depend.c source/lowlevel.c \
+SRCS = source/extra.c source/debug.c source/curl.c source/units.c source/utils.c source/depend.c source/kernel.c \
        source/compiler.c source/archive.c source/package.c source/runner.c source/crypto.c \
        include/tomlc/toml.c include/cJSON/cJSON.c
 
@@ -75,15 +75,14 @@ init:
 			mingw-w64-ucrt-x86_64-libc++ \
 			mingw-w64-ucrt-x86_64-curl \
 			mingw-w64-ucrt-x86_64-readline \
-			mingw-w64-ucrt-x86_64-ncurses \
 			mingw-w64-ucrt-x86_64-libarchive \
 			mingw-w64-ucrt-x86_64-upx; \
 	\
 	elif echo "$$UNAME_S" | grep -qi "Linux" && [ -d "/data/data/com.termux" ]; then \
 		echo "Detected Termux"; \
 		pkg update -y && pkg install -y \
-			unstable-repo coreutils binutils procps clang curl \
-			libarchive libandroid-spawn ncurses readline upx; \
+			x11-repo unstable-repo coreutils binutils procps clang curl \
+			libarchive libandroid-spawn readline upx; \
 	\
 	elif echo "$$UNAME_S" | grep -qi "Linux"; then \
 		echo "Detected Linux"; \
@@ -91,26 +90,26 @@ init:
 			apt update -y && apt install -y \
 				build-essential curl procps clang lld make binutils \
 				libcurl4-openssl-dev libatomic1 libreadline-dev libarchive-dev \
-				libncursesw5-dev libncurses5-dev zlib1g-dev upx-ucl upx; \
+				zlib1g-dev upx-ucl upx; \
 		elif command -v dnf >/dev/null 2>&1; then \
 			dnf groupinstall -y "Development Tools" && \
 			dnf install -y \
-				clang lld libatomic libcxx-devel ncurses-devel curl-devel \
+				clang lld libatomic libcxx-devel curl-devel \
 				readline-devel libarchive-devel zlib-devel binutils upx; \
 		elif command -v yum >/dev/null 2>&1; then \
 			yum groupinstall -y "Development Tools" && \
 			yum install -y \
-				clang lld libcxx-devel ncurses-devel curl-devel \
+				clang lld libcxx-devel curl-devel \
 				readline-devel libarchive-devel zlib-devel binutils upx; \
 		elif command -v zypper >/dev/null 2>&1; then \
 			zypper refresh && zypper install -y -t pattern devel_basis && \
 			zypper install -y \
-				curl clang lld libc++-devel ncurses-devel \
+				curl clang lld libc++-devel \
 				libcurl-devel readline-devel libarchive-devel zlib-devel \
 				binutils upx; \
 		elif command -v pacman >/dev/null 2>&1; then \
 			pacman -Sy --noconfirm && pacman -S --needed --noconfirm \
-				libatomic base-devel clang lld libc++ ncurses readline \
+				libatomic base-devel clang lld libc++ readline \
 				curl libarchive zlib binutils upx; \
 		else \
 			echo "Unsupported distribution"; \
@@ -162,11 +161,7 @@ compress:
 linux: OUTPUT = watchdogs
 linux:
 	@echo "Building for Linux"
-	@if [ -f "/usr/include/ncurses.h" ]; then \
-		$(CC) $(CFLAGS) -I/usr/include/ $(SRCS) -D__LINUX__ -D_NCURSES -o $(OUTPUT) $(LDFLAGS); \
-	else \
-		$(CC) $(CFLAGS) -D__LINUX__ -I/usr/include/ $(SRCS) -o $(OUTPUT) $(LDFLAGS); \
-	fi
+	$(CC) $(CFLAGS) -D__LINUX__ -I/usr/include/ $(SRCS) -o $(OUTPUT) $(LDFLAGS); \
 	@$(MAKE) strip OUTPUT=$(OUTPUT)
 	@$(MAKE) compress OUTPUT=$(OUTPUT)
 

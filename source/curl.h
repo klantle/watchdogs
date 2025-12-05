@@ -17,6 +17,8 @@ struct memory_struct {
 
 #define MAX_NUM_SITES (80)
 #define WG_CURL_RESPONSE_OK (200)
+#define MAX_USERNAME_LEN	100
+#define MAX_VARIATIONS		100
 
 void verify_cacert_pem(CURL *curl);
 void buf_init(struct buf *b);

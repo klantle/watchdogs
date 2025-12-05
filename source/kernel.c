@@ -4,7 +4,7 @@
 #include <stdarg.h>
 
 #include "utils.h"
-#include "lowlevel.h"
+#include "kernel.h"
 
 #ifdef WG_WINDOWS
     #include <windows.h>
@@ -138,8 +138,8 @@ hardware_cpu_info(HardwareCPU* cpu)
         memset(cpu, 0, sizeof(HardwareCPU));
 
         /* Get CPU brand */
-        int cpuInfo[4] = {0};
-        char brand[64] = {0};
+        int cpuInfo[4] = { 0 };
+        char brand[64] = { 0 };
         hardware_cpuid(cpuInfo, cpuid_cpuinfo);
         unsigned int maxId = cpuInfo[0];
 

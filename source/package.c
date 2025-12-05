@@ -14,7 +14,7 @@
 #include "units.h"
 #include "archive.h"
 #include "curl.h"
-#include "lowlevel.h"
+#include "kernel.h"
 #include "debug.h"
 #include "package.h"
 

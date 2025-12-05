@@ -25,27 +25,27 @@ uname(struct utsname *name)
 
         GetSystemInfo(&si);
 
-        wg_snprintf(name->sysname, sizeof(name->sysname), "Windows");
-        wg_snprintf(name->release, sizeof(name->release), "%lu.%lu",
+        snprintf(name->sysname, sizeof(name->sysname), "Windows");
+        snprintf(name->release, sizeof(name->release), "%lu.%lu",
                                 osvi.dwMajorVersion, osvi.dwMinorVersion);
-        wg_snprintf(name->version, sizeof(name->version), "Build %lu",
+        snprintf(name->version, sizeof(name->version), "Build %lu",
                                 osvi.dwBuildNumber);
 
         switch (si.wProcessorArchitecture) {
                 case PROCESSOR_ARCHITECTURE_AMD64:
-                        wg_snprintf(name->machine, sizeof(name->machine), "x86_64");
+                        snprintf(name->machine, sizeof(name->machine), "x86_64");
                         break;
                 case PROCESSOR_ARCHITECTURE_INTEL:
-                        wg_snprintf(name->machine, sizeof(name->machine), "x86");
+                        snprintf(name->machine, sizeof(name->machine), "x86");
                         break;
                 case PROCESSOR_ARCHITECTURE_ARM:
-                        wg_snprintf(name->machine, sizeof(name->machine), "ARM");
+                        snprintf(name->machine, sizeof(name->machine), "ARM");
                         break;
                 case PROCESSOR_ARCHITECTURE_ARM64:
-                        wg_snprintf(name->machine, sizeof(name->machine), "ARM64");
+                        snprintf(name->machine, sizeof(name->machine), "ARM64");
                         break;
                 default:
-                        wg_snprintf(name->machine, sizeof(name->machine), "Unknown");
+                        snprintf(name->machine, sizeof(name->machine), "Unknown");
                         break;
         }
 
@@ -76,7 +76,7 @@ hardware_display_field(unsigned int field_id, const char* format, ...)
         /* Determine field category and name */
         switch (field_id & 0xFF00) {
                 case 0x0000: /* CPU fields */
-                        wg_strcpy(prefix, "CPU->");
+                        strcpy(prefix, "CPU->");
                         switch (field_id) {
                                 case FIELD_CPU_NAME:        field_name = "Processor"; break;
                                 case FIELD_CPU_VENDOR:  field_name = "Vendor"; break;
@@ -89,7 +89,7 @@ hardware_display_field(unsigned int field_id, const char* format, ...)
                         break;
 
                 case 0x0100: /* Memory fields */
-                        wg_strcpy(prefix, "MEM->");
+                        strcpy(prefix, "MEM->");
                         switch (field_id) {
                                 case FIELD_MEM_TOTAL: field_name = "Total RAM"; break;
                                 case FIELD_MEM_AVAIL: field_name = "Available RAM"; break;
@@ -99,7 +99,7 @@ hardware_display_field(unsigned int field_id, const char* format, ...)
                         break;
 
                 case 0x0200: /* Disk fields */
-                        wg_strcpy(prefix, "DISK->");
+                        strcpy(prefix, "DISK->");
                         switch (field_id) {
                                 case FIELD_DISK_MOUNT: field_name = "Mount Point"; break;
                                 case FIELD_DISK_TOTAL: field_name = "Total Space"; break;
@@ -147,13 +147,13 @@ hardware_cpu_info(HardwareCPU* cpu)
                 hardware_cpuid((int*)(brand), cpuid_brand);
                 hardware_cpuid((int*)(brand+16), cpuid_brand_16);
                 hardware_cpuid((int*)(brand+32), cpuid_brand_32);
-                wg_strncpy(cpu->name, brand, sizeof(cpu->name)-1);
+                strncpy(cpu->name, brand, sizeof(cpu->name)-1);
         }
 
         /* Get vendor */
         hardware_cpuid(cpuInfo, 0);
         int vendor[4] = {cpuInfo[1], cpuInfo[3], cpuInfo[2], 0};
-        wg_strncpy(cpu->vendor, (char*)vendor, sizeof(cpu->vendor)-1);
+        strncpy(cpu->vendor, (char*)vendor, sizeof(cpu->vendor)-1);
 
         /* Get core info */
         SYSTEM_INFO si;
@@ -163,13 +163,13 @@ hardware_cpu_info(HardwareCPU* cpu)
 
         /* Get architecture */
         if (si.wProcessorArchitecture == PROCESSOR_ARCHITECTURE_AMD64) {
-                wg_strcpy(cpu->architecture, "x86_64");
+                strcpy(cpu->architecture, "x86_64");
         }
         else if (si.wProcessorArchitecture == PROCESSOR_ARCHITECTURE_INTEL) {
-                wg_strcpy(cpu->architecture, "x86");
+                strcpy(cpu->architecture, "x86");
         }
         else {
-                wg_strcpy(cpu->architecture, "Unknown");
+                strcpy(cpu->architecture, "Unknown");
         }
 
         return 1;
@@ -206,7 +206,7 @@ hardware_disk_info(HardwareDisk* disk, const char* drive)
         }
 
         memset(disk, 0, sizeof(HardwareDisk));
-        wg_strncpy(disk->mount_point, drive, sizeof(disk->mount_point)-1);
+        strncpy(disk->mount_point, drive, sizeof(disk->mount_point)-1);
 
         ULARGE_INTEGER freeBytes, totalBytes, totalFree;
         if (GetDiskFreeSpaceEx(drive, &freeBytes, &totalBytes, &totalFree)) {
@@ -223,10 +223,10 @@ hardware_disk_info(HardwareDisk* disk, const char* drive)
                 DWORD maxCompLen, fsFlags;
                 if (GetVolumeInformation(drive, NULL, 0, NULL, &maxCompLen, 
                                                                 &fsFlags, fsName, sizeof(fsName))) {
-                        wg_strncpy(disk->filesystem, fsName, sizeof(disk->filesystem)-1);
+                        strncpy(disk->filesystem, fsName, sizeof(disk->filesystem)-1);
                 }
                 else {
-                        wg_strcpy(disk->filesystem, "Unknown");
+                        strcpy(disk->filesystem, "Unknown");
                 }
 
                 return 1;
@@ -251,7 +251,7 @@ hardware_cpu_info(HardwareCPU* cpu)
                 return 0;
         }
 
-        char cpu_line[256];
+        char cpu_line[WG_PATH_MAX];
 
         while (fgets(cpu_line, sizeof(cpu_line), f)) {
                 if (strncmp(cpu_line, "model name", 10) == 0) {
@@ -260,7 +260,7 @@ hardware_cpu_info(HardwareCPU* cpu)
                                 char* start = colon + 2; /* Skip colon and space */
                                 char* end = strchr(start, '\n');
                                 if (end) *end = '\0';
-                                wg_strncpy(cpu->name, start, sizeof(cpu->name)-1);
+                                strncpy(cpu->name, start, sizeof(cpu->name)-1);
                         }
                 }
                 else if (strncmp(cpu_line, "vendor_id", 9) == 0) {
@@ -269,7 +269,7 @@ hardware_cpu_info(HardwareCPU* cpu)
                                 char* start = colon + 2;
                                 char* end = strchr(start, '\n');
                                 if (end) *end = '\0';
-                                wg_strncpy(cpu->vendor, start, sizeof(cpu->vendor)-1);
+                                strncpy(cpu->vendor, start, sizeof(cpu->vendor)-1);
                         }
                 }
                 else if (strncmp(cpu_line, "cpu cores", 9) == 0) {
@@ -291,7 +291,7 @@ hardware_cpu_info(HardwareCPU* cpu)
         /* Get architecture */
         struct utsname uts;
         if (uname(&uts) == 0) {
-                wg_strncpy(cpu->architecture, uts.machine, sizeof(cpu->architecture)-1);
+                strncpy(cpu->architecture, uts.machine, sizeof(cpu->architecture)-1);
         }
 
         return 1;
@@ -335,7 +335,7 @@ hardware_disk_info(HardwareDisk* disk, const char* mount_point)
         }
 
         memset(disk, 0, sizeof(HardwareDisk));
-        wg_strncpy(disk->mount_point, mount_point, sizeof(disk->mount_point)-1);
+        strncpy(disk->mount_point, mount_point, sizeof(disk->mount_point)-1);
 
         struct statvfs stat;
         if (statvfs(mount_point, &stat) == 0) {
@@ -347,7 +347,7 @@ hardware_disk_info(HardwareDisk* disk, const char* mount_point)
                 disk->free_gb = disk->free_bytes / (1024.0 * 1024 * 1024);
                 disk->used_gb = disk->used_bytes / (1024.0 * 1024 * 1024);
 
-                wg_strncpy(disk->filesystem, "Unknown", sizeof(disk->filesystem)-1);
+                strncpy(disk->filesystem, "Unknown", sizeof(disk->filesystem)-1);
 
                 return 1;
         }

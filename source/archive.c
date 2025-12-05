@@ -13,6 +13,7 @@
 #include "utils.h"
 #include "archive.h"
 #include "curl.h"
+#include "debug.h"
 #include "units.h"
 
 /*
@@ -21,19 +22,19 @@
  * Ensures proper path concatenation without duplicate directory components.
  */
 static void arch_extraction_path(const char *entry_dest, const char *entry_path,
-                                char *out_path, size_t out_size)
+                                char *exit_path, size_t exit_size)
 {
         /* Handle cases where no specific destination is provided */
         if (!entry_dest ||
-                !strcmp(entry_dest, ".")||
+                !strcmp(entry_dest, ".") ||
                 *entry_dest == '\0') {
-                wg_snprintf(out_path, out_size, "%s", entry_path);  /* Use entry path as-is */
+                snprintf(exit_path, exit_size, "%s", entry_path);  /* Use entry path as-is */
         } else {
                 /* Check if entry path already starts with destination to avoid duplication */
                 if (!strncmp(entry_path, entry_dest, strlen(entry_dest))) {
-                        wg_snprintf(out_path, out_size, "%s", entry_path);  /* Path already contains destination */
+                        snprintf(exit_path, exit_size, "%s", entry_path);  /* Path already contains destination */
                 } else {
-                        wg_snprintf(out_path, out_size, "%s/%s", entry_dest, entry_path);  /* Combine dest + entry path */
+                        snprintf(exit_path, exit_size, "%s/%s", entry_dest, entry_path);  /* Combine dest + entry path */
                 }
         }
 }
@@ -75,275 +76,372 @@ static int arch_copy_data(struct archive *ar, struct archive *aw)
  */
 int compress_to_archive(const char *archive_path, 
                 const char **file_paths, 
-                int num_files,
+                int raw_num_files,
                 CompressionFormat format) {
         
-        struct archive *a;
+        struct archive *archive;
         struct archive_entry *entry;
         struct stat st;
-        char buff[8192];
+        char buffer[8192];
         int len;
         int fd;
         int ret = 0;
+        int archive_fd;
+        struct stat fd_stat;
         
         /* Create archive object */
-        a = archive_write_new();
-        if (a == NULL) {
-        fprintf(stderr, "Failed to create archive object\n");
-        return -1;
+        archive = archive_write_new();
+        if (archive == NULL) {
+                fprintf(stderr, "Failed to create archive object\n");
+                return -1;
         }
         
         /* Set format based on compression type */
         switch (format) {
         case COMPRESS_ZIP:
-        archive_write_set_format_zip(a);
-        break;
+                archive_write_set_format_zip(archive);
+                break;
         case COMPRESS_TAR:
-        archive_write_set_format_pax_restricted(a);
-        break;
+                archive_write_set_format_pax_restricted(archive);
+                break;
         case COMPRESS_TAR_GZ:
-        archive_write_set_format_pax_restricted(a);
-        archive_write_add_filter_gzip(a);
-        break;
+                archive_write_set_format_pax_restricted(archive);
+                archive_write_add_filter_gzip(archive);
+                break;
         case COMPRESS_TAR_BZ2:
-        archive_write_set_format_pax_restricted(a);
-        archive_write_add_filter_bzip2(a);
-        break;
+                archive_write_set_format_pax_restricted(archive);
+                archive_write_add_filter_bzip2(archive);
+                break;
         case COMPRESS_TAR_XZ:
-        archive_write_set_format_pax_restricted(a);
-        archive_write_add_filter_xz(a);
-        break;
+                archive_write_set_format_pax_restricted(archive);
+                archive_write_add_filter_xz(archive);
+                break;
         default:
-        fprintf(stderr, "Unsupported compression format\n");
-        archive_write_free(a);
-        return -1;
+                fprintf(stderr, "Unsupported compression format\n");
+                archive_write_free(archive);
+                return -1;
         }
         
         /* Open output archive file */
-        ret = archive_write_open_filename(a, archive_path);
+        ret = archive_write_open_filename(archive, archive_path);
         if (ret != ARCHIVE_OK) {
                 fprintf(stderr, "Failed to open archive file %s: %s\n", 
-                        archive_path, archive_error_string(a));
-                archive_write_free(a);
+                        archive_path, archive_error_string(archive));
+                archive_write_free(archive);
                 return -1;
         }
         
         /* Process each input file */
-        for (int i = 0; i < num_files; i++) {
-        const char *filename = file_paths[i];
-        
-        /* Get file status */
-        if (stat(filename, &st) != 0) {
-                fprintf(stderr, "Failed to stat file %s: %s\n", 
-                        filename, strerror(errno));
-                ret = -1;
-                continue;
-        }
-        
-        /* Create archive entry for the file */
-        entry = archive_entry_new();
-        if (entry == NULL) {
-                fprintf(stderr, "Failed to create archive entry for %s\n", filename);
-                ret = -1;
-                continue;
-        }
-        
-        /* Set entry properties from file stat */
-        archive_entry_set_pathname(entry, filename);
-        archive_entry_set_size(entry, st.st_size);
-        archive_entry_set_filetype(entry, AE_IFREG);
-        archive_entry_set_perm(entry, st.st_mode);
-        archive_entry_set_mtime(entry, st.st_mtime, 0);
-        archive_entry_set_atime(entry, st.st_atime, 0);
-        archive_entry_set_ctime(entry, st.st_ctime, 0);
-        
-        /* Write entry header */
-        ret = archive_write_header(a, entry);
-        if (ret != ARCHIVE_OK) {
-                fprintf(stderr, "Failed to write header for %s: %s\n", 
-                        filename, archive_error_string(a));
-                archive_entry_free(entry);
-                ret = -1;
-                continue;
-        }
-        
-        /* Open file to read data */
-        fd = open(filename, O_RDONLY);
-        if (fd < 0) {
-                fprintf(stderr, "Failed to open file %s: %s\n", 
-                        filename, strerror(errno));
-                archive_entry_free(entry);
-                ret = -1;
-                continue;
-        }
-        
-        /* Write file data to archive */
-        while ((len = read(fd, buff, sizeof(buff))) > 0) {
-                ssize_t written = archive_write_data(a, buff, len);
-                if (written < 0) {
-                        fprintf(stderr, "Failed to write data for %s: %s\n", 
-                                filename, archive_error_string(a));
+        for (int i = 0; i < raw_num_files; i++) {
+                const char *filename = file_paths[i];
+                
+                /* Open the file first to avoid TOCTOU race condition */
+                fd = open(filename, O_RDONLY);
+                if (fd < 0) {
+                        fprintf(stderr, "Failed to open file %s: %s\n", 
+                                filename, strerror(errno));
                         ret = -1;
+                        continue;
+                }
+                
+                /* Get file status using the file descriptor for consistency */
+                if (fstat(fd, &fd_stat) != 0) {
+                        fprintf(stderr, "Failed to fstat file %s: %s\n", 
+                                filename, strerror(errno));
+                        close(fd);
+                        ret = -1;
+                        continue;
+                }
+                
+                /* Verify it's a regular file */
+                if (!S_ISREG(fd_stat.st_mode)) {
+                        /* Check if it's a directory for fallback */
+                        if (S_ISDIR(fd_stat.st_mode)) {
+                                fprintf(stderr, "Fallback to Directory Mode: %s\n", filename);
+                                close(fd);
+                                ret = -2;
+                                goto fallback;
+                        }
+                        fprintf(stderr, "File %s is not a regular file\n", filename);
+                        close(fd);
+                        ret = -1;
+                        continue;
+                }
+                
+                /* Create archive entry for the file */
+                entry = archive_entry_new();
+                if (entry == NULL) {
+                        fprintf(stderr, "Failed to create archive entry for %s\n", filename);
+                        close(fd);
+                        ret = -1;
+                        continue;
+                }
+                
+                /* Set entry properties from file stat */
+                archive_entry_set_pathname(entry, filename);
+                archive_entry_set_size(entry, fd_stat.st_size);
+                archive_entry_set_filetype(entry, AE_IFREG);
+                archive_entry_set_perm(entry, fd_stat.st_mode);
+                archive_entry_set_mtime(entry, fd_stat.st_mtime, 0);
+                archive_entry_set_atime(entry, fd_stat.st_atime, 0);
+                archive_entry_set_ctime(entry, fd_stat.st_ctime, 0);
+                
+                /* Write entry header */
+                ret = archive_write_header(archive, entry);
+                if (ret != ARCHIVE_OK) {
+                        fprintf(stderr, "Failed to write header for %s: %s\n", 
+                                filename, archive_error_string(archive));
+                        archive_entry_free(entry);
+                        close(fd);
+                        ret = -1;
+                        continue;
+                }
+                
+                /* Write file data to archive */
+                while ((len = read(fd, buffer, sizeof(buffer))) > 0) {
+                        ssize_t written = archive_write_data(archive, buffer, len);
+                        if (written < 0) {
+                                fprintf(stderr, "Failed to write data for %s: %s\n", 
+                                        filename, archive_error_string(archive));
+                                ret = -1;
+                                break;
+                        }
+                        if (written != len) {
+                                fprintf(stderr, "Partial write for %s\n", filename);
+                                ret = -1;
+                                break;
+                        }
+                }
+                
+                /* Check for read errors */
+                if (len < 0) {
+                        fprintf(stderr, "Failed to read file %s: %s\n", 
+                                filename, strerror(errno));
+                        ret = -1;
+                }
+
+                /* Clean up */
+                close(fd);
+                archive_entry_free(entry);
+                
+                /* Check if we should continue after error */
+                if (ret != 0 && ret != -2) {
                         break;
                 }
-                if (written != len) {
-                        fprintf(stderr, "Partial write for %s\n", filename);
-                        ret = -1;
-                        break;
-                }
-        }
-        
-        /* Check for read errors */
-        if (len < 0) {
-                fprintf(stderr, "Failed to read file %s: %s\n", 
-                        filename, strerror(errno));
-                ret = -1;
-        }
-        
-        /* Clean up */
-        close(fd);
-        archive_entry_free(entry);
-        
-        /* Check if we should continue after error */
-        if (ret != 0) {
-                break;
-        }
         }
         
         /* Close archive */
-        archive_write_close(a);
-        archive_write_free(a);
+        archive_write_close(archive);
+        archive_write_free(archive);
         
+fallback:
+        if (ret == -2) {
+                /* Fallback to directory compression */
+                ret = compress_directory(archive_path, file_paths[0], format);
+        }
+
         return ret;
 }
 
 /**
- * Helper function to compress directory recursively
+ * Recursively adds a file or directory to an archive.
+ * Walks through the directory tree and adds all files/subdirectories.
  */
-int compress_directory(const char *archive_path, 
-                           const char *dir_path,
-                           CompressionFormat format) {
-        
-        struct archive *a;
+int wg_path_recursive(struct archive *archive, const char *root, const char *path) {
         struct archive_entry *entry;
-        struct stat st;
-        char buff[8192];
-        char path[1024];
-        DIR *dir;
-        struct dirent *dp;
-        int len;
+        struct stat path_stat;
+        char full_path[1024];
         int fd;
-        int ret = 0;
-        
-        /* Create archive object */
-        a = archive_write_new();
-        if (a == NULL) {
-        fprintf(stderr, "Failed to create archive object\n");
-        return -1;
-        }
-        
-        /* Set format based on compression type */
-        switch (format) {
-        case COMPRESS_ZIP:
-        archive_write_set_format_zip(a);
-        break;
-        case COMPRESS_TAR:
-        archive_write_set_format_pax_restricted(a);
-        break;
-        case COMPRESS_TAR_GZ:
-        archive_write_set_format_pax_restricted(a);
-        archive_write_add_filter_gzip(a);
-        break;
-        case COMPRESS_TAR_BZ2:
-        archive_write_set_format_pax_restricted(a);
-        archive_write_add_filter_bzip2(a);
-        break;
-        case COMPRESS_TAR_XZ:
-        archive_write_set_format_pax_restricted(a);
-        archive_write_add_filter_xz(a);
-        break;
-        default:
-        fprintf(stderr, "Unsupported compression format\n");
-        archive_write_free(a);
-        return -1;
-        }
-        
-        /* Open output archive file */
-        ret = archive_write_open_filename(a, archive_path);
-        if (ret != ARCHIVE_OK) {
-                fprintf(stderr, "Failed to open archive file %s: %s\n", 
-                        archive_path, archive_error_string(a));
-                archive_write_free(a);
+        struct stat fd_stat;
+
+        /* Create full absolute path */
+        snprintf(full_path, sizeof(full_path), "%s/%s", root, path);
+
+        /* Get file status (metadata) - use lstat to avoid following symlinks */
+#ifdef WG_WINDOWS
+        if (stat(full_path, &path_stat) != 0) {
+#else
+        if (lstat(full_path, &path_stat) != 0) {
+#endif
+                fprintf(stderr, "stat failed: %s: %s\n", full_path, strerror(errno));
                 return -1;
         }
-        
-        /* Recursively add directory contents */
-        ret = archive_write_disk_set_standard_lookup(a);
-        
-        /* Open directory */
-        dir = opendir(dir_path);
-        if (dir == NULL) {
-                fprintf(stderr, "Failed to open directory %s: %s\n", 
-                        dir_path, strerror(errno));
-                archive_write_free(a);
-                return -1;
-        }
-        
-        /* Read directory entries */
-        while ((dp = readdir(dir)) != NULL) {
-        /* Skip . and .. */
-        if (strcmp(dp->d_name, ".") == 0 || strcmp(dp->d_name, "..") == 0) {
-                continue;
-        }
-        
-        /* Build full path */
-        snprintf(path, sizeof(path), "%s/%s", dir_path, dp->d_name);
-        
-        /* Get file status */
-        if (stat(path, &st) != 0) {
-                fprintf(stderr, "Failed to stat %s: %s\n", path, strerror(errno));
-                continue;
-        }
-        
-        /* Create archive entry */
-        entry = archive_entry_new();
-        if (entry == NULL) {
-                fprintf(stderr, "Failed to create archive entry for %s\n", path);
-                continue;
-        }
-        
-        /* Set entry properties */
-        archive_entry_set_pathname(entry, dp->d_name);
-        archive_entry_copy_stat(entry, &st);
-        
-        /* Write header */
-        ret = archive_write_header(a, entry);
-        if (ret != ARCHIVE_OK) {
-                fprintf(stderr, "Failed to write header for %s: %s\n", 
-                        path, archive_error_string(a));
-                archive_entry_free(entry);
-                continue;
-        }
-        
-        /* If it's a regular file, write its data */
-        if (S_ISREG(st.st_mode)) {
-                fd = open(path, O_RDONLY);
-                if (fd >= 0) {
-                        while ((len = read(fd, buff, sizeof(buff))) > 0) {
-                                archive_write_data(a, buff, len);
-                        }
-                        close(fd);
+
+        /* For regular files, open first to avoid TOCTOU */
+        if (S_ISREG(path_stat.st_mode)) {
+                /* Open file with O_NOFOLLOW if available to prevent symlink attacks */
+#ifdef O_NOFOLLOW
+                fd = open(full_path, O_RDONLY | O_NOFOLLOW);
+#else
+                fd = open(full_path, O_RDONLY);
+#endif
+                if (fd < 0) {
+                        fprintf(stderr, "open failed: %s: %s\n", full_path, strerror(errno));
+                        return -1;
                 }
+                
+                /* Verify file type using file descriptor */
+                if (fstat(fd, &fd_stat) != 0) {
+                        fprintf(stderr, "fstat failed: %s: %s\n", full_path, strerror(errno));
+                        close(fd);
+                        return -1;
+                }
+                
+                /* Verify it's still a regular file */
+                if (!S_ISREG(fd_stat.st_mode)) {
+                        fprintf(stderr, "File type changed: %s\n", full_path);
+                        close(fd);
+                        return -1;
+                }
+                
+                /* Optional: Verify inode and device consistency */
+                if (path_stat.st_ino != fd_stat.st_ino || path_stat.st_dev != fd_stat.st_dev) {
+                        fprintf(stderr, "File changed during processing: %s\n", full_path);
+                        close(fd);
+                        return -1;
+                }
+                
+                /* Update stat with verified information */
+                path_stat = fd_stat;
+                
+                /* Create a new archive entry */
+                entry = archive_entry_new();
+                archive_entry_set_pathname(entry, path);
+                archive_entry_copy_stat(entry, &path_stat);
+                
+                /* Write entry header to archive */
+                if (archive_write_header(archive, entry) != ARCHIVE_OK) {
+                        fprintf(stderr, "write_header failed: %s\n", archive_error_string(archive));
+                        archive_entry_free(entry);
+                        close(fd);
+                        return -1;
+                }
+                
+                /* Write file contents */
+                char buffer[8192];
+                ssize_t len;
+                while ((len = read(fd, buffer, sizeof(buffer))) > 0) {
+                        if (archive_write_data(archive, buffer, len) < 0) {
+                                fprintf(stderr, "write_data failed: %s\n", archive_error_string(archive));
+                                archive_entry_free(entry);
+                                close(fd);
+                                return -1;
+                        }
+                }
+                
+                close(fd);
+                archive_entry_free(entry);
+                
+                /* Check for read errors */
+                if (len < 0) {
+                        fprintf(stderr, "read failed: %s: %s\n", full_path, strerror(errno));
+                        return -1;
+                }
+                
+                return 0;
+        }
+        
+        /* For directories and other file types, use the original stat */
+        /* Create a new archive entry */
+        entry = archive_entry_new();
+        archive_entry_set_pathname(entry, path);
+        archive_entry_copy_stat(entry, &path_stat);
+        
+        /* Write entry header to archive */
+        if (archive_write_header(archive, entry) != ARCHIVE_OK) {
+                fprintf(stderr, "write_header failed: %s\n", archive_error_string(archive));
+                archive_entry_free(entry);
+                return -1;
         }
         
         archive_entry_free(entry);
+        
+        /* If it's a DIRECTORY → enter recursively */
+        if (S_ISDIR(path_stat.st_mode)) {
+                DIR *dir_stream = opendir(full_path);
+                struct dirent *dir_entry;
+                
+                if (!dir_stream) {
+                        fprintf(stderr, "opendir failed: %s: %s\n", full_path, strerror(errno));
+                        return -1;
+                }
+                
+                while ((dir_entry = readdir(dir_stream)) != NULL) {
+                        if (wg_is_special_dir(dir_entry->d_name))
+                                continue;
+                        
+                        char child_path[WG_MAX_PATH];
+                        snprintf(child_path, sizeof(child_path),
+                                "%s/%s", path, dir_entry->d_name);
+                        
+                        /* Recursive call for child */
+                        if (wg_path_recursive(archive, root, child_path) != 0) {
+                                closedir(dir_stream);
+                                return -1;
+                        }
+                }
+                
+                closedir(dir_stream);
         }
         
-        /* Clean up */
-        closedir(dir);
+        return 0;
+}
+
+/**
+ * Compresses a directory into an archive file with the specified format.
+ */
+int compress_directory(const char *archive_path,
+                       const char *dir_path,
+                       CompressionFormat format)
+{
+        struct archive *a;
+        int ret;
+
+        a = archive_write_new();
+
+        if (!a) return -1;
+
+        /* Select archive format */
+        switch (format) {
+        case COMPRESS_ZIP:
+                archive_write_set_format_zip(a);
+                break;
+        case COMPRESS_TAR:
+                archive_write_set_format_pax_restricted(a);
+                break;
+        case COMPRESS_TAR_GZ:
+                archive_write_set_format_pax_restricted(a);
+                archive_write_add_filter_gzip(a);
+                break;
+        case COMPRESS_TAR_BZ2:
+                archive_write_set_format_pax_restricted(a);
+                archive_write_add_filter_bzip2(a);
+                break;
+        case COMPRESS_TAR_XZ:
+                archive_write_set_format_pax_restricted(a);
+                archive_write_add_filter_xz(a);
+                break;
+        default:
+                fprintf(stderr, "Unsupported format\n");
+                archive_write_free(a);
+                return -1;
+        }
+
+        /* Open output archive file */
+        ret = archive_write_open_filename(a, archive_path);
+        if (ret != ARCHIVE_OK) {
+                fprintf(stderr, "Cannot open archive: %s\n",
+                        archive_error_string(a));
+                archive_write_free(a);
+                return -1;
+        }
+
+        /* Start recursive archiving with empty path as root directory entry */
+        wg_path_recursive(a, dir_path, "");
+
         archive_write_close(a);
         archive_write_free(a);
-        
+
         return 0;
 }
 
@@ -402,7 +500,7 @@ int wg_extract_tar(const char *tar_path, const char *entry_dest) {
                 static int notice_extracting = 0;
                 if (extract_notice == 0) {
                         extract_notice = 1;
-                        printf("\x1b[32m==> Create extraction logs? (y/n): \x1b[0m\n");
+                        printf("\x1b[32m==> Create extraction logs?\x1b[0m\n");
                         char *debug_extract = readline("   answer (y/n): ");
                         if (debug_extract) {
                                 if (debug_extract[0] == 'Y' || debug_extract[0] == 'y') {
@@ -462,8 +560,8 @@ int wg_extract_tar(const char *tar_path, const char *entry_dest) {
  * Returns 0 on success, negative values on various types of errors.
  */
 static int extract_zip_entry(struct archive *archive_read,
-                                                         struct archive *archive_write,
-                                                         struct archive_entry *item)
+                        struct archive *archive_write,
+                        struct archive_entry *item)
 {
         int ret;
         const void *buffer;
@@ -507,7 +605,7 @@ int wg_extract_zip(const char *zip_file, const char *entry_dest)
         struct archive *archive_read;
         struct archive *archive_write;
         struct archive_entry *item;
-        char full_path[1024 * 1024];  /* Buffer for full extraction path */
+        char paths[1024 * 1024];  /* Buffer for full extraction path */
         int ret;
         int error_occurred = 0;  /* Track if any extraction errors occurred */
 
@@ -544,7 +642,7 @@ int wg_extract_zip(const char *zip_file, const char *entry_dest)
                 static int notice_extracting = 0;
                 if (extract_notice == 0) {
                         extract_notice = 1;
-                        printf("\x1b[32m==> Create extraction logs? (y/n): \x1b[0m\n");
+                        printf("\x1b[32m==> Create extraction logs?\x1b[0m\n");
                         char *debug_extract = readline("   answer (y/n): ");
                         if (debug_extract) {
                                 if (debug_extract[0] == 'Y' || debug_extract[0] == 'y') {
@@ -561,8 +659,8 @@ int wg_extract_zip(const char *zip_file, const char *entry_dest)
                 }
 
                 /* Construct full extraction path with destination directory */
-                arch_extraction_path(entry_dest, entry_path, full_path, sizeof(full_path));
-                archive_entry_set_pathname(item, full_path);  /* Update entry's extraction path */
+                arch_extraction_path(entry_dest, entry_path, paths, sizeof(paths));
+                archive_entry_set_pathname(item, paths);  /* Update entry's extraction path */
 
                 /* Extract the current entry */
                 if (extract_zip_entry(archive_read, archive_write, item) != 0) {
@@ -596,41 +694,10 @@ error:
  */
 void wg_extract_archive(const char *filename)
 {
-/* Debug information section - only compiled when _DBG_PRINT is defined */
-#if defined (_DBG_PRINT)
-        pr_color(stdout, FCOLOUR_YELLOW, "-DEBUGGING ");
-        printf("[function: %s | "
-                   "pretty function: %s | "
-                   "line: %d | "
-                   "file: %s | "
-                   "date: %s | "
-                   "time: %s | "
-                   "timestamp: %s | "
-                   "C standard: %ld | "
-                   "C version: %s | "
-                   "compiler version: %d | "
-                   "architecture: %s]:\n",
-                        __func__, __PRETTY_FUNCTION__,
-                        __LINE__, __FILE__,
-                        __DATE__, __TIME__,
-                        __TIMESTAMP__,
-                        __STDC_VERSION__,
-                        __VERSION__,
-                        __GNUC__,
-#ifdef __x86_64__
-                        "x86_64");
-#elif defined(__i386__)
-                        "i386");
-#elif defined(__arm__)
-                        "ARM");
-#elif defined(__aarch64__)
-                        "ARM64");
-#else
-                        "Unknown");
-#endif
-#endif
+        /* Debug information section */
+        __debug_function();
 
-        char output_path[WG_PATH_MAX];  /* Buffer for destination directory name */
+        char ext_paths[WG_PATH_MAX];  /* Buffer for destination directory name */
 
         printf(" Try Extracting %s archive file...\n", filename);
         fflush(stdout);
@@ -638,36 +705,60 @@ void wg_extract_archive(const char *filename)
         /* Detect archive type by file extension and route to appropriate extractor */
         if (strend(filename, ".tar.gz", true)) {
                 /* For .tar.gz files: create destination directory by removing extension */
-                wg_snprintf(output_path, sizeof(output_path), "%s", filename);
-                output_path[strlen(filename) - 7] = '\0';  /* Remove ".tar.gz" (7 characters) */
+                snprintf(ext_paths, sizeof(ext_paths), "%s", filename);
+                ext_paths[strlen(filename) - 7] = '\0';  /* Remove ".tar.gz" (7 characters) */
 
                 /* Special handling for downloaded files going to "scripts" directory */
-                if (wgconfig.wg_downloading_file == 1 && path_exists("scripts"))
-                        wg_extract_tar(filename, "scripts");
-                else
-                        wg_extract_tar(filename, output_path);
+                if (wgconfig.wg_idownload == 1) {
+                        if (path_exists("scripts")) {
+                                wg_extract_tar(filename, "scripts");
+                        } else {
+                                if (wg_mkdir(".watchdogs/scripts")) {
+                                        pr_info(stdout, "Extracting into .watchdogs/scripts...");
+                                        wg_extract_tar(filename, ".watchdogs/scripts");
+                                }
+                        }
+                } else {
+                        wg_extract_tar(filename, NULL);
+                }
         }
         else if (strend(filename, ".tar", true)) {
                 /* For .tar files: create destination directory by removing extension */
-                wg_snprintf(output_path, sizeof(output_path), "%s", filename);
-                output_path[strlen(filename) - 4] = '\0';  /* Remove ".tar" (4 characters) */
+                snprintf(ext_paths, sizeof(ext_paths), "%s", filename);
+                ext_paths[strlen(filename) - 4] = '\0';  /* Remove ".tar" (4 characters) */
 
                 /* Special handling for downloaded files going to "scripts" directory */
-                if (wgconfig.wg_downloading_file == 1 && path_exists("scripts"))
-                        wg_extract_tar(filename, "scripts");
-                else
-                        wg_extract_tar(filename, output_path);
+                if (wgconfig.wg_idownload == 1) {
+                        if (path_exists("scripts")) {
+                                wg_extract_tar(filename, "scripts");
+                        } else {
+                                if (wg_mkdir(".watchdogs/scripts")) {
+                                        pr_info(stdout, "Extracting into .watchdogs/scripts...");
+                                        wg_extract_tar(filename, ".watchdogs/scripts");
+                                }
+                        }
+                } else {
+                        wg_extract_tar(filename, NULL);
+                }
         }
         else if (strend(filename, ".zip", true)) {
                 /* For .zip files: create destination directory by removing extension */
-                wg_snprintf(output_path, sizeof(output_path), "%s", filename);
-                output_path[strlen(filename) - 4] = '\0';  /* Remove ".zip" (4 characters) */
+                snprintf(ext_paths, sizeof(ext_paths), "%s", filename);
+                ext_paths[strlen(filename) - 4] = '\0';  /* Remove ".zip" (4 characters) */
 
                 /* Special handling for downloaded files going to "scripts" directory */
-                if (wgconfig.wg_downloading_file == 1 && path_exists("scripts"))
-                        wg_extract_zip(filename, "scripts");
-                else
-                        wg_extract_zip(filename, output_path);
+                if (wgconfig.wg_idownload == 1) {
+                        if (path_exists("scripts")) {
+                                wg_extract_zip(filename, "scripts");
+                        } else {
+                                if (wg_mkdir(".watchdogs/scripts")) {
+                                        pr_info(stdout, "Extracting into .watchdogs/scripts...");
+                                        wg_extract_zip(filename, ".watchdogs/scripts");
+                                }
+                        }
+                } else {
+                        wg_extract_zip(filename, NULL);
+                }
         }
         else {
                 /* Unknown archive format - inform user and skip extraction */
@@ -675,7 +766,7 @@ void wg_extract_archive(const char *filename)
                 goto done;  /* Skip to cleanup/return */
         }
 
-        wgconfig.wg_downloading_file = 0;  /* Reset downloading flag after extraction */
+        wgconfig.wg_idownload = 0;  /* Reset downloading flag after extraction */
 
         sleep(1);  /* Brief pause to ensure file system operations complete */
 

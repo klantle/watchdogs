@@ -19,6 +19,7 @@
 #include "extra.h"
 #include "package.h"
 #include "lowlevel.h"
+#include "debug.h"
 #include "compiler.h"
 
 #ifndef WG_WINDOWS
@@ -32,39 +33,9 @@ int wg_run_compiler(const char *args, const char *compile_args,  const char *sec
                     const char *five_arg, const char *six_arg, const char *seven_arg, const char *eight_arg,
                     const char *nine_arg)
 {
-#if defined (_DBG_PRINT)
-        /* Debugging information block - prints comprehensive environment details when debug mode is enabled */
-        pr_color(stdout, FCOLOUR_YELLOW, "-DEBUGGING ");
-        printf("[function: %s | "
-               "pretty function: %s | "
-               "line: %d | "
-               "file: %s | "
-               "date: %s | "
-               "time: %s | "
-               "timestamp: %s | "
-               "C standard: %ld | "
-               "C version: %s | "
-               "compiler version: %d | "
-               "architecture: %s]:\n",
-                __func__, __PRETTY_FUNCTION__,
-                __LINE__, __FILE__,
-                __DATE__, __TIME__,
-                __TIMESTAMP__,
-                __STDC_VERSION__,
-                __VERSION__,
-                __GNUC__,
-#ifdef __x86_64__
-                "x86_64");
-#elif defined(__i386__)
-                "i386");
-#elif defined(__arm__)
-                "ARM");
-#elif defined(__aarch64__)
-                "ARM64");
-#else
-                "Unknown");
-#endif
-#endif
+		/* Debug information section */
+        __debug_function();
+		
         const int aio_extra_options = 7; /* Number of extra compiler options to process */
         wgconfig.wg_compiler_stat = 0; /* Reset compiler status flag */
         io_compilers comp; /* Local compiler configuration structure */
@@ -98,7 +69,7 @@ int wg_run_compiler(const char *args, const char *compile_args,  const char *sec
         char *compiler_last_slash = NULL;
         char *compiler_back_slash = NULL;
 
-        char *fetch_string_pos = NULL; /* Pointer for string searching operations */
+        char *procure_string_pos = NULL; /* Pointer for string searching operations */
         char compiler_extra_options[WG_PATH_MAX] = { 0 }; /* Buffer for additional compiler flags */
         /* Array of debug memory flags that need special handling */
         const char *debug_memm[] = {"-d1", "-d3"};
@@ -152,11 +123,9 @@ int wg_run_compiler(const char *args, const char *compile_args,  const char *sec
             }
 
             /* Parse TOML configuration file for compiler settings */
-            char error_buffer[256];
+            char error_buffer[WG_PATH_MAX];
             toml_table_t *wg_toml_config;
-            wg_toml_config = toml_parse_file(proc_f,
-                       error_buffer,
-                       sizeof(error_buffer));
+            wg_toml_config = toml_parse_file(proc_f, error_buffer, sizeof(error_buffer));
 
             if (proc_f) {
                 fclose(proc_f);
@@ -169,11 +138,11 @@ int wg_run_compiler(const char *args, const char *compile_args,  const char *sec
 
             char wg_compiler_input_pawncc_path[WG_PATH_MAX],
                  wg_compiler_input_gamemode_path[WG_PATH_MAX];
-            wg_snprintf(wg_compiler_input_pawncc_path,
+            snprintf(wg_compiler_input_pawncc_path,
                     sizeof(wg_compiler_input_pawncc_path), "%s", wgconfig.wg_sef_found_list[0]);
 
             /* Test compiler execution to verify it works correctly */
-            wg_snprintf(run_cmd, sizeof(run_cmd),
+            snprintf(run_cmd, sizeof(run_cmd),
                 "%s > .watchdogs/compiler_test.log 2>&1",
                 wg_compiler_input_pawncc_path);
             wg_run_command(run_cmd);
@@ -238,12 +207,12 @@ int wg_run_compiler(const char *args, const char *compile_args,  const char *sec
                         char flag_to_search[3] = { 0 };
                         size_t size_flag_to_search = sizeof(flag_to_search);
                         if (strlen(toml_option_value.u.s) >= 2) {
-                            wg_snprintf(flag_to_search,
+                            snprintf(flag_to_search,
                                      size_flag_to_search,
                                      "%.2s",
                                      toml_option_value.u.s);
                         } else {
-                            wg_strncpy(flag_to_search, toml_option_value.u.s, size_flag_to_search - 1);
+                            strncpy(flag_to_search, toml_option_value.u.s, size_flag_to_search - 1);
                         }
 
                         /* Validate flag by checking against compiler help output */
@@ -291,12 +260,13 @@ not_valid_flag_options:
                             merged = NULL;
                             break;
                         }
+
                         merged = tmp;
 
                         if (!old_len)
-                            wg_snprintf(merged, new_len, "%s", toml_option_value.u.s);
+                            snprintf(merged, new_len, "%s", toml_option_value.u.s);
                         else
-                            wg_snprintf(merged + old_len,
+                            snprintf(merged + old_len,
                                      new_len - old_len,
                                      " %s", toml_option_value.u.s);
 
@@ -319,18 +289,156 @@ not_valid_flag_options:
                         wgconfig.wg_toml_aio_opt = strdup("");
                     }
 
-                    /* Special handling: remove conflicting debug flags when debug mode is enabled */
+                    /* 
+                    * Special handling: remove conflicting debug flags when debug mode is enabled
+                    * Security-enhanced version with bounds checking and error handling
+                    */
                     if (compiler_has_debug != 0 && compiler_debugging != 0) {
+                        /* Validate array sizes to prevent division by zero */
+                        if (size_debug_memm == 0 || size_debug_memm_zero == 0) {
+                            pr_error(stdout, "Invalid debug flag array configuration");
+                            goto compiler_end;
+                        }
+                        
+                        /* Prevent integer overflow in division */
+                        if (size_debug_memm < size_debug_memm_zero || 
+                            size_debug_memm % size_debug_memm_zero != 0) {
+                            pr_error(stdout, "Debug flag array size mismatch");
+                            goto compiler_end;
+                        }
+                        
                         size_t debug_flag_count = size_debug_memm / size_debug_memm_zero;
+                        
+                        /* Validate maximum reasonable flag count */
+                        const size_t MAX_DEBUG_FLAGS = 256;
+                        if (debug_flag_count > MAX_DEBUG_FLAGS) {
+                            pr_error(stdout, "Excessive debug flag count: %zu", debug_flag_count);
+                            goto compiler_end;
+                        }
+                        
+                        /* Ensure wgconfig.wg_toml_aio_opt is valid */
+                        if (wgconfig.wg_toml_aio_opt == NULL) {
+                            pr_error(stdout, "Configuration string is NULL");
+                            goto compiler_end;
+                        }
+                        
+                        /* Track original buffer for potential rollback */
+                        char *original_config = strdup(wgconfig.wg_toml_aio_opt);
+                        if (original_config == NULL) {
+                            pr_error(stdout, "Memory allocation failed for config backup");
+                            goto compiler_end;
+                        }
+                        
+                        /* Calculate safe working buffer size */
+                        size_t config_buffer_size = strlen(wgconfig.wg_toml_aio_opt) + 1;
+                        size_t max_safe_shifts = config_buffer_size * 2; // Prevent infinite loops
+                        
                         for (size_t i = 0; i < debug_flag_count; i++) {
-                            const char *memm_saving_target = debug_memm[i];
-                            size_t size_memm_saving_targetion = strlen(memm_saving_target);
-
-                            /* Remove specific debug flags to prevent conflicts */
-                            while ((fetch_string_pos = strstr(wgconfig.wg_toml_aio_opt, memm_saving_target)) != NULL) {
-                                memmove(fetch_string_pos, fetch_string_pos + size_memm_saving_targetion,
-                                        strlen(fetch_string_pos + size_memm_saving_targetion) + 1);
+                            /* Validate array bounds */
+                            if (i >= (size_debug_memm / sizeof(debug_memm[0]))) {
+                                pr_warning(stdout, "Debug flag index %zu out of bounds", i);
+                                continue;
                             }
+                            
+                            const char *debug_flag = debug_memm[i];
+                            
+                            /* Validate flag string */
+                            if (debug_flag == NULL) {
+                                pr_warning(stdout, "NULL debug flag at index %zu", i);
+                                continue;
+                            }
+                            
+                            size_t flag_length = strlen(debug_flag);
+                            
+                            /* Skip empty flags */
+                            if (flag_length == 0) {
+                                continue;
+                            }
+                            
+                            /* Prevent overly long flags that could be malicious */
+                            const size_t MAX_FLAG_LENGTH = WG_MAX_PATH;
+                            if (flag_length > MAX_FLAG_LENGTH) {
+                                pr_warning(stdout, "Suspiciously long debug flag at index %zu", i);
+                                continue;
+                            }
+                            
+                            /* Safe in-place removal with loop prevention */
+                            char *config_ptr = wgconfig.wg_toml_aio_opt;
+                            size_t shift_count = 0;
+                            
+                            while (shift_count < max_safe_shifts) {
+                                char *flag_pos = strstr(config_ptr, debug_flag);
+                                
+                                if (flag_pos == NULL) {
+                                    break; // No more occurrences
+                                }
+                                
+                                /* Verify flag is a complete token (not part of another flag) */
+                                bool is_complete_token = true;
+                                
+                                // Check character before flag
+                                if (flag_pos > wgconfig.wg_toml_aio_opt) {
+                                    char prev_char = *(flag_pos - 1);
+                                    if (isalnum((unsigned char)prev_char) || prev_char == '_') {
+                                        is_complete_token = false;
+                                    }
+                                }
+                                
+                                // Check character after flag
+                                char next_char = *(flag_pos + flag_length);
+                                if (isalnum((unsigned char)next_char) || next_char == '_') {
+                                    is_complete_token = false;
+                                }
+                                
+                                if (!is_complete_token) {
+                                    config_ptr = flag_pos + 1;
+                                    continue;
+                                }
+                                
+                                /* Calculate remaining length safely */
+                                char *after_flag = flag_pos + flag_length;
+                                size_t remaining_length = strlen(after_flag);
+                                
+                                /* Perform safe memory move with bounds checking */
+                                if ((flag_pos - wgconfig.wg_toml_aio_opt) + remaining_length + 1 
+                                    < config_buffer_size) {
+                                    memmove(flag_pos, after_flag, remaining_length + 1);
+                                    
+                                    /* Recalculate buffer size after modification */
+                                    config_buffer_size = strlen(wgconfig.wg_toml_aio_opt) + 1;
+                                } else {
+                                    pr_error(stdout, "Buffer overflow detected during flag removal");
+                                    // Restore original config on error
+                                    strncpy(wgconfig.wg_toml_aio_opt, original_config, config_buffer_size);
+                                    wg_free(original_config);
+                                    goto compiler_end;
+                                }
+                                
+                                ++shift_count;
+                            }
+                            
+                            if (shift_count >= max_safe_shifts) {
+                                pr_warning(stdout, "Excessive flag removals for '%s', possible loop", debug_flag);
+                            }
+                        }
+                        
+                        /* Sanity check: ensure string is still null-terminated */
+                        wgconfig.wg_toml_aio_opt[config_buffer_size - 1] = '\0';
+                        
+                        /* Log changes for audit trail */
+                        if (strcmp(original_config, wgconfig.wg_toml_aio_opt) != 0) {
+#if defined (_DBG_PRINT)
+                            pr_info(stdout,"Debug flags removed. Original: '%s', Modified: '%s'", 
+                                    original_config, wgconfig.wg_toml_aio_opt);
+#endif
+                        }
+                        
+                        wg_free(original_config);
+                        
+                        /* Final validation */
+                        if (strlen(wgconfig.wg_toml_aio_opt) >= config_buffer_size) {
+                            pr_error(stdout, "Configuration string corruption detected");
+                            goto compiler_end;
                         }
                     }
                 }
@@ -346,6 +454,13 @@ not_valid_flag_options:
                     strcat(compiler_extra_options, " -v2 ");
                 if (compiler_has_compact > 0)
                     strcat(compiler_extra_options, " -C+ ");
+                
+                int rate_debugger = 0;
+#if defined(_DBG_PRINT)
+                ++rate_debugger;
+#endif
+                if (compiler_has_watchdogs)
+                    ++rate_debugger;
 
                 /* Safely concatenate extra options ensuring buffer doesn't overflow */
                 if (strlen(compiler_extra_options) > 0) {
@@ -387,7 +502,7 @@ not_valid_flag_options:
                                 size_t cur = strlen(include_aio_path);
                                 if (cur < sizeof(include_aio_path) - 1)
                                 {
-                                    wg_snprintf(include_aio_path + cur,
+                                    snprintf(include_aio_path + cur,
                                         sizeof(include_aio_path) - cur,
                                         " ");
                                 }
@@ -397,7 +512,7 @@ not_valid_flag_options:
                             size_t cur = strlen(include_aio_path);
                             if (cur < sizeof(include_aio_path) - 1)
                             {
-                                wg_snprintf(include_aio_path + cur,
+                                snprintf(include_aio_path + cur,
                                     sizeof(include_aio_path) - cur,
                                     "-i\"%s\"",
                                     size_path_val);
@@ -408,7 +523,7 @@ not_valid_flag_options:
                 }
 
                 /* Main compilation logic block - handles both default and specific file compilation */
-                if (args == NULL || *args == '\0' || (args[0] == '.' && args[1] == '\0'))
+                if (compile_args == NULL || *compile_args == '\0' || (compile_args[0] == '.' && compile_args[1] == '\0'))
                 {
                     /* Default compilation: use gamemode from TOML configuration */
 #ifdef WG_WINDOWS
@@ -433,19 +548,19 @@ not_valid_flag_options:
 
                     /* Construct full compiler command string for Windows */
                     int ret_command = 0;
-                    ret_command = wg_snprintf(_compiler_input_,
+                    ret_command = snprintf(_compiler_input_,
                               sizeof(_compiler_input_),
                                     "%s %s -o%s %s %s -i%s",
                                     wg_compiler_input_pawncc_path,
-                                    wgconfig.wg_toml_gm_input,
-                                    wgconfig.wg_toml_gm_output,
+                                    wgconfig.wg_toml_proj_input,
+                                    wgconfig.wg_toml_proj_output,
                                     wgconfig.wg_toml_aio_opt,
                                     include_aio_path,
                                     path_include);
-#if defined(_DBG_PRINT)
-                    pr_color(stdout, FCOLOUR_YELLOW, "-DEBUGGING\n");
-                    printf("[COMPILER]:\n\t%s\n", _compiler_input_);
-#endif
+                    if (rate_debugger > 0) {
+                        pr_color(stdout, FCOLOUR_YELLOW, "-DEBUGGER\n");
+                        printf("[COMPILER]:\n\t%s\n", _compiler_input_);
+                    }
                     if (ret_command > 0 && ret_command < (int)sizeof(_compiler_input_)) {
                         BOOL win32_process_succes;
                         clock_gettime(CLOCK_MONOTONIC, &start);
@@ -486,12 +601,12 @@ not_valid_flag_options:
 #else
                     /* POSIX/Linux compilation path */
                     int ret_command = 0;
-                    ret_command = wg_snprintf(_compiler_input_, sizeof(_compiler_input_),
+                    ret_command = snprintf(_compiler_input_, sizeof(_compiler_input_),
                         "%s %s %s%s %s%s %s%s",
                         wg_compiler_input_pawncc_path,
-                        wgconfig.wg_toml_gm_input,
+                        wgconfig.wg_toml_proj_input,
                         "-o",
-                        wgconfig.wg_toml_gm_output,
+                        wgconfig.wg_toml_proj_output,
                         wgconfig.wg_toml_aio_opt,
                         include_aio_path,
                         "-i",
@@ -500,10 +615,10 @@ not_valid_flag_options:
                         pr_error(stdout, "ret_compiler too long! %s (L: %d)", __func__, __LINE__);
                         goto compiler_end;
                     }
-#if defined(_DBG_PRINT)
-                    pr_color(stdout, FCOLOUR_YELLOW, "-DEBUGGING\n");
-                    printf("[COMPILER]:\n\t%s\n", _compiler_input_);
-#endif
+                    if (rate_debugger > 0) {
+                        pr_color(stdout, FCOLOUR_YELLOW, "-DEBUGGER\n");
+                        printf("[COMPILER]:\n\t%s\n", _compiler_input_);
+                    }
                     /* Tokenize command for posix_spawn argument array */
                     int i = 0;
                     char *wg_compiler_unix_args[WG_MAX_PATH + 256];
@@ -600,8 +715,8 @@ not_valid_flag_options:
                     }
 #endif
                     char size_container_output[WG_PATH_MAX * 2];
-                    wg_snprintf(size_container_output,
-                        sizeof(size_container_output), "%s", wgconfig.wg_toml_gm_output);
+                    snprintf(size_container_output,
+                        sizeof(size_container_output), "%s", wgconfig.wg_toml_proj_output);
                     /* Post-compilation processing based on output and flags */
                     if (path_exists(".watchdogs/compiler.log")) {
                         printf("\n");
@@ -695,7 +810,7 @@ compiler_done:
                 else
                 {
                     /* Specific file compilation: process provided file path */
-                    wg_strncpy(ptr_io->compiler_size_temp, compile_args, sizeof(ptr_io->compiler_size_temp) - 1);
+                    strncpy(ptr_io->compiler_size_temp, compile_args, sizeof(ptr_io->compiler_size_temp) - 1);
                     ptr_io->compiler_size_temp[sizeof(ptr_io->compiler_size_temp) - 1] = '\0';
 
                     /* Extract directory and filename from provided path */
@@ -735,7 +850,7 @@ compiler_done:
                         if (total_needed > sizeof(ptr_io->compiler_size_input_path))
                         {
                             /* Fallback to default gamemodes directory if path too long */
-                            wg_strncpy(ptr_io->compiler_direct_path, "gamemodes",
+                            strncpy(ptr_io->compiler_direct_path, "gamemodes",
                                 sizeof(ptr_io->compiler_direct_path) - 1);
                             ptr_io->compiler_direct_path[sizeof(ptr_io->compiler_direct_path) - 1] = '\0';
 
@@ -750,7 +865,7 @@ compiler_done:
                             }
                         }
 
-                        if (wg_snprintf(ptr_io->compiler_size_input_path, sizeof(ptr_io->compiler_size_input_path),
+                        if (snprintf(ptr_io->compiler_size_input_path, sizeof(ptr_io->compiler_size_input_path),
                                 "%s/%s", ptr_io->compiler_direct_path, ptr_io->compiler_size_file_name) >=
                             (int)sizeof(ptr_io->compiler_size_input_path))
                         {
@@ -758,14 +873,14 @@ compiler_done:
                         }
                      }  else {
                             /* No directory in path - treat as filename in current directory */
-                            wg_strncpy(ptr_io->compiler_size_file_name, ptr_io->compiler_size_temp,
+                            strncpy(ptr_io->compiler_size_file_name, ptr_io->compiler_size_temp,
                                 sizeof(ptr_io->compiler_size_file_name) - 1);
                             ptr_io->compiler_size_file_name[sizeof(ptr_io->compiler_size_file_name) - 1] = '\0';
 
-                            wg_strncpy(ptr_io->compiler_direct_path, ".", sizeof(ptr_io->compiler_direct_path) - 1);
+                            strncpy(ptr_io->compiler_direct_path, ".", sizeof(ptr_io->compiler_direct_path) - 1);
                             ptr_io->compiler_direct_path[sizeof(ptr_io->compiler_direct_path) - 1] = '\0';
 
-                            if (wg_snprintf(ptr_io->compiler_size_input_path, sizeof(ptr_io->compiler_size_input_path),
+                            if (snprintf(ptr_io->compiler_size_input_path, sizeof(ptr_io->compiler_size_input_path),
                                     "./%s", ptr_io->compiler_size_file_name) >=
                                 (int)sizeof(ptr_io->compiler_size_input_path))
                             {
@@ -785,11 +900,11 @@ compiler_done:
                                             ptr_io->compiler_size_file_name, NULL);
                         if (compiler_finding_compile_args)
                         {
-                            wg_strncpy(ptr_io->compiler_direct_path, "gamemodes",
+                            strncpy(ptr_io->compiler_direct_path, "gamemodes",
                                 sizeof(ptr_io->compiler_direct_path) - 1);
                             ptr_io->compiler_direct_path[sizeof(ptr_io->compiler_direct_path) - 1] = '\0';
 
-                            if (wg_snprintf(ptr_io->compiler_size_input_path, sizeof(ptr_io->compiler_size_input_path),
+                            if (snprintf(ptr_io->compiler_size_input_path, sizeof(ptr_io->compiler_size_input_path),
                                     "gamemodes/%s", ptr_io->compiler_size_file_name) >=
                                 (int)sizeof(ptr_io->compiler_size_input_path))
                             {
@@ -797,7 +912,7 @@ compiler_done:
                             }
 
                             if (wgconfig.wg_sef_count > RATE_SEF_EMPTY)
-                                wg_strncpy(wgconfig.wg_sef_found_list[wgconfig.wg_sef_count - 1],
+                                strncpy(wgconfig.wg_sef_found_list[wgconfig.wg_sef_count - 1],
                                     ptr_io->compiler_size_input_path, MAX_SEF_PATH_SIZE);
                         }
                     }
@@ -809,11 +924,11 @@ compiler_done:
                                             ptr_io->compiler_size_file_name, NULL);
                         if (compiler_finding_compile_args)
                         {
-                            wg_strncpy(ptr_io->compiler_direct_path, "gamemodes",
+                            strncpy(ptr_io->compiler_direct_path, "gamemodes",
                                 sizeof(ptr_io->compiler_direct_path) - 1);
                             ptr_io->compiler_direct_path[sizeof(ptr_io->compiler_direct_path) - 1] = '\0';
 
-                            if (wg_snprintf(ptr_io->compiler_size_input_path, sizeof(ptr_io->compiler_size_input_path),
+                            if (snprintf(ptr_io->compiler_size_input_path, sizeof(ptr_io->compiler_size_input_path),
                                     "gamemodes/%s", ptr_io->compiler_size_file_name) >=
                                 (int)sizeof(ptr_io->compiler_size_input_path))
                             {
@@ -821,27 +936,27 @@ compiler_done:
                             }
 
                             if (wgconfig.wg_sef_count > RATE_SEF_EMPTY)
-                                wg_strncpy(wgconfig.wg_sef_found_list[wgconfig.wg_sef_count - 1],
+                                strncpy(wgconfig.wg_sef_found_list[wgconfig.wg_sef_count - 1],
                                     ptr_io->compiler_size_input_path, MAX_SEF_PATH_SIZE);
                         }
                     }
 
-                    wg_snprintf(wg_compiler_input_gamemode_path,
+                    snprintf(wg_compiler_input_gamemode_path,
                             sizeof(wg_compiler_input_gamemode_path), "%s", wgconfig.wg_sef_found_list[1]);
 
                     /* Execute compilation if file was found */
                     if (compiler_finding_compile_args)
                     {
                         char __sef_path_sz[WG_PATH_MAX];
-                        wg_snprintf(__sef_path_sz, sizeof(__sef_path_sz), "%s", wg_compiler_input_gamemode_path);
-                        char *ext = strrchr(__sef_path_sz, '.');
-                        if (ext)
-                            *ext = '\0'; /* Remove extension for output filename */
+                        snprintf(__sef_path_sz, sizeof(__sef_path_sz), "%s", wg_compiler_input_gamemode_path);
+                        char *extension = strrchr(__sef_path_sz, '.');
+                        if (extension)
+                            *extension = '\0'; /* Remove extension for output filename */
 
-                        wg_snprintf(ptr_io->container_output, sizeof(ptr_io->container_output), "%s", __sef_path_sz);
+                        snprintf(ptr_io->container_output, sizeof(ptr_io->container_output), "%s", __sef_path_sz);
 
                         char size_container_output[WG_MAX_PATH];
-                        wg_snprintf(size_container_output, sizeof(size_container_output), "%s.amx", ptr_io->container_output);
+                        snprintf(size_container_output, sizeof(size_container_output), "%s.amx", ptr_io->container_output);
 
 #ifdef WG_WINDOWS
                         /* Windows-specific compilation execution */
@@ -866,7 +981,7 @@ compiler_done:
                         }
 
                         int ret_command = 0;
-                        ret_command = wg_snprintf(_compiler_input_,
+                        ret_command = snprintf(_compiler_input_,
                                   sizeof(_compiler_input_),
                                         "%s %s -o%s %s %s -i%s",
                                         wg_compiler_input_pawncc_path,
@@ -875,10 +990,10 @@ compiler_done:
                                         wgconfig.wg_toml_aio_opt,
                                         include_aio_path,
                                         path_include);
-#if defined(_DBG_PRINT)
-                        pr_color(stdout, FCOLOUR_YELLOW, "-DEBUGGING\n");
-                        printf("[COMPILER]:\n\t%s\n", _compiler_input_);
-#endif
+                        if (rate_debugger > 0) {
+                            pr_color(stdout, FCOLOUR_YELLOW, "-DEBUGGER\n");
+                            printf("[COMPILER]:\n\t%s\n", _compiler_input_);
+                        }
                         if (ret_command > 0 && ret_command < (int)sizeof(_compiler_input_)) {
                             BOOL win32_process_succes;
                             clock_gettime(CLOCK_MONOTONIC, &start);
@@ -918,7 +1033,7 @@ compiler_done:
 #else
                         /* POSIX-specific compilation execution */
                         int ret_command = 0;
-                        ret_command = wg_snprintf(_compiler_input_, sizeof(_compiler_input_),
+                        ret_command = snprintf(_compiler_input_, sizeof(_compiler_input_),
                             "%s %s %s%s %s%s %s%s",
                             wg_compiler_input_pawncc_path,
                             wg_compiler_input_gamemode_path,
@@ -932,10 +1047,10 @@ compiler_done:
                             pr_error(stdout, "ret_compiler too long! %s (L: %d)", __func__, __LINE__);
                             goto compiler_end;
                         }
-#if defined(_DBG_PRINT)
-                        pr_color(stdout, FCOLOUR_YELLOW, "-DEBUGGING\n");
-                        printf("[COMPILER]:\n\t%s\n", _compiler_input_);
-#endif
+                        if (rate_debugger > 0) {
+                            pr_color(stdout, FCOLOUR_YELLOW, "-DEBUGGER\n");
+                            printf("[COMPILER]:\n\t%s\n", _compiler_input_);
+                        }
                         int i = 0;
                         char *wg_compiler_unix_args[WG_MAX_PATH + 256];
                         char *compiler_unix_token = strtok(_compiler_input_, " ");
@@ -1122,9 +1237,9 @@ compiler_done2:
             }
         } else {
             /* Compiler not found - offer installation */
-            pr_crit(stdout,
+            pr_error(stdout,
                 "\033[1;31merror:\033[0m pawncc (our compiler) not found\n"
-                "  \033[2mhelp:\033[0m install it before continuing\n");
+                "  \033[2mhelp:\033[0m install it before continuing");
             printf("\n  \033[1mInstall now?\033[0m  [\033[32mY\033[0m/\033[31mn\033[0m]: ");
             char *ptr_sigA = readline("");
 
@@ -1148,38 +1263,32 @@ ret_ptr:
                     if (strfind(platform, "L", true))
                     {
                         int ret = wg_install_pawncc("linux");
-loop_ipcc:
                         wg_free(platform);
+loop_ipcc:
                         if (ret == -1 && wgconfig.wg_sel_stat != 0)
                             goto loop_ipcc;
-                    }
-                    if (strfind(platform, "W", true))
-                    {
+                    } else if (strfind(platform, "W", true)) {
                         int ret = wg_install_pawncc("windows");
-loop_ipcc2:
                         wg_free(platform);
+loop_ipcc2:
                         if (ret == -1 && wgconfig.wg_sel_stat != 0)
                             goto loop_ipcc2;
-                    }
-                    if (strfind(platform, "T", true))
-                    {
+                    } else if (strfind(platform, "T", true)) {
                         int ret = wg_install_pawncc("termux");
-loop_ipcc3:
                         wg_free(platform);
+loop_ipcc3:
                         if (ret == -1 && wgconfig.wg_sel_stat != 0)
                             goto loop_ipcc3;
-                    }
-                    if (strfind(platform, "E", true)) {
+                    } else if (strfind(platform, "E", true)) {
                         wg_free(platform);
                         goto loop_end;
-                    }
-                    else {
+                    } else {
                         pr_error(stdout, "Invalid platform selection. Input 'E/e' to exit");
                         wg_free(platform);
                         goto ret_ptr;
                     }
 loop_end:
-                    chain_goto_main(NULL); /* Return to main menu after installation */
+                    chain_ret_main(NULL); /* Return to main menu after installation */
                 }
                 else if (strcmp(ptr_sigA, "N") == 0 || strcmp(ptr_sigA, "n") == 0)
                 {

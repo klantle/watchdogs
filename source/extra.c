@@ -20,6 +20,7 @@
 #endif
 
 #include "crypto.h"
+#include "debug.h"
 #include "extra.h"
 
 char *BG = "\x1b[48;5;235m";
@@ -36,7 +37,7 @@ void println(FILE *stream, const char *format, ...)
 {
         va_list args;  /* Variable argument list handler */
         va_start(args, format);  /* Initialize argument list */
-        vprintf(format, args);   /* Print formatted string with variable arguments */
+        vfprintf(stream, format, args);   /* Print formatted string with variable arguments */
         printf("\n");            /* Append newline character */
         va_end(args);            /* Clean up argument list */
         fflush(stream);          /* Ensure output is written immediately */
@@ -52,7 +53,7 @@ void printf_colour(FILE *stream, const char *color, const char *format, ...)
         va_list args;
         va_start(args, format);
         printf("%s", color);     /* Apply ANSI color escape sequence */
-        vprintf(format, args);   /* Print formatted content with variable arguments */
+        vfprintf(stream, format, args);   /* Print formatted content with variable arguments */
         printf("%s", FCOLOUR_DEFAULT);  /* Reset to default terminal color */
         va_end(args);
         fflush(stream);          /* Force immediate output */
@@ -66,8 +67,11 @@ void printf_info(FILE *stream, const char *format, ...)
 {
         va_list args;
         va_start(args, format);
-        printf("[INFO] ");       /* Standard informational prefix */
-        vprintf(format, args);   /* Print message content */
+        printf("%s", FCOLOUR_YELLOW);
+        printf("* [INFO]");       /* Standard informational prefix */
+        printf("%s", FCOLOUR_DEFAULT);
+        printf(": ");
+        vfprintf(stream, format, args);   /* Print message content */
         printf("\n");            /* Ensure line break */
         va_end(args);
         fflush(stream);
@@ -81,8 +85,11 @@ void printf_warning(FILE *stream, const char *format, ...)
 {
         va_list args;
         va_start(args, format);
-        printf("[WARNING] ");    /* Standard warning prefix */
-        vprintf(format, args);   /* Print warning message */
+        printf("%s", FCOLOUR_GREEN);
+        printf("* [WARNING]");       /* Standard informational prefix */
+        printf("%s", FCOLOUR_DEFAULT);
+        printf(": ");
+        vfprintf(stream, format, args);   /* Print message content */
         printf("\n");            /* Ensure line break */
         va_end(args);
         fflush(stream);
@@ -96,23 +103,11 @@ void printf_error(FILE *stream, const char *format, ...)
 {
         va_list args;
         va_start(args, format);
-        printf("[ERROR] ");      /* Standard error prefix */
-        vprintf(format, args);   /* Print error message */
-        printf("\n");            /* Ensure line break */
-        va_end(args);
-        fflush(stream);
-}
-
-/*
- * Prints critical error message with "[CRIT]" prefix and newline.
- * Standardized format for critical error messages with automatic newline.
- */
-void printf_crit(FILE *stream, const char *format, ...)
-{
-        va_list args;
-        va_start(args, format);
-        printf("[CRIT] ");       /* Standard critical error prefix */
-        vprintf(format, args);   /* Print critical message */
+        printf("%s", FCOLOUR_RED);
+        printf("* [ERROR]");       /* Standard informational prefix */
+        printf("%s", FCOLOUR_DEFAULT);
+        printf(": ");
+        vfprintf(stream, format, args);   /* Print message content */
         printf("\n");            /* Ensure line break */
         va_end(args);
         fflush(stream);
@@ -183,10 +178,10 @@ int portable_stat(const char *path, portable_stat_t *out) {
         }
 
         /* Set execute permission for known executable file extensions */
-        const char *ext = strrchr(path, '.');
-        if (ext && (_stricmp(ext, ".exe") == 0 ||
-                    _stricmp(ext, ".bat") == 0 ||
-                    _stricmp(ext, ".com") == 0)) {
+        const char *extension = strrchr(path, '.');
+        if (extension && (_stricmp(extension, ".exe") == 0 ||
+                    _stricmp(extension, ".bat") == 0 ||
+                    _stricmp(extension, ".com") == 0)) {
                 out->st_mode |= S_IXUSR;  /* Execute permission */
         }
 
@@ -521,9 +516,9 @@ void compiler_detailed(const char *pawn_output, int debug,
                        int header_size, int code_size, int data_size,
                        int stack_size, int total_size)
 {
-      char size_compiler[256];
+      char size_compiler[WG_PATH_MAX];
       /* Create console title string showing compilation completion status with error/warning counts */
-      wg_snprintf(size_compiler, sizeof(size_compiler),
+      snprintf(size_compiler, sizeof(size_compiler),
                   "COMPILE COMPLETE :) | WITH ~%d ERROR | ~%d WARNING",
                   ecnt, wcnt);
       wg_console_title(size_compiler);
@@ -586,39 +581,9 @@ void cause_compiler_expl(const char *log_file,
                          const char *pawn_output,
                          int debug)
 {
-/* Debug information section - only compiled when _DBG_PRINT macro is defined */
-#if defined (_DBG_PRINT)
-        pr_color(stdout, FCOLOUR_YELLOW, "-DEBUGGING ");
-        printf("[function: %s | "
-               "pretty function: %s | "
-               "line: %d | "
-               "file: %s | "
-               "date: %s | "
-               "time: %s | "
-               "timestamp: %s | "
-               "C standard: %ld | "
-               "C version: %s | "
-               "compiler version: %d | "
-               "architecture: %s]:\n",
-                __func__, __PRETTY_FUNCTION__,
-                __LINE__, __FILE__,
-                __DATE__, __TIME__,
-                __TIMESTAMP__,
-                __STDC_VERSION__,
-                __VERSION__,
-                __GNUC__,
-#ifdef __x86_64__
-                "x86_64");
-#elif defined(__i386__)
-                "i386");
-#elif defined(__arm__)
-                "ARM");
-#elif defined(__aarch64__)
-                "ARM64");
-#else
-                "Unknown");
-#endif
-#endif
+        /* Debug information section */
+        __debug_function();
+
       /* Open compiler log file for reading */
       FILE *plog = fopen(log_file, "r");
       if (!plog)

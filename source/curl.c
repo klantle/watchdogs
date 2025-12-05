@@ -9,12 +9,13 @@
 #include <curl/curl.h>
 
 #include "extra.h"
+#include "utils.h"
 #include "crypto.h"
 #include "archive.h"
-#include "depends.h"
+#include "depend.h"
 #include "compiler.h"
-#include "utils.h"
 #include "units.h"
+#include "debug.h"
 #include "curl.h"
 
 /* Array of online platform names and their URL patterns for account tracking */
@@ -59,25 +60,18 @@ static char pawncc_dir_src[WG_PATH_MAX];
  * Searches for cacert.pem in platform-specific locations
  */
 void verify_cacert_pem(CURL *curl) {
-        int is_win32 = 0;
-#ifdef WG_WINDOWS
-        is_win32 = 1;
-#endif
-
-        int is_android = 0;
+        int platform = 0;
 #ifdef WG_ANDROID
-        is_android = 2;
+        platform = 1;
+#elif defined(WG_LINUX)
+        platform = 2;
+#elif defined(WG_WINDOWS)
+        platform = 3;
 #endif
-
-        int is_linux = 0;
-#ifdef WG_LINUX
-        is_linux = 3;
-#endif
-
         static int cacert_notice = 0; /* Track if warning already shown */
 
         /* Windows-specific certificate locations */
-        if (is_win32) {
+        if (platform == 3) {
                 if (access("cacert.pem", F_OK) == 0)
                         curl_easy_setopt(curl, CURLOPT_CAINFO, "cacert.pem");
                 else if (access("C:/libwatchdogs/cacert.pem", F_OK) == 0)
@@ -85,37 +79,35 @@ void verify_cacert_pem(CURL *curl) {
                 else {
                         if (cacert_notice != 1) {
                                 cacert_notice = 1;
-                                pr_color(stdout,
-                                                 FCOLOUR_YELLOW,
-                                                 "curl: i can't found cacert.pem. SSL verification may fail.\n");
+                                pr_color(stdout, FCOLOUR_GREEN,
+                                        "cURL: can't locate cacert.pem - SSL verification may fail.\n");
                         }
                 }
         }
         /* Android-specific certificate locations */
-        else if (is_android) {
-                const char *env_home = getenv("HOME");
-                if (env_home == NULL || env_home[0] == '\0') {
-                        env_home = "/data/data/com.termux/files/home";
+        else if (platform == 1) {
+                const char *prefix = getenv("PREFIX");
+                if (!prefix || prefix[0] == '\0') {
+                        prefix = "/data/data/com.termux/files/usr";
                 }
-                char size_env_home[WG_PATH_MAX + 6];
 
-                wg_snprintf(size_env_home, sizeof(size_env_home), "%s/cacert.pem", env_home);
+                char ca1[WG_PATH_MAX];
+                char ca2[WG_PATH_MAX];
 
-                if (access("cacert.pem", F_OK) == 0)
-                        curl_easy_setopt(curl, CURLOPT_CAINFO, "cacert.pem");
-                else if (access(size_env_home, F_OK) == 0)
-                        curl_easy_setopt(curl, CURLOPT_CAINFO, size_env_home);
+                snprintf(ca1, sizeof(ca1), "%s/etc/tls/cert.pem", prefix);
+                snprintf(ca2, sizeof(ca2), "%s/etc/ssl/certs/ca-certificates.crt", prefix);
+
+                if (access(ca1, F_OK) == 0)
+                        curl_easy_setopt(curl, CURLOPT_CAINFO, ca1);
+                else if (access(ca2, F_OK) == 0)
+                        curl_easy_setopt(curl, CURLOPT_CAINFO, ca2);
                 else {
-                        if (cacert_notice != 1) {
-                                cacert_notice = 1;
-                                pr_color(stdout,
-                                                 FCOLOUR_YELLOW,
-                                                 "curl: i can't found cacert.pem. SSL verification may fail.\n");
-                        }
+                        pr_color(stdout, FCOLOUR_GREEN,
+                                "cURL: can't locate cacert.pem - SSL verification may fail.\n");
                 }
         }
         /* Linux-specific certificate locations */
-        else if (is_linux) {
+        else if (platform == 2) {
                 if (access("cacert.pem", F_OK) == 0)
                         curl_easy_setopt(curl, CURLOPT_CAINFO, "cacert.pem");
                 else if (access("/etc/ssl/certs/cacert.pem", F_OK) == 0)
@@ -123,9 +115,8 @@ void verify_cacert_pem(CURL *curl) {
                 else {
                         if (cacert_notice != 1) {
                                 cacert_notice = 1;
-                                pr_color(stdout,
-                                                 FCOLOUR_GREEN,
-                                                 "curl: i can't found cacert.pem. SSL verification may fail.\n");
+                                pr_color(stdout, FCOLOUR_GREEN,
+                                        "cURL: can't locate cacert.pem - SSL verification may fail.\n");
                         }
                 }
         }
@@ -136,12 +127,16 @@ void verify_cacert_pem(CURL *curl) {
  * Shows percentage and spinner animation during file transfer
  */
 static int progress_callback(void *ptr, curl_off_t dltotal,
-                                                         curl_off_t dlnow, curl_off_t ultotal,
-                                                         curl_off_t ulnow)
+                        curl_off_t dlnow, curl_off_t ultotal,
+                        curl_off_t ulnow)
 {
         static int last_percent = -1; /* Track last displayed percentage */
         static int dot_index = 0;         /* Index for spinner animation */
-        static const char term_spinner[] = "-\\|/"; /* Spinner characters */
+        static const char term_spinner[] = /* Spinner characters */
+                                           "-"
+                                           "\\"
+                                           "|"
+                                           "/";
 
         int percent;
 
@@ -171,9 +166,12 @@ static int progress_callback(void *ptr, curl_off_t dltotal,
  * Initialize buffer structure with default capacity
  */
 void buf_init(struct buf *b) {
-        b->data = wg_malloc(4096);
+        b->data = wg_malloc(WG_MAX_PATH);
+        if (!b->data) {
+                chain_ret_main(NULL);
+        }
         b->len = 0;
-        b->allocated = (b->data) ? 4096 : 0;
+        b->allocated = (b->data) ? WG_MAX_PATH : 0;
 }
 
 /**
@@ -238,9 +236,12 @@ size_t write_callbacks(void *ptr, size_t size, size_t nmemb, void *userdata)
  * Initialize memory structure with default allocation
  */
 void memory_struct_init(struct memory_struct *mem) {
-        mem->memory = wg_malloc(0x1000); // Initial allocation of 4KB
+        mem->memory = wg_malloc(WG_MAX_PATH);
+        if (!mem->memory) {
+                chain_ret_main(NULL);
+        }
         mem->size = 0;
-        mem->allocated = mem->memory ? 0x1000 : 0;
+        mem->allocated = mem->memory ? WG_MAX_PATH : 0;
 }
 
 /**
@@ -304,7 +305,7 @@ void account_tracker_discrepancy(const char *base,
         int dis_base_len = strlen(base);
 
         /* Add original username */
-        wg_strcpy(discrepancy[(*cnt)++], base);
+        strcpy(discrepancy[(*cnt)++], base);
 
         /* Create variations with duplicate characters (e.g., "heello" from "hello") */
         for (character_position = 0; character_position < dis_base_len; character_position++) {
@@ -312,18 +313,18 @@ void account_tracker_discrepancy(const char *base,
                 strncpy(dis_size_temp, base, character_position);
                 dis_size_temp[character_position] = base[character_position];
                 dis_size_temp[character_position+1] = base[character_position]; /* Duplicate character */
-                wg_strcpy(dis_size_temp + character_position + 2, base + character_position + 1);
-                wg_strcpy(discrepancy[(*cnt)++], dis_size_temp);
+                strcpy(dis_size_temp + character_position + 2, base + character_position + 1);
+                strcpy(discrepancy[(*cnt)++], dis_size_temp);
         }
 
         /* Add trailing character repetitions (e.g., "hello111") */
         for (character_position = 2; character_position <= 5; character_position++) {
                 char dis_size_temp[100];
-                wg_snprintf(dis_size_temp, sizeof(dis_size_temp), "%s", base);
+                snprintf(dis_size_temp, sizeof(dis_size_temp), "%s", base);
                 for (int j = 0; j < character_position; j++) {
                         dis_size_temp[strlen(dis_size_temp)] = base[dis_base_len - 1];
                 }
-                wg_strcpy(discrepancy[(*cnt)++], dis_size_temp);
+                strcpy(discrepancy[(*cnt)++], dis_size_temp);
         }
 
         /* Add common suffixes */
@@ -338,8 +339,8 @@ void account_tracker_discrepancy(const char *base,
              character_position < sizeof(suffixes) / sizeof(suffixes[0]);
              ++character_position) {
                 char dis_size_temp[100];
-                wg_snprintf(dis_size_temp, sizeof(dis_size_temp), "%s%s", base, suffixes[character_position]);
-                wg_strcpy(discrepancy[(*cnt)++], dis_size_temp);
+                snprintf(dis_size_temp, sizeof(dis_size_temp), "%s%s", base, suffixes[character_position]);
+                strcpy(discrepancy[(*cnt)++], dis_size_temp);
         }
 }
 
@@ -358,7 +359,7 @@ void account_tracking_username(CURL *curl, const char *username) {
         /* Test username against each platform in the list */
         for (int i = 0; i < MAX_NUM_SITES; i++) {
                 char url[200];
-                wg_snprintf(url, sizeof(url), __FORUM[i][1], username);
+                snprintf(url, sizeof(url), __FORUM[i][1], username);
 
                 curl_easy_setopt(curl, CURLOPT_URL, url);
                 curl_easy_setopt(curl, CURLOPT_HTTPHEADER, headers);
@@ -404,7 +405,7 @@ static void find_compiler_tools(int compiler_type,
         const char *ignore_dir = NULL;
         char size_pf[WG_PATH_MAX + 56];
 
-        wg_snprintf(size_pf, sizeof(size_pf), "%s", pawncc_dir_src);
+        snprintf(size_pf, sizeof(size_pf), "%s", pawncc_dir_src);
 
         /* Search for each compiler tool */
         *found_pawncc_exe = wg_sef_fdir(size_pf, "pawncc.exe", ignore_dir);
@@ -445,7 +446,7 @@ static void copy_compiler_tool(const char *src_path, const char *tool_name,
 {
         char dest_path[WG_PATH_MAX];
 
-        wg_snprintf(dest_path, sizeof(dest_path), "%s/%s", dest_dir, tool_name);
+        snprintf(dest_path, sizeof(dest_path), "%s/%s", dest_dir, tool_name);
         wg_sef_wmv(src_path, dest_path);
 }
 
@@ -463,7 +464,7 @@ static void update_library_environment(const char *lib_path)
         }
 
         const char *shell_rc = NULL;
-        char shell_path[256];
+        char shell_path[WG_PATH_MAX];
 
         /* Detect shell type from SHELL environment variable */
         char *shell = getenv("SHELL");
@@ -477,7 +478,7 @@ static void update_library_environment(const char *lib_path)
 
         /* Fallback to checking for existing config files */
         if (!shell_rc) {
-                wg_snprintf(shell_path, sizeof(shell_path), "%s/.zshrc", home_dir);
+                snprintf(shell_path, sizeof(shell_path), "%s/.zshrc", home_dir);
                 if (access(shell_path, F_OK) == 0) {
                         shell_rc = ".zshrc";
                 } else {
@@ -485,12 +486,12 @@ static void update_library_environment(const char *lib_path)
                 }
         }
 
-        char config_file[256];
-        wg_snprintf(config_file, sizeof(config_file), "%s/%s", home_dir, shell_rc);
+        char config_file[WG_PATH_MAX];
+        snprintf(config_file, sizeof(config_file), "%s/%s", home_dir, shell_rc);
 
         /* Check if library path already exists in config file */
         char grep_cmd[512];
-        wg_snprintf(grep_cmd, sizeof(grep_cmd),
+        snprintf(grep_cmd, sizeof(grep_cmd),
                                 "grep -q \"LD_LIBRARY_PATH.*%s\" %s", lib_path, config_file);
 
         int path_exists = wg_run_command(grep_cmd);
@@ -501,10 +502,10 @@ static void update_library_environment(const char *lib_path)
                 char backup_cmd[WG_PATH_MAX * 3];
 
                 /* Backup config file before modification */
-                wg_snprintf(backup_cmd, sizeof(backup_cmd), "cp %s %s.backup", config_file, config_file);
+                snprintf(backup_cmd, sizeof(backup_cmd), "cp %s %s.backup", config_file, config_file);
                 wg_run_command(backup_cmd);
 
-                wg_snprintf(export_cmd, sizeof(export_cmd),
+                snprintf(export_cmd, sizeof(export_cmd),
                                    "echo 'export LD_LIBRARY_PATH=%s:$LD_LIBRARY_PATH' >> %s",
                                    lib_path, config_file);
 
@@ -564,7 +565,7 @@ static int setup_linux_library(void)
 
         /* Search for library file */
         char size_pf[WG_PATH_MAX + 56];
-        wg_snprintf(size_pf, sizeof(size_pf), "%s", pawncc_dir_src);
+        snprintf(size_pf, sizeof(size_pf), "%s", pawncc_dir_src);
         found_lib = wg_sef_fdir(size_pf, "libpawnc.so", NULL);
         if (!found_lib)
                         return 0;
@@ -572,7 +573,7 @@ static int setup_linux_library(void)
         /* Find full path to library */
         for (i = 0; i < wgconfig.wg_sef_count; i++) {
                         if (strstr(wgconfig.wg_sef_found_list[i], "libpawnc.so")) {
-                                        wg_strncpy(libpawnc_src, wgconfig.wg_sef_found_list[i], sizeof(libpawnc_src));
+                                        strncpy(libpawnc_src, wgconfig.wg_sef_found_list[i], sizeof(libpawnc_src));
                                         break;
                         }
         }
@@ -591,7 +592,7 @@ static int setup_linux_library(void)
         }
 
         /* Copy library to system directory */
-        wg_snprintf(dest_path, sizeof(dest_path), "%s/libpawnc.so", selected_path);
+        snprintf(dest_path, sizeof(dest_path), "%s/libpawnc.so", selected_path);
         wg_sef_wmv(libpawnc_src, dest_path);
 
         /* Update environment variables */
@@ -644,17 +645,17 @@ void wg_apply_pawncc(void)
                                         continue;
 
                         if (strstr(item, "pawncc.exe")) {
-                                        wg_strncpy(pawncc_exe_src, item, sizeof(pawncc_exe_src));
+                                        strncpy(pawncc_exe_src, item, sizeof(pawncc_exe_src));
                         } else if (strstr(item, "pawncc") && !strstr(item, ".exe")) {
-                                        wg_strncpy(pawncc_src, item, sizeof(pawncc_src));
+                                        strncpy(pawncc_src, item, sizeof(pawncc_src));
                         } else if (strstr(item, "pawndisasm.exe")) {
-                                        wg_strncpy(pawndisasm_exe_src, item, sizeof(pawndisasm_exe_src));
+                                        strncpy(pawndisasm_exe_src, item, sizeof(pawndisasm_exe_src));
                         } else if (strstr(item, "pawndisasm") && !strstr(item, ".exe")) {
-                                        wg_strncpy(pawndisasm_src, item, sizeof(pawndisasm_src));
+                                        strncpy(pawndisasm_src, item, sizeof(pawndisasm_src));
                         } else if (strstr(item, "pawnc.dll"))  {
-                                        wg_strncpy(pawnc_dll_src, item, sizeof(pawnc_dll_src));
+                                        strncpy(pawnc_dll_src, item, sizeof(pawnc_dll_src));
                         } else if (strstr(item, "PAWNC.dll")) {
-                                        wg_strncpy(PAWNC_DLL_src, item, sizeof(PAWNC_DLL_src));
+                                        strncpy(PAWNC_DLL_src, item, sizeof(PAWNC_DLL_src));
                         }
         }
 
@@ -683,18 +684,18 @@ void wg_apply_pawncc(void)
         /* Clean up downloaded source directory */
         char rm_cmd[WG_PATH_MAX + 56];
         if (is_native_windows())
-                wg_snprintf(rm_cmd, sizeof(rm_cmd),
+                snprintf(rm_cmd, sizeof(rm_cmd),
                         "rmdir /s /q \"%s\"",
                         pawncc_dir_src);
         else
-                wg_snprintf(rm_cmd, sizeof(rm_cmd),
+                snprintf(rm_cmd, sizeof(rm_cmd),
                         "rm -rf %s",
                         pawncc_dir_src);
         wg_run_command(rm_cmd);
 
         memset(pawncc_dir_src, 0, sizeof(pawncc_dir_src));
 
-        pr_info(stdout, "Compiler installed successfully!");
+        pr_info(stdout, "Congratulations! compiler installed successfully.");
 
         /* Prompt to run compiler immediately */
         pr_color(stdout, FCOLOUR_CYAN, "Run compiler now? (y/n):");
@@ -704,18 +705,63 @@ void wg_apply_pawncc(void)
                 pr_color(stdout, FCOLOUR_CYAN, "~ input pawn files (press enter for from config toml - enter E/e to exit):");
                 char *gamemode_compile = readline(" ");
                 if (strlen(gamemode_compile) < 1) {
+                        if (path_exists(wgconfig.wg_toml_proj_input) == 0) {
+                                pr_error(stdout, "File not dound.. creating...");
+                                if (dir_exists("gamemodes") == 0)
+                                        MKDIR("gamemodes");
+                                FILE *test = fopen("gamemodes/test.pwn", "w+");
+                                if (test) {
+                                        wgconfig.wg_toml_proj_input = strdup("gamemodes/test.pwn");
+                                        fclose(test);
+                                        test = fopen("gamemodes/test.pwn", "rb+");
+                                        if (test) {
+                                                fwrite("native printf(const format[], {Float,_}:...);\n", 1,
+                                                        strlen("native printf(const format[], {Float,_}:...);") + 1, test);
+                                                fwrite("main() {\n", 1,
+                                                        strlen("main() {") + 1, test);
+                                                fwrite("\tprintf(\"Hello, World!\");\n", 1,
+                                                        strlen("\tprintf(\"Hello, World!\");\n"), test);
+                                                fwrite("}", 1, strlen("}"), test);
+
+                                                fclose(test);
+                                        }
+                                }
+                        }
                         const char *args[] = { NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL };
                         wg_run_compiler(args[0], args[1], args[2], args[3], args[4], args[5], args[6], args[7], args[8]);
                         wg_free(gamemode_compile);
                 } else {
-                        const char *args[] = { NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL };
-                        wg_run_compiler(args[0], gamemode_compile, args[2], args[3], args[4], args[5], args[6], args[7], args[8]);
+                        if (path_exists(gamemode_compile) == 0) {
+                                pr_error(stdout, "File not dound.. creating...");
+                                if (dir_exists("gamemodes") == 0)
+                                        MKDIR("gamemodes");
+                                char size_gamemode[WG_PATH_MAX];
+                                snprintf(size_gamemode, sizeof(size_gamemode), "gamemodes/%s.pwn", gamemode_compile);
+                                FILE *test = fopen(size_gamemode, "w+");
+                                if (test) {
+                                        gamemode_compile = strdup(size_gamemode);
+                                        fclose(test);
+                                        test = fopen(size_gamemode, "rb+");
+                                        if (test) {
+                                                fwrite("native printf(const format[], {Float,_}:...);\n", 1,
+                                                        strlen("native printf(const format[], {Float,_}:...);") + 1, test);
+                                                fwrite("main() {\n", 1,
+                                                        strlen("main() {") + 1, test);
+                                                fwrite("\tprintf(\"Hello, World!\");\n", 1,
+                                                        strlen("\tprintf(\"Hello, World!\");\n"), test);
+                                                fwrite("}", 1, strlen("}"), test);
+                                                
+                                                fclose(test);
+                                        }
+                                }
+                        }
+                        wg_run_compiler(gamemode_compile, gamemode_compile, NULL, NULL, NULL, NULL, NULL, NULL, NULL);
                         wg_free(gamemode_compile);
                 }
         } else { wg_free(compile_now); }
 
 apply_done:
-        chain_goto_main(NULL);
+        chain_ret_main(NULL);
 }
 
 /* 
@@ -800,39 +846,8 @@ static int debug_callback(CURL *handle, curl_infotype type,
  */
 int wg_download_file(const char *url, const char *filename)
 {
-#if defined (_DBG_PRINT)
-        /* Debug information block - prints compilation environment details */
-        pr_color(stdout, FCOLOUR_YELLOW, "-DEBUGGING ");
-        printf("[function: %s | "
-                        "pretty function: %s | "
-                        "line: %d | "
-                        "file: %s | "
-                        "date: %s | "
-                        "time: %s | "
-                        "timestamp: %s | "
-                        "C standard: %ld | "
-                        "C version: %s | "
-                        "compiler version: %d | "
-                        "architecture: %s]:\n",
-                                __func__, __PRETTY_FUNCTION__,
-                                __LINE__, __FILE__,
-                                __DATE__, __TIME__,
-                                __TIMESTAMP__,
-                                __STDC_VERSION__,
-                                __VERSION__,
-                                __GNUC__,
-#ifdef __x86_64__
-                                "x86_64");
-#elif defined(__i386__)
-                                "i386");
-#elif defined(__arm__)
-                                "ARM");
-#elif defined(__aarch64__)
-                                "ARM64");
-#else
-                                "Unknown");
-#endif
-#endif
+        /* Debug information section */
+        __debug_function();
 
         if (!url || !filename) {
                 pr_color(stdout, FCOLOUR_RED, "Error: Invalid URL or filename\n");
@@ -860,13 +875,13 @@ int wg_download_file(const char *url, const char *filename)
                 /* Add GitHub authentication header if available */
                 if (wgconfig.wg_idepends == 1) {
                         if (!wgconfig.wg_toml_github_tokens || 
-                                strstr(wgconfig.wg_toml_github_tokens, "DO_HERE") ||
+                                strfind(wgconfig.wg_toml_github_tokens, "DO_HERE", true) ||
                                 strlen(wgconfig.wg_toml_github_tokens) < 1) {
                                 pr_color(stdout, FCOLOUR_YELLOW, " ~ GitHub token not available");
                                 sleep(1);
                         } else {
                                 char auth_header[512];
-                                wg_snprintf(auth_header, sizeof(auth_header), "Authorization: token %s", 
+                                snprintf(auth_header, sizeof(auth_header), "Authorization: token %s", 
                                                 wgconfig.wg_toml_github_tokens);
                                 headers = curl_slist_append(headers, auth_header);
                                 pr_color(stdout, FCOLOUR_GREEN, " ~ Using GitHub token: %s\n",
@@ -975,20 +990,20 @@ int wg_download_file(const char *url, const char *filename)
                                                         remove_archive = 1;
                                                         char rm_cmd[WG_PATH_MAX];
                                                         if (is_native_windows())
-                                                                wg_snprintf(rm_cmd, sizeof(rm_cmd),
+                                                                snprintf(rm_cmd, sizeof(rm_cmd),
                                                                         "if exist \"%s\" (del /f /q \"%s\" 2>nul)", filename, filename);
                                                         else
-                                                                wg_snprintf(rm_cmd, sizeof(rm_cmd), "rm -f %s", filename);
+                                                                snprintf(rm_cmd, sizeof(rm_cmd), "rm -f %s", filename);
                                                         wg_run_command(rm_cmd);
                                                 }
                                                 wg_free(confirm);
                                         } else {
                                                 char rm_cmd[WG_PATH_MAX];
                                                 if (is_native_windows())
-                                                        wg_snprintf(rm_cmd, sizeof(rm_cmd),
+                                                        snprintf(rm_cmd, sizeof(rm_cmd),
                                                                 "if exist \"%s\" (del /f /q \"%s\" 2>nul)", filename, filename);
                                                 else
-                                                        wg_snprintf(rm_cmd, sizeof(rm_cmd), "rm -f %s", filename);
+                                                        snprintf(rm_cmd, sizeof(rm_cmd), "rm -f %s", filename);
                                                 wg_run_command(rm_cmd);
                                         }
                                 } else {
@@ -997,10 +1012,10 @@ int wg_download_file(const char *url, const char *filename)
                                         if (confirm && (confirm[0] == 'Y' || confirm[0] == 'y')) {
                                                 char rm_cmd[WG_PATH_MAX];
                                                 if (is_native_windows())
-                                                        wg_snprintf(rm_cmd, sizeof(rm_cmd),
+                                                        snprintf(rm_cmd, sizeof(rm_cmd),
                                                                 "if exist \"%s\" (del /f /q \"%s\" 2>nul)", filename, filename);
                                                 else
-                                                        wg_snprintf(rm_cmd, sizeof(rm_cmd), "rm -f %s", filename);
+                                                        snprintf(rm_cmd, sizeof(rm_cmd), "rm -f %s", filename);
                                                 wg_run_command(rm_cmd);
                                         }
                                         wg_free(confirm);
@@ -1009,18 +1024,18 @@ int wg_download_file(const char *url, const char *filename)
                                 /* Prompt to install compiler if this is a compiler download */
                                 if (wgconfig.wg_ipawncc && prompt_apply_pawncc()) {
                                         char size_filename[WG_PATH_MAX];
-                                        wg_snprintf(size_filename, sizeof(size_filename), "%s", filename);
+                                        snprintf(size_filename, sizeof(size_filename), "%s", filename);
 
                                         /* Remove file extension to get directory name */
-                                        char *ext = strstr(size_filename, ".tar.gz");
-                                        if (ext) {
-                                                *ext = '\0';
+                                        char *extension = strstr(size_filename, ".tar.gz");
+                                        if (extension) {
+                                                *extension = '\0';
                                         } else {
-                                                ext = strrchr(size_filename, '.');
-                                                if (ext) *ext = '\0';
+                                                extension = strrchr(size_filename, '.');
+                                                if (extension) *extension = '\0';
                                         }
                                         
-                                        wg_snprintf(pawncc_dir_src, sizeof(pawncc_dir_src), "%s", size_filename);
+                                        snprintf(pawncc_dir_src, sizeof(pawncc_dir_src), "%s", size_filename);
                                         wg_apply_pawncc();
                                 }
 
@@ -1040,9 +1055,8 @@ int wg_download_file(const char *url, const char *filename)
         }
 
         /* Final failure message after all retries */
-        pr_color(stdout,
-                        FCOLOUR_RED, " Failed to download %s. after retrying: %d\n",
-                        filename, retry_count);
+        pr_color(stdout, FCOLOUR_RED, " Failed to download %s. after retrying: %d\n",
+                filename, retry_count);
 
         return 1;
 }

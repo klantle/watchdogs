@@ -2,6 +2,6 @@
 #define WATCHDOGS
 
 extern const char*watchdogs_release;
-void chain_goto_main(void *prefilled_command);
+void chain_ret_main(void *prefilled_command);
 
 #endif

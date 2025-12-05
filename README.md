@@ -1,4 +1,4 @@
-# Watchdogs
+<h1 style="text-align:center;">Watchdogs</h1>
 
 ## Page
 
@@ -9,7 +9,7 @@
    - [Linux](#linux-bash)
    - [Termux](#termux)
    - [MSYS2](#msys2)
-   - [Windows Native](#Native)
+   - [GitHub Codespaces](#codespaces)
 4. [Configuration](#configuration)
 6. [Usage Guide](#usage-guide)
 6. [Compiler Reference](#compiler-reference)
@@ -33,6 +33,12 @@
 - [x] [GitHub Actions](https://github.com/features/actions)
 - [x] [GitHub Codespaces](https://github.com/features/codespaces)
 
+## Repository
+
+- [x] Upstream: [GitLab.com](https://gitlab.com/mywatchdogs/watchdogs)
+- [x] Mirror 1: [GitHub.com](https://github.com/klantle/watchdogs)
+- [x] Mirror 2: [Codeberg.org](https://codeberg.org/voidarch/watchdogs)
+
 ## Quick Installation
 
 ### One-Line Installation (Linux/Debian)
@@ -49,6 +55,167 @@ apt update && apt install make git -y && git clone https://gitlab.com/mywatchdog
 sudo apt update && apt install make git -y && git clone https://gitlab.com/mywatchdogs/watchdogs watch && cd watch && make init && mv watchdogs .. && cd .. && ./watchdogs
 ```
 
+## Known Makefile fatal Issue
+```bash
+# ==> Detecting environment...
+# Detected Docker environment
+# Detected Linux
+# Reading package lists... Done
+# E: Could not open lock file /var/lib/apt/lists/lock - open (13: Permission denied)
+# E: Unable to lock directory /var/lib/apt/lists/
+make: *** [Makefile:67: init] Error 100
+#                        ^ [point]   ^ [point]
+# Fix: run it with elevated privileges.
+# Use:
+sudo make init
+# or:
+sudo make
+```
+
+# Known Windows MSYS (GDB Build) Issue
+> Issue (1) - module issue
+```yaml
+For help, type "help".
+Type "apropos word" to search for commands related to "word"...
+Python Exception <class 'ModuleNotFoundError'>: No module named 'libstdcxx'
+/etc/gdbinit:6: Error in sourced command file:
+Error occurred in Python: No module named 'libstdcxx'
+Reading symbols from ./watchdogs.debug.win...
+```
+- Fix with
+```bash
+if [ -f "/etc/gdbinit" ]; then \
+  sed -i '/libstdcxx/d' /etc/gdbinit; \
+fi; \
+echo "set auto-load safe-path /" > ~/.gdbinit;
+```
+> Issue (2) - stuck issue
+```yaml
+-DEBUGGER [function: __debug_main_chain | pretty function: __debug_main_chain | line: 88 | file: source/units.c | date: Dec  4 2025 | time: 12:52:28 | timestamp: Thu Dec  4 12:44:22 2025 | C standard: 202311 | C version: 15.2.0 | compiler version: 15 | architecture: x86_64 | os_type: fdfc4c8d (CRC32) | pointer_samp: samp-server.exe | pointer_openmp: (null) | f_samp: fdfc4c8d (CRC32) | f_openmp: 2bcd6830 (CRC32) | toml gamemode input: gamemodes/bare.pwn | toml gamemode output: gamemodes/bare.amx | toml binary: samp-server.exe | toml configs: server.cfg | toml logs: server_log.txt | toml github tokens: DO_HERE | toml chatbot: gemini | toml ai models: gemini-2.5-pro | toml ai key: API_KEY
+STDC: 1
+STDC_HOSTED: 1
+BYTE_ORDER: Little Endian
+SIZE_OF_PTR: 8 bytes
+SIZE_OF_INT: 4 bytes
+SIZE_OF_LONG: 4 bytes
+GNUC: 15.2.0
+OS: SSE: Supported
+[watchdogs] $ help
+whoami
+        exit
+[Thread 6388.0x1c8c exited with code 0]
+[Thread 6388.0x1e84 exited with code 0]
+[Thread 6388.0x206c exited with code 0]
+```
+- Fix with
+```bash
+pacman -S winpty &&
+winpty gdb ./watchdogs.debug.win
+```
+
+## Known Android/Termux fatal Issue
+```bash
+## Issue 1: Termux Storage Setup on Android 11+
+# Error observed:
+# /data/data/com.termux/files/usr/bin/termux-setup-storage: line 29: 
+# 27032 Aborted am broadcast --user 0 --es com.termux.app.reload_style storage -a com.termux.app.reload_style com.termux > /dev/null
+# Cause: Android 11+ enforces scoped storage; some broadcasts fail in Termux.
+# Fix:
+pkg install termux-am
+# Optional: Update Termux manually via GitHub release APK if Play Store/F-Droid version is outdated
+# Universal APK:
+# https://github.com/termux/termux-app/releases/download/v0.118.3/termux-app_v0.118.3+github-debug_universal.apk
+# ARM64:
+# https://github.com/termux/termux-app/releases/download/v0.118.3/termux-app_v0.118.3+github-debug_arm64-v8a.apk
+# ARMv7:
+# https://github.com/termux/termux-app/releases/download/v0.118.3/termux-app_v0.118.3+github-debug_armeabi-v7a.apk
+# x86:
+# https://github.com/termux/termux-app/releases/download/v0.118.3/termux-app_v0.118.3+github-debug_x86.apk
+# x86_64:
+# https://github.com/termux/termux-app/releases/download/v0.118.3/termux-app_v0.118.3+github-debug_x86_64.apk
+# Note: If you see "there is a problem parsing the package", try using a different APK release matching your device architecture.
+
+## Issue 2: Partial package download / missing files
+# Example:
+# Could not open file /data/data/com.termux/cache/apt/archives/partial/*.deb - open (2: No such file or directory)
+# Cause: Corrupt or incomplete package cache
+# Fix:
+apt clean && apt update
+# Explanation:
+# - 'apt clean' removes cached packages, including partial downloads.
+# - 'apt update' refreshes repository metadata for fresh downloads.
+
+## Issue 3: Clearsigned file invalid / NOSPLIT error
+# Example:
+# E: Failed to fetch https://deb.kcubeterm.me/termux-main/dists/stable/InRelease  
+# Clearsigned file isn't valid, got 'NOSPLIT'
+# Cause: Repository metadata corrupted or network requires authentication
+# Fix:
+termux-change-repo
+# - Select a different mirror for main repo and x11-repo if available
+# - Run 'apt update' after switching
+# To enable X11 repo:
+pkg install x11-repo
+# Note: If installation still fails, consider using the latest Termux release from GitHub.
+
+## =========================================================
+## Additional Fix: "There is a problem parsing the package" still occurs
+## =========================================================
+# Possible causes:
+# 1. Android blocks the installer (security policy)
+# 2. OEM ROM enforces extra signature verification
+# 3. Android 12/13/14 blocks APK installation from certain sources
+# 4. Package monitor or custom ROM restrictions (e.g., MIUI, Vivo, Oppo, Samsung Knox)
+#
+# Optional bypass solutions using elevated privileges or installer tools:
+
+## Option A: Shizuku
+# - Allows certain apps to bypass package installer restrictions without root
+# Usage:
+# 1. Install Shizuku from Play Store
+# 2. Enable Wireless Debugging and start Shizuku
+# 3. Use a compatible installer app (Installer++, Shizuku Enhanced Installer)
+# 4. Try installing Termux APK again
+
+## Option B: Magisk (Root)
+# - Full root removes installer restrictions
+# - Install APK using adb or package manager:
+# adb install termux-app_v0.118.3+github-debug_arm64-v8a.apk
+# pm install -r termux.apk (on rooted device)
+
+## Option C: KingoRoot or KingRoot (One-click root)
+# - Useful for older devices without Magisk
+# - Once rooted, use a root-enabled installer:
+#   - SAI (Split APKs Installer)
+#   - Lucky Patcher Installer Mode
+# Can bypass parsing errors
+
+## Option D: Alternative installer apps
+# - Some installers bypass OEM package verification:
+#   - SAI (Split APKs Installer)
+#   - APKMirror Installer
+#   - APKPure Installer
+#   - MT Manager (Root mode)
+# Install Termux APK using one of these tools
+
+## Option E: GitHub Codespaces (Alternative Environment)
+# - If Termux installation continues to fail, you can use GitHub Codespaces in Android browser
+# - Steps:
+#   1. Go to https://github.com/features/codespaces
+#   2. Open a repository you want to work with
+#   3. Click "Code" > "Codespaces" > "Create Codespaces on main/dev"
+#   4. Choose main/dev branch and open in Browser mode
+# - This allows a lightweight Linux-like environment without installing Termux
+# - Simple usage: you can run shell, git, and code directly in the browser
+
+## Notes:
+# - Parsing errors can occur even with the correct APK if Android OEM modifies PackageParser
+# - Shizuku or root (Magisk/KingoRoot/KingRoot) may be required on restricted ROMs
+# - Always verify APK integrity via SHA256 from GitHub releases
+# - If issues persist, use a different release matching your device ABI
+# - GitHub Codespaces is a reliable fallback when local Termux installation fails
+```
+
 ## Platform-Specific Installation
 
 ### Docker
@@ -58,6 +225,11 @@ sudo apt update && apt install make git -y && git clone https://gitlab.com/mywat
 - User added to docker group
 
 #### Setup Commands
+```bash
+# Downloading - apt (example)
+sudo apt install docker.io
+```
+
 ```bash
 # Add user to docker group (Linux)
 sudo usermod -aG docker $USER
@@ -72,6 +244,15 @@ sudo systemctl start docker
 ```bash
 docker run -it ubuntu
 ```
+### Saving image
+```bash
+# Specific session name
+docker run -it --name session_name ubuntu
+# Example
+docker run -it --name my_ubuntu ubuntu
+# And you can running again
+docker start my_ubuntu
+```
 
 #### Common Docker Commands
 ```bash
@@ -81,6 +262,26 @@ docker exec -it <container-name> /bin/bash # Enter running container
 docker stop <container-name>               # Stop the container
 docker rm -f <container-name>              # Remove the container
 ```
+
+### Codespaces
+
+> GitHub Codespaces/Codespaces Setup.
+
+1. Click the "**<> Code**" button.
+2. Select "**Codespaces**".
+3. Choose "**Create codespace on main/dev**" to create a new Codespace on the *main/dev* branch.
+4. Once the Codespace opens in the VSCode interface:
+   - Click the **three-line menu** (≡) in the top-left corner.
+   - Select **Terminal**.
+   - Click **New Terminal**.
+   - In the terminal, you can drag & paste:
+     ```bash
+     sudo apt update && sudo apt upgrade &&
+     sudo apt install make &&
+     sudo make && make linux &&
+     chmod +x watchdogs &&
+     ./watchdogs
+     ```
 
 ### Linux
 
@@ -217,57 +418,6 @@ mv -f watchdogs.win .. && cd .. && \
 ./watchdogs.win
 ```
 
-### Native
-
-#### Installation Steps
-
-> needed [msys2](https://www.msys2.org/) for compile.
-
-```bash
-# 1. Sync package database
-pacman -Sy
-
-# 2. Install required packages
-pacman -S make git
-
-# 3. Clone repository
-git clone https://gitlab.com/mywatchdogs/watchdogs watch
-
-# 4. Navigate to directory
-cd watch
-
-# 5. Installing Library & Build from source
-make init && make windows
-
-# 6. Installing .dll library - under 20/MB
-bash -c 'if [ -d "watch" ]; then rm -rf "watch"; fi; git clone https://github.com/klantle/libwatchdogs watch; cd watch; if [ -d "/c/libwatchdogs" ]; then rm -rf "/c/libwatchdogs"; fi; mv -f libwatchdogs /c/; mv -f run-native.bat ..; cd ..; rm -rf watch'
-
-# 7. You can run '.bat' (out of msys2, where .bat & watchdogs.win)
-~
-```
-
-### Windows native with Git Bash only
-> Download Git first in https://git-scm.com/install/windows
-> Run Git Bash
-
-> cd to your_project directory
-```bash
-cd /c/users/desktop_name/downloads/your_project
-```
-> Download stable binary
-```bash
-curl -L -o watchdogs.win "https://gitlab.com/-/project/75403219/uploads/10f59e7fa47e9e031d1c381950139d9a/watchdogs.win"
-```
-> Debug Mode
-```bash
-curl -L -o watchdogs.debug.win "https://gitlab.com/-/project/75403219/uploads/7bea33350f481aba3a1c637ad2b61da0/watchdogs.debug.win"
-```
-> Install library - under 20/MB.
-```bash
-bash -c 'if [ -d "watch" ]; then rm -rf "watch"; fi; git clone https://github.com/klantle/libwatchdogs watch; cd watch; if [ -d "/c/libwatchdogs" ]; then rm -rf "/c/libwatchdogs"; fi; mv -f libwatchdogs /c/; mv -f run-native.bat ..; cd ..; rm -rf watch'
-```
-> **Exit from Git Bash and run '.bat' in your_project on Windows File Explorer - Git Bash supported run it!.**
-
 ## Configuration
 
 ### watchdogs.toml Structure
@@ -292,6 +442,7 @@ logs = "server_log.txt"
 # api keys/tokens
 # https://aistudio.google.com/api-keys
 # https://console.groq.com/keys
+# [Optional]
 keys = "API_KEY"
 
 # chatbot - "gemini" "groq"
@@ -304,6 +455,7 @@ models = "gemini-2.5-pro"
 
 # discord webhooks - optional
 # https://support.discord.com/hc/en-us/articles/228383668-Intro-to-Webhooks
+# [Optional]
 webhooks = "DO_HERE"
 
 [compiler]
@@ -334,11 +486,13 @@ output = "gamemodes/bare.amx"
 # Personal access tokens (classic) - https://github.com/settings/tokens
 # Access tokens to create installation dependencies,
 # to can download files from private GitHub repositories without making them public.
+# [Optional]
 github_tokens = "DO_HERE"
+
 # Dependency repositories (max 101)
 aio_repo = [
-    "Y-Less/sscanf:latest",
-    "samp-incognito/samp-streamer-plugin:latest"
+    "Y-Less/sscanf?newer",
+    "samp-incognito/samp-streamer-plugin?newer"
 ]
 ```
 
@@ -359,6 +513,8 @@ Usage: help | help [<command>]
 ./watchdogs help compile
 ./watchdogs compile main.pwn
 ```
+
+> If you are using Watchdogs, and Watchdogs restricts terminal access like it did in your daily workflow before using Watchdogs, you don’t need to use that as a reason to avoid Watchdogs. Watchdogs automatically falls back to the system shell for commands that are not directly registered within the Watchdogs system. This means that if, for example, you run a command like `clear` or `rm` also `mv` and `cp` with arguments (options like flags in the executed command), it will still run in the terminal even within a Watchdogs instance.
 
 ### Downloading Our Links
 
@@ -456,6 +612,8 @@ compiles
 
 ### Dependency Management
 
+> Based on GitHub.
+
 * **Algorithm**
 ```
 --------------------     --------------------------
@@ -486,22 +644,32 @@ For plugin files located in the root directory of the dependency archive (for bo
 <br><br>
 The handling of YSI includes differs due to their structure containing multiple nested folders of include files. In this case, the entire folder containing these includes is moved directly to the target path (e.g., `pawno/include` or `qawno/include`), streamlining the process.
 <br>
+> Please be aware that Watchdogs are used to check whether the user is running a specific SA-MP/Open.MP from their respective ecosystem folders, and pawno/qawno is one of them. We hope you stay aligned on this, and do not rename the pawno/qawno folder to keep the Watchdogs detection system stable. However, if you do rename the pawno/qawno folder to something else, you may need to modify the Watchdogs source accordingly.
 
-![img](https://raw.githubusercontent.com/klantle/watchdogs/refs/heads/dev/__DEPS.png)
+![img](https://raw.githubusercontent.com/klantle/watchdogs/refs/heads/dev/images/REPLICATE.png)
 
 **Install dependencies from `watchdogs.toml`:**
 ```yaml
-install .
+replicate .
 ```
 
 **Install specific repository:**
 ```yaml
-install repo/user
+replicate repo/user
 ```
 
 **Install specific version (tags):**
 ```yaml
-install repo/user:v1.1
+replicate repo/user?v1.1
+```
+- Auto-latest
+```yaml
+replicate repo/user?newer
+```
+
+**Install specific branch:**
+```yaml
+replicate repo/user --branch master
 ```
 
 ### Make Commands Reference
@@ -561,36 +729,8 @@ warning: 660    ../sysdeps/x86_64/multiarch/memmove-vec-unaligned-erms.S: No suc
 #8  0x0000555555564883 in dep_http_get_content ()
 #9  0x00005555555677bb in wg_install_depends ()
 #10 0x0000555555561061 in __command__ ()
-#11 0x000055555556177c in chain_goto_main ()
+#11 0x000055555556177c in chain_ret_main ()
 #12 0x000055555555b67d in main ()
-(gdb) bt full
-#0  __memcpy_avx_unaligned_erms () at ../sysdeps/x86_64/multiarch/memmove-vec-unaligned-erms.S:660
-No locals.
-#1  0x000055555555c53c in write_callbacks ()
-No symbol table info available.
-#2  0x00007ffff7f5741c in ?? () from /lib/x86_64-linux-gnu/libcurl.so.4
-No symbol table info available.
-#3  0x00007ffff7f557f8 in ?? () from /lib/x86_64-linux-gnu/libcurl.so.4
-No symbol table info available.
-#4  0x00007ffff7f6c4b5 in ?? () from /lib/x86_64-linux-gnu/libcurl.so.4
-No symbol table info available.
-#5  0x00007ffff7f50fb3 in ?? () from /lib/x86_64-linux-gnu/libcurl.so.4
-No symbol table info available.
-#6  0x00007ffff7f540e5 in curl_multi_perform () from /lib/x86_64-linux-gnu/libcurl.so.4
-No symbol table info available.
-#7  0x00007ffff7f243ab in curl_easy_perform () from /lib/x86_64-linux-gnu/libcurl.so.4
-No symbol table info available.
-#8  0x0000555555564883 in dep_http_get_content ()
-No symbol table info available.
-#9  0x00005555555677bb in wg_install_depends ()
-No symbol table info available.
-#10 0x0000555555561061 in __command__ ()
-No symbol table info available.
---Type <RET> for more, q to quit, c to continue without paging--exit
-#11 0x000055555556177c in chain_goto_main ()
-No symbol table info available.
-#12 0x000055555555b67d in main ()
-No symbol table info available.
 ```
 - with debug build
 ```js
@@ -607,12 +747,12 @@ warning: 660    ../sysdeps/x86_64/multiarch/memmove-vec-unaligned-erms.S: No suc
 #6  0x00007ffff7f540e5 in curl_multi_perform () from /lib/x86_64-linux-gnu/libcurl.so.4
 #7  0x00007ffff7f243ab in curl_easy_perform () from /lib/x86_64-linux-gnu/libcurl.so.4
 #8  0x00005555555698dd in dep_http_get_content (url=0x7fffffff5d00 "https://api.github.com/repos/Y-Less/sscanf/releases/latest", github_token=0x5555556cbf40 "DO_HERE", out_html=0x7fffffff5ce0)
-    at source/depends.c:176
-#9  0x000055555556ac71 in dep_gh_latest_tag (user=0x7fffffff6230 "Y-Less", repo=0x7fffffff62b0 "sscanf", out_tag=0x7fffffff5fe0 "", deps_put_size=128) at source/depends.c:535
-#10 0x000055555556af65 in dep_handle_repo (dep_repo_info=0x7fffffff61d0, deps_put_url=0x7fffffff66e0 "\001", deps_put_size=1024) at source/depends.c:588
-#11 0x000055555556e317 in wg_install_depends (depends_string=0x5555557135f0 "Y-Less/sscanf:latest samp-incognito/samp-streamer-plugin:latest") at source/depends.c:1627
+    at source/depend.c:176
+#9  0x000055555556ac71 in dep_gh_latest_tag (user=0x7fffffff6230 "Y-Less", repo=0x7fffffff62b0 "sscanf", out_tag=0x7fffffff5fe0 "", deps_put_size=128) at source/depend.c:535
+#10 0x000055555556af65 in dep_handle_repo (dep_repo_info=0x7fffffff61d0, deps_put_url=0x7fffffff66e0 "\001", deps_put_size=1024) at source/depend.c:588
+#11 0x000055555556e317 in wg_install_depends (depends_string=0x5555557135f0 "Y-Less/sscanf?newer samp-incognito/samp-streamer-plugin?newer") at source/depend.c:1627
 #12 0x00005555555611d3 in __command__ (chain_pre_command=0x0) at source/units.c:517
-#13 0x0000555555564c64 in chain_goto_main (chain_pre_command=0x0) at source/units.c:1602
+#13 0x0000555555564c64 in chain_ret_main (chain_pre_command=0x0) at source/units.c:1602
 #14 0x0000555555564f67 in main (argc=1, argv=0x7fffffffcf48) at source/units.c:1666
 ```
 

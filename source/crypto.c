@@ -73,7 +73,7 @@ static const uint32_t k[64] = {
 };
 
 /* Lookup table for CRC-32 computation - precomputed polynomial values */
-static uint32_t crc32_table[256];
+static uint32_t crc32_table[WG_PATH_MAX];
 
 /* Initialize CRC-32 lookup table using polynomial 0xEDB88320 */
 void crypto_crc32_init_table() {

@@ -15,6 +15,7 @@
 #include "archive.h"
 #include "curl.h"
 #include "lowlevel.h"
+#include "debug.h"
 #include "package.h"
 
 /*
@@ -29,10 +30,10 @@ static int pawncc_handle_termux_installation(void)
 			 url[WG_PATH_MAX * 3], filename[128]; /* Download URL and local filename buffers */
 		
 		/* Available Pawn compiler versions for Termux from mxp96 repository */
-		const char *pkg_termux_versions[] = { "3.10.11", "3.10.10" };
-		size_t size_pkg_termux_versions = sizeof(pkg_termux_versions);
-		size_t size_pkg_termux_versions_zero = sizeof(pkg_termux_versions[0]);
-		size_t version_count = size_pkg_termux_versions / size_pkg_termux_versions_zero; /* Calculate number of versions */
+		const char *package_termux_versions[] = { "3.10.11", "3.10.10" };
+		size_t size_package_termux_versions = sizeof(package_termux_versions);
+		size_t size_package_termux_versions_zero = sizeof(package_termux_versions[0]);
+		size_t version_count = size_package_termux_versions / size_package_termux_versions_zero; /* Calculate number of versions */
 
 		/* Verify we're actually in Termux environment before proceeding */
 		if (!is_termux_env())
@@ -49,7 +50,7 @@ ret_pawncc:
 			printf("-> [%c/%c] PawnCC %s (mxp96)\n", /* Show both uppercase and lowercase options */
 				(int)('A' + i), /* Uppercase option letter */
 				(int)('a' + i), /* Lowercase option letter */
-				pkg_termux_versions[i]); /* Version number */
+				package_termux_versions[i]); /* Version number */
 		}
 
 		/* Get user input for version selection */
@@ -72,7 +73,7 @@ ret_pawncc:
 				'a' + (int)version_count - 1); /* Last valid lowercase letter */
 			wg_free(__version__); /* Free invalid input */
 			goto ret_pawncc; /* Jump back to selection prompt */
-	    	}
+		}
 		wg_free(__version__); /* Free valid input after processing */
 
 		/* Architecture detection for Termux */
@@ -86,11 +87,11 @@ ret_pawncc:
 
 		/* Map common ARM architecture names to Termux-specific identifiers */
 		if (strcmp(uname_data.machine, "aarch64") == 0) {
-			wg_strncpy(architecture, "arm64", sizeof(architecture)); /* 64-bit ARM */
+			strncpy(architecture, "arm64", sizeof(architecture)); /* 64-bit ARM */
 			goto done; /* Skip manual architecture selection */
 		} else if (strcmp(uname_data.machine, "armv7l") == 0 ||
 			   strcmp(uname_data.machine, "armv8l") == 0) {
-			wg_strncpy(architecture, "arm32", sizeof(architecture)); /* 32-bit ARM */
+			strncpy(architecture, "arm32", sizeof(architecture)); /* 32-bit ARM */
 			goto done; /* Skip manual architecture selection */
 		}
 
@@ -109,11 +110,9 @@ back:
 		/* Process architecture selection with case-insensitive string matching */
 		if (strfind(selection, "A", true)) /* Check for 'A' or 'a' */
 		{
-			wg_strncpy(architecture, "arm32", sizeof(architecture));
-			wg_free(selection);
+			strncpy(architecture, "arm32", sizeof(architecture));
 		} else if (strfind(selection, "B", true)) { /* Check for 'B' or 'b' */
-			wg_strncpy(architecture, "arm64", sizeof(architecture));
-			wg_free(selection);
+			strncpy(architecture, "arm64", sizeof(architecture));
 		} else {
 			/* Invalid architecture selection */
 			wg_free(selection);
@@ -127,7 +126,7 @@ back:
 /* Label for constructing download URL after selections are made */
 done:
 		/* Construct GitHub release download URL for Termux Pawn compiler */
-		wg_snprintf(url, sizeof(url),
+		snprintf(url, sizeof(url),
 			 "https://github.com/"
 			 "mxp96/" /* Repository owner */
 			 "compiler/" /* Repository name */
@@ -135,13 +134,13 @@ done:
 			 "download/"
 			 "%s/" /* Version tag (e.g., 3.10.11) */
 			 "pawnc-%s-%s.zip", /* Filename pattern: pawnc-version-architecture.zip */
-			 pkg_termux_versions[version_index], /* Selected version */
-			 pkg_termux_versions[version_index], /* Version in filename */
+			 package_termux_versions[version_index], /* Selected version */
+			 package_termux_versions[version_index], /* Version in filename */
 			 architecture); /* Selected architecture (arm32/arm64) */
 
 		/* Construct local filename for downloaded archive */
-		wg_snprintf(filename, sizeof(filename), "pawncc-%s-%s.zip",
-				    pkg_termux_versions[version_index], architecture);
+		snprintf(filename, sizeof(filename), "pawncc-%s-%s.zip",
+				    package_termux_versions[version_index], architecture);
 
 		wgconfig.wg_ipawncc = 1; /* Set flag indicating PawnCC installation is in progress */
 		wg_download_file(url, filename); /* Initiate the download process */
@@ -165,7 +164,7 @@ static int pawncc_handle_standard_installation(const char *platform)
 		char version_selection; /* User's version choice character */
 		char url[526]; /* Buffer for constructed download URL */
 		char filename[128]; /* Buffer for local filename */
-		const char *pkg_repo_base; /* Base GitHub repository URL */
+		const char *package_repo_base; /* Base GitHub repository URL */
 		const char *archive_ext; /* File extension based on platform */
 		int version_index; /* Index of selected version in array */
 
@@ -212,12 +211,12 @@ get_back:
 		/* Determine which GitHub repository to use based on version */
 		if (strcmp(versions[version_index], "3.10.11") == 0)
 				/* Version 3.10.11 is hosted in openmultiplayer repository */
-				pkg_repo_base = "https://github.com/"
+				package_repo_base = "https://github.com/"
 								"openmultiplayer/"
 								"compiler";
 		else
 				/* Older versions are hosted in pawn-lang repository */
-				pkg_repo_base = "https://github.com/"
+				package_repo_base = "https://github.com/"
 								"pawn-lang/"
 								"compiler";
 
@@ -225,16 +224,16 @@ get_back:
 		archive_ext = (strcmp(platform, "linux") == 0) ? "tar.gz" : "zip";
 
 		/* Construct GitHub release download URL */
-		wg_snprintf(url, sizeof(url),
+		snprintf(url, sizeof(url),
 			 "%s/releases/download/v%s/pawnc-%s-%s.%s",
-			 pkg_repo_base, /* Base repository URL */
+			 package_repo_base, /* Base repository URL */
 			 versions[version_index], /* Version tag (v3.10.11, etc.) */
 			 versions[version_index], /* Version in filename */
 			 platform, /* Target platform (linux/windows) */
 			 archive_ext); /* Archive extension (tar.gz/zip) */
 
 		/* Construct local filename for downloaded archive */
-		wg_snprintf(filename, sizeof(filename), "pawnc-%s-%s.%s",
+		snprintf(filename, sizeof(filename), "pawnc-%s-%s.%s",
 				    versions[version_index], platform, archive_ext);
 
 		wgconfig.wg_ipawncc = 1; /* Set PawnCC installation flag */
@@ -250,39 +249,9 @@ get_back:
  */
 int wg_install_pawncc(const char *platform)
 {
-/* Debug information section - only compiled when _DBG_PRINT is defined */
-#if defined (_DBG_PRINT)
-		pr_color(stdout, FCOLOUR_YELLOW, "-DEBUGGING ");
-	    printf("[function: %s | "
-               "pretty function: %s | "
-               "line: %d | "
-               "file: %s | "
-               "date: %s | "
-               "time: %s | "
-               "timestamp: %s | "
-               "C standard: %ld | "
-               "C version: %s | "
-               "compiler version: %d | "
-               "architecture: %s]:\n",
-                __func__, __PRETTY_FUNCTION__, /* Function name and decorated name */
-                __LINE__, __FILE__, /* Current line and file */
-                __DATE__, __TIME__, /* Compilation date and time */
-                __TIMESTAMP__, /* Full timestamp */
-                __STDC_VERSION__, /* C standard version */
-                __VERSION__, /* Compiler version string */
-                __GNUC__, /* GCC major version */
-#ifdef __x86_64__
-                "x86_64"); /* 64-bit x86 */
-#elif defined(__i386__)
-                "i386"); /* 32-bit x86 */
-#elif defined(__arm__)
-                "ARM"); /* 32-bit ARM */
-#elif defined(__aarch64__)
-                "ARM64"); /* 64-bit ARM */
-#else
-                "Unknown"); /* Unknown architecture */
-#endif
-#endif
+		/* Debug information section */
+        __debug_function();
+		
 		/* Validate platform parameter is not NULL */
 		if (!platform) {
 				pr_error(stdout, "Platform parameter is NULL");
@@ -324,41 +293,11 @@ loop_ipcc2:
  */
 int wg_install_server(const char *platform)
 {
-/* Debug information section */
-#if defined (_DBG_PRINT)
-		pr_color(stdout, FCOLOUR_YELLOW, "-DEBUGGING ");
-	    printf("[function: %s | "
-               "pretty function: %s | "
-               "line: %d | "
-               "file: %s | "
-               "date: %s | "
-               "time: %s | "
-               "timestamp: %s | "
-               "C standard: %ld | "
-               "C version: %s | "
-               "compiler version: %d | "
-               "architecture: %s]:\n",
-                __func__, __PRETTY_FUNCTION__,
-                __LINE__, __FILE__,
-                __DATE__, __TIME__,
-                __TIMESTAMP__,
-                __STDC_VERSION__,
-                __VERSION__,
-                __GNUC__,
-#ifdef __x86_64__
-                "x86_64");
-#elif defined(__i386__)
-                "i386");
-#elif defined(__arm__)
-                "ARM");
-#elif defined(__aarch64__)
-                "ARM64");
-#else
-                "Unknown");
-#endif
-#endif
+		/* Debug information section */
+        __debug_function();
+
 		/* Structure to hold version information and download URLs */
-		struct pkg_version_info {
+		struct package_version_info {
 				char key;                    /* Selection key (A, B, C, etc.) */
 				const char *name;            /* Display name (e.g., "SA-MP 0.3.DL R1") */
 				const char *linux_url;       /* Linux download URL */
@@ -368,7 +307,7 @@ int wg_install_server(const char *platform)
 		};
 
 		/* Array of available server versions with metadata */
-		struct pkg_version_info versions[] = {
+		struct package_version_info versions[] = {
 				/* SA-MP 0.3.DL R1 - First row version */
 				{
 						'A', "SA-MP 0.3.DL R1", /* Key A, display name */
@@ -469,7 +408,7 @@ int wg_install_server(const char *platform)
 
 		const size_t version_count = sizeof(versions) / sizeof(versions[0]); /* 8 versions total */
 		char selection; /* User's selection character */
-		struct pkg_version_info *chosen = NULL; /* Pointer to selected version */
+		struct package_version_info *chosen = NULL; /* Pointer to selected version */
 		size_t i; /* Loop counter */
 
 		/* Validate platform parameter */

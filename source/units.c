@@ -42,7 +42,7 @@
 #include "units.h"
 
 #ifndef WATCHDOGS_RELEASE
-    #define WATCHDOGS_RELEASE "WG-251203"
+    #define WATCHDOGS_RELEASE "WG-251205"
 #endif
 const char *watchdogs_release = WATCHDOGS_RELEASE;
 

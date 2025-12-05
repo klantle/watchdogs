@@ -22,18 +22,6 @@
 #include "../include/cJSON/cJSON.h"
 #include "../include/tomlc/toml.h"
 
-<<<<<<< HEAD
-# if defined(__WINDOWS__)
-# define WG_WINDOWS
-# endif
-# if defined(__LINUX__)
-# define WG_LINUX
-# endif
-# if defined(__ANDROID__)
-# define WG_LINUX
-# define WG_ANDROID
-# endif
-=======
 /* Platform detection */
 #if defined(__WINDOWS__)
 #define WG_WINDOWS
@@ -43,7 +31,6 @@
 #define WG_LINUX
 #define WG_ANDROID
 #endif
->>>>>>> origin/dev
 
 /* Platform-specific includes & defines */
 #ifdef WG_WINDOWS
@@ -238,3 +225,4 @@ int wg_sef_wcopy(const char *c_src, const char *c_dest);
 int wg_sef_wmv(const char *c_src, const char *c_dest);
 
 #endif /* UTILS_H */
+

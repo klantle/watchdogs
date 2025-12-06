@@ -739,7 +739,7 @@ void wg_extract_archive(const char *filename)
 
         char ext_paths[WG_PATH_MAX];  /* Buffer for destination directory name */
 
-        pr_color(stdout, FCOLOUR_CYAN, " Try Extracting %s archive file...", filename);
+        pr_color(stdout, FCOLOUR_CYAN, " Try Extracting %s archive file...\n", filename);
         fflush(stdout);
 
         /* Detect archive type by file extension and route to appropriate extractor */

@@ -162,8 +162,8 @@ linux: OUTPUT = watchdogs
 linux:
 	@echo "Building for Linux"
 	$(CC) $(CFLAGS) -D__LINUX__ -I/usr/include/ $(SRCS) -o $(OUTPUT) $(LDFLAGS); \
-	@$(MAKE) strip OUTPUT=$(OUTPUT)
-	@$(MAKE) compress OUTPUT=$(OUTPUT)
+	$(MAKE) strip OUTPUT=$(OUTPUT); \
+	$(MAKE) compress OUTPUT=$(OUTPUT)
 
 
 # Termux build (release)

@@ -41,6 +41,8 @@ uint32_t maj(uint32_t x, uint32_t y, uint32_t z);
 uint32_t sigma(uint32_t x);
 uint32_t sigma2(uint32_t x);
 
+void charset_random(char *buffer, size_t size);
+
 void crypto_crc32_init_table();
 
 uint32_t crypto_generate_crc32(const void *data, size_t length);

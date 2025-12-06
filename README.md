@@ -204,8 +204,8 @@ pkg install x11-repo
 # - Steps:
 #   1. Go to https://github.com/features/codespaces
 #   2. Open a repository you want to work with
-#   3. Click "Code" > "Codespaces" > "Create Codespaces on main/dev"
-#   4. Choose main/dev branch and open in Browser mode
+#   3. Click "Code" > "Codespaces" > "Create Codespaces on main"
+#   4. Choose main branch and open in Browser mode
 # - This allows a lightweight Linux-like environment without installing Termux
 # - Simple usage: you can run shell, git, and code directly in the browser
 
@@ -270,7 +270,7 @@ docker rm -f <container-name>              # Remove the container
 
 1. Click the "**<> Code**" button.
 2. Select "**Codespaces**".
-3. Choose "**Create codespace on main/dev**" to create a new Codespace on the *main/dev* branch.
+3. Choose "**Create codespace on main**" to create a new Codespace on the *main* branch.
 4. Once the Codespace opens in the VSCode interface:
    - Click the **three-line menu** (≡) in the top-left corner.
    - Select **Terminal**.
@@ -573,10 +573,28 @@ Usage: help | help [<command>]
 ### Downloading Our Links
 
 > This can be used to install any archive. In this case, it is very advantageous for easily accessing gamemodes, only requiring a third party as an archive provider to serve as the link. Only zip/tar/tar.gz for extracting.
+> Only GitHub!.
 
 ```yaml
-download https://host/name/
 download https://github.com/klantle/watchdogs/archive/refs/heads/main.zip
+```
+
+> If you need to install files outside of GitHub, you can use manual curl.
+
+```yaml
+curl -L -o "name.zip" https://host.com/file/name.zip
+curl -L -o "name.tar" https://host.com/file/name.tar
+curl -L -o "name.tar.gz" https://host.com/file/name.tar.gz
+```
+
+> Extracting.
+
+```yaml
+# sudo apt install unzip
+unzip name.zip
+# sudo apt install gzip
+tar -xvf name.tar
+tar -xzvf name.tar.gz
 ```
 
 ### Upload/Send Our Files
@@ -720,13 +738,14 @@ compiles
 |                  |     |                        |
 --------------------     --------------------------
 ```
-<br>You no longer need to use regex just to detect files available in the tag you provided as a depends link. The existing files will now be automatically detected through HTML web interaction by watchdogs-depends, which scans for available files from the fallback URL `user/repo:tag`. Additionally, if you are in a Windows watchdogs environment, it will automatically search for and target only archives containing “windows” in their name - and do the opposite for Linux.
+
+<br>You no longer need to use regex just to detect files available in the tag you provide as a dependency link. Existing files will now be automatically detected through HTML web interaction by watchdogs-depends, which scans for available files from the fallback URL `user/repo?tag`. Additionally, if you are in a Windows watchdogs environment, the system will automatically search for and target only archives containing "windows" in their name, and the opposite applies for Linux. Watchdogs also has additional patterns such as specific words like `server_.zip` and `server_.tar.gz`.
 <br><br>
-Serves as an assistant for installing various files required by SA-MP/Open.MP. When installing dependencies that contain a `plugins/` folder and include files, it will install them into the `plugins/` and `/pawno-qawno/include` directories, respectively. It also handles gamemode components (root watchdogs). Watchdogs will automatically add the include names to the gamemode based on the main gamemode filename specified in the `input` key within `watchdogs.toml`. Furthermore, Watchdogs assists in installing the plugin names and their respective formats into `config.json` (from watchdogs.toml) - (for Open.MP) or `server.cfg` (from watchdogs.toml) - (for SA-MP). Note that the `components/` directory is not required for Open.MP.
+This serves as an assistant for installing various dependencies required by SA-MP/Open.MP. When installing dependencies, those located in the root extraction folder for plugins will not automatically be placed into the `plugins/` directory. If there are keywords like `log..`, `config..`, or other specific ones, they will be installed into the root of the main project. Conversely, if those keywords are not present, the system will install them into the `plugins/` directory and `/pawno-qawno/include` for `.inc` files. It also handles gamemode components (root watchdogs). Watchdogs will automatically add include names to the gamemode based on the main gamemode filename specified in the `input` key within `watchdogs.toml`. Furthermore, Watchdogs helps install plugin names and their respective formats into `config.json` (from watchdogs.toml) for Open.MP, or `server.cfg` (from watchdogs.toml) for SA-MP. Note that the `components/` directory is not required for Open.MP.
 <br><br>
-For plugin files located in the root directory of the dependency archive (for both Linux and Windows), their installation paths will be adjusted accordingly. Plugins found in the root folder will be placed directly into the server's root directory, rather than in specific subdirectories like `plugins/` or `components/`.
+r plugin files located in the root directory of the dependency archive (for both Linux and Windows), their installation paths will be adjusted accordingly. Plugins found in the root folder will be placed directly into the server's root directory, rather than in specific subdirectories like `plugins/` or `components/`.
 <br><br>
-The handling of YSI includes differs due to their structure containing multiple nested folders of include files. In this case, the entire folder containing these includes is moved directly to the target path (e.g., `pawno/include` or `qawno/include`), streamlining the process.
+The handling of YSI includes differs due to their structure containing multiple nested folders of include files. In this case, the entire folder containing these includes is moved directly to the target path (for example, `pawno/include` or `qawno/include`), streamlining the process.
 <br>
 > Please be aware that Watchdogs are used to check whether the user is running a specific SA-MP/Open.MP from their respective ecosystem folders, and pawno/qawno is one of them. We hope you stay aligned on this, and do not rename the pawno/qawno folder to keep the Watchdogs detection system stable. However, if you do rename the pawno/qawno folder to something else, you may need to modify the Watchdogs source accordingly.
 

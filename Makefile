@@ -6,8 +6,8 @@ export LC_ALL := C.UTF-8
 
 # Version information
 
-VERSION        = WG-12.05
-FULL_VERSION   = WG-251205
+VERSION        = WG-12.06
+FULL_VERSION   = WG-251206
 
 
 # Default output names

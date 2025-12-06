@@ -57,6 +57,63 @@ const char* __command[] = {
 		"wanion",     "tracker",   "compress",   "send"
 };
 
+const char *__dency_os_patterns[] = {
+        "windows",
+        "win",
+        ".exe",
+        "msvc",
+        "mingw",
+        "linux",
+        "ubuntu",
+        "debian",
+        "cent",
+        "centos",
+        "cent_os",
+        "fedora",
+        "arch",
+        "archlinux",
+        "alphine"
+        "rhel",
+        "redhat",
+        "linuxmint",
+        "mint",
+        "x86",
+        "x64",
+        "x86_64",
+        "amd64",
+        "arm",
+        "arm64",
+        "aarch",
+        "aarch64"
+};
+
+const char *__dency_more_patterns[] = {
+        "src",
+        "source",
+		"proj",
+        "project",
+        "server",
+        "_server",
+        "gamemode",
+        "gamemodes",
+		"bin",
+		"build",
+		"packages",
+		"resources",
+		"modules",
+		"plugins",
+		"addons",
+		"extensions",
+		"scripts",
+		"system",
+		"core",
+		"runtime",
+		"libs",
+		"include",
+		"deps",
+		"dependencies"
+};
+
 const size_t
 		__command_len =
 sizeof(__command) / sizeof(__command[0]);
@@ -1118,6 +1175,112 @@ int end_process(const char *process)
 				"/IM \"%s\" >nul 2>&1", process);
 #endif
 		return wg_run_command(reg_command); /* Execute kill command */
+}
+
+/*
+ * is_os_specific_archive - check if filename indicates OS-specific archive
+ *
+ * Identifies platform-specific files by name patterns. Returns 1 if the
+ * filename contains any OS pattern, 0 otherwise.
+ */
+int is_os_specific_archive(const char *filename)
+{
+		int k;
+
+		for (k = 0; __dency_os_patterns[k] != NULL; ++k) {
+			if (strfind(
+				filename, __dency_os_patterns[k], true)
+			)
+				return 1;
+		}
+
+		return 0;
+}
+
+/*
+ * is_project_archive - check if filename indicates server/gamemode archive
+ *
+ * Identifies server-related files by name patterns. Returns 1 if the
+ * filename contains any server pattern, 0 otherwise.
+ */
+int is_project_archive(const char *filename)
+{
+		int k;
+
+		for (k = 0; __dency_more_patterns[k] != NULL; ++k) {
+			if (strfind(
+				filename, __dency_more_patterns[k], true)
+			)
+				return 1;
+		}
+
+		return 0;
+}
+
+/*
+ * dency_get_assets - select most appropriate asset from available options
+ *
+ * Prioritizes assets in the following order:
+ * 1. Server/gamemode assets
+ * 2. OS-specific assets
+ * 3. Neutral assets (no OS pattern)
+ * 4. First asset as fallback
+ *
+ * Returns a newly allocated string containing the selected asset filename,
+ * or NULL if no assets are available.
+ */
+char *dency_get_assets(char **pkg_assets, int counts, const char *preferred_os)
+{
+		int i, j;
+		size_t fetch_patterns = sizeof(__dency_os_patterns) /
+					sizeof(__dency_os_patterns[0]);
+
+		/* Handle edge cases */
+		if (counts == 0)
+			return NULL;
+		if (counts == 1)
+			return strdup(pkg_assets[0]);
+
+		/* Priority 1: Server/gamemode assets */
+		for (i = 0; i < counts; i++) {
+			for (int p = 0; __dency_more_patterns[p] != NULL; p++) {
+				if (strfind(
+					pkg_assets[i], __dency_more_patterns[p], true)
+				) {
+					return strdup(pkg_assets[i]);
+				}
+			}
+		}
+
+		/* Priority 2: OS-specific assets */
+		for (i = 0; i < fetch_patterns; i++) {
+			for (j = 0; j < counts; j++) {
+				if (
+					strfind(pkg_assets[j], __dency_os_patterns[i], true)
+				)
+					return strdup(pkg_assets[j]);
+			}
+		}
+
+		/* Priority 3: Neutral assets (no OS pattern) */
+		for (i = 0; i < counts; i++) {
+			int has_os_pattern = 0;
+
+			for (j = 0; j < fetch_patterns; j++) {
+				if (
+					strfind(pkg_assets[i], __dency_os_patterns[j], true)
+				) {
+					has_os_pattern = 1;
+					break;
+				}
+			}
+
+			if (!has_os_pattern)
+				return strdup(pkg_assets[i]);
+		}
+
+		/* Fallback: First asset */
+		return strdup(pkg_assets[0]);
 }
 
 /*

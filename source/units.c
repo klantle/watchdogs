@@ -986,23 +986,23 @@ rest_def:
                              wanion_escaped_argument);
                 }
 
+                struct timespec start = { 0 }, end = { 0 };
+                double wanion_dur;
+                struct buf b = { 0 };
+                struct curl_slist *hdr;
+                char size_tokens[WG_PATH_MAX + 26];
 wanion_retrying:
 #if defined(_DBG_PRINT)
                 printf("json payload: %s\n", wanion_json_payload);
 #endif
-                struct timespec start = { 0 }, end = { 0 };
-                double wanion_dur;
-
                 clock_gettime(CLOCK_MONOTONIC, &start);
-                struct buf b = { 0 };
                 CURL *h = curl_easy_init();
                 if (!h) {
                     clock_gettime(CLOCK_MONOTONIC, &end);
                     goto chain_done;
                 }
 
-                struct curl_slist *hdr = curl_slist_append(NULL, "Content-Type: application/json");
-                char size_tokens[WG_PATH_MAX + 26];
+                hdr = curl_slist_append(NULL, "Content-Type: application/json");
                 if (is_chatbot_groq_based == 1)
                     snprintf(size_tokens, sizeof(size_tokens), "Authorization: Bearer %s", wgconfig.wg_toml_key_ai);
                 else

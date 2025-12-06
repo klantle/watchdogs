@@ -162,8 +162,8 @@ linux: OUTPUT = watchdogs
 linux:
 	@echo "Building for Linux"
 	$(CC) $(CFLAGS) -D__LINUX__ -I/usr/include/ $(SRCS) -o $(OUTPUT) $(LDFLAGS); \
-	@$(MAKE) strip OUTPUT=$(OUTPUT)
-	@$(MAKE) compress OUTPUT=$(OUTPUT)
+	$(MAKE) strip OUTPUT=$(OUTPUT); \
+	$(MAKE) compress OUTPUT=$(OUTPUT)
 
 
 # Termux build (release)
@@ -191,19 +191,19 @@ windows: $(RESFILE)
 debug: DEBUG_MODE=1
 debug: OUTPUT = watchdogs.debug
 debug:
-	$(CC) $(CFLAGS) -D_DBG_PRINT -D__LINUX__ $(SRCS) -o $(OUTPUT) $(LDFLAGS)
+	$(CC) $(CFLAGS) -g -D_DBG_PRINT -D__LINUX__ $(SRCS) -o $(OUTPUT) $(LDFLAGS)
 	@echo "Debug build complete"
 
 termux-debug: DEBUG_MODE=1
 termux-debug: OUTPUT = watchdogs.debug.tmux
 termux-debug:
-	$(CC) $(CFLAGS) -D_DBG_PRINT -D__ANDROID__ $(SRCS) -landroid-spawn -o $(OUTPUT) $(LDFLAGS)
+	$(CC) $(CFLAGS) -g -D_DBG_PRINT -D__ANDROID__ $(SRCS) -landroid-spawn -o $(OUTPUT) $(LDFLAGS)
 	@echo "Termux debug build complete"
 
 windows-debug: DEBUG_MODE=1
 windows-debug: OUTPUT = watchdogs.debug.win
 windows-debug: $(RESFILE)
-	$(CC) $(CFLAGS) -D_DBG_PRINT -D__WINDOWS__ $(SRCS) $(RESFILE) -o $(OUTPUT) $(LDFLAGS)
+	$(CC) $(CFLAGS) -g -D_DBG_PRINT -D__WINDOWS__ $(SRCS) $(RESFILE) -o $(OUTPUT) $(LDFLAGS)
 	@echo "Windows debug build complete"
 
 

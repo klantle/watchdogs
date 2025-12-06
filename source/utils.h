@@ -208,6 +208,11 @@ extern const char* wg_find_near_command(const char *ptr_command,
     const char *__commands[], size_t num_cmds, int *out_distance);
 
 int end_process(const char *process);
+
+char *dency_get_assets(char **pkg_assets, int counts, const char *preferred_os);
+int is_project_archive(const char *filename);
+int is_os_specific_archive(const char *filename);
+
 int wg_match_wildcard(const char *str, const char *pat);
 const char *wg_procure_os(void);
 

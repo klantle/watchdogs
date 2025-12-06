@@ -865,49 +865,23 @@ static void persing_filename(char *filename) {
         }
 }
 
-/*
- * Main file download function with retry logic and progress display
- * Handles HTTP downloads, SSL verification, and archive extraction
- */
+/* Main file download function with retry logic and progress display */
 int wg_download_file(const char *url, const char *output_filename)
 {
-        /* Debug information section */
         __debug_function();
 
-        /**
-         * PARAMETER VALIDATION SECTION
-         * 
-         * Validates input parameters before proceeding with download
-         * Returns -1 for critical parameter errors
-         */
         if (!url || !output_filename) {
                 pr_color(stdout, FCOLOUR_RED, "Error: Invalid URL or filename\n");
                 return -1;
         }
 
-        /**
-         * VARIABLE DECLARATION SECTION
-         * 
-         * Allocate and initialize all required variables
-         * CURL handles, buffers, counters, and file descriptors
-         */
         CURLcode res;
         CURL *curl = NULL;
         long response_code = 0;
         int retry_count = 0;
         struct stat file_stat;
         
-        /**
-         * FILENAME SANITIZATION SECTION
-         * 
-         * Cleans and prepares output filename:
-         * - Removes URL query parameters
-         * - Extracts basename from URL if needed
-         * - Ensures valid characters for filesystem
-         * 
-         * SECURITY: Prevents injection attacks by stripping
-         * query parameters and invalid characters
-         */
+        /* Clean filename and remove query parameters */
         char clean_filename[WG_PATH_MAX];
         char *query_pos = strchr(output_filename, '?');
         if (query_pos) {
@@ -922,7 +896,7 @@ int wg_download_file(const char *url, const char *output_filename)
                 clean_filename[sizeof(clean_filename) - 1] = '\0';
         }
         
-        /* Extract filename from URL if output_filename contains URL */
+        /* Extract basename from URL if needed */
         char final_filename[WG_PATH_MAX];
         if (strstr(clean_filename, "://") || strstr(clean_filename, "http")) {
                 const char *url_filename = strrchr(url, '/');
@@ -949,57 +923,21 @@ int wg_download_file(const char *url, const char *output_filename)
                 final_filename[sizeof(final_filename) - 1] = '\0';
         }
         
-        /* Ensure filename doesn't have invalid characters */
         persing_filename(final_filename);
 
-        /**
-         * DOWNLOAD INITIALIZATION SECTION
-         * 
-         * Starts download process with informative messages
-         * Sets up retry mechanism for network resilience
-         */
         pr_color(stdout, FCOLOUR_GREEN, "* Try Downloading %s", final_filename);
 
-        /**
-         * RETRY LOOP SECTION
-         * 
-         * Implements exponential backoff retry logic:
-         * - Up to 5 attempts for transient failures
-         * - 3 second delay between attempts
-         * - Different handling for permanent vs temporary errors
-         * 
-         * FEATURES:
-         * 1. Automatic retry on network timeouts
-         * 2. GitHub API rate limit handling
-         * 3. SSL certificate revalidation
-         * 4. Memory cleanup between attempts
-         */
+        /* Retry loop with exponential backoff */
         while (retry_count < 5) {
-                /**
-                 * CURL INITIALIZATION SUBSECTION
-                 * 
-                 * Creates new CURL handle for each attempt
-                 * Ensures clean state for each retry
-                 */
                 curl = curl_easy_init();
                 if (!curl) {
                         pr_color(stdout, FCOLOUR_RED, "Failed to initialize CURL\n");
                         return -1;
                 }
 
-                /**
-                 * HTTP HEADERS CONFIGURATION SUBSECTION
-                 * 
-                 * Configures request headers:
-                 * - User-Agent identification
-                 * - GitHub authentication (if available)
-                 * - Accept header for GitHub API
-                 * 
-                 * SECURITY: GitHub tokens are masked in output
-                 */
+                /* Configure HTTP headers */
                 struct curl_slist *headers = NULL;
 
-                /* Add GitHub authentication header if available */
                 if (wgconfig.wg_idepends == 1) {
                         if (!wgconfig.wg_toml_github_tokens || 
                                 strfind(wgconfig.wg_toml_github_tokens, "DO_HERE", true) ||
@@ -1016,22 +954,10 @@ int wg_download_file(const char *url, const char *output_filename)
                         }
                 }
 
-                /* Set standard HTTP headers */
                 headers = curl_slist_append(headers, "User-Agent: watchdogs/1.0");
                 headers = curl_slist_append(headers, "Accept: application/vnd.github.v3.raw");
 
-                /**
-                 * CURL OPTIONS CONFIGURATION SUBSECTION
-                 * 
-                 * Configures comprehensive CURL options:
-                 * - URL and write callbacks
-                 * - Timeout and retry settings
-                 * - SSL verification (enforced)
-                 * - Progress tracking callbacks
-                 * 
-                 * PERFORMANCE: Uses gzip compression for faster transfers
-                 * SECURITY: Always validates SSL certificates
-                 */
+                /* Set CURL options */
                 curl_easy_setopt(curl, CURLOPT_URL, url);
                 curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, write_memory_callback);
                                 
@@ -1049,20 +975,13 @@ int wg_download_file(const char *url, const char *output_filename)
                 curl_easy_setopt(curl, CURLOPT_SSL_VERIFYHOST, 2L);
                 curl_easy_setopt(curl, CURLOPT_NOPROGRESS, 0L);
 
-                /**
-                 * DEBUGGING CONFIGURATION SUBSECTION
-                 * 
-                 * Optional HTTP debugging for troubleshooting:
-                 * - User prompted on first download
-                 * - Can be enabled permanently via prompt
-                 * - Shows detailed HTTP transaction info
-                 */
+                /* Optional HTTP debugging */
                 static int create_debugging = 0;
                 static int always_create_debugging = 0;
                 
                 if (create_debugging == 0) {
                         create_debugging = 1;
-                        pr_color(stdout, FCOLOUR_CYAN, " %% Enable HTTP debugging? ");
+                        pr_color(stdout, FCOLOUR_CYAN, " * Enable HTTP debugging? ");
                         char *debug_http = readline("(y/n): ");
                         if (debug_http && (debug_http[0] == 'Y' || debug_http[0] == 'y')) {
                                 always_create_debugging = 1;
@@ -1070,80 +989,32 @@ int wg_download_file(const char *url, const char *output_filename)
                         wg_free(debug_http);
                 }
                 
-                /* Enable verbose debugging if requested */
                 if (always_create_debugging) {
                         curl_easy_setopt(curl, CURLOPT_VERBOSE, 1L);
                         curl_easy_setopt(curl, CURLOPT_DEBUGFUNCTION, debug_callback);
                         curl_easy_setopt(curl, CURLOPT_DEBUGDATA, NULL);
                 }
 
-                /**
-                 * PROGRESS TRACKING SUBSECTION
-                 * 
-                 * Sets up real-time progress display:
-                 * - Shows download percentage
-                 * - Displays transfer speed
-                 * - Updates in separate thread
-                 */
+                /* Progress display setup */
                 curl_easy_setopt(curl, CURLOPT_XFERINFOFUNCTION, progress_callback);
                 curl_easy_setopt(curl, CURLOPT_XFERINFODATA, NULL);
 
-                /**
-                 * SSL CERTIFICATE CONFIGURATION SUBSECTION
-                 * 
-                 * Configures SSL certificate verification:
-                 * - Uses custom CA bundle if available
-                 * - Enforces hostname verification
-                 * - Falls back to system certificates
-                 * 
-                 * SECURITY: Critical for preventing MITM attacks
-                 */
+                /* SSL certificate configuration */
                 verify_cacert_pem(curl);
 
-                /**
-                 * DOWNLOAD EXECUTION SUBSECTION
-                 * 
-                 * Performs actual HTTP download:
-                 * - Executes CURL request
-                 * - Captures response code
-                 * - Handles errors gracefully
-                 */
+                /* Execute download */
                 fflush(stdout);
                 res = curl_easy_perform(curl);
                 curl_easy_getinfo(curl, CURLINFO_RESPONSE_CODE, &response_code);
 
-                /**
-                 * CURL CLEANUP SUBSECTION
-                 * 
-                 * Properly releases CURL resources:
-                 * - Frees easy handle
-                 * - Cleans up headers
-                 * - Prevents memory leaks
-                 */
                 curl_easy_cleanup(curl);
                 curl_slist_free_all(headers);
 
-                /**
-                 * DOWNLOAD SUCCESS HANDLING SUBSECTION
-                 * 
-                 * Processes successful download:
-                 * - Writes data to disk
-                 * - Verifies file integrity
-                 * - Checks archive format
-                 */
+                /* Process successful download */
                 if (res == CURLE_OK && response_code == WG_CURL_RESPONSE_OK && 
                         download_buffer.len > 0) {
                         
-                        /**
-                         * FILE WRITE OPERATION SUBSECTION
-                         * 
-                         * Writes downloaded buffer to filesystem:
-                         * - Binary mode for safety
-                         * - Verifies write completion
-                         * - Handles partial writes
-                         * 
-                         * ERROR HANDLING: Retries on write failures
-                         */
+                        /* Write data to file */
                         FILE *fp = fopen(final_filename, "wb");
                         if (!fp) {
                                 pr_color(stdout, FCOLOUR_RED, "* Failed to open file for writing: %s (errno: %d - %s)\n", 
@@ -1169,50 +1040,22 @@ int wg_download_file(const char *url, const char *output_filename)
                         
                         wg_free(download_buffer.data);
                         
-                        /**
-                         * FILE VERIFICATION SUBSECTION
-                         * 
-                         * Verifies downloaded file:
-                         * - Checks file exists
-                         * - Validates file size
-                         * - Confirms successful write
-                         */
+                        /* Verify downloaded file */
                         if (stat(final_filename, &file_stat) == 0 && file_stat.st_size > 0) {
                                 pr_color(stdout, FCOLOUR_GREEN, " %% successful: %" PRIdMAX " bytes to %s\n", 
                                                 (intmax_t)file_stat.st_size, final_filename);
                                 fflush(stdout);
 
-                                /**
-                                 * ARCHIVE DETECTION SUBSECTION
-                                 * 
-                                 * Checks if downloaded file is an archive:
-                                 * - Examines file extension
-                                 * - Validates archive format
-                                 * - Warns if not archive
-                                 */
+                                /* Check if file is an archive */
                                 if (!is_archive_file(final_filename)) {
                                         pr_color(stdout, FCOLOUR_YELLOW, "Warning: File %s is not an archive\n", final_filename);
                                         return 1;
                                 }
 
-                                /**
-                                 * ARCHIVE EXTRACTION SUBSECTION
-                                 * 
-                                 * Extracts archive contents:
-                                 * - Handles multiple formats
-                                 * - Preserves permissions
-                                 * - Recursive extraction
-                                 */
+                                /* Extract archive */
                                 wg_extract_archive(final_filename);
 
-                                /**
-                                 * ARCHIVE CLEANUP PROMPT SUBSECTION
-                                 * 
-                                 * User-controlled archive removal:
-                                 * - Optional deletion after extraction
-                                 * - Remembers user preference
-                                 * - Handles deletion errors
-                                 */
+                                /* Prompt for archive removal */
                                 if (wgconfig.wg_idepends == 1) {
                                         static int remove_archive = 0;
                                         if (remove_archive == 0) {
@@ -1251,19 +1094,11 @@ int wg_download_file(const char *url, const char *output_filename)
                                         wg_free(confirm);
                                 }
 
-                                /**
-                                 * COMPILER INSTALLATION PROMPT SUBSECTION
-                                 * 
-                                 * Special handling for compiler downloads:
-                                 * - Detects compiler archives
-                                 * - Prompts for installation
-                                 * - Sets up compiler directory
-                                 */
+                                /* Special handling for compiler installation */
                                 if (wgconfig.wg_ipawncc && prompt_apply_pawncc()) {
                                         char size_filename[WG_PATH_MAX];
                                         snprintf(size_filename, sizeof(size_filename), "%s", final_filename);
 
-                                        /* Remove file extension to get directory name */
                                         char *extension = strstr(size_filename, ".tar.gz");
                                         if (extension) {
                                                 *extension = '\0';
@@ -1280,14 +1115,7 @@ int wg_download_file(const char *url, const char *output_filename)
                         }
                 }
                 
-                /**
-                 * DOWNLOAD FAILURE CLEANUP SUBSECTION
-                 * 
-                 * Cleans up resources after failed attempt:
-                 * - Frees download buffer
-                 * - Prepares for retry
-                 * - Delays before next attempt
-                 */
+                /* Cleanup failed attempt */
                 if (download_buffer.data) {
                         wg_free(download_buffer.data);
                 }
@@ -1298,14 +1126,7 @@ int wg_download_file(const char *url, const char *output_filename)
                 sleep(3);
         }
 
-        /**
-         * FINAL FAILURE SECTION
-         * 
-         * Handles permanent download failure:
-         * - All retries exhausted
-         * - Reports final error
-         * - Returns error code
-         */
+        /* Final failure after all retries exhausted */
         pr_color(stdout, FCOLOUR_RED, " Failed to download %s from %s after %d retries\n",
                 final_filename, url, retry_count);
 

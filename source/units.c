@@ -645,6 +645,9 @@ _runners_:
                     goto chain_done;
                 }
 
+                if (dir_exists(".watchdogs") == 0)
+                    MKDIR(".watchdogs");
+
                 int _wg_log_acces = path_access(wgconfig.wg_toml_logs);
                 if (_wg_log_acces)
                   remove(wgconfig.wg_toml_logs);

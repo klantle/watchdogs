@@ -727,7 +727,7 @@ void wg_apply_pawncc(void)
             
             /* Create file if it doesn't exist */
             if (path_exists(target) == 0) {
-                pr_error(stdout, "File: %s.pwn not found!.. creating...", target);
+                pr_info(stdout, "File: %s.pwn not found!.. creating...", target);
 
                 if (dir_exists("gamemodes") == 0) MKDIR("gamemodes");
                 

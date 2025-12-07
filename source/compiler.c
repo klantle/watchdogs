@@ -157,6 +157,9 @@ int wg_run_compiler(const char *args, const char *compile_args,  const char *sec
             strcpy(path_include, size_path_include);
         }
 
+        if (dir_exists(".watchdogs") == 0)
+            MKDIR(".watchdogs");
+            
         /* Check and clean up existing compiler log file */
         int _wg_log_acces = path_access(".watchdogs/compiler.log");
         if (_wg_log_acces)

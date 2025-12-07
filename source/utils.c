@@ -1541,8 +1541,8 @@ static void wg_check_compiler_options(int *compatibility, int *optimized_lt)
 		char log_line[1024];
 
 		/* Ensure test directory exists */
-		if (path_exists(".watchdogs") == 0)
-			MKDIR(".watchdogs");
+        if (dir_exists(".watchdogs") == 0)
+            MKDIR(".watchdogs");
 
 		/* Clean up previous test log */
 		if (path_access(".watchdogs/compiler_test.log"))

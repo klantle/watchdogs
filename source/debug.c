@@ -68,6 +68,9 @@
 /// #14 0x0000555555564f67 in main (argc=1, argv=0x7fffffffcf48) at source/units.c:1666
 
 void __reset_sys(void) {
+        if (dir_exists(".watchdogs") == 0)
+            MKDIR(".watchdogs");
+
         if (path_access(".watchdogs/crashdetect")) {
             remove(".watchdogs/crashdetect");
         }

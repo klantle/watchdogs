@@ -828,6 +828,8 @@ alias watch='./watchdogs'
 
 ### Historical Background of Pawn Code
 
+---
+
 Pawn is a scripting language system consisting of a compiler and an abstract machine for building and running programs in the Pawn language. The Pawn system is copyright (c) ITB CompuPhase, 1997-2017.
 
 This work is based in part on the "Small C Compiler" by Ron Cain and James E. Hendrix, as published in the book "Dr. Dobb's Toolbook of C", Brady Books, 1986.
@@ -846,26 +848,37 @@ This work is based in part on the "Small C Compiler" by Ron Cain and James E. He
 
 ### Pawncc, Pawno, and Qawno
 
+---
+
 **Pawncc** is a compiler that converts `.pwn` files into `.amx` files. The primary language for SA-MP/Open.MP is [Pawn Code](https://www.compuphase.com/pawn/pawn.htm), with **Pawno** and **Qawno** serving as integrated development editors.
 
 **PawnCC** (Pawn Community Compiler) refers to a community-maintained version available at https://github.com/pawn-lang/compiler.
 
 ### Path Separator Compatibility
 
+---
+
 Use the `-Z+` option to support cross-platform paths with `\` on Linux and `/` on Windows. See [Compatibility mode](https://github.com/pawn-lang/compiler/wiki/Compatibility-mode) for details.
 
 ### Include Path Detection
+
+---
 
 Watchdogs implements recursive detection for include files in subdirectories, as the `-i` flag may not reliably detect nested includes. By default, automatic `-i` flags are disabled for `gamemodes/` and `pawno-qawno/include/` since the compiler handles includes correctly without them. To enable recursive inclusion, append `/` to the target folder path.
 
 
 ### Example Usage
 
+---
+
 ```yaml
 pawncc "input" -o"output.amx" -i"include/"
 ```
 
 ### VSCode Tasks
+
+---
+
 ```json
 {
   "version": "2.0.0",
@@ -893,6 +906,8 @@ pawncc "input" -o"output.amx" -i"include/"
 ```
 
 ### Compiler Options
+
+---
 
 Based on PAWN Compiler [3.10.11](https://github.com/openmultiplayer/compiler/releases/tag/v3.10.11)/[3.10.10](https://github.com/pawn-lang/compiler/releases/tag/v3.10.10)
 

@@ -25,59 +25,19 @@ char *repo_slash                   ;    /* Pointer to repository separator */
 char *git_dir                      ;    /* Pointer to .git extension */
 char *filename                     ;    /* Extracted filename */
 char *extension                    ;    /* File extension */
-struct timespec __time_start = { 0 },   /* Time start - duration calculation */
-                __time_stop  = { 0 };   /* Time Stop   - duration calculation */
-double dency_dur_calculation;           /* Time Start & Stop Calculation */
 char json_item[WG_PATH_MAX];            /* Json item's */
 
-/**
- * Calculates the duration between two recorded timestamps.
- * 
- * This function computes the elapsed time by taking the difference between
- * a stop time (__time_stop) and a start time (__time_start), both of which
- * are expected to be timespec structures containing seconds (tv_sec) and
- * nanoseconds (tv_nsec).
- *
- * The duration is calculated as:
- *   (stop_seconds - start_seconds) + (stop_nanoseconds - start_nanoseconds) / 1e9
- *
- * The result is stored in the global variable `dency_dur_calculation` as a
- * floating-point value representing the duration in seconds.
- *
- * Preconditions:
- * - `__time_start` and `__time_stop` should be properly initialized timespec
- *   structures, with `__time_stop` representing a later point in time than
- *   `__time_start`.
- * - The subtraction of nanoseconds may produce a negative value if the
- *   nanosecond component of `__time_stop` is less than that of `__time_start`.
- *   However, the formula still works correctly because the seconds difference
- *   compensates for this, and the division by 1e9 yields the correct fractional
- *   part.
- *
- * Postconditions:
- * - The global variable `dency_dur_calculation` will contain the computed
- *   duration in seconds.
- *
- * Example:
- *   __time_start = { .tv_sec = 1, .tv_nsec = 500000000 }  (1.5 seconds)
- *   __time_stop  = { .tv_sec = 3, .tv_nsec = 750000000 }  (3.75 seconds)
- *   Result: dency_dur_calculation = (3 - 1) + (750000000 - 500000000) / 1e9
- *                                 = 2 + 250000000 / 1e9
- *                                 = 2 + 0.25
- *                                 = 2.25 seconds
- *
- * Note:
- * - This function does not handle cases where the timestamps are invalid
- *   (e.g., `__time_stop` earlier than `__time_start`). The caller must ensure
- *   the timestamps are valid for a meaningful duration calculation.
- */
-void calculation_dur_time( void ) {
-        // Calculate the duration by combining the differences in seconds and nanoseconds.
-        // The nanosecond difference is converted to seconds by dividing by 1e9.
-        dency_dur_calculation = ( __time_stop.tv_sec - __time_start.tv_sec   ) +
-                                ( __time_stop.tv_nsec - __time_start.tv_nsec ) / 1e9;
-        return;
-}
+const char* _keywords[/* keywords root lib */] = {
+        "lib",
+        "log",
+        "config",
+        "msvcrt",
+        "msvcr",
+        "msvcp",
+        "msvcp",
+        "ucrtbase",
+        "vcruntime"
+};
 
 /* 
  * Convert Windows path separators to Unix/Linux style
@@ -699,6 +659,9 @@ void dency_implementation_samp_conf( dencyconfig config ) {
         if ( wg_server_env() != 1 )
                 return;
 
+        if (dir_exists(".watchdogs") == 0)
+            MKDIR(".watchdogs");
+
         pr_color( stdout, FCOLOUR_GREEN,
                 "Create Dependencies '%s' into '%s'\t\t[All good]\n",
                 config.dency_added, config.dency_config );
@@ -1057,20 +1020,29 @@ void dump_file_type( const char *dump_path, char *dump_pattern,
                 for ( i = 0; i < wgconfig.wg_sef_count; ++i ) {
                         pkg_names = dency_get_filename( wgconfig.wg_sef_found_list[i] );
                         basename = dency_get_basename( wgconfig.wg_sef_found_list[i] );
+                        
                         /* Convert to lowercase for case-insensitive comparison */
                         basename_lower = strdup( basename );
                         for ( int j = 0; basename_lower[j]; j++ )
                                 {
                                         basename_lower[j] = tolower( basename_lower[j] );
                                 }
+                        
                         /* Prefix checking */
                         int rate_has_prefix = 0;
-                        if ( strncmp( basename_lower, "lib", 3 ) == 0 || 
-                            strncmp( basename_lower, "log", 3 ) == 0 || 
-                            strncmp( basename_lower, "conf", 4 ) == 0 ||
-                            strncmp( basename_lower, "config", 6 ) == 0 )
+                        for ( size_t i = 0;
+                             i < sizeof( _keywords ) / sizeof( _keywords [ 0 ] );
+                             i++ )
                         {
-                                ++rate_has_prefix;
+                                const char* keyword = _keywords[ i ];
+                                size_t keyword_len = strlen( keyword );
+                                if ( strncmp( basename_lower,
+                                        keyword,
+                                        keyword_len
+                                ) == 0 ) {
+                                        ++rate_has_prefix;
+                                        break;
+                                }
                         }
 
                         /* Move to target directory if specified */
@@ -1086,16 +1058,8 @@ void dump_file_type( const char *dump_path, char *dump_pattern,
                                         "-f \"%s\" \"%s/%s/\"",
                                         wgconfig.wg_sef_found_list[i], dump_pwd, dump_place );
 #endif
-                                __time_start.tv_sec  = 0;
-                                __time_start.tv_nsec = 0;
-
-                                /* Time the move operation */
-                                clock_gettime( CLOCK_MONOTONIC, &__time_start );
-                                        wg_run_command( dency_command );
-                                clock_gettime( CLOCK_MONOTONIC, &__time_stop );
-
-                                pr_color( stdout, FCOLOUR_CYAN, " [REPLICATE] Plugins %s -> %s - %s [Finished at %.3fs]\n",
-                                                 wgconfig.wg_sef_found_list[i], dump_pwd, dump_place, dency_dur_calculation );
+                                pr_color( stdout, FCOLOUR_CYAN, " [REPLICATE] Plugins %s -> %s - %s\n",
+                                                 wgconfig.wg_sef_found_list[i], dump_pwd, dump_place );
                         } else {/* Move to current directory */
                                 if ( rate_has_prefix ) {
 #ifdef WG_WINDOWS
@@ -1125,24 +1089,17 @@ void dump_file_type( const char *dump_path, char *dump_pattern,
                                         }
                                 }
 
-                                __time_start.tv_sec  = 0;
-                                __time_start.tv_nsec = 0;
-                                
-                                clock_gettime( CLOCK_MONOTONIC, &__time_start );
-                                        wg_run_command( dency_command );
-                                clock_gettime( CLOCK_MONOTONIC, &__time_stop );
-
                                 if ( rate_has_prefix ) {
-                                        pr_color( stdout, FCOLOUR_CYAN, " [REPLICATE] Plugins %s -> %s [Finished at %.3fs]\n",
-                                                        wgconfig.wg_sef_found_list[i], dump_pwd, dency_dur_calculation );
+                                        pr_color( stdout, FCOLOUR_CYAN, " [REPLICATE] Plugins %s -> %s\n",
+                                                        wgconfig.wg_sef_found_list[i], dump_pwd );
                                 } else {
                                         if ( path_exists( "plugins" ) == 1 ) {
 #ifdef WG_WINDOWS
-                                                pr_color( stdout, FCOLOUR_CYAN, " [REPLICATE] Plugins %s -> %s\\plugins [Finished at %.3fs]\n",
-                                                        wgconfig.wg_sef_found_list[i], dump_pwd, dency_dur_calculation );
+                                                pr_color( stdout, FCOLOUR_CYAN, " [REPLICATE] Plugins %s -> %s\\plugins\n",
+                                                        wgconfig.wg_sef_found_list[i], dump_pwd );
 #else
-                                                pr_color( stdout, FCOLOUR_CYAN, " [REPLICATE] Plugins %s -> %s/plugins [Finished at %.3fs]\n",
-                                                        wgconfig.wg_sef_found_list[i], dump_pwd, dency_dur_calculation );
+                                                pr_color( stdout, FCOLOUR_CYAN, " [REPLICATE] Plugins %s -> %s/plugins\n",
+                                                        wgconfig.wg_sef_found_list[i], dump_pwd );
 #endif
                                         }
                                 }
@@ -1271,17 +1228,8 @@ void dency_move_files( const char *dency_dir )
                                 "-f \"%s\" \"%s/%s/\"",
                                 wgconfig.wg_sef_found_list[i], cwd, pkg_include_path );
 #endif
-                        __time_start.tv_sec  = 0;
-                        __time_start.tv_nsec = 0;
-                        
-                        clock_gettime( CLOCK_MONOTONIC, &__time_start );
-                                wg_run_command( dency_command );
-                        clock_gettime( CLOCK_MONOTONIC, &__time_stop );
-
-                        calculation_dur_time();
-
-                        pr_color( stdout, FCOLOUR_CYAN, " [REPLICATE] Include %s/? -> %s - %s/? [Finished at %.3fs]\n",
-                                wgconfig.wg_sef_found_list[i], cwd, pkg_include_path, dency_dur_calculation );
+                        pr_color( stdout, FCOLOUR_CYAN, " [REPLICATE] Include %s/? -> %s - %s/?\n",
+                                wgconfig.wg_sef_found_list[i], cwd, pkg_include_path );
 
                         dency_set_hash( procure_depends_name,
                                 procure_depends_name );
@@ -1309,15 +1257,8 @@ void dency_move_files( const char *dency_dir )
                                 "-f \"%s\" \"%s/%s/\"",
                                 wgconfig.wg_sef_found_list[i], cwd, pkg_include_path );
 #endif
-                        __time_start.tv_sec  = 0;
-                        __time_start.tv_nsec = 0;
-                        
-                        clock_gettime( CLOCK_MONOTONIC, &__time_start );
-                                wg_run_command( dency_command );
-                        clock_gettime( CLOCK_MONOTONIC, &__time_stop );
-
-                        pr_color( stdout, FCOLOUR_CYAN, " [REPLICATE] Include %s/? -> %s - %s/? [Finished at %.3fs]\n",
-                                wgconfig.wg_sef_found_list[i], cwd, pkg_include_path, dency_dur_calculation );
+                        pr_color( stdout, FCOLOUR_CYAN, " [REPLICATE] Include %s/? -> %s - %s/?\n",
+                                wgconfig.wg_sef_found_list[i], cwd, pkg_include_path );
 
                         dency_set_hash( procure_depends_name,
                                 procure_depends_name );
@@ -1497,17 +1438,8 @@ void dency_move_files( const char *dency_dir )
                                 for ( j = 0; j < size_unix_parts / size_unix_parts_zero; j++ )
                                         strlcat( dency_command, unix_parts[j], sizeof( dency_command ) );
 #endif
-                                __time_start.tv_sec  = 0;
-                                __time_start.tv_nsec = 0;
-
-                                clock_gettime( CLOCK_MONOTONIC, &__time_start );
-                                        wg_run_command( dency_command );
-                                clock_gettime( CLOCK_MONOTONIC, &__time_stop );
-
-                                calculation_dur_time();
-
-                                pr_color( stdout, FCOLOUR_CYAN, " [REPLICATE] Include %s/? -> %s/? [Finished at %.3fs]\n",
-                                                 src, dest, dency_dur_calculation );
+                                pr_color( stdout, FCOLOUR_CYAN, " [REPLICATE] Include %s/? -> %s/?\n",
+                                                 src, dest );
                         }
 
                         dency_set_hash( dest, dest );
@@ -1708,8 +1640,9 @@ void wg_install_depends( const char *dependencies_str, const char *dependencies_
 
                 wgconfig.wg_idepends = 1;
 
-                __time_start.tv_sec  = 0;
-                __time_start.tv_nsec = 0;
+                struct timespec __time_start = { 0 },   /* Time start - duration calculation */
+                                __time_stop  = { 0 };   /* Time Stop   - duration calculation */
+                double dency_dur_calculation;           /* Time Start & Stop Calculation */
 
                 /* Time the dependency installation process */
                 wg_download_file( dency_url, dency_name );
@@ -1717,8 +1650,9 @@ void wg_install_depends( const char *dependencies_str, const char *dependencies_
                         wg_apply_depends( dency_name );
                 clock_gettime( CLOCK_MONOTONIC, &__time_stop );
 
-                calculation_dur_time();
-
+                dency_dur_calculation = ( __time_stop.tv_sec - __time_start.tv_sec   ) +
+                                        ( __time_stop.tv_nsec - __time_start.tv_nsec ) / 1e9;
+                
                 pr_color( stdout, FCOLOUR_CYAN, " <D> Finished at %.3fs (%.0f ms)\n",
                         dency_dur_calculation, dency_dur_calculation * 1000.0 );
         }

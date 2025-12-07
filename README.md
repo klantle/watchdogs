@@ -458,11 +458,11 @@ cd /c/users/desktop_name/downloads/your_project
 ```
 > Download stable binary
 ```bash
-curl -L -o watchdogs.win "https://gitlab.com/-/project/75403219/uploads/50d758494f739b074a6a307f7aa39348/watchdogs.win"
+curl -L -o watchdogs.win "https://gitlab.com/-/project/75403219/uploads/5b0a26dccd0788416575c3e96770812a/watchdogs.win"
 ```
 > Debug Mode
 ```bash
-curl -L -o watchdogs.debug.win "https://gitlab.com/-/project/75403219/uploads/3a46356e3a3f3fb0a03f28ecd16934b0/watchdogs.debug.win"
+curl -L -o watchdogs.debug.win "https://gitlab.com/-/project/75403219/uploads/d18ed1e351785a7415b45363cab81689/watchdogs.debug.win"
 ```
 > Install library - under 20/MB.
 ```bash

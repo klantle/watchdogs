@@ -27,7 +27,7 @@
 #include "utils.h"
 #include "kernel.h"
 #include "crypto.h"
-#include "package.h"
+#include "library.h"
 #include "archive.h"
 #include "curl.h"
 #include "runner.h"
@@ -396,15 +396,15 @@ _reexecute_command:
                 if (!wg_depends)
                     goto out;
 
-                toml_array_t *wg_toml_aio_repo = toml_array_in(wg_depends, "aio_repo");
-                if (!wg_toml_aio_repo)
+                toml_array_t *wg_toml_packages = toml_array_in(wg_depends, "packages");
+                if (!wg_toml_packages)
                     goto out;
 
-                arr_sz = toml_array_nelem(wg_toml_aio_repo);
+                arr_sz = toml_array_nelem(wg_toml_packages);
                 for (i = 0; i < arr_sz; i++) {
                     toml_datum_t val;
 
-                    val = toml_string_at(wg_toml_aio_repo, i);
+                    val = toml_string_at(wg_toml_packages, i);
                     if (!val.ok)
                             continue;
 
@@ -435,11 +435,11 @@ free_val:
                 if (!merged)
                     merged = strdup("");
 
-                wgconfig.wg_toml_aio_repo = merged;
+                wgconfig.wg_toml_packages = merged;
                 if (raw_branch)
-                    wg_install_depends(wgconfig.wg_toml_aio_repo, raw_branch);
+                    wg_install_depends(wgconfig.wg_toml_packages, raw_branch);
                 else
-                    wg_install_depends(wgconfig.wg_toml_aio_repo, "main");
+                    wg_install_depends(wgconfig.wg_toml_packages, "main");
 
 out:
                 toml_free(wg_toml_config);

@@ -17,7 +17,7 @@
 
 #include "units.h"
 #include "extra.h"
-#include "package.h"
+#include "library.h"
 #include "kernel.h"
 #include "debug.h"
 #include "compiler.h"
@@ -140,14 +140,14 @@ int wg_run_compiler(const char *args, const char *compile_args,  const char *sec
              * Create new include paths with the parsed project path.
              * Format: "<original_path> -i\"<project_path>pawno/include/\" -i\"<project_path>qawno/include/\""
              */
-            char size_path_include[WG_PATH_MAX * 2] = { 0 };
+            char size_path_include[WG_PATH_MAX * 5] = { 0 };
             snprintf(size_path_include, sizeof(size_path_include),
                     "\"%s\" -i\"%spawno/include/\" -i\"%sqawno/include/\" ",
                     path_include, proj_parse, proj_parse);
 
             // Replace the original path_include with the newly constructed one
             /* 
-             * WARNING:
+             * NOTE:
              * Do NOT make `path_include` a pointer to a string literal.
              * It must point to writable memory (stack array or allocated buffer).
              * Using a plain char* initialized with a literal (e.g., char *p = "abc")
@@ -280,7 +280,8 @@ int wg_run_compiler(const char *args, const char *compile_args,  const char *sec
                         if (this_proc_fileile != NULL) {
                             rewind(this_proc_fileile);
                             while (fgets(size_log, sizeof(size_log), this_proc_fileile) != NULL) {
-                                if (strfind(size_log, "error while loading shared libraries:", true)) {
+                                if (strfind(size_log, "error while loading shared libraries:", true) ||
+                                    strfind(size_log, "library \"libpawnc.so\" not found", true)) {
                                     wg_printfile(".watchdogs/compiler_test.log");
                                     goto compiler_end;
                                 }

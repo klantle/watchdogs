@@ -113,7 +113,7 @@ void __debug_main_chain(int debug_info) {
                 "toml github tokens: %s | "
                 "toml chatbot: %s | "
                 "toml ai models: %s | "
-                "toml ai key: %s\n",
+                "toml ai key: %s\n]",
                     __func__, __PRETTY_FUNCTION__,
                     __LINE__, __FILE__,
                     __DATE__, __TIME__,

@@ -92,9 +92,9 @@ void unit_sigint_handler(int sig) {
  */
 void wg_stop_server_tasks(void) {
         if (wg_server_env() == 1)           /* SA-MP server environment */
-          end_process(wgconfig.wg_toml_binary);
+          wg_kill_process(wgconfig.wg_toml_binary);
         else if (wg_server_env() == 2)      /* OpenMP server environment */
-          end_process(wgconfig.wg_toml_binary);
+          wg_kill_process(wgconfig.wg_toml_binary);
 }
 
 /*

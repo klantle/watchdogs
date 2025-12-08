@@ -48,7 +48,7 @@ endif
 # Source & object files
 
 SRCS = source/extra.c source/debug.c source/curl.c source/units.c source/utils.c source/depend.c source/kernel.c \
-       source/compiler.c source/archive.c source/package.c source/runner.c source/crypto.c \
+       source/compiler.c source/archive.c source/library.c source/runner.c source/crypto.c \
        include/tomlc/toml.c include/cJSON/cJSON.c
 
 OBJS = $(SRCS:.c=.o)
@@ -60,11 +60,9 @@ RESFILE = VERSION.res
 .PHONY: init clean linux termux windows strip compress debug termux-debug windows-debug
 
 
-# Initialization routine for automatic toolchain setup
 init:
 	@echo "==> Detecting environment..."
-	UNAME_S=$$(uname -s); \
-	\
+	@UNAME_S="$$(uname -s)"; \
 	if echo "$$UNAME_S" | grep -qi "MINGW64_NT"; then \
 		echo "Detected MSYS2 MinGW UCRT64"; \
 		pacman -Sy --noconfirm && \
@@ -77,13 +75,11 @@ init:
 			mingw-w64-ucrt-x86_64-readline \
 			mingw-w64-ucrt-x86_64-libarchive \
 			mingw-w64-ucrt-x86_64-upx; \
-	\
 	elif echo "$$UNAME_S" | grep -qi "Linux" && [ -d "/data/data/com.termux" ]; then \
 		echo "Detected Termux"; \
 		pkg update -y && pkg install -y \
 			x11-repo unstable-repo coreutils binutils procps clang curl \
 			libarchive libandroid-spawn readline upx; \
-	\
 	elif echo "$$UNAME_S" | grep -qi "Linux"; then \
 		echo "Detected Linux"; \
 		if command -v apt >/dev/null 2>&1; then \
@@ -118,7 +114,7 @@ init:
 	else \
 		echo "Unsupported environment"; \
 		exit 1; \
-	fi;
+	fi
 
 
 # Generic build pipeline
@@ -166,6 +162,17 @@ linux:
 	$(MAKE) compress OUTPUT=$(OUTPUT)
 
 
+# Termux Build (release-fast)
+CFLAGS_FAST = -O2 -pipe -march=armv8-a -mtune=generic -fstrict-aliasing \
+              -fdata-sections -ffunction-sections -flto=thin -fno-stack-protector \
+              -fuse-ld=lld
+
+termux-fast: OUTPUT = watchdogs.tmux
+termux-fast:
+	$(CC) $(CFLAGS_FAST) -I$$PREFIX/include -I$$PREFIX/lib \
+	    -D__ANDROID__ -fPIE $(SRCS) -o $(OUTPUT) \
+	    $(LDFLAGS) -landroid-spawn -pie
+
 # Termux build (release)
 
 termux: OUTPUT = watchdogs.tmux
@@ -181,7 +188,7 @@ termux:
 windows: OUTPUT = watchdogs.win
 windows: $(RESFILE)
 	@echo "Building for Windows"
-	$(CC) $(CFLAGS) -I/ucrt64/include $(SRCS) $(RESFILE) -D__WINDOWS__ -o $(OUTPUT) $(LDFLAGS)
+	$(CC) $(CFLAGS) -I/ucrt64/include $(SRCS) $(RESFILE) -D__WINDOWS32__ -o $(OUTPUT) $(LDFLAGS)
 	@$(MAKE) strip OUTPUT=$(OUTPUT)
 	@$(MAKE) compress OUTPUT=$(OUTPUT)
 
@@ -203,7 +210,7 @@ termux-debug:
 windows-debug: DEBUG_MODE=1
 windows-debug: OUTPUT = watchdogs.debug.win
 windows-debug: $(RESFILE)
-	$(CC) $(CFLAGS) -g -D_DBG_PRINT -D__WINDOWS__ $(SRCS) $(RESFILE) -o $(OUTPUT) $(LDFLAGS)
+	$(CC) $(CFLAGS) -g -D_DBG_PRINT -D__WINDOWS32__ $(SRCS) $(RESFILE) -o $(OUTPUT) $(LDFLAGS)
 	@echo "Windows debug build complete"
 
 

@@ -11,5 +11,5 @@
 | **source/compiler** | This file handles the Pawncc compiler integration for Watchdogs.                                      |
 | **source/extra**    | This file contains additional functions for Watchdogs.                                        |
 | **source/depends**  | This file manages dependencies for Watchdogs.                                                         |
-| **source/package**  | This file handles the installation process for SA-MP/Open.MP and Pawncc within Watchdogs.             |
+| **source/library**  | This file handles the installation process for SA-MP/Open.MP and Pawncc within Watchdogs.             |
 | **source/server**   | This file manages the SA-MP/Open.MP server operations for Watchdogs.                                  |

@@ -22,19 +22,24 @@
  * Ensures proper path concatenation without duplicate directory components.
  */
 static void arch_extraction_path(const char *entry_dest, const char *entry_path,
-                                char *exit_path, size_t exit_size)
+                                 char *exit_path, size_t exit_size)
 {
         /* Handle cases where no specific destination is provided */
-        if (!entry_dest ||
-                !strcmp(entry_dest, ".") ||
-                *entry_dest == '\0') {
-                snprintf(exit_path, exit_size, "%s", entry_path);  /* Use entry path as-is */
+        if (!entry_dest
+            || !strcmp(entry_dest, ".")
+            || *entry_dest == '\0') {
+                snprintf(exit_path, exit_size,
+                        "%s", entry_path);  /* Use entry path as-is */
         } else {
                 /* Check if entry path already starts with destination to avoid duplication */
-                if (!strncmp(entry_path, entry_dest, strlen(entry_dest))) {
-                        snprintf(exit_path, exit_size, "%s", entry_path);  /* Path already contains destination */
+                if (!strncmp(entry_path,
+                    entry_dest,
+                    strlen(entry_dest))) {
+                        snprintf(exit_path, exit_size,
+                                "%s", entry_path);  /* Path already contains destination */
                 } else {
-                        snprintf(exit_path, exit_size, "%s/%s", entry_dest, entry_path);  /* Combine dest + entry path */
+                        snprintf(exit_path, exit_size,
+                                "%s/%s", entry_dest, entry_path);  /* Combine dest + entry path */
                 }
         }
 }

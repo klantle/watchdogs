@@ -26,7 +26,7 @@
 #endif
 #if defined(WG_ANDROID)
 ssize_t sendfile(int out_fd,
-			int in_fd, off_t *offset, size_t count) {
+		int in_fd, off_t *offset, size_t count) {
 		char buf[8192];
 		size_t left = count;
 		while (left > 0) {
@@ -46,7 +46,7 @@ ssize_t sendfile(int out_fd,
 
 #include "extra.h"
 #include "units.h"
-#include "package.h"
+#include "library.h"
 #include "crypto.h"
 
 const char* __command[] = {
@@ -55,63 +55,6 @@ const char* __command[] = {
 		"replicate",  "hardware",  "gamemode",   "pawncc",    "debug",
 		"compile",    "running",   "compiles",   "stop",      "restart",
 		"wanion",     "tracker",   "compress",   "send"
-};
-
-const char *__dency_os_patterns[] = {
-        "windows",
-        "win",
-        ".exe",
-        "msvc",
-        "mingw",
-        "linux",
-        "ubuntu",
-        "debian",
-        "cent",
-        "centos",
-        "cent_os",
-        "fedora",
-        "arch",
-        "archlinux",
-        "alphine"
-        "rhel",
-        "redhat",
-        "linuxmint",
-        "mint",
-        "x86",
-        "x64",
-        "x86_64",
-        "amd64",
-        "arm",
-        "arm64",
-        "aarch",
-        "aarch64"
-};
-
-const char *__dency_more_patterns[] = {
-        "src",
-        "source",
-		"proj",
-        "project",
-        "server",
-        "_server",
-        "gamemode",
-        "gamemodes",
-		"bin",
-		"build",
-		"packages",
-		"resources",
-		"modules",
-		"plugins",
-		"addons",
-		"extensions",
-		"scripts",
-		"system",
-		"core",
-		"runtime",
-		"libs",
-		"include",
-		"deps",
-		"dependencies"
 };
 
 const size_t
@@ -136,7 +79,7 @@ WatchdogConfig wgconfig = {
 	    .wg_toml_config = NULL,
 		.wg_toml_logs = NULL,
 	    .wg_toml_aio_opt = NULL,
-	    .wg_toml_aio_repo = NULL,
+	    .wg_toml_packages = NULL,
 	    .wg_toml_proj_input = NULL,
 	    .wg_toml_proj_output = NULL,
 		.wg_toml_key_ai = NULL,
@@ -993,10 +936,8 @@ static int __command_suggest(const char *s1, const char *s2) {
  * Iterates through command list, calculates distance to each, keeps the best match.
  * Returns the closest command and optionally outputs the distance score.
  */
-const char *wg_find_near_command(const char *command,
-								 const char *commands[],
-								 size_t num_cmds,
-								 int *out_distance)
+const char *wg_find_near_command(const char *command, const char *commands[],
+								 size_t num_cmds, int *out_distance)
 {
 	    int best_distance = INT_MAX;
 	    const char *best_cmd = NULL;
@@ -1038,7 +979,9 @@ const char *wg_procure_os(void)
 		/* WSL detection: check for WSL environment variables */
 		else if (getenv("WSL_INTEROP") ||
 				 getenv("WSL_DISTRO_NAME"))
+		{
 				strncpy(os, "windows", sizeof(os));
+		}
 
 		os[sizeof(os)-1] = '\0'; /* Ensure null termination */
 		return os;
@@ -1159,128 +1102,28 @@ int ensure_parent_dir(char *out_parent, size_t n, const char *dest)
  * On Unix: uses pkill with SIGTERM. On Windows: uses taskkill.exe.
  * Constructs and executes appropriate system command.
  */
-int end_process(const char *process)
+int wg_kill_process(const char *process)
 {
-		if (!process)
-			return -1; /* Invalid input */
-		char reg_command[WG_PATH_MAX];
+        if (!process)
+        	return -1; /* Invalid input */
+        char reg_command[WG_PATH_MAX];
 #ifndef WG_WINDOWS
-		/* Unix: pkill command with signal termination */
-		snprintf(reg_command, sizeof(reg_command),
-				"pkill -SIGTERM \"%s\" > /dev/null", process);
+#if !defined(WG_ANDROID) && defined(WG_LINUX)
+        /* Unix: pkill command with signal termination */
+        snprintf(reg_command, sizeof(reg_command),
+                "pkill -SIGTERM \"%s\" > /dev/null", process);
 #else
-		/* Windows: taskkill command with quiet mode */
+		/* Android: kill command with pgrep */
 		snprintf(reg_command, sizeof(reg_command),
-				"C:\\Windows\\System32\\taskkill.exe "
-				"/IM \"%s\" >nul 2>&1", process);
+			 "kill -TERM $(pgrep -f \"%s\") > /dev/null 2>&1", process);
 #endif
-		return wg_run_command(reg_command); /* Execute kill command */
-}
-
-/*
- * is_os_specific_archive - check if filename indicates OS-specific archive
- *
- * Identifies platform-specific files by name patterns. Returns 1 if the
- * filename contains any OS pattern, 0 otherwise.
- */
-int is_os_specific_archive(const char *filename)
-{
-		int k;
-
-		for (k = 0; __dency_os_patterns[k] != NULL; ++k) {
-			if (strfind(
-				filename, __dency_os_patterns[k], true)
-			)
-				return 1;
-		}
-
-		return 0;
-}
-
-/*
- * is_project_archive - check if filename indicates server/gamemode archive
- *
- * Identifies server-related files by name patterns. Returns 1 if the
- * filename contains any server pattern, 0 otherwise.
- */
-int is_project_archive(const char *filename)
-{
-		int k;
-
-		for (k = 0; __dency_more_patterns[k] != NULL; ++k) {
-			if (strfind(
-				filename, __dency_more_patterns[k], true)
-			)
-				return 1;
-		}
-
-		return 0;
-}
-
-/*
- * dency_get_assets - select most appropriate asset from available options
- *
- * Prioritizes assets in the following order:
- * 1. Server/gamemode assets
- * 2. OS-specific assets
- * 3. Neutral assets (no OS pattern)
- * 4. First asset as fallback
- *
- * Returns a newly allocated string containing the selected asset filename,
- * or NULL if no assets are available.
- */
-char *dency_get_assets(char **pkg_assets, int counts, const char *preferred_os)
-{
-		int i, j;
-		size_t fetch_patterns = sizeof(__dency_os_patterns) /
-					sizeof(__dency_os_patterns[0]);
-
-		/* Handle edge cases */
-		if (counts == 0)
-			return NULL;
-		if (counts == 1)
-			return strdup(pkg_assets[0]);
-
-		/* Priority 1: Server/gamemode assets */
-		for (i = 0; i < counts; i++) {
-			for (int p = 0; __dency_more_patterns[p] != NULL; p++) {
-				if (strfind(
-					pkg_assets[i], __dency_more_patterns[p], true)
-				) {
-					return strdup(pkg_assets[i]);
-				}
-			}
-		}
-
-		/* Priority 2: OS-specific assets */
-		for (i = 0; i < fetch_patterns; i++) {
-			for (j = 0; j < counts; j++) {
-				if (
-					strfind(pkg_assets[j], __dency_os_patterns[i], true)
-				)
-					return strdup(pkg_assets[j]);
-			}
-		}
-
-		/* Priority 3: Neutral assets (no OS pattern) */
-		for (i = 0; i < counts; i++) {
-			int has_os_pattern = 0;
-
-			for (j = 0; j < fetch_patterns; j++) {
-				if (
-					strfind(pkg_assets[i], __dency_os_patterns[j], true)
-				) {
-					has_os_pattern = 1;
-					break;
-				}
-			}
-
-			if (!has_os_pattern)
-				return strdup(pkg_assets[i]);
-		}
-
-		/* Fallback: First asset */
-		return strdup(pkg_assets[0]);
+#else
+        /* Windows: taskkill command with quiet mode */
+        snprintf(reg_command, sizeof(reg_command),
+                "C:\\Windows\\System32\\taskkill.exe "
+                "/IM \"%s\" >nul 2>&1", process);
+#endif
+        return wg_run_command(reg_command); /* Execute kill command */
 }
 
 /*
@@ -1450,58 +1293,59 @@ int wg_sef_fdir(const char *sef_path,
 
 		FindClose(find_handle);
 #else
-		/* Unix implementation using opendir/readdir */
+		/* POSIX implementation using opendir/readdir */
 		DIR *open_dir;
 		struct dirent *item;
 		struct stat statbuf;
 		const char *entry_name;
+		int is_dir, is_reg;
 
 		open_dir = opendir(sef_path);
-		if (!open_dir)
-			return 0; /* Can't open directory */
+		if (!open_dir) {
+			/* Cannot open directory */
+			return 0;
+		}
 
 		while ((item = readdir(open_dir)) != NULL) {
 			entry_name = item->d_name;
+			
 			if (wg_is_special_dir(entry_name))
-				continue; /* Skip "." and ".." */
+				continue;
 
-			/* Construct full path */
 			__set_path_sep(size_path, sizeof(size_path), sef_path, entry_name);
 
-			if (item->d_type == DT_DIR) { /* Directory entry */
+			/* Always use stat() because d_type is not reliable on all filesystems */
+			if (stat(size_path, &statbuf) == -1) {
+				/* Try lstat() if stat() fails */
+				if (lstat(size_path, &statbuf) == -1)
+					continue;
+			}
+
+			is_dir = S_ISDIR(statbuf.st_mode);
+			is_reg = S_ISREG(statbuf.st_mode);
+
+			if (is_dir) {
 				if (wg_procure_ignore_dir(entry_name, ignore_dir))
 					continue;
-				/* Recursive search */
+				
+				/* Avoid infinite recursion with symbolic links */
+				if (S_ISLNK(statbuf.st_mode)) {
+					/* Option: follow or skip symlink */
+					/* continue; // Skip symlink */
+				}
+				
 				if (wg_sef_fdir(size_path, sef_name, ignore_dir)) {
-						closedir(open_dir);
+					closedir(open_dir);
 					return 1;
 				}
-			} else if (item->d_type == DT_REG) { /* Regular file */
+			} else if (is_reg) {
 				if (wg_match_filename(entry_name, sef_name)) {
 					wg_add_found_path(size_path);
 					closedir(open_dir);
 					return 1;
 				}
-			} else {
-				/* Unknown type: use stat to determine actual type */
-				if (stat(size_path, &statbuf) == -1)
-					continue; /* Can't stat */
-
-				if (S_ISDIR(statbuf.st_mode)) { /* Actually a directory */
-					if (wg_procure_ignore_dir(entry_name, ignore_dir))
-						continue;
-					if (wg_sef_fdir(size_path, sef_name, ignore_dir)) {
-						closedir(open_dir);
-						return 1;
-					}
-				} else if (S_ISREG(statbuf.st_mode)) { /* Actually a regular file */
-					if (wg_match_filename(entry_name, sef_name)) {
-						wg_add_found_path(size_path);
-						closedir(open_dir);
-						return 1;
-					}
-				}
 			}
+			/* Skip other types (FIFO, socket, device, etc.) */
 		}
 
 		closedir(open_dir);
@@ -1797,13 +1641,32 @@ static void wg_generate_toml_content(FILE *file, const char *wg_os_type,
 		}
 
 		/* Write [general] section */
+		int is_docker = 0;
+		/* Container detection: check for Docker environment file */
+		if (access("/.dockerenv", F_OK) == 0)
+			is_docker = 1;
+		/* WSL detection: check for WSL environment variables */
+		else if (getenv("WSL_INTEROP") ||
+				 getenv("WSL_DISTRO_NAME"))
+		{
+				is_docker = -1;
+		}
 		fprintf(file, "[general]\n");
 		fprintf(file, "os = \"%s\"\n", wg_os_type);
+		if (strcmp(wg_os_type, "windows") == 0 && is_docker == -1) {
+			static int k = 0;
+			if (k != 1) {
+				k = 1;
+				pr_info(stdout, "We've detected that you are running Watchdogs in WSL without Docker.\n"
+					"\tTherefore, we have selected the Windows Ecosystem for Watchdogs,"
+					"\n\tand you can change it in watchdogs.toml.");
+			}
+		}
+
 		/* Set binary and config paths based on server type */
 		if (samp_user == 0) { /* OpenMP */
 			if (!strcmp(wg_os_type, "windows")) {
 				fprintf(file, "binary = \"%s\"\n", "omp-server.exe");
-				fprintf(file, "config = \"%s\"\n", "config.json");
 			} else if (!strcmp(wg_os_type, "linux")) {
 				fprintf(file, "binary = \"%s\"\n", "omp-server");
 			}
@@ -1857,7 +1720,7 @@ static void wg_generate_toml_content(FILE *file, const char *wg_os_type,
 		fprintf(file, "[depends]\n");
 		fprintf(file, "github_tokens = \"DO_HERE\"\n");
 		/* Dependency repositories */
-		fprintf(file, "aio_repo = [\"Y-Less/sscanf?newer\", "
+		fprintf(file, "packages = [\"Y-Less/sscanf?newer\", "
 					  "\"samp-incognito/samp-streamer-plugin?newer\"]");
 }
 
@@ -2051,7 +1914,7 @@ static int _try_mv_without_sudo(const char *src, const char *dest) {
 	    char size_mv[WG_PATH_MAX];
 	    /* Platform-specific move commands */
 	    if (is_native_windows())
-	        snprintf(size_mv, sizeof(size_mv), "move /-Y %s %s", src, dest);
+	        snprintf(size_mv, sizeof(size_mv), "move /Y \"%s\" \"%s\"", src, dest);
 	    else
 	        snprintf(size_mv, sizeof(size_mv), "mv -f %s %s", src, dest);
 	    int ret = wg_run_command(size_mv);
@@ -2066,7 +1929,7 @@ static int _try_mv_without_sudo(const char *src, const char *dest) {
 static int __mv_with_sudo(const char *src, const char *dest) {
 	    char size_mv[WG_PATH_MAX];
 	    if (is_native_windows())
-	        snprintf(size_mv, sizeof(size_mv), "move /-Y %s %s", src, dest);
+	        snprintf(size_mv, sizeof(size_mv), "move /Y \"%s \"%s\"", src, dest);
 	    else
 	        snprintf(size_mv, sizeof(size_mv), "sudo mv -f %s %s", src, dest);
 	    int ret = wg_run_command(size_mv);
@@ -2081,7 +1944,7 @@ static int __mv_with_sudo(const char *src, const char *dest) {
 static int _try_cp_without_sudo(const char *src, const char *dest) {
 	    char size_cp[WG_PATH_MAX];
 	    if (is_native_windows())
-	        snprintf(size_cp, sizeof(size_cp), "xcopy /-Y %s %s", src, dest);
+	        snprintf(size_cp, sizeof(size_cp), "xcopy /Y \"%s\" \"%s\"", src, dest);
 	    else
 	        snprintf(size_cp, sizeof(size_cp), "cp -f %s %s", src, dest);
 	    int ret = wg_run_command(size_cp);
@@ -2096,7 +1959,7 @@ static int _try_cp_without_sudo(const char *src, const char *dest) {
 static int __cp_with_sudo(const char *src, const char *dest) {
 	    char size_cp[WG_PATH_MAX];
 	    if (is_native_windows())
-	        snprintf(size_cp, sizeof(size_cp), "xcopy /-Y %s %s", src, dest);
+	        snprintf(size_cp, sizeof(size_cp), "xcopy /Y \"%s\" \"%s\"", src, dest);
 	    else
 	        snprintf(size_cp, sizeof(size_cp), "sudo cp -f %s %s", src, dest);
 	    int ret = wg_run_command(size_cp);

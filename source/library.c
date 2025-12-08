@@ -16,7 +16,7 @@
 #include "curl.h"
 #include "kernel.h"
 #include "debug.h"
-#include "package.h"
+#include "library.h"
 
 /*
  * Handles Pawn compiler installation specifically for Termux (Android) environment
@@ -30,10 +30,10 @@ static int pawncc_handle_termux_installation(void)
 			 url[WG_PATH_MAX * 3], filename[128]; /* Download URL and local filename buffers */
 		
 		/* Available Pawn compiler versions for Termux from mxp96 repository */
-		const char *package_termux_versions[] = { "3.10.11", "3.10.10" };
-		size_t size_package_termux_versions = sizeof(package_termux_versions);
-		size_t size_package_termux_versions_zero = sizeof(package_termux_versions[0]);
-		size_t version_count = size_package_termux_versions / size_package_termux_versions_zero; /* Calculate number of versions */
+		const char *library_termux_versions[] = { "3.10.11", "3.10.10" };
+		size_t size_library_termux_versions = sizeof(library_termux_versions);
+		size_t size_library_termux_versions_zero = sizeof(library_termux_versions[0]);
+		size_t version_count = size_library_termux_versions / size_library_termux_versions_zero; /* Calculate number of versions */
 
 		/* Verify we're actually in Termux environment before proceeding */
 		if (!is_termux_env())
@@ -50,7 +50,7 @@ ret_pawncc:
 			printf("-> [%c/%c] PawnCC %s (mxp96)\n", /* Show both uppercase and lowercase options */
 				(int)('A' + i), /* Uppercase option letter */
 				(int)('a' + i), /* Lowercase option letter */
-				package_termux_versions[i]); /* Version number */
+				library_termux_versions[i]); /* Version number */
 		}
 
 		/* Get user input for version selection */
@@ -134,13 +134,13 @@ done:
 			 "download/"
 			 "%s/" /* Version tag (e.g., 3.10.11) */
 			 "pawnc-%s-%s.zip", /* Filename pattern: pawnc-version-architecture.zip */
-			 package_termux_versions[version_index], /* Selected version */
-			 package_termux_versions[version_index], /* Version in filename */
+			 library_termux_versions[version_index], /* Selected version */
+			 library_termux_versions[version_index], /* Version in filename */
 			 architecture); /* Selected architecture (arm32/arm64) */
 
 		/* Construct local filename for downloaded archive */
 		snprintf(filename, sizeof(filename), "pawncc-%s-%s.zip",
-				    package_termux_versions[version_index], architecture);
+				    library_termux_versions[version_index], architecture);
 
 		wgconfig.wg_ipawncc = 1; /* Set flag indicating PawnCC installation is in progress */
 		wg_download_file(url, filename); /* Initiate the download process */
@@ -164,7 +164,7 @@ static int pawncc_handle_standard_installation(const char *platform)
 		char version_selection; /* User's version choice character */
 		char url[526]; /* Buffer for constructed download URL */
 		char filename[128]; /* Buffer for local filename */
-		const char *package_repo_base; /* Base GitHub repository URL */
+		const char *library_repo_base; /* Base GitHub repository URL */
 		const char *archive_ext; /* File extension based on platform */
 		int version_index; /* Index of selected version in array */
 
@@ -211,12 +211,12 @@ get_back:
 		/* Determine which GitHub repository to use based on version */
 		if (strcmp(versions[version_index], "3.10.11") == 0)
 				/* Version 3.10.11 is hosted in openmultiplayer repository */
-				package_repo_base = "https://github.com/"
+				library_repo_base = "https://github.com/"
 								"openmultiplayer/"
 								"compiler";
 		else
 				/* Older versions are hosted in pawn-lang repository */
-				package_repo_base = "https://github.com/"
+				library_repo_base = "https://github.com/"
 								"pawn-lang/"
 								"compiler";
 
@@ -226,7 +226,7 @@ get_back:
 		/* Construct GitHub release download URL */
 		snprintf(url, sizeof(url),
 			 "%s/releases/download/v%s/pawnc-%s-%s.%s",
-			 package_repo_base, /* Base repository URL */
+			 library_repo_base, /* Base repository URL */
 			 versions[version_index], /* Version tag (v3.10.11, etc.) */
 			 versions[version_index], /* Version in filename */
 			 platform, /* Target platform (linux/windows) */
@@ -297,7 +297,7 @@ int wg_install_server(const char *platform)
         __debug_function();
 
 		/* Structure to hold version information and download URLs */
-		struct package_version_info {
+		struct library_version_info {
 				char key;                    /* Selection key (A, B, C, etc.) */
 				const char *name;            /* Display name (e.g., "SA-MP 0.3.DL R1") */
 				const char *linux_url;       /* Linux download URL */
@@ -307,7 +307,7 @@ int wg_install_server(const char *platform)
 		};
 
 		/* Array of available server versions with metadata */
-		struct package_version_info versions[] = {
+		struct library_version_info versions[] = {
 				/* SA-MP 0.3.DL R1 - First row version */
 				{
 						'A', "SA-MP 0.3.DL R1", /* Key A, display name */
@@ -408,7 +408,7 @@ int wg_install_server(const char *platform)
 
 		const size_t version_count = sizeof(versions) / sizeof(versions[0]); /* 8 versions total */
 		char selection; /* User's selection character */
-		struct package_version_info *chosen = NULL; /* Pointer to selected version */
+		struct library_version_info *chosen = NULL; /* Pointer to selected version */
 		size_t i; /* Loop counter */
 
 		/* Validate platform parameter */

@@ -19,7 +19,7 @@
 #include "curl.h"
 
 /* Array of online platform names and their URL patterns for account tracking */
-const char* URL_FORUM_AIO[MAX_NUM_SITES][2] = {
+const char* ALL_IN_ONE_FORUMS[MAX_NUM_SITES][2] = {
         {"github", "https://github.com/%s"},
         {"gitlab", "https://gitlab.com/%s"},
         {"gitea", "https://gitea.io/%s"},
@@ -296,6 +296,140 @@ size_t write_memory_callback(void *contents, size_t size, size_t nmemb, void *us
         return realsize;
 }
 
+/* 
+ * Validate URL accessibility using HTTP HEAD request
+ * Checks if a given URL is reachable and returns appropriate status code
+ */
+int dency_url_checking(const char* url, const char* github_token)
+{
+        CURL* curl = curl_easy_init();
+        if(!curl) return 0;
+
+        CURLcode res;
+        long response_code = 0;
+        struct curl_slist* headers = NULL;
+        char wg_buf_err[CURL_ERROR_SIZE] = {0};
+
+        printf("\tCreate & Checking URL: %s...\t\t[All good]\n", url);
+        
+        /* Add GitHub authentication header if token is available */
+        if(strfind(wgconfig.wg_toml_github_tokens, "DO_HERE", true) ||
+                wgconfig.wg_toml_github_tokens == NULL ||
+                strlen(wgconfig.wg_toml_github_tokens) < 1) {
+                pr_color(stdout, FCOLOUR_GREEN, "Can't read Github token.. skipping\n");
+                sleep(2);
+        } else {
+                char auth_header[512];
+                snprintf(auth_header, sizeof(auth_header), "Authorization: token %s", github_token);
+                headers = curl_slist_append(headers, auth_header);
+        }
+
+        /* Set standard HTTP headers */
+        headers = curl_slist_append(headers, "User-Agent: watchdogs/1.0");
+        headers = curl_slist_append(headers, "Accept: application/vnd.github.v3+json");
+
+        /* Configure CURL for HEAD request (NOBODY = 1) */
+        curl_easy_setopt(curl, CURLOPT_HTTPHEADER, headers);
+        curl_easy_setopt(curl, CURLOPT_URL, url);
+        curl_easy_setopt(curl, CURLOPT_NOBODY, 1L); /* HEAD request */
+        curl_easy_setopt(curl, CURLOPT_FOLLOWLOCATION, 1L);
+        curl_easy_setopt(curl, CURLOPT_TIMEOUT, 30L);
+
+        printf("   Connecting... ");
+        fflush(stdout);
+        
+        /* First perform to establish connection */
+        res = curl_easy_perform(curl);
+        curl_easy_getinfo(curl, CURLINFO_RESPONSE_CODE, &response_code);
+
+        /* Configure error buffer for detailed error reporting */
+        curl_easy_setopt(curl, CURLOPT_ERRORBUFFER, wg_buf_err);
+
+        /* Configure SSL certificate verification */
+        verify_cacert_pem(curl);
+
+        fflush(stdout);
+        
+        /* Perform actual HEAD request */
+        res = curl_easy_perform(curl);
+        curl_easy_getinfo(curl, CURLINFO_RESPONSE_CODE, &response_code);
+
+        /* Display results with success/failure indicators */
+        if(response_code == WG_CURL_RESPONSE_OK && strlen(wg_buf_err) == 0) {
+                printf("cURL result: %s\t\t[All good]\n", curl_easy_strerror(res));
+                printf("Response code: %ld\t\t[All good]\n", response_code);
+        } else {
+                if(strlen(wg_buf_err) > 0) {
+                        printf("Error: %s\t\t[Fail]\n", wg_buf_err);
+                } else {
+                        printf("cURL result: %s\t\t[Fail]\n", curl_easy_strerror(res));
+                }
+        }
+
+        curl_easy_cleanup(curl);
+        curl_slist_free_all(headers);
+
+        /* Return success if HTTP status is 2xx */
+        return(response_code >= 200 && response_code < 300);
+}
+
+/* 
+ * Download and retrieve content from a URL
+ * Returns HTML/JSON content in dynamically allocated buffer
+ */
+int dency_http_get_content(const char* url, const char* github_token, char** out_html)
+{
+        CURL* curl;
+        CURLcode res;
+        struct curl_slist* headers = NULL;
+        struct dency_curl_buffer buffer = {0}; /* Buffer for downloaded content */
+
+        curl = curl_easy_init();
+        if(!curl)
+                return 0;
+
+        /* Add GitHub authentication if token provided */
+        if(github_token && strlen(github_token) > 0 && !strfind(github_token, "DO_HERE", true)) {
+                char auth_header[512];
+                snprintf(auth_header, sizeof(auth_header), "Authorization: token %s", github_token);
+                headers = curl_slist_append(headers, auth_header);
+        }
+
+        /* Set standard headers */
+        headers = curl_slist_append(headers, "User-Agent: watchdogs/1.0");
+        curl_easy_setopt(curl, CURLOPT_HTTPHEADER, headers);
+
+        /* Configure download options */
+        curl_easy_setopt(curl, CURLOPT_URL, url);
+
+        memory_struct_init((void*)&buffer);
+        curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, write_memory_callback);
+        curl_easy_setopt(curl, CURLOPT_WRITEDATA, (void*)&buffer);
+        memory_struct_free((void*)&buffer);
+
+        curl_easy_setopt(curl, CURLOPT_FOLLOWLOCATION, 1L);
+        curl_easy_setopt(curl, CURLOPT_CONNECTTIMEOUT, 15L);
+        curl_easy_setopt(curl, CURLOPT_TIMEOUT, 60L);
+
+        /* Configure SSL verification */
+        verify_cacert_pem(curl);
+
+        /* Perform download */
+        res = curl_easy_perform(curl);
+        curl_easy_cleanup(curl);
+        curl_slist_free_all(headers);
+
+        /* Check for errors */
+        if(res != CURLE_OK || buffer.size == 0) {
+                wg_free(buffer.data);
+                return 0;
+        }
+
+        /* Return downloaded content */
+        *out_html = buffer.data;
+        return 1;
+}
+
 /*
  * Generate username variations for account tracking.
  * Creates common username mutations to find accounts across platforms.
@@ -378,7 +512,7 @@ void account_tracking_username(CURL *curl, const char *username) {
         /* Test username against each platform in the list */
         for (int i = 0; i < MAX_NUM_SITES; i++) {
                 char url[200];
-                snprintf(url, sizeof(url), URL_FORUM_AIO[i][1], username);
+                snprintf(url, sizeof(url), ALL_IN_ONE_FORUMS[i][1], username);
 
                 curl_easy_setopt(curl, CURLOPT_URL, url);
                 curl_easy_setopt(curl, CURLOPT_HTTPHEADER, headers);
@@ -393,16 +527,16 @@ void account_tracking_username(CURL *curl, const char *username) {
 
                 if (res != CURLE_OK) {
                         printf("[%s] %s -> ERROR %s\n",
-                                URL_FORUM_AIO[i][0], url, curl_easy_strerror(res));
+                                ALL_IN_ONE_FORUMS[i][0], url, curl_easy_strerror(res));
                 } else {
                         long status_code;
                         curl_easy_getinfo(curl, CURLINFO_RESPONSE_CODE, &status_code);
 
                         if (status_code == WG_CURL_RESPONSE_OK) {
-                                printf("[%s] %s -> FOUND\n", URL_FORUM_AIO[i][0], url);
+                                printf("[%s] %s -> FOUND\n", ALL_IN_ONE_FORUMS[i][0], url);
                         } else {
                                 printf("[%s] %s -> NOT FOUND (%ld)\n",
-                                URL_FORUM_AIO[i][0], url, status_code);
+                                ALL_IN_ONE_FORUMS[i][0], url, status_code);
                         }
                 }
 
@@ -424,15 +558,15 @@ static void find_compiler_tools(int compiler_type,
         const char *ignore_dir = NULL;
         char size_pf[WG_PATH_MAX + 56];
 
-        snprintf(size_pf, sizeof(size_pf), "%s", pawncc_dir_src);
+        snprintf(size_pf, sizeof(size_pf), "%s/", pawncc_dir_src);
 
         /* Search for each compiler tool */
         *found_pawncc_exe = wg_sef_fdir(size_pf, "pawncc.exe", ignore_dir);
         *found_pawncc = wg_sef_fdir(size_pf, "pawncc", ignore_dir);
         *found_pawndisasm_exe = wg_sef_fdir(size_pf, "pawndisasm.exe", ignore_dir);
         *found_pawndisasm = wg_sef_fdir(size_pf, "pawndisasm", ignore_dir);
-        *found_pawnc_dll = wg_sef_fdir(size_pf, "pawnc.dll", ignore_dir);
         *found_PAWNC_DLL = wg_sef_fdir(size_pf, "PAWNC.dll", ignore_dir);
+        *found_pawnc_dll = wg_sef_fdir(size_pf, "pawnc.dll", ignore_dir);
 }
 
 /* 
@@ -461,11 +595,12 @@ static const char *get_compiler_directory(void)
  * Copy a compiler tool from source to destination directory
  */
 static void copy_compiler_tool(const char *src_path, const char *tool_name,
-                                                           const char *dest_dir)
+                                const char *dest_dir)
 {
         char dest_path[WG_PATH_MAX];
 
-        snprintf(dest_path, sizeof(dest_path), "%s/%s", dest_dir, tool_name);
+        snprintf(dest_path, sizeof(dest_path),
+                "%s/%s", dest_dir, tool_name);
         wg_sef_wmv(src_path, dest_path);
 }
 
@@ -582,7 +717,7 @@ static int setup_linux_library(void)
 
         /* Search for library file */
         char size_pf[WG_PATH_MAX + 56];
-        snprintf(size_pf, sizeof(size_pf), "%s", pawncc_dir_src);
+        snprintf(size_pf, sizeof(size_pf), "%s/", pawncc_dir_src);
         found_lib = wg_sef_fdir(size_pf, "libpawnc.so", NULL);
         if (!found_lib)
                 return 0;
@@ -688,11 +823,11 @@ void wg_apply_pawncc(void)
         if (found_pawndisasm && pawndisasm_src[0])
                 copy_compiler_tool(pawndisasm_src, "pawndisasm", dest_dir);
 
-        if (found_pawnc_dll && pawnc_dll_src[0])
-                copy_compiler_tool(pawnc_dll_src, "pawnc.dll", dest_dir);
-
         if (found_PAWNC_DLL && PAWNC_DLL_src[0])
                 copy_compiler_tool(PAWNC_DLL_src, "PAWNC.dll", dest_dir);
+
+        if (found_pawnc_dll && pawnc_dll_src[0])
+                copy_compiler_tool(pawnc_dll_src, "pawnc.dll", dest_dir);
 
         /* Setup libraries on Linux/Unix systems */
         setup_linux_library();
@@ -711,6 +846,12 @@ void wg_apply_pawncc(void)
 
         memset(pawncc_dir_src, 0, sizeof(pawncc_dir_src));
 
+        if (path_exists("pawno/pawnc.dll") == 1)
+                rename("pawno/pawnc.dll", "pawno/PAWNC.dll");
+                
+        if (path_exists("qawno/pawnc.dll") == 1)
+                rename("qawno/pawnc.dll", "qawno/PAWNC.dll");
+                
         pr_info(stdout, "Congratulations! compiler installed successfully.");
         /* Prompt to run compiler immediately */
         pr_color(stdout, FCOLOUR_CYAN, "Run compiler now? (y/n):");
@@ -880,6 +1021,7 @@ int wg_download_file(const char *url, const char *output_filename)
         long response_code = 0;
         int retry_count = 0;
         struct stat file_stat;
+        char curl_command[WG_PATH_MAX * 2];
         
         /* Clean filename and remove query parameters */
         char clean_filename[WG_PATH_MAX];
@@ -1065,19 +1207,39 @@ int wg_download_file(const char *url, const char *output_filename)
                                                 
                                                 if (confirm && (confirm[0] == 'Y' || confirm[0] == 'y')) {
                                                         remove_archive = 1;
-                                                        if (unlink(final_filename) != 0) {
-                                                                pr_color(stdout, FCOLOUR_YELLOW,
-                                                                        "Warning: Failed to remove %s: %s\n",
-                                                                        final_filename, strerror(errno));
+                                                         if (path_exists(final_filename) == 1) {
+#ifdef WG_WINDOWS
+                                                                snprintf( curl_command, sizeof( curl_command ),
+                                                                        "del "
+                                                                        "/f "
+                                                                        "/q \"%s\"",
+                                                                        final_filename );
+#else
+                                                                snprintf( curl_command, sizeof( curl_command ),
+                                                                        "rm "
+                                                                        "-rf %s",
+                                                                        final_filename );
+#endif
                                                         }
+                                                        wg_run_command(curl_command);
                                                 }
                                                 wg_free(confirm);
                                         } else {
-                                                if (unlink(final_filename) != 0) {
-                                                        pr_color(stdout, FCOLOUR_YELLOW,
-                                                                "Warning: Failed to remove %s: %s\n",
-                                                                final_filename, strerror(errno));
+                                                if (path_exists(final_filename) == 1) {
+#ifdef WG_WINDOWS
+                                                snprintf( curl_command, sizeof( curl_command ),
+                                                        "del "
+                                                        "/f "
+                                                        "/q \"%s\"",
+                                                        final_filename );
+#else
+                                                snprintf( curl_command, sizeof( curl_command ),
+                                                        "rm "
+                                                        "-rf %s",
+                                                        final_filename );
+#endif
                                                 }
+                                                wg_run_command(curl_command);
                                         }
                                 } else {
                                         pr_color(stdout, FCOLOUR_CYAN, 
@@ -1085,11 +1247,21 @@ int wg_download_file(const char *url, const char *output_filename)
                                         char *confirm = readline("(y/n): ");
                                         
                                         if (confirm && (confirm[0] == 'Y' || confirm[0] == 'y')) {
-                                                if (unlink(final_filename) != 0) {
-                                                        pr_color(stdout, FCOLOUR_YELLOW,
-                                                                "Warning: Failed to remove %s: %s\n",
-                                                                final_filename, strerror(errno));
+                                                if (path_exists(final_filename) == 1) {
+#ifdef WG_WINDOWS
+                                                snprintf( curl_command, sizeof( curl_command ),
+                                                        "del "
+                                                        "/f "
+                                                        "/q \"%s\"",
+                                                        final_filename );
+#else
+                                                snprintf( curl_command, sizeof( curl_command ),
+                                                        "rm "
+                                                        "-rf %s",
+                                                        final_filename );
+#endif
                                                 }
+                                                wg_run_command(curl_command);
                                         }
                                         wg_free(confirm);
                                 }
@@ -1097,14 +1269,35 @@ int wg_download_file(const char *url, const char *output_filename)
                                 /* Special handling for compiler installation */
                                 if (wgconfig.wg_ipawncc && prompt_apply_pawncc()) {
                                         char size_filename[WG_PATH_MAX];
-                                        snprintf(size_filename, sizeof(size_filename), "%s", final_filename);
+                                        snprintf(size_filename, sizeof(size_filename),
+                                                "%s", final_filename);
 
-                                        char *extension = strstr(size_filename, ".tar.gz");
-                                        if (extension) {
-                                                *extension = '\0';
-                                        } else {
-                                                extension = strrchr(size_filename, '.');
-                                                if (extension) *extension = '\0';
+                                        /* Handle multiple compression formats */
+                                        char *extensions[] = {
+                                                ".tar.gz",
+                                                ".tar.bz2",
+                                                ".tar.xz",
+                                                ".tar",
+                                                ".zip"
+                                        };
+                                        int found = 0;
+                                        
+                                        for (int i = 0;
+                                             i < sizeof(extensions) / sizeof(extensions[0]);
+                                             i++) {
+                                                char *dot_extension = strstr(size_filename, extensions[i]);
+                                                if (dot_extension) {
+                                                        *dot_extension = '\0';
+                                                        found = 1;
+                                                        break;
+                                                }
+                                        }
+                                        
+                                        /* If no known extension found, try to remove any extension */
+                                        if (!found) {
+                                                char *dot_extension = strrchr(size_filename, '.');
+                                                if (dot_extension)
+                                                        *dot_extension = '\0';
                                         }
                                         
                                         snprintf(pawncc_dir_src, sizeof(pawncc_dir_src), "%s", size_filename);

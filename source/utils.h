@@ -23,7 +23,7 @@
 #include "../include/tomlc/toml.h"
 
 /* Platform detection */
-#if defined(__WINDOWS__)
+#if defined(__WINDOWS32__)
 #define WG_WINDOWS
 #elif defined(__LINUX__)
 #define WG_LINUX
@@ -150,7 +150,7 @@ typedef struct {
     char * wg_toml_config;
     char * wg_toml_logs;
     char * wg_toml_aio_opt;
-    char * wg_toml_aio_repo;
+    char * wg_toml_packages;
     char * wg_toml_proj_input;
     char * wg_toml_proj_output;
     char * wg_toml_github_tokens;
@@ -207,11 +207,7 @@ void wg_escape_quotes(char *dest, size_t size, const char *src);
 extern const char* wg_find_near_command(const char *ptr_command,
     const char *__commands[], size_t num_cmds, int *out_distance);
 
-int end_process(const char *process);
-
-char *dency_get_assets(char **pkg_assets, int counts, const char *preferred_os);
-int is_project_archive(const char *filename);
-int is_os_specific_archive(const char *filename);
+int wg_kill_process(const char *process);
 
 int wg_match_wildcard(const char *str, const char *pat);
 const char *wg_procure_os(void);
@@ -223,9 +219,11 @@ int path_access(const char *path);
 int file_regular(const char *path);
 int file_same_file(const char *a, const char *b);
 int ensure_parent_dir(char *out_parent, size_t n, const char *dest);
+
 int wg_is_special_dir(const char *name);
 
-int wg_sef_fdir(const char *sef_path, const char *sef_name, const char *ignore_dir);
+int wg_sef_fdir(const char *sef_path,
+    const char *sef_name, const char *ignore_dir);
 int wg_toml_configs(void);
 int wg_sef_wcopy(const char *c_src, const char *c_dest);
 int wg_sef_wmv(const char *c_src, const char *c_dest);

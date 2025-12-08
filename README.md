@@ -6,7 +6,7 @@
 2. [Quick Installation](#quick-installation)
 3. [Platform-Specific Installation](#platform-specific-installation)
    - [Docker](#docker)
-   - [Linux](#linux-bash)
+   - [Linux](#linux)
    - [Termux](#termux)
    - [MSYS2](#msys2)
    - [GitHub Codespaces](#codespaces)
@@ -46,18 +46,274 @@
 
 > without superuser do (sudo)
 
-```bash
+```yaml
 apt update && apt install make git -y && git clone https://gitlab.com/mywatchdogs/watchdogs watch && cd watch && make init && mv watchdogs .. && cd .. && ./watchdogs
 ```
 
 > with superuser do (sudo)
 
-```bash
+```yaml
 sudo apt update && apt install make git -y && git clone https://gitlab.com/mywatchdogs/watchdogs watch && cd watch && make init && mv watchdogs .. && cd .. && ./watchdogs
 ```
 
+## Platform-Specific Installation
+
+### Docker
+
+#### Prerequisites
+- Docker installed and running
+- User added to docker group
+
+#### Setup Commands
+```yaml
+# Downloading - apt << Ubuntu >>
+sudo apt install docker.io
+```
+
+```yaml
+# Add user to docker group (Linux)
+sudo usermod -aG docker $USER
+newgrp docker
+
+# Start Docker service
+sudo systemctl enable docker
+sudo systemctl start docker
+```
+
+#### Run Ubuntu
+```yaml
+docker run -it ubuntu
+```
+### Saving image
+```yaml
+# Specific session name
+docker run -it --name session_name ubuntu
+# Sample
+docker run -it --name my_ubuntu ubuntu
+# And you can running again
+docker start my_ubuntu
+docker exec -it my_ubuntu /bin/bash
+# Exec with specific user
+sudo docker exec -it --user system my_ubuntu sh
+```
+
+#### Common Docker Commands
+```yaml
+docker ps -a                               # List all containers
+docker start <container-name>              # Start the container
+docker exec -it <container-name> /bin/bash # Enter the running container
+docker stop <container-name>               # Stop the container
+docker rm -f <container-name>              # Force-remove the container
+```
+
+### Codespaces
+
+> GitHub Codespaces/Codespaces Setup.
+
+1. Click the "**<> Code**" button.
+2. Select "**Codespaces**".
+3. Choose "**Create codespace on main**" to create a new Codespace on the *main* branch.
+4. Once the Codespace opens in the VSCode interface:
+   - Click the **three-line menu** (≡) in the top-left corner.
+   - Select **Terminal**.
+   - Click **New Terminal**.
+   - In the terminal, you can drag & paste:
+     ```yaml
+     sudo apt update && sudo apt upgrade &&
+     sudo apt install make &&
+     sudo make && make linux &&
+     chmod +x watchdogs &&
+     ./watchdogs
+     ```
+
+### Linux
+
+#### Installation Steps
+
+> Just drag and drop.
+
+```yaml
+# 1. Update package lists
+apt update
+
+# 2. Install required packages
+apt install curl make git
+
+# 3. Installing cURL cacert.pem
+curl -L -o /etc/ssl/certs/cacert.pem "https://github.com/klantle/libwatchdogs/raw/refs/heads/main/libwatchdogs/cacert.pem"
+
+# 4. Clone repository
+git clone https://gitlab.com/mywatchdogs/watchdogs watch
+
+# 5. Navigate to directory
+cd watch
+
+# 6. Installing Library & Build from source
+make init && make linux
+
+# 7. Set Mod, Move executable and run
+chmod +x watchdogs && \
+mv -f watchdogs .. && cd .. && \
+./watchdogs
+```
+
+### Termux
+
+> We highly recommend using the Termux distribution directly from GitHub instead of the Google Play Store to ensure compatibility with the latest Termux features and to enjoy the freedom offered outside the Play Store. https://github.com/termux/termux-app/releases
+> Just drag and drop.
+
+#### Installation Steps
+```yaml
+# 1. Setup storage permissions
+termux-setup-storage
+
+# 2. Change repository mirror (if needed)
+termux-change-repo # just Enter & Enter & Enter
+
+# 3. Update package lists
+apt update
+
+# 4. Upgrade packages (optional)
+apt upgrade
+
+# 5. Install required packages
+pkg install curl make git
+
+# 6. Installing cURL cacert.pem
+curl -L -o $HOME/cacert.pem "https://github.com/klantle/libwatchdogs/raw/refs/heads/main/libwatchdogs/cacert.pem"
+
+# 7. Clone repository
+git clone https://gitlab.com/mywatchdogs/watchdogs watch
+
+# 8. Navigate to directory
+cd watch
+
+# 9. Installing Library & Build from source
+make init && make termux
+
+# 10. Set Mod, Move executable and run
+chmod +x watchdogs.tmux && \
+mv -f watchdogs.tmux .. && cd .. && \
+./watchdogs.tmux
+```
+
+### MSYS2
+
+#### More mirror list (if needed)
+Available for:
+> /etc/pacman.d/mirrorlist.mingw64 | /etc/pacman.d/mirrorlist.msys | /etc/pacman.d/mirrorlist.ucrt64
+```yaml
+nano /etc/pacman.d/mirrorlist.mingw64 && nano /etc/pacman.d/mirrorlist.msys && nano /etc/pacman.d/mirrorlist.ucrt64
+```
+
+Add mirrors:
+```yaml
+## Fast & Reliable
+Server = https://repo.msys2.org/msys/$arch  # Official
+Server = https://mirror.msys2.org/msys/$arch # Official mirror
+
+## Europe
+Server = https://mirrors.bfsu.edu.cn/msys2/msys/$arch
+Server = https://mirror.selfnet.de/msys2/msys/$arch
+Server = https://mirror.clarkson.edu/msys2/msys/$arch
+
+## Indonesia & Southeast Asia
+Server = https://mirror.0x.sg/msys2/msys/$arch
+Server = https://mirrors.tuna.tsinghua.edu.cn/msys2/msys/$arch
+Server = https://mirrors.ustc.edu.cn/msys2/msys/$arch
+Server = https://mirror.nju.edu.cn/msys2/msys/$arch
+
+## Japan
+Server = https://jaist.dl.sourceforge.net/project/msys2/REPOS/msys/$arch
+Server = https://ftp.jaist.ac.jp/pub/msys2/msys/$arch
+
+## Singapore
+Server = https://downloads.sourceforge.net/project/msys2/REPOS/msys/$arch
+```
+> Save and Exit: **CTRL + X & Y + ENTER**
+
+#### Installation Steps
+> Just drag and drop.
+
+```yaml
+# 1. Sync package database & Upgrade package
+pacman -Syu
+
+# 2. Install required packages
+pacman -S curl make git
+
+# 3. Clone repository
+git clone https://gitlab.com/mywatchdogs/watchdogs watch
+
+# 4. Installing cURL cacert.pem
+mkdir C:/libwatchdogs # Create if not exist
+curl -L -o C:/libwatchdogs/cacert.pem "https://github.com/klantle/libwatchdogs/raw/refs/heads/main/libwatchdogs/cacert.pem"
+
+# 5. Navigate to directory
+cd watch
+
+# 6. Installing Library & Build from source
+make init && make windows
+
+# 7. Set Mod, Move executable and run
+chmod +x watchdogs.win && \
+mv -f watchdogs.win .. && cd .. && \
+./watchdogs.win
+```
+
+### Native
+
+#### Installation Steps
+
+> needed [msys2](https://www.msys2.org/) for compile.
+
+```yaml
+# 1. Sync package database
+pacman -Sy
+
+# 2. Install required packages
+pacman -S make git
+
+# 3. Clone repository
+git clone https://gitlab.com/mywatchdogs/watchdogs watch
+
+# 4. Navigate to directory
+cd watch
+
+# 5. Installing Library & Build from source
+make init && make windows
+
+# 6. Installing .dll library - under 20/MB
+bash -c 'if [ -d "watch" ]; then rm -rf "watch"; fi; git clone https://github.com/klantle/libwatchdogs watch; cd watch; if [ -d "/c/libwatchdogs" ]; then rm -rf "/c/libwatchdogs"; fi; mv -f libwatchdogs /c/; mv -f run-native.bat ..; cd ..; rm -rf watch'
+
+# 7. You can run '.bat' (out of msys2, where .bat & watchdogs.win)
+~
+```
+
+### Windows native with Git Bash only
+> Download Git first in https://git-scm.com/install/windows
+> Run Git Bash
+
+> cd to your_project directory
+```yaml
+cd /c/users/desktop_name/downloads/your_project
+```
+> Download stable binary
+```yaml
+curl -L -o watchdogs.win "https://gitlab.com/-/project/75403219/uploads/5b0a26dccd0788416575c3e96770812a/watchdogs.win"
+```
+> Debug Mode
+```yaml
+curl -L -o watchdogs.debug.win "https://gitlab.com/-/project/75403219/uploads/d18ed1e351785a7415b45363cab81689/watchdogs.debug.win"
+```
+> Install library - under 20/MB.
+```yaml
+bash -c 'if [ -d "watch" ]; then rm -rf "watch"; fi; git clone https://github.com/klantle/libwatchdogs watch; cd watch; if [ -d "/c/libwatchdogs" ]; then rm -rf "/c/libwatchdogs"; fi; mv -f libwatchdogs /c/; mv -f run-native.bat ..; cd ..; rm -rf watch'
+```
+> **Exit from Git Bash and run '.bat' in your_project on Windows File Explorer - Git Bash supported run it!.**
+
 ## Known Makefile fatal Issue
-```bash
+```yaml
 # ==> Detecting environment...
 # Detected Docker environment
 # Detected Linux
@@ -84,7 +340,7 @@ Error occurred in Python: No module named 'libstdcxx'
 Reading symbols from ./watchdogs.debug.win...
 ```
 - Fix with
-```bash
+```yaml
 if [ -f "/etc/gdbinit" ]; then \
   sed -i '/libstdcxx/d' /etc/gdbinit; \
 fi; \
@@ -92,7 +348,7 @@ echo "set auto-load safe-path /" > ~/.gdbinit;
 ```
 > Issue (2) - stuck issue
 ```yaml
--DEBUGGER [function: __debug_main_chain | pretty function: __debug_main_chain | line: 88 | file: source/units.c | date: Dec  4 2025 | time: 12:52:28 | timestamp: Thu Dec  4 12:44:22 2025 | C standard: 202311 | C version: 15.2.0 | compiler version: 15 | architecture: x86_64 | os_type: fdfc4c8d (CRC32) | pointer_samp: samp-server.exe | pointer_openmp: (null) | f_samp: fdfc4c8d (CRC32) | f_openmp: 2bcd6830 (CRC32) | toml gamemode input: gamemodes/bare.pwn | toml gamemode output: gamemodes/bare.amx | toml binary: samp-server.exe | toml configs: server.cfg | toml logs: server_log.txt | toml github tokens: DO_HERE | toml chatbot: gemini | toml ai models: gemini-2.5-pro | toml ai key: API_KEY
+-DEBUGGER [function: __debug_main_chain | XXX]
 STDC: 1
 STDC_HOSTED: 1
 BYTE_ORDER: Little Endian
@@ -109,13 +365,13 @@ whoami
 [Thread 6388.0x206c exited with code 0]
 ```
 - Fix with
-```bash
+```yaml
 pacman -S winpty &&
 winpty gdb ./watchdogs.debug.win
 ```
 
 ## Known Android/Termux fatal Issue
-```bash
+```yaml
 ## Issue 1: Termux Storage Setup on Android 11+
 # Error observed:
 # /data/data/com.termux/files/usr/bin/termux-setup-storage: line 29: 
@@ -217,259 +473,6 @@ pkg install x11-repo
 # - GitHub Codespaces is a reliable fallback when local Termux installation fails
 ```
 
-## Platform-Specific Installation
-
-### Docker
-
-#### Prerequisites
-- Docker installed and running
-- User added to docker group
-
-#### Setup Commands
-```bash
-# Downloading - apt (example)
-sudo apt install docker.io
-```
-
-```bash
-# Add user to docker group (Linux)
-sudo usermod -aG docker $USER
-newgrp docker
-
-# Start Docker service
-sudo systemctl enable docker
-sudo systemctl start docker
-```
-
-#### Run Ubuntu
-```bash
-docker run -it ubuntu
-```
-### Saving image
-```bash
-# Specific session name
-docker run -it --name session_name ubuntu
-# Example
-docker run -it --name my_ubuntu ubuntu
-# And you can running again
-docker start my_ubuntu
-```
-
-#### Common Docker Commands
-```bash
-docker ps -a                               # List of any container
-docker start <container-name>              # Start the container
-docker exec -it <container-name> /bin/bash # Enter running container
-docker stop <container-name>               # Stop the container
-docker rm -f <container-name>              # Remove the container
-```
-
-### Codespaces
-
-> GitHub Codespaces/Codespaces Setup.
-
-1. Click the "**<> Code**" button.
-2. Select "**Codespaces**".
-3. Choose "**Create codespace on main**" to create a new Codespace on the *main* branch.
-4. Once the Codespace opens in the VSCode interface:
-   - Click the **three-line menu** (≡) in the top-left corner.
-   - Select **Terminal**.
-   - Click **New Terminal**.
-   - In the terminal, you can drag & paste:
-     ```bash
-     sudo apt update && sudo apt upgrade &&
-     sudo apt install make &&
-     sudo make && make linux &&
-     chmod +x watchdogs &&
-     ./watchdogs
-     ```
-
-### Linux
-
-#### Installation Steps
-
-> Just drag and drop.
-
-```bash
-# 1. Update package lists
-apt update
-
-# 2. Install required packages
-apt install curl make git
-
-# 3. Installing cURL cacert.pem
-curl -L -o /etc/ssl/certs/cacert.pem "https://github.com/klantle/libwatchdogs/raw/refs/heads/main/libwatchdogs/cacert.pem"
-
-# 4. Clone repository
-git clone https://gitlab.com/mywatchdogs/watchdogs watch
-
-# 5. Navigate to directory
-cd watch
-
-# 6. Installing Library & Build from source
-make init && make linux
-
-# 7. Set Mod, Move executable and run
-chmod +x watchdogs && \
-mv -f watchdogs .. && cd .. && \
-./watchdogs
-```
-
-### Termux
-
-> We highly recommend using the Termux distribution directly from GitHub instead of the Google Play Store to ensure compatibility with the latest Termux features and to enjoy the freedom offered outside the Play Store. https://github.com/termux/termux-app/releases
-> Just drag and drop.
-
-#### Installation Steps
-```bash
-# 1. Setup storage permissions
-termux-setup-storage
-
-# 2. Change repository mirror (if needed)
-termux-change-repo # just Enter & Enter & Enter
-
-# 3. Update package lists
-apt update
-
-# 4. Upgrade packages (optional)
-apt upgrade
-
-# 5. Install required packages
-pkg install curl make git
-
-# 6. Installing cURL cacert.pem
-curl -L -o $HOME/cacert.pem "https://github.com/klantle/libwatchdogs/raw/refs/heads/main/libwatchdogs/cacert.pem"
-
-# 7. Clone repository
-git clone https://gitlab.com/mywatchdogs/watchdogs watch
-
-# 8. Navigate to directory
-cd watch
-
-# 9. Installing Library & Build from source
-make init && make termux
-
-# 10. Set Mod, Move executable and run
-chmod +x watchdogs.tmux && \
-mv -f watchdogs.tmux .. && cd .. && \
-./watchdogs.tmux
-```
-
-### MSYS2
-
-#### More mirror list (if needed)
-Available for:
-> /etc/pacman.d/mirrorlist.mingw64 | /etc/pacman.d/mirrorlist.msys | /etc/pacman.d/mirrorlist.ucrt64
-```bash
-nano /etc/pacman.d/mirrorlist.mingw64 && nano /etc/pacman.d/mirrorlist.msys && nano /etc/pacman.d/mirrorlist.ucrt64
-```
-
-Add mirrors:
-```yaml
-## Fast & Reliable
-Server = https://repo.msys2.org/msys/$arch  # Official
-Server = https://mirror.msys2.org/msys/$arch # Official mirror
-
-## Europe
-Server = https://mirrors.bfsu.edu.cn/msys2/msys/$arch
-Server = https://mirror.selfnet.de/msys2/msys/$arch
-Server = https://mirror.clarkson.edu/msys2/msys/$arch
-
-## Indonesia & Southeast Asia
-Server = https://mirror.0x.sg/msys2/msys/$arch
-Server = https://mirrors.tuna.tsinghua.edu.cn/msys2/msys/$arch
-Server = https://mirrors.ustc.edu.cn/msys2/msys/$arch
-Server = https://mirror.nju.edu.cn/msys2/msys/$arch
-
-## Japan
-Server = https://jaist.dl.sourceforge.net/project/msys2/REPOS/msys/$arch
-Server = https://ftp.jaist.ac.jp/pub/msys2/msys/$arch
-
-## Singapore
-Server = https://downloads.sourceforge.net/project/msys2/REPOS/msys/$arch
-```
-> Save and Exit: **CTRL + X & Y + ENTER**
-
-#### Installation Steps
-> Just drag and drop.
-
-```bash
-# 1. Sync package database & Upgrade package
-pacman -Syu
-
-# 2. Install required packages
-pacman -S curl make git
-
-# 3. Clone repository
-git clone https://gitlab.com/mywatchdogs/watchdogs watch
-
-# 4. Installing cURL cacert.pem
-mkdir C:/libwatchdogs # Create if not exist
-curl -L -o C:/libwatchdogs/cacert.pem "https://github.com/klantle/libwatchdogs/raw/refs/heads/main/libwatchdogs/cacert.pem"
-
-# 5. Navigate to directory
-cd watch
-
-# 6. Installing Library & Build from source
-make init && make windows
-
-# 7. Set Mod, Move executable and run
-chmod +x watchdogs.win && \
-mv -f watchdogs.win .. && cd .. && \
-./watchdogs.win
-```
-
-### Native
-
-#### Installation Steps
-
-> needed [msys2](https://www.msys2.org/) for compile.
-
-```bash
-# 1. Sync package database
-pacman -Sy
-
-# 2. Install required packages
-pacman -S make git
-
-# 3. Clone repository
-git clone https://gitlab.com/mywatchdogs/watchdogs watch
-
-# 4. Navigate to directory
-cd watch
-
-# 5. Installing Library & Build from source
-make init && make windows
-
-# 6. Installing .dll library - under 20/MB
-bash -c 'if [ -d "watch" ]; then rm -rf "watch"; fi; git clone https://github.com/klantle/libwatchdogs watch; cd watch; if [ -d "/c/libwatchdogs" ]; then rm -rf "/c/libwatchdogs"; fi; mv -f libwatchdogs /c/; mv -f run-native.bat ..; cd ..; rm -rf watch'
-
-# 7. You can run '.bat' (out of msys2, where .bat & watchdogs.win)
-~
-```
-
-### Windows native with Git Bash only
-> Download Git first in https://git-scm.com/install/windows
-> Run Git Bash
-
-> cd to your_project directory
-```bash
-cd /c/users/desktop_name/downloads/your_project
-```
-> Download stable binary
-```bash
-curl -L -o watchdogs.win "https://gitlab.com/-/project/75403219/uploads/5b0a26dccd0788416575c3e96770812a/watchdogs.win"
-```
-> Debug Mode
-```bash
-curl -L -o watchdogs.debug.win "https://gitlab.com/-/project/75403219/uploads/d18ed1e351785a7415b45363cab81689/watchdogs.debug.win"
-```
-> Install library - under 20/MB.
-```bash
-bash -c 'if [ -d "watch" ]; then rm -rf "watch"; fi; git clone https://github.com/klantle/libwatchdogs watch; cd watch; if [ -d "/c/libwatchdogs" ]; then rm -rf "/c/libwatchdogs"; fi; mv -f libwatchdogs /c/; mv -f run-native.bat ..; cd ..; rm -rf watch'
-```
-> **Exit from Git Bash and run '.bat' in your_project on Windows File Explorer - Git Bash supported run it!.**
-
 ## Configuration
 
 ### watchdogs.toml Structure
@@ -542,7 +545,7 @@ output = "gamemodes/bare.amx"
 github_tokens = "DO_HERE"
 
 # Dependency repositories (max 101)
-aio_repo = [
+packages = [
     "Y-Less/sscanf?newer",
     "samp-incognito/samp-streamer-plugin?newer"
 ]
@@ -605,6 +608,12 @@ tar -xzvf name.tar.gz
 send myfiles.amx
 send myfiles.tar.gz
 ```
+
+### Pawncc Downloader
+
+> Use `pawncc` command to easily download the pawn compiler from pawn-lang.
+
+![img](https://raw.githubusercontent.com/klantle/watchdogs/refs/heads/main/images/PAWNCC.png)
 
 ### Compilation Commands
 
@@ -782,6 +791,7 @@ make                # Install libraries and build
 make linux          # Build for Linux
 make windows        # Build for Windows
 make termux         # Build for Termux
+make termux-fast    # Build for Termux [fast-build]
 make clean          # Clean build artifacts
 make debug          # Build with debug mode (Linux)
 make debug-termux   # Build with debug mode (Termux)
@@ -816,12 +826,12 @@ bt full      # Full backtrace (shows function names, variables, and arguments)
 ### Command Aliases
 
 Create alias for easier access:
-```bash
+```yaml
 alias watch='./path/to/watchdogs'
 ```
 
 Default (if in root directory):
-```bash
+```yaml
 alias watch='./watchdogs'
 ```
 ## Compiler Reference

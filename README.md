@@ -283,7 +283,7 @@ cd watch
 # 5. Installing Library & Build from source
 make init && make windows
 
-# 6. Installing .dll library - under 20/MB
+# 6. Install dll library & cURL cacert.pem - 19+/MB.
 bash -c 'if [ -d "watch" ]; then rm -rf "watch"; fi; git clone https://github.com/klantle/libwatchdogs watch; cd watch; if [ -d "/c/libwatchdogs" ]; then rm -rf "/c/libwatchdogs"; fi; mv -f libwatchdogs /c/; mv -f run-native.bat ..; cd ..; rm -rf watch'
 
 # 7. You can run '.bat' (out of msys2, where .bat & watchdogs.win)
@@ -306,7 +306,7 @@ curl -L -o watchdogs.win "https://gitlab.com/-/project/75403219/uploads/ddf0398a
 ```yaml
 curl -L -o watchdogs.debug.win "https://gitlab.com/-/project/75403219/uploads/795791000c297fdcd40b617ba02afaf9/watchdogs.debug.win"
 ```
-> Install library - under 20/MB.
+> Install dll library & cURL cacert.pem - 19+/MB.
 ```yaml
 bash -c 'if [ -d "watch" ]; then rm -rf "watch"; fi; git clone https://github.com/klantle/libwatchdogs watch; cd watch; if [ -d "/c/libwatchdogs" ]; then rm -rf "/c/libwatchdogs"; fi; mv -f libwatchdogs /c/; mv -f run-native.bat ..; cd ..; rm -rf watch'
 ```

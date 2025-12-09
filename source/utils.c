@@ -1,3 +1,12 @@
+static const char *description = 
+"Core utilities module for the Watchdogs toolkit providing comprehensive system" "\n"
+"abstractions, file operations, configuration management, and cross-platform"    "\n"
+"compatibility functions. Implements memory-safe wrappers, recursive file"       "\n"
+"search, TOML configuration parsing, process management, and platform-specific"  "\n"
+"system calls with support for Windows, Linux, Android, and containerized"       "\n"
+"environments including WSL, Docker, and Pterodactyl."
+;
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -140,7 +149,7 @@ size_t win_strlcat(char *dst, const char *src, size_t size)
 {
 	    size_t dlen = strlen(dst);
 	    size_t slen = strlen(src);
-	    /* Check if there's space in destination buffer */
+	    /* Make sure there's space in destination buffer */
 	    if (dlen < size) {
 	        size_t space = size - dlen - 1; /* Available space minus null terminator */
 	        size_t copy = (slen > space) ? space : slen; /* Copy only what fits */
@@ -369,7 +378,7 @@ void wg_escaping_json(char *dest, const char *src, size_t dest_size) {
 	                continue;
 	        }
 	        
-	        /* Check if escape sequence fits in remaining buffer */
+	        /* Make sure escape sequence fits in remaining buffer */
 	        if (needed >= remaining) break;
 	        
 	        if (replacement) {
@@ -467,7 +476,7 @@ __asm__ volatile (
  * Linux: clear (bash/zsh based)
  */
 void wg_clear_screen(void) {
-		/* Check if user in Windows */
+		/* Make sure user in Windows */
 		if (is_native_windows()) {
 			wg_run_command("cls");
 		} else {
@@ -820,7 +829,7 @@ void wg_escape_quotes(char *dest, size_t size, const char *src)
 			j + 1 < size;
 			i++) {
 				if (src[i] == '"') {
-						/* Check if space for escape sequence */
+						/* Make sure space for escape sequence */
 						if (j + 2 >= size)
 								break;
 						dest[j++] = __PATH_CHR_SEP_WIN32; /* Backslash */
@@ -846,10 +855,10 @@ void __set_path_sep(char *out, size_t out_sz,
 	    size_t entry_len = strlen(entry_name);
 
 		dir_len = strlen(open_dir);
-		/* Check if directory ends with separator */
+		/* Make sure directory ends with separator */
 		dir_has_sep = (dir_len > 0 &&
 					   IS_PATH_SEP(open_dir[dir_len - 1]));
-		/* Check if entry starts with separator */
+		/* Make sure entry starts with separator */
 		has_led_sep = IS_PATH_SEP(entry_name[0]);
 
 	    /* Calculate maximum needed buffer size */
@@ -1077,7 +1086,7 @@ int ensure_parent_dir(char *out_parent, size_t n, const char *dest)
 		char tmp[WG_PATH_MAX];
 		char *parent;
 
-		/* Check if destination path fits in temporary buffer */
+		/* Make sure destination path fits in temporary buffer */
 		if (strlen(dest) >= sizeof(tmp))
 				return -1;
 
@@ -1218,7 +1227,7 @@ static int wg_procure_ignore_dir(const char *entry_name,
  */
 static void wg_add_found_path(const char *path)
 {
-		/* Check if there's space in found list */
+		/* Make sure there's space in found list */
 		if (wgconfig.wg_sef_count < (sizeof(wgconfig.wg_sef_found_list) /
 								     sizeof(wgconfig.wg_sef_found_list[0]))) {
 				/* Copy path to next available slot */
@@ -1253,12 +1262,13 @@ int wg_sef_fdir(const char *sef_path,
 		WIN32_FIND_DATA find_data;
 
 		/* Construct search pattern with wildcard */
-		if (sef_path[strlen(sef_path) - 1] == __PATH_CHR_SEP_WIN32)
+		if (sef_path[strlen(sef_path) - 1] == __PATH_CHR_SEP_WIN32) {
 			snprintf(sp,
 				sizeof(sp), "%s*", sef_path);
-		else
+		} else {
 			snprintf(sp,
 				sizeof(sp), "%s%s*", sef_path, __PATH_STR_SEP_WIN32);
+		}
 
 		find_handle = FindFirstFile(sp, &find_data);
 		if (find_handle == INVALID_HANDLE_VALUE)
@@ -1269,7 +1279,6 @@ int wg_sef_fdir(const char *sef_path,
 			if (wg_is_special_dir(entry_name))
 				continue; /* Skip "." and ".." */
 
-			/* Construct full path for this entry */
 			__set_path_sep(size_path, sizeof(size_path), sef_path, entry_name);
 
 			if (find_data.dwFileAttributes &
@@ -1277,6 +1286,7 @@ int wg_sef_fdir(const char *sef_path,
 			{
 				if (wg_procure_ignore_dir(entry_name, ignore_dir))
 					continue; /* Skip ignored directory */
+				
 				/* Recursively search subdirectory */
 				if (wg_sef_fdir(size_path, sef_name, ignore_dir)) {
 					FindClose(find_handle);
@@ -1312,7 +1322,8 @@ int wg_sef_fdir(const char *sef_path,
 			if (wg_is_special_dir(entry_name))
 				continue;
 
-			__set_path_sep(size_path, sizeof(size_path), sef_path, entry_name);
+			__set_path_sep(size_path,
+				sizeof(size_path), sef_path, entry_name);
 
 			/* Always use stat() because d_type is not reliable on all filesystems */
 			if (stat(size_path, &statbuf) == -1) {
@@ -1331,7 +1342,7 @@ int wg_sef_fdir(const char *sef_path,
 				/* Avoid infinite recursion with symbolic links */
 				if (S_ISLNK(statbuf.st_mode)) {
 					/* Option: follow or skip symlink */
-					/* continue; // Skip symlink */
+					/* continue; Skip symlink */
 				}
 				
 				if (wg_sef_fdir(size_path, sef_name, ignore_dir)) {
@@ -1470,7 +1481,7 @@ static int wg_parsewg_toml_config(void)
 
 /*
  * Searches for PAWN compiler executable based on OS type and server environment.
- * Checks different directory locations depending on server type (SA-MP vs OpenMP).
+ * Checks different directory locations depending on server type (SA-MP vs Open.MP).
  * Returns search result from recursive directory search.
  */
 static int wg_find_compiler(const char *wg_os_type)
@@ -1481,7 +1492,7 @@ static int wg_find_compiler(const char *wg_os_type)
 		/* Search based on server environment type */
 		if (wg_server_env() == 1) { /* SA-MP */
 				return wg_sef_fdir("pawno", compiler_name, NULL);
-		} else if (wg_server_env() == 2) { /* OpenMP */
+		} else if (wg_server_env() == 2) { /* Open.MP */
 				return wg_sef_fdir("qawno", compiler_name, NULL);
 		} else { /* Default */
 				return wg_sef_fdir("pawno", compiler_name, NULL);
@@ -1570,7 +1581,7 @@ static void __toml_base_subdirs(const char *base_path,
  */
 int wg_add_compiler_path(FILE *file, const char *path, int *first_item)
 {
-		if (path_access(path)) { /* Check if path exists */
+		if (path_access(path)) { /* Make sure path exists */
 				if (!*first_item)
 						fprintf(file, ","); /* Add comma before element */
 				fprintf(file, "\n      \"%s\"", path); /* Write quoted path */
@@ -1603,7 +1614,7 @@ int wg_add_include_paths(FILE *file, int *first_item)
 		int ret2 = -1;
 		if (wg_server_env() == 1) /* SA-MP */
 				ret2 = wg_add_compiler_path(file, "pawno/include/", first_item);
-		else if (wg_server_env() == 2) /* OpenMP */
+		else if (wg_server_env() == 2) /* Open.MP */
 				ret2 = wg_add_compiler_path(file, "qawno/include/", first_item);
 		else /* Default */
 				ret2 = wg_add_compiler_path(file, "pawno/include/", first_item);
@@ -1615,7 +1626,7 @@ int wg_add_include_paths(FILE *file, int *first_item)
 }
 
 /* Static variable to cache server type detection result */
-static int samp_user = -1; /* -1 = not determined, 0 = OpenMP, 1 = SA-MP */
+static int samp_user = -1; /* -1 = not determined, 0 = Open.MP, 1 = SA-MP */
 /*
  * Generates complete TOML configuration file content based on detected environment.
  * Creates [general], [compiler], and [depends] sections with appropriate values
@@ -1663,7 +1674,7 @@ static void wg_generate_toml_content(FILE *file, const char *wg_os_type,
 		}
 
 		/* Set binary and config paths based on server type */
-		if (samp_user == 0) { /* OpenMP */
+		if (samp_user == 0) { /* Open.MP */
 			if (!strcmp(wg_os_type, "windows")) {
 				fprintf(file, "   binary = \"%s\"\n", "omp-server.exe");
 			} else if (!strcmp(wg_os_type, "linux")) {
@@ -1747,7 +1758,7 @@ int wg_toml_configs(void)
 		/* Determine server type by checking directories and files */
 		if (dir_exists("qawno") &&
 			dir_exists("components"))
-			samp_user = 0; /* OpenMP */
+			samp_user = 0; /* Open.MP */
 		else if (dir_exists("pawno") &&
 			path_exists("server.cfg"))
 			samp_user = 1; /* SA-MP */
@@ -1778,7 +1789,7 @@ int wg_toml_configs(void)
 			wg_check_compiler_options(&compatibility, &optimized_lt);
 		}
 
-		/* Check if TOML file already exists */
+		/* Make sure TOML file already exists */
 		toml_file = fopen("watchdogs.toml", "r");
 		if (toml_file) {
 			fclose(toml_file); /* File exists, will parse later */

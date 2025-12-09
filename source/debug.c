@@ -1,3 +1,9 @@
+static const char *description =
+"Debugging and diagnostic utilities module providing function tracing," "\n"
+"system information collection, and crash analysis capabilities for"    "\n"
+"the Watchdogs toolkit with cross-architecture support."
+;
+
 #ifndef _GNU_SOURCE
     #define _GNU_SOURCE
 #endif

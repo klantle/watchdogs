@@ -1,3 +1,8 @@
+static const char *description =
+"Cross-platform hardware information module for querying CPU, memory, disk," "\n"
+"and system details on both Windows and Unix-like systems with unified API."
+;
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>

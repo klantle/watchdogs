@@ -1,3 +1,8 @@
+static const char *description =
+"Main command-line interface module for the Watchdogs toolkit with"       "\n"
+"interactive shell, command dispatching, and system management utilities."
+;
+
 #ifndef _GNU_SOURCE
     #define _GNU_SOURCE
 #endif
@@ -41,8 +46,8 @@
 #endif
 const char *watchdogs_release = WATCHDOGS_RELEASE;
 
-struct timespec cmd_start, cmd_end;
-double command_dur;
+static struct timespec cmd_start, cmd_end;
+static double command_dur;
 
 int __command__(char *chain_pre_command)
 {
@@ -64,7 +69,6 @@ _ptr_command:
         } else {
             static int help_information = 0;
             if (help_information == 0) {
-                    ++help_information;
                     printf("Usage: help <command> [options]\n\n");
                     printf("Commands:\n");
                     printf("  help             show this help message\n");
@@ -91,6 +95,7 @@ _ptr_command:
                     printf("  tracker          account tracking\n");
                     printf("  compress         create a compressed archive\n");
                     printf("  send             send file to Discord channel via webhook\n");
+                    ++help_information;
             }
             while (true) {
                 snprintf(ptr_prompt, size_ptr_command,
@@ -249,8 +254,8 @@ _reexecute_command:
             } else {
                 static int init_crc32 = 0;
                 if (init_crc32 != 1) {
-                    init_crc32 = 1;
                     crypto_crc32_init_table();
+                    init_crc32 = 1;
                 }
 
                 uint32_t crc32_generate;

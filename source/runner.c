@@ -1,3 +1,8 @@
+static const char *description =
+"Server management module for SA-MP and Open.MP servers with configuration" "\n"
+"file manipulation, crash detection, log analysis, and signal handling."
+;
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -19,20 +24,20 @@
 #include "runner.h"
 
 /* Global variables for server management and configuration handling */
-int                 sigint_handler   = 0;           /* Signal interrupt handling flag */
-FILE                *               config_in = NULL;      /* Input configuration file pointer */
-FILE                *               config_out = NULL;     /* Output configuration file pointer */
-cJSON               *               cJSON_server_root = NULL; /* Root JSON object for server config */
-cJSON               *               pawn = NULL;           /* Pawn-specific JSON configuration */
-cJSON               *               cJSON_MS_Obj = NULL;   /* Main script object in JSON */
-char                *               cJSON_Data = NULL;     /* Raw JSON data buffer */
-char                *               cjsON_PrInted_data = NULL; /* Pretty-printed JSON string */
-char                                runner_command[WG_MAX_PATH + WG_PATH_MAX * 2]; /* Command buffer */
-int                                 rate_problem_stat = 0;      /* General problem detection flag */
-int                                 server_crashdetect = 0; /* CrashDetect plugin detection */
-int                                 server_rcon_pass = 0;   /* RCON password issue detection */
-int                                 rate_sampvoice_server = 0; /* SampVoice plugin status */
-char                                *sampvoice_port = NULL;  /* Detected SampVoice port */
+int sigint_handler   = 0;           /* Signal interrupt handling flag */
+static char command[WG_MAX_PATH + WG_PATH_MAX * 2]; /* Command buffer */
+static char *cJSON_Data = NULL;     /* Raw JSON data buffer */
+static char *cjsON_PrInted_data = NULL; /* Pretty-printed JSON string */
+static char *sampvoice_port = NULL;  /* Detected SampVoice port */
+static int rate_sampvoice_server = 0; /* SampVoice plugin status */
+static int rate_problem_stat = 0;      /* General problem detection flag */
+static int server_crashdetect = 0; /* CrashDetect plugin detection */
+static int server_rcon_pass = 0;   /* RCON password issue detection */
+static FILE *config_in = NULL;      /* Input configuration file pointer */
+static FILE *config_out = NULL;     /* Output configuration file pointer */
+static cJSON *root = NULL; /* Root JSON object for server config */
+static cJSON *pawn = NULL;           /* Pawn-specific JSON configuration */
+static cJSON *main_scripts = NULL;   /* Main script object in JSON */
 
 /*
  * Performs cleanup operations for server processes and configuration restoration.
@@ -87,13 +92,13 @@ void unit_sigint_handler(int sig) {
 
 /*
  * Stops running server tasks by sending termination signals.
- * Identifies server type (SA-MP or OpenMP) and kills corresponding process.
+ * Identifies server type (SA-MP or Open.MP) and kills corresponding process.
  * Uses platform-appropriate kill commands for process termination.
  */
 void wg_stop_server_tasks(void) {
         if (wg_server_env() == 1)           /* SA-MP server environment */
           wg_kill_process(wgconfig.wg_toml_binary);
-        else if (wg_server_env() == 2)      /* OpenMP server environment */
+        else if (wg_server_env() == 2)      /* Open.MP server environment */
           wg_kill_process(wgconfig.wg_toml_binary);
 }
 
@@ -107,7 +112,7 @@ void wg_display_server_logs(int ret)
         char *log_file = NULL;
         if (wg_server_env() == 1)            /* SA-MP log file */
             log_file = wgconfig.wg_toml_logs;
-        else if (wg_server_env() == 2)       /* OpenMP log file */
+        else if (wg_server_env() == 2)       /* Open.MP log file */
             log_file = wgconfig.wg_toml_logs;
         wg_printfile(log_file);              /* Output log contents */
         return;
@@ -124,7 +129,7 @@ void wg_server_crash_check(void) {
         FILE *this_proc_file = NULL;
         if (wg_server_env() == 1)            /* SA-MP server logs */
             this_proc_file = fopen(wgconfig.wg_toml_logs, "rb");
-        else                                  /* OpenMP server logs */
+        else                                  /* Open.MP server logs */
             this_proc_file = fopen(wgconfig.wg_toml_logs, "rb");
 
         if (this_proc_file == NULL) {
@@ -196,7 +201,7 @@ void wg_server_crash_check(void) {
                 } else { wg_free(recompiled); }
             }
             
-            /* Filesystem error specific to OpenMP on WSL */
+            /* Filesystem error specific to Open.MP on WSL */
             if (strfind(line_buf, "terminate called after throwing an instance of 'ghc::filesystem::filesystem_error", true)) {
                 needed = snprintf(output_buf, sizeof(output_buf), "@ Filesystem C++ Error Detected\n\t");
                 fwrite(output_buf, 1, needed, stdout);
@@ -515,22 +520,22 @@ skip:
                     FILE *read_f = fopen("server.cfg", "rb");
                     if (read_f) {
                         fseek(read_f, 0, SEEK_END);
-                        long server_file_size = ftell(read_f);
+                        long server_fle_size = ftell(read_f);
                         fseek(read_f, 0, SEEK_SET);
 
                         char *server_f_content;
-                        server_f_content = wg_malloc(server_file_size + 1);
+                        server_f_content = wg_malloc(server_fle_size + 1);
                         if (!server_f_content) { goto wg_skip_fixed; }
 
                         size_t bytes_read;
-                        bytes_read = fread(server_f_content, 1, server_file_size, read_f);
+                        bytes_read = fread(server_f_content, 1, server_fle_size, read_f);
                         server_f_content[bytes_read] = '\0';
                         fclose(read_f);
 
                         char *server_n_content = NULL;
                         char *pos = strstr(server_f_content, "rcon_password changeme");
                         if (pos) {
-                                server_n_content = wg_malloc(server_file_size + 10);
+                                server_n_content = wg_malloc(server_fle_size + 10);
                                 if (!server_n_content) { goto wg_skip_fixed; }
 
                                 strncpy(server_n_content, server_f_content, pos - server_f_content);
@@ -538,8 +543,8 @@ skip:
                                 
                                 static int init_crc32 = 0;
                                 if (init_crc32 != 1) {
-                                        init_crc32 = 1;
                                         crypto_crc32_init_table();
+                                        init_crc32 = 1;
                                 }
 
                                 uint32_t crc32_generate;
@@ -619,7 +624,6 @@ wg_skip_fixed:
  */
 static int update_samp_config(const char *gamemode)
 {
-        FILE *config_in, *config_out;
         char line[0x400];  /* Line buffer for config processing */
 
         char size_config[WG_PATH_MAX];
@@ -632,17 +636,17 @@ static int update_samp_config(const char *gamemode)
 
         /* Create backup of original configuration file */
         if (is_native_windows())
-                snprintf(runner_command, sizeof(runner_command),
+                snprintf(command, sizeof(command),
                         "ren %s %s",
                         wgconfig.wg_toml_config,
                         size_config);
         else
-                snprintf(runner_command, sizeof(runner_command),
+                snprintf(command, sizeof(command),
                         "mv -f %s %s",
                         wgconfig.wg_toml_config,
                         size_config);
 
-        if (wg_run_command(runner_command) != 0x0) {
+        if (wg_run_command(command) != 0x0) {
                 pr_error(stdout, "Failed to create backup file");
                 return -1;
         }
@@ -703,7 +707,21 @@ static int update_samp_config(const char *gamemode)
  */
 void restore_server_config(void) {
         char size_config[WG_PATH_MAX];
-        snprintf(size_config, sizeof(size_config), ".watchdogs/%s.bak", wgconfig.wg_toml_config);
+        snprintf(size_config, sizeof(size_config),
+                ".watchdogs/%s.bak", wgconfig.wg_toml_config);
+
+        printf(FCOLOUR_GREEN "warning: " FCOLOUR_DEFAULT
+                "Continue to restore %s -> %s? y/n",
+                size_config, wgconfig.wg_toml_config);
+        char *restore_confirm = readline(" ");
+        if (strfind(restore_confirm, "Y", true)) {
+                ;
+        } else {
+                wg_free(restore_confirm);
+                chain_ret_main(NULL);
+        }
+
+        wg_free(restore_confirm);
 
         /* Skip if no backup exists */
         if (path_access(size_config) == 0)
@@ -711,30 +729,30 @@ void restore_server_config(void) {
 
         /* Delete current configuration file */
         if (is_native_windows())
-                snprintf(runner_command, sizeof(runner_command),
+                snprintf(command, sizeof(command),
                 "if exist \"%s\" (del /f /q \"%s\" 2>nul || "
                 "rmdir /s /q \"%s\" 2>nul)",
                 wgconfig.wg_toml_config, wgconfig.wg_toml_config, wgconfig.wg_toml_config);
         else
-                snprintf(runner_command, sizeof(runner_command),
+                snprintf(command, sizeof(command),
                 "rm -rf %s",
                 wgconfig.wg_toml_config);
 
-        wg_run_command(runner_command);
+        wg_run_command(command);
 
         /* Restore backup to original configuration file */
         if (is_native_windows())
-                snprintf(runner_command, sizeof(runner_command),
+                snprintf(command, sizeof(command),
                         "ren %s %s",
                         size_config,
                         wgconfig.wg_toml_config);
         else
-                snprintf(runner_command, sizeof(runner_command),
+                snprintf(command, sizeof(command),
                         "mv -f %s %s",
                         size_config,
                         wgconfig.wg_toml_config);
 
-        wg_run_command(runner_command);
+        wg_run_command(command);
 
 restore_done:
         return;
@@ -813,11 +831,11 @@ back_start:
         start = time(NULL);
         /* Construct and execute server command */
 #ifdef WG_WINDOWS
-        snprintf(runner_command, sizeof(runner_command), "%s", server_bin);
+        snprintf(command, sizeof(command), "%s", server_bin);
 #else
-        snprintf(runner_command, sizeof(runner_command), "./%s", server_bin);
+        snprintf(command, sizeof(command), "./%s", server_bin);
 #endif
-        ret = wg_run_command(runner_command);
+        ret = wg_run_command(command);
         if (ret == 0) {
                 end = time(NULL);
 
@@ -864,7 +882,7 @@ server_done:
 }
 
 /*
- * Updates OpenMP server configuration (JSON format) with specified gamemode.
+ * Updates Open.MP server configuration (JSON format) with specified gamemode.
  * Uses cJSON library for JSON manipulation, creates backup, modifies pawn
  * script array, and writes updated configuration. Handles memory allocation
  * and cleanup for JSON operations.
@@ -886,17 +904,17 @@ static int update_omp_config(const char *gamemode)
 
         /* Create backup of current configuration */
         if (is_native_windows())
-                snprintf(runner_command, sizeof(runner_command),
+                snprintf(command, sizeof(command),
                         "ren %s %s",
                         wgconfig.wg_toml_config,
                         size_config);
         else
-                snprintf(runner_command, sizeof(runner_command),
+                snprintf(command, sizeof(command),
                         "mv -f %s %s",
                         wgconfig.wg_toml_config,
                         size_config);
 
-        if (wg_run_command(runner_command) != 0x0) {
+        if (wg_run_command(command) != 0x0) {
                 pr_error(stdout, "Failed to create backup file");
                 goto runner_end;
         }
@@ -944,14 +962,14 @@ static int update_omp_config(const char *gamemode)
         config_in = NULL;
 
         /* Parse JSON configuration */
-        cJSON_server_root = cJSON_Parse(cJSON_Data);
-        if (!cJSON_server_root) {
+        root = cJSON_Parse(cJSON_Data);
+        if (!root) {
                 pr_error(stdout, "JSON parse error: %s", cJSON_GetErrorPtr());
                 goto runner_end;
         }
 
         /* Access pawn section of configuration */
-        pawn = cJSON_GetObjectItem(cJSON_server_root, "pawn");
+        pawn = cJSON_GetObjectItem(root, "pawn");
         if (!pawn) {
                 pr_error(stdout, "Missing 'pawn' section in config!");
                 goto runner_cleanup;
@@ -963,12 +981,12 @@ static int update_omp_config(const char *gamemode)
         if (extension) *extension = '\0';
 
         /* Update main script array in JSON */
-        cJSON_DeleteItemFromObject(pawn, "cJSON_MS_Obj");
+        cJSON_DeleteItemFromObject(pawn, "main_scripts");
 
-        cJSON_MS_Obj = cJSON_CreateArray();
+        main_scripts = cJSON_CreateArray();
         snprintf(gamemode_buf, sizeof(gamemode_buf), "%s", put_gamemode);
-        cJSON_AddItemToArray(cJSON_MS_Obj, cJSON_CreateString(gamemode_buf));
-        cJSON_AddItemToObject(pawn, "cJSON_MS_Obj", cJSON_MS_Obj);
+        cJSON_AddItemToArray(main_scripts, cJSON_CreateString(gamemode_buf));
+        cJSON_AddItemToObject(pawn, "main_scripts", main_scripts);
 
         /* Write updated configuration */
         config_out = fopen(wgconfig.wg_toml_config, "w");
@@ -977,7 +995,7 @@ static int update_omp_config(const char *gamemode)
                 goto runner_end;
         }
 
-        cjsON_PrInted_data = cJSON_Print(cJSON_server_root);
+        cjsON_PrInted_data = cJSON_Print(root);
         if (!cjsON_PrInted_data) {
                 pr_error(stdout, "Failed to print JSON");
                 goto runner_end;
@@ -1000,8 +1018,8 @@ runner_cleanup:
                 fclose(config_in);
         if (cjsON_PrInted_data)
                 wg_free(cjsON_PrInted_data);
-        if (cJSON_server_root)
-                cJSON_Delete(cJSON_server_root);
+        if (root)
+                cJSON_Delete(root);
         if (cJSON_Data)
                 wg_free(cJSON_Data);
 runner_kill:
@@ -1009,7 +1027,7 @@ runner_kill:
 }
 
 /*
- * Restores OpenMP configuration using generic server config restoration.
+ * Restores Open.MP configuration using generic server config restoration.
  * Alias function for consistency with SA-MP restoration interface.
  */
 void restore_omp_config(void) {
@@ -1017,7 +1035,7 @@ void restore_omp_config(void) {
 }
 
 /*
- * Executes OpenMP server with specified gamemode.
+ * Executes Open.MP server with specified gamemode.
  * Similar to SA-MP execution but with JSON configuration handling.
  * Includes gamemode validation, configuration updates, and process management.
  */
@@ -1059,7 +1077,7 @@ void wg_run_omp_server(const char *gamemode, const char *server_bin)
                 chain_ret_main(NULL);
         }
 
-        /* Update OpenMP JSON configuration */
+        /* Update Open.MP JSON configuration */
         int ret_c = update_omp_config(gamemode);
         if (ret_c == 0 ||
                 ret_c == -1)
@@ -1089,12 +1107,12 @@ back_start:
         start = time(NULL);
         /* Construct server execution command */
 #ifdef WG_WINDOWS
-        snprintf(runner_command, sizeof(runner_command), "%s", server_bin);
+        snprintf(command, sizeof(command), "%s", server_bin);
 #else
-        snprintf(runner_command, sizeof(runner_command), "./%s", server_bin);
+        snprintf(command, sizeof(command), "./%s", server_bin);
 #endif
 
-        ret = wg_run_command(runner_command);
+        ret = wg_run_command(command);
 
         if (ret != 0) {
                 pr_color(stdout, FCOLOUR_RED, "Server startup failed!\n");

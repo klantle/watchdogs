@@ -9,7 +9,7 @@ struct buf {
 		size_t allocated;
 };
 
-struct dency_curl_buffer {
+struct package_curl_buffer {
         char *data;
         size_t size;
 };
@@ -35,8 +35,8 @@ void memory_struct_init(struct memory_struct *mem);
 void memory_struct_free(struct memory_struct *mem);
 size_t write_memory_callback(void *contents, size_t size, size_t nmemb, void *userp);
 
-int dency_url_checking(const char *url, const char *github_token);
-int dency_http_get_content(const char *url, const char *github_token, char **out_html);
+int package_url_checking(const char *url, const char *github_token);
+int package_http_get_content(const char *url, const char *github_token, char **out_html);
 
 void account_tracker_discrepancy(const char *base, char variations[][100], int *variation_count);
 void account_tracking_username(CURL *curl, const char *username);

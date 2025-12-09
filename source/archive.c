@@ -1,3 +1,10 @@
+static const char *description = 
+"Archive compression and extraction utility module using libarchive." "\n"
+"Supports multiple formats (ZIP, TAR, TAR.GZ, TAR.BZ2, TAR.XZ)"       "\n"
+"with secure TOCTOU protection, metadata preservation, and recursive" "\n"
+"directory handling. Includes both compression and extraction functions."
+;
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <stdbool.h>
@@ -31,7 +38,7 @@ static void arch_extraction_path(const char *entry_dest, const char *entry_path,
                 snprintf(exit_path, exit_size,
                         "%s", entry_path);  /* Use entry path as-is */
         } else {
-                /* Check if entry path already starts with destination to avoid duplication */
+                /* Make sure entry path already starts with destination to avoid duplication */
                 if (!strncmp(entry_path,
                     entry_dest,
                     strlen(entry_dest))) {
@@ -160,7 +167,7 @@ int compress_to_archive(const char *archive_path,
                 
                 /* Verify it's a regular file */
                 if (!S_ISREG(fd_stat.st_mode)) {
-                        /* Check if it's a directory for fallback */
+                        /* Make sure it's a directory for fallback */
                         if (S_ISDIR(fd_stat.st_mode)) {
                                 fprintf(stderr, "Fallback to Directory Mode: %s\n", filename);
                                 close(fd);
@@ -229,7 +236,7 @@ int compress_to_archive(const char *archive_path,
                 close(fd);
                 archive_entry_free(entry);
                 
-                /* Check if we should continue after error */
+                /* Make sure we should continue after error */
                 if (ret != 0 && ret != -2) {
                         break;
                 }
@@ -538,11 +545,13 @@ int wg_extract_tar(const char *tar_path, const char *entry_dest) {
                         return -1;  /* Return error if header cannot be read */
                 }
 
-                const char *entry_path = archive_entry_pathname(entry);  /* Get entry's path within archive */
+                const char *entry_path = NULL;
+                entry_path = archive_entry_pathname(entry);  /* Get entry's path within archive */
 
                 /* Interactive extraction logging - ask user once if they want extraction logs */
                 static int extract_notice = 0;
                 static int notice_extracting = 0;
+
                 if (extract_notice == 0) {
                         extract_notice = 1;
                         printf("\x1b[32m==> Create extraction logs?\x1b[0m\n");
@@ -680,11 +689,13 @@ int wg_extract_zip(const char *zip_file, const char *entry_dest)
 
         /* Process each entry in the ZIP archive */
         while (archive_read_next_header(archive_read, &item) == ARCHIVE_OK) {
-                const char *entry_path = archive_entry_pathname(item);  /* Entry's path in archive */
+                const char *entry_path;
+                entry_path = archive_entry_pathname(item);  /* Entry's path in archive */
 
                 /* Interactive extraction logging (same as TAR extraction) */
                 static int extract_notice = 0;
                 static int notice_extracting = 0;
+
                 if (extract_notice == 0) {
                         extract_notice = 1;
                         printf("\x1b[32m==> Create extraction logs?\x1b[0m\n");

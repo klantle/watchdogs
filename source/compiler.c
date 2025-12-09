@@ -1,3 +1,10 @@
+static const char *description = 
+"PAWN compiler (pawn-lang) orchestration module for the Watchdogs."             "\n"
+"This module manages compilation of PAWN scripts (.pwn files) to AMX bytecode," "\n"
+"supporting multiple platforms (Windows/Linux/Termux) with TOML configuration," "\n"
+"TOCTOU-protected file operations, and automated compiler installation."
+;
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -105,9 +112,9 @@ int wg_run_compiler(const char *args, const char *compile_args,  const char *sec
          * ends with a trailing slash before updating the include paths.
          */
         if (strfind(compile_args, "../", true)) {
-            // Buffer to store the parsed project path
+            /* the buffer to store the parsed project path */
             char proj_parse[WG_PATH_MAX] = { 0 };
-            size_t w = 0;  // Write index for proj_parse buffer
+            size_t w = 0;  /* Write index for proj_parse buffer */
 
             /**
              * Parse through compile_args to:
@@ -115,19 +122,15 @@ int wg_run_compiler(const char *args, const char *compile_args,  const char *sec
              * 2. Copy everything else to proj_parse buffer
              */
             for (size_t j = 0; compile_args[j] != '\0'; ) {
-                // Check if current position starts with "gamemodes/"
                 if (strncmp(&compile_args[j], "gamemodes/", 10) == 0) {
-                    // Skip past the entire gamemodes reference
                     while (compile_args[j] != ' ' && compile_args[j] != '\0')
                         ++j;
-                    // Skip the space character if present
                     if (compile_args[j] == ' ') ++j;
                 } else {
-                    // Copy character to proj_parse buffer
                     proj_parse[w++] = compile_args[j++];
                 }
             }
-            proj_parse[w] = '\0';  // Null-terminate the parsed string
+            proj_parse[w] = '\0';  /* null-terminate the parsed string */
 
             /**
              * Ensure the project path ends with a trailing slash.
@@ -145,15 +148,7 @@ int wg_run_compiler(const char *args, const char *compile_args,  const char *sec
                     "\"%s\" -i\"%spawno/include/\" -i\"%sqawno/include/\" ",
                     path_include, proj_parse, proj_parse);
 
-            // Replace the original path_include with the newly constructed one
-            /* 
-             * NOTE:
-             * Do NOT make `path_include` a pointer to a string literal.
-             * It must point to writable memory (stack array or allocated buffer).
-             * Using a plain char* initialized with a literal (e.g., char *p = "abc")
-             * will place the data in read-only memory, and any strcpy/strcat operation
-             * will cause undefined behavior or a segmentation fault.
-             */
+            /* Replace the original path_include with the newly constructed one */
             strcpy(path_include, size_path_include);
         }
 
@@ -387,8 +382,8 @@ not_valid_flag_options:
                         
                         /* Calculate safe working buffer size */
                         size_t config_buffer_size = strlen(wgconfig.wg_toml_aio_opt) + 1;
-                        size_t max_safe_shifts = config_buffer_size * 2; // Prevent infinite loops
-                        
+                        size_t max_safe_shifts = config_buffer_size * 2;
+
                         for (size_t i = 0; i < debug_flag_count; i++) {
                             /* Validate array bounds */
                             if (i >= (size_debug_options / sizeof(debug_options[0]))) {
@@ -397,16 +392,12 @@ not_valid_flag_options:
                             }
                             
                             const char *debug_flag = debug_options[i];
-                            
-                            /* Validate flag string */
                             if (debug_flag == NULL) {
                                 pr_warning(stdout, "NULL debug flag at index %zu", i);
                                 continue;
                             }
                             
                             size_t flag_length = strlen(debug_flag);
-                            
-                            /* Skip empty flags */
                             if (flag_length == 0) {
                                 continue;
                             }
@@ -426,13 +417,12 @@ not_valid_flag_options:
                                 char *flag_pos = strstr(config_ptr, debug_flag);
                                 
                                 if (flag_pos == NULL) {
-                                    break; // No more occurrences
+                                    break;
                                 }
                                 
                                 /* Verify flag is a complete token (not part of another flag) */
                                 bool is_complete_token = true;
                                 
-                                // Check character before flag
                                 if (flag_pos > wgconfig.wg_toml_aio_opt) {
                                     char prev_char = *(flag_pos - 1);
                                     if (isalnum((unsigned char)prev_char) || prev_char == '_') {
@@ -440,7 +430,6 @@ not_valid_flag_options:
                                     }
                                 }
                                 
-                                // Check character after flag
                                 char next_char = *(flag_pos + flag_length);
                                 if (isalnum((unsigned char)next_char) || next_char == '_') {
                                     is_complete_token = false;
@@ -464,7 +453,6 @@ not_valid_flag_options:
                                     config_buffer_size = strlen(wgconfig.wg_toml_aio_opt) + 1;
                                 } else {
                                     pr_error(stdout, "Buffer overflow detected during flag removal");
-                                    // Restore original config on error
                                     strncpy(wgconfig.wg_toml_aio_opt, original_config, config_buffer_size);
                                     wg_free(original_config);
                                     goto compiler_end;
@@ -583,7 +571,6 @@ not_valid_flag_options:
                 {
                     static int compiler_targets = 0;
                     if (compiler_targets != 1) {
-                        compiler_targets = 1;
                         pr_color(stdout, FCOLOUR_YELLOW,
                                 "=== COMPILER TARGET ===\n");
                         printf("   ** This notification appears only once.\n"
@@ -597,6 +584,7 @@ not_valid_flag_options:
                             wgconfig.wg_toml_proj_input = strdup(proj_targets);
                         }
                         wg_free(proj_targets);
+                        compiler_targets = 1;
                     }
 
                     /* Default compilation: use gamemode from TOML configuration */
@@ -615,7 +603,7 @@ not_valid_flag_options:
                     si.dwFlags = STARTF_USESTDHANDLES | STARTF_USESHOWWINDOW; /* Startup flags: STARTF_USESTDHANDLES indicates that hStdInput, hStdOutput, and hStdError members are valid. STARTF_USESHOWWINDOW indicates wShowWindow is valid. */
                     si.wShowWindow = SW_HIDE; /* Window display state: hide the window completely. For console applications, this prevents a console window from appearing. */
 
-                    if (hFile != INVALID_HANDLE_VALUE) { /* Check if file creation succeeded. INVALID_HANDLE_VALUE is the error return (defined as (HANDLE)-1). */
+                    if (hFile != INVALID_HANDLE_VALUE) { /* Make sure file creation succeeded. INVALID_HANDLE_VALUE is the error return (defined as (HANDLE)-1). */
                         si.hStdOutput = hFile; /* Redirect child's standard output to the log file. All printf/cout output will go to the file. */
                         si.hStdError = hFile; /* Redirect child's standard error to the same log file. Error messages and normal output are combined. */
                     }
@@ -707,7 +695,7 @@ not_valid_flag_options:
                     posix_spawn_file_actions_t process_file_actions; /* Declare a file actions object to manipulate the child's file descriptors before execution. */
                     posix_spawn_file_actions_init(&process_file_actions); /* Initialize the file actions object. Must be done before any `add` operations. */
                     int posix_logging_file = open(".watchdogs/compiler.log", O_WRONLY | O_CREAT | O_TRUNC, 0644); /* Open the log file for writing, creating/truncating it. */
-                    if (posix_logging_file != -1) { /* Check if the log file was opened successfully. */
+                    if (posix_logging_file != -1) { /* Make sure the log file was opened successfully. */
                         posix_spawn_file_actions_adddup2(&process_file_actions,
                                 posix_logging_file,
                                 STDOUT_FILENO); /* Add an action to duplicate the log file descriptor onto the child's stdout (fd 1). */
@@ -773,13 +761,13 @@ not_valid_flag_options:
                         }
                         if (!process_timeout_occurred) { /* If the process terminated before the timeout... */
                             /* Analyze process exit status */
-                            if (WIFEXITED(process_status)) { /* Check if the child terminated normally via `exit()` or `return`. */
+                            if (WIFEXITED(process_status)) { /* Make sure the child terminated normally via `exit()` or `return`. */
                                 int proc_exit_code = 0;
                                 proc_exit_code = WEXITSTATUS(process_status); /* Extract the exit status code (0-255). */
                                 if (proc_exit_code != 0) /* Non-zero exit codes typically indicate an error. */
                                     pr_error(stdout,
                                             "watchdogs compiler exited with code (%d)", proc_exit_code);
-                            } else if (WIFSIGNALED(process_status)) { /* Check if the child was terminated by a signal (e.g., SIGSEGV, SIGKILL). */
+                            } else if (WIFSIGNALED(process_status)) { /* Make sure the child was terminated by a signal (e.g., SIGSEGV, SIGKILL). */
                                 pr_error(stdout,
                                         "watchdogs compiler terminated by signal (%d)", WTERMSIG(process_status)); /* Extract the signal number that caused termination. */
                             }
@@ -837,7 +825,7 @@ not_valid_flag_options:
                         }
                     }
 compiler_done:
-                    /* Check if compilation had errors by scanning log file */
+                    /* Make sure compilation had errors by scanning log file */
                     this_proc_file = fopen(".watchdogs/compiler.log", "r");
                     if (this_proc_file)
                     {
@@ -1049,7 +1037,7 @@ compiler_done:
                         si.dwFlags = STARTF_USESTDHANDLES | STARTF_USESHOWWINDOW; /* Set startup information flags: STARTF_USESTDHANDLES indicates that the hStdInput, hStdOutput, and hStdError members contain valid handles. STARTF_USESHOWWINDOW indicates that the wShowWindow member contains valid information. */
                         si.wShowWindow = SW_HIDE; /* Set the window show state: SW_HIDE hides the window (minimizes and removes from taskbar). This prevents a console window from appearing when launching the compiler. */
 
-                        if (hFile != INVALID_HANDLE_VALUE) { /* Check if the file was created successfully. INVALID_HANDLE_VALUE (usually -1) indicates failure. */
+                        if (hFile != INVALID_HANDLE_VALUE) { /* Make sure the file was created successfully. INVALID_HANDLE_VALUE (usually -1) indicates failure. */
                             si.hStdOutput = hFile; /* Redirect the child process's standard output to the log file. Any output the child writes to stdout will go to the log file. */
                             si.hStdError = hFile; /* Redirect the child process's standard error to the same log file. This captures both regular output and error messages. */
                         }
@@ -1068,7 +1056,7 @@ compiler_done:
                             pr_color(stdout, FCOLOUR_YELLOW, "-DEBUGGER\n"); /* Print debug header in yellow color. */
                             printf("[COMPILER]:\n\t%s\n", _compiler_input_); /* Display the full compiler command with indentation for readability. */
                         }
-                        if (ret_command > 0 && ret_command < (int)sizeof(_compiler_input_)) { /* Check if snprintf succeeded and the command fits in the buffer. ret_command > 0 means characters were written; < buffer_size means no truncation occurred. */
+                        if (ret_command > 0 && ret_command < (int)sizeof(_compiler_input_)) { /* Make sure snprintf succeeded and the command fits in the buffer. ret_command > 0 means characters were written; < buffer_size means no truncation occurred. */
                             BOOL win32_process_succes; /* BOOL is Windows' boolean type (typedef int BOOL). TRUE = non-zero, FALSE = 0. */
                             clock_gettime(CLOCK_MONOTONIC, &start); /* Record start time for performance measurement. CLOCK_MONOTONIC is available in Windows 10+ via gettimeofday() compatibility. */
                             win32_process_succes = CreateProcessA( /* Create and execute the compiler process. Returns TRUE on success, FALSE on failure. */
@@ -1138,7 +1126,7 @@ compiler_done:
                         posix_spawn_file_actions_t process_file_actions; /* Declare a file actions object to manipulate the child's file descriptors before execution. This structure holds a sequence of file operations to be performed on the child's file descriptors. */
                         posix_spawn_file_actions_init(&process_file_actions); /* Initialize the file actions object to an empty state. Must be called before any `add` operations. Failure to initialize results in undefined behavior. */
                         int posix_logging_file = open(".watchdogs/compiler.log", O_WRONLY | O_CREAT | O_TRUNC, 0644); /* Open the log file for writing (O_WRONLY), create it if it doesn't exist (O_CREAT), and truncate it to zero length if it already exists (O_TRUNC). The permissions 0644 mean: owner can read/write (6), group and others can only read (4). */
-                        if (posix_logging_file != -1) { /* Check if the log file was opened successfully. The `open()` function returns -1 on error. */
+                        if (posix_logging_file != -1) { /* Make sure the log file was opened successfully. The `open()` function returns -1 on error. */
                             posix_spawn_file_actions_adddup2(&process_file_actions,
                                     posix_logging_file,
                                     STDOUT_FILENO); /* Add an action to duplicate the log file descriptor onto the child's stdout (file descriptor 1). After this, anything the child writes to stdout will go to the log file instead of the terminal. */
@@ -1204,13 +1192,13 @@ compiler_done:
                             }
                             if (!process_timeout_occurred) { /* If the process terminated before the timeout (normal case)... */
                                 /* Analyze process exit status using POSIX macros */
-                                if (WIFEXITED(process_status)) { /* Check if the child terminated normally via `exit()` or returning from main(). */
+                                if (WIFEXITED(process_status)) { /* Make sure the child terminated normally via `exit()` or returning from main(). */
                                     int proc_exit_code = 0;
                                     proc_exit_code = WEXITSTATUS(process_status); /* Extract the exit status code (0-255). Convention: 0 = success, non-zero = error. */
                                     if (proc_exit_code != 0) /* Non-zero exit codes typically indicate compilation errors or other failures. */
                                         pr_error(stdout,
                                                 "watchdogs compiler exited with code (%d)", proc_exit_code);
-                                } else if (WIFSIGNALED(process_status)) { /* Check if the child was terminated by a signal it didn't catch (e.g., SIGSEGV, SIGABRT, SIGKILL). */
+                                } else if (WIFSIGNALED(process_status)) { /* Make sure the child was terminated by a signal it didn't catch (e.g., SIGSEGV, SIGABRT, SIGKILL). */
                                     pr_error(stdout,
                                             "watchdogs compiler terminated by signal (%d)", WTERMSIG(process_status)); /* Extract the signal number that caused termination. Common signals: 6=SIGABRT, 11=SIGSEGV, 9=SIGKILL, 15=SIGTERM. */
                                 }

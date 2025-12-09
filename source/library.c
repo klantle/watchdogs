@@ -1,3 +1,8 @@
+static const char *description =
+"Platform-specific library installation module for Pawn compilers and SA-MP/Open.MP" "\n"
+"servers, with support for Termux (Android), Linux, and Windows environments."
+;
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -116,7 +121,7 @@ back:
 		} else {
 			/* Invalid architecture selection */
 			wg_free(selection);
-			if (wgconfig.wg_sel_stat == 0) /* Check if in interactive selection mode */
+			if (wgconfig.wg_sel_stat == 0) /* Make sure in interactive selection mode */
 				return 0; /* Exit if not in selection mode */
 			pr_error(stdout, "Invalid architecture selection");
 			goto back; /* Retry architecture selection */
@@ -255,7 +260,7 @@ int wg_install_pawncc(const char *platform)
 		/* Validate platform parameter is not NULL */
 		if (!platform) {
 				pr_error(stdout, "Platform parameter is NULL");
-				if (wgconfig.wg_sel_stat == 0) /* Check if in selection mode */
+				if (wgconfig.wg_sel_stat == 0) /* Make sure in selection mode */
 					return 0; /* Silent exit if not in interactive mode */
 				return -1; /* Error exit */
 		}
@@ -286,10 +291,10 @@ loop_ipcc2:
 }
 
 /*
- * SA-MP and OpenMP server installation function
+ * SA-MP and Open.MP server installation function
  * Provides interactive menu for selecting server type and version
  * Downloads server binaries from GitHub repositories
- * Supports both SA-MP (KrustyKoyle archive) and OpenMP (official releases)
+ * Supports both SA-MP (KrustyKoyle archive) and Open.MP (official releases)
  */
 int wg_install_server(const char *platform)
 {
@@ -356,19 +361,19 @@ int wg_install_server(const char *platform)
 						"files.sa-mp.com-Archive/raw/refs/heads/master/samp037_svr_R2-1-1_win32.zip",
 						"samp037_svr_R2-1-1_win32.zip"
 				},
-				/* OpenMP v1.4.0.2779 - Latest OpenMP version at time of writing */
+				/* Open.MP v1.4.0.2779 - Latest Open.MP version at time of writing */
 				{
 						'E', "OPEN.MP v1.4.0.2779",
 						"https://github.com/"
 						"openmultiplayer/"
 						"open.mp/releases/download/v1.4.0.2779/open.mp-linux-x86.tar.gz",
-						"open.mp-linux-x86.tar.gz", /* Linux OpenMP */
+						"open.mp-linux-x86.tar.gz", /* Linux Open.MP */
 						"https://github.com/"
 						"openmultiplayer/"
 						"open.mp/releases/download/v1.4.0.2779/open.mp-win-x86.zip",
-						"open.mp-win-x86.zip" /* Windows OpenMP */
+						"open.mp-win-x86.zip" /* Windows Open.MP */
 				},
-				/* OpenMP v1.3.1.2748 - Previous OpenMP version */
+				/* Open.MP v1.3.1.2748 - Previous Open.MP version */
 				{
 						'F', "OPEN.MP v1.3.1.2748",
 						"https://github.com/"
@@ -380,7 +385,7 @@ int wg_install_server(const char *platform)
 						"open.mp/releases/download/v1.3.1.2748/open.mp-win-x86.zip",
 						"open.mp-win-x86.zip"
 				},
-				/* OpenMP v1.2.0.2670 - Older OpenMP version */
+				/* Open.MP v1.2.0.2670 - Older Open.MP version */
 				{
 						'G', "OPEN.MP v1.2.0.2670",
 						"https://github.com/"
@@ -392,7 +397,7 @@ int wg_install_server(const char *platform)
 						"open.mp/releases/download/v1.2.0.2670/open.mp-win-x86.zip",
 						"open.mp-win-x86.zip"
 				},
-				/* OpenMP v1.1.0.2612 - Early OpenMP version */
+				/* Open.MP v1.1.0.2612 - Early Open.MP version */
 				{
 						'H', "OPEN.MP v1.1.0.2612",
 						"https://github.com/"

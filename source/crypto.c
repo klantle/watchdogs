@@ -1,3 +1,8 @@
+static const char *description = 
+"Cryptographic utilities module implementing SHA-1, SHA-256, CRC-32," "\n"
+"Base64 encoding/decoding, HMAC, PBKDF2, and DJB2 hashing algorithms."
+;
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>

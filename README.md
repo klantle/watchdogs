@@ -3,7 +3,7 @@
 ## Page
 
 1. [Introduction](#introduction)
-2. [Quick Installation](#quick-installation)
+2. [Repository](#repository)
 3. [Platform-Specific Installation](#platform-specific-installation)
    - [Docker](#docker)
    - [Linux](#linux)
@@ -12,7 +12,7 @@
    - [GitHub Codespaces](#codespaces)
    - [Windows Native](#Native)
 4. [Configuration](#configuration)
-6. [Usage Guide](#usage-guide)
+5. [Usage Guide](#usage-guide)
 6. [Compiler Reference](#compiler-reference)
 
 ---
@@ -39,22 +39,6 @@
 - [x] Upstream: [GitLab.com](https://gitlab.com/mywatchdogs/watchdogs)
 - [x] Mirror 1: [GitHub.com](https://github.com/klantle/watchdogs)
 - [x] Mirror 2: [Codeberg.org](https://codeberg.org/voidarch/watchdogs)
-
-## Quick Installation
-
-### One-Line Installation (Linux/Debian)
-
-> without superuser do (sudo)
-
-```yaml
-apt update && apt install make git -y && git clone https://gitlab.com/mywatchdogs/watchdogs watch && cd watch && make init && mv watchdogs .. && cd .. && ./watchdogs
-```
-
-> with superuser do (sudo)
-
-```yaml
-sudo apt update && apt install make git -y && git clone https://gitlab.com/mywatchdogs/watchdogs watch && cd watch && make init && mv watchdogs .. && cd .. && ./watchdogs
-```
 
 ## Platform-Specific Installation
 
@@ -130,7 +114,7 @@ docker rm -f <container-name>              # Force-remove the container
 
 #### Installation Steps
 
-> Just drag and drop.
+> Just drag this into your terminal and run it.
 
 ```yaml
 # 1. Update package lists
@@ -160,7 +144,7 @@ mv -f watchdogs .. && cd .. && \
 ### Termux
 
 > We highly recommend using the Termux distribution directly from GitHub instead of the Google Play Store to ensure compatibility with the latest Termux features and to enjoy the freedom offered outside the Play Store. https://github.com/termux/termux-app/releases
-> Just drag and drop.
+> Just drag this into your terminal and run it.
 
 #### Installation Steps
 ```yaml
@@ -233,7 +217,7 @@ Server = https://downloads.sourceforge.net/project/msys2/REPOS/msys/$arch
 > Save and Exit: **CTRL + X & Y + ENTER**
 
 #### Installation Steps
-> Just drag and drop.
+> Just drag this into your terminal and run it.
 
 ```yaml
 # 1. Sync package database & Upgrade package
@@ -312,244 +296,45 @@ bash -c 'if [ -d "watch" ]; then rm -rf "watch"; fi; git clone https://github.co
 ```
 > **Exit from Git Bash and run '.bat' in your_project on Windows File Explorer - Git Bash supported run it!.**
 
-## Known Makefile fatal Issue
-```yaml
-# ==> Detecting environment...
-# Detected Docker environment
-# Detected Linux
-# Reading package lists... Done
-# E: Could not open lock file /var/lib/apt/lists/lock - open (13: Permission denied)
-# E: Unable to lock directory /var/lib/apt/lists/
-make: *** [Makefile:67: init] Error 100
-#                        ^ [point]   ^ [point]
-# Fix: run it with elevated privileges.
-# Use:
-sudo make init
-# or:
-sudo make
-```
+### Known Issue
 
-# Known Windows MSYS (GDB Build) Issue
-> Issue (1) - module issue
-```yaml
-For help, type "help".
-Type "apropos word" to search for commands related to "word"...
-Python Exception <class 'ModuleNotFoundError'>: No module named 'libstdcxx'
-/etc/gdbinit:6: Error in sourced command file:
-Error occurred in Python: No module named 'libstdcxx'
-Reading symbols from ./watchdogs.debug.win...
-```
-- Fix with
-```yaml
-if [ -f "/etc/gdbinit" ]; then \
-  sed -i '/libstdcxx/d' /etc/gdbinit; \
-fi; \
-echo "set auto-load safe-path /" > ~/.gdbinit;
-```
-> Issue (2) - stuck issue
-```yaml
--DEBUGGER [function: __debug_main_chain | XXX]
-STDC: 1
-STDC_HOSTED: 1
-BYTE_ORDER: Little Endian
-SIZE_OF_PTR: 8 bytes
-SIZE_OF_INT: 4 bytes
-SIZE_OF_LONG: 4 bytes
-GNUC: 15.2.0
-OS: SSE: Supported
-[watchdogs] $ help
-whoami
-        exit
-[Thread 6388.0x1c8c exited with code 0]
-[Thread 6388.0x1e84 exited with code 0]
-[Thread 6388.0x206c exited with code 0]
-```
-- Fix with
-```yaml
-pacman -S winpty &&
-winpty gdb ./watchdogs.debug.win
-```
-
-## Known Android/Termux fatal Issue
-```yaml
-## Issue 1: Termux Storage Setup on Android 11+
-# Error observed:
-# /data/data/com.termux/files/usr/bin/termux-setup-storage: line 29: 
-# 27032 Aborted am broadcast --user 0 --es com.termux.app.reload_style storage -a com.termux.app.reload_style com.termux > /main/null
-# Cause: Android 11+ enforces scoped storage; some broadcasts fail in Termux.
-# Fix:
-pkg install termux-am
-# Optional: Update Termux manually via GitHub release APK if Play Store/F-Droid version is outdated
-# Universal APK:
-# https://github.com/termux/termux-app/releases/download/v0.118.3/termux-app_v0.118.3+github-debug_universal.apk
-# ARM64:
-# https://github.com/termux/termux-app/releases/download/v0.118.3/termux-app_v0.118.3+github-debug_arm64-v8a.apk
-# ARMv7:
-# https://github.com/termux/termux-app/releases/download/v0.118.3/termux-app_v0.118.3+github-debug_armeabi-v7a.apk
-# x86:
-# https://github.com/termux/termux-app/releases/download/v0.118.3/termux-app_v0.118.3+github-debug_x86.apk
-# x86_64:
-# https://github.com/termux/termux-app/releases/download/v0.118.3/termux-app_v0.118.3+github-debug_x86_64.apk
-# Note: If you see "there is a problem parsing the package", try using a different APK release matching your device architecture.
-
-## Issue 2: Partial package download / missing files
-# Example:
-# Could not open file /data/data/com.termux/cache/apt/archives/partial/*.deb - open (2: No such file or directory)
-# Cause: Corrupt or incomplete package cache
-# Fix:
-apt clean && apt update
-# Explanation:
-# - 'apt clean' removes cached packages, including partial downloads.
-# - 'apt update' refreshes repository metadata for fresh downloads.
-
-## Issue 3: Clearsigned file invalid / NOSPLIT error
-# Example:
-# E: Failed to fetch https://deb.kcubeterm.me/termux-main/dists/stable/InRelease  
-# Clearsigned file isn't valid, got 'NOSPLIT'
-# Cause: Repository metadata corrupted or network requires authentication
-# Fix:
-termux-change-repo
-# - Select a different mirror for main repo and x11-repo if available
-# - Run 'apt update' after switching
-# To enable X11 repo:
-pkg install x11-repo
-# Note: If installation still fails, consider using the latest Termux release from GitHub.
-
-## =========================================================
-## Additional Fix: "There is a problem parsing the package" still occurs
-## =========================================================
-# Possible causes:
-# 1. Android blocks the installer (security policy)
-# 2. OEM ROM enforces extra signature verification
-# 3. Android 12/13/14 blocks APK installation from certain sources
-# 4. Package monitor or custom ROM restrictions (e.g., MIUI, Vivo, Oppo, Samsung Knox)
-#
-# Optional bypass solutions using elevated privileges or installer tools:
-
-## Option A: Shizuku
-# - Allows certain apps to bypass package installer restrictions without root
-# Usage:
-# 1. Install Shizuku from Play Store
-# 2. Enable Wireless Debugging and start Shizuku
-# 3. Use a compatible installer app (Installer++, Shizuku Enhanced Installer)
-# 4. Try installing Termux APK again
-
-## Option B: Magisk (Root)
-# - Full root removes installer restrictions
-# - Install APK using adb or package manager:
-# adb install termux-app_v0.118.3+github-debug_arm64-v8a.apk
-# pm install -r termux.apk (on rooted device)
-
-## Option C: KingoRoot or KingRoot (One-click root)
-# - Useful for older devices without Magisk
-# - Once rooted, use a root-enabled installer:
-#   - SAI (Split APKs Installer)
-#   - Lucky Patcher Installer Mode
-# Can bypass parsing errors
-
-## Option D: Alternative installer apps
-# - Some installers bypass OEM package verification:
-#   - SAI (Split APKs Installer)
-#   - APKMirror Installer
-#   - APKPure Installer
-#   - MT Manager (Root mode)
-# Install Termux APK using one of these tools
-
-## Option E: GitHub Codespaces (Alternative Environment)
-# - If Termux installation continues to fail, you can use GitHub Codespaces in Android browser
-# - Steps:
-#   1. Go to https://github.com/features/codespaces
-#   2. Open a repository you want to work with
-#   3. Click "Code" > "Codespaces" > "Create Codespaces on main"
-#   4. Choose main branch and open in Browser mode
-# - This allows a lightweight Linux-like environment without installing Termux
-# - Simple usage: you can run shell, git, and code directly in the browser
-
-## Notes:
-# - Parsing errors can occur even with the correct APK if Android OEM modifies PackageParser
-# - Shizuku or root (Magisk/KingoRoot/KingRoot) may be required on restricted ROMs
-# - Always verify APK integrity via SHA256 from GitHub releases
-# - If issues persist, use a different release matching your device ABI
-# - GitHub Codespaces is a reliable fallback when local Termux installation fails
-```
+| Platform | Issue | Fix |
+|---|---|---|
+| **Linux/Docker** | Permission denied on apt lock file | `sudo make init` or `sudo make` |
+| **Windows (MSYS)** | GDB: No module named 'libstdcxx' | Run: `sed -i '/libstdcxx/d' /etc/gdbinit 2>/dev/null; echo "set auto-load safe-path /" > ~/.gdbinit` |
+| **Windows (MSYS)** | GDB gets stuck at startup | Install winpty: `pacman -S winpty`<br>Then use: `winpty gdb ./watchdogs.debug.win` |
+| **Android/Termux** | Storage setup fails (Android 11+) | Install: `pkg install termux-am` |
+| **Android/Termux** | Partial package download errors | Clean cache: `apt clean && apt update` |
+| **Android/Termux** | Repository/Clearsigned file error | Change repo: `termux-change-repo` |
+| **Android** | "Problem parsing the package" error | Try different APK from GitHub releases<br>Or use installer: **SAI (Split APKs Installer)**<br>Or use **GitHub Codespaces** in browser |
+| **Android** | APK installation blocked by OEM | Use: **Shizuku** (non-root) or **Magisk/KingoRoot** (root)<br>Or alternative installers: APKMirror, APKPure, MT Manager |
 
 ## Configuration
 
 ### watchdogs.toml Structure
 
-```toml
-[general]
+| Category | Setting | Value |
+|---|---|---|
+| **General** | OS | `linux` |
+|  | Binary | `samp-server.exe` |
+|  | Config | `server.cfg` |
+|  | Logs | `server_log.txt` |
+|  | API Keys | `API_KEY` |
+|  | Chatbot | `gemini` |
+|  | Model | `gemini-2.5-pro` |
+|  | Discord Webhooks | `DO_HERE` |
+| **Compiler** | Options | `-Z+`, `-O2`, `-d2`, `-;+`, `-(+`, `-\` |
+|  | Include Paths | `gamemodes/`, `gamemodes/x/`, `gamemodes/y/`, `gamemodes/z/`, `pawno/include/`, `pawno/include/x/`, `pawno/include/y/`, `pawno/include/z/` |
+|  | Input | `gamemodes/bare.pwn` |
+|  | Output | `gamemodes/bare.amx` |
+| **Dependencies** | GitHub Tokens | `DO_HERE` |
+|  | Packages | `Y-Less/sscanf?newer`, `samp-incognito/samp-streamer-plugin?newer` |
 
-# Operating system type
-os = "linux"
-
-# SA-MP/Open.MP binary
-binary = "samp-server.exe"
-
-# SA-MP/Open.MP Config
-config = "server.cfg"
-
-# SA-MP/Open.MP logs file
-logs = "server_log.txt"
-
-# A.I (Wanion) in Watchdogs
-# What is this for? These API Keys and AI Data are for querying the Gemini or Groq AI via POST requests and receiving POST-based responses (using cURL). This is intended for fast question extraction and quick answers and not to replace MS VSCode GitHub Copilot.
-# api keys/tokens
-# https://aistudio.google.com/api-keys
-# https://console.groq.com/keys
-# [Optional]
-keys = "API_KEY"
-
-# chatbot - "gemini" "groq"
-chatbot = "gemini"
-
-# models - llama | gpt | qwen
-# groq models: https://console.groq.com/docs/models
-# gemini models: https://ai.google.dev/gemini-api/docs/models
-models = "gemini-2.5-pro"
-
-# discord webhooks - optional
-# https://support.discord.com/hc/en-us/articles/228383668-Intro-to-Webhooks
-# [Optional]
-webhooks = "DO_HERE"
-
-[compiler]
-
-# Compiler options
-option = ["-Z+", "-O2", "-d2", "-;+", "-(+", "-\\"]
-
-# Include paths for compiler
-include_path = [
-    "gamemodes",
-    "gamemodes/x",
-    "gamemodes/y",
-    "gamemodes/z",
-    "pawno/include",
-    "pawno/include/x",
-    "pawno/include/y",
-    "pawno/include/z",
-]
-
-# Input source file
-input = "gamemodes/bare.pwn"
-
-# Output compiled file
-output = "gamemodes/bare.amx"
-
-[depends]
-
-# Personal access tokens (classic) - https://github.com/settings/tokens
-# Access tokens to create installation dependencies,
-# to can download files from private GitHub repositories without making them public.
-# [Optional]
-github_tokens = "DO_HERE"
-
-# Dependency repositories (max 101)
-packages = [
-    "Y-Less/sscanf?newer",
-    "samp-incognito/samp-streamer-plugin?newer"
-]
-```
+**Key Points:**
+- **API Keys**: For Gemini or Groq AI (optional)
+- **Webhooks**: Discord notifications (optional)
+- **GitHub Tokens**: For private repositories (optional)
+- **Compiler**: PAWN compiler settings for SA-MP/Open.MP
 
 ## Usage Guide
 
@@ -748,15 +533,17 @@ compiles
 --------------------     --------------------------
 ```
 
-<br>You no longer need to use regex just to detect files available in the tag you provide as a dependency link. Existing files will now be automatically detected through HTML web interaction by watchdogs-depends, which scans for available files from the fallback URL `user/repo?tag`. Additionally, if you are in a Windows watchdogs environment, the system will automatically search for and target only archives containing "windows" in their name, and the opposite applies for Linux. Watchdogs also has additional patterns such as specific words like `server_.zip` and `server_.tar.gz`.
-<br><br>
-This serves as an assistant for installing various dependencies required by SA-MP/Open.MP. When installing dependencies, those located in the root extraction folder for plugins will not automatically be placed into the `plugins/` directory. If there are keywords like `log..`, `config..`, or other specific ones, they will be installed into the root of the main project. Conversely, if those keywords are not present, the system will install them into the `plugins/` directory and `/pawno-qawno/include` for `.inc` files. It also handles gamemode components (root watchdogs). Watchdogs will automatically add include names to the gamemode based on the main gamemode filename specified in the `input` key within `watchdogs.toml`. Furthermore, Watchdogs helps install plugin names and their respective formats into `config.json` (from watchdogs.toml) for Open.MP, or `server.cfg` (from watchdogs.toml) for SA-MP. Note that the `components/` directory is not required for Open.MP.
-<br><br>
-r plugin files located in the root directory of the dependency archive (for both Linux and Windows), their installation paths will be adjusted accordingly. Plugins found in the root folder will be placed directly into the server's root directory, rather than in specific subdirectories like `plugins/` or `components/`.
-<br><br>
-The handling of YSI includes differs due to their structure containing multiple nested folders of include files. In this case, the entire folder containing these includes is moved directly to the target path (for example, `pawno/include` or `qawno/include`), streamlining the process.
-<br>
-> Please be aware that Watchdogs are used to check whether the user is running a specific SA-MP/Open.MP from their respective ecosystem folders, and pawno/qawno is one of them. We hope you stay aligned on this, and do not rename the pawno/qawno folder to keep the Watchdogs detection system stable. However, if you do rename the pawno/qawno folder to something else, you may need to modify the Watchdogs source accordingly.
+1. **Automatic file detection**: Watchdogs-depends now scans HTML from GitHub tags (`user/repo?tag`) instead of manual parsing.
+2. **Platform-specific downloads**: Automatically picks Windows/Linux archives based on OS detection
+3. **Smart file placement**: 
+   - Plugins go to `plugins/` folder
+   - Config/log files go to root folder
+   - Include files go to `pawno/include` or `qawno/include`
+4. **YSI handling**: Entire YSI include folder moved as-is to include directory
+5. **Auto-configuration**: Plugin names automatically added to `server.cfg` (SA-MP) or `config.json` (Open.MP)
+6. **Root plugin files**: Plugins in archive root go to server root directory
+7. **Gamemode includes**: Automatically adds includes to main gamemode file
+8. **Directory naming**: Keep `pawno/` or `qawno/` folder names unchanged for proper detection
 
 ![img](https://raw.githubusercontent.com/klantle/watchdogs/refs/heads/main/images/REPLICATE.png)
 
@@ -894,12 +681,11 @@ pawncc "input" -o"output.amx" -i"include/"
   "version": "2.0.0",
   "tasks": [
     {
-      "label": "compiler tasks",
-      "type": "shell",
+      "label": "compiler tasks", "type": "shell",
       "command": "${workspaceFolder}/pawno/pawncc.exe",
       "args": [
         "${file}",
-        "-o${fileDirname}/${fileBasenameNoExtension}.amx",
+        "-o ${fileDirname}/${fileBasenameNoExtension}.amx",
         "-i pawno/include/",
         "-i gamemodes/",
         "-i include/",
@@ -919,86 +705,89 @@ pawncc "input" -o"output.amx" -i"include/"
 
 ---
 
-Based on PAWN Compiler [3.10.11](https://github.com/openmultiplayer/compiler/releases/tag/v3.10.11)/[3.10.10](https://github.com/pawn-lang/compiler/releases/tag/v3.10.10)
+> Based on Pawn Compiler [3.10.11](https://github.com/openmultiplayer/compiler/releases/tag/v3.10.11)/[3.10.10](https://github.com/pawn-lang/compiler/releases/tag/v3.10.10)
+Here’s a version of your PAWN compiler options table with **longer English descriptions**, without using em-dashes, and more suitable for clarity in English:
 
-| Option | Description | Default |
-|--------|-------------|---------|
-| `-A<num>` | Alignment in bytes of the data segment and the stack | - |
-| `-a` | Output assembler code | - |
-| `-C[+/-]` | Compact encoding for output file | `+` |
-| `-c<name>` | Codepage name or number (e.g., `1252` for Windows Latin-1) | - |
-| `-Dpath` | Active directory path | - |
-| `-H<hwnd>` | Window handle to send a notification message on finish | - |
-| `-i<name>` | Path for include files | - |
-| `-l` | Create list file (preprocess only) | - |
-| `-o<name>` | Set base name of (P-code) output file | - |
-| `-p<name>` | Set name of "prefix" file | - |
-| `-s<num>` | Skip lines from the input file | - |
-| `-t<num>` | TAB indent size in character positions | `8` |
-| `-v<num>` | Verbosity level (`0=quiet`, `1=normal`, `2=verbose`) | `1` |
-| `-w<num>` | Disable a specific warning by its number | - |
-| `-Z[+/-]` | Run in compatibility mode | `-` |
-| `-\` | Use backslash `\` for escape characters | - |
-| `-^` | Use caret `^` for escape characters | - |
-| `sym=val` | Define constant `sym` with value `val` | - |
-| `sym=` | Define constant `sym` with value `0` | - |
+## General Options
 
----
-
-### Debugging Options
-
-| Option | Description | Levels / Default |
-|--------|-------------|------------------|
-| `-d<num>` | Debugging level | `-d1` |
-| `-d0` | No symbolic information, no run-time checks | - |
-| `-d1` | Run-time checks, no symbolic information | *(default)* |
-| `-d2` | Full debug information and dynamic checking | - |
-| `-d3` | Same as `-d2`, but implies `-O0` | - |
-| `-E[+/-]` | Turn warnings into errors | - |
+| Option     | Description                                                                  | Default |
+| ---------- | ---------------------------------------------------------------------------- | ------- |
+| `-A<num>`  | Set the alignment in bytes for the data segment and stack                    | -       |
+| `-a`       | Generate assembler code output for inspection or debugging                   | -       |
+| `-C[+/-]`  | Enable or disable compact encoding of the output file                        | `+`     |
+| `-c<name>` | Specify the codepage name or number for source file encoding, e.g., 1252     | -       |
+| `-Dpath`   | Specify the active working directory path for includes and outputs           | -       |
+| `-H<hwnd>` | Provide a window handle to receive a notification when compilation finishes  | -       |
+| `-i<name>` | Add an additional directory to search for include files                      | -       |
+| `-l`       | Generate a list file containing the preprocessed source code                 | -       |
+| `-o<name>` | Set the base name for the P-code output file                                 | -       |
+| `-p<name>` | Specify the name of the "prefix" file to include before compilation          | -       |
+| `-s<num>`  | Skip a certain number of lines from the start of the input file              | -       |
+| `-t<num>`  | Set the number of characters per tab stop for indentation                    | 8       |
+| `-v<num>`  | Set verbosity level of compiler messages, from 0 (quiet) to 2 (very verbose) | 1       |
+| `-w<num>`  | Disable specific compiler warnings by number                                 | -       |
+| `-Z[+/-]`  | Enable or disable compatibility mode for legacy code                         | -       |
+| `-\`       | Use backslash character as escape character in strings                       | -       |
+| `-^`       | Use caret character as escape character in strings                           | -       |
+| `sym=val`  | Define a constant symbol with a specific value for conditional compilation   | -       |
+| `sym=`     | Define a constant symbol with a value of 0                                   | -       |
 
 ---
 
-### Optimization Options
+## Debugging Options
 
-| Option | Description | Levels / Default |
-|--------|-------------|------------------|
-| `-O<num>` | Optimization level | `-O1` |
-| `-O0` | No optimization | - |
-| `-O1` | JIT-compatible optimizations only | *(default)* |
-| `-O2` | Full optimizations | - |
-
----
-
-### Memory and Machine Options
-
-| Option | Description | Default |
-|--------|-------------|---------|
-| `-S<num>` | Stack/heap size in cells | `4096` |
-| `-X<num>` | Abstract machine size limit in bytes | - |
-| `-XD<num>` | Abstract machine data/stack size limit in bytes | - |
+| Option    | Description                                                             | Default   |
+| --------- | ----------------------------------------------------------------------- | --------- |
+| `-d<num>` | Set debugging level to control runtime checks and debug information     | `-d1`     |
+| `-d0`     | Disable all debug information and runtime checks                        | -         |
+| `-d1`     | Enable runtime checks but do not generate debug info                    | *default* |
+| `-d2`     | Enable full debug information with dynamic runtime checking             | -         |
+| `-d3`     | Enable full debug and runtime checks, and disable optimizations (`-O0`) | -         |
+| `-E[+/-]` | Treat all compiler warnings as errors when enabled                      | -         |
 
 ---
 
-### Reporting and Analysis Options
+## Optimization Options
 
-| Option | Description | Default |
-|--------|-------------|---------|
-| `-R[+/-]` | Add detailed recursion report with call chains | `-` |
-| `-r[name]` | Write cross reference report to console or specified file | - |
-
----
-
-### Syntax Enforcement Options
-
-| Option | Description | Default |
-|--------|-------------|---------|
-| `-;[+/-]` | Require a semicolon to end each statement | `-` |
-| `-([+/-]` | Require parentheses for function invocation | `-` |
+| Option    | Description                                                 | Default   |
+| --------- | ----------------------------------------------------------- | --------- |
+| `-O<num>` | Set optimization level to control how code is optimized     | `-O1`     |
+| `-O0`     | Disable all optimizations to produce straightforward code   | -         |
+| `-O1`     | Enable optimizations compatible with just-in-time execution | *default* |
+| `-O2`     | Enable full optimization for maximum performance            | -         |
 
 ---
 
-### Output and Error Handling
+## Memory Options
 
-| Option | Description | Default |
-|--------|-------------|---------|
-| `-e<name>` | Set name of error file (quiet compile) | - |
+| Option     | Description                                         | Default |
+| ---------- | --------------------------------------------------- | ------- |
+| `-S<num>`  | Set the size of the stack and heap in memory cells  | 4096    |
+| `-X<num>`  | Set the size limit of the abstract machine in bytes | -       |
+| `-XD<num>` | Set a limit on data and stack memory usage in bytes | -       |
+
+---
+
+## Analysis Options
+
+| Option     | Description                                                    | Default |
+| ---------- | -------------------------------------------------------------- | ------- |
+| `-R[+/-]`  | Generate a detailed recursion report to analyze function calls | -       |
+| `-r[name]` | Produce a cross-reference report showing symbol usage          | -       |
+
+---
+
+## Syntax Options
+
+| Option    | Description                                                  | Default |
+| --------- | ------------------------------------------------------------ | ------- |
+| `-;[+/-]` | Require semicolons at the end of each statement when enabled | -       |
+| `-([+/-]` | Require parentheses for function calls when enabled          | -       |
+
+---
+
+## Output Options
+
+| Option     | Description                                                               | Default |
+| ---------- | ------------------------------------------------------------------------- | ------- |
+| `-e<name>` | Specify the name of the error file to save messages for quiet compilation | -       |

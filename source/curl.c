@@ -1,3 +1,9 @@
+static const char *description = 
+"cURL integration module for network operations - handles HTTP/HTTPS downloads," "\n"
+"URL validation, account tracking across platforms, and compiler installation"   "\n"
+"with progress display, retry logic, and SSL certificate management."
+;
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <ctype.h>
@@ -79,9 +85,9 @@ void verify_cacert_pem(CURL *curl) {
                         curl_easy_setopt(curl, CURLOPT_CAINFO, "C:/libwatchdogs/cacert.pem");
                 else {
                         if (cacert_notice != 1) {
-                                cacert_notice = 1;
                                 pr_color(stdout, FCOLOUR_GREEN,
                                         "cURL: can't locate cacert.pem - SSL verification may fail.\n");
+                                cacert_notice = 1;
                         }
                 }
         }
@@ -115,9 +121,9 @@ void verify_cacert_pem(CURL *curl) {
                         curl_easy_setopt(curl, CURLOPT_CAINFO, "/etc/ssl/certs/cacert.pem");
                 else {
                         if (cacert_notice != 1) {
-                                cacert_notice = 1;
                                 pr_color(stdout, FCOLOUR_GREEN,
                                         "cURL: can't locate cacert.pem - SSL verification may fail.\n");
+                                cacert_notice = 1;
                         }
                 }
         }
@@ -321,7 +327,7 @@ size_t write_memory_callback(void *contents, size_t size, size_t nmemb, void *us
  * Validate URL accessibility using HTTP HEAD request
  * Checks if a given URL is reachable and returns appropriate status code
  */
-int dency_url_checking(const char* url, const char* github_token)
+int package_url_checking(const char* url, const char* github_token)
 {
         CURL* curl = curl_easy_init();
         if(!curl) return 0;
@@ -398,12 +404,12 @@ int dency_url_checking(const char* url, const char* github_token)
  * Download and retrieve content from a URL
  * Returns HTML/JSON content in dynamically allocated buffer
  */
-int dency_http_get_content(const char* url, const char* github_token, char** out_html)
+int package_http_get_content(const char* url, const char* github_token, char** out_html)
 {
         CURL* curl;
         CURLcode res;
         struct curl_slist* headers = NULL;
-        struct dency_curl_buffer buffer = {0}; /* Buffer for downloaded content */
+        struct package_curl_buffer buffer = {0}; /* Buffer for downloaded content */
 
         curl = curl_easy_init();
         if(!curl)
@@ -519,7 +525,7 @@ account_tracker_discrepancy(const char *base, char discrepancy[][MAX_USERNAME_LE
 }
 
 /* 
- * Check if a username exists on multiple online platforms
+ * Make sure a username exists on multiple online platforms
  * Uses CURL to probe each platform's URL pattern
  */
 void account_tracking_username(CURL *curl, const char *username) {
@@ -662,7 +668,7 @@ static void update_library_environment(const char *lib_path)
         char config_file[WG_PATH_MAX];
         snprintf(config_file, sizeof(config_file), "%s/%s", home_dir, shell_rc);
 
-        /* Check if library path already exists in config file */
+        /* Make sure library path already exists in config file */
         char grep_cmd[512];
         snprintf(grep_cmd, sizeof(grep_cmd),
                 "grep -q \"LD_LIBRARY_PATH.*%s\" %s", lib_path, config_file);
@@ -956,7 +962,7 @@ done:
 }
 
 /* 
- * Check if a filename has a known archive extension
+ * Make sure a filename has a known archive extension
  */
 int is_archive_file(const char *filename)
 {
@@ -1205,7 +1211,7 @@ int wg_download_file(const char *url, const char *output_filename)
                                                 (intmax_t)file_stat.st_size, final_filename);
                                 fflush(stdout);
 
-                                /* Check if file is an archive */
+                                /* Make sure file is an archive */
                                 if (!is_archive_file(final_filename)) {
                                         pr_color(stdout, FCOLOUR_YELLOW, "Warning: File %s is not an archive\n", final_filename);
                                         return 1;
@@ -1237,10 +1243,10 @@ int wg_download_file(const char *url, const char *output_filename)
                                                 char *confirm = readline("(y/n): ");
                                                 
                                                 if (confirm && (confirm[0] == 'Y' || confirm[0] == 'y')) {
-                                                        remove_archive = 1;
                                                          if (path_exists(final_filename) == 1) {
                                                                  destroy_archive(final_filename);
                                                         }
+                                                        remove_archive = 1;
                                                 }
                                                 wg_free(confirm);
                                         } else {

@@ -1,3 +1,9 @@
+static const char *description =
+"Utility module providing compiler error analysis, cross-platform file statistics," "\n"
+"portable I/O functions, and debugging output utilities with comprehensive"         "\n"
+"error pattern matching and detailed compilation diagnostics."
+;
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -23,10 +29,14 @@
 #include "debug.h"
 #include "extra.h"
 
-char *BG = "\x1b[48;5;235m";
-char *FG = "\x1b[97m";
-char *BORD = "\x1b[33m";
-char *RST = "\x1b[0m";
+char
+        *BG = "\x1b[48;5;235m";
+char
+        *FG = "\x1b[97m";
+char
+        *BORD = "\x1b[33m";
+char
+        *RST = "\x1b[0m";
 
 /*
  * Prints formatted output followed by a newline character to specified stream.
@@ -499,7 +509,7 @@ static const char *wg_find_warn_err(const char *line)
       int cindex;
       /* Iterate through the compiler code strings array until a NULL terminator is found */
       for (cindex = 0; ccs[cindex].cs_t; ++cindex) {
-        /* Check if the current pattern exists anywhere in the input line */
+        /* Make sure the current pattern exists anywhere in the input line */
         if (strstr(line, ccs[cindex].cs_t))
             return ccs[cindex].cs_i; /* Return the human-readable description */
       }
@@ -521,7 +531,7 @@ void compiler_detailed(const char *pawn_output, int debug,
                 "Compiler Complete! | " FCOLOUR_CYAN "%d pass (warning) | " FCOLOUR_RED "%d fail (error)" FCOLOUR_DEFAULT "");       
       println(stdout, "-----------------------------");
 
-      /* Check if the compiled output file exists and debug information is requested */
+      /* Make sure the compiled output file exists and debug information is requested */
       int amx_access = path_access(pawn_output);
       if (amx_access && debug != 0) {
                 /* Calculate DJB2 hash of the compiled output file for verification */

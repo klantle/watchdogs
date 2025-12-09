@@ -1,3 +1,10 @@
+static const char *description =
+"Dependency management module for fetching and organizing third-party"   "\n"
+"libraries from GitHub/GitLab repositories with platform-specific asset" "\n"
+"selection, automatic include/plugin configuration, and cross-platform"  "\n"
+"file organization."
+;
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <ctype.h>
@@ -15,18 +22,18 @@
 #include "depend.h"
 
 /* Global buffers for dependency management operations */
-char package_command[ WG_MAX_PATH * 4 ]                 ;    /* Buffer for system commands */
-char *tag                                               ;    /* Version tag for dependencies */
-char *path                                              ;    /* Path component of dependency URL */
-char *path_slash                                        ;    /* Pointer to path separator */
-char *user                                              ;    /* Repository owner/username */
-char *repo                                              ;    /* Repository name */
-char *repo_slash                                        ;    /* Pointer to repository separator */
-char *git_dir                                           ;    /* Pointer to .git extension */
-char *filename                                          ;    /* Extracted filename */
-char *extension                                         ;    /* File extension */
-char json_item[WG_PATH_MAX]                             ;    /* Json item's */
-static int found_cnt = 0                                ;    /* dump file counts */
+static char command[ WG_MAX_PATH * 4 ];    /* Buffer for system commands */
+static char *tag;    /* Version tag for dependencies */
+static char *path;    /* Path component of dependency URL */
+static char *path_slash;    /* Pointer to path separator */
+static char *user;    /* Repository owner/username */
+static char *repo;    /* Repository name */
+static char *repo_slash;    /* Pointer to repository separator */
+static char *git_dir;    /* Pointer to .git extension */
+static char *filename;    /* Extracted filename */
+static char *extension;    /* File extension */
+static char json_item[WG_PATH_MAX];    /* Json item's */
+static int fdir_counts = 0;    /* dump file counts */
 
 /*
  * This is the maximum dependency in 'watchdogs.toml' that can be read from the 'packages' key,
@@ -34,29 +41,15 @@ static int found_cnt = 0                                ;    /* dump file counts
 */
 #define MAX_DEPENDS (102)
 
-struct dency_repositories {
-        char
-                host[32]; /* repo host */
-        char
-                domain[64]; /* repo domain */
-        char
-                user[128]; /* repo user */
-        char
-                repo[128]; /* repo name */
-        char
-                tag[128]; /* repo tag */
+struct repositories {
+        char host[32]  ; /* repo host */
+        char domain[64]; /* repo domain */
+        char user[128] ; /* repo user */
+        char repo[128] ; /* repo name */
+        char tag[128]  ; /* repo tag */
 };
 
-typedef struct {
-        const char
-                *dency_config; /* depends config */
-        const char
-                *dency_target; /* depends target */
-        const char
-                *dency_added; /* depends packages */
-} dencyconfig;
-
-const char* root_keywords[/* keywords root lib */] = {
+const char* matching_root_keywords[/* keywords root lib */] = {
         "lib",
         "log",
         "root",
@@ -95,7 +88,7 @@ const char * matching_operating_system[] = {
         "mint"
 };
 
-const char *windows_patterns[] = {
+const char *matching_windows_patterns[] = {
         "windows",
         "win",
         "win32",
@@ -106,7 +99,7 @@ const char *windows_patterns[] = {
         NULL
 };
     
-const char *linux_patterns[] = {
+const char *matching_linux_patterns[] = {
         "linux",
         "ubuntu",
         "debian",
@@ -153,12 +146,52 @@ const char * matching_any_patterns[] = {
 };
 
 /* Path Separator */
-static inline const char * PATH_SEPARATOR( const char *path ) {
-        const char *l = strrchr( path, __PATH_CHR_SEP_LINUX );
-        const char *w = strrchr( path, __PATH_CHR_SEP_WIN32 );
+static inline const char
+        * PATH_SEPARATOR( const char *path )
+{
+        const char
+                *l = strrchr( path, __PATH_CHR_SEP_LINUX ),
+                *w = strrchr( path, __PATH_CHR_SEP_WIN32 );
         if ( l && w )
                 return ( l > w ) ? l : w;
         return l ? l : w;
+}
+
+/* 
+ * Convert Windows path separators to Unix/Linux style
+ * Replaces backslashes with forward slashes for cross-platform compatibility
+ */
+void package_sym_convert( char *path )
+{
+        char *pos;
+        for ( pos = path; *pos; pos++ ) if ( *pos == __PATH_CHR_SEP_WIN32 )
+        {
+                *pos = __PATH_CHR_SEP_LINUX;
+        }
+}
+
+/* 
+ * Extract filename from full path (excluding directory)
+ * Returns pointer to filename component
+ */
+const char *package_get_filename(
+        const char *path
+) {
+        const char *packages = PATH_SEPARATOR( path );
+        return packages ?
+               packages + 1 : path;
+}
+
+/* 
+ * Extract basename from full path (similar to package_get_filename)
+ * Alternative implementation for filename extraction
+ */
+static const char *package_get_basename(
+        const char *path
+) {
+        const char *p = PATH_SEPARATOR( path );
+        return p ?
+               p + 1 : path;
 }
 
 /*
@@ -174,28 +207,28 @@ int this_os_archive( const char *filename )
         /* Determine target operating system at compile time */
         const char *target_os = NULL;
         #ifdef WG_WINDOWS
-        target_os = "windows"; //Compile-time flag for Windows builds
+        target_os = "windows";
         #else
-        target_os = "linux";   //Default to Linux if not Windows
+        target_os = "linux";
         #endif
         
-        if ( !target_os ) return 0; //No target OS specified
+        if ( !target_os ) return 0;
         
         /* Convert target_os to lowercase for case-insensitive comparison */
-        char target_lower[ WG_PATH_MAX ];
-        strncpy( target_lower, target_os, sizeof ( target_lower ) - 1 );
-        target_lower[ sizeof( target_lower ) - 1 ] = '\0';
+        char size_target[ WG_PATH_MAX ];
+        strncpy( size_target, target_os, sizeof ( size_target ) - 1 );
+        size_target[ sizeof( size_target ) - 1 ] = '\0';
         
-        for (int i = 0; target_lower[ i ]; i++) {
-            target_lower[ i ] = tolower(target_lower[ i ]);
+        for (int i = 0; size_target[ i ]; i++) {
+            size_target[ i ] = tolower(size_target[ i ]);
         }
         
         /* Select OS-specific patterns */
         const char **patterns = NULL;
-        if (strstr( target_lower, "win" )) {
-            patterns = windows_patterns;
-        } else if (strstr( target_lower, "linux")) {
-            patterns = linux_patterns;
+        if (strstr( size_target, "win" )) {
+            patterns = matching_windows_patterns;
+        } else if (strstr( size_target, "linux")) {
+            patterns = matching_linux_patterns;
         }
         
         if ( !patterns ) return 0;
@@ -217,22 +250,22 @@ int this_os_archive( const char *filename )
                     filename_lower,
                     patterns[ k ] )
                 ) {
-                return 1; // Match found
+                return 1;
             }
         }
         
-        return 0; //No match found
+        return 0;
 }
 
 /*
- * this_more_archive - check if filename indicates from "root_keywords" archive
+ * this_more_archive - check if filename indicates from "matching_root_keywords" archive
  *
  * Identifies server-related files by name patterns. Returns 1 if the
  * filename contains any server pattern, 0 otherwise.
  */
 int this_more_archive(const char *filename)
 {
-        int k;                     /* loop counter for array index */
+        int k;                     /* loop counter for array _sindex */
         int ret = 0;               /* return value, default 0 (not found) */
 
         /* Iterate through all server patterns until NULL terminator */
@@ -254,7 +287,7 @@ int this_more_archive(const char *filename)
 }
 
 /*
- * dency_fetching_assets - select most appropriate asset from available options
+ * package_fetching_assets - select most appropriate asset from available options
  *
  * Prioritizes assets in the following order:
  * 1. Server/gamemode assets for target OS
@@ -266,21 +299,21 @@ int this_more_archive(const char *filename)
  * Returns a newly allocated string containing the selected asset filename,
  * or NULL if no assets are available.
  */
-char *dency_fetching_assets(char **package_assets,
-                            int counts, const char *preferred_os)
+char *package_fetching_assets(char **package_assets,
+                            int counts, const char *pf_os)
 {
         int i;
-        
+        int rate_os_pattern = 0;
+
         /* Handle edge cases */
         if (counts == 0)
             return NULL;
         if (counts == 1)
             return strdup(package_assets[ 0 ]);
         
-        /* Determine target OS - use preferred_os if provided, otherwise detect from compile flags */
         const char *target_os = NULL;
-        if (preferred_os && preferred_os[ 0 ]) {
-            target_os = preferred_os;
+        if (pf_os && pf_os[ 0 ]) {
+            target_os = pf_os;
         } else {
             #ifdef WG_WINDOWS
             target_os = "windows";
@@ -289,19 +322,16 @@ char *dency_fetching_assets(char **package_assets,
             #endif
         }
         
-        /* Convert target_os to lowercase for comparison */
-        char target_lower[ 32 ] = { 0 };
+        char size_target[ 32 ] = { 0 };
         if (target_os) {
-            strncpy( target_lower, target_os, sizeof(target_lower) - 1 );
-            for (int j = 0; target_lower[j]; j++) {
-                target_lower[j] = tolower(target_lower[j]);
+            strncpy( size_target, target_os, sizeof(size_target) - 1 );
+            for (int j = 0; size_target[j]; j++) {
+                size_target[j] = tolower(size_target[j]);
             }
         }
-        
-        /* Priority 1: Server/gamemode assets for target OS */
-        if (target_lower[ 0 ]) {
+
+        if (size_target[ 0 ]) {
             for (i = 0; i < counts; i++) {
-                /* Check the assets from any patterns */
                 int is_server_asset = 0;
                 for (int p = 0; matching_any_patterns[ p ] != NULL; p++) {
                     if (strfind(package_assets[ i ], matching_any_patterns[ p ], true)) {
@@ -311,24 +341,21 @@ char *dency_fetching_assets(char **package_assets,
                 }
                 
                 if (is_server_asset) {
-                    /* Check if it's also for our target OS */
-                    if (strstr(target_lower, "win")) {
-                        /* Check for Windows patterns */
-                        for (int w = 0; windows_patterns[ w ] != NULL; w++)
+                    if (strstr(size_target, "win")) {
+                        for (int w = 0; matching_windows_patterns[ w ] != NULL; w++)
                         {
                             if ( strstr(package_assets[ i ],
-                                windows_patterns[ w ] )
+                                matching_windows_patterns[ w ] )
                             ) {
                                 return
                                         strdup( package_assets [ i ] );
                             }
                         }
-                    } else if (strstr(target_lower, "linux")) {
-                        /* Check for Linux patterns */
-                        for (int l = 0; linux_patterns[ l ] != NULL; l++)
+                    } else if (strstr(size_target, "linux")) {
+                        for (int l = 0; matching_linux_patterns[ l ] != NULL; l++)
                         {
                             if (strstr( package_assets[ i ],
-                                linux_patterns[ l ])
+                                matching_linux_patterns[ l ])
                             ) {
                                 return strdup( package_assets [ i ] );
                             }
@@ -338,26 +365,23 @@ char *dency_fetching_assets(char **package_assets,
             }
         }
         
-        /* Priority 2: OS-specific assets for target OS */
-        if (target_lower[ 0 ]) {
+        if (size_target[ 0 ]) {
             for (i = 0; i < counts; i++) {
-                if (strstr( target_lower, "win") ) {
-                    /* Check for Windows patterns */
-                    for (int w = 0; windows_patterns[ w ] != NULL; w++)
+                if (strstr( size_target, "win") ) {
+                    for (int w = 0; matching_windows_patterns[ w ] != NULL; w++)
                     {
                         if (strstr(package_assets[ i ],
-                            windows_patterns[ w ]))
+                            matching_windows_patterns[ w ]))
                         {
                             return
                                 strdup( package_assets [ i ] );
                         }
                     }
-                } else if ( strstr(target_lower, "linux") ) {
-                    /* Check for Linux patterns */
-                    for (int l = 0; linux_patterns[ l ] != NULL; l++)
+                } else if ( strstr(size_target, "linux") ) {
+                    for (int l = 0; matching_linux_patterns[ l ] != NULL; l++)
                     {
                         if (strstr(package_assets[ i ],
-                            linux_patterns[ l ])) {
+                            matching_linux_patterns[ l ])) {
                             return
                                 strdup( package_assets [ i ] );
                         }
@@ -366,7 +390,6 @@ char *dency_fetching_assets(char **package_assets,
             }
         }
         
-        /* Priority 3: Server/gamemode assets (any OS) */
         for (i = 0; i < counts; i++) {
             for (int p = 0; matching_any_patterns[ p ] != NULL; p++) {
                 if ( strfind(package_assets[ i ],
@@ -378,23 +401,17 @@ char *dency_fetching_assets(char **package_assets,
             }
         }
         
-        /* Priority 4: Neutral assets (no OS pattern) */
         for (i = 0; i < counts; i++) {
-            int rate_os_pattern = 0;
-            
-            /* Check for Windows patterns */
-            for (int w = 0; windows_patterns[ w ] != NULL && !rate_os_pattern; w++) {
+            for (int w = 0; matching_windows_patterns[ w ] != NULL && !rate_os_pattern; w++) {
                 if ( strstr(package_assets[ i ],
-                    windows_patterns[ w ]) )
+                    matching_windows_patterns[ w ]) )
                 {
                     rate_os_pattern = 1;
                 }
             }
-            
-            /* Check for Linux patterns */
-            for (int l = 0; linux_patterns[ l ] != NULL && ! rate_os_pattern; l++) {
+            for (int l = 0; matching_linux_patterns[ l ] != NULL && ! rate_os_pattern; l++) {
                 if ( strstr(package_assets[ i ],
-                    linux_patterns[ l ]) )
+                    matching_linux_patterns[ l ]) )
                 {
                     rate_os_pattern = 1;
                 }
@@ -406,46 +423,8 @@ char *dency_fetching_assets(char **package_assets,
             }
         }
         
-        /* Fallback: First asset */
         return
                 strdup( package_assets [ 0 ] );
-}
-
-/* 
- * Convert Windows path separators to Unix/Linux style
- * Replaces backslashes with forward slashes for cross-platform compatibility
- */
-void dency_sym_convert( char *path )
-{
-        char *pos;
-        for ( pos = path; *pos; pos++ ) {
-                if ( *pos == __PATH_CHR_SEP_WIN32 )
-                        *pos = __PATH_CHR_SEP_LINUX;
-        }
-}
-
-/* 
- * Extract filename from full path (excluding directory)
- * Returns pointer to filename component
- */
-const char *dency_get_filename(
-        const char *path
-) {
-        const char *dependencies = PATH_SEPARATOR( path );
-        return dependencies ?
-               dependencies + 1 : path;
-}
-
-/* 
- * Extract basename from full path (similar to dency_get_filename)
- * Alternative implementation for filename extraction
- */
-static const char *dency_get_basename(
-        const char *path
-) {
-        const char *p = PATH_SEPARATOR( path );
-        return p ?
-               p + 1 : path;
 }
 
 /* 
@@ -453,7 +432,7 @@ static const char *dency_get_basename(
  * Extracts host, domain, user, repo, and tag from dependency string
  */
 static int
-dency_parse_repo( const char *input, struct dency_repositories *__package_data )
+package_parse_repo( const char *input, struct repositories *__package_data )
 {
         memset( __package_data, 0, sizeof( *__package_data ) );
 
@@ -465,11 +444,12 @@ dency_parse_repo( const char *input, struct dency_repositories *__package_data )
         strncpy( parse_input, input, sizeof( parse_input ) - 1 );
         parse_input[sizeof( parse_input ) - 1] = '\0';
 
-        /* Extract tag (version) if present (format: user/repo:tag) */
+        /* Extract tag (version) if present (format: user/repo?tag) */
         tag = strrchr( parse_input, '?' );
         if ( tag ) {
                 *tag = '\0';
-                strncpy( __package_data->tag, tag + 1, sizeof( __package_data->tag ) - 1 );
+                strncpy( __package_data->tag,
+                        tag + 1, sizeof( __package_data->tag ) - 1 );
 
                 if ( !strcmp( __package_data->tag, "newer" ) ) {
                         printf( "Spot " );
@@ -526,15 +506,15 @@ dency_parse_repo( const char *input, struct dency_repositories *__package_data )
 
         /* Remove .git extension if present */
         git_dir = strstr( repo, ".git" );
-        if ( git_dir )
-                *git_dir = '\0';
-        strncpy( __package_data->repo, repo, sizeof( __package_data->repo ) - 1 );
+        if ( git_dir ) { *git_dir = '\0'; }
+        strncpy( __package_data->repo,
+                repo, sizeof( __package_data->repo ) - 1 );
 
-        if ( strlen( __package_data->user ) == 0 || strlen( __package_data->repo ) == 0 )
+        if ( strlen( __package_data->user ) == 0 ||
+             strlen( __package_data->repo ) == 0 )
                 return 0;
 
 #if defined( _DBG_PRINT )
-        /* Debug output: display parsed repository information */
         char size_title[WG_PATH_MAX * 3];
         snprintf( size_title, sizeof( size_title ), "repo: host=%s, domain=%s, user=%s, repo=%s, tag=%s",
                 __package_data->host,
@@ -552,7 +532,7 @@ dency_parse_repo( const char *input, struct dency_repositories *__package_data )
  * Fetch release asset URLs from GitHub repository
  * Retrieves downloadable assets for a specific release tag
  */
-static int dency_gh_release_assets( const char *user, const char *repo,
+static int package_gh_release_assets( const char *user, const char *repo,
                                  const char *tag, char **out_urls, int max_urls )
 {
         char api_url[WG_PATH_MAX * 2];
@@ -566,7 +546,7 @@ static int dency_gh_release_assets( const char *user, const char *repo,
                          "https://", user, repo, tag );
 
         /* Fetch release information JSON */
-        if ( !dency_http_get_content( api_url, wgconfig.wg_toml_github_tokens, &json_data ) )
+        if ( !package_http_get_content( api_url, wgconfig.wg_toml_github_tokens, &json_data ) )
                 return 0;
 
         /* Parse JSON to extract browser_download_url entries */
@@ -606,8 +586,8 @@ static int dency_gh_release_assets( const char *user, const char *repo,
  * Builds appropriate URL for GitHub releases, tags, or branches
  */
 static void
-dency_build_repo_url( const struct dency_repositories *__package_data, int is_tag_page,
-                   char *package_put_url, size_t package_put_size )
+package_build_repo_url( const struct repositories *__package_data, int is_tag_page,
+                   char *put_url, size_t put_size )
 {
         char package_actual_tag[128] = { 0 };
 
@@ -628,13 +608,13 @@ dency_build_repo_url( const struct dency_repositories *__package_data, int is_ta
                 if ( is_tag_page && package_actual_tag[0] ) {
                         /* Tag page URL (for display/verification) */
                         if ( !strcmp( package_actual_tag, "latest" ) ) {
-                                snprintf( package_put_url, package_put_size,
+                                snprintf( put_url, put_size,
                                         "https://%s/%s/%s/releases/latest",
                                         __package_data->domain,
                                         __package_data->user,
                                         __package_data->repo );
                         } else {
-                                snprintf( package_put_url, package_put_size,
+                                snprintf( put_url, put_size,
                                         "https://%s/%s/%s/releases/tag/%s",
                                         __package_data->domain,
                                         __package_data->user,
@@ -644,13 +624,13 @@ dency_build_repo_url( const struct dency_repositories *__package_data, int is_ta
                 } else if ( package_actual_tag[0] ) {
                         /* Direct archive URL for specific tag */
                         if ( !strcmp( package_actual_tag, "latest" ) ) {
-                                snprintf( package_put_url, package_put_size,
+                                snprintf( put_url, put_size,
                                         "https://%s/%s/%s/releases/latest",
                                         __package_data->domain,
                                         __package_data->user,
                                         __package_data->repo );
                         } else {
-                                snprintf( package_put_url, package_put_size,
+                                snprintf( put_url, put_size,
                                         "https://%s/%s/%s/archive/refs/tags/%s.tar.gz",
                                         __package_data->domain,
                                         __package_data->user,
@@ -659,7 +639,7 @@ dency_build_repo_url( const struct dency_repositories *__package_data, int is_ta
                         }
                 } else {
                         /* Default to main branch ZIP */
-                        snprintf( package_put_url, package_put_size,
+                        snprintf( put_url, put_size,
                                 "https://%s/%s/%s/archive/refs/heads/main.zip",
                                 __package_data->domain,
                                 __package_data->user,
@@ -668,9 +648,8 @@ dency_build_repo_url( const struct dency_repositories *__package_data, int is_ta
         }
 
 #if defined( _DBG_PRINT )
-        /* Debug output: display constructed URL */
         pr_info( stdout, "Built URL: %s (is_tag_page=%d, tag=%s)",
-                package_put_url, is_tag_page,
+                put_url, is_tag_page,
                 package_actual_tag[0] ? package_actual_tag : "(none)" );
 #endif
 }
@@ -679,8 +658,8 @@ dency_build_repo_url( const struct dency_repositories *__package_data, int is_ta
  * Fetch latest release tag from GitHub repository
  * Uses GitHub API to get the most recent release tag
  */
-static int dency_gh_latest_tag( const char *user, const char *repo,
-                             char *out_tag, size_t package_put_size )
+static int package_gh_latest_tag( const char *user, const char *repo,
+                             char *out_tag, size_t put_size )
 {
         char api_url[WG_PATH_MAX * 2];
         char *json_data = NULL;
@@ -693,16 +672,15 @@ static int dency_gh_latest_tag( const char *user, const char *repo,
                         "https://", user, repo );
 
         /* Fetch latest release information */
-        if ( !dency_http_get_content( api_url, wgconfig.wg_toml_github_tokens, &json_data ) )
+        if ( !package_http_get_content( api_url, wgconfig.wg_toml_github_tokens, &json_data ) )
                 return 0;
 
         /* Parse JSON to extract tag_name field */
-        p = strstr( json_data,
-                           "\"tag_name\"" );
+        p = strstr( json_data, "\"tag_name\"" );
         if ( p ) {
                 p = strchr( p, ':' );
                 if ( p ) {
-                        ++p; // skip colon
+                        ++p; /* skip colon */
                         /* Skip whitespace */
                         while ( *p &&
                                    ( *p == ' ' ||
@@ -713,11 +691,11 @@ static int dency_gh_latest_tag( const char *user, const char *repo,
                                   ++p;
 
                         if ( *p == '"' ) {
-                                ++p; // skip opening quote
+                                ++p; /* skip opening quote */
                                 const char *end = strchr( p, '"' );
                                 if ( end ) {
                                         size_t tag_len = end - p;
-                                        if ( tag_len < package_put_size ) {
+                                        if ( tag_len < put_size ) {
                                                 strncpy( out_tag, p, tag_len );
                                                 out_tag[tag_len] = '\0';
                                                 ret = 1;
@@ -735,20 +713,19 @@ static int dency_gh_latest_tag( const char *user, const char *repo,
  * Process repository information to determine download URL
  * Handles latest tag resolution, asset selection, and fallback strategies
  */
-static int dency_handle_repo( const struct dency_repositories *dency_repositories,
-                        char *package_put_url,
-                        size_t package_put_size,
-                        const char *dependencies_branch )
+static int
+package_handle_repo( const struct repositories *repo, char *put_url, size_t put_size, const char *branch )
 {
         int ret = 0;
-        const char *package_repo_branch[] = { dependencies_branch, "main", "master" }; // Common branch name
+         /* Common branch name */
+        const char *package_repo_branch[] = { branch, "main", "master" };
         char package_actual_tag[128] = { 0 };
         int use_fallback_branch = 0;
 
         /* Handle "latest" tag by resolving to actual tag name */
-        if ( dency_repositories->tag[0] && strcmp( dency_repositories->tag, "newer" ) == 0 ) {
-            if ( dency_gh_latest_tag( dency_repositories->user,
-                    dency_repositories->repo,
+        if ( repo->tag[0] && strcmp( repo->tag, "newer" ) == 0 ) {
+            if ( package_gh_latest_tag( repo->user,
+                    repo->repo,
                     package_actual_tag,
                     sizeof( package_actual_tag ) ) ) {
                 printf( "Create latest tag: %s "
@@ -756,24 +733,28 @@ static int dency_handle_repo( const struct dency_repositories *dency_repositorie
             } else {
                 pr_error( stdout, "Failed to get latest tag for %s/%s,"
                         "Falling back to main branch\t\t[Fail]",
-                        dency_repositories->user, dency_repositories->repo );
+                        repo->user, repo->repo );
                 use_fallback_branch = 1;
             }
         } else {
-            strncpy( package_actual_tag, dency_repositories->tag, sizeof( package_actual_tag ) - 1 );
+            strncpy( package_actual_tag, repo->tag, sizeof( package_actual_tag ) - 1 );
         }
 
         /* Fallback to main/master branch if latest tag resolution failed */
         if ( use_fallback_branch ) {
             for ( int j = 0; j < 3 && !ret; j++ ) {
-                snprintf( package_put_url, package_put_size,
-                        "https://github.com/%s/%s/archive/refs/heads/%s.zip",
-                        dency_repositories->user, dency_repositories->repo,
-                        package_repo_branch[j] );
+                snprintf( put_url, put_size,
+                        "https://github.com/"
+                        "%s/%s/archive/refs/heads/%s.zip",
+                        repo->user, repo->repo, package_repo_branch[j] );
 
-                if ( dency_url_checking( package_put_url, wgconfig.wg_toml_github_tokens ) ) {
+                if ( package_url_checking( put_url, wgconfig.wg_toml_github_tokens ) ) {
                     ret = 1;
-                    if ( j == 1 ) printf( "Create master branch (main branch not found)\t\t[All good]\n" );
+                    if ( j == 1 ) {
+                            printf( "Create master branch "
+                                "(main branch not found)"
+                                "\t\t[All good]\n" );
+                    }
                 }
             }
             return ret;
@@ -782,12 +763,13 @@ static int dency_handle_repo( const struct dency_repositories *dency_repositorie
         /* Process tagged releases */
         if ( package_actual_tag[0] ) {
             char *package_assets[10] = { 0 };
-            int package_asset_count = dency_gh_release_assets( dency_repositories->user,
-                                                    dency_repositories->repo, package_actual_tag,
-                                                    package_assets, 10 );
+            int asset_counts = 0;
+            asset_counts = package_gh_release_assets( repo->user,
+                        repo->repo, package_actual_tag,
+                        package_assets, 10 );
 
             /* If release has downloadable assets */
-            if ( package_asset_count > 0 ) {
+            if ( asset_counts > 0 ) {
                 char *package_best_asset = NULL;
                 
                 /* Determine target OS based on platform defines */
@@ -798,10 +780,10 @@ static int dency_handle_repo( const struct dency_repositories *dency_repositorie
                 target_os = "linux";
                 #endif
                 
-                package_best_asset = dency_fetching_assets( package_assets, package_asset_count, target_os );
+                package_best_asset = package_fetching_assets( package_assets, asset_counts, target_os );
 
                 if ( package_best_asset ) {
-                    strncpy( package_put_url, package_best_asset, package_put_size - 1 );
+                    strncpy( put_url, package_best_asset, put_size - 1 );
                     ret = 1;
                     
                     /* asset selection */
@@ -820,38 +802,40 @@ static int dency_handle_repo( const struct dency_repositories *dency_repositorie
                 }
 
                 /* Clean up asset array */
-                for ( int j = 0; j < package_asset_count; j++ )
+                for ( int j = 0; j < asset_counts; j++ )
                     wg_free( package_assets[j] );
             }
 
             /* If no assets found, try standard archive formats */
             if ( !ret ) {
                 const char *package_arch_format[] = {
-                    "https://github.com/%s/%s/archive/refs/tags/%s.tar.gz",
-                    "https://github.com/%s/%s/archive/refs/tags/%s.zip"
+                    "https://github.com/"
+                    "%s/%s/archive/refs/tags/%s.tar.gz",
+                    "https://github.com/"
+                    "%s/%s/archive/refs/tags/%s.zip"
                 };
 
-                for ( int j = 0; j < 3 && !ret; j++ ) {
-                    snprintf( package_put_url, package_put_size, package_arch_format[j],
-                                    dency_repositories->user,
-                                    dency_repositories->repo,
+                for ( int j = 0; j < 2 && !ret; j++ ) {
+                    snprintf( put_url, put_size, package_arch_format[j],
+                                    repo->user,
+                                    repo->repo,
                                     package_actual_tag );
 
-                    if ( dency_url_checking( package_put_url, wgconfig.wg_toml_github_tokens ) )
+                    if ( package_url_checking( put_url, wgconfig.wg_toml_github_tokens ) )
                         ret = 1;
                 }
             }
         } else {
             /* No tag specified - try main/master branches */
-            for ( int j = 0; j < 3 && !ret; j++ ) {
-                snprintf( package_put_url, package_put_size,
+            for ( int j = 0; j < 2 && !ret; j++ ) {
+                snprintf( put_url, put_size,
                         "%s%s/%s/archive/refs/heads/%s.zip",
                         "https://github.com/",
-                        dency_repositories->user,
-                        dency_repositories->repo,
+                        repo->user,
+                        repo->repo,
                         package_repo_branch[j] );
 
-                if ( dency_url_checking( package_put_url, wgconfig.wg_toml_github_tokens ) ) {
+                if ( package_url_checking( put_url, wgconfig.wg_toml_github_tokens ) ) {
                     ret = 1;
                     if ( j == 1 )
                         printf( "Create master branch (main branch not found)\t\t[All good]\n" );
@@ -866,7 +850,7 @@ static int dency_handle_repo( const struct dency_repositories *dency_repositorie
  * Generate and store cryptographic hash for dependency files
  * Creates SHA-1 hash for verification and tracking
  */
-int dency_set_hash( const char *raw_file_path, const char *raw_json_path )
+int package_set_hash( const char *raw_file_path, const char *raw_json_path )
 {
         char res_convert_f_path[WG_PATH_MAX];
         char res_convert_json_path[WG_PATH_MAX];
@@ -874,11 +858,11 @@ int dency_set_hash( const char *raw_file_path, const char *raw_json_path )
         /* Convert paths to consistent format */
         strncpy( res_convert_f_path, raw_file_path, sizeof( res_convert_f_path ) );
         res_convert_f_path[sizeof( res_convert_f_path ) - 1] = '\0';
-        dency_sym_convert( res_convert_f_path );
+        package_sym_convert( res_convert_f_path );
         
         strncpy( res_convert_json_path, raw_json_path, sizeof( res_convert_json_path ) );
         res_convert_json_path[sizeof( res_convert_json_path ) - 1] = '\0';
-        dency_sym_convert( res_convert_json_path );
+        package_sym_convert( res_convert_json_path );
 
         /* Skip hash generation for compiler directories */
         if ( strfind( res_convert_json_path, "pawno", true ) ||
@@ -903,104 +887,109 @@ done:
 
 /* 
  * Add plugin dependency to SA-MP server.cfg configuration
- * Updates plugins line (c_line) with new dependency
+ * Updates plugins line with new dependency
+ * Replaces struct dencyconfig with direct parameters
  */
-void dency_implementation_samp_conf( dencyconfig config ) {
-        if ( wg_server_env() != 1 )
+void package_implementation_samp_conf( const char* config_file, const char* fw_line, const char* plugin_name ) {
+        /* Random with specific time */
+        srand ( ( unsigned int )time(NULL) ^ rand());
+        int rand7 = rand () % 10000000;
+
+        char temp_path[ WG_PATH_MAX ];
+        snprintf( temp_path, sizeof( temp_path ),
+                ".watchdogs/000%07d_temp", rand7 );
+
+        FILE* temp_file = NULL;
+        temp_file = fopen( temp_path, "w" );
+        
+        if (wg_server_env() != 1)
                 return;
 
-        if (dir_exists(".watchdogs") == 0)
-            MKDIR(".watchdogs");
+        if (dir_exists( ".watchdogs" ) == 0)
+                MKDIR( ".watchdogs" );
 
         pr_color( stdout, FCOLOUR_GREEN,
                 "Create Dependencies '%s' into '%s'\t\t[All good]\n",
-                config.dency_added, config.dency_config );
+                plugin_name, config_file );
 
-        FILE* c_file = fopen( config.dency_config, "r" );
-        if ( c_file ) {
-                char c_line[WG_PATH_MAX];
+        FILE* ctx_file = fopen( config_file, "r" );
+        if (ctx_file) {
+                char ctx_line[WG_PATH_MAX];
                 int t_exist = 0, tr_exist = 0, tr_ln_has_tx = 0;
 
                 /* Read existing configuration */
-                while ( fgets( c_line, sizeof( c_line ), c_file ) ) {
-                        c_line[strcspn( c_line, "\n" )] = 0;
-                        if ( strstr( c_line, config.dency_added ) != NULL ) {
+                while ( fgets ( ctx_line, sizeof (ctx_line ), ctx_file ) ) {
+                        ctx_line[ strcspn ( ctx_line, "\n" ) ] = 0;
+                        if (strstr( ctx_line, plugin_name ) != NULL) {
                                 t_exist = 1; /* Dependency already exists */
                         }
-                        if ( strstr( c_line, config.dency_target ) != NULL ) {
-                                tr_exist = 1; /* Target c_line exists */
-                                if ( strstr( c_line, config.dency_added ) != NULL ) {
-                                        tr_ln_has_tx = 1; /* Dependency already on target c_line */
+                        if (strstr( ctx_line, fw_line ) != NULL) {
+                                tr_exist = 1; /* Target ctx_line exists */
+                                if (strstr( ctx_line, plugin_name ) != NULL) {
+                                        tr_ln_has_tx = 1; /* Dependency already on following ctx_line */
                                 }
                         }
                 }
-                fclose( c_file );
+                fclose( ctx_file );
 
                 if ( t_exist ) {
                         return; /* Dependency already configured */
                 }
 
-                if ( tr_exist && !tr_ln_has_tx ) {
-                        /* Add to existing plugins c_line */
-                        srand( ( unsigned int )time( NULL ) ^ rand() );
-                        int rand7 = rand() % 10000000;
+                if (tr_exist && !tr_ln_has_tx) {
+                        /* Add to existing plugins ctx_line */
+                        ctx_file = fopen( config_file, "r" );
 
-                        char temp_path[WG_PATH_MAX];
-                        snprintf( temp_path, sizeof( temp_path ),
-                                ".watchdogs/000%07d_temp", rand7 );
+                        while ( fgets ( ctx_line, sizeof( ctx_line ), ctx_file) ) {
+                                char clean_line[ WG_PATH_MAX ];
+                                strcpy( clean_line, ctx_line );
+                                clean_line[ strcspn ( clean_line, "\n" ) ] = 0;
 
-                        FILE* temp_file = fopen( temp_path, "w" );
-                        c_file = fopen( config.dency_config, "r" );
-
-                        while ( fgets( c_line, sizeof( c_line ), c_file ) ) {
-                                char clean_line[WG_PATH_MAX];
-                                strcpy( clean_line, c_line );
-                                clean_line[strcspn( clean_line, "\n" )] = 0;
-
-                                if ( strstr( clean_line, config.dency_target ) != NULL &&
-                                        strstr( clean_line, config.dency_added ) == NULL ) {
-                                        /* Append dependency to existing plugins c_line */
-                                        fprintf( temp_file, "%s %s\n", clean_line, config.dency_added );
+                                if (strstr( clean_line, fw_line ) != NULL &&
+                                    strstr( clean_line, plugin_name ) == NULL)
+                                {
+                                        /* Append dependency to existing plugins ctx_line */
+                                        fprintf( temp_file,
+                                                "%s %s\n", clean_line, plugin_name );
                                 } else {
-                                        fputs( c_line, temp_file );
+                                        fputs( ctx_line, temp_file );
                                 }
                         }
 
-                        fclose( c_file );
+                        fclose( ctx_file );
                         fclose( temp_file );
 
                         /* Replace original file with updated version */
-                        remove( config.dency_config );
-                        rename( ".watchdogs/depends_tmp", config.dency_config );
-                } else if ( !tr_exist ) {
-                        /* Create new plugins c_line */
-                        c_file = fopen( config.dency_config, "a" );
-                        fprintf( c_file, "%s %s\n",
-                                        config.dency_target,
-                                        config.dency_added );
-                        fclose( c_file );
+                        remove( config_file );
+                        rename( ".watchdogs/depends_tmp", config_file );
+                } else if (!tr_exist) {
+                        /* Create new plugins ctx_line */
+                        ctx_file = fopen( config_file, "a" );
+                        fprintf( ctx_file, "%s %s\n",
+                                        fw_line, plugin_name );
+                        fclose( ctx_file );
                 }
 
         } else {
                 /* Create new configuration file */
-                c_file = fopen( config.dency_config, "w" );
-                fprintf( c_file, "%s %s\n",
-                                config.dency_target,
-                                config.dency_added );
-                fclose( c_file );
+                ctx_file = fopen( config_file, "w" );
+                fprintf( ctx_file, "%s %s\n",
+                                fw_line, plugin_name );
+                fclose( ctx_file );
         }
 
         return;
 }
-/* Macro for adding SA-MP plugins */
-#define S_ADD_PLUGIN( x, y, z ) \
-        dency_implementation_samp_conf( ( dencyconfig ){ x, y, z } )
+
+/* Updated macro for adding SA-MP plugins */
+#define S_ADD_PLUGIN(config_file, fw_line, plugin_name) \
+        package_implementation_samp_conf(config_file, fw_line, plugin_name)
 
 /* 
  * Add plugin dependency to open.mp JSON configuration
  * Updates legacy_plugins array in server configuration
  */
-void dency_implementation_omp_conf( const char* config_name, const char* package_name ) {
+void package_implementation_omp_conf( const char* config_name, const char* package_name ) {
         if ( wg_server_env() != 2 )
                 return;
 
@@ -1008,34 +997,34 @@ void dency_implementation_omp_conf( const char* config_name, const char* package
                 "Create Dependencies '%s' into '%s'\t\t[All good]\n",
                 package_name, config_name );
 
-        FILE* c_file = fopen( config_name, "r" );
+        FILE* ctx_file = fopen( config_name, "r" );
         cJSON* s_root = NULL;
 
         /* Load or create JSON configuration */
-        if ( !c_file ) {
+        if ( !ctx_file ) {
                 s_root = cJSON_CreateObject();
         } else {
-                fseek( c_file, 0, SEEK_END );
-                long file_size = ftell( c_file );
-                fseek( c_file, 0, SEEK_SET );
+                fseek( ctx_file, 0, SEEK_END );
+                long fle_size = ftell( ctx_file );
+                fseek( ctx_file, 0, SEEK_SET );
 
-                char* buffer = ( char* )wg_malloc( file_size + 1 );
+                char* buffer = ( char* )wg_malloc( fle_size + 1 );
                 if ( !buffer ) {
                         pr_error( stdout, "Memory allocation failed!" );
-                        fclose( c_file );
+                        fclose( ctx_file );
                         return;
                 }
 
-                size_t file_read = fread( buffer, 1, file_size, c_file );
-                if ( file_read != file_size ) {
+                size_t file_read = fread( buffer, 1, fle_size, ctx_file );
+                if ( file_read != fle_size ) {
                         pr_error( stdout, "Failed to read the entire file!" );
                         wg_free( buffer );
-                        fclose( c_file );
+                        fclose( ctx_file );
                         return;
                 }
 
-                buffer[file_size] = '\0';
-                fclose( c_file );
+                buffer[fle_size] = '\0';
+                fclose( ctx_file );
 
                 s_root = cJSON_Parse( buffer );
                 wg_free( buffer );
@@ -1057,8 +1046,7 @@ void dency_implementation_omp_conf( const char* config_name, const char* package
         if ( !legacy_plugins ) {
                 legacy_plugins = cJSON_CreateArray();
                 cJSON_AddItemToObject( pawn,
-                                "legacy_plugins",
-                                legacy_plugins );
+                                "legacy_plugins", legacy_plugins );
         }
 
         /* Ensure legacy_plugins is an array */
@@ -1066,11 +1054,10 @@ void dency_implementation_omp_conf( const char* config_name, const char* package
                 cJSON_DeleteItemFromObject( pawn, "legacy_plugins" );
                 legacy_plugins = cJSON_CreateArray();
                 cJSON_AddItemToObject( pawn,
-                                "legacy_plugins",
-                                legacy_plugins );
+                                "legacy_plugins", legacy_plugins );
         }
 
-        /* Check if plugin already exists */
+        /* Make sure plugin already exists */
         cJSON* dir_item;
         int p_exist = 0;
 
@@ -1089,120 +1076,171 @@ void dency_implementation_omp_conf( const char* config_name, const char* package
         }
 
         /* Write updated configuration */
-        char* __cJSON_Printed = cJSON_Print( s_root );
-        c_file = fopen( config_name, "w" );
-        if ( c_file ) {
-                fputs( __cJSON_Printed, c_file );
-                fclose( c_file );
+        char* __printed = cJSON_Print( s_root );
+        ctx_file = fopen( config_name, "w" );
+        if ( ctx_file ) {
+                fputs( __printed, ctx_file );
+                fclose( ctx_file );
         }
 
         /* Cleanup */
         cJSON_Delete( s_root );
-        wg_free( __cJSON_Printed );
+        wg_free( __printed );
 
         return;
 }
 /* Macro for adding open.mp plugins */
-#define M_ADD_PLUGIN( x, y ) dency_implementation_omp_conf( x, y )
+#define M_ADD_PLUGIN( x, y ) package_implementation_omp_conf( x, y )
 
 /* 
  * Add include directive to gamemode file
  * Inserts #include statement in appropriate location
  */
-void dency_add_include( const char *modes, char *dency_name, char *dency_after ) {
-        if ( path_exists( modes ) == 0 ) {
-                pr_color( stdout, FCOLOUR_GREEN,
-                        "~ can't found %s.. skipping adding include name\t\t[Fail]\n", modes );
-                return;
-        }
-        pr_color( stdout, FCOLOUR_GREEN,
-                "Create include '%s' into '%s' after '%s'\t\t[All good]\n",
-                dency_name, modes, dency_after );
-
-        FILE *m_file = fopen( modes, "r" );
-        if ( m_file == NULL ) {
-                return;
-        }
-
-        /* Read entire file */
+void package_add_include( const char *modes, char *package_name, char *package_following )
+{
+        if ( path_exists( modes ) == 0 ) return;
+        
+        FILE *m_file = fopen( modes, "rb" );
+        if ( !m_file ) return;
+        
         fseek( m_file, 0, SEEK_END );
         long fle_size = ftell( m_file );
         fseek( m_file, 0, SEEK_SET );
-
-        char *ct_modes = wg_malloc( fle_size + 1 );
-        size_t file_read = fread( ct_modes, 1, fle_size, m_file );
-        if ( file_read != fle_size ) {
-                wg_free( ct_modes );
-                fclose( m_file );
-                return;
-        }
-
+        
+        char *ct_modes = wg_malloc( fle_size + 2 );
+        if ( !ct_modes ) { fclose(m_file); return; }
+        
+        fread( ct_modes, 1, fle_size, m_file );
         ct_modes[fle_size] = '\0';
         fclose( m_file );
-
-        /* Check if include already exists */
-        if ( strstr( ct_modes, dency_name ) != NULL &&
-                strstr( ct_modes, dency_after ) != NULL ) {
-                wg_free( ct_modes );
-                return;
+        
+        char search_name[WG_PATH_MAX];
+        strncpy( search_name, package_name, sizeof(search_name)-1 );
+        
+        char *open = strchr( search_name, '<' );
+        char *close = strchr( search_name, '>' );
+        if ( open && close ) {
+            memmove( search_name, open+1, close-open-1 );
+            search_name[close-open-1] = '\0';
         }
-
-        /* Find position to insert include */
-        char *e_dency_after_pos = strstr( ct_modes, dency_after );
-
+        
+        char *pos = ct_modes;
+        while ( (pos = strstr(pos, "#include")) ) {
+            char *line_end = strchr(pos, '\n');
+            if (!line_end) line_end = ct_modes + fle_size;
+            
+            char line[256];
+            int len = line_end - pos;
+            if (len >= 256) len = 255;
+            strncpy(line, pos, len);
+            line[len] = '\0';
+            
+            if (strstr(line, search_name)) {
+                wg_free(ct_modes);
+                return;
+            }
+            pos = line_end + 1;
+        }
+        
+        char *insert_at = NULL;
+        pos = ct_modes;
+        
+        while ( (pos = strstr(pos, package_following)) ) {
+            char *line_start = pos;
+            while (line_start > ct_modes && *(line_start-1) != '\n') line_start--;
+            
+            char *line_end = strchr(pos, '\n');
+            if (!line_end) line_end = ct_modes + fle_size;
+            
+            char line[256];
+            int len = line_end - line_start;
+            if (len >= 256) len = 255;
+            strncpy(line, line_start, len);
+            line[len] = '\0';
+            
+            if (strstr(line, package_following)) {
+                insert_at = line_end;
+                break;
+            }
+            pos = line_end + 1;
+        }
+        
         FILE *n_file = fopen( modes, "w" );
-        if ( n_file == NULL ) {
-                wg_free( ct_modes );
-                return;
-        }
-
-        if ( e_dency_after_pos != NULL ) {
-                /* Insert after specified include */
-                fwrite( ct_modes, 1,
-                           e_dency_after_pos - ct_modes + strlen( dency_after ),
-                           n_file );
-                fprintf( n_file, "\n%s", dency_name );
-                fputs( e_dency_after_pos + strlen( dency_after ), n_file );
-        } else {
-                /* Alternative insertion strategy */
-                char *include_to_add_pos = strstr( ct_modes, dency_name );
-
-                if ( include_to_add_pos != NULL ) {
-                        fwrite( ct_modes, 1,
-                                   include_to_add_pos - ct_modes + strlen( dency_name ),
-                                   n_file );
-                        fprintf( n_file, "\n%s", dency_after );
-                        fputs( include_to_add_pos + strlen( dency_name ), n_file );
-                } else {
-                        /* Prepend at beginning */
-                        fprintf( n_file, "%s\n%s\n%s", dency_after, dency_name, ct_modes );
+        if (!n_file) { wg_free(ct_modes); return; }
+        
+        if (insert_at) {
+            fwrite(ct_modes, 1, insert_at - ct_modes, n_file);
+            
+            if (insert_at > ct_modes && *(insert_at-1) != '\n') {
+                fprintf(n_file, "\n");
+            }
+            
+            fprintf(n_file, "%s\n", package_name);
+            
+            if (*insert_at) {
+                char *end = ct_modes + fle_size;
+                while (end > insert_at && 
+                    (*(end-1) == '\n' || *(end-1) == '\r' || 
+                        *(end-1) == ' ' || *(end-1) == '\t')) {
+                    end--;
                 }
+                if (end > insert_at) {
+                    fwrite(insert_at, 1, end - insert_at, n_file);
+                }
+                fprintf(n_file, "\n");
+            }
+        } else {
+            char *last_inc = NULL;
+            char *last_inc_end = NULL;
+            pos = ct_modes;
+            
+            while ( (pos = strstr(pos, "#include")) ) {
+                last_inc = pos;
+                last_inc_end = strchr(pos, '\n');
+                if (!last_inc_end) last_inc_end = ct_modes + fle_size;
+                pos = last_inc_end + 1;
+            }
+            
+            if (last_inc_end) {
+                fwrite(ct_modes, 1, last_inc_end - ct_modes, n_file);
+                fprintf(n_file, "\n%s\n", package_name);
+                
+                char *end = ct_modes + fle_size;
+                while (end > last_inc_end && 
+                    (*(end-1) == '\n' || *(end-1) == '\r')) {
+                    end--;
+                }
+                if (end > last_inc_end) {
+                    fwrite(last_inc_end, 1, end - last_inc_end, n_file);
+                }
+            } else {
+                fprintf(n_file, "%s\n", package_name);
+                fwrite(ct_modes, 1, fle_size, n_file);
+            }
         }
-
-        fclose( n_file );
-        wg_free( ct_modes );
-
-        return;
+        
+        fclose(n_file);
+        wg_free(ct_modes);
 }
+
 /* Macro for adding include directives */
-#define DENCY_ADD_INCLUDES( x, y, z ) dency_add_include( x, y, z )
+#define DENCY_ADD_INCLUDES( x, y, z ) package_add_include( x, y, z )
 
 /* 
  * Process and add include directive based on dependency
  * Reads TOML configuration to determine gamemode file
  */
-static void dency_include_prints( const char *package_include )
+static void package_include_prints( const char *package_include )
 {
-        char wg_buf_err[WG_PATH_MAX];
+        char wg_buf_err[WG_PATH_MAX],
+             dependencies[WG_PATH_MAX], _directive[WG_MAX_PATH];
         toml_table_t *wg_toml_config;
-        char depends_name[WG_PATH_MAX];
-        char idirective[WG_MAX_PATH];
 
         /* Extract filename from path */
-        const char *dency_n = dency_get_filename( package_include );
-        snprintf( depends_name, sizeof( depends_name ), "%s", dency_n );
+        const char *package_n = package_get_filename( package_include );
+        snprintf( dependencies, sizeof( dependencies ), "%s", package_n );
 
-        const char *direct_bnames = dency_get_basename( depends_name );
+        const char *direct_bnames = package_get_basename( dependencies );
 
         /* Parse TOML configuration */
         FILE *this_proc_file = fopen( "watchdogs.toml", "r" );
@@ -1226,7 +1264,7 @@ static void dency_include_prints( const char *package_include )
         toml_free( wg_toml_config );
 
         /* Construct include directive */
-        snprintf( idirective, sizeof( idirective ),
+        snprintf( _directive, sizeof( _directive ),
                 "#include <%s>",
                 direct_bnames );
 
@@ -1234,17 +1272,17 @@ static void dency_include_prints( const char *package_include )
         if ( wg_server_env() == 1 ) {
                 /* SA-MP: include after a_samp */
                 DENCY_ADD_INCLUDES( wgconfig.wg_toml_proj_input,
-                                idirective,
+                                _directive,
                                 "#include <a_samp>" );
         } else if ( wg_server_env() == 2 ) {
                 /* open.mp: include after open.mp */
                 DENCY_ADD_INCLUDES( wgconfig.wg_toml_proj_input,
-                                idirective,
+                                _directive,
                                 "#include <open.mp>" );
         } else {
                 /* Default: include after a_samp */
                 DENCY_ADD_INCLUDES( wgconfig.wg_toml_proj_input,
-                                idirective,
+                                _directive,
                                 "#include <a_samp>" );
         }
 }
@@ -1265,14 +1303,14 @@ void dump_file_type( const char *dump_path, char *dump_pattern,
         int i;
         int found = -1;
         found = wg_sef_fdir( dump_path, dump_pattern, dump_exclude );
-        ++found_cnt;
+        ++fdir_counts;
 #if defined(_DBG_PRINT)
-        println(stdout, "found (%d): %d", found_cnt, found);
+        println(stdout, "found (%d): %d", fdir_counts, found);
 #endif
         if ( found ) {
                 for ( i = 0; i < wgconfig.wg_sef_count; ++i ) {
-                        package_names = dency_get_filename( wgconfig.wg_sef_found_list[i] );
-                        basename = dency_get_basename( wgconfig.wg_sef_found_list[i] );
+                        package_names = package_get_filename( wgconfig.wg_sef_found_list[i] );
+                        basename = package_get_basename( wgconfig.wg_sef_found_list[i] );
                         
                         /* Convert to lowercase for case-insensitive comparison */
                         basename_lower = strdup( basename );
@@ -1284,10 +1322,10 @@ void dump_file_type( const char *dump_path, char *dump_pattern,
                         /* Prefix checking */
                         int rate_has_prefix = 0;
                         for ( size_t i = 0;
-                             i < sizeof( root_keywords ) / sizeof( root_keywords [ 0 ] );
+                             i < sizeof( matching_root_keywords ) / sizeof( matching_root_keywords [ 0 ] );
                              i++ )
                         {
-                                const char* keyword = root_keywords[ i ];
+                                const char* keyword = matching_root_keywords[ i ];
                                 size_t keyword_len = strlen( keyword );
                                 if ( strncmp( basename_lower,
                                         keyword,
@@ -1301,60 +1339,60 @@ void dump_file_type( const char *dump_path, char *dump_pattern,
                         /* Move to target directory if specified */
                         if ( dump_place[0] != '\0' ) {
                         #ifdef WG_WINDOWS
-                                snprintf( package_command, sizeof( package_command ),
+                                snprintf( command, sizeof( command ),
                                         "move "
                                         "/Y \"%s\" \"%s\\%s\\\"",
                                         wgconfig.wg_sef_found_list[i], dump_pwd, dump_place );
 
-                                wg_run_command( package_command );
+                                wg_run_command( command );
                         #else
-                                snprintf( package_command, sizeof( package_command ),
+                                snprintf( command, sizeof( command ),
                                         "mv "
                                         "-f \"%s\" \"%s/%s/\"",
                                         wgconfig.wg_sef_found_list[i], dump_pwd, dump_place );
 
-                                wg_run_command( package_command );
+                                wg_run_command( command );
                         #endif
                                 pr_color( stdout, FCOLOUR_CYAN, " [REPLICATE] Plugins %s -> %s - %s\n",
                                                  wgconfig.wg_sef_found_list[i], dump_pwd, dump_place );
                         } else {/* Move to current directory */
                                 if ( rate_has_prefix ) {
                                 #ifdef WG_WINDOWS
-                                        snprintf( package_command, sizeof( package_command ),
+                                        snprintf( command, sizeof( command ),
                                                 "move "
                                                 "/Y \"%s\" \"%s\"",
                                                 wgconfig.wg_sef_found_list[i], dump_pwd );
 
-                                        wg_run_command( package_command );
+                                        wg_run_command( command );
                                 #else
-                                        snprintf( package_command, sizeof( package_command ),
+                                        snprintf( command, sizeof( command ),
                                                 "mv "
                                                 "-f \"%s\" \"%s\"",
                                                 wgconfig.wg_sef_found_list[i], dump_pwd );
 
-                                        wg_run_command( package_command );
+                                        wg_run_command( command );
                                 #endif
                                         pr_color( stdout, FCOLOUR_CYAN, " [REPLICATE] Plugins %s -> %s\n",
                                                         wgconfig.wg_sef_found_list[i], dump_pwd );
                                 } else {
                                         if ( path_exists( "plugins" ) == 1 ) {
                                         #ifdef WG_WINDOWS
-                                                snprintf( package_command, sizeof( package_command ),
+                                                snprintf( command, sizeof( command ),
                                                         "move "
                                                         "/Y \"%s\" \"%s\\plugins\"",
                                                         wgconfig.wg_sef_found_list[i], dump_pwd );
 
-                                                wg_run_command( package_command );
+                                                wg_run_command( command );
 
                                                 pr_color( stdout, FCOLOUR_CYAN, " [REPLICATE] Plugins %s -> %s\\plugins\n",
                                                                 wgconfig.wg_sef_found_list[i], dump_pwd );
                                         #else
-                                                snprintf( package_command, sizeof( package_command ),
+                                                snprintf( command, sizeof( command ),
                                                         "mv "
                                                         "-f \"%s\" \"%s/plugins\"",
                                                         wgconfig.wg_sef_found_list[i], dump_pwd );
                                                 
-                                                wg_run_command( package_command );
+                                                wg_run_command( command );
 
                                                 pr_color( stdout, FCOLOUR_CYAN, " [REPLICATE] Plugins %s -> %s/plugins\n",
                                                                 wgconfig.wg_sef_found_list[i], dump_pwd );
@@ -1377,7 +1415,7 @@ void dump_file_type( const char *dump_path, char *dump_pattern,
                                         }
                                 }
                                 snprintf( json_item, sizeof( json_item ), "%s", package_names );
-                                dency_set_hash( json_item, json_item );
+                                package_set_hash( json_item, json_item );
 
                                 if ( dump_root == 1 ) {
                                         goto done;
@@ -1399,7 +1437,7 @@ done:
  * Utility function to add items between cJSON arrays
  * Copies string items from one array to another
  */
-void dency_cjson_additem( cJSON *p1, int p2, cJSON *p3 )
+void package_cjson_additem( cJSON *p1, int p2, cJSON *p3 )
 {
         if ( cJSON_IsString( cJSON_GetArrayItem( p1, p2 ) ) )
                 cJSON_AddItemToArray( p3,
@@ -1410,90 +1448,93 @@ void dency_cjson_additem( cJSON *p1, int p2, cJSON *p3 )
  * Organize dependency files into appropriate directories
  * Moves plugins, includes, and components to their proper locations
  */
-void dency_move_files( const char *dency_dir )
+void package_move_files( const char *package_dir )
 {
         /* Char */
-        char root_dir[WG_PATH_MAX], include_path[WG_MAX_PATH],
-             plug_path[WG_PATH_MAX], comp_path[WG_PATH_MAX],
-             install_path[WG_PATH_MAX * 2],
-             full_path[WG_PATH_MAX],
-             src[WG_PATH_MAX],
-             dest[WG_MAX_PATH * 2];
+        char root_dir[WG_PATH_MAX], includes[WG_MAX_PATH],
+             plugins[WG_PATH_MAX], components[WG_PATH_MAX],
+             the_path[WG_PATH_MAX * 2], full_path[WG_PATH_MAX],
+             src[WG_PATH_MAX], dest[WG_MAX_PATH * 2];
+        char *pos;
 
         /* Pointer */
-        const char *procure_depends_name;
-        char *package_include_path = NULL;
-        char *filename = NULL;
+        const char
+           /* const */ *packages;
+        char *include_path = NULL;
+        char *src_sep = NULL;
 
         /* Int */
         int i;
-        int index = -1;
-        int stack_size = WG_MAX_PATH;
-        int package_inc = 0;
+        /* Stack */
+        int _sindex = -1;
+        int _ssize = WG_MAX_PATH;
+        int rate_found_include = 0;
         
         /* Reset */
-        found_cnt = 0;
+        fdir_counts = 0;
 
         /* CWD/PWD */
-        char *cwd = wg_procure_pwd();
+        char *fetch_pwd = NULL;
+        fetch_pwd = wg_procure_pwd();
 
         /* Stack-based directory traversal for finding nested include files */
         struct stat dir_st;
         struct dirent *dir_item;
-        char **tmp_stack = wg_malloc( stack_size * sizeof( char* ) );
+        char
+                **tmp_stack = wg_malloc( _ssize * sizeof( char* ) );
         if ( tmp_stack == 0 )
                 {
                         return;
                 }
         char **stack = tmp_stack;
 
-        for ( i = 0; i < stack_size; i++ )
+        for ( i = 0; i < _ssize; i++ )
                 {
                         stack[i] = wg_malloc( WG_PATH_MAX );
                 }
         
         /* Construct platform-specific paths */
         #ifdef WG_WINDOWS
-        snprintf( plug_path, sizeof( plug_path ), "%s\\plugins",
-                dency_dir );
-        snprintf( comp_path, sizeof( comp_path ), "%s\\components",
-                dency_dir );
+        snprintf( plugins, sizeof( plugins ), "%s\\plugins",
+                package_dir );
+        snprintf( components, sizeof( components ), "%s\\components",
+                package_dir );
         #else
-        snprintf( plug_path, sizeof( plug_path ), "%s/plugins",
-                dency_dir );
-        snprintf( comp_path, sizeof( comp_path ), "%s/components",
-                dency_dir );
+        snprintf( plugins, sizeof( plugins ), "%s/plugins",
+                package_dir );
+        snprintf( components, sizeof( components ), "%s/components",
+                package_dir );
         #endif
 
 #if defined(_DBG_PRINT)
-        println(stdout, "plug path: %s", plug_path);
+        println(stdout, "plug path: %s", plugins);
 #endif
 
 #if defined(_DBG_PRINT)
-        println(stdout, "comp path: %s", comp_path);
+        println(stdout, "comp path: %s", components);
 #endif
 
         /* Determine include path based on server environment */
         if ( wg_server_env() == 1 ) {
         #ifdef WG_WINDOWS
-                package_include_path = "pawno\\include";
-                snprintf( full_path, sizeof( full_path ), "%s\\pawno\\include", dency_dir );
+                include_path = "pawno\\include";
+                snprintf( full_path, sizeof( full_path ), "%s\\pawno\\include", package_dir );
         #else
-                package_include_path = "pawno/include";
-                snprintf( full_path,  sizeof( full_path ), "%s/pawno/include", dency_dir );
+                include_path = "pawno/include";
+                snprintf( full_path,  sizeof( full_path ), "%s/pawno/include", package_dir );
         #endif
         } else if ( wg_server_env() == 2 ) {
         #ifdef WG_WINDOWS
-                package_include_path = "qawno\\include";
-                snprintf( full_path, sizeof( full_path ), "%s\\qawno\\include", dency_dir );
+                include_path = "qawno\\include";
+                snprintf( full_path, sizeof( full_path ), "%s\\qawno\\include", package_dir );
         #else
-                package_include_path = "qawno/include";
-                snprintf( full_path, sizeof( full_path ), "%s/qawno/include", dency_dir );
+                include_path = "qawno/include";
+                snprintf( full_path, sizeof( full_path ), "%s/qawno/include", package_dir );
         #endif
         }
 
 #if defined(_DBG_PRINT)
-        println(stdout, "package include path: %s", package_include_path);
+        println(stdout, "package include path: %s", include_path);
 #endif
 
 #if defined(_DBG_PRINT)
@@ -1503,145 +1544,144 @@ void dency_move_files( const char *dency_dir )
         wg_sef_fdir_memset_to_null();
 
         /* Move include files from standard include directory */
-        package_inc = wg_sef_fdir( full_path, "*.inc", NULL );
+        rate_found_include = wg_sef_fdir( full_path, "*.inc", NULL );
 #if defined(_DBG_PRINT)
-        println(stdout, "package inc: %d", package_inc);
+        println(stdout, "package inc: %d", rate_found_include);
 #endif
-        if ( package_inc ) {
+        if ( rate_found_include ) {
                 for ( i = 0; i < wgconfig.wg_sef_count; ++i ) {
-                        procure_depends_name = dency_get_filename( wgconfig.wg_sef_found_list[i] );
+                        packages = package_get_filename( wgconfig.wg_sef_found_list[i] );
                 #ifdef WG_WINDOWS
-                        snprintf( package_command, sizeof( package_command ),
+                        snprintf( command, sizeof( command ),
                                 "move "
                                 "/Y \"%s\" \"%s\\%s\\\"",
-                                wgconfig.wg_sef_found_list[i], cwd, package_include_path );
+                                wgconfig.wg_sef_found_list[i], fetch_pwd, include_path );
 
-                        wg_run_command( package_command );
+                        wg_run_command( command );
 
                         pr_color( stdout, FCOLOUR_CYAN, " [REPLICATE] Include %s\\? -> %s - %s\\?\n",
-                                wgconfig.wg_sef_found_list[i], cwd, package_include_path );
+                                wgconfig.wg_sef_found_list[i], fetch_pwd, include_path );
                 #else
-                        snprintf( package_command, sizeof( package_command ),
+                        snprintf( command, sizeof( command ),
                                 "mv "
                                 "-f \"%s\" \"%s/%s/\"",
-                                wgconfig.wg_sef_found_list[i], cwd, package_include_path );
+                                wgconfig.wg_sef_found_list[i], fetch_pwd, include_path );
 
-                        wg_run_command( package_command );
+                        wg_run_command( command );
 
                         pr_color( stdout, FCOLOUR_CYAN, " [REPLICATE] Include %s/? -> %s - %s/?\n",
-                                wgconfig.wg_sef_found_list[i], cwd, package_include_path );
+                                wgconfig.wg_sef_found_list[i], fetch_pwd, include_path );
                 #endif
 
-                        dency_set_hash( procure_depends_name,
-                                procure_depends_name );
-                        dency_include_prints( procure_depends_name );
+                        package_set_hash( packages,
+                                packages );
+                        package_include_prints( packages );
                 }
         }
 
         wg_sef_fdir_memset_to_null();
 
-        /* Move include files from root of dency_dir */
-        package_inc = wg_sef_fdir( dency_dir, "*.inc", NULL );
+        /* Move include files from root of package_dir */
+        rate_found_include = wg_sef_fdir( package_dir, "*.inc", NULL );
 #if defined(_DBG_PRINT)
-        println(stdout, "package inc2: %d", package_inc);
+        println(stdout, "package inc2: %d", rate_found_include);
 #endif
-        if ( package_inc ) {
+        if ( rate_found_include ) {
                 for ( i = 0; i < wgconfig.wg_sef_count; ++i ) {
-                        const char *procure_depends_name;
-                        procure_depends_name = dency_get_filename( wgconfig.wg_sef_found_list[i] );
+                        const char *packages;
+                        packages = package_get_filename( wgconfig.wg_sef_found_list[i] );
 
                 #ifdef WG_WINDOWS
-                        snprintf( package_command, sizeof( package_command ),
+                        snprintf( command, sizeof( command ),
                                 "move "
                                 "/Y \"%s\" \"%s\\%s\\\"",
-                                wgconfig.wg_sef_found_list[i], cwd, package_include_path );
+                                wgconfig.wg_sef_found_list[i], fetch_pwd, include_path );
 
-                        wg_run_command( package_command );
+                        wg_run_command( command );
 
                         pr_color( stdout, FCOLOUR_CYAN, " [REPLICATE] Include %s\\? -> %s - %s\\?\n",
-                                wgconfig.wg_sef_found_list[i], cwd, package_include_path );
+                                wgconfig.wg_sef_found_list[i], fetch_pwd, include_path );
                 #else
-                        snprintf( package_command, sizeof( package_command ),
+                        snprintf( command, sizeof( command ),
                                 "mv "
                                 "-f \"%s\" \"%s/%s/\"",
-                                wgconfig.wg_sef_found_list[i], cwd, package_include_path );
+                                wgconfig.wg_sef_found_list[i], fetch_pwd, include_path );
 
-                        wg_run_command( package_command );
+                        wg_run_command( command );
 
                         pr_color( stdout, FCOLOUR_CYAN, " [REPLICATE] Include %s/? -> %s - %s/?\n",
-                                wgconfig.wg_sef_found_list[i], cwd, package_include_path );
+                                wgconfig.wg_sef_found_list[i], fetch_pwd, include_path );
                 #endif
 
-                        dency_set_hash( procure_depends_name,
-                                procure_depends_name );
-                        dency_include_prints( procure_depends_name );
+                        package_set_hash( packages,
+                                packages );
+                        package_include_prints( packages );
                 }
         }
 
         /* Normalize path separators */
-        char *path_pos;
-        while ( ( path_pos = strstr( package_include_path, "include\\" ) ) != NULL )
-                memmove( path_pos, path_pos + strlen( "include/" ),
-                        strlen( path_pos + strlen( "include\\" ) ) + 1 );
-        while ( ( path_pos = strstr( package_include_path, "include/" ) ) != NULL )
-                memmove( path_pos, path_pos + strlen( "include/" ),
-                        strlen( path_pos + strlen( "include/" ) ) + 1 );
-        while ( ( path_pos = strstr( full_path, "include\\" ) ) != NULL )
-                memmove( path_pos, path_pos + strlen( "include/" ),
-                        strlen( path_pos + strlen( "include\\" ) ) + 1 );
-        while ( ( path_pos = strstr( full_path, "include/" ) ) != NULL )
-                memmove( path_pos, path_pos + strlen( "include/" ),
-                        strlen( path_pos + strlen( "include/" ) ) + 1 );
+        while ( ( pos = strstr( include_path, "include\\" ) ) != NULL )
+                memmove( pos, pos + strlen( "include/" ),
+                        strlen( pos + strlen( "include\\" ) ) + 1 );
+        while ( ( pos = strstr( include_path, "include/" ) ) != NULL )
+                memmove( pos, pos + strlen( "include/" ),
+                        strlen( pos + strlen( "include/" ) ) + 1 );
+        while ( ( pos = strstr( full_path, "include\\" ) ) != NULL )
+                memmove( pos, pos + strlen( "include/" ),
+                        strlen( pos + strlen( "include\\" ) ) + 1 );
+        while ( ( pos = strstr( full_path, "include/" ) ) != NULL )
+                memmove( pos, pos + strlen( "include/" ),
+                        strlen( pos + strlen( "include/" ) ) + 1 );
 
         /* Move plugin files */
 #ifndef WG_WINDOWS
-        dump_file_type( plug_path, "*.dll", NULL, cwd, "/plugins", 0 );
-        dump_file_type( plug_path, "*.so", NULL, cwd, "/plugins", 0 );
+        dump_file_type( plugins, "*.dll", NULL, fetch_pwd, "/plugins", 0 );
+        dump_file_type( plugins, "*.so", NULL, fetch_pwd, "/plugins", 0 );
 #else
-        dump_file_type( plug_path, "*.dll", NULL, cwd, "\\plugins", 0 );
-        dump_file_type( plug_path, "*.so", NULL, cwd, "\\plugins", 0 );
+        dump_file_type( plugins, "*.dll", NULL, fetch_pwd, "\\plugins", 0 );
+        dump_file_type( plugins, "*.so", NULL, fetch_pwd, "\\plugins", 0 );
 #endif
 
 #if defined(_DBG_PRINT)
-        println(stdout, "plug path: %s", plug_path);
+        println(stdout, "plug path: %s", plugins);
 #endif
         /* Move root-level plugin files */
-        dump_file_type( dency_dir, "*.dll", "plugins", cwd, "", 1 );
-        dump_file_type( dency_dir, "*.so", "plugins", cwd, "", 1 );
+        dump_file_type( package_dir, "*.dll", "plugins", fetch_pwd, "", 1 );
+        dump_file_type( package_dir, "*.so", "plugins", fetch_pwd, "", 1 );
 
         /* Handle open.mp specific components */
         if ( wg_server_env() == 2 ) {
         #ifdef WG_WINDOWS
-                snprintf( include_path, sizeof( include_path ), "qawno\\include" );
+                snprintf( includes, sizeof( includes ), "qawno\\include" );
         #else
-                snprintf( include_path, sizeof( include_path ), "qawno/include" );
+                snprintf( includes, sizeof( includes ), "qawno/include" );
         #endif
-                dump_file_type( comp_path, "*.dll", NULL, cwd, "components", 0 );
-                dump_file_type( comp_path, "*.so", NULL, cwd, "components", 0 );
+                dump_file_type( components, "*.dll", NULL, fetch_pwd, "components", 0 );
+                dump_file_type( components, "*.so", NULL, fetch_pwd, "components", 0 );
         } else {
         #ifdef WG_WINDOWS
-                snprintf( include_path, sizeof( include_path ), "pawno\\include" );
+                snprintf( includes, sizeof( includes ), "pawno\\include" );
         #else
-                snprintf( include_path, sizeof( include_path ), "pawno/include" );
+                snprintf( includes, sizeof( includes ), "pawno/include" );
         #endif
         }
 
         /* Normalize include path */
-        while ( ( path_pos = strstr( include_path, "include\\" ) ) != NULL )
-                memmove( path_pos, path_pos + strlen( "include/" ),
-                        strlen( path_pos + strlen( "include\\" ) ) + 1 );
-        while ( ( path_pos = strstr( include_path, "include/" ) ) != NULL )
-                memmove( path_pos, path_pos + strlen( "include/" ),
-                        strlen( path_pos + strlen( "include/" ) ) + 1 );
+        while ( ( pos = strstr( includes, "include\\" ) ) != NULL )
+                memmove( pos, pos + strlen( "include/" ),
+                        strlen( pos + strlen( "include\\" ) ) + 1 );
+        while ( ( pos = strstr( includes, "include/" ) ) != NULL )
+                memmove( pos, pos + strlen( "include/" ),
+                        strlen( pos + strlen( "include/" ) ) + 1 );
 
         /* Start with dependency directory */
-        ++index;
-        snprintf( stack[index], WG_PATH_MAX, "%s", dency_dir );
+        ++_sindex;
+        snprintf( stack[_sindex], WG_PATH_MAX, "%s", package_dir );
 
         /* Depth-first search for include files */
-        while ( index >= 0 ) {
-                strlcpy( root_dir, stack[index], sizeof( root_dir ) );
-                --index;
+        while ( _sindex >= 0 ) {
+                strlcpy( root_dir, stack[_sindex], sizeof( root_dir ) );
+                --_sindex;
 
                 DIR *open_dir = opendir( root_dir );
                 if ( !open_dir )
@@ -1656,14 +1696,14 @@ void dency_move_files( const char *dency_dir )
                                 }
 
                         /* Construct full path */
-                        strlcpy( install_path,
-                                root_dir, sizeof( install_path ) );
-                        strlcat( install_path,
-                                __PATH_STR_SEP_LINUX, sizeof( install_path ) );
-                        strlcat( install_path,
-                                dir_item->d_name, sizeof( install_path ) );
+                        strlcpy( the_path,
+                                root_dir, sizeof( the_path ) );
+                        strlcat( the_path,
+                                __PATH_STR_SEP_LINUX, sizeof( the_path ) );
+                        strlcat( the_path,
+                                dir_item->d_name, sizeof( the_path ) );
 
-                        if ( stat( install_path, &dir_st ) != 0 )
+                        if ( stat( the_path, &dir_st ) != 0 )
                                 {
                                         continue;
                                 }
@@ -1672,16 +1712,18 @@ void dency_move_files( const char *dency_dir )
                                 /* Skip compiler directories */
                                 if ( strcmp( dir_item->d_name, "pawno" ) == 0 ||
                                     strcmp( dir_item->d_name, "qawno" ) == 0 ||
-                                    strcmp( dir_item->d_name, "include" ) == 0 )
+                                    strcmp( dir_item->d_name, "include" ) == 0 ||
+                                    strcmp ( dir_item->d_name, "components") == 0 ||
+                                    strcmp ( dir_item->d_name, "plugins") == 0)
                                 {
                                         continue;
                                 }
                                 /* Push directory onto stack for later processing */
-                                if ( index < stack_size - 1 )
+                                if ( _sindex < _ssize - 1 )
                                         {
-                                                ++index;
-                                                strlcpy( stack[index],
-                                                        install_path, WG_MAX_PATH );
+                                                ++_sindex;
+                                                strlcpy( stack[_sindex],
+                                                        the_path, WG_MAX_PATH );
                                         }
                                 continue;
                         }
@@ -1696,24 +1738,24 @@ void dency_move_files( const char *dency_dir )
                         /* Extract parent directory name */
                         strlcpy( src, root_dir, sizeof( src ) );
                         #ifdef WG_WIDOWS
-                        filename = strrchr( src, __PATH_CHR_SEP_WIN32 );
+                        src_sep = strrchr( src, __PATH_CHR_SEP_WIN32 );
                         #else
-                        filename = strrchr( src, __PATH_CHR_SEP_LINUX );
+                        src_sep = strrchr( src, __PATH_CHR_SEP_LINUX );
                         #endif
-                        if ( !filename )
+                        if ( !src_sep )
                                 {
                                         continue;
                                 }
-                        ++filename;
+                        ++src_sep;
 
                         /* Construct destination path */
-                        strlcpy( dest, include_path, sizeof( dest ) );
+                        strlcpy( dest, includes, sizeof( dest ) );
                         #ifdef WG_WINDOWS
                         strlcat( dest, __PATH_STR_SEP_WIN32, sizeof( dest ) );
                         #else
                         strlcat( dest, __PATH_STR_SEP_LINUX, sizeof( dest ) );
                         #endif
-                        strlcat( dest, filename, sizeof( dest ) );
+                        strlcat( dest, src_sep, sizeof( dest ) );
 
                         /* Move or copy directory containing include files */
                         if ( rename( src, dest ) ) {
@@ -1724,16 +1766,21 @@ void dency_move_files( const char *dency_dir )
                                 };
                                 size_t size_windows_move_parts = sizeof( windows_move_parts ),
                                        size_windows_move_parts_zero = sizeof( windows_move_parts[0] );
-                                strlcpy( package_command, "", sizeof( package_command ) );
+                                strlcpy( command, "", sizeof( command ) );
                                 int j;
                                 for ( j = 0;
                                       j < size_windows_move_parts / size_windows_move_parts_zero;
                                       j++ )
                                 {
-                                        strlcat( package_command, windows_move_parts[j], sizeof( package_command ) );
+                                        strlcat( command, windows_move_parts[j], sizeof( command ) );
+                                }
+                                char *size_src = strdup(src);
+                                for ( pos = size_src; *pos; pos++ ) if ( *pos == __PATH_CHR_SEP_LINUX )
+                                {
+                                        *pos = __PATH_CHR_SEP_WIN32;
                                 }
                                 pr_color( stdout, FCOLOUR_CYAN, " [REPLICATE] Include %s\\? -> %s\\?\n",
-                                                 src, dest );
+                                                 size_src, dest );
                         #else
                                 /* Unix: recursive copy and remove */
                                 const char *unix_move_parts[] = {
@@ -1741,20 +1788,20 @@ void dency_move_files( const char *dency_dir )
                                 };
                                 size_t size_unix_move_parts = sizeof( unix_move_parts ),
                                        size_unix_move_parts_zero = sizeof( unix_move_parts[0] );
-                                strlcpy( package_command, "", sizeof( package_command ) );
+                                strlcpy( command, "", sizeof( command ) );
                                 int j;
                                 for ( j = 0;
                                       j < size_unix_move_parts / size_unix_move_parts_zero;
                                       j++ )
                                 {
-                                        strlcat( package_command, unix_move_parts[j], sizeof( package_command ) );
+                                        strlcat( command, unix_move_parts[j], sizeof( command ) );
                                 }
                                 pr_color( stdout, FCOLOUR_CYAN, " [REPLICATE] Include %s/? -> %s/?\n",
                                                  src, dest );
                         #endif
                         }
 
-                        dency_set_hash( dest, dest );
+                        package_set_hash( dest, dest );
                 }
 
                 closedir( open_dir );
@@ -1762,7 +1809,7 @@ void dency_move_files( const char *dency_dir )
 
         /* Clean up directory stack */
         for ( i = 0;
-              i < stack_size;
+              i < _ssize;
               i++ ) {
                 wg_free( stack [ i ] );
         }
@@ -1772,18 +1819,18 @@ void dency_move_files( const char *dency_dir )
 
         /* Remove extracted dependency directory */
         #ifdef WG_WINDOWS
-        snprintf( package_command, sizeof( package_command ),
+        snprintf( command, sizeof( command ),
                 "rmdir "
                 "/s "
                 "/q \"%s\"",
-                dency_dir );
+                package_dir );
         #else
-        snprintf( package_command, sizeof( package_command ),
+        snprintf( command, sizeof( command ),
                 "rm "
                 "-rf %s",
-                dency_dir );
+                package_dir );
         #endif
-        wg_run_command( package_command );
+        wg_run_command( command );
 
         return;
 }
@@ -1795,7 +1842,7 @@ void dency_move_files( const char *dency_dir )
 void wg_apply_depends( const char *depends_name )
 {
         char _dependencies[WG_PATH_MAX];
-        char dency_dir[WG_PATH_MAX];
+        char package_dir[WG_PATH_MAX];
         
         snprintf( _dependencies, sizeof( _dependencies ), "%s", depends_name );
 
@@ -1813,10 +1860,10 @@ void wg_apply_depends( const char *depends_name )
                 *extension = '\0';
         }
 
-        snprintf( dency_dir, sizeof( dency_dir ), "%s", _dependencies );
+        snprintf( package_dir, sizeof( package_dir ), "%s", _dependencies );
 
 #if defined(_DBG_PRINT)
-        println(stdout, "dency dir: %s", dency_dir);
+        println(stdout, "dency dir: %s", package_dir);
 #endif
 
         /* Create necessary directories based on server environment */
@@ -1840,20 +1887,20 @@ void wg_apply_depends( const char *depends_name )
         }
         
         /* Organize dependency files */
-        dency_move_files( dency_dir );
+        package_move_files( package_dir );
 }
 
 /* 
  * Main dependency installation function
  * Parses dependency strings, downloads archives, and applies dependencies
  */
-void wg_install_depends( const char *dependencies_str, const char *dependencies_branch )
+void wg_install_depends( const char *dependencies_str, const char *branch )
 {
         char buffer[1024];
-        char dency_url[1024];
+        char package_url[1024];
         char *procure_buffer;
-        struct dency_repositories repo;
-        char dency_name[WG_PATH_MAX];
+        struct repositories repo;
+        char package_name[WG_PATH_MAX];
         const char *size_last_slash;
         const char *dependencies[MAX_DEPENDS];
         int package_counts = 0;
@@ -1901,7 +1948,7 @@ void wg_install_depends( const char *dependencies_str, const char *dependencies_
         /* Process each dependency */
         for ( i = 0; i < package_counts; i++ ) {
                 /* Parse repository information */
-                if ( !dency_parse_repo( dependencies[i], &repo ) )
+                if ( !package_parse_repo( dependencies[i], &repo ) )
                         {
                                 pr_color( stdout, FCOLOUR_RED, "" );
                                 printf( "invalid repo format: %s"
@@ -1911,9 +1958,9 @@ void wg_install_depends( const char *dependencies_str, const char *dependencies_
                 
                 /* Handle GitHub repositories */
                 if ( !strcmp( repo.host, "github" ) ) {
-                        if ( !dency_handle_repo( &repo, dency_url,
-                            sizeof( dency_url ),
-                            dependencies_branch ) )
+                        if ( !package_handle_repo( &repo, package_url,
+                            sizeof( package_url ),
+                            branch ) )
                         {
                                 pr_color( stdout, FCOLOUR_RED, "" );
                                 printf( "repo not found: %s"
@@ -1922,8 +1969,8 @@ void wg_install_depends( const char *dependencies_str, const char *dependencies_
                         }
                 } else {
                         /* Handle custom repositories */
-                        dency_build_repo_url( &repo, 0, dency_url, sizeof( dency_url ) );
-                        if ( !dency_url_checking( dency_url,
+                        package_build_repo_url( &repo, 0, package_url, sizeof( package_url ) );
+                        if ( !package_url_checking( package_url,
                             wgconfig.wg_toml_github_tokens ) )
                         {
                                 pr_color( stdout, FCOLOUR_RED, "" );
@@ -1934,28 +1981,28 @@ void wg_install_depends( const char *dependencies_str, const char *dependencies_
                 }
 
                 /* Extract filename from URL */
-                if ( strrchr( dency_url, __PATH_CHR_SEP_LINUX ) &&
-                    *( strrchr( dency_url, __PATH_CHR_SEP_LINUX ) + 1 ) )
+                if ( strrchr( package_url, __PATH_CHR_SEP_LINUX ) &&
+                    *( strrchr( package_url, __PATH_CHR_SEP_LINUX ) + 1 ) )
                 {
-                        snprintf( dency_name, sizeof( dency_name ), "%s",
-                                strrchr( dency_url, __PATH_CHR_SEP_LINUX ) + 1 );
+                        snprintf( package_name, sizeof( package_name ), "%s",
+                                strrchr( package_url, __PATH_CHR_SEP_LINUX ) + 1 );
 
                         /* Ensure archive extension */
-                        if ( !strend( dency_name, ".tar.gz", true ) &&
-                            !strend( dency_name, ".tar", true ) &&
-                            !strend( dency_name, ".zip", true ) )
+                        if ( !strend( package_name, ".tar.gz", true ) &&
+                            !strend( package_name, ".tar", true ) &&
+                            !strend( package_name, ".zip", true ) )
                         {
-                                snprintf( dency_name + strlen( dency_name ),
-                                        sizeof( dency_name ) - strlen( dency_name ), ".zip" );
+                                snprintf( package_name + strlen( package_name ),
+                                        sizeof( package_name ) - strlen( package_name ), ".zip" );
                         }
                 } else {
                         /* Default naming scheme */
-                        snprintf( dency_name, sizeof( dency_name ), "%s.tar.gz", repo.repo );
+                        snprintf( package_name, sizeof( package_name ), "%s.tar.gz", repo.repo );
                 }
 
-                if ( !*dency_name ) {
+                if ( !*package_name ) {
                         pr_color( stdout, FCOLOUR_RED, "" );
-                        printf( "invalid repo name: %s\t\t[Fail]\n", dency_url );
+                        printf( "invalid repo name: %s\t\t[Fail]\n", package_url );
                         continue;
                 }
 
@@ -1963,19 +2010,19 @@ void wg_install_depends( const char *dependencies_str, const char *dependencies_
 
                 struct timespec __time_start = { 0 },   /* Time start - duration calculation */
                                 __time_stop  = { 0 };   /* Time Stop   - duration calculation */
-                double dency_dur_calculation;           /* Time Start & Stop Calculation */
+                double exec_duration;           /* Time Start & Stop Calculation */
 
                 /* Time the dependency installation process */
-                wg_download_file( dency_url, dency_name );
+                wg_download_file( package_url, package_name );
                 clock_gettime( CLOCK_MONOTONIC, &__time_start );
-                        wg_apply_depends( dency_name );
+                        wg_apply_depends( package_name );
                 clock_gettime( CLOCK_MONOTONIC, &__time_stop );
 
-                dency_dur_calculation = ( __time_stop.tv_sec - __time_start.tv_sec   ) +
-                                        ( __time_stop.tv_nsec - __time_start.tv_nsec ) / 1e9;
+                exec_duration = ( __time_stop.tv_sec - __time_start.tv_sec   ) +
+                                ( __time_stop.tv_nsec - __time_start.tv_nsec ) / 1e9;
                 
                 pr_color( stdout, FCOLOUR_CYAN, " <D> Finished at %.3fs (%.0f ms)\n",
-                        dency_dur_calculation, dency_dur_calculation * 1000.0 );
+                        exec_duration, exec_duration * 1000.0 );
         }
 
 done:

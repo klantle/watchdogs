@@ -163,7 +163,7 @@ typedef struct {
 extern WatchdogConfig wgconfig;
 
 /* Utility function declarations */
-void wg_sef_fdir_reset(void);
+void wg_sef_fdir_memset_to_null(void);
 
 #ifdef WG_WINDOWS
 #define strlcpy   win_strlcpy

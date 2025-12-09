@@ -776,7 +776,7 @@ void wg_run_samp_server(const char *gamemode, const char *server_bin)
         gamemode = put_gamemode;
 
         /* Search for gamemode file in current directory */
-        wg_sef_fdir_reset();
+        wg_sef_fdir_memset_to_null();
         if (wg_sef_fdir(".", gamemode, NULL) == 0) {
                 printf("Cannot locate gamemode: ");
                 pr_color(stdout, FCOLOUR_CYAN, "%s\n", gamemode);
@@ -1052,7 +1052,7 @@ void wg_run_omp_server(const char *gamemode, const char *server_bin)
         gamemode = put_gamemode;
 
         /* Verify gamemode file exists */
-        wg_sef_fdir_reset();
+        wg_sef_fdir_memset_to_null();
         if (wg_sef_fdir(".", gamemode, NULL) == 0) {
                 printf("Cannot locate gamemode: ");
                 pr_color(stdout, FCOLOUR_CYAN, "%s\n", gamemode);

@@ -1564,16 +1564,17 @@ L"\t\t   W   A   T   C   H   D   O   G   S\n");
                     goto _reexecute_command;
                 } else if (strcmp(confirm, "N") == 0 || strcmp(confirm, "n") == 0) {
                     wg_free(confirm);
-                    goto chain_done;
+                    goto chain_try_command;
                 } else {
                     wg_free(confirm);
-                    goto chain_done;
+                    goto chain_try_command;
                 }
             } else {
                 wg_free(confirm);
-                goto chain_done;
+                goto chain_try_command;
             }
         } else {
+chain_try_command:
             if (!strcmp(ptr_command, "clear")) {
                 if (is_native_windows())
                     snprintf(ptr_command, WG_PATH_MAX, "cls");

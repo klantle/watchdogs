@@ -76,7 +76,7 @@ void __reset_sys(void) {
         }
         setlocale(LC_ALL, "en_US.UTF-8");
         signal(SIGINT, SIG_DFL);
-        wg_sef_fdir_reset();
+        wg_sef_fdir_memset_to_null();
         wg_toml_configs();
         wg_stop_server_tasks();
         wg_u_history();

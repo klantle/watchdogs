@@ -737,7 +737,7 @@ error:
  * Supports .tar.gz, .tar, and .zip formats. Handles automatic destination directory creation.
  * Includes debug information output when compiled with debugging enabled.
  */
-void wg_extract_archive(const char *filename)
+void wg_extract_archive(const char *filename, const char *dir)
 {
         /* Debug information section */
         __debug_function();
@@ -767,7 +767,7 @@ void wg_extract_archive(const char *filename)
                                 }
                         }
                 } else {
-                        wg_extract_tar(filename, NULL);
+                        wg_extract_tar(filename, dir);
                 }
         }
         else if (strend(filename, ".tar", true)) {
@@ -786,7 +786,7 @@ void wg_extract_archive(const char *filename)
                                 }
                         }
                 } else {
-                        wg_extract_tar(filename, NULL);
+                        wg_extract_tar(filename, dir);
                 }
         }
         else if (strend(filename, ".zip", true)) {
@@ -805,7 +805,7 @@ void wg_extract_archive(const char *filename)
                                 }
                         }
                 } else {
-                        wg_extract_zip(filename, NULL);
+                        wg_extract_zip(filename, dir);
                 }
         }
         else {
@@ -815,8 +815,6 @@ void wg_extract_archive(const char *filename)
         }
 
         wgconfig.wg_idownload = 0;  /* Reset downloading flag after extraction */
-
-        sleep(1);  /* Brief pause to ensure file system operations complete */
 
 done:
         return;  /* Function complete */

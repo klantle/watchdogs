@@ -54,8 +54,7 @@ const char* ALL_IN_ONE_FORUMS[MAX_NUM_SITES][2] = {
 
 /* Static buffer for storing compiler source directory path */
 static char
-        pawncc_dir_src[WG_PATH_MAX]
-;
+        *pawncc_dir_source = NULL;
 
 /* 
  * Locate and configure CA certificate bundle for CURL SSL verification 
@@ -122,6 +121,28 @@ void verify_cacert_pem(CURL *curl) {
                         }
                 }
         }
+}
+
+/*
+ * Remover Archive for cURL Downloader
+ * Windows & Linux Support
+ */
+void destroy_archive(const char *filename) {
+        char curl_command[WG_PATH_MAX * 2];
+#ifdef WG_WINDOWS
+        snprintf( curl_command, sizeof( curl_command ),
+                "del "
+                "/f "
+                "/q \"%s\"",
+                filename );
+#else
+        snprintf( curl_command, sizeof( curl_command ),
+                "rm "
+                "-rf %s",
+                filename );
+#endif
+        wg_run_command ( curl_command );
+        return;
 }
 
 /* 
@@ -555,18 +576,16 @@ static void find_compiler_tools(int compiler_type,
                                 int *found_pawndisasm_exe, int *found_pawndisasm,
                                 int *found_pawnc_dll, int *found_PAWNC_DLL)
 {
+        /* ignore dir */
         const char *ignore_dir = NULL;
-        char size_pf[WG_PATH_MAX + 56];
-
-        snprintf(size_pf, sizeof(size_pf), "%s/", pawncc_dir_src);
-
+        
         /* Search for each compiler tool */
-        *found_pawncc_exe = wg_sef_fdir(size_pf, "pawncc.exe", ignore_dir);
-        *found_pawncc = wg_sef_fdir(size_pf, "pawncc", ignore_dir);
-        *found_pawndisasm_exe = wg_sef_fdir(size_pf, "pawndisasm.exe", ignore_dir);
-        *found_pawndisasm = wg_sef_fdir(size_pf, "pawndisasm", ignore_dir);
-        *found_PAWNC_DLL = wg_sef_fdir(size_pf, "PAWNC.dll", ignore_dir);
-        *found_pawnc_dll = wg_sef_fdir(size_pf, "pawnc.dll", ignore_dir);
+        *found_pawncc_exe = wg_sef_fdir(pawncc_dir_source, "pawncc.exe", ignore_dir);
+        *found_pawncc = wg_sef_fdir(pawncc_dir_source, "pawncc", ignore_dir);
+        *found_pawndisasm_exe = wg_sef_fdir(pawncc_dir_source, "pawndisasm.exe", ignore_dir);
+        *found_pawndisasm = wg_sef_fdir(pawncc_dir_source, "pawndisasm", ignore_dir);
+        *found_PAWNC_DLL = wg_sef_fdir(pawncc_dir_source, "PAWNC.dll", ignore_dir);
+        *found_pawnc_dll = wg_sef_fdir(pawncc_dir_source, "pawnc.dll", ignore_dir);
 }
 
 /* 
@@ -601,6 +620,7 @@ static void copy_compiler_tool(const char *src_path, const char *tool_name,
 
         snprintf(dest_path, sizeof(dest_path),
                 "%s/%s", dest_dir, tool_name);
+                
         wg_sef_wmv(src_path, dest_path);
 }
 
@@ -716,9 +736,7 @@ static int setup_linux_library(void)
                 return 0;
 
         /* Search for library file */
-        char size_pf[WG_PATH_MAX + 56];
-        snprintf(size_pf, sizeof(size_pf), "%s/", pawncc_dir_src);
-        found_lib = wg_sef_fdir(size_pf, "libpawnc.so", NULL);
+        found_lib = wg_sef_fdir(pawncc_dir_source, "libpawnc.so", NULL);
         if (!found_lib)
                 return 0;
 
@@ -774,7 +792,7 @@ void wg_apply_pawncc(void)
 
         int i;
 
-        wg_sef_fdir_reset(); /* Reset file search cache */
+        wg_sef_fdir_memset_to_null(); /* Reset file search cache */
 
         /* Find all compiler tools in downloaded directory */
         find_compiler_tools(wgconfig.wg_is_samp ? COMPILER_SAMP : COMPILER_OPENMP,
@@ -837,14 +855,14 @@ void wg_apply_pawncc(void)
         if (is_native_windows())
                 snprintf(rm_cmd, sizeof(rm_cmd),
                         "rmdir /s /q \"%s\"",
-                        pawncc_dir_src);
+                        pawncc_dir_source);
         else
                 snprintf(rm_cmd, sizeof(rm_cmd),
                         "rm -rf %s",
-                        pawncc_dir_src);
+                        pawncc_dir_source);
         wg_run_command(rm_cmd);
 
-        memset(pawncc_dir_src, 0, sizeof(pawncc_dir_src));
+        pawncc_dir_source = NULL;
 
         if (path_exists("pawno/pawnc.dll") == 1)
                 rename("pawno/pawnc.dll", "pawno/PAWNC.dll");
@@ -1021,7 +1039,6 @@ int wg_download_file(const char *url, const char *output_filename)
         long response_code = 0;
         int retry_count = 0;
         struct stat file_stat;
-        char curl_command[WG_PATH_MAX * 2];
         
         /* Clean filename and remove query parameters */
         char clean_filename[WG_PATH_MAX];
@@ -1181,7 +1198,7 @@ int wg_download_file(const char *url, const char *output_filename)
                         }
                         
                         wg_free(download_buffer.data);
-                        
+                
                         /* Verify downloaded file */
                         if (stat(final_filename, &file_stat) == 0 && file_stat.st_size > 0) {
                                 pr_color(stdout, FCOLOUR_GREEN, " %% successful: %" PRIdMAX " bytes to %s\n", 
@@ -1193,9 +1210,23 @@ int wg_download_file(const char *url, const char *output_filename)
                                         pr_color(stdout, FCOLOUR_YELLOW, "Warning: File %s is not an archive\n", final_filename);
                                         return 1;
                                 }
+                                
+                                /* Remove archive extension for directory name */
+                                char size_filename[WG_PATH_MAX];
+                                snprintf(size_filename, sizeof(size_filename),
+                                        "%s", final_filename);
+                                        
+                                char *extension = NULL;
+                                if ((extension = strstr(size_filename, ".tar.gz")) != NULL) {
+                                        *extension = '\0';
+                                } else if ((extension = strstr(size_filename, ".tar")) != NULL) {
+                                        *extension = '\0';
+                                } else if ((extension = strstr(size_filename, ".zip")) != NULL) {
+                                        *extension = '\0';
+                                }
 
                                 /* Extract archive */
-                                wg_extract_archive(final_filename);
+                                wg_extract_archive(final_filename, size_filename);
 
                                 /* Prompt for archive removal */
                                 if (wgconfig.wg_idepends == 1) {
@@ -1208,38 +1239,14 @@ int wg_download_file(const char *url, const char *output_filename)
                                                 if (confirm && (confirm[0] == 'Y' || confirm[0] == 'y')) {
                                                         remove_archive = 1;
                                                          if (path_exists(final_filename) == 1) {
-#ifdef WG_WINDOWS
-                                                                snprintf( curl_command, sizeof( curl_command ),
-                                                                        "del "
-                                                                        "/f "
-                                                                        "/q \"%s\"",
-                                                                        final_filename );
-#else
-                                                                snprintf( curl_command, sizeof( curl_command ),
-                                                                        "rm "
-                                                                        "-rf %s",
-                                                                        final_filename );
-#endif
+                                                                 destroy_archive(final_filename);
                                                         }
-                                                        wg_run_command(curl_command);
                                                 }
                                                 wg_free(confirm);
                                         } else {
                                                 if (path_exists(final_filename) == 1) {
-#ifdef WG_WINDOWS
-                                                snprintf( curl_command, sizeof( curl_command ),
-                                                        "del "
-                                                        "/f "
-                                                        "/q \"%s\"",
-                                                        final_filename );
-#else
-                                                snprintf( curl_command, sizeof( curl_command ),
-                                                        "rm "
-                                                        "-rf %s",
-                                                        final_filename );
-#endif
+                                                        destroy_archive(final_filename);
                                                 }
-                                                wg_run_command(curl_command);
                                         }
                                 } else {
                                         pr_color(stdout, FCOLOUR_CYAN, 
@@ -1248,59 +1255,15 @@ int wg_download_file(const char *url, const char *output_filename)
                                         
                                         if (confirm && (confirm[0] == 'Y' || confirm[0] == 'y')) {
                                                 if (path_exists(final_filename) == 1) {
-#ifdef WG_WINDOWS
-                                                snprintf( curl_command, sizeof( curl_command ),
-                                                        "del "
-                                                        "/f "
-                                                        "/q \"%s\"",
-                                                        final_filename );
-#else
-                                                snprintf( curl_command, sizeof( curl_command ),
-                                                        "rm "
-                                                        "-rf %s",
-                                                        final_filename );
-#endif
+                                                        destroy_archive(final_filename);
                                                 }
-                                                wg_run_command(curl_command);
                                         }
                                         wg_free(confirm);
                                 }
 
                                 /* Special handling for compiler installation */
                                 if (wgconfig.wg_ipawncc && prompt_apply_pawncc()) {
-                                        char size_filename[WG_PATH_MAX];
-                                        snprintf(size_filename, sizeof(size_filename),
-                                                "%s", final_filename);
-
-                                        /* Handle multiple compression formats */
-                                        char *extensions[] = {
-                                                ".tar.gz",
-                                                ".tar.bz2",
-                                                ".tar.xz",
-                                                ".tar",
-                                                ".zip"
-                                        };
-                                        int found = 0;
-                                        
-                                        for (int i = 0;
-                                             i < sizeof(extensions) / sizeof(extensions[0]);
-                                             i++) {
-                                                char *dot_extension = strstr(size_filename, extensions[i]);
-                                                if (dot_extension) {
-                                                        *dot_extension = '\0';
-                                                        found = 1;
-                                                        break;
-                                                }
-                                        }
-                                        
-                                        /* If no known extension found, try to remove any extension */
-                                        if (!found) {
-                                                char *dot_extension = strrchr(size_filename, '.');
-                                                if (dot_extension)
-                                                        *dot_extension = '\0';
-                                        }
-                                        
-                                        snprintf(pawncc_dir_src, sizeof(pawncc_dir_src), "%s", size_filename);
+                                        pawncc_dir_source = strdup(size_filename);
                                         wg_apply_pawncc();
                                 }
 

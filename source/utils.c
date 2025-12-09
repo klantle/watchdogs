@@ -94,7 +94,7 @@ WatchdogConfig wgconfig = {
  * found list array and sets each first character to null terminator to empty strings,
  * then sets the global counter to empty value and fills the entire array with empty markers.
  */
-void wg_sef_fdir_reset(void) {
+void wg_sef_fdir_memset_to_null(void) {
 		size_t i, sef_max_entries;
 		/* Calculate maximum number of entries in the found list array */
 		sef_max_entries = sizeof(wgconfig.wg_sef_found_list) /
@@ -1364,9 +1364,9 @@ __toml_add_directory_path(FILE *toml_file, int *first, const char *path)
 {
 		/* Add comma before element if not first */
 		if (!*first)
-				fprintf(toml_file, ",\n\t");
+				fprintf(toml_file, ",\n   ");
 		else {
-				fprintf(toml_file, "\n\t"); /* First element formatting */
+				fprintf(toml_file, "\n   "); /* First element formatting */
 				*first = 0; /* No longer first */
 		}
 
@@ -1503,31 +1503,31 @@ static void __toml_base_subdirs(const char *base_path,
 		WIN32_FIND_DATAA find_data;
 		HANDLE find_handle;
 		char sp[WG_MAX_PATH], fp[WG_MAX_PATH * 2];
-		snprintf(sp, sizeof(sp), "%s%s*", base_path, __PATH_STR_SEP_WIN32);
+		snprintf(sp, sizeof(sp),
+			"%s%s*", base_path, __PATH_STR_SEP_WIN32);
 
 		find_handle = FindFirstFileA(sp, &find_data);
 		if (find_handle == INVALID_HANDLE_VALUE)
 				return; /* No files or error */
 		do {
-				if (find_data.dwFileAttributes &
-						FILE_ATTRIBUTE_DIRECTORY) { /* Directory */
-					if (wg_is_special_dir(find_data.cFileName))
-						continue; /* Skip "." and ".." */
+			if (find_data.dwFileAttributes &
+					FILE_ATTRIBUTE_DIRECTORY) { /* Directory */
+				if (wg_is_special_dir(find_data.cFileName))
+					continue; /* Skip "." and ".." */
 
-					/* Skip directory with same name as last component of base path */
-					const char *size_last_slash = strrchr(base_path, __PATH_CHR_SEP_WIN32);
-					if (size_last_slash &&
-						strcmp(size_last_slash + 1,
-							   find_data.cFileName) == 0)
-						continue;
+				/* Skip directory with same name as last component of base path */
+				if (strrchr(base_path, __PATH_CHR_SEP_WIN32) &&
+					strcmp(strrchr(base_path, __PATH_CHR_SEP_WIN32) + 1,
+							find_data.cFileName) == 0)
+					continue;
 
-					/* Construct full subdirectory path */
-					snprintf(fp, sizeof(fp), "%s/%s",
-								base_path, find_data.cFileName);
+				/* Construct full subdirectory path */
+				snprintf(fp, sizeof(fp), "%s/%s",
+							base_path, find_data.cFileName);
 
-					__toml_add_directory_path(toml_file, first, fp); /* Add to TOML */
-					__toml_base_subdirs(fp, toml_file, first); /* Recurse */
-				}
+				__toml_add_directory_path(toml_file, first, fp); /* Add to TOML */
+				__toml_base_subdirs(fp, toml_file, first); /* Recurse */
+			}
 		} while (FindNextFileA(find_handle, &find_data) != 0); /* Continue */
 
 		FindClose(find_handle);
@@ -1542,23 +1542,22 @@ static void __toml_base_subdirs(const char *base_path,
 			return;
 
 		while ((item = readdir(open_dir)) != NULL) {
-				if (item->d_type == DT_DIR) { /* Directory entry */
-					if (wg_is_special_dir(item->d_name))
-						continue;
+			if (item->d_type == DT_DIR) { /* Directory entry */
+				if (wg_is_special_dir(item->d_name))
+					continue;
 
-					/* Skip directory with same name as last component */
-					const char *size_last_slash = strrchr(base_path, __PATH_CHR_SEP_LINUX);
-					if (size_last_slash &&
-						strcmp(size_last_slash + 1,
-							   item->d_name) == 0)
-						continue;
+				/* Skip directory with same name as last component */
+				if (strrchr(base_path, __PATH_CHR_SEP_LINUX) &&
+					strcmp(strrchr(base_path, __PATH_CHR_SEP_LINUX) + 1,
+							item->d_name) == 0)
+					continue;
 
-					snprintf(fp, sizeof(fp), "%s/%s",
-								base_path, item->d_name);
+				snprintf(fp, sizeof(fp), "%s/%s",
+							base_path, item->d_name);
 
-					__toml_add_directory_path(toml_file, first, fp);
-					__toml_base_subdirs(fp, toml_file, first); /* Recurse */
-				}
+				__toml_add_directory_path(toml_file, first, fp);
+				__toml_base_subdirs(fp, toml_file, first); /* Recurse */
+			}
 		}
 
 		closedir(open_dir);
@@ -1574,7 +1573,7 @@ int wg_add_compiler_path(FILE *file, const char *path, int *first_item)
 		if (path_access(path)) { /* Check if path exists */
 				if (!*first_item)
 						fprintf(file, ","); /* Add comma before element */
-				fprintf(file, "\n\t\"%s\"", path); /* Write quoted path */
+				fprintf(file, "\n      \"%s\"", path); /* Write quoted path */
 				//*first_item = 0; /* Commented out: would mark as not first */
 				//__toml_base_subdirs(path, file, first_item); /* Commented: recursive add */
 		} else {
@@ -1595,7 +1594,7 @@ int wg_add_include_paths(FILE *file, int *first_item)
 				ret = 1;
 				if (!*first_item)
 						fprintf(file, ",");
-				fprintf(file, "\n\t\"gamemodes/\"");
+				fprintf(file, "\n      \"gamemodes/\"");
 				*first_item = 0; /* Mark as not first anymore */
 				//__toml_base_subdirs("gamemodes", file, first_item); /* Commented */
 		}
@@ -1652,7 +1651,7 @@ static void wg_generate_toml_content(FILE *file, const char *wg_os_type,
 				is_docker = -1;
 		}
 		fprintf(file, "[general]\n");
-		fprintf(file, "os = \"%s\"\n", wg_os_type);
+		fprintf(file, "   os = \"%s\"\n", wg_os_type);
 		if (strcmp(wg_os_type, "windows") == 0 && is_docker == -1) {
 			static int k = 0;
 			if (k != 1) {
@@ -1666,62 +1665,67 @@ static void wg_generate_toml_content(FILE *file, const char *wg_os_type,
 		/* Set binary and config paths based on server type */
 		if (samp_user == 0) { /* OpenMP */
 			if (!strcmp(wg_os_type, "windows")) {
-				fprintf(file, "binary = \"%s\"\n", "omp-server.exe");
+				fprintf(file, "   binary = \"%s\"\n", "omp-server.exe");
 			} else if (!strcmp(wg_os_type, "linux")) {
-				fprintf(file, "binary = \"%s\"\n", "omp-server");
+				fprintf(file, "   binary = \"%s\"\n", "omp-server");
 			}
-			fprintf(file, "config = \"%s\"\n", "config.json");
-			fprintf(file, "logs = \"%s\"\n", "log.txt");
+			fprintf(file, "   config = \"%s\"\n", "config.json");
+			fprintf(file, "   logs = \"%s\"\n", "log.txt");
 		} else { /* SA-MP */
 			if (!strcmp(wg_os_type, "windows")) {
-				fprintf(file, "binary = \"%s\"\n", "samp-server.exe");
+				fprintf(file, "   binary = \"%s\"\n", "samp-server.exe");
 			} else if (!strcmp(wg_os_type, "linux")) {
-				fprintf(file, "binary = \"%s\"\n", "samp-server.exe");
+				fprintf(file, "   binary = \"%s\"\n", "samp-server.exe");
 			}
-			fprintf(file, "config = \"%s\"\n", "server.cfg");
-			fprintf(file, "logs = \"%s\"\n", "server_log.txt");
+			fprintf(file, "   config = \"%s\"\n", "server.cfg");
+			fprintf(file, "   logs = \"%s\"\n", "server_log.txt");
 		}
 		/* AI and chatbot settings */
-		fprintf(file, "keys = \"API_KEY\"\n");
-		fprintf(file, "chatbot = \"gemini\"\n");
-		fprintf(file, "models = \"gemini-2.5-pro\"\n");
-		fprintf(file, "webhooks = \"DO_HERE\"\n");
+		fprintf(file, "   keys = \"API_KEY\"\n");
+		fprintf(file, "   chatbot = \"gemini\"\n");
+		fprintf(file, "   models = \"gemini-2.5-pro\"\n");
+		fprintf(file, "   webhooks = \"DO_HERE\"\n");
 
 		/* Write [compiler] section */
 		fprintf(file, "[compiler]\n");
 
 		/* Set compiler options based on detected capabilities */
 		if (compatible && optimized_lt) {
-				fprintf(file, "option = [\"-Z+\", \"-d2\", \"-O2\", \"-;+\", \"-(+\"]\n");
+				fprintf(file, "   option = [\"-Z+\", \"-d2\", \"-O2\", \"-;+\", \"-(+\"]\n");
 		} else if (compatible) {
-				fprintf(file, "option = [\"-Z+\", \"-d2\", \"-;+\", \"-(+\"]\n");
+				fprintf(file, "   option = [\"-Z+\", \"-d2\", \"-;+\", \"-(+\"]\n");
 		} else {
-				fprintf(file, "option = [\"-d3\", \"-;+\", \"-(+\"]\n");
+				fprintf(file, "   option = [\"-d3\", \"-;+\", \"-(+\"]\n");
 		}
 
 		/* Include paths array */
-		fprintf(file, "include_path = [");
+		fprintf(file, "   include_path = [");
 		int ret = wg_add_include_paths(file, &first_item); /* Add actual paths */
 		if (ret != 1) fprintf(file, "]\n");
-		else fprintf(file, "\n]\n");
+		else {
+			fprintf(file, "\n   ]\n");
+		}
 
 		/* Input and output file paths */
 		if (has_gamemodes && sef_path[0]) {
 				/* Use found gamemode file */
-				fprintf(file, "input = \"%s.pwn\"\n", sef_path);
-				fprintf(file, "output = \"%s.amx\"\n", sef_path);
+				fprintf(file, "   input = \"%s.pwn\"\n", sef_path);
+				fprintf(file, "   output = \"%s.amx\"\n", sef_path);
 		} else {
 				/* Default bare gamemode */
-				fprintf(file, "input = \"gamemodes/bare.pwn\"\n");
-				fprintf(file, "output = \"gamemodes/bare.amx\"\n");
+				fprintf(file, "   input = \"gamemodes/bare.pwn\"\n");
+				fprintf(file, "   output = \"gamemodes/bare.amx\"\n");
 		}
 
 		/* Write [depends] section */
 		fprintf(file, "[depends]\n");
-		fprintf(file, "github_tokens = \"DO_HERE\"\n");
+		fprintf(file, "   github_tokens = \"DO_HERE\"\n");
 		/* Dependency repositories */
-		fprintf(file, "packages = [\"Y-Less/sscanf?newer\", "
-					  "\"samp-incognito/samp-streamer-plugin?newer\"]");
+		fprintf(file, "   packages = [\n"
+			"      \"Y-Less/sscanf?newer\",\n"
+			"      \"samp-incognito/samp-streamer-plugin?newer\"\n"
+			"   ]");
+		fprintf(file, "\n");
 }
 
 /*

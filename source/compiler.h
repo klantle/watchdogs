@@ -15,7 +15,7 @@ typedef struct {
 
 #define compiler_memory_clean() \
 do { \
-    wg_sef_fdir_reset(); \
+    wg_sef_fdir_memset_to_null(); \
     memset(wg_compiler_sys.container_output, WATCHDOGS_COMPILER_ZERO, sizeof(wg_compiler_sys.container_output)); \
     memset(wg_compiler_sys.compiler_direct_path, WATCHDOGS_COMPILER_ZERO, sizeof(wg_compiler_sys.compiler_direct_path)); \
     memset(wg_compiler_sys.compiler_size_file_name, WATCHDOGS_COMPILER_ZERO, sizeof(wg_compiler_sys.compiler_size_file_name)); \

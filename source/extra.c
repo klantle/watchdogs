@@ -516,12 +516,10 @@ void compiler_detailed(const char *pawn_output, int debug,
                        int header_size, int code_size, int data_size,
                        int stack_size, int total_size)
 {
-      char size_compiler[WG_PATH_MAX];
-      /* Create console title string showing compilation completion status with error/warning counts */
-      snprintf(size_compiler, sizeof(size_compiler),
-                  "COMPILE COMPLETE :) | WITH ~%d ERROR | ~%d WARNING",
-                  ecnt, wcnt);
-      wg_console_title(size_compiler);
+      /* Compiler Info - [pass] : warning - [fail] : error */
+      println(stdout, \
+                "Compiler Complete! | " FCOLOUR_CYAN "%d pass (warning) | " FCOLOUR_RED "%d fail (error)" FCOLOUR_DEFAULT "");       
+      println(stdout, "-----------------------------");
 
       /* Check if the compiled output file exists and debug information is requested */
       int amx_access = path_access(pawn_output);

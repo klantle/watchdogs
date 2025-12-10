@@ -284,11 +284,11 @@ cd /c/users/desktop_name/downloads/your_project
 ```
 > Download stable binary
 ```yaml
-curl -L -o watchdogs.win "https://gitlab.com/-/project/75403219/uploads/c5834a1b638427a94304f8cec72f2086/watchdogs.win"
+curl -L -o watchdogs.win "https://gitlab.com/-/project/75403219/uploads/c76f43b7e6022683c796591d1d903723/watchdogs.win"
 ```
 > Debug Mode
 ```yaml
-curl -L -o watchdogs.debug.win "https://gitlab.com/-/project/75403219/uploads/ff0358e14e755d17b131f1c6ce3a27fa/watchdogs.debug.win"
+curl -L -o watchdogs.debug.win "https://gitlab.com/-/project/75403219/uploads/c7cdeabfa08d4309cc314b6ddcce88fe/watchdogs.debug.win"
 ```
 > Install dll library & cURL cacert.pem - 19+/MB.
 ```yaml

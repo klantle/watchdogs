@@ -592,6 +592,32 @@ static void find_compiler_tools(int compiler_type,
         *found_pawndisasm = wg_sef_fdir(pawncc_dir_source, "pawndisasm", ignore_dir);
         *found_PAWNC_DLL = wg_sef_fdir(pawncc_dir_source, "PAWNC.dll", ignore_dir);
         *found_pawnc_dll = wg_sef_fdir(pawncc_dir_source, "pawnc.dll", ignore_dir);
+
+        /* Fallback */
+        if (*found_pawncc_exe < 1 && *found_pawncc < 1) {
+                *found_pawncc_exe = wg_sef_fdir(".", "pawncc.exe", ignore_dir);
+                *found_pawncc = wg_sef_fdir(".", "pawncc", ignore_dir);
+        }
+        if (*found_pawncc > 1 || *found_pawncc_exe > 1) if (*found_pawndisasm < 1 || *found_pawndisasm_exe < 1) {
+                *found_pawndisasm_exe = wg_sef_fdir(".", "pawndisasm.exe", ignore_dir);
+                *found_pawndisasm = wg_sef_fdir(".", "pawndisasm", ignore_dir);
+        }
+        if (*found_pawncc_exe > 1) if (*found_PAWNC_DLL < 1 || *found_pawnc_dll < 1) {
+                *found_PAWNC_DLL = wg_sef_fdir(".", "PAWNC.dll", ignore_dir);
+                *found_pawnc_dll = wg_sef_fdir(".", "pawnc.dll", ignore_dir);
+        }
+        if (*found_pawncc_exe < 1 && *found_pawncc < 1) {
+                *found_pawncc_exe = wg_sef_fdir("bin/", "pawncc.exe", ignore_dir);
+                *found_pawncc = wg_sef_fdir("bin/", "pawncc", ignore_dir);
+        }
+        if (*found_pawncc > 1 || *found_pawncc_exe > 1) if (*found_pawndisasm < 1 || *found_pawndisasm_exe < 1) {
+                *found_pawndisasm_exe = wg_sef_fdir("bin/", "pawndisasm.exe", ignore_dir);
+                *found_pawndisasm = wg_sef_fdir("bin/", "pawndisasm", ignore_dir);
+        }
+        if (*found_pawncc_exe > 1) if (*found_PAWNC_DLL < 1 || *found_pawnc_dll < 1) {
+                *found_PAWNC_DLL = wg_sef_fdir("bin/", "PAWNC.dll", ignore_dir);
+                *found_pawnc_dll = wg_sef_fdir("bin/", "pawnc.dll", ignore_dir);
+        }
 }
 
 /* 
@@ -743,13 +769,19 @@ static int setup_linux_library(void)
 
         /* Search for library file */
         found_lib = wg_sef_fdir(pawncc_dir_source, "libpawnc.so", NULL);
-        if (!found_lib)
-                return 0;
+        /* Fallback */
+        if (found_lib < 1) {
+                found_lib = wg_sef_fdir(".", "libpawnc.so", NULL);
+                if (found_lib < 1) /* too */
+                        found_lib = wg_sef_fdir("lib/", "libpawnc.so", NULL);
+        }
 
         /* Find full path to library */
         for (i = 0; i < wgconfig.wg_sef_count; i++) {
                 if (strstr(wgconfig.wg_sef_found_list[i], "libpawnc.so")) {
-                        strncpy(libpawnc_src, wgconfig.wg_sef_found_list[i], sizeof(libpawnc_src));
+                        strncpy(libpawnc_src,
+                                wgconfig.wg_sef_found_list[i],
+                                sizeof(libpawnc_src));
                         break;
                 }
         }

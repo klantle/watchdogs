@@ -756,17 +756,10 @@ void wg_extract_archive(const char *filename, const char *dir)
         if (dir_exists(".watchdogs") == 0)
             MKDIR(".watchdogs");
 
-        char ext_paths[WG_PATH_MAX];  /* Buffer for destination directory name */
-
         pr_color(stdout, FCOLOUR_CYAN, " Try Extracting %s archive file...\n", filename);
         fflush(stdout);
 
-        /* Detect archive type by file extension and route to appropriate extractor */
         if (strend(filename, ".tar.gz", true)) {
-                /* For .tar.gz files: create destination directory by removing extension */
-                snprintf(ext_paths, sizeof(ext_paths), "%s", filename);
-                ext_paths[strlen(filename) - 7] = '\0';  /* Remove ".tar.gz" (7 characters) */
-
                 /* Special handling for downloaded files going to "scripts" directory */
                 if (wgconfig.wg_idownload == 1) {
                         if (path_exists("scripts")) {
@@ -782,10 +775,6 @@ void wg_extract_archive(const char *filename, const char *dir)
                 }
         }
         else if (strend(filename, ".tar", true)) {
-                /* For .tar files: create destination directory by removing extension */
-                snprintf(ext_paths, sizeof(ext_paths), "%s", filename);
-                ext_paths[strlen(filename) - 4] = '\0';  /* Remove ".tar" (4 characters) */
-
                 /* Special handling for downloaded files going to "scripts" directory */
                 if (wgconfig.wg_idownload == 1) {
                         if (path_exists("scripts")) {
@@ -801,10 +790,6 @@ void wg_extract_archive(const char *filename, const char *dir)
                 }
         }
         else if (strend(filename, ".zip", true)) {
-                /* For .zip files: create destination directory by removing extension */
-                snprintf(ext_paths, sizeof(ext_paths), "%s", filename);
-                ext_paths[strlen(filename) - 4] = '\0';  /* Remove ".zip" (4 characters) */
-
                 /* Special handling for downloaded files going to "scripts" directory */
                 if (wgconfig.wg_idownload == 1) {
                         if (path_exists("scripts")) {

@@ -891,7 +891,6 @@ done:
  * Replaces struct dencyconfig with direct parameters
  */
 void package_implementation_samp_conf( const char* config_file, const char* fw_line, const char* plugin_name ) {
-        /* Random with specific time */
         srand ( ( unsigned int )time(NULL) ^ rand());
         int rand7 = rand () % 10000000;
 
@@ -917,27 +916,25 @@ void package_implementation_samp_conf( const char* config_file, const char* fw_l
                 char ctx_line[WG_PATH_MAX];
                 int t_exist = 0, tr_exist = 0, tr_ln_has_tx = 0;
 
-                /* Read existing configuration */
                 while ( fgets ( ctx_line, sizeof (ctx_line ), ctx_file ) ) {
                         ctx_line[ strcspn ( ctx_line, "\n" ) ] = 0;
                         if (strstr( ctx_line, plugin_name ) != NULL) {
-                                t_exist = 1; /* Dependency already exists */
+                                t_exist = 1;
                         }
                         if (strstr( ctx_line, fw_line ) != NULL) {
-                                tr_exist = 1; /* Target ctx_line exists */
+                                tr_exist = 1;
                                 if (strstr( ctx_line, plugin_name ) != NULL) {
-                                        tr_ln_has_tx = 1; /* Dependency already on following ctx_line */
+                                        tr_ln_has_tx = 1;
                                 }
                         }
                 }
                 fclose( ctx_file );
 
                 if ( t_exist ) {
-                        return; /* Dependency already configured */
+                        return;
                 }
 
                 if (tr_exist && !tr_ln_has_tx) {
-                        /* Add to existing plugins ctx_line */
                         ctx_file = fopen( config_file, "r" );
 
                         while ( fgets ( ctx_line, sizeof( ctx_line ), ctx_file) ) {
@@ -948,7 +945,6 @@ void package_implementation_samp_conf( const char* config_file, const char* fw_l
                                 if (strstr( clean_line, fw_line ) != NULL &&
                                     strstr( clean_line, plugin_name ) == NULL)
                                 {
-                                        /* Append dependency to existing plugins ctx_line */
                                         fprintf( temp_file,
                                                 "%s %s\n", clean_line, plugin_name );
                                 } else {
@@ -959,19 +955,15 @@ void package_implementation_samp_conf( const char* config_file, const char* fw_l
                         fclose( ctx_file );
                         fclose( temp_file );
 
-                        /* Replace original file with updated version */
                         remove( config_file );
                         rename( ".watchdogs/depends_tmp", config_file );
                 } else if (!tr_exist) {
-                        /* Create new plugins ctx_line */
                         ctx_file = fopen( config_file, "a" );
                         fprintf( ctx_file, "%s %s\n",
                                         fw_line, plugin_name );
                         fclose( ctx_file );
                 }
-
         } else {
-                /* Create new configuration file */
                 ctx_file = fopen( config_file, "w" );
                 fprintf( ctx_file, "%s %s\n",
                                 fw_line, plugin_name );
@@ -1000,7 +992,6 @@ void package_implementation_omp_conf( const char* config_name, const char* packa
         FILE* ctx_file = fopen( config_name, "r" );
         cJSON* s_root = NULL;
 
-        /* Load or create JSON configuration */
         if ( !ctx_file ) {
                 s_root = cJSON_CreateObject();
         } else {
@@ -1034,7 +1025,6 @@ void package_implementation_omp_conf( const char* config_name, const char* packa
                 }
         }
 
-        /* Navigate to pawn -> legacy_plugins structure */
         cJSON* pawn = cJSON_GetObjectItem( s_root, "pawn" );
         if ( !pawn ) {
                 pawn = cJSON_CreateObject();
@@ -1049,7 +1039,6 @@ void package_implementation_omp_conf( const char* config_name, const char* packa
                                 "legacy_plugins", legacy_plugins );
         }
 
-        /* Ensure legacy_plugins is an array */
         if ( !cJSON_IsArray( legacy_plugins ) ) {
                 cJSON_DeleteItemFromObject( pawn, "legacy_plugins" );
                 legacy_plugins = cJSON_CreateArray();
@@ -1057,7 +1046,6 @@ void package_implementation_omp_conf( const char* config_name, const char* packa
                                 "legacy_plugins", legacy_plugins );
         }
 
-        /* Make sure plugin already exists */
         cJSON* dir_item;
         int p_exist = 0;
 
@@ -1069,13 +1057,11 @@ void package_implementation_omp_conf( const char* config_name, const char* packa
                 }
         }
 
-        /* Add plugin if not already present */
         if ( !p_exist ) {
                 cJSON *size_package_name = cJSON_CreateString( package_name );
                 cJSON_AddItemToArray( legacy_plugins, size_package_name );
         }
 
-        /* Write updated configuration */
         char* __printed = cJSON_Print( s_root );
         ctx_file = fopen( config_name, "w" );
         if ( ctx_file ) {
@@ -1083,7 +1069,6 @@ void package_implementation_omp_conf( const char* config_name, const char* packa
                 fclose( ctx_file );
         }
 
-        /* Cleanup */
         cJSON_Delete( s_root );
         wg_free( __printed );
 

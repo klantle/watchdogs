@@ -28,6 +28,8 @@ static const char *description =
 #include "extra.h"
 #include "runner.h"
 #include "utils.h"
+#include "units.h"
+#include "debug.h"
 
 ///
 /// Comparing
@@ -86,6 +88,7 @@ void __reset_sys(void) {
         wg_toml_configs();
         wg_stop_server_tasks();
         wg_u_history();
+        wg_ptr_command_init = 0;
         wgconfig.wg_sel_stat = 0;
         sigint_handler = 0;
 }

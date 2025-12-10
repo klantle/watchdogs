@@ -766,10 +766,10 @@ not_valid_flag_options:
                                 proc_exit_code = WEXITSTATUS(process_status); /* Extract the exit status code (0-255). */
                                 if (proc_exit_code != 0) /* Non-zero exit codes typically indicate an error. */
                                     pr_error(stdout,
-                                            "watchdogs compiler exited with code (%d)", proc_exit_code);
+                                            "compiler process exited with code (%d)", proc_exit_code);
                             } else if (WIFSIGNALED(process_status)) { /* Make sure the child was terminated by a signal (e.g., SIGSEGV, SIGKILL). */
                                 pr_error(stdout,
-                                        "watchdogs compiler terminated by signal (%d)", WTERMSIG(process_status)); /* Extract the signal number that caused termination. */
+                                        "compiler process terminated by signal (%d)", WTERMSIG(process_status)); /* Extract the signal number that caused termination. */
                             }
                         }
                     } else { /* `posix_spawn` failed (returned an error number, not 0). */
@@ -1197,10 +1197,10 @@ compiler_done:
                                     proc_exit_code = WEXITSTATUS(process_status); /* Extract the exit status code (0-255). Convention: 0 = success, non-zero = error. */
                                     if (proc_exit_code != 0) /* Non-zero exit codes typically indicate compilation errors or other failures. */
                                         pr_error(stdout,
-                                                "watchdogs compiler exited with code (%d)", proc_exit_code);
+                                                "compiler process exited with code (%d)", proc_exit_code);
                                 } else if (WIFSIGNALED(process_status)) { /* Make sure the child was terminated by a signal it didn't catch (e.g., SIGSEGV, SIGABRT, SIGKILL). */
                                     pr_error(stdout,
-                                            "watchdogs compiler terminated by signal (%d)", WTERMSIG(process_status)); /* Extract the signal number that caused termination. Common signals: 6=SIGABRT, 11=SIGSEGV, 9=SIGKILL, 15=SIGTERM. */
+                                            "compiler process terminated by signal (%d)", WTERMSIG(process_status)); /* Extract the signal number that caused termination. Common signals: 6=SIGABRT, 11=SIGSEGV, 9=SIGKILL, 15=SIGTERM. */
                                 }
                                 /* Note: WIFSTOPPED and WIFCONTINUED are not checked here - they're for processes stopped by signals like SIGSTOP. */
                             }

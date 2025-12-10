@@ -49,12 +49,13 @@ const char *watchdogs_release = WATCHDOGS_RELEASE;
 static struct timespec cmd_start, cmd_end;
 static double command_dur;
 
+int wg_ptr_command_init = 0;
+
 int __command__(char *chain_pre_command)
 {
         __debug_main_chain(1);
 
         int wg_compile_running = 0;
-
         char ptr_prompt[WG_MAX_PATH * 2];
         size_t size_ptr_command = sizeof(ptr_prompt);
         char *ptr_command;
@@ -119,6 +120,7 @@ _ptr_command:
         command_distance = wg_find_near_command(ptr_command, __command, __command_len, &dist);
 
 _reexecute_command:
+        ++wg_ptr_command_init;
         __debug_main_chain(1);
         clock_gettime(CLOCK_MONOTONIC, &cmd_start);
         if (strncmp(ptr_command, "help", strlen("help")) == 0) {
@@ -1029,7 +1031,7 @@ wanion_retrying:
                 buf_free(&b);
                 curl_easy_setopt(h, CURLOPT_TIMEOUT, 30L);
 
-                verify_cacert_pem(h);
+                curl_verify_cacert_pem(h);
 
                 CURLcode res = curl_easy_perform(h);
                 if (res != CURLE_OK) {
@@ -1302,14 +1304,14 @@ wanion_curl_end:
                 int variation_count = 0;
                 char variations[100][100];
 
-                account_tracker_discrepancy(args, variations, &variation_count);
+                tracker_discrepancy(args, variations, &variation_count);
 
                 printf("[TRACKER] Search base: %s\n", args);
                 printf("[TRACKER] Generated %d Variations\n\n", variation_count);
 
                 for (int i = 0; i < variation_count; i++) {
                     printf("=== TRACKING ACCOUNTS: %s ===\n", variations[i]);
-                    account_tracking_username(curl, variations[i]);
+                    tracking_username(curl, variations[i]);
                     printf("\n");
                 }
 

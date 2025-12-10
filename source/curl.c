@@ -24,49 +24,19 @@ static const char *description =
 #include "debug.h"
 #include "curl.h"
 
-/* Array of online platform names and their URL patterns for account tracking */
-const char* ALL_IN_ONE_FORUMS[MAX_NUM_SITES][2] = {
-        {"github", "https://github.com/%s"},
-        {"gitlab", "https://gitlab.com/%s"},
-        {"gitea", "https://gitea.io/%s"},
-        {"sourceforge", "https://sourceforge.net/u/%s"},
-        {"bitbucket", "https://bitbucket.org/%s"},
-        {"stackoverflow", "https://stackoverflow.com/users/%s"},
-        {"devto", "https://dev.to/%s"},
-        {"hackerrank", "https://www.hackerrank.com/%s"},
-        {"leetcode", "https://leetcode.com/%s"},
-        {"codewars", "https://www.codewars.com/users/%s"},
-        {"codepen", "https://codepen.io/%s"},
-        {"jsfiddle", "https://jsfiddle.net/user/%s"},
-        {"replit", "https://replit.com/@%s"},
-        {"medium", "https://medium.com/@%s"},
-        {"substack", "https://%s.substack.com"},
-        {"wordpress", "https://%s.wordpress.com"},
-        {"blogger", "https://%s.blogspot.com"},
-        {"tumblr", "https://%s.tumblr.com"},
-        {"mastodon", "https://mastodon.social/@%s"},
-        {"bluesky", "https://bsky.app/profile/%s"},
-        {"threads", "https://www.threads.net/@%s"},
-        {"slideshare", "https://www.slideshare.net/%s"},
-        {"speakerdeck", "https://speakerdeck.com/%s"},
-        {"reddit", "https://www.reddit.com/user/%s"},
-        {"discord", "https://discord.com/users/%s"},
-        {"keybase", "https://keybase.io/%s"},
-        {"gravatar", "https://gravatar.com/%s"},
-        {"letterboxd", "https://letterboxd.com/%s"},
-        {"trello", "https://trello.com/%s"},
-        {"linktree", "https://linktr.ee/%s"}
-};
-
 /* Static buffer for storing compiler source directory path */
 static char
+        /* type static and pointer */
         *pawncc_dir_source = NULL;
+static char
+        /* command char */
+        command[WG_MAX_PATH];
 
 /* 
  * Locate and configure CA certificate bundle for CURL SSL verification 
  * Searches for cacert.pem in platform-specific locations
  */
-void verify_cacert_pem(CURL *curl) {
+void curl_verify_cacert_pem(CURL *curl) {
         int platform = 0;
 #ifdef WG_ANDROID
         platform = 1;
@@ -98,11 +68,12 @@ void verify_cacert_pem(CURL *curl) {
                         prefix = "/data/data/com.termux/files/usr";
                 }
 
-                char ca1[WG_PATH_MAX];
-                char ca2[WG_PATH_MAX];
+                char ca1[WG_PATH_MAX], ca2[WG_PATH_MAX];
 
-                snprintf(ca1, sizeof(ca1), "%s/etc/tls/cert.pem", prefix);
-                snprintf(ca2, sizeof(ca2), "%s/etc/ssl/certs/ca-certificates.crt", prefix);
+                snprintf(ca1, sizeof(ca1),
+                        "%s/etc/tls/cert.pem", prefix);
+                snprintf(ca2, sizeof(ca2),
+                        "%s/etc/ssl/certs/ca-certificates.crt", prefix);
 
                 if (access(ca1, F_OK) == 0)
                         curl_easy_setopt(curl, CURLOPT_CAINFO, ca1);
@@ -134,20 +105,19 @@ void verify_cacert_pem(CURL *curl) {
  * Windows & Linux Support
  */
 void destroy_archive(const char *filename) {
-        char curl_command[WG_PATH_MAX * 2];
 #ifdef WG_WINDOWS
-        snprintf( curl_command, sizeof( curl_command ),
+        snprintf( command, sizeof( command ),
                 "del "
                 "/f "
                 "/q \"%s\"",
                 filename );
 #else
-        snprintf( curl_command, sizeof( curl_command ),
+        snprintf( command, sizeof( command ),
                 "rm "
                 "-rf %s",
                 filename );
 #endif
-        wg_run_command ( curl_command );
+        wg_run_command ( command );
         return;
 }
 
@@ -160,12 +130,9 @@ static int progress_callback(void *ptr, curl_off_t dltotal,
                         curl_off_t ulnow)
 {
         static int last_percent = -1; /* Track last displayed percentage */
-        static int dot_index = 0;         /* Index for spinner animation */
-        static const char term_spinner[] = /* Spinner characters */
-                                           "-"
-                                           "\\"
-                                           "|"
-                                           "/";
+        static int dot_index = 0;   /* Index for spinner animation */
+        static const char         /* -\\|/ [nodejs like] */
+                term_spinner[] =  "-" "\\" "|" "/";
 
         int percent;
 
@@ -373,7 +340,7 @@ int package_url_checking(const char* url, const char* github_token)
         curl_easy_setopt(curl, CURLOPT_ERRORBUFFER, wg_buf_err);
 
         /* Configure SSL certificate verification */
-        verify_cacert_pem(curl);
+        curl_verify_cacert_pem(curl);
 
         fflush(stdout);
         
@@ -439,7 +406,7 @@ int package_http_get_content(const char* url, const char* github_token, char** o
         curl_easy_setopt(curl, CURLOPT_TIMEOUT, 60L);
 
         /* Configure SSL verification */
-        verify_cacert_pem(curl);
+        curl_verify_cacert_pem(curl);
 
         /* Perform download */
         res = curl_easy_perform(curl);
@@ -462,7 +429,7 @@ int package_http_get_content(const char* url, const char* github_token, char** o
  * Creates common username mutations to find accounts across platforms.
  */
 void
-account_tracker_discrepancy(const char *base, char discrepancy[][MAX_USERNAME_LEN], 
+tracker_discrepancy(const char *base, char discrepancy[][MAX_USERNAME_LEN], 
     int *cnt)
 {
         int i, j, base_len;
@@ -477,27 +444,36 @@ account_tracker_discrepancy(const char *base, char discrepancy[][MAX_USERNAME_LE
                 return;
 
         /* Add original username */
-        strlcpy(discrepancy[(*cnt)++], base, MAX_USERNAME_LEN);
+        strlcpy(discrepancy[ (*cnt)++ ],
+                base,
+                MAX_USERNAME_LEN);
 
         /* Create variations with duplicate characters (e.g., "heello" from "hello") */
-        for (i = 0; i < base_len && *cnt < MAX_VARIATIONS; i++) {
-                /* Copy prefix */
+        for (i = 0;
+             i < base_len &&
+             *cnt < MAX_VARIATIONS;
+             i++)
+        {
                 strncpy(temp, base, i);
                 temp[i] = '\0';
                 
-                /* Duplicate current character */
                 temp[i] = base[i];
                 temp[i + 1] = base[i];
                 
-                /* Copy suffix */
                 strlcpy(temp + i + 2, base + i + 1, 
                         sizeof(temp) - (i + 2));
                 
-                strlcpy(discrepancy[(*cnt)++], temp, MAX_USERNAME_LEN);
+                strlcpy(discrepancy[ (*cnt)++ ],
+                        temp,
+                        MAX_USERNAME_LEN);
         }
 
         /* Add trailing character repetitions (e.g., "hello111") */
-        for (i = 2; i <= 5 && *cnt < MAX_VARIATIONS; i++) {
+        for (i = 2;
+             i <= 5 &&
+             *cnt < MAX_VARIATIONS;
+             i++)
+        {
                 strlcpy(temp, base, sizeof(temp));
                 
                 for (j = 0; j < i && strlen(temp) < MAX_USERNAME_LEN - 1; j++) {
@@ -509,7 +485,7 @@ account_tracker_discrepancy(const char *base, char discrepancy[][MAX_USERNAME_LE
         }
 
         /* Add common suffixes */
-        const char *suffixes[] = {
+        const char *track_suffixes[] = {
                 "!", "@",
                 "#", "$",
                 "%", "^",
@@ -518,8 +494,8 @@ account_tracker_discrepancy(const char *base, char discrepancy[][MAX_USERNAME_LE
                 NULL	/* Sentinel */
         };
 
-        for (i = 0; suffixes[i] != NULL && *cnt < MAX_VARIATIONS; i++) {
-                snprintf(temp, sizeof(temp), "%s%s", base, suffixes[i]);
+        for (i = 0; track_suffixes[i] != NULL && *cnt < MAX_VARIATIONS; i++) {
+                snprintf(temp, sizeof(temp), "%s%s", base, track_suffixes[i]);
                 strlcpy(discrepancy[(*cnt)++], temp, MAX_USERNAME_LEN);
         }
 }
@@ -528,46 +504,46 @@ account_tracker_discrepancy(const char *base, char discrepancy[][MAX_USERNAME_LE
  * Make sure a username exists on multiple online platforms
  * Uses CURL to probe each platform's URL pattern
  */
-void account_tracking_username(CURL *curl, const char *username) {
+void tracking_username(CURL *curl, const char *username) {
         CURLcode res;
-        
         struct memory_struct response;
-
         struct curl_slist *headers = NULL;
         headers = curl_slist_append(headers, "User-Agent: Mozilla/5.0");
 
         /* Test username against each platform in the list */
         for (int i = 0; i < MAX_NUM_SITES; i++) {
-                char url[200];
-                snprintf(url, sizeof(url), ALL_IN_ONE_FORUMS[i][1], username);
+            char url[200];
+            
+            snprintf(url, sizeof(url), social_site_list[i].url_template, username);
 
-                curl_easy_setopt(curl, CURLOPT_URL, url);
-                curl_easy_setopt(curl, CURLOPT_HTTPHEADER, headers);
+            curl_easy_setopt(curl, CURLOPT_URL, url);
+            curl_easy_setopt(curl, CURLOPT_HTTPHEADER, headers);
 
-                memory_struct_init(&response);
-                curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, write_memory_callback);
-                curl_easy_setopt(curl, CURLOPT_WRITEDATA, (void *)&response);
+            memory_struct_init(&response);
+            curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, write_memory_callback);
+            curl_easy_setopt(curl, CURLOPT_WRITEDATA, (void *)&response);
 
-                verify_cacert_pem(curl);
+            curl_verify_cacert_pem(curl);
 
-                res = curl_easy_perform(curl);
+            res = curl_easy_perform(curl);
 
-                if (res != CURLE_OK) {
-                        printf("[%s] %s -> ERROR %s\n",
-                                ALL_IN_ONE_FORUMS[i][0], url, curl_easy_strerror(res));
+            if (res != CURLE_OK) {
+                printf("* [%s] %s -> ERROR %s\n",
+                    social_site_list[i].site_name, url, curl_easy_strerror(res));
+            } else {
+                long status_code;
+                curl_easy_getinfo(curl, CURLINFO_RESPONSE_CODE, &status_code);
+
+                if (status_code == WG_CURL_RESPONSE_OK) {
+                    printf("* [%s] %s -> FOUND\n",
+                        social_site_list[i].site_name, url);
                 } else {
-                        long status_code;
-                        curl_easy_getinfo(curl, CURLINFO_RESPONSE_CODE, &status_code);
-
-                        if (status_code == WG_CURL_RESPONSE_OK) {
-                                printf("[%s] %s -> FOUND\n", ALL_IN_ONE_FORUMS[i][0], url);
-                        } else {
-                                printf("[%s] %s -> NOT FOUND (%ld)\n",
-                                ALL_IN_ONE_FORUMS[i][0], url, status_code);
-                        }
+                    printf("* [%s] %s -> NOT FOUND (%ld)\n",
+                        social_site_list[i].site_name, url, status_code);
                 }
+            }
 
-                memory_struct_free(&response);
+            memory_struct_free(&response);
         }
 
         curl_slist_free_all(headers);
@@ -597,26 +573,18 @@ static void find_compiler_tools(int compiler_type,
         if (*found_pawncc_exe < 1 && *found_pawncc < 1) {
                 *found_pawncc_exe = wg_sef_fdir(".", "pawncc.exe", ignore_dir);
                 *found_pawncc = wg_sef_fdir(".", "pawncc", ignore_dir);
-        }
-        if (*found_pawncc > 1 || *found_pawncc_exe > 1) if (*found_pawndisasm < 1 || *found_pawndisasm_exe < 1) {
-                *found_pawndisasm_exe = wg_sef_fdir(".", "pawndisasm.exe", ignore_dir);
-                *found_pawndisasm = wg_sef_fdir(".", "pawndisasm", ignore_dir);
-        }
-        if (*found_pawncc_exe > 1) if (*found_PAWNC_DLL < 1 || *found_pawnc_dll < 1) {
                 *found_PAWNC_DLL = wg_sef_fdir(".", "PAWNC.dll", ignore_dir);
                 *found_pawnc_dll = wg_sef_fdir(".", "pawnc.dll", ignore_dir);
+                *found_pawndisasm_exe = wg_sef_fdir(".", "pawndisasm.exe", ignore_dir);
+                *found_pawndisasm = wg_sef_fdir(".", "pawndisasm", ignore_dir);
         }
         if (*found_pawncc_exe < 1 && *found_pawncc < 1) {
                 *found_pawncc_exe = wg_sef_fdir("bin/", "pawncc.exe", ignore_dir);
                 *found_pawncc = wg_sef_fdir("bin/", "pawncc", ignore_dir);
-        }
-        if (*found_pawncc > 1 || *found_pawncc_exe > 1) if (*found_pawndisasm < 1 || *found_pawndisasm_exe < 1) {
-                *found_pawndisasm_exe = wg_sef_fdir("bin/", "pawndisasm.exe", ignore_dir);
-                *found_pawndisasm = wg_sef_fdir("bin/", "pawndisasm", ignore_dir);
-        }
-        if (*found_pawncc_exe > 1) if (*found_PAWNC_DLL < 1 || *found_pawnc_dll < 1) {
                 *found_PAWNC_DLL = wg_sef_fdir("bin/", "PAWNC.dll", ignore_dir);
                 *found_pawnc_dll = wg_sef_fdir("bin/", "pawnc.dll", ignore_dir);
+                *found_pawndisasm_exe = wg_sef_fdir("bin/", "pawndisasm.exe", ignore_dir);
+                *found_pawndisasm = wg_sef_fdir("bin/", "pawndisasm", ignore_dir);
         }
 }
 
@@ -691,48 +659,42 @@ static void update_library_environment(const char *lib_path)
                 }
         }
 
-        char config_file[WG_PATH_MAX];
-        snprintf(config_file, sizeof(config_file), "%s/%s", home_dir, shell_rc);
+        char shell_file[WG_PATH_MAX * 2];
+        snprintf(shell_file, sizeof(shell_file),
+                "%s/%s", home_dir, shell_rc);
 
-        /* Make sure library path already exists in config file */
-        char grep_cmd[512];
-        snprintf(grep_cmd, sizeof(grep_cmd),
-                "grep -q \"LD_LIBRARY_PATH.*%s\" %s", lib_path, config_file);
-
-        int path_exists = wg_run_command(grep_cmd);
-
-        /* Add library path if not already present */
-        if (path_exists != 0) {
-                char export_cmd[512];
-                char backup_cmd[WG_PATH_MAX * 3];
-
-                /* Backup config file before modification */
-                snprintf(backup_cmd, sizeof(backup_cmd), "cp %s %s.backup", config_file, config_file);
-                wg_run_command(backup_cmd);
-
-                snprintf(export_cmd, sizeof(export_cmd),
-                                   "echo 'export LD_LIBRARY_PATH=%s:$LD_LIBRARY_PATH' >> %s",
-                                   lib_path, config_file);
-
-                int ret = wg_run_command(export_cmd);
-
-                if (ret == 0) {
-                        printf("Successfully updated %s. Please run 'source %s' to apply changes.\n",
-                                   shell_rc, config_file);
+        /* If .bashrc doesn't exist, create it */
+        if (path_access(shell_file) == 0 && strfind(shell_file, "bash", true)) {
+                /* Create empty .bashrc file */
+                FILE *fp = fopen(shell_file, "w");
+                if (fp) {
+                        fclose(fp);
+#ifdef WG_WINDOWS
+                        chmod(shell_file, 0644);
+#endif
                 } else {
-                        fprintf(stderr, "Error updating %s\n", shell_rc);
+                        ;
                 }
-        } else {
-                printf("Library path already exists in %s\n", shell_rc);
         }
+
+        snprintf(command, sizeof(command),
+                "export LD_LIBRARY_PATH=%s:$LD_LIBRARY_PATH",
+                lib_path);
+
+        snprintf(command, sizeof(command),
+                "source ~/%s", shell_rc);
+        wg_run_command(command);
 
         /* Update system library cache if needed */
         if (strfind(lib_path, "/usr/", true)) {
-                int is_not_sudo = wg_run_command("sudo echo > /dev/null");
-                if (is_not_sudo == 0) {
-                        wg_run_command("sudo ldconfig");
+                int sudo_check = 1;
+                sudo_check = wg_run_command("sudo echo \"-\" > /dev/null 2>&1");
+                int su_check = 1;
+                su_check = wg_run_command("su > /dev/null 2>&1");
+                if (sudo_check == 0 && su_check == 0) {
+                        wg_run_command("sudo ldconfig > /dev/null 2>&1");
                 } else {
-                        wg_run_command("ldconfig");
+                        wg_run_command("ldconfig > /dev/null 2>&1");
                 }
         }
 }
@@ -751,16 +713,18 @@ static int setup_linux_library(void)
         int i, found_lib;
 
         /* Possible library installation paths */
-        const char *lib_paths[] = {
+        const char *aio_library_path[] = {
                 "/usr/local/lib",
                 "/usr/local/lib32",
-                "/data/data/com.termux/files/usr/lib/",
-                "/data/data/com.termux/files/usr/local/lib/",
+                "/data/data/com.termux/files/usr/lib",
+                "/data/data/com.termux/files/usr/local/lib",
                 "/data/data/com.termux/arm64/usr/lib",
                 "/data/data/com.termux/arm32/usr/lib",
                 "/data/data/com.termux/amd32/usr/lib",
                 "/data/data/com.termux/amd64/usr/lib"
         };
+        size_t size_aio_library_path = sizeof(aio_library_path),
+               size_aio_library_path_zero = sizeof(aio_library_path[0]);
 
         /* Skip if on Windows or unknown OS */
         if (!strcmp(wgconfig.wg_toml_os_type, OS_SIGNAL_WINDOWS) ||
@@ -778,7 +742,10 @@ static int setup_linux_library(void)
 
         /* Find full path to library */
         for (i = 0; i < wgconfig.wg_sef_count; i++) {
-                if (strstr(wgconfig.wg_sef_found_list[i], "libpawnc.so")) {
+                if (strstr(
+                        wgconfig.wg_sef_found_list[i],
+                        "libpawnc.so"))
+                {
                         strncpy(libpawnc_src,
                                 wgconfig.wg_sef_found_list[i],
                                 sizeof(libpawnc_src));
@@ -787,11 +754,12 @@ static int setup_linux_library(void)
         }
 
         /* Select appropriate library directory */
-        for (i = 0; i < sizeof(lib_paths) / sizeof(lib_paths[0]); i++) {
-                if (path_exists(lib_paths[i])) {
-                        selected_path = lib_paths[i];
+        for (i = 0;
+             i < size_aio_library_path / size_aio_library_path_zero;
+             i++) if (path_exists(aio_library_path[i]))
+        {
+                        selected_path = aio_library_path[i];
                         break;
-                }
         }
 
         if (!selected_path) {
@@ -800,7 +768,8 @@ static int setup_linux_library(void)
         }
 
         /* Copy library to system directory */
-        snprintf(dest_path, sizeof(dest_path), "%s/libpawnc.so", selected_path);
+        snprintf(dest_path, sizeof(dest_path),
+                "%s/libpawnc.so", selected_path);
         wg_sef_wmv(libpawnc_src, dest_path);
 
         /* Update environment variables */
@@ -848,21 +817,48 @@ void wg_apply_pawncc(void)
         /* Store paths to found compiler tools */
         for (i = 0; i < wgconfig.wg_sef_count; i++) {
                 const char *item = wgconfig.wg_sef_found_list[i];
-                if (!item)
-                        continue;
-
+                if (!item) continue;
                 if (strstr(item, "pawncc.exe")) {
+                    char *size_last_slash = strrchr(item, __PATH_CHR_SEP_LINUX);
+                    if (!size_last_slash) size_last_slash = strrchr(item, __PATH_CHR_SEP_WIN32);
+                    if (size_last_slash && strstr(size_last_slash + 1, "pawncc.exe")) {
                         strncpy(pawncc_exe_src, item, sizeof(pawncc_exe_src));
-                } else if (strstr(item, "pawncc") && !strstr(item, ".exe")) {
+                    }
+                }
+                if (strstr(item, "pawncc")) {
+                    char *size_last_slash = strrchr(item, __PATH_CHR_SEP_LINUX);
+                    if (!size_last_slash) size_last_slash = strrchr(item, __PATH_CHR_SEP_WIN32);
+                    if (size_last_slash && strstr(size_last_slash + 1, "pawncc")) {
                         strncpy(pawncc_src, item, sizeof(pawncc_src));
-                } else if (strstr(item, "pawndisasm.exe")) {
+                    }
+                }
+                if (strstr(item, "pawndisasm.exe")) {
+                    char *size_last_slash = strrchr(item, __PATH_CHR_SEP_LINUX);
+                    if (!size_last_slash) size_last_slash = strrchr(item, __PATH_CHR_SEP_WIN32);
+                    if (size_last_slash && strstr(size_last_slash + 1, "pawndisasm.exe")) {
                         strncpy(pawndisasm_exe_src, item, sizeof(pawndisasm_exe_src));
-                } else if (strstr(item, "pawndisasm") && !strstr(item, ".exe")) {
+                    }
+                }
+                if (strstr(item, "pawndisasm")) {
+                    char *size_last_slash = strrchr(item, __PATH_CHR_SEP_LINUX);
+                    if (!size_last_slash) size_last_slash = strrchr(item, __PATH_CHR_SEP_WIN32);
+                    if (size_last_slash && strstr(size_last_slash + 1, "pawndisasm")) {
                         strncpy(pawndisasm_src, item, sizeof(pawndisasm_src));
-                } else if (strstr(item, "pawnc.dll"))  {
+                    }
+                }
+                if (strstr(item, "pawnc.dll")) {
+                    char *size_last_slash = strrchr(item, __PATH_CHR_SEP_LINUX);
+                    if (!size_last_slash) size_last_slash = strrchr(item, __PATH_CHR_SEP_WIN32);
+                    if (size_last_slash && strstr(size_last_slash + 1, "pawnc.dll")) {
                         strncpy(pawnc_dll_src, item, sizeof(pawnc_dll_src));
-                } else if (strstr(item, "PAWNC.dll")) {
+                    }
+                }
+                if (strstr(item, "PAWNC.dll")) {
+                    char *size_last_slash = strrchr(item, __PATH_CHR_SEP_LINUX);
+                    if (!size_last_slash) size_last_slash = strrchr(item, __PATH_CHR_SEP_WIN32);
+                    if (size_last_slash && strstr(size_last_slash + 1, "PAWNC.dll")) {
                         strncpy(PAWNC_DLL_src, item, sizeof(PAWNC_DLL_src));
+                    }
                 }
         }
 
@@ -889,26 +885,27 @@ void wg_apply_pawncc(void)
         setup_linux_library();
 
         /* Clean up downloaded source directory */
-        char rm_cmd[WG_PATH_MAX + 56];
         if (is_native_windows())
-                snprintf(rm_cmd, sizeof(rm_cmd),
+                snprintf(command, sizeof(command),
                         "rmdir /s /q \"%s\"",
                         pawncc_dir_source);
         else
-                snprintf(rm_cmd, sizeof(rm_cmd),
+                snprintf(command, sizeof(command),
                         "rm -rf %s",
                         pawncc_dir_source);
-        wg_run_command(rm_cmd);
+        wg_run_command(command);
 
         pawncc_dir_source = NULL;
 
+        /* Rename pawnc.dll -> PAWNC.dll */
         if (path_exists("pawno/pawnc.dll") == 1)
                 rename("pawno/pawnc.dll", "pawno/PAWNC.dll");
                 
         if (path_exists("qawno/pawnc.dll") == 1)
                 rename("qawno/pawnc.dll", "qawno/PAWNC.dll");
                 
-        pr_info(stdout, "Congratulations! compiler installed successfully.");
+        pr_info(stdout, "Congratulations!. -done");
+
         /* Prompt to run compiler immediately */
         pr_color(stdout, FCOLOUR_CYAN, "Run compiler now? (y/n):");
         char *compile_now = readline(" ");
@@ -926,7 +923,8 @@ void wg_apply_pawncc(void)
             if (path_exists(target) == 0) {
                 pr_info(stdout, "File: %s.pwn not found!.. creating...", target);
 
-                if (dir_exists("gamemodes") == 0) MKDIR("gamemodes");
+                if (dir_exists("gamemodes") == 0)
+                        MKDIR("gamemodes");
                 
                 char size_gamemode[WG_PATH_MAX];
                 snprintf(size_gamemode, sizeof(size_gamemode), 
@@ -983,7 +981,7 @@ static int prompt_apply_pawncc(void)
         }
 
         if (confirm) {
-                if (strcmp(confirm, "Y") == 0 || strcmp(confirm, "y") == 0) {
+                if (strfind(confirm, "Y", true)) {
                         wg_free(confirm);
                         return 1;
                 }
@@ -1027,6 +1025,7 @@ static int debug_callback(CURL *handle, curl_infotype type,
                     strfind(data, "content-security-policy: ", true))
                         break;
                 printf("<= Recv header: %.*s", (int)size, data);
+                fflush(stdout);
                 break;
         case CURLINFO_DATA_IN:
         case CURLINFO_SSL_DATA_IN:
@@ -1045,7 +1044,7 @@ static void persing_filename(char *filename) {
                 if (*p == '?' || *p == '*' ||
                     *p == '<' || *p == '>' || 
                     *p == '|' || *p == ':' ||
-                    *p == '"' || *p == '\\' || *p == '/') {
+                    *p == '"' || *p == __PATH_CHR_SEP_WIN32 || *p == __PATH_CHR_SEP_LINUX) {
                         *p = '_';
                 }
         }
@@ -1096,10 +1095,8 @@ int wg_download_file(const char *url, const char *output_filename)
         /* Extract basename from URL if needed */
         char final_filename[WG_PATH_MAX];
         if (strstr(clean_filename, "://") || strstr(clean_filename, "http")) {
-                const char *url_filename = strrchr(url, '/');
+                const char *url_filename = strrchr(url, __PATH_CHR_SEP_LINUX);
                 if (url_filename) {
-                        url_filename++;
-                        
                         char *url_query_pos = strchr(url_filename, '?');
                         if (url_query_pos) {
                                 size_t url_name_len = url_query_pos - url_filename;
@@ -1108,6 +1105,7 @@ int wg_download_file(const char *url, const char *output_filename)
                                 }
                                 strncpy(final_filename, url_filename, url_name_len);
                                 final_filename[url_name_len] = '\0';
+                                ++url_filename;
                         } else {
                                 strncpy(final_filename, url_filename, sizeof(final_filename) - 1);
                                 final_filename[sizeof(final_filename) - 1] = '\0';
@@ -1197,7 +1195,7 @@ int wg_download_file(const char *url, const char *output_filename)
                 curl_easy_setopt(curl, CURLOPT_XFERINFODATA, NULL);
 
                 /* SSL certificate configuration */
-                verify_cacert_pem(curl);
+                curl_verify_cacert_pem(curl);
 
                 /* Execute download */
                 fflush(stdout);

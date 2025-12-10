@@ -445,11 +445,34 @@ __asm__ volatile (
 			}
 		}
 
-	    /* Execute command using system() call */
+		/* sudo validate */
+		int sudo_command = 0;
 		if (strfind(size_command, "sudo", true)) {
-			static int sudo_warning = 0;
-			if (sudo_warning != 1) {
-				sudo_warning = 1;
+			sudo_command = 1;
+		}
+		if (strfind(size_command, ">", true) ||
+			strfind(size_command, "/dev/null", true) ||
+			strfind(size_command, "2>&1", true))
+		{
+			/* writing mode = cancel */
+			if (sudo_command == 1)
+				--sudo_command;
+			else {
+				;
+			}
+		}
+		if (wg_ptr_command_init) {
+			/* ptr_command = cancel */
+			if (sudo_command == 1)
+				--sudo_command;
+			--wg_ptr_command_init;
+		}
+
+		if (sudo_command == 1) {
+			/* sudo notice */
+			static int k = 0;
+			if (k != 1) {
+				k = 1;
 				printf("\n");
 				printf("\t=== SUDO SECURITY WARNING ===\n");
 				printf("\tYou are about to run commands with ROOT privileges!\n");
@@ -465,6 +488,7 @@ __asm__ volatile (
 			}
 		}
 
+	    /* Execute command using system() call */
 		int ret = system(size_command);
 		return ret;
 }
@@ -1248,9 +1272,7 @@ static void wg_add_found_path(const char *path)
  * and Unix opendir/readdir. Skips special directories, handles symlinks,
  * and collects matching files in global list.
  */
-int wg_sef_fdir(const char *sef_path,
-				const char *sef_name,
-				const char *ignore_dir)
+int wg_sef_fdir(const char *sef_path, const char *sef_name, const char *ignore_dir)
 {
 		char
 			size_path[MAX_SEF_PATH_SIZE]; /* Buffer for full paths */
@@ -2057,12 +2079,18 @@ int wg_sef_wmv(const char *c_src, const char *c_dest)
 		if (ret != 1)
 				return 1;
 
-		/* Determine if sudo is available */
-		int is_not_sudo = 0;
+		/* Determine if sudo - sudo & su is available */
+		int is_not_sudo = 1;
 #ifdef WG_WINDOWS
 		is_not_sudo = 1; /* Windows doesn't use sudo */
 #else
-		is_not_sudo = wg_run_command("sudo echo > /dev/null");
+		int sudo_check = 1;
+		sudo_check = wg_run_command("sudo echo \"-\" > /dev/null 2>&1");
+		int su_check = 1;
+		su_check = wg_run_command("su > /dev/null 2>&1");
+		if (sudo_check == 0 && su_check == 0) {
+				--is_not_sudo;
+		}
 #endif
 		/* Try without sudo first if available */
 		if (is_not_sudo == 1) {
@@ -2101,12 +2129,18 @@ int wg_sef_wcopy(const char *c_src, const char *c_dest)
 		if (ret != 1)
 				return 1;
 
-		/* Check sudo availability */
-		int is_not_sudo = 0;
+		/* Determine if sudo - sudo & su is available */
+		int is_not_sudo = 1;
 #ifdef WG_WINDOWS
-		is_not_sudo = 1;
+		is_not_sudo = 1; /* Windows doesn't use sudo */
 #else
-		is_not_sudo = wg_run_command("sudo echo > /dev/null");
+		int sudo_check = 1;
+		sudo_check = wg_run_command("sudo echo \"-\" > /dev/null 2>&1");
+		int su_check = 1;
+		su_check = wg_run_command("su > /dev/null 2>&1");
+		if (sudo_check == 0 && su_check == 0) {
+				--is_not_sudo;
+		}
 #endif
 		/* Try copy without sudo first */
 		if (is_not_sudo == 1) {

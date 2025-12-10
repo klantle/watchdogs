@@ -284,11 +284,11 @@ cd /c/users/desktop_name/downloads/your_project
 ```
 > Download stable binary
 ```yaml
-curl -L -o watchdogs.win "https://gitlab.com/-/project/75403219/uploads/ad32283f75fc6d23e369a34ba1d03764/watchdogs.win"
+curl -L -o watchdogs.win "https://gitlab.com/-/project/75403219/uploads/c5834a1b638427a94304f8cec72f2086/watchdogs.win"
 ```
 > Debug Mode
 ```yaml
-curl -L -o watchdogs.debug.win "https://gitlab.com/-/project/75403219/uploads/254965ba140bddf5a30b29b06eed7ee0/watchdogs.debug.win"
+curl -L -o watchdogs.debug.win "https://gitlab.com/-/project/75403219/uploads/ff0358e14e755d17b131f1c6ce3a27fa/watchdogs.debug.win"
 ```
 > Install dll library & cURL cacert.pem - 19+/MB.
 ```yaml
@@ -313,7 +313,7 @@ bash -c 'if [ -d "watch" ]; then rm -rf "watch"; fi; git clone https://github.co
 
 ### watchdogs.toml Structure
 
-| Category | Setting | Value |
+| Category | Setting | Value Sample |
 |---|---|---|
 | **General** | OS | `linux` |
 |  | Binary | `samp-server.exe` |
@@ -403,8 +403,8 @@ send myfiles.tar.gz
 ### Compilation Commands
 
 > Example `yourmode.pwn`:
-```c++
-#include "a_samp"
+```pwn
+native printf(const format[], {Float,_}:...);
 
 main() {
   printf("Hello, World!");

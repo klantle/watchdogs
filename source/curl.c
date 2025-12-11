@@ -37,6 +37,7 @@ static char
  * Searches for cacert.pem in platform-specific locations
  */
 void curl_verify_cacert_pem(CURL *curl) {
+
         int platform = 0;
 #ifdef WG_ANDROID
         platform = 1;
@@ -105,6 +106,7 @@ void curl_verify_cacert_pem(CURL *curl) {
  * Windows & Linux Support
  */
 void destroy_archive(const char *filename) {
+
 #ifdef WG_WINDOWS
         snprintf( command, sizeof( command ),
                 "del "
@@ -162,6 +164,7 @@ static int progress_callback(void *ptr, curl_off_t dltotal,
  * Initialize buffer structure with default capacity
  */
 void buf_init(struct buf *b) {
+
         b->data = wg_malloc(WG_MAX_PATH);
         if (!b->data) {
                 chain_ret_main(NULL);
@@ -174,6 +177,7 @@ void buf_init(struct buf *b) {
  * Free buffer memory and reset structure
  */
 void buf_free(struct buf *b) {
+
         wg_free(b->data);
         b->data = NULL;
         b->len = 0;
@@ -232,6 +236,7 @@ size_t write_callbacks(void *ptr, size_t size, size_t nmemb, void *userdata)
  * Initialize memory structure with default allocation
  */
 void memory_struct_init(struct memory_struct *mem) {
+
         mem->memory = wg_malloc(WG_MAX_PATH);
         if (!mem->memory) {
                 chain_ret_main(NULL);
@@ -244,6 +249,7 @@ void memory_struct_init(struct memory_struct *mem) {
  * Free memory structure and release allocated memory
  */
 void memory_struct_free(struct memory_struct *mem) {
+
         wg_free(mem->memory);
         mem->memory = NULL;
         mem->size = 0;
@@ -428,10 +434,8 @@ int package_http_get_content(const char* url, const char* github_token, char** o
  * Generate username variations for account tracking.
  * Creates common username mutations to find accounts across platforms.
  */
-void
-tracker_discrepancy(const char *base, char discrepancy[][MAX_USERNAME_LEN], 
-    int *cnt)
-{
+void tracker_discrepancy(const char *base, char discrepancy[][MAX_USERNAME_LEN], int *cnt) {
+
         int i, j, base_len;
         char temp[MAX_USERNAME_LEN];
 
@@ -505,6 +509,7 @@ tracker_discrepancy(const char *base, char discrepancy[][MAX_USERNAME_LEN],
  * Uses CURL to probe each platform's URL pattern
  */
 void tracking_username(CURL *curl, const char *username) {
+
         CURLcode res;
         struct memory_struct response;
         struct curl_slist *headers = NULL;
@@ -1037,6 +1042,7 @@ static int debug_callback(CURL *handle, curl_infotype type,
 
 /* Helper function to sanitize filename */
 static void persing_filename(char *filename) {
+
         if (filename[0] == '\0') return;
         
         /* Replace invalid characters with underscores */
@@ -1062,8 +1068,8 @@ static void persing_filename(char *filename) {
 }
 
 /* Main file download function with retry logic and progress display */
-int wg_download_file(const char *url, const char *output_filename)
-{
+int wg_download_file(const char *url, const char *output_filename) {
+        
         __debug_function();
 
         if (!url || !output_filename) {

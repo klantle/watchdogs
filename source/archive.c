@@ -29,8 +29,8 @@ static const char *description =
  * Ensures proper path concatenation without duplicate directory components.
  */
 static void arch_extraction_path(const char *entry_dest, const char *entry_path,
-                                 char *exit_path, size_t exit_size)
-{
+                                 char *exit_path, size_t exit_size) {
+
         /* Handle cases where no specific destination is provided */
         if (!entry_dest
             || !strcmp(entry_dest, ".")
@@ -256,6 +256,7 @@ fallback:
 }
 
 int wg_path_recursive(struct archive *archive, const char *root, const char *path) {
+
         struct archive_entry *entry = NULL;
         struct stat path_stat;
         char full_path[WG_MAX_PATH];
@@ -444,8 +445,8 @@ int wg_path_recursive(struct archive *archive, const char *root, const char *pat
  */
 int compress_directory(const char *archive_path,
                        const char *dir_path,
-                       CompressionFormat format)
-{
+                       CompressionFormat format) {
+
         struct archive *a;
         int ret;
 
@@ -503,6 +504,7 @@ int compress_directory(const char *archive_path,
  * Includes interactive logging option for extraction progress monitoring.
  */
 int wg_extract_tar(const char *tar_path, const char *entry_dest) {
+
         int r;
         int flags;
         struct archive *a;          /* Archive reader for reading source archive */
@@ -615,8 +617,8 @@ int wg_extract_tar(const char *tar_path, const char *entry_dest) {
  */
 static int extract_zip_entry(struct archive *archive_read,
                         struct archive *archive_write,
-                        struct archive_entry *item)
-{
+                        struct archive_entry *item) {
+
         int ret;
         const void *buffer;
         size_t size;
@@ -654,8 +656,8 @@ static int extract_zip_entry(struct archive *archive_read,
  * Uses libarchive's ZIP format support with proper path handling.
  * Includes interactive extraction logging similar to TAR extraction.
  */
-int wg_extract_zip(const char *zip_file, const char *entry_dest)
-{
+int wg_extract_zip(const char *zip_file, const char *entry_dest) {
+
         struct archive *archive_read;
         struct archive *archive_write;
         struct archive_entry *item;
@@ -748,8 +750,8 @@ error:
  * Supports .tar.gz, .tar, and .zip formats. Handles automatic destination directory creation.
  * Includes debug information output when compiled with debugging enabled.
  */
-void wg_extract_archive(const char *filename, const char *dir)
-{
+void wg_extract_archive(const char *filename, const char *dir) {
+        
         /* Debug information section */
         __debug_function();
 

@@ -45,6 +45,7 @@ static cJSON *main_scripts = NULL;   /* Main script object in JSON */
  * Used during graceful shutdown or error recovery scenarios.
  */
 void try_cleanup_server(void) {
+
         sigint_handler = 1;            /* Mark that interrupt is being handled */
         wg_stop_server_tasks();       /* Terminate running server processes */
         restore_server_config();      /* Revert configuration files to original state */
@@ -57,6 +58,7 @@ void try_cleanup_server(void) {
  * interface. Platform-specific restart commands ensure proper process management.
  */
 void unit_sigint_handler(int sig) {
+
         try_cleanup_server();         /* Clean up server processes and configs */
         
         struct timespec stop_all_timer;
@@ -69,25 +71,25 @@ void unit_sigint_handler(int sig) {
             fclose(crashdetect_file);
         
         /* Platform-specific restart of watchdogs interface */
-#ifdef __ANDROID__
-#ifndef _DBG_PRINT
+        #ifdef __ANDROID__
+        #ifndef _DBG_PRINT
         wg_run_command("exit && ./watchdogs.tmux");
-#else
+        #else
         wg_run_command("exit && ./watchdogs.debug.tmux");
-#endif
-#elif defined(WG_LINUX)
-#ifndef _DBG_PRINT
+        #endif
+        #elif defined(WG_LINUX)
+        #ifndef _DBG_PRINT
         wg_run_command("exit && ./watchdogs");
-#else
+        #else
         wg_run_command("exit && ./watchdogs.debug");
-#endif
-#elif defined(WG_WINDOWS)
-#ifndef _DBG_PRINT
+        #endif
+        #elif defined(WG_WINDOWS)
+        #ifndef _DBG_PRINT
         wg_run_command("exit && watchdogs.win");
-#else
+        #else
         wg_run_command("exit && watchdogs.debug.win");
-#endif
-#endif
+        #endif
+        #endif
 }
 
 /*
@@ -96,6 +98,7 @@ void unit_sigint_handler(int sig) {
  * Uses platform-appropriate kill commands for process termination.
  */
 void wg_stop_server_tasks(void) {
+
         if (wg_server_env() == 1)           /* SA-MP server environment */
           wg_kill_process(wgconfig.wg_toml_binary);
         else if (wg_server_env() == 2)      /* Open.MP server environment */
@@ -107,8 +110,8 @@ void wg_stop_server_tasks(void) {
  * Determines appropriate log file based on server environment
  * and outputs its contents using file printing utility.
  */
-void wg_display_server_logs(int ret)
-{
+void wg_display_server_logs(int ret) {
+
         char *log_file = NULL;
         if (wg_server_env() == 1)            /* SA-MP log file */
             log_file = wgconfig.wg_toml_logs;
@@ -125,6 +128,7 @@ void wg_display_server_logs(int ret)
  * detection for runtime errors, plugin failures, memory issues, and configuration mismatches.
  */
 void wg_server_crash_check(void) {
+
         /* Open server log file for analysis */
         FILE *this_proc_file = NULL;
         if (wg_server_env() == 1)            /* SA-MP server logs */
@@ -652,11 +656,11 @@ static int update_samp_config(const char *gamemode)
         }
         
         /* Open bak config */
-#ifdef _WIN32
-    int fd = open(size_config, O_RDONLY);
-#else
-    int fd = open(size_config, O_RDONLY | O_NOFOLLOW);
-#endif
+        #ifdef WG_WINDOWS
+        int fd = open(size_config, O_RDONLY);
+        #else
+        int fd = open(size_config, O_RDONLY | O_NOFOLLOW);
+        #endif
         if (fd < 0) {
                 pr_error(stdout, "cannot open backup");
                 return -1;
@@ -706,6 +710,7 @@ static int update_samp_config(const char *gamemode)
  * Ensures clean state after temporary configuration changes.
  */
 void restore_server_config(void) {
+
         char size_config[WG_PATH_MAX];
         snprintf(size_config, sizeof(size_config),
                 ".watchdogs/%s.bak", wgconfig.wg_toml_config);
@@ -807,7 +812,7 @@ void wg_run_samp_server(const char *gamemode, const char *server_bin)
                 ret_c == -1)
                 return;
 
-        CHMOD(server_bin, FILE_MODE);  /* Set executable permissions */
+        CHMOD_FULL(server_bin);  /* Set executable permissions */
 
         /* Set up signal handler for graceful termination */
         struct sigaction sa;
@@ -830,11 +835,11 @@ void wg_run_samp_server(const char *gamemode, const char *server_bin)
 back_start:
         start = time(NULL);
         /* Construct and execute server command */
-#ifdef WG_WINDOWS
-        snprintf(command, sizeof(command), "%s", server_bin);
-#else
-        snprintf(command, sizeof(command), "./%s", server_bin);
-#endif
+        #ifdef WG_WINDOWS
+                snprintf(command, sizeof(command), "%s", server_bin);
+        #else
+                snprintf(command, sizeof(command), "./%s", server_bin);
+        #endif
         ret = wg_run_command(command);
         if (ret == 0) {
                 end = time(NULL);
@@ -920,11 +925,11 @@ static int update_omp_config(const char *gamemode)
         }
 
         /* Open bak config */
-#ifdef _WIN32
-    int fd = open(size_config, O_RDONLY);
-#else
-    int fd = open(size_config, O_RDONLY | O_NOFOLLOW);
-#endif
+        #ifdef WG_WINDOWS
+        int fd = open(size_config, O_RDONLY);
+        #else
+        int fd = open(size_config, O_RDONLY | O_NOFOLLOW);
+        #endif
         if (fd < 0) {
                 pr_error(stdout, "Failed to open %s", size_config);
                 goto runner_end;
@@ -1030,9 +1035,7 @@ runner_kill:
  * Restores Open.MP configuration using generic server config restoration.
  * Alias function for consistency with SA-MP restoration interface.
  */
-void restore_omp_config(void) {
-        restore_server_config();
-}
+void restore_omp_config(void) { restore_server_config(); }
 
 /*
  * Executes Open.MP server with specified gamemode.
@@ -1083,7 +1086,7 @@ void wg_run_omp_server(const char *gamemode, const char *server_bin)
                 ret_c == -1)
                 return;
 
-        CHMOD(server_bin, FILE_MODE);  /* Set executable permissions */
+        CHMOD_FULL(server_bin);  /* Set executable permissions */
 
         /* Setup signal handling */
         struct sigaction sa;
@@ -1106,12 +1109,11 @@ void wg_run_omp_server(const char *gamemode, const char *server_bin)
 back_start:
         start = time(NULL);
         /* Construct server execution command */
-#ifdef WG_WINDOWS
-        snprintf(command, sizeof(command), "%s", server_bin);
-#else
-        snprintf(command, sizeof(command), "./%s", server_bin);
-#endif
-
+        #ifdef WG_WINDOWS
+                snprintf(command, sizeof(command), "%s", server_bin);
+        #else
+                snprintf(command, sizeof(command), "./%s", server_bin);
+        #endif
         ret = wg_run_command(command);
 
         if (ret != 0) {

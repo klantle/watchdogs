@@ -32,6 +32,12 @@
 #define WG_ANDROID
 #endif
 
+/* Path constants */
+#define __PATH_CHR_SEP_LINUX '/'
+#define __PATH_CHR_SEP_WIN32 '\\'
+#define __PATH_STR_SEP_LINUX "/"
+#define __PATH_STR_SEP_WIN32 "\\"
+
 /* Platform-specific includes & defines */
 #ifdef WG_WINDOWS
 #include <io.h>
@@ -40,51 +46,67 @@
 #include <windows.h>
 #include <strings.h>
 
-#define __PATH_SEP "\\"
-#define IS_PATH_SEP(c) ((c) == '/' || (c) == '\\')
-#define mkdir(wx) _mkdir(wx)
-#define MKDIR(wx) mkdir(wx)
-#define Sleep(sec) Sleep((sec)*1000)
-#define sleep(wx) Sleep(wx)
-#define setenv(wx,wy,wz) _putenv_s(wx,wy)
-#define SETEN(wx,wy,wz) setenv(wx,wy)
-#define lstat(wx, wy) stat(wx, wy)
-#define S_ISLNK(wx) ((wx & S_IFMT) == S_IFLNK)
-#define win32_chmod(path) ({ \
-    const char *_path = (path); \
-    int _mode = _S_IREAD | _S_IWRITE; \
-    chmod(_path, _mode); \
-})
+#define __PATH_SEP __PATH_STR_SEP_WIN32
+#define IS_PATH_SEP(c) \
+    ((c) == __PATH_CHR_SEP_LINUX || (c) == __PATH_CHR_SEP_WIN32)
+#define mkdir(wx) \
+    _mkdir(wx)
+#define MKDIR(wx) \
+    mkdir(wx)
+#define Sleep(sec) \
+    Sleep((sec)*1000)
+#define sleep(wx) \
+    Sleep(wx)
+#define setenv(wx,wy,wz) \
+    _putenv_s(wx,wy)
+#define SETENV(wx,wy,wz) \
+    setenv(wx,wy)
+#define lstat(wx, wy) \
+    stat(wx, wy)
+#define S_ISLNK(wx) \
+    ((wx & S_IFMT) == S_IFLNK)
+#define CHMOD_OWNER_GROUP(wx) \
+    ({ \
+        const char *_p = (wx); \
+        mode_t _m = S_IRUSR | S_IWUSR | S_IXUSR | \
+                    S_IRGRP | S_IWGRP | S_IXGRP | \
+                    S_IROTH | S_IXOTH; \
+        chmod(_p, _m); \
+    })
+#define CHMOD_FULL(wx) \
+    ({ \
+        const char *_p = (wx); \
+        mode_t _m =  S_IRUSR | S_IWUSR | S_IXUSR | \
+                     S_IRGRP | S_IWGRP | S_IXGRP | \
+                     S_IROTH | S_IWOTH | S_IXOTH; \
+        chmod(_p, _m); \
+    })
 #define open _open
 #define read _read
 #define close _close
 #define O_RDONLY _O_RDONLY
-#define CHMOD(wx, wy) _chmod(wx, wy)
-#define FILE_MODE _S_IREAD | _S_IWRITE
 #define getcwd _getcwd
-
 #else
 #include <sys/utsname.h>
 #include <sys/wait.h>
 #include <unistd.h>
 #include <fnmatch.h>
 
-#define __PATH_SEP "/"
-#define IS_PATH_SEP(c) ((c) == '/')
-#define MKDIR(wx) mkdir(wx, 0755)
-#define SETENV(wx,wy,wz) setenv(wx,wy,wz)
-#define CHMOD(wx,wy) chmod(wx,wy)
-#define FILE_MODE 0777
+#define __PATH_SEP __PATH_STR_SEP_LINUX
+#define IS_PATH_SEP(c) \
+    ((c) == __PATH_CHR_SEP_LINUX)
+#define MKDIR(wx) \
+    mkdir(wx, 0755)
+#define SETENV(wx,wy,wz) \
+    setenv(wx,wy,wz)
+#define CHMOD_OWNER_GROUP(wx) \
+    chmod(wx, 0775)
+#define CHMOD_FULL(wx) \
+    chmod(wx, 0777)
 #endif
 
-/* Path constants */
-#define __PATH_CHR_SEP_LINUX '/'
-#define __PATH_CHR_SEP_WIN32 '\\'
-#define __PATH_STR_SEP_LINUX "/"
-#define __PATH_STR_SEP_WIN32 "\\"
-
 /* Dirent constants */
-#ifndef DT_UNKNOWN
+#if ! defined(DT_UNKNOWN) && ! defined(DT_FIFO)
 #define DT_UNKNOWN 0
 #define DT_FIFO    1
 #define DT_CHR     2

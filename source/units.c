@@ -1607,6 +1607,7 @@ chain_done:
 }
 
 void chain_ret_main(void *chain_pre_command) {
+    
         wg_console_title(NULL);
         int ret = -3;
         if (chain_pre_command != NULL ) {

@@ -36,10 +36,12 @@ static const char *description =
 static io_compilers wg_compiler_sys = { 0 };
 
 /* Main compiler execution function that orchestrates the entire compilation process */
-int wg_run_compiler(const char *args, const char *compile_args,  const char *second_arg, const char *four_arg,
-                    const char *five_arg, const char *six_arg, const char *seven_arg, const char *eight_arg,
-                    const char *nine_arg)
-{
+int wg_run_compiler(const char *args, const char *compile_args,
+                    const char *second_arg, const char *four_arg,
+                    const char *five_arg, const char *six_arg,
+                    const char *seven_arg, const char *eight_arg,
+                    const char *nine_arg) {
+                        
 		/* Debug information section */
         __debug_function();
 		

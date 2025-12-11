@@ -200,8 +200,7 @@ static const char *package_get_basename(
  * Identifies platform-specific files by name patterns. Returns 1 if the
  * filename contains any OS pattern, 0 otherwise.
  */
-int this_os_archive( const char *filename )
-{
+int this_os_archive( const char *filename ) {
         int k;
         
         /* Determine target operating system at compile time */
@@ -432,8 +431,8 @@ char *package_fetching_assets(char **package_assets,
  * Extracts host, domain, user, repo, and tag from dependency string
  */
 static int
-package_parse_repo( const char *input, struct repositories *__package_data )
-{
+package_parse_repo( const char *input, struct repositories *__package_data ) {
+
         memset( __package_data, 0, sizeof( *__package_data ) );
 
         /* Default to GitHub */
@@ -516,11 +515,10 @@ package_parse_repo( const char *input, struct repositories *__package_data )
 
 #if defined( _DBG_PRINT )
         char size_title[WG_PATH_MAX * 3];
-        snprintf( size_title, sizeof( size_title ), "repo: host=%s, domain=%s, user=%s, repo=%s, tag=%s",
-                __package_data->host,
-                __package_data->domain,
-                __package_data->user,
-                __package_data->repo,
+        snprintf( size_title, sizeof( size_title ),
+                "repo: host=%s, domain=%s, user=%s, repo=%s, tag=%s",
+                __package_data->host, __package_data->domain,
+                __package_data->user, __package_data->repo,
                 __package_data->tag[0] ? __package_data->tag : "(none)" );
         wg_console_title( size_title );
 #endif
@@ -533,8 +531,8 @@ package_parse_repo( const char *input, struct repositories *__package_data )
  * Retrieves downloadable assets for a specific release tag
  */
 static int package_gh_release_assets( const char *user, const char *repo,
-                                 const char *tag, char **out_urls, int max_urls )
-{
+                                 const char *tag, char **out_urls, int max_urls ) {
+                                        
         char api_url[WG_PATH_MAX * 2];
         char *json_data = NULL;
         const char *p;
@@ -610,39 +608,32 @@ package_build_repo_url( const struct repositories *__package_data, int is_tag_pa
                         if ( !strcmp( package_actual_tag, "latest" ) ) {
                                 snprintf( put_url, put_size,
                                         "https://%s/%s/%s/releases/latest",
-                                        __package_data->domain,
-                                        __package_data->user,
+                                        __package_data->domain, __package_data->user,
                                         __package_data->repo );
                         } else {
                                 snprintf( put_url, put_size,
                                         "https://%s/%s/%s/releases/tag/%s",
-                                        __package_data->domain,
-                                        __package_data->user,
-                                        __package_data->repo,
-                                        package_actual_tag );
+                                        __package_data->domain, __package_data->user,
+                                        __package_data->repo, package_actual_tag );
                         }
                 } else if ( package_actual_tag[0] ) {
                         /* Direct archive URL for specific tag */
                         if ( !strcmp( package_actual_tag, "latest" ) ) {
                                 snprintf( put_url, put_size,
                                         "https://%s/%s/%s/releases/latest",
-                                        __package_data->domain,
-                                        __package_data->user,
+                                        __package_data->domain, __package_data->user,
                                         __package_data->repo );
                         } else {
                                 snprintf( put_url, put_size,
                                         "https://%s/%s/%s/archive/refs/tags/%s.tar.gz",
-                                        __package_data->domain,
-                                        __package_data->user,
-                                        __package_data->repo,
-                                        package_actual_tag );
+                                        __package_data->domain, __package_data->user,
+                                        __package_data->repo, package_actual_tag );
                         }
                 } else {
                         /* Default to main branch ZIP */
                         snprintf( put_url, put_size,
                                 "https://%s/%s/%s/archive/refs/heads/main.zip",
-                                __package_data->domain,
-                                __package_data->user,
+                                __package_data->domain, __package_data->user,
                                 __package_data->repo );
                 }
         }
@@ -714,8 +705,8 @@ static int package_gh_latest_tag( const char *user, const char *repo,
  * Handles latest tag resolution, asset selection, and fallback strategies
  */
 static int
-package_handle_repo( const struct repositories *repo, char *put_url, size_t put_size, const char *branch )
-{
+package_handle_repo( const struct repositories *repo, char *put_url, size_t put_size, const char *branch ) {
+
         int ret = 0;
          /* Common branch name */
         const char *package_repo_branch[] = { branch, "main", "master" };
@@ -850,10 +841,10 @@ package_handle_repo( const struct repositories *repo, char *put_url, size_t put_
  * Generate and store cryptographic hash for dependency files
  * Creates SHA-1 hash for verification and tracking
  */
-int package_set_hash( const char *raw_file_path, const char *raw_json_path )
-{
-        char res_convert_f_path[WG_PATH_MAX];
-        char res_convert_json_path[WG_PATH_MAX];
+int package_set_hash( const char *raw_file_path, const char *raw_json_path ) {
+
+        char res_convert_f_path[WG_PATH_MAX],
+             res_convert_json_path[WG_PATH_MAX];
 
         /* Convert paths to consistent format */
         strncpy( res_convert_f_path, raw_file_path, sizeof( res_convert_f_path ) );
@@ -891,6 +882,7 @@ done:
  * Replaces struct dencyconfig with direct parameters
  */
 void package_implementation_samp_conf( const char* config_file, const char* fw_line, const char* plugin_name ) {
+
         srand ( ( unsigned int )time(NULL) ^ rand());
         int rand7 = rand () % 10000000;
 
@@ -982,6 +974,7 @@ void package_implementation_samp_conf( const char* config_file, const char* fw_l
  * Updates legacy_plugins array in server configuration
  */
 void package_implementation_omp_conf( const char* config_name, const char* package_name ) {
+
         if ( wg_server_env() != 2 )
                 return;
 
@@ -1081,8 +1074,8 @@ void package_implementation_omp_conf( const char* config_name, const char* packa
  * Add include directive to gamemode file
  * Inserts #include statement in appropriate location
  */
-void package_add_include( const char *modes, char *package_name, char *package_following )
-{
+void package_add_include( const char *modes, char *package_name, char *package_following ) {
+
         if ( path_exists( modes ) == 0 ) return;
         
         FILE *m_file = fopen( modes, "rb" );
@@ -1215,10 +1208,10 @@ void package_add_include( const char *modes, char *package_name, char *package_f
  * Process and add include directive based on dependency
  * Reads TOML configuration to determine gamemode file
  */
-static void package_include_prints( const char *package_include )
-{
-        char wg_buf_err[WG_PATH_MAX],
-             dependencies[WG_PATH_MAX], _directive[WG_MAX_PATH];
+static void package_include_prints( const char *package_include ) {
+
+        char wg_buf_err[WG_PATH_MAX], dependencies[WG_PATH_MAX],
+             _directive[WG_MAX_PATH];
         toml_table_t *wg_toml_config;
 
         /* Extract filename from path */
@@ -1993,21 +1986,9 @@ void wg_install_depends( const char *dependencies_str, const char *branch )
 
                 wgconfig.wg_idepends = 1;
 
-                struct timespec __time_start = { 0 },   /* Time start - duration calculation */
-                                __time_stop  = { 0 };   /* Time Stop   - duration calculation */
-                double exec_duration;           /* Time Start & Stop Calculation */
-
                 /* Time the dependency installation process */
                 wg_download_file( package_url, package_name );
-                clock_gettime( CLOCK_MONOTONIC, &__time_start );
-                        wg_apply_depends( package_name );
-                clock_gettime( CLOCK_MONOTONIC, &__time_stop );
-
-                exec_duration = ( __time_stop.tv_sec - __time_start.tv_sec   ) +
-                                ( __time_stop.tv_nsec - __time_start.tv_nsec ) / 1e9;
-                
-                pr_color( stdout, FCOLOUR_CYAN, " <D> Finished at %.3fs (%.0f ms)\n",
-                        exec_duration, exec_duration * 1000.0 );
+                wg_apply_depends( package_name );
         }
 
 done:

@@ -76,6 +76,7 @@ static const char *description =
 /// #14 0x0000555555564f67 in main (argc=1, argv=0x7fffffffcf48) at source/units.c:1666
 
 void __reset_sys(void) {
+
         if (dir_exists(".watchdogs") == 0)
             MKDIR(".watchdogs");
 
@@ -94,6 +95,7 @@ void __reset_sys(void) {
 }
 
 void __debug_main_chain(int debug_info) {
+
         __reset_sys();
         if (debug_info == 1) {
 #if defined(_DBG_PRINT)
@@ -197,6 +199,7 @@ void __debug_main_chain(int debug_info) {
 **************************************************************************/
 
 void __debug_function(void) {
+    
 #if defined (_DBG_PRINT)
         pr_color(stdout, FCOLOUR_YELLOW, "-DEBUGGER ");
         printf("[function: %s | "

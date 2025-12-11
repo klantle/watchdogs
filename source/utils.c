@@ -36,6 +36,7 @@ static const char *description =
 #if defined(WG_ANDROID)
 ssize_t sendfile(int out_fd,
 		int in_fd, off_t *offset, size_t count) {
+
 		char buf[8192];
 		size_t left = count;
 		while (left > 0) {
@@ -104,6 +105,7 @@ WatchdogConfig wgconfig = {
  * then sets the global counter to empty value and fills the entire array with empty markers.
  */
 void wg_sef_fdir_memset_to_null(void) {
+
 		size_t i, sef_max_entries;
 		/* Calculate maximum number of entries in the found list array */
 		sef_max_entries = sizeof(wgconfig.wg_sef_found_list) /
@@ -167,6 +169,7 @@ size_t win_strlcat(char *dst, const char *src, size_t size)
  * sets file pointer to specified length, and sets end of file at that position.
  */
 int win_ftruncate(FILE *file, long length) {
+
 	    /* Get Windows file handle from C file descriptor */
 	    HANDLE hFile = (HANDLE)_get_osfhandle(_fileno(file));
 	    if (hFile == INVALID_HANDLE_VALUE)
@@ -191,6 +194,7 @@ int win_ftruncate(FILE *file, long length) {
  * If allocation fails, prints an error message and returns NULL.
  */
 void* wg_malloc(size_t size) {
+
 		void* ptr = malloc(size);
 		if (!ptr) {
 			fprintf(stderr, "malloc failed: %zu bytes\n", size);
@@ -204,9 +208,11 @@ void* wg_malloc(size_t size) {
  * If allocation fails, prints an error message and returns NULL.
  */
 void* wg_calloc(size_t count, size_t size) {
+
 		void* ptr = calloc(count, size);
 		if (!ptr) {
-			fprintf(stderr, "calloc failed: %zu elements x %zu bytes\n", count, size);
+			fprintf(stderr,
+					"calloc failed: %zu elements x %zu bytes\n", count, size);
 			return NULL;
 		}
 		return ptr;
@@ -218,6 +224,7 @@ void* wg_calloc(size_t count, size_t size) {
  * Note: Original pointer is NOT freed on failure to allow cleanup by caller.
  */
 void* wg_realloc(void* ptr, size_t size) {
+
 		void* new_ptr = (ptr ? realloc(ptr, size) : malloc(size));
 		if (!new_ptr) {
 			fprintf(stderr, "realloc failed: %zu bytes\n", size);
@@ -232,6 +239,7 @@ void* wg_realloc(void* ptr, size_t size) {
  * to avoid double-free issues.
  */
 void wg_free(void* ptr) {
+
 		if (ptr) {
 			free(ptr);
 			/* Note: Unlike the macro version, this doesn't set pointer to NULL.
@@ -249,6 +257,7 @@ void wg_free(void* ptr) {
  * Result is cached for subsequent calls.
  */
 char *wg_procure_pwd(void) {
+
 	static char wg_work_dir[WG_PATH_MAX]; /* Static buffer for caching working directory */
 		/* Initialize buffer only if empty (first call) */
 		if (wg_work_dir[0] == '\0') {
@@ -278,6 +287,7 @@ char *wg_procure_pwd(void) {
  * reveal values and NULL input.
  */
 char* wg_masked_text(int reveal, const char *text) {
+
 	    if (!text) /* Handle NULL input */
 	    	return NULL;
 
@@ -314,6 +324,7 @@ char* wg_masked_text(int reveal, const char *text) {
  * all intermediate directories exist.
  */
 int wg_mkdir(const char *path) {
+
 		char tmp[PATH_MAX];
 		char *p = NULL;
 		size_t len;
@@ -353,6 +364,7 @@ int wg_mkdir(const char *path) {
  * quotes with their JSON escape sequences. Ensures destination buffer doesn't overflow.
  */
 void wg_escaping_json(char *dest, const char *src, size_t dest_size) {
+
 	    if (dest_size == 0) return; /* No space in destination */
 	    
 	    char *ptr = dest;
@@ -399,6 +411,7 @@ void wg_escaping_json(char *dest, const char *src, size_t dest_size) {
  * Validates command length and prevents buffer overflow in command construction.
  */
 int wg_run_command(const char *reg_command) {
+
 		/* Platform-specific assembly to clear registers before system call */
 		/* See https://gcc.gnu.org/onlinedocs/gcc/Extended-Asm.html */
 #if defined(WG_ANDROID)
@@ -500,6 +513,7 @@ __asm__ volatile (
  * Linux: clear (bash/zsh based)
  */
 void wg_clear_screen(void) {
+
 		/* Make sure user in Windows */
 		if (is_native_windows()) {
 			wg_run_command("cls");
@@ -584,6 +598,7 @@ int is_native_windows(void)
  * reading at offsets, handles large files with buffer chunks.
  */
 void wg_printfile(const char *path) {
+
 #ifdef WG_WINDOWS
 	    /* Windows implementation: simple sequential read */
 	    int fd = open(path, O_RDONLY);
@@ -708,6 +723,7 @@ void wg_strip_dot_fns(char *dst, size_t dst_sz, const char *src)
  */
 bool
 wg_strcase(const char *text, const char *pattern) {
+
 		const char *p;
 		for (p = text; *p; p++) {
 		    const char *a = p, *b = pattern;
@@ -727,6 +743,7 @@ wg_strcase(const char *text, const char *pattern) {
  * Supports both case-sensitive and case-insensitive matching modes.
  */
 bool strend(const char *str, const char *suffix, bool nocase) {
+
 		if (!str || !suffix) return false;
 
 		size_t lenstr = strlen(str);
@@ -795,6 +812,7 @@ __attribute__((pure))
  * Returns NULL on invalid input or allocation failure.
  */
 char* strreplace(const char *source, const char *old_sub, const char *new_sub) {
+
 	    if (!source || !old_sub || !new_sub) return NULL;
 
 	    size_t source_len = strlen(source);
@@ -920,6 +938,7 @@ __attribute__((pure))
  * Returns INT_MAX if strings are too different for efficiency.
  */
 static int __command_suggest(const char *s1, const char *s2) {
+
 	    int len1 = strlen(s1);
 	    int len2 = strlen(s2);
 	    if (len2 > 128) return INT_MAX; /* Reject very long strings */
@@ -1135,8 +1154,8 @@ int ensure_parent_dir(char *out_parent, size_t n, const char *dest)
  * On Unix: uses pkill with SIGTERM. On Windows: uses taskkill.exe.
  * Constructs and executes appropriate system command.
  */
-int wg_kill_process(const char *process)
-{
+int wg_kill_process(const char *process) {
+
         if (!process)
         	return -1; /* Invalid input */
         char reg_command[WG_PATH_MAX];
@@ -1948,6 +1967,7 @@ int wg_toml_configs(void)
  * Returns command execution result.
  */
 static int _try_mv_without_sudo(const char *src, const char *dest) {
+
 	    char size_mv[WG_PATH_MAX];
 	    /* Platform-specific move commands */
 	    if (is_native_windows())
@@ -1964,6 +1984,7 @@ static int _try_mv_without_sudo(const char *src, const char *dest) {
  * Returns command execution result.
  */
 static int __mv_with_sudo(const char *src, const char *dest) {
+
 	    char size_mv[WG_PATH_MAX];
 	    if (is_native_windows())
 	        snprintf(size_mv, sizeof(size_mv), "move /Y \"%s \"%s\"", src, dest);
@@ -1979,6 +2000,7 @@ static int __mv_with_sudo(const char *src, const char *dest) {
  * Returns command execution result.
  */
 static int _try_cp_without_sudo(const char *src, const char *dest) {
+
 	    char size_cp[WG_PATH_MAX];
 	    if (is_native_windows())
 	        snprintf(size_cp, sizeof(size_cp), "xcopy /Y \"%s\" \"%s\"", src, dest);
@@ -1994,6 +2016,7 @@ static int _try_cp_without_sudo(const char *src, const char *dest) {
  * Returns command execution result.
  */
 static int __cp_with_sudo(const char *src, const char *dest) {
+
 	    char size_cp[WG_PATH_MAX];
 	    if (is_native_windows())
 	        snprintf(size_cp, sizeof(size_cp), "xcopy /Y \"%s\" \"%s\"", src, dest);
@@ -2009,8 +2032,8 @@ static int __cp_with_sudo(const char *src, const char *dest) {
  * file types, same-file detection, parent directory validation.
  * Returns 1 if all checks pass, logs errors otherwise.
  */
-static int __wg_sef_safety(const char *c_src, const char *c_dest)
-{
+static int __wg_sef_safety(const char *c_src, const char *c_dest) {
+	
 		char parent[WG_PATH_MAX];
 		struct stat st;
 
@@ -2043,26 +2066,16 @@ static int __wg_sef_safety(const char *c_src, const char *c_dest)
 
 /*
  * Sets executable permissions on destination file after move/copy operation.
- * Uses platform-specific chmod functions: win32_chmod on Windows, chmod on Unix.
+ * Uses platform-specific chmod functions: CHMOD on Windows, chmod on Unix.
  * Logs warnings if permission setting fails (debug builds only).
  */
 static void __wg_sef_set_permissions(const char *c_dest)
 {
-#ifdef WG_WINDOWS
-		if (win32_chmod(c_dest)) {
-# if defined(_DBG_PRINT)
-				pr_warning(stdout, "chmod failed: %s (errno=%d %s)",
-						      c_dest, errno, strerror(errno));
-# endif
+		if (CHMOD_FULL(c_dest)) {
+			pr_warning(stdout, "chmod failed: %s (errno=%d %s)",
+					c_dest, errno, strerror(errno));
 		}
-#else
-		if (chmod(c_dest, 0755)) { /* rwxr-xr-x permissions */
-# if defined(_DBG_PRINT)
-				pr_warning(stdout, "chmod failed: %s (errno=%d %s)",
-						      c_dest, errno, strerror(errno));
-# endif
-		}
-#endif
+		return;
 }
 
 /*

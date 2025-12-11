@@ -27,6 +27,7 @@ static const char *description =
 #include "library.h"
 #include "kernel.h"
 #include "debug.h"
+#include "crypto.h"
 #include "compiler.h"
 
 #ifndef WG_WINDOWS
@@ -35,13 +36,15 @@ static const char *description =
 #endif
 static io_compilers wg_compiler_sys = { 0 };
 
+static void cause_compiler_expl(const char *log_file, const char *wgoutput, int debug);
+
 /* Main compiler execution function that orchestrates the entire compilation process */
 int wg_run_compiler(const char *args, const char *compile_args,
                     const char *second_arg, const char *four_arg,
                     const char *five_arg, const char *six_arg,
                     const char *seven_arg, const char *eight_arg,
                     const char *nine_arg) {
-                        
+
 		/* Debug information section */
         __debug_function();
 		
@@ -69,10 +72,12 @@ int wg_run_compiler(const char *args, const char *compile_args,
         };
 
         FILE *this_proc_fileile; /* File pointer for process output handling */
+        char proj_parse[WG_PATH_MAX + 26] = { 0 }; /* project parse char */
         char size_log[WG_MAX_PATH * 4]; /* Buffer for log file reading */
         char run_cmd[WG_PATH_MAX + 258]; /* Buffer for constructing system commands */
         char include_aio_path[WG_PATH_MAX * 2] = { 0 }; /* Buffer for include paths concatenation */
         char _compiler_input_[WG_MAX_PATH + WG_PATH_MAX] = { 0 }; /* Buffer for final compiler command */
+        char size_path_include[WG_PATH_MAX * 2] = { 0 }; /* include path new char */
 
         /* Pointers for path manipulation - extracting directory and filename */
         char *compiler_last_slash = NULL;
@@ -80,6 +85,7 @@ int wg_run_compiler(const char *args, const char *compile_args,
 
         char *procure_string_pos = NULL; /* Pointer for string searching operations */
         char compiler_extra_options[WG_PATH_MAX] = { 0 }; /* Buffer for additional compiler flags */
+
         /* Array of debug memory flags that need special handling */
         const char *debug_options[] = {"-d1", "-d3"};
         size_t size_debug_options = sizeof(debug_options);
@@ -106,54 +112,6 @@ int wg_run_compiler(const char *args, const char *compile_args,
         else if (wg_server_env() == 2)
             snprintf(path_include, WG_PATH_MAX, "qawno/include");
         
-        /**
-         * If the compile arguments contain a parent directory reference ("../"),
-         * this function modifies the include paths to work with the correct project structure.
-         * 
-         * It filters out any "gamemodes/" references and ensures the project path
-         * ends with a trailing slash before updating the include paths.
-         */
-        if (strfind(compile_args, "../", true)) {
-            /* the buffer to store the parsed project path */
-            char proj_parse[WG_PATH_MAX] = { 0 };
-            size_t w = 0;  /* Write index for proj_parse buffer */
-
-            /**
-             * Parse through compile_args to:
-             * 1. Skip any "gamemodes/" directory references
-             * 2. Copy everything else to proj_parse buffer
-             */
-            for (size_t j = 0; compile_args[j] != '\0'; ) {
-                if (strncmp(&compile_args[j], "gamemodes/", 10) == 0) {
-                    while (compile_args[j] != ' ' && compile_args[j] != '\0')
-                        ++j;
-                    if (compile_args[j] == ' ') ++j;
-                } else {
-                    proj_parse[w++] = compile_args[j++];
-                }
-            }
-            proj_parse[w] = '\0';  /* null-terminate the parsed string */
-
-            /**
-             * Ensure the project path ends with a trailing slash.
-             * This is necessary for proper path concatenation later.
-             */
-            if (w == 0 || proj_parse[w - 1] != '/')
-                strcat(proj_parse, "/");
-
-            /**
-             * Create new include paths with the parsed project path.
-             * Format: "<original_path> -i\"<project_path>pawno/include/\" -i\"<project_path>qawno/include/\""
-             */
-            char size_path_include[WG_PATH_MAX * 5] = { 0 };
-            snprintf(size_path_include, sizeof(size_path_include),
-                    "\"%s\" -i\"%spawno/include/\" -i\"%sqawno/include/\" ",
-                    path_include, proj_parse, proj_parse);
-
-            /* Replace the original path_include with the newly constructed one */
-            strcpy(path_include, size_path_include);
-        }
-
         if (dir_exists(".watchdogs") == 0)
             MKDIR(".watchdogs");
             
@@ -568,6 +526,45 @@ not_valid_flag_options:
                     }
                 }
 
+                if (strfind(compile_args, "../", true)) {
+                    /* the buffer to store the parsed project path */
+                    size_t w = 0;  /* Write index for proj_parse buffer */
+
+                    for (size_t j = 0; compile_args[j] != '\0'; )
+                    {
+                        if (strncmp(&compile_args[j], "gamemodes/", 10) == 0)
+                        {
+                            while (compile_args[j] != ' ' &&
+                                compile_args[j] != '\0')
+                            {
+                                ++j;
+                            }
+                            if (compile_args[j] == ' ')
+                                ++j;
+                        } else {
+                            proj_parse[w++] = compile_args[j++];
+                        }
+                    }
+                    proj_parse[w] = '\0';  /* null-terminate the parsed string */
+
+                    /**
+                    * Ensure the project path ends with a trailing slash.
+                    * This is necessary for proper path concatenation later.
+                    */
+                    if (!w || proj_parse[w - 1] != __PATH_CHR_SEP_LINUX)
+                        strcat(proj_parse, __PATH_STR_SEP_LINUX);
+
+                    snprintf(size_path_include, sizeof(size_path_include),
+                            "\"%s\" "
+                            "-i\"%spawno/include/\" "
+                            "-i\"%sqawno/include/\" "
+                            "-i\"%sgamemodes/\"",
+                            path_include, proj_parse, proj_parse, proj_parse);
+
+                    /* Replace the original path_include with the newly constructed one */
+                    strcpy(path_include, size_path_include);
+                }
+
                 /* Main compilation logic block - handles both default and specific file compilation */
                 if (compile_args == NULL || *compile_args == '\0' || (compile_args[0] == '.' && compile_args[1] == '\0'))
                 {
@@ -878,8 +875,8 @@ compiler_done:
                     ptr_io->compiler_size_temp[sizeof(ptr_io->compiler_size_temp) - 1] = '\0';
 
                     /* Extract directory and filename from provided path */
-                    compiler_last_slash = strrchr(ptr_io->compiler_size_temp, '/');
-                    compiler_back_slash = strrchr(ptr_io->compiler_size_temp, '\\');
+                    compiler_last_slash = strrchr(ptr_io->compiler_size_temp, __PATH_CHR_SEP_LINUX);
+                    compiler_back_slash = strrchr(ptr_io->compiler_size_temp, __PATH_CHR_SEP_WIN32);
 
                     if (compiler_back_slash && (!compiler_last_slash || compiler_back_slash > compiler_last_slash))
                         compiler_last_slash = compiler_back_slash;
@@ -1151,7 +1148,7 @@ compiler_done:
                         pid_t compiler_process_id; /* Variable to store the Process ID (PID) of the newly spawned child process. This PID can be used later to monitor, signal, or wait for the child. */
 
                         /* Execute compiler using posix_spawnp for better control */
-                        int process_spawn_result = posix_spawnp(&compiler_process_id, /* `posix_spawnp` searches for the executable in the directories listed in the `PATH` environment variable. If the first argument contains a '/', it's treated as a pathname and PATH is not searched. Returns 0 on success, error number on failure. */
+                        int process_spawn_result = posix_spawnp(&compiler_process_id, /* `posix_spawnp` searches for the executable in the directories listed in the `PATH` environment variable. If the first argument contains a __PATH_CHR_SEP_LINUX, it's treated as a pathname and PATH is not searched. Returns 0 on success, error number on failure. */
                                     wg_compiler_unix_args[0], /* The program to execute (e.g., "pawncc", "gcc", "./script.sh"). This is argv[0] - typically the program name, but can be any string. */
                                     &process_file_actions, /* The file actions object; can be NULL if no file manipulations are needed. If provided, all specified file operations are performed atomically before the new program starts. */
                                     &spawn_attr, /* The spawn attributes object; can be NULL to use default process attributes. This controls signal handling, process group, scheduling, etc. */
@@ -1377,4 +1374,455 @@ loop_end:
 
 compiler_end:
         return 1; /* Return success status */
+}
+
+causeExplanation ccs[] =
+{
+/* === SYNTAX ERRORS (Invalid Code Structure) ===  */
+
+/* A key language element (like ',' or ';') is missing. */
+{"expected token", "A required token (e.g., ';', ',', ')') is missing from the code. Check the line indicated for typos or omissions."},
+
+/* The 'case' label can only be followed by a single statement. */
+{"only a single statement", "A `case` label can only be followed by a single statement. To use multiple statements, enclose them in a block with `{` and `}`."},
+
+/* Variables declared inside case/default must be inside a block. */
+{"declaration of a local variable must appear in a compound block", "Local variables declared inside a `case` or `default` label must be scoped within a compound block `{ ... }`."},
+
+/* Function call or declaration is incorrect. */
+{"invalid function call", "The symbol being called is not a function, or the syntax of the function call is incorrect."},
+
+/* Statements like 'case' or 'default' are used outside a switch block. */
+{"invalid statement; not in switch", "The `case` or `default` label is only valid inside a `switch` statement."},
+
+/* The 'default' case is not the last one in the switch block. */
+{"default case must be the last case", "The `default` case within a `switch` statement must appear after all other `case` labels."},
+
+/* More than one 'default' case found in a single switch. */
+{"multiple defaults in switch", "A `switch` statement can only have one `default` case."},
+
+/* The target of a 'goto' statement is not a valid label. */
+{"not a label", "The symbol used in the `goto` statement is not defined as a label."},
+
+/* The symbol name does not follow the language's naming rules. */
+{"invalid symbol name", "Symbol names must start with a letter, an underscore '_', or an 'at' sign '@'."},
+
+/* An empty statement (just a semicolon) is not allowed in certain contexts. */
+{"empty statement", "Pawn does not support a standalone semicolon as an empty statement. double `;;`? - Use an empty block `{}` instead if intentional."},
+
+/* A required semicolon is missing. */
+{"missing semicolon", "A semicolon ';' is expected at the end of this statement."},
+
+/* The file ended before a structure was properly closed. */
+{"unexpected end of file", "The source file ended unexpectedly. This is often caused by a missing closing brace '}', parenthesis ')', or quote."},
+
+/* An invalid character was encountered in the source code. */
+{"illegal character", "A character was found that is not valid in the current context (e.g., outside of a string or comment)."},
+
+/* Brackets or braces are not properly matched. */
+{"missing closing parenthesis", "An opening parenthesis '(' was not closed with a matching ')'."},
+{"missing closing bracket", "An opening bracket '[' was not closed with a matching ']'."},
+{"missing closing brace", "An opening brace '{' was not closed with a matching '}'."},
+
+
+
+/* === SEMANTIC ERRORS (Invalid Code Meaning) ===  */
+
+/* A function was declared but its body was never defined. */
+{"is not implemented", "A function was declared but its implementation (body) was not found. This can be caused by a missing closing brace `}` in a previous function."},
+
+/* The main function is defined with parameters, which is not allowed. */
+{"function may not have arguments", "The `main()` function cannot accept any arguments."},
+
+/* A string literal is being used incorrectly. */
+{"must be assigned to an array", "String literals must be assigned to a character array variable; they cannot be assigned to non-array types."},
+
+/* An attempt was made to overload an operator that cannot be overloaded. */
+{"operator cannot be redefined", "Only specific operators can be redefined (overloaded) in Pawn. Check the language specification."},
+
+/* A context requires a constant value, but a variable or non-constant expression was provided. */
+{"must be a constant expression; assumed zero", "Array sizes and compiler directives (like `#if`) require constant expressions (literals or declared constants)."},
+
+/* An array was declared with a size of zero or a negative number. */
+{"invalid array size", "The size of an array must be 1 or greater."},
+
+/* A symbol (variable, function, constant) is used but was never declared. */
+{"undefined symbol", "A symbol is used in the code but it has not been declared. Check for typos or missing declarations."},
+
+/* The initializer for an array has more elements than the array's declared size. */
+{"initialization data exceeds declared size", "The data used to initialize the array contains more elements than the size specified for the array."},
+
+/* The left-hand side of an assignment is not something that can be assigned to. */
+{"must be lvalue", "The symbol on the left side of an assignment operator must be a modifiable variable, array element, or other 'lvalue'."},
+
+/* Arrays cannot be used in compound assignments. */
+{"array assignment must be simple assignment", "Arrays cannot be used with compound assignment operators (like `+=`). Only simple assignment `=` is allowed for arrays."},
+
+/* 'break' or 'continue' is used outside of any loop or switch statement. */
+{"break or continue is out of context", "The `break` statement is only valid inside loops (`for`, `while`, `do-while`) and `switch`. `continue` is only valid inside loops."},
+
+/* A function's definition does not match its previous declaration. */
+{"function heading differs from prototype", "The function's definition (return type, name, parameters) does not match a previous declaration of the same function."},
+
+/* An invalid character is used inside single quotes. */
+{"invalid character constant", "An unknown escape sequence (like `\\z`) was used, or multiple characters were placed inside single quotes (e.g., 'ab')."},
+
+/* The compiler could not parse the expression. */
+{"invalid expression, assumed zero", "The compiler could not understand the structure of the expression. This is often due to a syntax error or operator misuse."},
+
+/* An array index is outside the valid range for the array. */
+{"array index out of bounds", "The index used to access the array is either negative or greater than or equal to the array's size."},
+
+/* A function call has more than the allowed number of arguments. */
+{"too many function arguments", "A function call was made with more than 64 arguments, which is the limit in Pawn."},
+
+/* A symbol is defined but never used in the code. */
+{"symbol is never used", "A variable, constant, or function was defined but never referenced in the code. This may indicate dead code or a typo."},
+
+/* A value is assigned to a variable, but that value is never read later. */
+{"symbol is assigned a value that is never used", "A variable is assigned a value, but that value is never used in any subsequent operation. This might indicate unnecessary computation."},
+
+/* A conditional expression is always false. */
+{"redundant code: constant expression is zero", "A conditional expression (e.g., in an `if` or `while`) always evaluates to zero (false), making the code block unreachable."},
+
+/* A non-void function does not return a value on all control paths. */
+{"should return a value", "A function that is declared to return a value must return a value on all possible execution paths."},
+
+/* An assignment is used in a boolean context, which might be a mistake for '=='. */
+{"possibly unintended assignment", "An assignment operator `=` was used in a context where a comparison operator `==` is typically used (e.g., in an `if` condition)."},
+
+/* nvalid function or declaration */
+{"invalid function or ", "You need to make sure that the area around the error line follows the proper syntax, structure, and rules typical of Pawn code."},
+
+/* There is a type mismatch between two expressions. */
+{"tag mismatch", "The type (or 'tag') of the expression does not match the type expected by the context. Check variable types and function signatures."},
+
+/* An expression is evaluated but its result is not used or stored. */
+{"expression has no effect", "An expression is evaluated but does not change the program's state (e.g., `a + b;` on a line by itself). This is often a logical error."},
+
+/* The indentation in the source code is inconsistent. */
+{"loose indentation", "The indentation (spaces/tabs) is inconsistent. While this doesn't affect compilation, it harms code readability."},
+
+/* A function is marked as deprecated and should not be used. */
+{"Function is deprecated", "This function is outdated and may be removed in future versions. The compiler suggests using an alternative."},
+
+/* No valid entry point (main function) was found for the program. */
+{"no entry point", "The program must contain a `main` function or another designated public function to serve as the entry point."},
+
+/* A symbol is defined more than once in the same scope. */
+{"symbol already defined", "A symbol (variable, function, etc.) is being redefined in the same scope. You cannot have two symbols with the same name in the same scope."},
+
+/* Array indexing is used incorrectly. */
+{"invalid subscript", "The bracket operators `[` and `]` are being used incorrectly, likely with a variable that is not an array."},
+
+/* An array name is used without an index. */
+{"array must be indexed", "An array variable is used in an expression without an index. You must specify which element of the array you want to access."},
+
+/* A function argument placeholder lacks a default value. */
+{"argument does not have a default value", "In a function call with named arguments, a placeholder was used for an argument that does not have a default value specified."},
+
+/* The type of an argument in a function call does not match the function's parameter type. */
+{"argument type mismatch", "The type of an argument passed to a function does not match the expected parameter type defined by the function."},
+
+/* A string literal is malformed. */
+{"invalid string", "A string literal is not properly formed, often due to a missing closing quote or an invalid escape sequence."},
+
+/* A symbolic constant is used with the sizeof operator. */
+{"constant symbol has no size", "The `sizeof` operator cannot be applied to a symbolic constant. It is only for variables and types."},
+
+/* Two 'case' labels in the same switch have the same value. */
+{"duplicate case label", "Two `case` labels within the same `switch` statement have the same constant value. Each `case` must be unique."},
+
+/* The ellipsis (...) is used in an invalid context for array sizing. */
+{"invalid ellipsis", "The compiler cannot determine the array size from the `...` initializer syntax."},
+
+/* Incompatible class specifiers are used together. */
+{"invalid combination of class specifiers", "A combination of storage class specifiers (e.g., `public`, `static`) is used that is not allowed by the language."},
+
+/* A character value exceeds the 8-bit range. */
+{"character constant exceeds range", "A character constant has a value that is outside the valid 0-255 range for an 8-bit character."},
+
+/* Named and positional parameters are mixed incorrectly in a function call. */
+{"positional parameters must precede", "In a function call, all positional arguments must come before any named arguments."},
+
+/* An array is declared without a specified size. */
+{"unknown array size", "An array was declared without a specified size and without an initializer to infer the size. Array sizes must be explicit."},
+
+/* Array sizes in an assignment do not match. */
+{"array sizes do not match", "In an assignment, the source and destination arrays have different sizes."},
+
+/* Array dimensions in an operation do not match. */
+{"array dimensions do not match", "The dimensions of the arrays used in an operation (e.g., addition) do not match."},
+
+/* A backslash is used at the end of a line incorrectly. */
+{"invalid line continuation", "A backslash `\\` was used at the end of a line, but it is not being used to continue a preprocessor directive or string literal correctly."},
+
+/* A numeric range expression is invalid. */
+{"invalid range", "A range expression (e.g., in a state array) is syntactically or logically invalid."},
+
+/* A function body is found without a corresponding function header. */
+{"start of function body without function header", "A block of code `{ ... }` that looks like a function body was encountered, but there was no preceding function declaration."},
+
+
+
+/* === FATAL ERRORS (Compiler Failure) === */
+
+/* The compiler cannot open the source file or an included file. */
+{"cannot read from file", "The specified source file or an included file could not be opened. It may not exist, or there may be permission issues."},
+
+/* The compiler cannot write the output file (e.g., the compiled .amx). */
+{"cannot write to file", "The compiler cannot write to the output file. The disk might be full, the file might be in use, or there may be permission issues."},
+
+/* An internal compiler data structure has exceeded its capacity. */
+{"table overflow", "An internal compiler table (for symbols, tokens, etc.) has exceeded its maximum size. The source code might be too complex."},
+
+/* The system ran out of memory during compilation. */
+{"insufficient memory", "The compiler ran out of available system memory (RAM) while processing the source code."},
+
+/* An invalid opcode is used in an #emit directive. */
+{"invalid assembler instruction", "The opcode specified in an `#emit` directive is not a valid Pawn assembly instruction."},
+
+/* A numeric constant is too large for the compiler to handle. */
+{"numeric overflow", "A numeric constant in the source code is too large to be represented."},
+
+/* A single line of code produced too many errors. */
+{"too many error messages on one line", "One line of source code generated a large number of errors. The compiler is stopping to avoid flooding the output."},
+
+/* A codepage mapping file specified by the user was not found. */
+{"codepage mapping file not found", "The file specified for character set conversion (codepage) could not be found."},
+
+/* The provided file or directory path is invalid. */
+{"invalid path", "A file or directory path provided to the compiler is syntactically invalid or does not exist."},
+
+/* A compile-time assertion (#assert) failed. */
+{"assertion failed", "A compile-time assertion check (using `#assert`) evaluated to false."},
+
+/* The #error directive was encountered, forcing the compiler to stop. */
+{"user error", "The `#error` preprocessor directive was encountered, explicitly halting the compilation process."},
+
+
+
+/* === WARNINGS (Potentially Problematic Code) ===  */
+
+/* literal array/string passed to a non-const parameter */
+{"literal array/string passed to a non", "Did you forget that the parameter isn't a const parameter? Also, make sure you're using the latest version of the standard library."},
+
+/* A symbol name is too long and is being truncated. */
+{"is truncated to", "A symbol name (variable, function, etc.) exceeds the maximum allowed length and will be truncated, which may cause link errors."},
+
+/* A constant or macro is redefined with a new value. */
+{"redefinition of constant", "A constant or macro is being redefined. The new definition will override the previous one."},
+
+/* A function is called with the wrong number of arguments. */
+{"number of arguments does not match", "The number of arguments in a function call does not match the number of parameters in the function's declaration."},
+
+/* A conditional expression is always true. */
+{"redundant test: constant expression is non-zero", "A conditional expression (e.g., in an `if` or `while`) always evaluates to a non-zero value (true), making the test unnecessary."},
+
+/* A non-const qualified array is passed to a function expecting a const array. */
+{"array argument was intended", "A non-constant array is being passed to a function parameter that is declared as `const`. The function promises not to modify it, so this is safe but noted."},
+
+
+
+/* ===  PREPROCESSOR ERRORS ===  */
+
+/* The maximum allowed depth for #include directives has been exceeded. */
+{"too many nested includes", "The level of nested `#include` directives has exceeded the compiler's limit. Check for circular or overly deep inclusion."},
+
+/* A file attempts to include itself, directly or indirectly. */
+{"recursive include", "A file is including itself, either directly or through a chain of other includes. This creates an infinite loop."},
+
+/* Macro expansion has exceeded the recursion depth limit. */
+{"macro recursion too deep", "The expansion of a recursive macro has exceeded the maximum allowed depth. Check for infinitely recursive macro definitions."},
+
+/* A constant expression involves division by zero. */
+{"division by zero", "A compile-time constant expression attempted to divide by zero."},
+
+/* A constant expression calculation resulted in an overflow. */
+{"overflow in constant expression", "A calculation in a constant expression (e.g., in an `#if` directive) resulted in an arithmetic overflow."},
+
+/* A macro used in a conditional compilation directive is not defined. */
+{"undefined macro", "A macro used in an `#if` or `#elif` directive has not been defined. Its value is assumed to be zero."},
+
+/* A function-like macro is used without the required arguments. */
+{"missing preprocessor argument", "A function-like macro was invoked without providing the required number of arguments."},
+
+/* A function-like macro is given more arguments than it expects. */
+{"too many macro arguments", "A function-like macro was invoked with more arguments than specified in its definition."},
+
+/* Extra text found after a preprocessor directive. */
+{"extra characters on line", "Unexpected characters were found on the same line after a preprocessor directive (e.g., `#include <file> junk`)."},
+
+/* Sentinel value to mark the end of the array. */
+{NULL, NULL}
+};
+
+/*
+ * Searches for known compiler warning and error patterns in a line of compiler output.
+ * Iterates through the global constant array 'ccs' (Compiler Code Strings) which contains
+ * pattern strings and their corresponding human-readable descriptions. Returns the
+ * description for the first matching pattern, or NULL if no known pattern is found.
+ */
+static const char *wg_find_warn_err(const char *line)
+{
+      int cindex;
+      /* Iterate through the compiler code strings array until a NULL terminator is found */
+      for (cindex = 0; ccs[cindex].cs_t; ++cindex) {
+        /* Make sure the current pattern exists anywhere in the input line */
+        if (strstr(line, ccs[cindex].cs_t))
+            return ccs[cindex].cs_i; /* Return the human-readable description */
+      }
+      return NULL; /* No known pattern matched */
+}
+
+/*
+ * Displays detailed compilation results including file statistics, memory usage breakdown,
+ * and DJB2 hash of the compiled output file. Updates console title with compilation status.
+ * Only shows detailed information when debug mode is enabled and the output file exists.
+ */
+void compiler_detailed(const char *wgoutput, int debug,
+                       int wcnt, int ecnt, const char *compiler_ver,
+                       int header_size, int code_size, int data_size,
+                       int stack_size, int total_size)
+{
+      /* Compiler Info - [pass] : warning - [fail] : error */
+      println(stdout, \
+                "Compiler Complete! | " FCOLOUR_CYAN "%d pass (warning) | " FCOLOUR_RED "%d fail (error)" FCOLOUR_DEFAULT "");       
+      println(stdout, "-----------------------------");
+
+      /* Make sure the compiled output file exists and debug information is requested */
+      int amx_access = path_access(wgoutput);
+      if (amx_access && debug != 0) {
+                /* Calculate DJB2 hash of the compiled output file for verification */
+                unsigned long hash = crypto_djb2_hash_file(wgoutput);
+                
+                /* Display memory usage breakdown of the compiled AMX file */
+                printf("Header : %dB  |  Total        : %dB\n"
+                       "Code   : %dB  |  hash (djb2)  : %#lx\n"
+                       "Data   : %dB\n"
+                       "Stack  : %dB\n",
+                       header_size, total_size, code_size,
+                       hash, data_size, stack_size);
+
+                /* Retrieve and display detailed file system statistics */
+                portable_stat_t st;
+                if (portable_stat(wgoutput, &st) == 0) {
+                        /* Display comprehensive file metadata including permissions, timestamps, and identifiers */
+                        printf("ino    : %llu   |  File   : %lluB\n"
+                               "dev    : %llu\n"
+                               "read   : %s   |  write  : %s\n"
+                               "execute: %s   |  mode   : %020o\n"
+                               "atime  : %llu\n"
+                               "mtime  : %llu\n"
+                               "ctime  : %llu\n",
+                               (unsigned long long)st.st_ino,      /* Inode number */
+                               (unsigned long long)st.st_size,     /* File size in bytes */
+                               (unsigned long long)st.st_dev,      /* Device ID */
+                               (st.st_mode & S_IRUSR) ? "Y" : "N", /* Read permission for owner */
+                               (st.st_mode & S_IWUSR) ? "Y" : "N", /* Write permission for owner */
+                               (st.st_mode & S_IXUSR) ? "Y" : "N", /* Execute permission for owner */
+                               st.st_mode,                         /* Full permission mode in octal */
+                               (unsigned long long)st.st_latime,   /* Last access time */
+                               (unsigned long long)st.st_lmtime,   /* Last modification time */
+                               (unsigned long long)st.st_mctime    /* Last status change time */
+                        );
+                }
+      }
+
+      fflush(stdout);  /* Ensure all output is written before continuing */
+      printf("\n");    /* Add blank line for separation */
+      
+      /* Display Pawn compiler copyright information */
+      printf("* Pawn Compiler %s - Copyright (c) 1997-2006, ITB CompuPhase\n", compiler_ver);
+
+      return;
+}
+
+/*
+ * Analyzes compiler log file to extract errors, warnings, and compilation statistics.
+ * Parses the log line-by-line, categorizes issues, provides descriptive explanations
+ * for known error patterns, and displays comprehensive compilation summary.
+ * Includes detailed debugging information when compiled with debug flags.
+ */
+static void cause_compiler_expl(const char *log_file, const char *wgoutput, int debug)
+{
+        /* Debug information section */
+        __debug_function();
+
+      /* Open compiler log file for reading */
+      FILE *plog = fopen(log_file, "r");
+      if (!plog)
+        return; /* Exit if log file cannot be opened */
+
+      char line[WG_MAX_PATH];        /* Buffer for reading each log line */
+      int wcnt = 0, ecnt = 0;        /* Warning and error counters */
+      int header_size = 0, code_size = 0, data_size = 0; /* AMX memory section sizes */
+      int stack_size = 0, total_size = 0;                /* Stack and total memory usage */
+      char compiler_ver[64] = { 0 }; /* Buffer for compiler version string */
+
+      /* Process each line of the compiler log file */
+      while (fgets(line, sizeof(line), plog)) {
+        /* Skip summary lines that don't contain actual error/warning information */
+        if (wg_strcase(line, "Warnings.") ||
+            wg_strcase(line, "Warning.") ||
+            wg_strcase(line, "Errors.")  ||
+            wg_strcase(line, "Error."))
+            continue;
+
+        /* Parse memory usage statistics from compiler output */
+        if (wg_strcase(line, "Header size:")) {
+            /* Extract header size value after colon and convert to integer */
+            header_size = strtol(strchr(line, ':') + 1, NULL, 10);
+            continue;
+        } else if (wg_strcase(line, "Code size:")) {
+            code_size = strtol(strchr(line, ':') + 1, NULL, 10);
+            continue;
+        } else if (wg_strcase(line, "Data size:")) {
+            data_size = strtol(strchr(line, ':') + 1, NULL, 10);
+            continue;
+        } else if (wg_strcase(line, "Stack/heap size:")) {
+            stack_size = strtol(strchr(line, ':') + 1, NULL, 10);
+            continue;
+        } else if (wg_strcase(line, "Total requirements:")) {
+            total_size = strtol(strchr(line, ':') + 1, NULL, 10);
+            continue;
+        } else if (wg_strcase(line, "Pawn compiler ")) {
+            /* Extract compiler version from version string */
+            const char *p = strstr(line, "Pawn compiler ");
+            if (p) sscanf(p, "Pawn compiler %63s", compiler_ver);
+            continue;
+        }
+
+        /* Output the original compiler message line to stdout */
+        fwrite(line, 1, strlen(line), stdout);
+
+        /* Count warnings and errors based on keyword presence in line */
+        if (wg_strcase(line, "warning")) ++wcnt;
+        if (wg_strcase(line, "error")) ++ecnt;
+
+        /* Look for known compiler error/warning patterns and provide explanations */
+        const char *description = wg_find_warn_err(line);
+        if (description) {
+            const char *found = NULL;
+            int mk_pos = 0;
+            /* Find the exact position of the error pattern in the line */
+            for (int i = 0; ccs[i].cs_t; ++i) {
+                if ((found = strstr(line, ccs[i].cs_t))) {
+                    mk_pos = found - line; /* Calculate column position */
+                    break;
+                }
+            }
+            /* Print caret indicator under the error location with colored explanation */
+            for (int i = 0; i < mk_pos; i++)
+                putchar(' '); /* Space to align caret with error location */
+            pr_color(stdout, FCOLOUR_BLUE, "^ %s :(\n", description);
+        }
+      }
+
+      fclose(plog); /* Close the log file */
+
+      /* Display detailed compilation summary with all collected statistics */
+      compiler_detailed(wgoutput, debug, wcnt, ecnt,
+                        compiler_ver, header_size, code_size,
+                        data_size, stack_size, total_size);
 }

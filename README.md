@@ -447,7 +447,7 @@ compile . --prolix
 
 > If you're trying to compile your existing gamemode that's outside the current watchdogs directory, it might still work. This is because watchdogs automatically adds the include path for the area you want to compile in the compile command.
 
-> For example, if you run `compile ../gamemodes/bare.pwn`, watchdogs will later provide the path for `../pawno/include/` and `../qawno/include/` so that the includes in `../pawno/include/ `and `../qawno/include` can be detected, searched for, and used in `../gamemodes/bare.pwn.`
+> For example, if you run `compile ../gamemodes/bare.pwn`, watchdogs will later provide the path for `../pawno/include/` and `../qawno/include/` also `/gamemodes` so that the includes in `../pawno/include/ `and `../qawno/include` also `../gamemodes` can be detected, searched for, and used in `../gamemodes/bare.pwn.`
 
 > So this is very useful for compiling in Termux without having to move your project folders around! compile `../storage/downloads/my_project/gamemodes/bare.pwn` - however you need to make sure that you're compiling the `.pwn` path that's located within the `gamemodes/` folder to ensure that the include paths remain verified.
 

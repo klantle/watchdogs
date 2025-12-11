@@ -92,14 +92,8 @@ typedef struct {
         time_t st_mctime;     /* metadata change time (POSIX) or creation/metadata time on Windows */
 } portable_stat_t;
 
-typedef struct {
-        char *cs_t; /* Cause trigger */
-        char *cs_i; /* Cause Description */
-} causeExplanation;
-
 int portable_stat(const char *path, portable_stat_t *out);
 int portable_stat(const char *path, portable_stat_t *out);
-void cause_compiler_expl(const char *log_file, const char *pawn_output, int debug);
 
 #define pr_color printf_colour
 #define pr_info printf_info

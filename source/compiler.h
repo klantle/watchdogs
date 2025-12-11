@@ -13,6 +13,11 @@ typedef struct {
     char compiler_size_temp[WG_PATH_MAX];
 } io_compilers;
 
+typedef struct {
+        char *cs_t;
+        char *cs_i;
+} causeExplanation;
+
 #define compiler_memory_clean() \
 do { \
     wg_sef_fdir_memset_to_null(); \

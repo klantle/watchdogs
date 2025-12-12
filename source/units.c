@@ -875,13 +875,13 @@ server_done2:
                         "  \033[2mhelp:\033[0m install it before continuing\n");
                     printf("\n  \033[1mInstall now?\033[0m  [\033[32mY\033[0m/\033[31mn\033[0m]: ");
 
-                    char *ptr_sigA;
+                    char *pointer_signalA;
 ret_ptr3:
-                    ptr_sigA = readline("");
+                    pointer_signalA = readline("");
 
                     while (true) {
-                        if (strcmp(ptr_sigA, "Y") == 0 || strcmp(ptr_sigA, "y") == 0) {
-                            wg_free(ptr_sigA);
+                        if (strcmp(pointer_signalA, "Y") == 0 || strcmp(pointer_signalA, "y") == 0) {
+                            wg_free(pointer_signalA);
                             if (!strcmp(wgconfig.wg_os_type, OS_SIGNAL_WINDOWS)) {
                                 int ret = wg_install_server("windows");
 n_loop_igm:
@@ -894,12 +894,12 @@ n_loop_igm2:
                                     goto n_loop_igm2;
                             }
                             break;
-                        } else if (strcmp(ptr_sigA, "N") == 0 || strcmp(ptr_sigA, "n") == 0) {
-                            wg_free(ptr_sigA);
+                        } else if (strcmp(pointer_signalA, "N") == 0 || strcmp(pointer_signalA, "n") == 0) {
+                            wg_free(pointer_signalA);
                             break;
                         } else {
                             pr_error(stdout, "Invalid input. Please type Y/y to install or N/n to cancel.");
-                            wg_free(ptr_sigA);
+                            wg_free(pointer_signalA);
                             goto ret_ptr3;
                         }
                     }

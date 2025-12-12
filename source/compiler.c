@@ -1309,13 +1309,13 @@ compiler_done2:
                 "\033[1;31merror:\033[0m pawncc (our compiler) not found\n"
                 "  \033[2mhelp:\033[0m install it before continuing");
             printf("\n  \033[1mInstall now?\033[0m  [\033[32mY\033[0m/\033[31mn\033[0m]: ");
-            char *ptr_sigA = readline("");
+            char *pointer_signalA = readline("");
 
             while (true)
             {
-                if (strcmp(ptr_sigA, "Y") == 0 || strcmp(ptr_sigA, "y") == 0)
+                if (strcmp(pointer_signalA, "Y") == 0 || strcmp(pointer_signalA, "y") == 0)
                 {
-                    wg_free(ptr_sigA);
+                    wg_free(pointer_signalA);
 ret_ptr:
                     println(stdout, "Select platform:");
                     println(stdout, "-> [L/l] Linux");
@@ -1358,15 +1358,15 @@ loop_ipcc3:
 loop_end:
                     chain_ret_main(NULL); /* Return to main menu after installation */
                 }
-                else if (strcmp(ptr_sigA, "N") == 0 || strcmp(ptr_sigA, "n") == 0)
+                else if (strcmp(pointer_signalA, "N") == 0 || strcmp(pointer_signalA, "n") == 0)
                 {
-                    wg_free(ptr_sigA);
+                    wg_free(pointer_signalA);
                     break; /* Exit without installation */
                 }
                 else
                 {
                     pr_error(stdout, "Invalid input. Please type Y/y to install or N/n to cancel.");
-                    wg_free(ptr_sigA);
+                    wg_free(pointer_signalA);
                     goto ret_ptr;
                 }
             }

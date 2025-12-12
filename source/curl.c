@@ -501,7 +501,7 @@ void tracker_discrepancy(const char *base, char discrepancy[][MAX_USERNAME_LEN],
         };
 
         for (i = 0; track_suffixes[i] != NULL && *cnt < MAX_VARIATIONS; i++) {
-                snprintf(temp, sizeof(temp), "%s%s", base, track_suffixes[i]);
+                snprintf(temp, sizeof(temp), "%s" "%s", base, track_suffixes[i]);
                 strlcpy(discrepancy[(*cnt)++], temp, MAX_USERNAME_LEN);
         }
 }

@@ -171,26 +171,29 @@ mv -f watchdogs.tmux .. && cd .. && \
 
 ## Native
 
-1. Download Git first in https://git-scm.com/install/windows
-2. Run Git Bash.
+1. Installing Visual C++ Redistributable Runtimes All-in-One first (needed for pawncc)
+- Go to https://www.techpowerup.com/download/visual-c-redistributable-runtime-package-all-in-one/
+- Click the "Download"
+- Extract the Archive
+- Just run the "install_all.bat"
+2. Download Git
+- Go to https://git-scm.com/install/windows
+- Click the "Click here to download"
+- Install git
+3. Run Git Bash.
+- Open Windows Start menu
+- Search "Git Bash"
+- Run.
 
-> cd to your_project directory
+1. change directory into your projects & create dir
 ```yaml
-cd /c/users/desktop_name/downloads/your_project
+cd ~/Downloads && mkdir watchdogs && cd watchdogs
 ```
-> Download stable binary
+2. installing the watchdogs.
 ```yaml
-curl -L -o watchdogs.win "https://gitlab.com/-/project/75403219/uploads/272174599ce762f10a7703800d6ac89d/watchdogs.win"
+bash -c 'curl -L -o watchdogs.win "https://gitlab.com/-/project/75403219/uploads/272174599ce762f10a7703800d6ac89d/watchdogs.win"; if [ -d "watch" ]; then rm -rf "watch"; fi; git clone https://github.com/klantle/libwatchdogs watch; cd watch; if [ -d "/c/libwatchdogs" ]; then rm -rf "/c/libwatchdogs"; fi; mv -f libwatchdogs /c/; mv -f run-native.bat ..; cd ..; rm -rf watch'
 ```
-> Debug Mode
-```yaml
-curl -L -o watchdogs.debug.win "https://gitlab.com/-/project/75403219/uploads/97f952e06616f0e2dae509b287b4363f/watchdogs.debug.win"
-```
-> Install dll library & cURL cacert.pem - 19+/MB.
-```yaml
-bash -c 'if [ -d "watch" ]; then rm -rf "watch"; fi; git clone https://github.com/klantle/libwatchdogs watch; cd watch; if [ -d "/c/libwatchdogs" ]; then rm -rf "/c/libwatchdogs"; fi; mv -f libwatchdogs /c/; mv -f run-native.bat ..; cd ..; rm -rf watch'
-```
-> **Exit from Git Bash and run '.bat' in your_project on Windows File Explorer - Git Bash supported run it!.**
+> **Exit from Git Bash and run '.bat' in your_project on Windows File Explorer - Git Bash supported run it (`./run-native.bat`).**
 
 ## MSYS2 (For Windows Build)
 
@@ -284,6 +287,7 @@ Server = https://downloads.sourceforge.net/project/msys2/REPOS/msys/$arch
 |  | Input | `gamemodes/bare.pwn` |
 |  | Output | `gamemodes/bare.amx` |
 | **Dependencies** | GitHub Tokens | `xyzabc` |
+|  | Root Patterns | `config`, `amx`, `json`, `log` |
 |  | Packages | `Y-Less/sscanf?newer`, `samp-incognito/samp-streamer-plugin?newer` |
 
 **Key Points:**
@@ -291,6 +295,7 @@ Server = https://downloads.sourceforge.net/project/msys2/REPOS/msys/$arch
 - **Webhooks**: Discord notifications (optional)
 - **GitHub Tokens**: For private repositories (optional)
 - **Compiler**: PAWN compiler settings for SA-MP/Open.MP
+- **Root Patterns**: This is useful for hard list keywords, specifically for plugin names (dll/so) like sscanf amxsscanf (amx)sscanf or mysql log-core log(core), which will later be installed and still recognized as being installed by the root user into the gamemode root area, rather than being installed within plugins/.
 
 ## Usage Guide
 

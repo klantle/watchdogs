@@ -172,6 +172,7 @@ typedef struct {
     char * wg_toml_config;
     char * wg_toml_logs;
     char * wg_toml_aio_opt;
+    char * wg_toml_root_patterns;
     char * wg_toml_packages;
     char * wg_toml_proj_input;
     char * wg_toml_proj_output;

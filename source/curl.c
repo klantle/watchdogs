@@ -687,13 +687,13 @@ static void update_library_environment(const char *lib_path)
         snprintf(command, sizeof(command),
                 "export LD_LIBRARY_PATH=%s:$LD_LIBRARY_PATH",
                 lib_path);
-        pr_info("Exporting path: %s", lib_path);
+        pr_info(stdout, "Exporting path: %s", lib_path);
         wg_run_command(command);
 #ifdef WG_ANDROID  
         snprintf(command, sizeof(command),
                 "export LD_LIBRARY_PATH=%s:$LD_LIBRARY_PATH",
                 getenv("PREFIX"));
-        pr_info("Exporting path: %s", getenv("PREFIX"));
+        pr_info(stdout, "Exporting path: %s", getenv("PREFIX"));
         wg_run_command(command);
 #endif
         snprintf(command, sizeof(command),

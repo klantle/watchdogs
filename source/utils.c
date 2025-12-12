@@ -1485,7 +1485,7 @@ static void wg_check_compiler_options(int *compatibility, int *optimized_lt)
  * Extracts general settings, particularly OS type, and stores in global config.
  * Returns 1 on success, 0 on parse error or file not found.
  */
-static int wg_parsewg_toml_config(void)
+static int wg_parse_toml_config(void)
 {
 		FILE *this_proc_fileile;
         char wg_buf_err[WG_PATH_MAX];
@@ -1858,7 +1858,7 @@ int wg_toml_configs(void)
 		}
 
 		/* Parse the TOML file */
-		if (!wg_parsewg_toml_config()) {
+		if (!wg_parse_toml_config()) {
 				pr_error(stdout, "Failed to parse TOML configuration");
                 __debug_function(); /* call debugger function */
 				return 1;

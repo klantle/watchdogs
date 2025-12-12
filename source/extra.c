@@ -70,7 +70,7 @@ void printf_colour(FILE *stream, const char *color, const char *format, ...)
 }
 
 /*
- * Prints informational message with "[INFO]" prefix and newline.
+ * Prints informational message with "I" prefix and newline.
  * Standardized format for informational messages with automatic newline.
  */
 void printf_info(FILE *stream, const char *format, ...)
@@ -78,7 +78,7 @@ void printf_info(FILE *stream, const char *format, ...)
         va_list args;
         va_start(args, format);
         printf("%s", FCOLOUR_YELLOW);
-        printf("* [INFO]");       /* Standard informational prefix */
+        printf(">> I");       /* Standard informational prefix */
         printf("%s", FCOLOUR_DEFAULT);
         printf(": ");
         vfprintf(stream, format, args);   /* Print message content */
@@ -88,7 +88,7 @@ void printf_info(FILE *stream, const char *format, ...)
 }
 
 /*
- * Prints warning message with "[WARNING]" prefix and newline.
+ * Prints warning message with "W" prefix and newline.
  * Standardized format for warning messages with automatic newline.
  */
 void printf_warning(FILE *stream, const char *format, ...)
@@ -96,7 +96,7 @@ void printf_warning(FILE *stream, const char *format, ...)
         va_list args;
         va_start(args, format);
         printf("%s", FCOLOUR_GREEN);
-        printf("* [WARNING]");       /* Standard informational prefix */
+        printf(">> W");       /* Standard informational prefix */
         printf("%s", FCOLOUR_DEFAULT);
         printf(": ");
         vfprintf(stream, format, args);   /* Print message content */
@@ -106,7 +106,7 @@ void printf_warning(FILE *stream, const char *format, ...)
 }
 
 /*
- * Prints error message with "[ERROR]" prefix and newline.
+ * Prints error message with "E" prefix and newline.
  * Standardized format for error messages with automatic newline.
  */
 void printf_error(FILE *stream, const char *format, ...)
@@ -114,7 +114,7 @@ void printf_error(FILE *stream, const char *format, ...)
         va_list args;
         va_start(args, format);
         printf("%s", FCOLOUR_RED);
-        printf("* [ERROR]");       /* Standard informational prefix */
+        printf(">> E");       /* Standard informational prefix */
         printf("%s", FCOLOUR_DEFAULT);
         printf(": ");
         vfprintf(stream, format, args);   /* Print message content */

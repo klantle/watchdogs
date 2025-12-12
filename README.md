@@ -420,6 +420,11 @@ running server
 compiles
 ```
 
+**Compile and start with specific path:**
+```yml
+compiles server
+```
+
 ## Dependency Management
 
 * **Algorithm**

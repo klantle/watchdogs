@@ -554,7 +554,9 @@ loop_ipcc3:
         } else if (strcmp(ptr_command, "0000WGDEBUGGINGSERVER") == 0) {
             wg_server_crash_check();
             return 3;
-        } else if (strncmp(ptr_command, "compile", strlen("compile")) == 0) {
+        } else if (strncmp(ptr_command, "compile", strlen("compile")) == 0 &&
+                   !isalpha((unsigned char)ptr_command[strlen("compile")])) {
+                    
             wg_console_title("Watchdogs | @ compile | logging file: .watchdogs/compiler.log");
 
             char *args;
@@ -653,6 +655,10 @@ _runners_:
                 }
 
                 pr_color(stdout, FCOLOUR_YELLOW, "running..\n");
+                println(stdout, "\toperating system: %s", wgconfig.wg_toml_os_type);
+                println(stdout, "\tbinary file: %s", wgconfig.wg_toml_binary);
+                println(stdout, "\tconfig file: %s", wgconfig.wg_toml_config);
+                
                 char size_run[WG_PATH_MAX];
                 struct sigaction sa;
                 if (wg_server_env() == 1) {
@@ -854,19 +860,44 @@ n_loop_igm2:
                 }
 
                 goto chain_done;
-        } else if (strcmp(ptr_command, "compiles") == 0) {
+        } else if (strncmp(ptr_command, "compiles", strlen("compiles")) == 0) {
             wg_console_title("Watchdogs | @ compiles");
 
-            const char *args[] = { NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL };
+            char *args = ptr_command + strlen("compiles");
+            while (*args == ' ') ++args;
+            char *args2 = NULL;
+            args2 = strtok(args, " ");
+            
+            if (args2 == NULL || args2[0] == '\0') {
+                const char *argsc[] = { NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL };
 
-            wg_compile_running = 1;
+                wg_compile_running = 1;
 
-            wg_run_compiler(args[0], args[1], args[2], args[3],
-                            args[4], args[5], args[6], args[7],
-                            args[8]);
+                wg_run_compiler(argsc[0], argsc[1], argsc[2], argsc[3],
+                                argsc[4], argsc[5], argsc[6], argsc[7],
+                                argsc[8]);
 
-            if (wgconfig.wg_compiler_stat < 1) {
-                goto _runners_;
+                if (wgconfig.wg_compiler_stat < 1) {
+                    goto _runners_;
+                }
+            } else {
+                const char *argsc[] = { NULL, args2, NULL, NULL, NULL, NULL, NULL, NULL, NULL };
+
+                wg_compile_running = 1;
+
+                wg_run_compiler(argsc[0], argsc[1], argsc[2], argsc[3],
+                                argsc[4], argsc[5], argsc[6], argsc[7],
+                                argsc[8]);
+
+                if (wgconfig.wg_compiler_stat < 1) {
+                    
+                    char size_command[WG_PATH_MAX];
+                    snprintf(size_command,
+                        sizeof(size_command), "running %s", args);
+                    ptr_command = strdup(size_command);
+
+                    goto _runners_;
+                }
             }
 
             goto chain_done;
@@ -1360,11 +1391,18 @@ wanion_curl_end:
                 }
 
                 char *filename = args;
-                if (strrchr(args, '/') && strrchr(args, '\\'))
-                    filename = (strrchr(args, '/') > strrchr(args, '\\')) ? \
-                        strrchr(args, '/') + 1 : strrchr(args, '\\') + 1;
-                else if (strrchr(args, '/')) filename = strrchr(args, '/') + 1;
-                else if (strrchr(args, '\\')) filename = strrchr(args, '\\') + 1;
+                if (strrchr(args, __PATH_CHR_SEP_LINUX) &&
+                    strrchr(args, __PATH_CHR_SEP_WIN32))
+                {
+                    filename = (strrchr(args, __PATH_CHR_SEP_LINUX) > strrchr(args, __PATH_CHR_SEP_WIN32)) ? \
+                                strrchr(args, __PATH_CHR_SEP_LINUX) + 1 : strrchr(args, __PATH_CHR_SEP_WIN32) + 1;
+                } else if (strrchr(args, __PATH_CHR_SEP_LINUX)) {
+                        filename = strrchr(args, __PATH_CHR_SEP_LINUX) + 1;
+                } else if (strrchr(args, __PATH_CHR_SEP_WIN32)) {
+                        filename = strrchr(args, __PATH_CHR_SEP_WIN32) + 1;
+                } else {
+                    ;
+                }
 
                 CURL *curl = curl_easy_init();
                 if (curl) {

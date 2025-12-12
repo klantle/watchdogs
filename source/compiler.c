@@ -152,7 +152,7 @@ int wg_run_compiler(const char *args, const char *compile_args,
             }
 
             if (!wg_toml_config) {
-                pr_error(stdout, "parsing TOML: %s", wg_buf_err);
+                pr_error(stdout, "failed to parse the watchdogs.toml....: %s", wg_buf_err);
                 __debug_function(); /* debugging */
                 goto compiler_end;
             }

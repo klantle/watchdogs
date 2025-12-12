@@ -339,7 +339,7 @@ _reexecute_command:
                 if (this_proc_file) fclose(this_proc_file);
 
                 if (!wg_toml_config) {
-                    pr_error(stdout, "parsing TOML: %s", errbuf);
+                    pr_error(stdout, "failed to parse the watchdogs.toml....: %s", errbuf);
                     __debug_function(); /* debugging */
                     return 0;
                 }

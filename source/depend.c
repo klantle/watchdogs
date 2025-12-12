@@ -1230,7 +1230,7 @@ static void package_include_prints( const char *package_include ) {
         if ( this_proc_file ) fclose( this_proc_file );
 
         if ( !wg_toml_config ) {
-                pr_error( stdout, "parsing TOML: %s", wg_buf_err );
+                pr_error( stdout, "failed to parse the watchdogs.toml....: %s", wg_buf_err );
                 __debug_function(); /* debugging */
                 return;
         }

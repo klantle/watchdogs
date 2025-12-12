@@ -47,7 +47,7 @@ endif
 
 # Source & object files
 
-SRCS = source/extra.c source/debug.c source/curl.c source/units.c source/utils.c source/depend.c source/kernel.c \
+SRCS = source/extra.c source/debug.c source/curl.c source/units.c source/utils.c source/depend.c \
        source/compiler.c source/archive.c source/library.c source/runner.c source/crypto.c \
        include/tomlc/toml.c include/cJSON/cJSON.c
 

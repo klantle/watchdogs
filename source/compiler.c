@@ -25,7 +25,6 @@ static const char *description =
 #include "units.h"
 #include "extra.h"
 #include "library.h"
-#include "kernel.h"
 #include "debug.h"
 #include "crypto.h"
 #include "compiler.h"

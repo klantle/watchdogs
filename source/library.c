@@ -14,12 +14,62 @@ static const char *description =
 
 #ifndef WG_WINDOWS
 	#include <sys/utsname.h> /* System information header for Unix-like systems */
+#else
+    #include <windows.h>
+    #include <iphlpapi.h>
+    #include <intrin.h>
+struct utsname {
+        char sysname[WG_PATH_MAX];
+        char nodename[WG_PATH_MAX];
+        char release[WG_PATH_MAX];
+        char version[WG_PATH_MAX];
+        char machine[WG_PATH_MAX];
+};
+int uname(struct utsname *name)
+{
+        OSVERSIONINFOEX osvi;
+        SYSTEM_INFO si;
+
+        ZeroMemory(&osvi, sizeof(OSVERSIONINFOEX));
+        osvi.dwOSVersionInfoSize = sizeof(OSVERSIONINFOEX);
+
+        if (!GetVersionEx((OSVERSIONINFO*)&osvi)) {
+                return -1;
+        }
+
+        GetSystemInfo(&si);
+
+        snprintf(name->sysname, sizeof(name->sysname), "Windows");
+        snprintf(name->release, sizeof(name->release), "%lu.%lu",
+                                osvi.dwMajorVersion, osvi.dwMinorVersion);
+        snprintf(name->version, sizeof(name->version), "Build %lu",
+                                osvi.dwBuildNumber);
+
+        switch (si.wProcessorArchitecture) {
+                case PROCESSOR_ARCHITECTURE_AMD64:
+                        snprintf(name->machine, sizeof(name->machine), "x86_64");
+                        break;
+                case PROCESSOR_ARCHITECTURE_INTEL:
+                        snprintf(name->machine, sizeof(name->machine), "x86");
+                        break;
+                case PROCESSOR_ARCHITECTURE_ARM:
+                        snprintf(name->machine, sizeof(name->machine), "ARM");
+                        break;
+                case PROCESSOR_ARCHITECTURE_ARM64:
+                        snprintf(name->machine, sizeof(name->machine), "ARM64");
+                        break;
+                default:
+                        snprintf(name->machine, sizeof(name->machine), "Unknown");
+                        break;
+        }
+
+        return 0;
+}
 #endif
 
 #include "units.h"
 #include "archive.h"
 #include "curl.h"
-#include "kernel.h"
 #include "debug.h"
 #include "library.h"
 

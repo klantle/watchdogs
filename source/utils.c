@@ -60,11 +60,11 @@ ssize_t sendfile(int out_fd,
 #include "crypto.h"
 
 const char* __command[] = {
-		"help",       "exit",      "kill",       "title",     "sha256",
-		"crc32",      "djb2",      "time",       "config",    "download",
-		"replicate",  "hardware",  "gamemode",   "pawncc",    "debug",
-		"compile",    "running",   "compiles",   "stop",      "restart",
-		"wanion",     "tracker",   "compress",   "send"
+		"help", "exit", "kill", "title", "sha256",
+		"crc32", "djb2", "time", "config", "replicate",
+		"gamemode", "pawncc", "debug", "compile",
+		"running", "compiles", "stop", "restart",
+		"wanion", "tracker", "compress", "send"
 };
 
 const size_t

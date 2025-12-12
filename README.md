@@ -3,52 +3,61 @@
 ## Page
 
 1. [Introduction](#introduction)
-2. [Repository](#repository)
-3. [Platform-Specific Installation](#platform-specific-installation)
+2. [Platform-Specific Installation](#platform-specific-installation)
    - [Docker](#docker)
    - [Linux](#linux)
    - [Termux](#termux)
+   - [Windows Native](#Native)
    - [MSYS2](#msys2)
    - [GitHub Codespaces](#codespaces)
-   - [Windows Native](#Native)
-4. [Configuration](#configuration)
-5. [Usage Guide](#usage-guide)
-6. [Compiler Reference](#compiler-reference)
-
----
+3. [Configuration](#configuration)
+4. [Usage Guide](#usage-guide)
+5. [Compiler Reference](#compiler-reference)
 
 ## Introduction
 
 > This project started from my personal curiosity a few years back about why pawncc.exe always closed when opened and didn't output any GUI. That curiosity led to a simple discovery through experiments of commanding it (pawncc.exe) from behind the shell.
 
 ## Supported Platforms
-- [x] Linux (Debian/Ubuntu based distributions)
-- [x] Windows ([MSYS2](https://www.msys2.org/), [WSL](https://github.com/microsoft/WSL), or [Docker](https://www.docker.com/))
-- [x] macOS (via [Docker](https://www.docker.com/))
-- [x] Android (via [Termux](https://github.com/termux/termux-app/releases))
-- [x] [Virtual Private Server](https://en.wikipedia.org/wiki/Virtual_private_server)
-- [x] [Pterodactyl Egg](https://pterodactyl.io/community/config/eggs/creating_a_custom_egg.html)
-- [x] [Coder self-hosted](https://coder.com/)
-- [x] [DevPod](https://devpod.sh/)
-- [x] [GitLab CI/CD](https://docs.gitlab.com/ci/)
-- [x] [GitHub Actions](https://github.com/features/actions)
-- [x] [GitHub Codespaces](https://github.com/features/codespaces)
-
-## Repository
-
-- [x] Upstream: [GitLab.com](https://gitlab.com/mywatchdogs/watchdogs)
-- [x] Mirror 1: [GitHub.com](https://github.com/klantle/watchdogs)
-- [x] Mirror 2: [Codeberg.org](https://codeberg.org/voidarch/watchdogs)
+- Linux (Debian/Ubuntu based distributions)
+- Windows ([MSYS2](https://www.msys2.org/), [WSL](https://github.com/microsoft/WSL), or [Docker](https://www.docker.com/))
+- macOS (via [Docker](https://www.docker.com/))
+- Android (via [Termux](https://github.com/termux/termux-app/releases))
+- [Virtual Private Server](https://en.wikipedia.org/wiki/Virtual_private_server)
+- [Pterodactyl Egg](https://pterodactyl.io/community/config/eggs/creating_a_custom_egg.html)
+- [GitLab CI/CD](https://docs.gitlab.com/ci/)
+- [GitHub Actions](https://github.com/features/actions)
+- [GitHub Codespaces](https://github.com/features/codespaces)
 
 ## Platform-Specific Installation
 
-### Docker
+## Codespaces
+
+1. Click the "**<> Code**" button.
+2. Select "**Codespaces**".
+3. Choose "**Create codespace on main**" to create a new Codespace on the *main* branch.
+4. Once the Codespace opens in the VSCode interface:
+- Click the **three-line menu** (≡) in the top-left corner.
+- Select **Terminal**.
+- Click **New Terminal**.
+- In the terminal, you can drag & paste:
+```yaml
+sudo apt update && sudo apt upgrade &&
+sudo apt install make &&
+sudo make && make linux &&
+chmod +x watchdogs &&
+./watchdogs
+```
+
+## Docker
 
 #### Prerequisites
+
 - Docker installed and running
 - User added to docker group
 
 #### Setup Commands
+
 ```yaml
 # Downloading - apt << Ubuntu >>
 sudo apt install docker.io
@@ -65,10 +74,13 @@ sudo systemctl start docker
 ```
 
 #### Run Ubuntu
+
 ```yaml
 docker run -it ubuntu
 ```
+
 ### Saving image
+
 ```yaml
 # Specific session name
 docker run -it --name session_name ubuntu
@@ -82,6 +94,7 @@ sudo docker exec -it --user system my_ubuntu sh
 ```
 
 #### Common Docker Commands
+
 ```yaml
 docker ps -a                               # List all containers
 docker start <container-name>              # Start the container
@@ -90,31 +103,7 @@ docker stop <container-name>               # Stop the container
 docker rm -f <container-name>              # Force-remove the container
 ```
 
-### Codespaces
-
-> GitHub Codespaces/Codespaces Setup.
-
-1. Click the "**<> Code**" button.
-2. Select "**Codespaces**".
-3. Choose "**Create codespace on main**" to create a new Codespace on the *main* branch.
-4. Once the Codespace opens in the VSCode interface:
-   - Click the **three-line menu** (≡) in the top-left corner.
-   - Select **Terminal**.
-   - Click **New Terminal**.
-   - In the terminal, you can drag & paste:
-     ```yaml
-     sudo apt update && sudo apt upgrade &&
-     sudo apt install make &&
-     sudo make && make linux &&
-     chmod +x watchdogs &&
-     ./watchdogs
-     ```
-
-### Linux
-
-#### Installation Steps
-
-> Just drag this into your terminal and run it.
+## Linux
 
 ```yaml
 # 1. Update package lists
@@ -141,12 +130,11 @@ mv -f watchdogs .. && cd .. && \
 ./watchdogs
 ```
 
-### Termux
+## Termux
 
 > We highly recommend using the Termux distribution directly from GitHub instead of the Google Play Store to ensure compatibility with the latest Termux features and to enjoy the freedom offered outside the Play Store. https://github.com/termux/termux-app/releases
 > Just drag this into your terminal and run it.
 
-#### Installation Steps
 ```yaml
 # 1. Setup storage permissions
 termux-setup-storage
@@ -181,43 +169,30 @@ mv -f watchdogs.tmux .. && cd .. && \
 ./watchdogs.tmux
 ```
 
-### MSYS2
+## Native
 
-#### More mirror list (if needed)
-Available for:
-> /etc/pacman.d/mirrorlist.mingw64 | /etc/pacman.d/mirrorlist.msys | /etc/pacman.d/mirrorlist.ucrt64
+1. Download Git first in https://git-scm.com/install/windows
+2. Run Git Bash.
+
+> cd to your_project directory
 ```yaml
-nano /etc/pacman.d/mirrorlist.mingw64 && nano /etc/pacman.d/mirrorlist.msys && nano /etc/pacman.d/mirrorlist.ucrt64
+cd /c/users/desktop_name/downloads/your_project
 ```
-
-Add mirrors:
+> Download stable binary
 ```yaml
-## Fast & Reliable
-Server = https://repo.msys2.org/msys/$arch  # Official
-Server = https://mirror.msys2.org/msys/$arch # Official mirror
-
-## Europe
-Server = https://mirrors.bfsu.edu.cn/msys2/msys/$arch
-Server = https://mirror.selfnet.de/msys2/msys/$arch
-Server = https://mirror.clarkson.edu/msys2/msys/$arch
-
-## Indonesia & Southeast Asia
-Server = https://mirror.0x.sg/msys2/msys/$arch
-Server = https://mirrors.tuna.tsinghua.edu.cn/msys2/msys/$arch
-Server = https://mirrors.ustc.edu.cn/msys2/msys/$arch
-Server = https://mirror.nju.edu.cn/msys2/msys/$arch
-
-## Japan
-Server = https://jaist.dl.sourceforge.net/project/msys2/REPOS/msys/$arch
-Server = https://ftp.jaist.ac.jp/pub/msys2/msys/$arch
-
-## Singapore
-Server = https://downloads.sourceforge.net/project/msys2/REPOS/msys/$arch
+curl -L -o watchdogs.win "https://gitlab.com/-/project/75403219/uploads/c76f43b7e6022683c796591d1d903723/watchdogs.win"
 ```
-> Save and Exit: **CTRL + X & Y + ENTER**
+> Debug Mode
+```yaml
+curl -L -o watchdogs.debug.win "https://gitlab.com/-/project/75403219/uploads/c7cdeabfa08d4309cc314b6ddcce88fe/watchdogs.debug.win"
+```
+> Install dll library & cURL cacert.pem - 19+/MB.
+```yaml
+bash -c 'if [ -d "watch" ]; then rm -rf "watch"; fi; git clone https://github.com/klantle/libwatchdogs watch; cd watch; if [ -d "/c/libwatchdogs" ]; then rm -rf "/c/libwatchdogs"; fi; mv -f libwatchdogs /c/; mv -f run-native.bat ..; cd ..; rm -rf watch'
+```
+> **Exit from Git Bash and run '.bat' in your_project on Windows File Explorer - Git Bash supported run it!.**
 
-#### Installation Steps
-> Just drag this into your terminal and run it.
+## MSYS2 (For Windows Build)
 
 ```yaml
 # 1. Sync package database & Upgrade package
@@ -245,58 +220,41 @@ mv -f watchdogs.win .. && cd .. && \
 ./watchdogs.win
 ```
 
-### Native
+### More mirror list (if needed)
 
-#### Installation Steps
-
-> needed [msys2](https://www.msys2.org/) for compile.
-
+- Available for: `/etc/pacman.d/mirrorlist.mingw64` | `/etc/pacman.d/mirrorlist.msys` | `/etc/pacman.d/mirrorlist.ucrt64`
 ```yaml
-# 1. Sync package database
-pacman -Sy
-
-# 2. Install required packages
-pacman -S make git
-
-# 3. Clone repository
-git clone https://gitlab.com/mywatchdogs/watchdogs watch
-
-# 4. Navigate to directory
-cd watch
-
-# 5. Installing Library & Build from source
-make init && make windows
-
-# 6. Install dll library & cURL cacert.pem - 19+/MB.
-bash -c 'if [ -d "watch" ]; then rm -rf "watch"; fi; git clone https://github.com/klantle/libwatchdogs watch; cd watch; if [ -d "/c/libwatchdogs" ]; then rm -rf "/c/libwatchdogs"; fi; mv -f libwatchdogs /c/; mv -f run-native.bat ..; cd ..; rm -rf watch'
-
-# 7. You can run '.bat' (out of msys2, where .bat & watchdogs.win)
-~
+nano /etc/pacman.d/mirrorlist.mingw64 && nano /etc/pacman.d/mirrorlist.msys && nano /etc/pacman.d/mirrorlist.ucrt64
 ```
 
-### Windows native with Git Bash only
-> Download Git first in https://git-scm.com/install/windows
-> Run Git Bash
+- Add mirrors:
+```yaml
+## Fast & Reliable
+Server = https://repo.msys2.org/msys/$arch  # Official
+Server = https://mirror.msys2.org/msys/$arch # Official mirror
 
-> cd to your_project directory
-```yaml
-cd /c/users/desktop_name/downloads/your_project
-```
-> Download stable binary
-```yaml
-curl -L -o watchdogs.win "https://gitlab.com/-/project/75403219/uploads/c76f43b7e6022683c796591d1d903723/watchdogs.win"
-```
-> Debug Mode
-```yaml
-curl -L -o watchdogs.debug.win "https://gitlab.com/-/project/75403219/uploads/c7cdeabfa08d4309cc314b6ddcce88fe/watchdogs.debug.win"
-```
-> Install dll library & cURL cacert.pem - 19+/MB.
-```yaml
-bash -c 'if [ -d "watch" ]; then rm -rf "watch"; fi; git clone https://github.com/klantle/libwatchdogs watch; cd watch; if [ -d "/c/libwatchdogs" ]; then rm -rf "/c/libwatchdogs"; fi; mv -f libwatchdogs /c/; mv -f run-native.bat ..; cd ..; rm -rf watch'
-```
-> **Exit from Git Bash and run '.bat' in your_project on Windows File Explorer - Git Bash supported run it!.**
+## Europe
+Server = https://mirrors.bfsu.edu.cn/msys2/msys/$arch
+Server = https://mirror.selfnet.de/msys2/msys/$arch
+Server = https://mirror.clarkson.edu/msys2/msys/$arch
 
-### Known Issue
+## Indonesia & Southeast Asia
+Server = https://mirror.0x.sg/msys2/msys/$arch
+Server = https://mirrors.tuna.tsinghua.edu.cn/msys2/msys/$arch
+Server = https://mirrors.ustc.edu.cn/msys2/msys/$arch
+Server = https://mirror.nju.edu.cn/msys2/msys/$arch
+
+## Japan
+Server = https://jaist.dl.sourceforge.net/project/msys2/REPOS/msys/$arch
+Server = https://ftp.jaist.ac.jp/pub/msys2/msys/$arch
+
+## Singapore
+Server = https://downloads.sourceforge.net/project/msys2/REPOS/msys/$arch
+```
+
+> Save and Exit: **CTRL + X & Y + ENTER**
+
+## Known Issue
 
 | Platform | Issue | Fix |
 |---|---|---|
@@ -309,9 +267,7 @@ bash -c 'if [ -d "watch" ]; then rm -rf "watch"; fi; git clone https://github.co
 | **Android** | "Problem parsing the package" error | Try different APK from GitHub releases<br>Or use installer: **SAI (Split APKs Installer)**<br>Or use **GitHub Codespaces** in browser |
 | **Android** | APK installation blocked by OEM | Use: **Shizuku** (non-root) or **Magisk/KingoRoot** (root)<br>Or alternative installers: APKMirror, APKPure, MT Manager |
 
-## Configuration
-
-### watchdogs.toml Structure
+## `watchdogs.toml` Configuration
 
 | Category | Setting | Value Sample |
 |---|---|---|
@@ -322,12 +278,12 @@ bash -c 'if [ -d "watch" ]; then rm -rf "watch"; fi; git clone https://github.co
 |  | API Keys | `API_KEY` |
 |  | Chatbot | `gemini` |
 |  | Model | `gemini-2.5-pro` |
-|  | Discord Webhooks | `DO_HERE` |
-| **Compiler** | Options | `-Z+`, `-O2`, `-d2`, `-;+`, `-(+`, `-\` |
+|  | Discord Webhooks | `xyzabc` |
+| **Compiler** | Options | `-Z+`, `-O2`, `-d2`, `-;+`, `-(+`, `-\\` |
 |  | Include Paths | `gamemodes/`, `gamemodes/x/`, `gamemodes/y/`, `gamemodes/z/`, `pawno/include/`, `pawno/include/x/`, `pawno/include/y/`, `pawno/include/z/` |
 |  | Input | `gamemodes/bare.pwn` |
 |  | Output | `gamemodes/bare.amx` |
-| **Dependencies** | GitHub Tokens | `DO_HERE` |
+| **Dependencies** | GitHub Tokens | `xyzabc` |
 |  | Packages | `Y-Less/sscanf?newer`, `samp-incognito/samp-streamer-plugin?newer` |
 
 **Key Points:**
@@ -338,87 +294,45 @@ bash -c 'if [ -d "watch" ]; then rm -rf "watch"; fi; git clone https://github.co
 
 ## Usage Guide
 
-### Basic Operations
+## Basic Operations
 
-Get help:
-```yaml
-Usage: help | help [<command>]
-```
-
-> Watchdogs also directly supports running commands when executing the program and, of course, supports running commands with arguments like
+> Watchdogs inline:
 
 ```yaml
 ./watchdogs help
 ./watchdogs whoami
-./watchdogs help compile
-./watchdogs compile main.pwn
+./watchdogs compile server.pwn
 ```
 
-> You are using Watchdogs, and Watchdogs restricts terminal access like it did in your daily workflow before using Watchdogs, you don't need to use that as a reason to avoid Watchdogs. Watchdogs automatically falls back to the system shell for commands that are not directly registered within the Watchdogs system. This means that if, -for example, you run a command like `clear`, `rm`, `mv`, or `cp` with arguments (options like flags in the executed command), it will still run in the terminal even within a Watchdogs instance.
+## Upload Our Files
 
-> Be careful: commands executed this way are still subject to the normal risks of the system shell. Improper use of commands, especially those that modify or delete files (like rm), can affect your system. Always cross-check commands and arguments before running them.
-
-### Downloading Our Links
-
-> This can be used to install any archive. In this case, it is very advantageous for easily accessing gamemodes, only requiring a third party as an archive provider to serve as the link. Only zip/tar/tar.gz for extracting.
-> Only GitHub!.
+> This is intended to send your file to a Discord channel using cURL, via Discord Webhooks, to a specific channel listed under `[general]` with the key `webhooks`.
 
 ```yaml
-download https://github.com/klantle/watchdogs/archive/refs/heads/main.zip
+send somefiles
+send some_input.pwn
+send some_output.amx
+send some_archive.zip
+send some_image.png
+send some_note.txt
 ```
 
-> If you need to install files outside of GitHub, you can use manual curl.
-
-```yaml
-curl -L -o "name.zip" https://host.com/file/name.zip
-curl -L -o "name.tar" https://host.com/file/name.tar
-curl -L -o "name.tar.gz" https://host.com/file/name.tar.gz
-```
-
-> Extracting.
-
-```yaml
-# sudo apt install unzip
-unzip name.zip
-# sudo apt install gzip
-tar -xvf name.tar
-tar -xzvf name.tar.gz
-```
-
-### Upload/Send Our Files
-
-> What is this for? This is intended to send your file to a Discord channel using cURL, via Discord Webhooks, to a specific channel listed under `[general]` with the key `webhooks`.
-
-```yaml
-send myfiles.amx
-send myfiles.tar.gz
-```
-
-### Pawncc Downloader
+## Compiler Installer
 
 > Use `pawncc` command to easily download the pawn compiler from pawn-lang.
 
-![img](https://raw.githubusercontent.com/klantle/watchdogs/refs/heads/main/images/PAWNCC.png)
+![img](https://raw.githubusercontent.com/klantle/watchdogs/refs/heads/main/images/compiler.png)
 
-### Compilation Commands
+## Compilation Commands
 
-> Example `yourmode.pwn`:
-```pwn
-native printf(const format[], {Float,_}:...);
-
-main() {
-  printf("Hello, World!");
-}
-```
-
-> Compile `yourmode`:
+> Compile `server`:
 ```yaml
 # Default Compile
 compile .
 
 # Compile with specific file path
-compile yourmode.pwn
-compile path/to/yourmode.pwn
+compile server.pwn
+compile path/to/server.pwn
 
 # Compile with specific options
 ## Compiler Detailed
@@ -445,25 +359,25 @@ compile . --compact
 compile . --prolix
 ```
 
-> If you're trying to compile your existing gamemode that's outside the current watchdogs directory, it might still work. This is because watchdogs automatically adds the include path for the area you want to compile in the compile command.
-
-> For example, if you run `compile ../gamemodes/bare.pwn`, watchdogs will later provide the path for `../pawno/include/` and `../qawno/include/` also `/gamemodes` so that the includes in `../pawno/include/ `and `../qawno/include` also `../gamemodes` can be detected, searched for, and used in `../gamemodes/bare.pwn.`
-
-> So this is very useful for compiling in Termux without having to move your project folders around! compile `../storage/downloads/my_project/gamemodes/bare.pwn` - however you need to make sure that you're compiling the `.pwn` path that's located within the `gamemodes/` folder to ensure that the include paths remain verified.
-
-```yaml
-compile ../path/to/project/yourmode.pwn
-```
-
-![img](https://raw.githubusercontent.com/klantle/watchdogs/refs/heads/main/images/PATH.png)
-
 > Combined support
 ```yaml
 compile . --opt1 --opt2 --opt3 --opt4
-compile path/to/yourmode --opt1 --opt2 --opt3 --opt4
+compile path/to/server --opt1 --opt2 --opt3 --opt4
 ```
 
-### Server Management
+1. If you're trying to compile your existing gamemode that's outside the current watchdogs directory, it might still work. This is because watchdogs automatically adds the include path for the area you want to compile in the compile command.
+
+2. for example, if you run `compile ../gamemodes/bare.pwn`, watchdogs will later provide the path for `../pawno/include/` and `../qawno/include/` also `/gamemodes` so that the includes in `../pawno/include/ `and `../qawno/include` also `../gamemodes` can be detected, searched for, and used in `../gamemodes/bare.pwn.`
+
+3. So this is very useful for compiling in Termux without having to move your project folders around! compile `../storage/downloads/my_project/gamemodes/bare.pwn` - however you need to make sure that you're compiling the `.pwn` path that's located within the `gamemodes/` folder to ensure that the include paths remain verified.
+
+```yaml
+compile ../path/to/project/server.pwn
+```
+
+![img](https://raw.githubusercontent.com/klantle/watchdogs/refs/heads/main/images/special_dir.png)
+
+## Server Management
 
 * **Algorithm**
 ```
@@ -498,7 +412,7 @@ running .
 
 **Start server with specific gamemode:**
 ```yaml
-running yourmode
+running server
 ```
 
 **Compile and start in one command:**
@@ -506,9 +420,7 @@ running yourmode
 compiles
 ```
 
-### Dependency Management
-
-> Based on GitHub.
+## Dependency Management
 
 * **Algorithm**
 ```
@@ -533,19 +445,15 @@ compiles
 --------------------     --------------------------
 ```
 
-1. **Automatic file detection**: Watchdogs-depends now scans HTML from GitHub tags (`user/repo?tag`) instead of manual parsing.
-2. **Platform-specific downloads**: Automatically picks Windows/Linux archives based on OS detection
-3. **Smart file placement**: 
-   - Plugins go to `plugins/` folder
-   - Config/log files go to root folder
-   - Include files go to `pawno/include` or `qawno/include`
-4. **YSI handling**: Entire YSI include folder moved as-is to include directory
-5. **Auto-configuration**: Plugin names automatically added to `server.cfg` (SA-MP) or `config.json` (Open.MP)
-6. **Root plugin files**: Plugins in archive root go to server root directory
-7. **Gamemode includes**: Automatically adds includes to main gamemode file
-8. **Directory naming**: Keep `pawno/` or `qawno/` folder names unchanged for proper detection
+1. Watchdogs-depends now scans HTML from GitHub tags (`user/repo?tag`) instead of manual parsing.
+2. Automatically picks Windows/Linux archives based on OS detection
+3. Entire any include folder moved as-is to include directory
+4. Plugin names automatically added to `server.cfg` (SA-MP) or `config.json` (Open.MP)
+5. Plugins in archive root go to server root directory
+6. Automatically adds includes to main gamemode file
+7. Keep `pawno/` or `qawno/` folder names unchanged for proper detection
 
-![img](https://raw.githubusercontent.com/klantle/watchdogs/refs/heads/main/images/REPLICATE.png)
+![img](https://raw.githubusercontent.com/klantle/watchdogs/refs/heads/main/images/installer.png)
 
 **Install dependencies from `watchdogs.toml`:**
 ```yaml
@@ -571,7 +479,7 @@ replicate repo/user?newer
 replicate repo/user --branch master
 ```
 
-### Make Commands Reference
+## Make Commands Reference
 
 ```yaml
 make                # Install libraries and build
@@ -585,9 +493,7 @@ make debug-termux   # Build with debug mode (Termux)
 make windows-debug  # Build with debug mode (Windows)
 ```
 
-### GNU Debugger (GDB)
-
-> I always recommend running your program in debug build when using GDB.
+## GNU Debugger (GDB)
 
 ```yaml
 # Step 1 - Start the debugger (GDB) with your program
@@ -610,7 +516,7 @@ bt           # Basic backtrace (shows function names)
 bt full      # Full backtrace (shows function names, variables, and arguments)
 ```
 
-### Command Aliases
+## Command Aliases
 
 Create alias for easier access:
 ```yaml
@@ -623,90 +529,13 @@ alias watch='./watchdogs'
 ```
 ## Compiler Reference
 
-### Historical Background of Pawn Code
-
----
-
-Pawn is a scripting language system consisting of a compiler and an abstract machine for building and running programs in the Pawn language. The Pawn system is copyright (c) ITB CompuPhase, 1997-2017.
-
-This work is based in part on the "Small C Compiler" by Ron Cain and James E. Hendrix, as published in the book "Dr. Dobb's Toolbook of C", Brady Books, 1986.
-
-**Key Contributors:**
-- Ron Cain and James E. Hendrix: Original Small C Compiler (public domain)
-- Marc Peter: Assembler abstract machine and JIT compiler (BSD-style license)
-- G.W.M. Vissers: NASM port of JIT for Linux/Unix
-- Hongli Lai: Binreloc module (public domain)
-- Aaron Voisine: ezXML library (MIT license)
-- David "Bailopan" Anderson: Bug fixes and memory file module
-- Greg Garner: C++ compilation and floating-point support
-- Dieter Neubauer: 16-bit version support
-- Robert Daniels: ucLinux and Big Endian portability
-- Frank Condello: macOS (CFM Carbon) port
-
-### Pawncc, Pawno, and Qawno
-
----
-
-**Pawncc** is a compiler that converts `.pwn` files into `.amx` files. The primary language for SA-MP/Open.MP is [Pawn Code](https://www.compuphase.com/pawn/pawn.htm), with **Pawno** and **Qawno** serving as integrated development editors.
-
-**PawnCC** (Pawn Community Compiler) refers to a community-maintained version available at https://github.com/pawn-lang/compiler.
-
-### Path Separator Compatibility
-
----
-
-Use the `-Z+` option to support cross-platform paths with `\` on Linux and `/` on Windows. See [Compatibility mode](https://github.com/pawn-lang/compiler/wiki/Compatibility-mode) for details.
-
-### Include Path Detection
-
----
-
-Watchdogs implements recursive detection for include files in subdirectories, as the `-i` flag may not reliably detect nested includes. By default, automatic `-i` flags are disabled for `gamemodes/` and `pawno-qawno/include/` since the compiler handles includes correctly without them. To enable recursive inclusion, append `/` to the target folder path.
-
-
-### Example Usage
-
----
+## Example Usage
 
 ```yaml
 pawncc "input" -o"output.amx" -i"include/"
 ```
 
-### VSCode Tasks
-
----
-
-```json
-{
-  "version": "2.0.0",
-  "tasks": [
-    {
-      "label": "compiler tasks", "type": "shell",
-      "command": "${workspaceFolder}/pawno/pawncc.exe",
-      "args": [
-        "${file}",
-        "-o ${fileDirname}/${fileBasenameNoExtension}.amx",
-        "-i pawno/include/",
-        "-i gamemodes/",
-        "-i include/",
-        "-d 2"
-      ],
-      "group": {
-        "kind": "build",
-        "isDefault": true
-      },
-      "problemMatcher": []
-    }
-  ]
-}
-```
-
-### Compiler Options
-
----
-
-> Based on Pawn Compiler [3.10.11](https://github.com/openmultiplayer/compiler/releases/tag/v3.10.11)/[3.10.10](https://github.com/pawn-lang/compiler/releases/tag/v3.10.10)
-Here’s a version of your PAWN compiler options table with **longer English descriptions**, without using em-dashes, and more suitable for clarity in English:
+## Compiler Options
 
 ## General Options
 
@@ -732,8 +561,6 @@ Here’s a version of your PAWN compiler options table with **longer English des
 | `sym=val`  | Define a constant symbol with a specific value for conditional compilation   | -       |
 | `sym=`     | Define a constant symbol with a value of 0                                   | -       |
 
----
-
 ## Debugging Options
 
 | Option    | Description                                                             | Default   |
@@ -745,8 +572,6 @@ Here’s a version of your PAWN compiler options table with **longer English des
 | `-d3`     | Enable full debug and runtime checks, and disable optimizations (`-O0`) | -         |
 | `-E[+/-]` | Treat all compiler warnings as errors when enabled                      | -         |
 
----
-
 ## Optimization Options
 
 | Option    | Description                                                 | Default   |
@@ -756,8 +581,6 @@ Here’s a version of your PAWN compiler options table with **longer English des
 | `-O1`     | Enable optimizations compatible with just-in-time execution | *default* |
 | `-O2`     | Enable full optimization for maximum performance            | -         |
 
----
-
 ## Memory Options
 
 | Option     | Description                                         | Default |
@@ -766,8 +589,6 @@ Here’s a version of your PAWN compiler options table with **longer English des
 | `-X<num>`  | Set the size limit of the abstract machine in bytes | -       |
 | `-XD<num>` | Set a limit on data and stack memory usage in bytes | -       |
 
----
-
 ## Analysis Options
 
 | Option     | Description                                                    | Default |
@@ -775,16 +596,12 @@ Here’s a version of your PAWN compiler options table with **longer English des
 | `-R[+/-]`  | Generate a detailed recursion report to analyze function calls | -       |
 | `-r[name]` | Produce a cross-reference report showing symbol usage          | -       |
 
----
-
 ## Syntax Options
 
 | Option    | Description                                                  | Default |
 | --------- | ------------------------------------------------------------ | ------- |
 | `-;[+/-]` | Require semicolons at the end of each statement when enabled | -       |
 | `-([+/-]` | Require parentheses for function calls when enabled          | -       |
-
----
 
 ## Output Options
 

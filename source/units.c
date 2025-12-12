@@ -30,7 +30,6 @@ static const char *description =
 
 #include "extra.h"
 #include "utils.h"
-#include "kernel.h"
 #include "crypto.h"
 #include "library.h"
 #include "archive.h"
@@ -81,8 +80,6 @@ _ptr_command:
                     printf("  djb2             generate djb2 hash file\n");
                     printf("  time             print current time\n");
                     printf("  config           re-create watchdogs.toml\n");
-                    printf("  download         fetch file from URL\n");
-                    printf("  hardware         hardware information\n");
                     printf("  replicate        installer dependencies\n");
                     printf("  gamemode         download SA-MP gamemode\n");
                     printf("  pawncc           download SA-MP pawncc\n");
@@ -161,10 +158,6 @@ _reexecute_command:
                 println(stdout, "time: print current time. | Usage: \"time\"\n\tWhat time is it? Time to check!");
             } else if (strcmp(args, "config") == 0) { 
                 println(stdout, "config: re-create watchdogs.toml. Usage: \"config\"\n\tReset your config file to default settings.");
-            } else if (strcmp(args, "download") == 0) {
-                println(stdout, "download: fetch file from URL | Usage: \"download\" | [<args>]\n\tDownloads archives from direct links.");
-            } else if (strcmp(args, "hardware") == 0) { 
-                println(stdout, "hardware: hardware information. | Usage: \"hardware\"\n\tShow off your PC specs!");
             } else if (strcmp(args, "replicate") == 0) { 
                 println(stdout, "replicate: installer dependencies. | Usage: \"replicate\"\n\tDownloads & Install Our Dependencies.");
             } else if (strcmp(args, "gamemode") == 0) { 
@@ -313,52 +306,7 @@ _reexecute_command:
             wg_printfile("watchdogs.toml");
 
             goto chain_done;
-        } else if (strcmp(ptr_command, "hardware") == 0) {
-            printf("Basic Summary:\n");
-            hardware_show_summary();
-            printf("\nSpecific Fields Query:\n");
-            unsigned int specific_fields[] = {
-                FIELD_CPU_NAME,
-                FIELD_CPU_CORES,
-                FIELD_MEM_TOTAL,
-                FIELD_DISK_FREE
-            };
-            hardware_query_specific(specific_fields, 4);
-            printf("\nDetailed Report:\n");
-            hardware_show_detailed();
-
-            goto chain_done;
-        } else if (strncmp(ptr_command, "download", strlen("download")) == 0) {
-            wg_console_title("Watchdogs | @ downloading files");
-
-            char *args = ptr_command + strlen("download");
-            while (*args == ' ') ++args;
-
-            char links_name[WG_PATH_MAX];
-            const char *size_last_slash;
-
-            if (*args == '\0') {
-                println(stdout, "Usage: download [<direct-link>]");
-            } else {
-                size_last_slash = strrchr(args, __PATH_CHR_SEP_LINUX);
-                if (size_last_slash && *(size_last_slash + 1)) {
-                        snprintf(links_name, sizeof(links_name), "%s", size_last_slash + 1);
-                        if (!strfind(links_name, ".zip", true) &&
-                            !strfind(links_name, ".tar.gz", true) &&
-                            !strfind(links_name, ".tar", true))
-                                snprintf(links_name + strlen(links_name),
-                                            sizeof(links_name) - strlen(links_name),
-                                            ".zip");
-                        wg_download_file(args, links_name);
-                } else {
-                        pr_color(stdout, FCOLOUR_RED, "");
-                        printf("invalid link name: %s\t\t[Fail]\n", args);
-                        goto chain_done;
-                }
-            }
-            
-            goto chain_done;
-        } if (strncmp(ptr_command, "replicate", strlen("replicate")) == 0) {
+        } else if (strncmp(ptr_command, "replicate", strlen("replicate")) == 0) {
             wg_console_title("Watchdogs | @ replicate depends");
 
             char *args = ptr_command + strlen("replicate");
@@ -639,7 +587,7 @@ loop_ipcc3:
                             nine_arg);
 
             goto chain_done;
-        } if (strncmp(ptr_command, "running", strlen("running")) == 0) {
+        } else if (strncmp(ptr_command, "running", strlen("running")) == 0) {
 _runners_:
                 wg_stop_server_tasks();
 

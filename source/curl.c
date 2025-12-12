@@ -1041,7 +1041,7 @@ static int debug_callback(CURL *handle, curl_infotype type,
 }
 
 /* Helper function to sanitize filename */
-static void persing_filename(char *filename) {
+static void parsing_filename(char *filename) {
 
         if (filename[0] == '\0') return;
         
@@ -1124,7 +1124,7 @@ int wg_download_file(const char *url, const char *output_filename) {
                 final_filename[sizeof(final_filename) - 1] = '\0';
         }
         
-        persing_filename(final_filename);
+        parsing_filename(final_filename);
 
         pr_color(stdout, FCOLOUR_GREEN, "* Try Downloading %s", final_filename);
 

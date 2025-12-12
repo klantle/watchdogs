@@ -1,5 +1,5 @@
 static const char *description = 
-"Core utilities module for the Watchdogs toolkit providing comprehensive system" "\n"
+"Core utilities module for the Watchdogs providing comprehensive system" "\n"
 "abstractions, file operations, configuration management, and cross-platform"    "\n"
 "compatibility functions. Implements memory-safe wrappers, recursive file"       "\n"
 "search, TOML configuration parsing, process management, and platform-specific"  "\n"
@@ -58,6 +58,7 @@ ssize_t sendfile(int out_fd,
 #include "units.h"
 #include "library.h"
 #include "crypto.h"
+#include "debug.h"
 
 const char* __command[] = {
 		"help", "exit", "kill", "title", "sha256",
@@ -1471,6 +1472,7 @@ static void wg_check_compiler_options(int *compatibility, int *optimized_lt)
 			fclose(this_proc_fileile);
 		} else {
 			pr_error(stdout, "Failed to open .watchdogs/compiler_test.log");
+			__debug_function(); /* debugging */
 		}
 
 		/* Clean up test log file */
@@ -1493,6 +1495,7 @@ static int wg_parsewg_toml_config(void)
 		this_proc_fileile = fopen("watchdogs.toml", "r");
 		if (!this_proc_fileile) {
 				pr_error(stdout, "Cannot read file %s", "watchdogs.toml");
+                __debug_function(); /* debugging */
 				return 0;
 		}
 
@@ -1502,6 +1505,7 @@ static int wg_parsewg_toml_config(void)
 
 		if (!wg_toml_config) {
 				pr_error(stdout, "Parsing TOML: %s", wg_buf_err);
+                __debug_function(); /* debugging */
 				return 0;
 		}
 
@@ -1839,6 +1843,7 @@ int wg_toml_configs(void)
 			toml_file = fopen("watchdogs.toml", "w");
 			if (!toml_file) {
 					pr_error(stdout, "Failed to create watchdogs.toml");
+                	__debug_function(); /* debugging */
 					return 1;
 			}
 
@@ -1855,6 +1860,7 @@ int wg_toml_configs(void)
 		/* Parse the TOML file */
 		if (!wg_parsewg_toml_config()) {
 				pr_error(stdout, "Failed to parse TOML configuration");
+                __debug_function(); /* debugging */
 				return 1;
 		}
 
@@ -1867,6 +1873,7 @@ int wg_toml_configs(void)
 
 		if (!wg_toml_config) {
 			pr_error(stdout, "parsing TOML: %s", wg_buf_err);
+			__debug_function(); /* debugging */
 			chain_ret_main(NULL); /* Error handling */
 		}
 
@@ -2038,6 +2045,7 @@ static int __wg_sef_safety(const char *c_src, const char *c_dest) {
 		struct stat st;
 
 		/* Basic input validation */
+#if defined(_DBG_PRINT)
 		if (!c_src || !c_dest)
 				pr_error(stdout, "src or dest is null");
 		if (!*c_src || !*c_dest)
@@ -2060,6 +2068,8 @@ static int __wg_sef_safety(const char *c_src, const char *c_dest) {
 				pr_error(stdout, "destination open_dir does not exist: %s", parent);
 		if (!S_ISDIR(st.st_mode))
 				pr_error(stdout, "destination parent is not a open_dir: %s", parent);
+		__debug_function(); /* debugging */
+#endif
 
 		return 1; /* All checks passed */
 }

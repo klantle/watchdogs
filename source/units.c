@@ -1,5 +1,5 @@
 static const char *description =
-"Main command-line interface module for the Watchdogs toolkit with"       "\n"
+"Main command-line interface module for the Watchdogs with"       "\n"
 "interactive shell, command dispatching, and system management utilities."
 ;
 
@@ -340,6 +340,7 @@ _reexecute_command:
 
                 if (!wg_toml_config) {
                     pr_error(stdout, "parsing TOML: %s", errbuf);
+                    __debug_function(); /* debugging */
                     return 0;
                 }
 
@@ -1367,8 +1368,10 @@ wanion_curl_end:
             if (ret == 0)
                 pr_info(stdout, "Converter file/folder "
                     "to archive (Compression) successfully: %s\n", raw_output);
-            else
-                pr_error(stdout, "Compression failed!\n");
+            else {
+                pr_error(stdout, "Compression failed!\n");    
+                __debug_function(); /* debugging */
+            }
 
             goto chain_done;
         } else if (strncmp(ptr_command, "send", strlen("send")) == 0) {

@@ -1,7 +1,7 @@
 static const char *description =
 "Debugging and diagnostic utilities module providing function tracing," "\n"
 "system information collection, and crash analysis capabilities for"    "\n"
-"the Watchdogs toolkit with cross-architecture support."
+"the Watchdogs with cross-architecture support."
 ;
 
 #ifndef _GNU_SOURCE
@@ -94,11 +94,18 @@ void __reset_sys(void) {
         sigint_handler = 0;
 }
 
-void __debug_main_chain(int debug_info) {
+void __debug_main_chain_(int debug_hard,
+            const char *function,
+            const char *pretty_function,
+            const char *file, int line) {
 
         __reset_sys();
-        if (debug_info == 1) {
-#if defined(_DBG_PRINT)
+
+#if ! defined(_DBG_PRINT)
+        return;
+#endif
+
+        if (debug_hard == 1) {
             pr_color(stdout, FCOLOUR_YELLOW, "-DEBUGGER ");
             printf("[function: %s | "
                 "pretty function: %s | "
@@ -125,8 +132,8 @@ void __debug_main_chain(int debug_info) {
                 "toml chatbot: %s | "
                 "toml ai models: %s | "
                 "toml ai key: %s\n]",
-                    __func__, __PRETTY_FUNCTION__,
-                    __LINE__, __FILE__,
+                    function, pretty_function,
+                    line, file,
                     __DATE__, __TIME__,
                     __TIMESTAMP__,
                     __STDC_VERSION__,
@@ -190,17 +197,76 @@ void __debug_main_chain(int debug_info) {
 #ifdef __FMA__
             printf("FMA: Supported\n");
 #endif
+        } else if (debug_hard == 0) {
+            pr_color(stdout, FCOLOUR_YELLOW, "-DEBUGGER ");
+            printf("[function: %s | "
+                "pretty function: %s | "
+                "line: %d | "
+                "file: %s | "
+                "date: %s | "
+                "time: %s | "
+                "timestamp: %s | "
+                "C standard: %ld | "
+                "C version: %s | "
+                "compiler version: %d | "
+                "architecture: %s | "
+                "os_type: %s (CRC32) | "
+                "pointer_samp: %s | "
+                "pointer_openmp: %s | "
+                "f_samp: %s (CRC32) | "
+                "f_openmp: %s (CRC32) | "
+                "toml gamemode input: %s | "
+                "toml gamemode output: %s | "
+                "toml binary: %s | "
+                "toml configs: %s | "
+                "toml logs: %s | "
+                "toml github tokens: %s | "
+                "toml chatbot: %s | "
+                "toml ai models: %s | "
+                "toml ai key: %s\n]",
+                    function, pretty_function,
+                    line, file,
+                    __DATE__, __TIME__,
+                    __TIMESTAMP__,
+                    __STDC_VERSION__,
+                    __VERSION__,
+                    __GNUC__,
+#ifdef __x86_64__
+                    "x86_64",
+#elif defined(__i386__)
+                    "i386",
+#elif defined(__arm__)
+                    "ARM",
+#elif defined(__aarch64__)
+                    "ARM64",
+#else
+                    "Unknown",
 #endif
-            }
+                    wgconfig.wg_os_type, wgconfig.wg_ptr_samp,
+                    wgconfig.wg_ptr_omp, wgconfig.wg_is_samp, wgconfig.wg_is_omp,
+                    wgconfig.wg_toml_proj_input, wgconfig.wg_toml_proj_output,
+                    wgconfig.wg_toml_binary, wgconfig.wg_toml_config, wgconfig.wg_toml_logs,
+                    wgconfig.wg_toml_github_tokens,
+                    wgconfig.wg_toml_chatbot_ai,
+                    wgconfig.wg_toml_models_ai,
+                    wgconfig.wg_toml_key_ai);
+        }
+
+        return;
 }
 
 /*************************************************************************
 //
 **************************************************************************/
 
-void __debug_function(void) {
+void __debug_function_(const char *function,
+            const char *pretty_function,
+            const char *file, int line) {
     
-#if defined (_DBG_PRINT)
+#if ! defined (_DBG_PRINT)
+        return;
+#endif
+
         pr_color(stdout, FCOLOUR_YELLOW, "-DEBUGGER ");
         printf("[function: %s | "
                    "pretty function: %s | "
@@ -213,8 +279,8 @@ void __debug_function(void) {
                    "C version: %s | "
                    "compiler version: %d | "
                    "architecture: %s]:\n",
-                __func__, __PRETTY_FUNCTION__,
-                __LINE__, __FILE__,
+                function, pretty_function,
+                line, file,
                 __DATE__, __TIME__,
                 __TIMESTAMP__,
                 __STDC_VERSION__,
@@ -231,6 +297,6 @@ void __debug_function(void) {
 #else
                 "Unknown");
 #endif
-#endif
+
         return;
 }

@@ -71,6 +71,7 @@ static int arch_copy_data(struct archive *ar, struct archive *aw)
                         return ARCHIVE_OK;  /* Successfully copied all data */
                 if (ret != ARCHIVE_OK) {
                         pr_error(stdout, "Read error: %s", archive_error_string(ar));
+                        __debug_function(); /* debugging */
                         return ret;  /* Return read error */
                 }
 
@@ -78,6 +79,7 @@ static int arch_copy_data(struct archive *ar, struct archive *aw)
                 ret = archive_write_data_block(aw, buffer, size, offset);
                 if (ret != ARCHIVE_OK) {
                         pr_error(stdout, "Write error: %s", archive_error_string(aw));
+                        __debug_function(); /* debugging */
                         return ret;  /* Return write error */
                 }
         }
@@ -628,6 +630,7 @@ static int extract_zip_entry(struct archive *archive_read,
         ret = archive_write_header(archive_write, item);
         if (ret != ARCHIVE_OK) {
                 pr_error(stdout, "Write header error: %s", archive_error_string(archive_write));
+                __debug_function(); /* debugging */
                 return -1;  /* Header write error */
         }
 
@@ -638,12 +641,14 @@ static int extract_zip_entry(struct archive *archive_read,
                         break;  /* Successfully copied all data */
                 if (ret < ARCHIVE_OK) {
                         pr_error(stdout, "Read data error: %s", archive_error_string(archive_read));
+                        __debug_function(); /* debugging */
                         return -2;  /* Data read error */
                 }
 
                 ret = archive_write_data_block(archive_write, buffer, size, offset);
                 if (ret < ARCHIVE_OK) {
                         pr_error(stdout, "Write data error: %s", archive_error_string(archive_write));
+                        __debug_function(); /* debugging */
                         return -3;  /* Data write error */
                 }
         }
@@ -671,6 +676,7 @@ int wg_extract_zip(const char *zip_file, const char *entry_dest) {
 
         if (!archive_read || !archive_write) {
                 pr_error(stdout, "Failed to create archive handles");
+                __debug_function(); /* debugging */
                 goto error;  /* Handle allocation failure */
         }
 
@@ -686,6 +692,7 @@ int wg_extract_zip(const char *zip_file, const char *entry_dest) {
         ret = archive_read_open_filename(archive_read, zip_file, 1024 * 1024);
         if (ret != ARCHIVE_OK) {
                 pr_error(stdout, "Cannot open file: %s", archive_error_string(archive_read));
+                __debug_function(); /* debugging */
                 goto error;  /* Handle file open error */
         }
 

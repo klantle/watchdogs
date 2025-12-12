@@ -19,6 +19,7 @@ static const char *description =
 #include "archive.h"
 #include "crypto.h"
 #include "units.h"
+#include "debug.h"
 #include "depend.h"
 
 /* Global buffers for dependency management operations */
@@ -725,6 +726,7 @@ package_handle_repo( const struct repositories *repo, char *put_url, size_t put_
                 pr_error( stdout, "Failed to get latest tag for %s/%s,"
                         "Falling back to main branch\t\t[Fail]",
                         repo->user, repo->repo );
+                __debug_function(); /* debugging */
                 use_fallback_branch = 1;
             }
         } else {
@@ -995,6 +997,7 @@ void package_implementation_omp_conf( const char* config_name, const char* packa
                 char* buffer = ( char* )wg_malloc( fle_size + 1 );
                 if ( !buffer ) {
                         pr_error( stdout, "Memory allocation failed!" );
+                        __debug_function(); /* debugging */
                         fclose( ctx_file );
                         return;
                 }
@@ -1002,6 +1005,7 @@ void package_implementation_omp_conf( const char* config_name, const char* packa
                 size_t file_read = fread( buffer, 1, fle_size, ctx_file );
                 if ( file_read != fle_size ) {
                         pr_error( stdout, "Failed to read the entire file!" );
+                        __debug_function(); /* debugging */
                         wg_free( buffer );
                         fclose( ctx_file );
                         return;
@@ -1227,6 +1231,7 @@ static void package_include_prints( const char *package_include ) {
 
         if ( !wg_toml_config ) {
                 pr_error( stdout, "parsing TOML: %s", wg_buf_err );
+                __debug_function(); /* debugging */
                 return;
         }
 

@@ -123,8 +123,10 @@ int wg_run_compiler(const char *args, const char *compile_args,
         FILE *wg_log_files = fopen(".watchdogs/compiler.log", "w");
         if (wg_log_files != NULL)
             fclose(wg_log_files);
-        else
+        else {
             pr_error(stdout, "can't create .watchdogs/compiler.log!");
+            __debug_function(); /* debugging */
+        }
 
         compiler_memory_clean(); /* Perform memory cleanup before compilation */
 
@@ -136,6 +138,7 @@ int wg_run_compiler(const char *args, const char *compile_args,
             this_proc_file = fopen("watchdogs.toml", "r");
             if (!this_proc_file) {
                 pr_error(stdout, "Can't read file %s", "watchdogs.toml");
+                __debug_function(); /* debugging */
                 goto compiler_end;
             }
 
@@ -150,6 +153,7 @@ int wg_run_compiler(const char *args, const char *compile_args,
 
             if (!wg_toml_config) {
                 pr_error(stdout, "parsing TOML: %s", wg_buf_err);
+                __debug_function(); /* debugging */
                 goto compiler_end;
             }
 
@@ -167,6 +171,7 @@ int wg_run_compiler(const char *args, const char *compile_args,
             this_proc_fileile = fopen(".watchdogs/compiler_test.log", "r");
             if (!this_proc_fileile) {
                 pr_error(stdout, "Failed to open .watchdogs/compiler_test.log");
+                __debug_function(); /* debugging */
             }
 
             /* Process and categorize compiler arguments from command line */
@@ -307,6 +312,7 @@ not_valid_flag_options:
                         /* Validate array sizes to prevent division by zero */
                         if (size_debug_options == 0 || size_debug_options_zero == 0) {
                             pr_error(stdout, "Invalid debug flag array configuration");
+                            __debug_function(); /* debugging */
                             goto compiler_end;
                         }
                         
@@ -314,6 +320,7 @@ not_valid_flag_options:
                         if (size_debug_options < size_debug_options_zero || 
                             size_debug_options % size_debug_options_zero != 0) {
                             pr_error(stdout, "Debug flag array size mismatch");
+                            __debug_function(); /* debugging */
                             goto compiler_end;
                         }
                         
@@ -323,12 +330,14 @@ not_valid_flag_options:
                         const size_t MAX_DEBUG_FLAGS = 256;
                         if (debug_flag_count > MAX_DEBUG_FLAGS) {
                             pr_error(stdout, "Excessive debug flag count: %zu", debug_flag_count);
+                            __debug_function(); /* debugging */
                             goto compiler_end;
                         }
                         
                         /* Ensure wgconfig.wg_toml_aio_opt is valid */
                         if (wgconfig.wg_toml_aio_opt == NULL) {
                             pr_error(stdout, "Configuration string is NULL");
+                            __debug_function(); /* debugging */
                             goto compiler_end;
                         }
                         
@@ -336,6 +345,7 @@ not_valid_flag_options:
                         char *original_config = strdup(wgconfig.wg_toml_aio_opt);
                         if (original_config == NULL) {
                             pr_error(stdout, "Memory allocation failed for config backup");
+                            __debug_function(); /* debugging */
                             goto compiler_end;
                         }
                         
@@ -412,6 +422,7 @@ not_valid_flag_options:
                                     config_buffer_size = strlen(wgconfig.wg_toml_aio_opt) + 1;
                                 } else {
                                     pr_error(stdout, "Buffer overflow detected during flag removal");
+                                    __debug_function(); /* debugging */
                                     strncpy(wgconfig.wg_toml_aio_opt, original_config, config_buffer_size);
                                     wg_free(original_config);
                                     goto compiler_end;
@@ -441,6 +452,7 @@ not_valid_flag_options:
                         /* Final validation */
                         if (strlen(wgconfig.wg_toml_aio_opt) >= config_buffer_size) {
                             pr_error(stdout, "Configuration string corruption detected");
+                            __debug_function(); /* debugging */
                             goto compiler_end;
                         }
                     }
@@ -649,10 +661,12 @@ not_valid_flag_options:
                         } else { /* CreateProcess failed. */
                             clock_gettime(CLOCK_MONOTONIC, &end); /* Still record end time for consistency. */
                             pr_error(stdout, "CreateProcess failed! (%lu)", GetLastError()); /* Print error with Windows error code. Common errors: ERROR_FILE_NOT_FOUND, ERROR_ACCESS_DENIED, ERROR_PATH_NOT_FOUND. */
+                            __debug_function(); /* debugging */
                         }
                     } else { /* Command string construction failed (buffer too small or snprintf error). */
                         clock_gettime(CLOCK_MONOTONIC, &end); /* Record time for consistent timing output. */
-                        pr_error(stdout, "ret_compiler too long! %s (L: %d)", __func__, __LINE__); /* Error indicating command was truncated or construction failed. Includes function name and line number. */
+                        pr_error(stdout, "ret_compiler too long!"); /* Error indicating command was truncated or construction failed. Includes function name and line number. */
+                        __debug_function(); /* debugging */
                         goto compiler_end; /* Jump to cleanup code. Using goto for error handling is common in C for centralized cleanup. */
                     }
                     if (hFile != INVALID_HANDLE_VALUE) { /* If log file was successfully opened... */
@@ -672,7 +686,8 @@ not_valid_flag_options:
                         "-i",
                         path_include);
                     if (ret_command > (int)sizeof(_compiler_input_)) {
-                        pr_error(stdout, "ret_compiler too long! %s (L: %d)", __func__, __LINE__);
+                        pr_error(stdout, "ret_compiler too long!");
+                        __debug_function(); /* debugging */
                         goto compiler_end;
                     }
                     if (rate_debugger > 0) {
@@ -743,6 +758,7 @@ not_valid_flag_options:
                             else { /* `waitpid` returned -1, indicating an error. */
                                 clock_gettime(CLOCK_MONOTONIC, &end);
                                 pr_error(stdout, "waitpid error");
+                                __debug_function(); /* debugging */
                                 break;
                             }
                             /* Kill process if timeout exceeded */
@@ -753,6 +769,7 @@ not_valid_flag_options:
                                 kill(compiler_process_id, SIGKILL); /* Forcefully kill with SIGKILL if still running. */
                                 pr_error(stdout,
                                         "posix_spawn process execution timeout! (%d seconds)", POSIX_TIMEOUT);
+                                __debug_function(); /* debugging */
                                 waitpid(compiler_process_id, &process_status, 0); /* Reap the terminated child to avoid a zombie process. */
                                 process_timeout_occurred = 1; /* Set the timeout flag. */
                             }
@@ -765,6 +782,7 @@ not_valid_flag_options:
                                 if (proc_exit_code != 0) /* Non-zero exit codes typically indicate an error. */
                                     pr_error(stdout,
                                             "compiler process exited with code (%d)", proc_exit_code);
+                                __debug_function(); /* debugging */
                             } else if (WIFSIGNALED(process_status)) { /* Make sure the child was terminated by a signal (e.g., SIGSEGV, SIGKILL). */
                                 pr_error(stdout,
                                         "compiler process terminated by signal (%d)", WTERMSIG(process_status)); /* Extract the signal number that caused termination. */
@@ -772,6 +790,7 @@ not_valid_flag_options:
                         }
                     } else { /* `posix_spawn` failed (returned an error number, not 0). */
                         pr_error(stdout, "posix_spawn failed: %s", strerror(process_spawn_result)); /* Print the human-readable error (e.g., "File not found", "Permission denied"). */
+                        __debug_function(); /* debugging */
                     }
 #endif
                     char size_container_output[WG_PATH_MAX * 2];
@@ -847,6 +866,7 @@ compiler_done:
                     }
                     else {
                         pr_error(stdout, "Failed to open .watchdogs/compiler.log");
+                        __debug_function(); /* debugging */
                     }
 
                     /* Calculate and display compilation duration */
@@ -1081,10 +1101,12 @@ compiler_done:
                             } else { /* CreateProcess failed (returned FALSE) */
                                 clock_gettime(CLOCK_MONOTONIC, &end); /* Still record end time for consistent timing, even though process never started. */
                                 pr_error(stdout, "CreateProcess failed! (%lu)", GetLastError()); /* Print error with Windows error code. GetLastError() returns the last error code (DWORD). Can be converted to message with FormatMessage(). */
+                                __debug_function(); /* debugging */
                             }
                         } else { /* Command construction failed (snprintf error or buffer overflow) */
                             clock_gettime(CLOCK_MONOTONIC, &end); /* Record end time for timing consistency. */
-                            pr_error(stdout, "ret_compiler too long! %s (L: %d)", __func__, __LINE__); /* Print error indicating the command string was truncated or construction failed. __func__ and __LINE__ help debugging. */
+                            pr_error(stdout, "ret_compiler too long!"); /* Print error indicating the command string was truncated or construction failed. __func__ and __LINE__ help debugging. */
+                            __debug_function(); /* debugging */
                             goto compiler_end; /* Jump to cleanup/exit section. */
                         }
                         if (hFile != INVALID_HANDLE_VALUE) { /* If the log file was successfully opened... */
@@ -1104,7 +1126,8 @@ compiler_done:
                             "-i",
                             path_include);
                         if (ret_command > (int)sizeof(_compiler_input_)) {
-                            pr_error(stdout, "ret_compiler too long! %s (L: %d)", __func__, __LINE__);
+                            pr_error(stdout, "ret_compiler too long!");
+                            __debug_function(); /* debugging */
                             goto compiler_end;
                         }
                         if (rate_debugger > 0) {
@@ -1173,7 +1196,8 @@ compiler_done:
                                 }
                                 else { /* `waitpid` returned -1, indicating an error (e.g., ECHILD = no such child, EINTR = interrupted by signal). */
                                     clock_gettime(CLOCK_MONOTONIC, &end);
-                                    pr_error(stdout, "waitpid error"); /* Print error message. In production, you might want to use strerror(errno) for details. */
+                                    pr_error(stdout, "waitpid error"); /* Print error message. In production, you might want to use strerror(errno) for details. */            
+                                    __debug_function(); /* debugging */
                                     break;
                                 }
                                 /* Kill process if timeout exceeded */
@@ -1196,14 +1220,17 @@ compiler_done:
                                     if (proc_exit_code != 0) /* Non-zero exit codes typically indicate compilation errors or other failures. */
                                         pr_error(stdout,
                                                 "compiler process exited with code (%d)", proc_exit_code);
+                                        __debug_function(); /* debugging */
                                 } else if (WIFSIGNALED(process_status)) { /* Make sure the child was terminated by a signal it didn't catch (e.g., SIGSEGV, SIGABRT, SIGKILL). */
                                     pr_error(stdout,
                                             "compiler process terminated by signal (%d)", WTERMSIG(process_status)); /* Extract the signal number that caused termination. Common signals: 6=SIGABRT, 11=SIGSEGV, 9=SIGKILL, 15=SIGTERM. */
+                                    __debug_function(); /* debugging */
                                 }
                                 /* Note: WIFSTOPPED and WIFCONTINUED are not checked here - they're for processes stopped by signals like SIGSTOP. */
                             }
                         } else { /* `posix_spawn` failed (returned an error number, not 0). Common errors: ENOENT (file not found), EACCES (permission denied), E2BIG (argument list too long). */
-                            pr_error(stdout, "posix_spawn failed: %s", strerror(process_spawn_result)); /* Print the human-readable error using strerror(). The error number is stored in process_spawn_result (not errno, as posix_spawn returns it directly). */
+                            pr_error(stdout, "posix_spawn failed: %s", strerror(process_spawn_result)); /* Print the human-readable error using strerror(). The error number is stored in process_spawn_result (not errno, as posix_spawn returns it directly). */    
+                            __debug_function(); /* debugging */
                         }
 #endif
                         /* Post-compilation output handling for specific file compilation */
@@ -1270,6 +1297,7 @@ compiler_done2:
                         }
                         else {
                             pr_error(stdout, "Failed to open .watchdogs/compiler.log");
+                            __debug_function(); /* debugging */
                         }
 
                         /* Display compilation metrics */
@@ -1308,6 +1336,7 @@ compiler_done2:
                 "\033[1;31merror:\033[0m pawncc (our compiler) not found\n"
                 "  \033[2mhelp:\033[0m install it before continuing");
             printf("\n  \033[1mInstall now?\033[0m  [\033[32mY\033[0m/\033[31mn\033[0m]: ");
+            
             char *pointer_signalA = readline("");
 
             while (true)

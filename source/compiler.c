@@ -1686,8 +1686,9 @@ void compiler_detailed(const char *wgoutput, int debug,
                        int stack_size, int total_size)
 {
       /* Compiler Info - [pass] : warning - [fail] : error */
-      println(stdout, \
-                "Compiler Complete! | " FCOLOUR_CYAN "%d pass (warning) | " FCOLOUR_RED "%d fail (error)" FCOLOUR_DEFAULT "");       
+      println(stdout,
+        "Compiler Complete! | " FCOLOUR_CYAN "%d pass (warning) | " FCOLOUR_RED "%d fail (error)" FCOLOUR_DEFAULT "",
+        wcnt, ecnt);       
       println(stdout, "-----------------------------");
 
       /* Make sure the compiled output file exists and debug information is requested */

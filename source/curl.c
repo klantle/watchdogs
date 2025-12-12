@@ -501,7 +501,7 @@ void tracker_discrepancy(const char *base, char discrepancy[][MAX_USERNAME_LEN],
         };
 
         for (i = 0; track_suffixes[i] != NULL && *cnt < MAX_VARIATIONS; i++) {
-                snprintf(temp, sizeof(temp), "%s%s", base, track_suffixes[i]);
+                snprintf(temp, sizeof(temp), "%s" "%s", base, track_suffixes[i]);
                 strlcpy(discrepancy[(*cnt)++], temp, MAX_USERNAME_LEN);
         }
 }
@@ -691,9 +691,9 @@ static void update_library_environment(const char *lib_path)
         wg_run_command(command);
 #ifdef WG_ANDROID  
         snprintf(command, sizeof(command),
-                "export LD_LIBRARY_PATH=%s:$LD_LIBRARY_PATH",
+                "export LD_LIBRARY_PATH=%s/lib:$LD_LIBRARY_PATH",
                 getenv("PREFIX"));
-        pr_info(stdout, "Exporting path: %s", getenv("PREFIX"));
+        pr_info(stdout, "Exporting path: %s/lib", getenv("PREFIX"));
         wg_run_command(command);
 #endif
         snprintf(command, sizeof(command),

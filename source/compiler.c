@@ -89,6 +89,7 @@ int wg_run_compiler(const char *args, const char *compile_args,
         const char *debug_options[] = {"-d1", "-d3"};
         size_t size_debug_options = sizeof(debug_options);
         size_t size_debug_options_zero = sizeof(debug_options[0]);
+        size_t debug_flag_count = size_debug_options / size_debug_options_zero;
 
         /* Flag variables tracking specific compiler options */
         int compiler_debugging = 0; /* Debug mode flag */
@@ -310,8 +311,11 @@ not_valid_flag_options:
                     */
                     if (compiler_has_debug != 0 && compiler_debugging != 0) {
                         /* Validate array sizes to prevent division by zero */
-                        if (size_debug_options == 0 || size_debug_options_zero == 0) {
-                            pr_error(stdout, "Invalid debug flag array configuration");
+                        if (size_debug_options == 0 ||
+                            size_debug_options_zero == 0)
+                        {
+                            pr_error(stdout,
+                                "Invalid debug flag array configuration");
                             __debug_function(); /* call debugger function */
                             goto compiler_end;
                         }
@@ -319,24 +323,26 @@ not_valid_flag_options:
                         /* Prevent integer overflow in division */
                         if (size_debug_options < size_debug_options_zero || 
                             size_debug_options % size_debug_options_zero != 0) {
-                            pr_error(stdout, "Debug flag array size mismatch");
+                            pr_error(stdout,
+                                "Debug flag array size mismatch");
                             __debug_function(); /* call debugger function */
                             goto compiler_end;
                         }
                         
-                        size_t debug_flag_count = size_debug_options / size_debug_options_zero;
-                        
                         /* Validate maximum reasonable flag count */
                         const size_t MAX_DEBUG_FLAGS = 256;
                         if (debug_flag_count > MAX_DEBUG_FLAGS) {
-                            pr_error(stdout, "Excessive debug flag count: %zu", debug_flag_count);
+                            pr_error(stdout,
+                                "Excessive debug flag count: %zu",
+                                debug_flag_count);
                             __debug_function(); /* call debugger function */
                             goto compiler_end;
                         }
                         
                         /* Ensure wgconfig.wg_toml_aio_opt is valid */
                         if (wgconfig.wg_toml_aio_opt == NULL) {
-                            pr_error(stdout, "Configuration string is NULL");
+                            pr_error(stdout,
+                                "Configuration string is NULL");
                             __debug_function(); /* call debugger function */
                             goto compiler_end;
                         }
@@ -344,7 +350,8 @@ not_valid_flag_options:
                         /* Track original buffer for potential rollback */
                         char *original_config = strdup(wgconfig.wg_toml_aio_opt);
                         if (original_config == NULL) {
-                            pr_error(stdout, "Memory allocation failed for config backup");
+                            pr_error(stdout,
+                                "Memory allocation failed for config backup");
                             __debug_function(); /* call debugger function */
                             goto compiler_end;
                         }
@@ -356,13 +363,16 @@ not_valid_flag_options:
                         for (size_t i = 0; i < debug_flag_count; i++) {
                             /* Validate array bounds */
                             if (i >= (size_debug_options / sizeof(debug_options[0]))) {
-                                pr_warning(stdout, "Debug flag index %zu out of bounds", i);
+                                pr_warning(stdout,
+                                    "Debug flag index %zu out of bounds", i);
                                 continue;
                             }
                             
-                            const char *debug_flag = debug_options[i];
+                            const char
+                                *debug_flag = debug_options[i];
                             if (debug_flag == NULL) {
-                                pr_warning(stdout, "NULL debug flag at index %zu", i);
+                                pr_warning(stdout,
+                                    "NULL debug flag at index %zu", i);
                                 continue;
                             }
                             
@@ -374,7 +384,8 @@ not_valid_flag_options:
                             /* Prevent overly long flags that could be malicious */
                             const size_t MAX_FLAG_LENGTH = WG_MAX_PATH;
                             if (flag_length > MAX_FLAG_LENGTH) {
-                                pr_warning(stdout, "Suspiciously long debug flag at index %zu", i);
+                                pr_warning(stdout,
+                                    "Suspiciously long debug flag at index %zu", i);
                                 continue;
                             }
                             
@@ -394,13 +405,15 @@ not_valid_flag_options:
                                 
                                 if (flag_pos > wgconfig.wg_toml_aio_opt) {
                                     char prev_char = *(flag_pos - 1);
-                                    if (isalnum((unsigned char)prev_char) || prev_char == '_') {
+                                    if (isalnum((unsigned char)prev_char) ||
+                                        prev_char == '_') {
                                         is_complete_token = false;
                                     }
                                 }
                                 
                                 char next_char = *(flag_pos + flag_length);
-                                if (isalnum((unsigned char)next_char) || next_char == '_') {
+                                if (isalnum((unsigned char)next_char) ||
+                                    next_char == '_') {
                                     is_complete_token = false;
                                 }
                                 
@@ -410,18 +423,17 @@ not_valid_flag_options:
                                 }
                                 
                                 /* Calculate remaining length safely */
-                                char *after_flag = flag_pos + flag_length;
-                                size_t remaining_length = strlen(after_flag);
-                                
+                                char *prev_flag = flag_pos + flag_length;
+
                                 /* Perform safe memory move with bounds checking */
-                                if ((flag_pos - wgconfig.wg_toml_aio_opt) + remaining_length + 1 
-                                    < config_buffer_size) {
-                                    memmove(flag_pos, after_flag, remaining_length + 1);
-                                    
+                                if ((flag_pos - wgconfig.wg_toml_aio_opt) + strlen(prev_flag) + 1 < config_buffer_size)
+                                {
+                                    memmove(flag_pos, prev_flag, strlen(prev_flag) + 1);
                                     /* Recalculate buffer size after modification */
                                     config_buffer_size = strlen(wgconfig.wg_toml_aio_opt) + 1;
                                 } else {
-                                    pr_error(stdout, "Buffer overflow detected during flag removal");
+                                    pr_error(stdout,
+                                        "Buffer overflow detected during flag removal");
                                     __debug_function(); /* call debugger function */
                                     strncpy(wgconfig.wg_toml_aio_opt, original_config, config_buffer_size);
                                     wg_free(original_config);
@@ -432,7 +444,8 @@ not_valid_flag_options:
                             }
                             
                             if (shift_count >= max_safe_shifts) {
-                                pr_warning(stdout, "Excessive flag removals for '%s', possible loop", debug_flag);
+                                pr_warning(stdout,
+                                    "Excessive flag removals for '%s', possible loop", debug_flag);
                             }
                         }
                         
@@ -451,7 +464,8 @@ not_valid_flag_options:
                         
                         /* Final validation */
                         if (strlen(wgconfig.wg_toml_aio_opt) >= config_buffer_size) {
-                            pr_error(stdout, "Configuration string corruption detected");
+                            pr_error(stdout,
+                                "Configuration string corruption detected");
                             __debug_function(); /* call debugger function */
                             goto compiler_end;
                         }
@@ -538,32 +552,44 @@ not_valid_flag_options:
                 }
 
                 if (strfind(compile_args, "../", true)) {
-                    /* the buffer to store the parsed project path */
-                    size_t w = 0;  /* Write index for proj_parse buffer */
-
-                    for (size_t j = 0; compile_args[j] != '\0'; )
-                    {
-                        if (strncmp(&compile_args[j], "gamemodes/", 10) == 0)
-                        {
-                            while (compile_args[j] != ' ' &&
-                                compile_args[j] != '\0')
-                            {
-                                ++j;
+                    size_t w = 0;
+                    size_t j;
+                    bool found_path = false;
+                    
+                    for (j = 0; compile_args[j] != '\0'; ) {
+                        if (!found_path && strncmp(&compile_args[j], "../", 3) == 0) {
+                            j += 3;
+                            
+                            while (compile_args[j] != '/' && 
+                                compile_args[j] != '"' && 
+                                compile_args[j] != ' ' &&
+                                compile_args[j] != '\0') {
+                                proj_parse[w++] = compile_args[j++];
                             }
-                            if (compile_args[j] == ' ')
-                                ++j;
+                            
+                            if (compile_args[j] == '/') {
+                                proj_parse[w++] = compile_args[j++];
+                            }
+                            
+                            found_path = true;
+                            break;
                         } else {
-                            proj_parse[w++] = compile_args[j++];
+                            j++;
                         }
                     }
-                    proj_parse[w] = '\0';  /* null-terminate the parsed string */
-
-                    /**
-                    * Ensure the project path ends with a trailing slash.
-                    * This is necessary for proper path concatenation later.
-                    */
-                    if (!w || proj_parse[w - 1] != __PATH_CHR_SEP_LINUX)
-                        strcat(proj_parse, __PATH_STR_SEP_LINUX);
+                    
+                    if (found_path && w > 0) {
+                        memmove(proj_parse + 3, proj_parse, w);
+                        memcpy(proj_parse, "../", 3);
+                        w += 3;
+                        proj_parse[w] = '\0';
+                        
+                        if (proj_parse[w-1] != __PATH_CHR_SEP_LINUX) {
+                            strcat(proj_parse, __PATH_STR_SEP_LINUX);
+                        }
+                    } else {
+                        strcpy(proj_parse, "../");
+                    }
 
                     snprintf(size_path_include, sizeof(size_path_include),
                             "\"%s\" "
@@ -572,8 +598,11 @@ not_valid_flag_options:
                             "-i\"%sgamemodes/\"",
                             path_include, proj_parse, proj_parse, proj_parse);
 
-                    /* Replace the original path_include with the newly constructed one */
                     strcpy(path_include, size_path_include);
+
+                    pr_info(stdout,
+                        "Parent dir detected: %s - new include path created: %s",
+                        compile_args, path_include);
                 }
 
                 /* Main compilation logic block - handles both default and specific file compilation */
@@ -622,7 +651,7 @@ not_valid_flag_options:
                     int ret_command = 0; /* Store snprintf return value. Positive = characters written (excluding null), negative = error. */
                     ret_command = snprintf(_compiler_input_, /* Build the command line as a single string. Windows expects a command line similar to what you'd type in cmd.exe. */
                             sizeof(_compiler_input_),
-                                    "%s %s -o%s %s %s -i%s", /* Format: compiler executable, input file, output flag, output file, options, include paths, include flag, include directories. */
+                                    "%s" "%s" "-o%s" "%s" "%s" "-i%s", /* Format: compiler executable, input file, output flag, output file, options, include paths, include flag, include directories. */
                                     wg_compiler_input_pawncc_path, /* Path to the pawncc compiler (e.g., "pawncc.exe" or full path). */
                                     wgconfig.wg_toml_proj_input, /* Input source file (e.g., "gamemodes/main.pwn"). */
                                     wgconfig.wg_toml_proj_output, /* Output compiled file (e.g., "main.amx"). */
@@ -676,7 +705,7 @@ not_valid_flag_options:
                     /* POSIX/Linux compilation path */
                     int ret_command = 0;
                     ret_command = snprintf(_compiler_input_, sizeof(_compiler_input_),
-                        "%s %s %s%s %s%s %s%s",
+                        "%s" "%s" "%s%s" "%s%s" "%s%s",
                         wg_compiler_input_pawncc_path,
                         wgconfig.wg_toml_proj_input,
                         "-o",
@@ -1063,7 +1092,7 @@ compiler_done:
                         int ret_command = 0; /* Variable to store the return value of snprintf, which indicates the number of characters that would have been written (excluding null terminator) or negative on error. */
                         ret_command = snprintf(_compiler_input_, /* Construct the compiler command line string. Similar to building argv in POSIX but as a single command string for Windows. */
                                 sizeof(_compiler_input_),
-                                        "%s %s -o%s %s %s -i%s", /* Format string: compiler_path input_file -ooutput_file options include_paths -iinclude_path */
+                                        "%s" "%s" "-o%s" "%s" "%s" "-i%s", /* Format string: compiler_path input_file -ooutput_file options include_paths -iinclude_path */
                                         wg_compiler_input_pawncc_path, /* Path to the pawncc compiler executable (e.g., "pawncc.exe"). */
                                         wg_compiler_input_proj_path, /* Input source file to compile (e.g., "gamemodes/test.pwn"). */
                                         size_container_output, /* Output file name for the compiled binary (e.g., "test.amx"). */
@@ -1116,7 +1145,7 @@ compiler_done:
                         /* POSIX-specific compilation execution */
                         int ret_command = 0;
                         ret_command = snprintf(_compiler_input_, sizeof(_compiler_input_),
-                            "%s %s %s%s %s%s %s%s",
+                            "%s" "%s" "%s%s" "%s%s" "%s%s",
                             wg_compiler_input_pawncc_path,
                             wg_compiler_input_proj_path,
                             "-o",

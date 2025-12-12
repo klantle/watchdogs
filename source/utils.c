@@ -90,6 +90,7 @@ WatchdogConfig wgconfig = {
 	    .wg_toml_config = NULL,
 		.wg_toml_logs = NULL,
 	    .wg_toml_aio_opt = NULL,
+		.wg_toml_root_patterns = NULL,
 	    .wg_toml_packages = NULL,
 	    .wg_toml_proj_input = NULL,
 	    .wg_toml_proj_output = NULL,
@@ -97,6 +98,38 @@ WatchdogConfig wgconfig = {
 		.wg_toml_chatbot_ai = NULL,
 		.wg_toml_models_ai = NULL,
 		.wg_toml_webhooks = NULL
+};
+
+const char* char_fields[] = {
+    "wg_toml_os_type",
+    "wg_toml_binary", 
+    "wg_toml_config",
+    "wg_toml_logs",
+    "wg_toml_aio_opt",
+    "wg_toml_root_patterns",
+    "wg_toml_packages",
+    "wg_toml_proj_input",
+    "wg_toml_proj_output",
+    "wg_toml_key_ai",
+    "wg_toml_chatbot_ai",
+    "wg_toml_models_ai",
+    "wg_toml_webhooks"
+};
+
+char** field_pointers[] = {
+		&wgconfig.wg_toml_os_type,
+		&wgconfig.wg_toml_binary,
+		&wgconfig.wg_toml_config,
+		&wgconfig.wg_toml_logs,
+		&wgconfig.wg_toml_aio_opt,
+		&wgconfig.wg_toml_root_patterns,
+		&wgconfig.wg_toml_packages,
+		&wgconfig.wg_toml_proj_input,
+		&wgconfig.wg_toml_proj_output,
+		&wgconfig.wg_toml_key_ai,
+		&wgconfig.wg_toml_chatbot_ai,
+		&wgconfig.wg_toml_models_ai,
+		&wgconfig.wg_toml_webhooks
 };
 
 /*
@@ -916,15 +949,15 @@ void __set_path_sep(char *out, size_t out_sz,
 		if (dir_has_sep) {
 				if (has_led_sep)
 					/* Directory has sep, entry has sep: remove one */
-					snprintf(out, out_sz, "%s%s", open_dir, entry_name + 1);
-				else snprintf(out, out_sz, "%s%s", open_dir, entry_name);
+					snprintf(out, out_sz, "%s" "%s", open_dir, entry_name + 1);
+				else snprintf(out, out_sz, "%s" "%s", open_dir, entry_name);
 		} else {
 				if (has_led_sep)
 					/* No sep in open_dir, sep in entry: use as-is */
-					snprintf(out, out_sz, "%s%s", open_dir, entry_name);
+					snprintf(out, out_sz, "%s" "%s", open_dir, entry_name);
 				else
 					/* No seps: add separator between */
-					snprintf(out, out_sz, "%s%s%s", open_dir, __PATH_SEP, entry_name);
+					snprintf(out, out_sz, "%s" "%s" "%s", open_dir, __PATH_SEP, entry_name);
 		}
 
 		out[out_sz - 1] = '\0'; /* Ensure null termination */
@@ -1309,7 +1342,7 @@ int wg_sef_fdir(const char *sef_path, const char *sef_name, const char *ignore_d
 				sizeof(sp), "%s*", sef_path);
 		} else {
 			snprintf(sp,
-				sizeof(sp), "%s%s*", sef_path, __PATH_STR_SEP_WIN32);
+				sizeof(sp), "%s" "%s*", sef_path, __PATH_STR_SEP_WIN32);
 		}
 
 		find_handle = FindFirstFile(sp, &find_data);
@@ -1560,7 +1593,7 @@ static void __toml_base_subdirs(const char *base_path,
 		HANDLE find_handle;
 		char sp[WG_MAX_PATH], fp[WG_MAX_PATH * 2];
 		snprintf(sp, sizeof(sp),
-			"%s%s*", base_path, __PATH_STR_SEP_WIN32);
+			"%s" "%s*", base_path, __PATH_STR_SEP_WIN32);
 
 		find_handle = FindFirstFileA(sp, &find_data);
 		if (find_handle == INVALID_HANDLE_VALUE)
@@ -1674,7 +1707,7 @@ int wg_add_include_paths(FILE *file, int *first_item)
 static int samp_user = -1; /* -1 = not determined, 0 = Open.MP, 1 = SA-MP */
 /*
  * Generates complete TOML configuration file content based on detected environment.
- * Creates [general], [compiler], and [depends] sections with appropriate values
+ * Creates [general], [compiler], and [dependencies] sections with appropriate values
  * for OS type, compiler options, paths, and dependencies.
  */
 static void wg_generate_toml_content(FILE *file, const char *wg_os_type,
@@ -1773,9 +1806,11 @@ static void wg_generate_toml_content(FILE *file, const char *wg_os_type,
 				fprintf(file, "   output = \"gamemodes/bare.amx\"\n");
 		}
 
-		/* Write [depends] section */
-		fprintf(file, "[depends]\n");
+		/* Write [dependencies] section */
+		fprintf(file, "[dependencies]\n");
 		fprintf(file, "   github_tokens = \"DO_HERE\"\n");
+		fprintf(file, "   root_patterns = [\"lib\", \"log\", \"root\", "
+			"\"amx\", \"static\", \"dynamic\", \"cfg\", \"config\", \"json\", \"msvcrt\", \"msvcr\", \"msvcp\", \"ucrtbase\"]\n");
 		/* Dependency repositories */
 		fprintf(file, "   packages = [\n"
 			"      \"Y-Less/sscanf?newer\",\n"
@@ -1867,6 +1902,7 @@ int wg_toml_configs(void)
 		/* Re-parse for additional configuration extraction */
         char wg_buf_err[WG_PATH_MAX];
 		toml_table_t *wg_toml_config;
+		toml_table_t *wg_toml_compiler;
 		FILE *this_proc_file = fopen("watchdogs.toml", "r");
 		wg_toml_config = toml_parse_file(this_proc_file, wg_buf_err, sizeof(wg_buf_err));
 		if (this_proc_file) fclose(this_proc_file);
@@ -1878,7 +1914,7 @@ int wg_toml_configs(void)
 		}
 
 		/* Extract dependencies section */
-		toml_table_t *wg_toml_depends = toml_table_in(wg_toml_config, "depends");
+		toml_table_t *wg_toml_depends = toml_table_in(wg_toml_config, "dependencies");
 		if (wg_toml_depends) {
 				toml_datum_t toml_gh_tokens = toml_string_in(wg_toml_depends, "github_tokens");
 				if (toml_gh_tokens.ok)
@@ -1886,10 +1922,51 @@ int wg_toml_configs(void)
 					wgconfig.wg_toml_github_tokens = strdup(toml_gh_tokens.u.s);
 					wg_free(toml_gh_tokens.u.s);
 				}
+
+                size_t arr_sz, i;
+                char *merged = NULL;
+
+                toml_array_t *wg_toml_root_patterns = toml_array_in(wg_toml_depends, "root_patterns");
+                if (!wg_toml_root_patterns)
+                    goto out;
+
+                arr_sz = toml_array_nelem(wg_toml_root_patterns);
+                for (i = 0; i < arr_sz; i++) {
+                    toml_datum_t val;
+
+                    val = toml_string_at(wg_toml_root_patterns, i);
+                    if (!val.ok)
+                            continue;
+
+                    if (!merged) {
+                            merged = wg_realloc(NULL, strlen(val.u.s) + 1);
+                            if (!merged)
+                                    goto free_val;
+
+                            snprintf(merged, strlen(val.u.s) + 1, "%s", val.u.s);
+                    } else {
+                            char *tmp;
+                            size_t old_len = strlen(merged);
+                            size_t new_len = old_len + strlen(val.u.s) + 2;
+
+                            tmp = wg_realloc(merged, new_len);
+                            if (!tmp)
+                                    goto free_val;
+
+                            merged = tmp;
+                            snprintf(merged + old_len, new_len - old_len, " %s", val.u.s);
+                    }
+
+free_val:
+					wgconfig.wg_toml_root_patterns = strdup(merged);
+                    wg_free(val.u.s);
+                    val.u.s = NULL;
+				}
 		}
 
+out:
 		/* Extract compiler section */
-		toml_table_t *wg_toml_compiler = toml_table_in(wg_toml_config, "compiler");
+		wg_toml_compiler = toml_table_in(wg_toml_config, "compiler");
 		if (wg_toml_compiler) {
 				toml_datum_t input_val = toml_string_in(wg_toml_compiler, "input");
 				if (input_val.ok) {
@@ -1902,6 +1979,11 @@ int wg_toml_configs(void)
 					wg_free(output_val.u.s);
 				}
 		}
+
+		/* Handling before setup */
+		wgconfig.wg_toml_aio_opt = strdup("none");
+		wgconfig.wg_toml_packages = strdup("none none none");
+		wgconfig.wg_toml_root_patterns = strdup("none none none");
 
 		/* Extract general section details */
 		toml_table_t *general_table = toml_table_in(wg_toml_config, "general");
@@ -1953,7 +2035,7 @@ int wg_toml_configs(void)
 				if (webhooks_val.ok) {
 					wgconfig.wg_toml_webhooks = strdup(webhooks_val.u.s);
 					wg_free(webhooks_val.u.s);
-				}
+                }
 		}
 
 		toml_free(wg_toml_config); /* Free parse tree */
@@ -1963,6 +2045,18 @@ int wg_toml_configs(void)
 			wgconfig.wg_os_type = OS_SIGNAL_WINDOWS;
 		} else if (strcmp(wgconfig.wg_toml_os_type, "linux") == 0) {
 			wgconfig.wg_os_type = OS_SIGNAL_LINUX;
+		}
+		
+		/* Null - CRC32 False detecting */
+		for (size_t i = 0; i < sizeof(char_fields) / sizeof(char_fields[0]); i++) {
+    		char* field_value = *(field_pointers[i]);
+    		const char* field_name = char_fields[i];
+			if (field_value == NULL ||
+				strcmp(field_value, CRC32_FALSE) == 0)
+			{
+				pr_warning(stdout, "toml key null/crc32 false (%s) detected in key: %s",
+					CRC32_FALSE, field_name);
+			}
 		}
 
 		return 0; /* Success */

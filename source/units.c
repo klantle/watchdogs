@@ -118,7 +118,7 @@ _ptr_command:
 
 _reexecute_command:
         ++wg_ptr_command_init;
-        __debug_main_chain(1);
+        __debug_main_chain(0);
         clock_gettime(CLOCK_MONOTONIC, &cmd_start);
         if (strncmp(ptr_command, "help", strlen("help")) == 0) {
             wg_console_title("Watchdogs | @ help");
@@ -1651,6 +1651,7 @@ basic_end:
 }
 
 int main(int argc, char *argv[]) {
+
         __debug_main_chain(0);
 
         if (argc > 1) {

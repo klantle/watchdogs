@@ -50,23 +50,6 @@ struct repositories {
         char tag[128]  ; /* repo tag */
 };
 
-const char* matching_root_keywords[/* keywords root lib */] = {
-        "lib",
-        "log",
-        "root",
-        "amx",
-        "static",
-        "dynamic",
-        "cfg",
-        "config",
-        "msvcrt",
-        "msvcr",
-        "msvcp",
-        "msvcp",
-        "ucrtbase",
-        "vcruntime"
-};
-
 const char * matching_operating_system[] = {
         "windows",
         "win",
@@ -1301,22 +1284,34 @@ void dump_file_type( const char *dump_path, char *dump_pattern,
                                 {
                                         basename_lower[j] = tolower( basename_lower[j] );
                                 }
-                        
-                        /* Prefix checking */
+                                
                         int rate_has_prefix = 0;
-                        for ( size_t i = 0;
-                             i < sizeof( matching_root_keywords ) / sizeof( matching_root_keywords [ 0 ] );
-                             i++ )
-                        {
-                                const char* keyword = matching_root_keywords[ i ];
-                                size_t keyword_len = strlen( keyword );
-                                if ( strncmp( basename_lower,
-                                        keyword,
+
+                        /* toml parsing a value */
+                        pr_info(stdout, "Loaded root patterns: %s", wgconfig.wg_toml_root_patterns);
+
+                        const char* matching_root_keywords = wgconfig.wg_toml_root_patterns;
+                        while ( *matching_root_keywords ) {
+                                while ( *matching_root_keywords == ' ' /* free */ )
+                                        matching_root_keywords++;
+                                
+                                const char* end = matching_root_keywords;
+                                while ( *end && *end != ' ' )
+                                        end++;
+                                
+                                if ( end > matching_root_keywords ) {
+                                   size_t keyword_len = end - matching_root_keywords;
+                                   if ( strncmp( basename_lower,
+                                        matching_root_keywords,
                                         keyword_len
-                                ) == 0 ) {
-                                        ++rate_has_prefix;
-                                        break;
+                                        ) == 0)
+                                   {
+                                      ++rate_has_prefix;
+                                      break;
+                                   }
                                 }
+                                
+                                matching_root_keywords = ( *end ) ? end + 1 : end;
                         }
 
                         /* Move to target directory if specified */

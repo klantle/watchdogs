@@ -340,7 +340,7 @@ _reexecute_command:
 
                 if (!wg_toml_config) {
                     pr_error(stdout, "failed to parse the watchdogs.toml....: %s", errbuf);
-                    __debug_function(); /* debugging */
+                    __debug_function(); /* call debugger function */
                     return 0;
                 }
 
@@ -1370,7 +1370,7 @@ wanion_curl_end:
                     "to archive (Compression) successfully: %s\n", raw_output);
             else {
                 pr_error(stdout, "Compression failed!\n");    
-                __debug_function(); /* debugging */
+                __debug_function(); /* call debugger function */
             }
 
             goto chain_done;

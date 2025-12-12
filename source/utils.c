@@ -1472,7 +1472,7 @@ static void wg_check_compiler_options(int *compatibility, int *optimized_lt)
 			fclose(this_proc_fileile);
 		} else {
 			pr_error(stdout, "Failed to open .watchdogs/compiler_test.log");
-			__debug_function(); /* debugging */
+			__debug_function(); /* call debugger function */
 		}
 
 		/* Clean up test log file */
@@ -1495,7 +1495,7 @@ static int wg_parsewg_toml_config(void)
 		this_proc_fileile = fopen("watchdogs.toml", "r");
 		if (!this_proc_fileile) {
 				pr_error(stdout, "Cannot read file %s", "watchdogs.toml");
-                __debug_function(); /* debugging */
+                __debug_function(); /* call debugger function */
 				return 0;
 		}
 
@@ -1505,7 +1505,7 @@ static int wg_parsewg_toml_config(void)
 
 		if (!wg_toml_config) {
 				pr_error(stdout, "Parsing TOML: %s", wg_buf_err);
-                __debug_function(); /* debugging */
+                __debug_function(); /* call debugger function */
 				return 0;
 		}
 
@@ -1843,7 +1843,7 @@ int wg_toml_configs(void)
 			toml_file = fopen("watchdogs.toml", "w");
 			if (!toml_file) {
 					pr_error(stdout, "Failed to create watchdogs.toml");
-                	__debug_function(); /* debugging */
+                	__debug_function(); /* call debugger function */
 					return 1;
 			}
 
@@ -1860,7 +1860,7 @@ int wg_toml_configs(void)
 		/* Parse the TOML file */
 		if (!wg_parsewg_toml_config()) {
 				pr_error(stdout, "Failed to parse TOML configuration");
-                __debug_function(); /* debugging */
+                __debug_function(); /* call debugger function */
 				return 1;
 		}
 
@@ -1873,7 +1873,7 @@ int wg_toml_configs(void)
 
 		if (!wg_toml_config) {
 			pr_error(stdout, "failed to parse the watchdogs.toml....: %s", wg_buf_err);
-			__debug_function(); /* debugging */
+			__debug_function(); /* call debugger function */
 			chain_ret_main(NULL); /* Error handling */
 		}
 
@@ -2068,7 +2068,7 @@ static int __wg_sef_safety(const char *c_src, const char *c_dest) {
 				pr_error(stdout, "destination open_dir does not exist: %s", parent);
 		if (!S_ISDIR(st.st_mode))
 				pr_error(stdout, "destination parent is not a open_dir: %s", parent);
-		__debug_function(); /* debugging */
+		__debug_function(); /* call debugger function */
 #endif
 
 		return 1; /* All checks passed */

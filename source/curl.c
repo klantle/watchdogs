@@ -361,10 +361,10 @@ int package_url_checking(const char* url, const char* github_token)
         } else {
                 if(strlen(wg_buf_err) > 0) {
                         printf("Error: %s\t\t[Fail]\n", wg_buf_err);
-                        __debug_function(); /* debugging */
+                        __debug_function(); /* call debugger function */
                 } else {
                         printf("cURL result: %s\t\t[Fail]\n", curl_easy_strerror(res));
-                        __debug_function(); /* debugging */
+                        __debug_function(); /* call debugger function */
                 }
         }
 
@@ -826,7 +826,7 @@ void wg_apply_pawncc(void)
         dest_dir = get_compiler_directory();
         if (!dest_dir) {
                 pr_error(stdout, "Failed to create compiler directory");
-                __debug_function(); /* debugging */
+                __debug_function(); /* call debugger function */
                 goto apply_done;
         }
 

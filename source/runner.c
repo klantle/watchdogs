@@ -138,7 +138,7 @@ void wg_server_crash_check(void) {
 
         if (this_proc_file == NULL) {
             pr_error(stdout, "log file not found!.");
-            __debug_function(); /* debugging */
+            __debug_function(); /* call debugger function */
             return;
         }
 
@@ -653,7 +653,7 @@ static int update_samp_config(const char *gamemode)
 
         if (wg_run_command(command) != 0x0) {
                 pr_error(stdout, "Failed to create backup file");
-                __debug_function(); /* debugging */
+                __debug_function(); /* call debugger function */
                 return -1;
         }
         
@@ -665,7 +665,7 @@ static int update_samp_config(const char *gamemode)
         #endif
         if (fd < 0) {
                 pr_error(stdout, "cannot open backup");
-                __debug_function(); /* debugging */
+                __debug_function(); /* call debugger function */
                 return -1;
         }
 
@@ -679,7 +679,7 @@ static int update_samp_config(const char *gamemode)
         config_out = fopen(wgconfig.wg_toml_config, "w+");
         if (!config_out) {
                 pr_error(stdout, "Failed to write new config");
-                __debug_function(); /* debugging */
+                __debug_function(); /* call debugger function */
                 return -1;
         }
 
@@ -925,7 +925,7 @@ static int update_omp_config(const char *gamemode)
 
         if (wg_run_command(command) != 0x0) {
                 pr_error(stdout, "Failed to create backup file");
-                __debug_function(); /* debugging */
+                __debug_function(); /* call debugger function */
                 goto runner_end;
         }
 
@@ -937,13 +937,13 @@ static int update_omp_config(const char *gamemode)
         #endif
         if (fd < 0) {
                 pr_error(stdout, "Failed to open %s", size_config);
-                __debug_function(); /* debugging */
+                __debug_function(); /* call debugger function */
                 goto runner_end;
         }
 
         if (fstat(fd, &st) != 0) {
                 pr_error(stdout, "Failed to stat %s", size_config);
-                __debug_function(); /* debugging */
+                __debug_function(); /* call debugger function */
                 close(fd);
                 goto runner_end;
         }
@@ -951,7 +951,7 @@ static int update_omp_config(const char *gamemode)
         config_in = fdopen(fd, "rb");
         if (!config_in) {
                 pr_error(stdout, "fdopen failed");
-                __debug_function(); /* debugging */
+                __debug_function(); /* call debugger function */
                 close(fd);
                 goto runner_end;
         }
@@ -967,7 +967,7 @@ static int update_omp_config(const char *gamemode)
                 pr_error(stdout, "Incomplete file read (%zu of %ld bytes)",
                         bytes_read,
                         st.st_size);
-                __debug_function(); /* debugging */
+                __debug_function(); /* call debugger function */
                 goto runner_cleanup;
         }
 
@@ -979,7 +979,7 @@ static int update_omp_config(const char *gamemode)
         root = cJSON_Parse(cJSON_Data);
         if (!root) {
                 pr_error(stdout, "JSON parse error: %s", cJSON_GetErrorPtr());
-                __debug_function(); /* debugging */
+                __debug_function(); /* call debugger function */
                 goto runner_end;
         }
 
@@ -987,7 +987,7 @@ static int update_omp_config(const char *gamemode)
         pawn = cJSON_GetObjectItem(root, "pawn");
         if (!pawn) {
                 pr_error(stdout, "Missing 'pawn' section in config!");
-                __debug_function(); /* debugging */
+                __debug_function(); /* call debugger function */
                 goto runner_cleanup;
         }
 
@@ -1008,20 +1008,20 @@ static int update_omp_config(const char *gamemode)
         config_out = fopen(wgconfig.wg_toml_config, "w");
         if (!config_out) {
                 pr_error(stdout, "Failed to write %s", wgconfig.wg_toml_config);
-                __debug_function(); /* debugging */
+                __debug_function(); /* call debugger function */
                 goto runner_end;
         }
 
         cjsON_PrInted_data = cJSON_Print(root);
         if (!cjsON_PrInted_data) {
                 pr_error(stdout, "Failed to print JSON");
-                __debug_function(); /* debugging */
+                __debug_function(); /* call debugger function */
                 goto runner_end;
         }
 
         if (fputs(cjsON_PrInted_data, config_out) == EOF) {
                 pr_error(stdout, "Failed to write to %s", wgconfig.wg_toml_config);
-                __debug_function(); /* debugging */
+                __debug_function(); /* call debugger function */
                 goto runner_end;
         }
 

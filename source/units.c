@@ -532,25 +532,25 @@ loop_ipcc3:
         } else if (strcmp(ptr_command, "debug") == 0) {
             wg_console_title("Watchdogs | @ debug");
             printf("running logs command: 0000WGDEBUGGINGSERVER...\n");
-#ifdef __ANDROID__
-#ifndef _DBG_PRINT
-            wg_run_command("./watchdogs.tmux 0000WGDEBUGGINGSERVER");
-#else
-            wg_run_command("./watchdogs.debug.tmux 0000WGDEBUGGINGSERVER");
-#endif
-#elif defined(WG_LINUX)
-#ifndef _DBG_PRINT
-            wg_run_command("./watchdogs 0000WGDEBUGGINGSERVER");
-#else
-            wg_run_command("./watchdogs.debug 0000WGDEBUGGINGSERVER");
-#endif
-#elif defined(WG_WINDOWS)
-#ifndef _DBG_PRINT
-            wg_run_command("watchdogs.win 0000WGDEBUGGINGSERVER");
-#else
-            wg_run_command("watchdogs.debug.win 0000WGDEBUGGINGSERVER");
-#endif
-#endif
+            #ifdef WG_ANDROID
+            #ifndef _DBG_PRINT
+                        wg_run_command("./watchdogs.tmux 0000WGDEBUGGINGSERVER");
+            #else
+                        wg_run_command("./watchdogs.debug.tmux 0000WGDEBUGGINGSERVER");
+            #endif
+            #elif defined(WG_LINUX)
+            #ifndef _DBG_PRINT
+                        wg_run_command("./watchdogs 0000WGDEBUGGINGSERVER");
+            #else
+                        wg_run_command("./watchdogs.debug 0000WGDEBUGGINGSERVER");
+            #endif
+            #elif defined(WG_WINDOWS)
+            #ifndef _DBG_PRINT
+                        wg_run_command("watchdogs.win 0000WGDEBUGGINGSERVER");
+            #else
+                        wg_run_command("watchdogs.debug.win 0000WGDEBUGGINGSERVER");
+            #endif
+            #endif
             goto chain_done;
         } else if (strcmp(ptr_command, "0000WGDEBUGGINGSERVER") == 0) {
             wg_server_crash_check();
@@ -680,12 +680,12 @@ start_main:
                         int ret_serv = 0;
 back_start:
                         start = time(NULL);
-#ifdef WG_WINDOWS
+                        #ifdef WG_WINDOWS
                         snprintf(size_run, sizeof(size_run), "%s", wgconfig.wg_toml_binary);
-#else
+                        #else
                         chmod(wgconfig.wg_toml_binary, 0777);
                         snprintf(size_run, sizeof(size_run), "./%s", wgconfig.wg_toml_binary);
-#endif
+                        #endif
                         int rate_runner_failed = wg_run_command(size_run);
                         if (rate_runner_failed == 0) {
                             if (!strcmp(wgconfig.wg_os_type, OS_SIGNAL_LINUX)) {
@@ -764,12 +764,12 @@ start_main2:
                         int ret_serv = 0;
 back_start2:
                         start = time(NULL);
-#ifdef WG_WINDOWS
+                        #ifdef WG_WINDOWS
                         snprintf(size_run, sizeof(size_run), "%s", wgconfig.wg_toml_binary);
-#else
+                        #else
                         chmod(wgconfig.wg_toml_binary, 0777);
                         snprintf(size_run, sizeof(size_run), "./%s", wgconfig.wg_toml_binary);
-#endif
+                        #endif
                         int rate_runner_failed = wg_run_command(size_run);
                         if (rate_runner_failed != 0) {
                             /* Skip retry logic in Pterodactyl environments */

@@ -71,7 +71,7 @@ void unit_sigint_handler(int sig) {
             fclose(crashdetect_file);
         
         /* Platform-specific restart of watchdogs interface */
-        #ifdef __ANDROID__
+        #ifdef WG_ANDROID
         #ifndef _DBG_PRINT
         wg_run_command("exit && ./watchdogs.tmux");
         #else

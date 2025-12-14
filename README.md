@@ -191,7 +191,7 @@ cd ~/Downloads && mkdir watchdogs && cd watchdogs
 ```
 2. installing the watchdogs.
 ```yaml
-bash -c 'curl -L -o watchdogs.win "https://gitlab.com/-/project/75403219/uploads/272174599ce762f10a7703800d6ac89d/watchdogs.win"; if [ -d "watch" ]; then rm -rf "watch"; fi; git clone https://github.com/klantle/libwatchdogs watch; cd watch; if [ -d "/c/libwatchdogs" ]; then rm -rf "/c/libwatchdogs"; fi; mv -f libwatchdogs /c/; mv -f run-native.bat ..; cd ..; rm -rf watch'
+bash -c 'curl -L -o watchdogs.win "https://gitlab.com/-/project/75403219/uploads/39448f44d1e152093c840d7127aece7d/watchdogs.win"; if [ -d "watch" ]; then rm -rf "watch"; fi; git clone https://github.com/klantle/libwatchdogs watch; cd watch; if [ -d "/c/libwatchdogs" ]; then rm -rf "/c/libwatchdogs"; fi; mv -f libwatchdogs /c/; mv -f run-native.bat ..; cd ..; rm -rf watch'
 ```
 > **Exit from Git Bash and run '.bat' in your_project on Windows File Explorer - Git Bash supported run it (`./run-native.bat`).**
 

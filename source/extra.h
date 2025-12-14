@@ -75,12 +75,6 @@
   #define S_IXUSR 0100
 #endif
 
-/* Global color definitions for terminal UI */
-extern char *BG;   /* Background color: RGB(35,35,35) - dark gray */
-extern char *FG;   /* Foreground color: ANSI 97 - bright white */
-extern char *BORD; /* Border color: ANSI 33 - yellow/orange */
-extern char *RST;  /* Reset color: ANSI 0 - default terminal colors */
-
 /* Portable structure: fields commonly useful */
 typedef struct {
         uint64_t st_size;     /* file size in bytes */

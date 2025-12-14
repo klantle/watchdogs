@@ -1,10 +1,3 @@
-static const char *description = 
-"PAWN compiler (pawn-lang) orchestration module for the Watchdogs."             "\n"
-"This module manages compilation of PAWN scripts (.pwn files) to AMX bytecode," "\n"
-"supporting multiple platforms (Windows/Linux/Termux) with TOML configuration," "\n"
-"TOCTOU-protected file operations, and automated compiler installation."
-;
-
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -71,12 +64,12 @@ int wg_run_compiler(const char *args, const char *compile_args,
         };
 
         FILE *this_proc_fileile; /* File pointer for process output handling */
-        char proj_parse[WG_PATH_MAX + 26] = { 0 }; /* project parse char */
+        char proj_parse[WG_PATH_MAX] = { 0 }; /* project parse char */
         char size_log[WG_MAX_PATH * 4]; /* Buffer for log file reading */
         char run_cmd[WG_PATH_MAX + 258]; /* Buffer for constructing system commands */
         char include_aio_path[WG_PATH_MAX * 2] = { 0 }; /* Buffer for include paths concatenation */
         char _compiler_input_[WG_MAX_PATH + WG_PATH_MAX] = { 0 }; /* Buffer for final compiler command */
-        char size_path_include[WG_PATH_MAX * 2] = { 0 }; /* include path new char */
+        char size_path_include[WG_MAX_PATH] = { 0 }; /* include path new char */
 
         /* Pointers for path manipulation - extracting directory and filename */
         char *compiler_last_slash = NULL;

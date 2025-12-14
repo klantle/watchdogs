@@ -61,7 +61,8 @@ static const SocialSite social_site_list[MAX_NUM_SITES] = {
     {"Gravatar", "https://gravatar.com/" USERNAME_PLACEHOLDER},
     {"Letterboxd", "https://letterboxd.com/" USERNAME_PLACEHOLDER},
     {"Trello", "https://trello.com/" USERNAME_PLACEHOLDER},
-    {"Linktree", "https://linktr.ee/" USERNAME_PLACEHOLDER}
+    {"Linktree", "https://linktr.ee/" USERNAME_PLACEHOLDER},
+    { NULL, NULL }
 };
 
 void curl_verify_cacert_pem(CURL *curl);
@@ -77,7 +78,9 @@ size_t write_memory_callback(void *contents, size_t size, size_t nmemb, void *us
 int package_url_checking(const char *url, const char *github_token);
 int package_http_get_content(const char *url, const char *github_token, char **out_html);
 
-void tracker_discrepancy(const char *base, char variations[][100], int *variation_count);
+void tracker_discrepancy(const char *base,
+                         char variations[][MAX_USERNAME_LEN],
+                         int *variation_count);
 void tracking_username(CURL *curl, const char *username);
 
 int wg_download_file(const char *url, const char *fname);

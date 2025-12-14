@@ -1,8 +1,3 @@
-static const char *description =
-"Platform-specific library installation module for Pawn compilers and SA-MP/Open.MP" "\n"
-"servers, with support for Termux (Android), Linux, and Windows environments."
-;
-
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>

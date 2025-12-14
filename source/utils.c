@@ -1,12 +1,3 @@
-static const char *description = 
-"Core utilities module for the Watchdogs providing comprehensive system" "\n"
-"abstractions, file operations, configuration management, and cross-platform"    "\n"
-"compatibility functions. Implements memory-safe wrappers, recursive file"       "\n"
-"search, TOML configuration parsing, process management, and platform-specific"  "\n"
-"system calls with support for Windows, Linux, Android, and containerized"       "\n"
-"environments including WSL, Docker, and Pterodactyl."
-;
-
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -27,6 +18,9 @@ static const char *description =
 #include <sys/stat.h>
 #include <curl/curl.h>
 #include <sys/types.h>
+
+#include <readline/readline.h>
+#include <readline/history.h>
 
 #include "utils.h"
 
@@ -50,9 +44,6 @@ ssize_t sendfile(int out_fd,
 #elif !defined(WG_ANDROID) && defined(WG_LINUX)
 	#include <sys/sendfile.h>
 #endif
-
-#include <readline/readline.h>
-#include <readline/history.h>
 
 #include "extra.h"
 #include "units.h"
@@ -101,19 +92,19 @@ WatchdogConfig wgconfig = {
 };
 
 const char* char_fields[] = {
-    "wg_toml_os_type",
-    "wg_toml_binary", 
-    "wg_toml_config",
-    "wg_toml_logs",
-    "wg_toml_aio_opt",
-    "wg_toml_root_patterns",
-    "wg_toml_packages",
-    "wg_toml_proj_input",
-    "wg_toml_proj_output",
-    "wg_toml_key_ai",
-    "wg_toml_chatbot_ai",
-    "wg_toml_models_ai",
-    "wg_toml_webhooks"
+		"wg_toml_os_type",
+		"wg_toml_binary", 
+		"wg_toml_config",
+		"wg_toml_logs",
+		"wg_toml_aio_opt",
+		"wg_toml_root_patterns",
+		"wg_toml_packages",
+		"wg_toml_proj_input",
+		"wg_toml_proj_output",
+		"wg_toml_key_ai",
+		"wg_toml_chatbot_ai",
+		"wg_toml_models_ai",
+		"wg_toml_webhooks"
 };
 
 char** field_pointers[] = {
@@ -141,17 +132,14 @@ char** field_pointers[] = {
 void wg_sef_fdir_memset_to_null(void) {
 
 		size_t i, sef_max_entries;
-		/* Calculate maximum number of entries in the found list array */
 		sef_max_entries = sizeof(wgconfig.wg_sef_found_list) /
 						  sizeof(wgconfig.wg_sef_found_list[0]);
 
-		/* Clear each entry in the found list by setting first character to null */
 		for (i = 0; i < sef_max_entries; i++)
 			wgconfig.wg_sef_found_list[i][0] = '\0';
 
-		/* Reset the count of found items to empty state */
 		wgconfig.wg_sef_count = RATE_SEF_EMPTY;
-		/* Fill the entire found list array with empty markers */
+
 		memset(wgconfig.wg_sef_found_list,
 			RATE_SEF_EMPTY, sizeof(wgconfig.wg_sef_found_list));
 }
@@ -165,14 +153,12 @@ void wg_sef_fdir_memset_to_null(void) {
 size_t win_strlcpy(char *dst, const char *src, size_t size)
 {
 	    size_t len = strlen(src);
-	    /* Only copy if destination buffer has space */
 	    if (size > 0) {
-	        /* Determine how many characters can be copied (leave room for null terminator) */
 	        size_t copy = (len >= size) ? size - 1 : len;
 	        memcpy(dst, src, copy);
-	        dst[copy] = 0; /* Always null-terminate */
+	        dst[copy] = 0;
 	    }
-	    return len; /* Return length of source string */
+	    return len;
 }
 
 /*
@@ -2072,9 +2058,11 @@ static int _try_mv_without_sudo(const char *src, const char *dest) {
 	    char size_mv[WG_PATH_MAX];
 	    /* Platform-specific move commands */
 	    if (is_native_windows())
-	        snprintf(size_mv, sizeof(size_mv), "move /Y \"%s\" \"%s\"", src, dest);
+	        snprintf(size_mv, sizeof(size_mv),
+				"move /Y \"%s\" \"%s\"", src, dest);
 	    else
-	        snprintf(size_mv, sizeof(size_mv), "mv -f %s %s", src, dest);
+	        snprintf(size_mv, sizeof(size_mv),
+				"mv -f %s %s", src, dest);
 	    int ret = wg_run_command(size_mv);
 	    return ret;
 }
@@ -2088,9 +2076,11 @@ static int __mv_with_sudo(const char *src, const char *dest) {
 
 	    char size_mv[WG_PATH_MAX];
 	    if (is_native_windows())
-	        snprintf(size_mv, sizeof(size_mv), "move /Y \"%s \"%s\"", src, dest);
+	        snprintf(size_mv, sizeof(size_mv),
+				"move /Y \"%s \"%s\"", src, dest);
 	    else
-	        snprintf(size_mv, sizeof(size_mv), "sudo mv -f %s %s", src, dest);
+	        snprintf(size_mv, sizeof(size_mv),
+				"sudo mv -f %s %s", src, dest);
 	    int ret = wg_run_command(size_mv);
 	    return ret;
 }
@@ -2104,9 +2094,11 @@ static int _try_cp_without_sudo(const char *src, const char *dest) {
 
 	    char size_cp[WG_PATH_MAX];
 	    if (is_native_windows())
-	        snprintf(size_cp, sizeof(size_cp), "xcopy /Y \"%s\" \"%s\"", src, dest);
+	        snprintf(size_cp, sizeof(size_cp),
+				"xcopy /Y \"%s\" \"%s\"", src, dest);
 	    else
-	        snprintf(size_cp, sizeof(size_cp), "cp -f %s %s", src, dest);
+	        snprintf(size_cp, sizeof(size_cp),
+				"cp -f %s %s", src, dest);
 	    int ret = wg_run_command(size_cp);
 	    return ret;
 }
@@ -2120,9 +2112,11 @@ static int __cp_with_sudo(const char *src, const char *dest) {
 
 	    char size_cp[WG_PATH_MAX];
 	    if (is_native_windows())
-	        snprintf(size_cp, sizeof(size_cp), "xcopy /Y \"%s\" \"%s\"", src, dest);
+	        snprintf(size_cp, sizeof(size_cp),
+				"xcopy /Y \"%s\" \"%s\"", src, dest);
 	    else
-	        snprintf(size_cp, sizeof(size_cp), "sudo cp -f %s %s", src, dest);
+	        snprintf(size_cp, sizeof(size_cp),
+				"sudo cp -f %s %s", src, dest);
 	    int ret = wg_run_command(size_cp);
 	    return ret;
 }
@@ -2137,8 +2131,6 @@ static int __wg_sef_safety(const char *c_src, const char *c_dest) {
 	
 		char parent[WG_PATH_MAX];
 		struct stat st;
-
-		/* Basic input validation */
 #if defined(_DBG_PRINT)
 		if (!c_src || !c_dest)
 				pr_error(stdout, "src or dest is null");
@@ -2162,10 +2154,9 @@ static int __wg_sef_safety(const char *c_src, const char *c_dest) {
 				pr_error(stdout, "destination open_dir does not exist: %s", parent);
 		if (!S_ISDIR(st.st_mode))
 				pr_error(stdout, "destination parent is not a open_dir: %s", parent);
-		__debug_function(); /* call debugger function */
 #endif
 
-		return 1; /* All checks passed */
+		return 1;
 }
 
 /*
@@ -2191,15 +2182,13 @@ int wg_sef_wmv(const char *c_src, const char *c_dest)
 {
 		int ret, mv_ret;
 
-		/* Validate operation safety */
 		ret = __wg_sef_safety(c_src, c_dest);
 		if (ret != 1)
 				return 1;
 
-		/* Determine if sudo - sudo & su is available */
 		int is_not_sudo = 1;
 #ifdef WG_WINDOWS
-		is_not_sudo = 1; /* Windows doesn't use sudo */
+		is_not_sudo = 1;
 #else
 		int sudo_check = 1;
 		sudo_check = wg_run_command("sudo echo \"-\" > /dev/null 2>&1");
@@ -2209,27 +2198,25 @@ int wg_sef_wmv(const char *c_src, const char *c_dest)
 				--is_not_sudo;
 		}
 #endif
-		/* Try without sudo first if available */
 		if (is_not_sudo == 1) {
 			mv_ret = _try_mv_without_sudo(c_src, c_dest);
 
 			if (!mv_ret) {
-					__wg_sef_set_permissions(c_dest); /* Set permissions */
+					__wg_sef_set_permissions(c_dest);
 					pr_info(stdout, "moved without sudo: '%s' -> '%s'", c_src, c_dest);
-					return 0; /* Success without sudo */
+					return 0;
 			}
 		} else {
-			/* Use sudo for move operation */
 			mv_ret = __mv_with_sudo(c_src, c_dest);
 
 			if (!mv_ret) {
 					__wg_sef_set_permissions(c_dest);
 					pr_info(stdout, "moved with sudo: '%s' -> '%s'", c_src, c_dest);
-					return 0; /* Success with sudo */
+					return 0;
 			}
 		}
 
-		return 1; /* Move failed */
+		return 1;
 }
 
 /*
@@ -2241,15 +2228,13 @@ int wg_sef_wcopy(const char *c_src, const char *c_dest)
 {
 		int ret, cp_ret;
 
-		/* Validate operation safety */
 		ret = __wg_sef_safety(c_src, c_dest);
 		if (ret != 1)
 				return 1;
 
-		/* Determine if sudo - sudo & su is available */
 		int is_not_sudo = 1;
 #ifdef WG_WINDOWS
-		is_not_sudo = 1; /* Windows doesn't use sudo */
+		is_not_sudo = 1;
 #else
 		int sudo_check = 1;
 		sudo_check = wg_run_command("sudo echo \"-\" > /dev/null 2>&1");
@@ -2259,25 +2244,23 @@ int wg_sef_wcopy(const char *c_src, const char *c_dest)
 				--is_not_sudo;
 		}
 #endif
-		/* Try copy without sudo first */
 		if (is_not_sudo == 1) {
 			cp_ret = _try_cp_without_sudo(c_src, c_dest);
 
 			if (!cp_ret) {
 					__wg_sef_set_permissions(c_dest);
 					pr_info(stdout, "copying without sudo: '%s' -> '%s'", c_src, c_dest);
-					return 0; /* Success without sudo */
+					return 0;
 			}
 		} else {
-			/* Use sudo for copy operation */
 			cp_ret = __cp_with_sudo(c_src, c_dest);
 
 			if (!cp_ret) {
 					__wg_sef_set_permissions(c_dest);
 					pr_info(stdout, "copying with sudo: '%s' -> '%s'", c_src, c_dest);
-					return 0; /* Success with sudo */
+					return 0;
 			}
 		}
 
-		return 1; /* Copy failed */
+		return 1;
 }

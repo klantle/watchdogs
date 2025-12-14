@@ -26,7 +26,7 @@ WINDRES  ?= windres
 
 # Default optimization flags (for release mode)
 
-CFLAGS   = -Os -pipe -fdata-sections -ffunction-sections
+CFLAGS   = -Os -pipe
 LDFLAGS  = -lm -lcurl -lreadline -larchive
 
 
@@ -40,7 +40,7 @@ LDFLAGS  = -lm -lcurl -lreadline -larchive
 # - STRIP is replaced with "true" so it does nothing
 
 ifeq ($(DEBUG_MODE),1)
-	CFLAGS = -g -O0 -Wall -fno-omit-frame-pointer -fno-inline
+	CFLAGS = -g -O0 -Wall -fdata-sections -ffunction-sections -fno-omit-frame-pointer -fno-inline
 	STRIP  = true
 endif
 
@@ -83,37 +83,45 @@ init:
 	elif echo "$$UNAME_S" | grep -qi "Linux"; then \
 		echo "Detected Linux"; \
 		if command -v apt >/dev/null 2>&1; then \
+			echo "Debian/Ubuntu detected"; \
+			dpkg --add-architecture i386 2>/dev/null || true; \
 			apt update -y && apt install -y \
 				build-essential curl procps clang lld make binutils \
 				libcurl4-openssl-dev libatomic1 libreadline-dev libarchive-dev \
-				zlib1g-dev upx-ucl upx; \
+				zlib1g-dev upx-ucl upx \
+				libc6:i386 libstdc++6:i386 libcurl4:i386; \
 		elif command -v dnf >/dev/null 2>&1; then \
+			echo "Fedora/RHEL detected"; \
 			dnf groupinstall -y "Development Tools" && \
 			dnf install -y \
 				clang lld libatomic libcxx-devel curl-devel \
-				readline-devel libarchive-devel zlib-devel binutils upx; \
+				readline-devel libarchive-devel zlib-devel binutils upx \
+				glibc-devel.i686 libstdc++-devel.i686 curl-devel.i686; \
 		elif command -v yum >/dev/null 2>&1; then \
+			echo "RHEL/CentOS detected"; \
 			yum groupinstall -y "Development Tools" && \
 			yum install -y \
 				clang lld libcxx-devel curl-devel \
-				readline-devel libarchive-devel zlib-devel binutils upx; \
+				readline-devel libarchive-devel zlib-devel binutils upx \
+				glibc-devel.i686 libstdc++-devel.i686 curl-devel.i686; \
 		elif command -v zypper >/dev/null 2>&1; then \
+			echo "openSUSE detected"; \
 			zypper refresh && zypper install -y -t pattern devel_basis && \
 			zypper install -y \
 				curl clang lld libc++-devel \
 				libcurl-devel readline-devel libarchive-devel zlib-devel \
-				binutils upx; \
+				binutils upx \
+				glibc-devel-32bit libstdc++6-devel-32bit libcurl4-devel-32bit; \
 		elif command -v pacman >/dev/null 2>&1; then \
+			echo "Arch Linux detected"; \
 			pacman -Sy --noconfirm && pacman -S --needed --noconfirm \
 				libatomic base-devel clang lld libc++ readline \
-				curl libarchive zlib binutils upx; \
+				curl libarchive zlib binutils upx \
+				lib32-glibc lib32-gcc-libs; \
 		else \
 			echo "Unsupported distribution"; \
 			exit 1; \
 		fi; \
-	else \
-		echo "Unsupported environment"; \
-		exit 1; \
 	fi
 
 

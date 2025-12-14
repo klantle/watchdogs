@@ -1,0 +1,17 @@
+-> Run Watchdogs inline in Sublime Text
+-> Click "Tools" > "Build System" > "New Build System"
+put (Windows):
+    {
+        "cmd": ["run-native.bat", "help", "compile"],
+        "working_dir": "C:\\Users\\Administrator\\Downloads\\watchdogs"
+    }
+-> working_dir - location of run-native.bat.
+ -> example: C:\Users\your_desktop_name\Downloads\watchdogs -> Downloads/Watchdogs
+            - put: C:\\Users\\your_desktop_name\\Downloads\\watchdogs
+ -> example linux: home/your_desktop_name/Downloads/watchdogs -> Downloads/watchdogs
+            - put: /home/your_desktop_name/Downloads/watchdogs
+-> cmd - inline commands - [<file>] [<command>] [<args>]
+ -> example: "run-native.bat", "dir", "/s"
+ -> example linux: "watchdogs", "ls", "-a"
+ -> example termux: "watchdogs.tmux", "ls", "-a"
+-> usage: CTRL & SHIFT + B or CTRL + B

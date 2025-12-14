@@ -1,8 +1,3 @@
-static const char *description =
-"Server management module for SA-MP and Open.MP servers with configuration" "\n"
-"file manipulation, crash detection, log analysis, and signal handling."
-;
-
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -390,6 +385,21 @@ void wg_server_crash_check(void) {
                 if (strfind(line_buf, "Your password must be changed from the default password", true)) {
                     ++server_rcon_pass;
                 }
+            }
+            /* SA-MP specific gamemode0 error */
+            if (strfind(line_buf, "It needs a gamemode0 line", true)) {
+                needed = snprintf(output_buf, sizeof(output_buf), "@ Critical message found\n\t");
+                fwrite(output_buf, 1, needed, stdout);
+                pr_color(stdout, FCOLOUR_BLUE, "%s", line_buf);
+                fflush(stdout);
+                needed = snprintf(output_buf, sizeof(output_buf),
+                        "\tYou need to ensure that the file name (.amx),\n"
+                        "\tin your server.cfg under the parameter (gamemode0),\n"
+                        "\tactually exists as a .amx file in the gamemodes/ folder.\n"
+                        "\tIf there's only a file with the corresponding name but it's only a single .pwn file,\n"
+                        "\tyou need to compile it.\n");
+                fwrite(output_buf, 1, needed, stdout);
+                fflush(stdout);
             }
             
             /* General warning and failure patterns */
@@ -816,7 +826,9 @@ void wg_run_samp_server(const char *gamemode, const char *server_bin)
                 ret_c == -1)
                 return;
 
-        CHMOD_FULL(server_bin);  /* Set executable permissions */
+        CHMOD_FULL(server_bin);
+        if (path_access("announce"))
+                CHMOD_FULL("announce");
 
         /* Set up signal handler for graceful termination */
         struct sigaction sa;
@@ -1100,7 +1112,9 @@ void wg_run_omp_server(const char *gamemode, const char *server_bin)
                 ret_c == -1)
                 return;
 
-        CHMOD_FULL(server_bin);  /* Set executable permissions */
+        CHMOD_FULL(server_bin);
+        if (path_access("announce"))
+                CHMOD_FULL("announce");
 
         /* Setup signal handling */
         struct sigaction sa;

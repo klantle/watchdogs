@@ -1,10 +1,3 @@
-static const char *description =
-"Dependency management module for fetching and organizing third-party"   "\n"
-"libraries from GitHub/GitLab repositories with platform-specific asset" "\n"
-"selection, automatic include/plugin configuration, and cross-platform"  "\n"
-"file organization."
-;
-
 #include <stdio.h>
 #include <stdlib.h>
 #include <ctype.h>
@@ -48,28 +41,6 @@ struct repositories {
         char user[128] ; /* repo user */
         char repo[128] ; /* repo name */
         char tag[128]  ; /* repo tag */
-};
-
-const char * matching_operating_system[] = {
-        "windows",
-        "win",
-        "win32",
-        "msvc",
-        "mingw",
-        "linux",
-        "ubuntu",
-        "debian",
-        "cent",
-        "centos",
-        "cent_os",
-        "fedora",
-        "arch",
-        "archlinux",
-        "alphine"
-        "rhel",
-        "redhat",
-        "linuxmint",
-        "mint"
 };
 
 const char *matching_windows_patterns[] = {
@@ -126,7 +97,8 @@ const char * matching_any_patterns[] = {
         "libs",
         "include",
         "deps",
-        "dependencies"
+        "dependencies",
+        NULL
 };
 
 /* Path Separator */
@@ -307,7 +279,9 @@ char *package_fetching_assets(char **package_assets,
         
         char size_target[ 32 ] = { 0 };
         if (target_os) {
-            strncpy( size_target, target_os, sizeof(size_target) - 1 );
+            strncpy( size_target,
+                     target_os,
+                     sizeof(size_target) - 1 );
             for (int j = 0; size_target[j]; j++) {
                 size_target[j] = tolower(size_target[j]);
             }
@@ -316,8 +290,11 @@ char *package_fetching_assets(char **package_assets,
         if (size_target[ 0 ]) {
             for (i = 0; i < counts; i++) {
                 int is_server_asset = 0;
-                for (int p = 0; matching_any_patterns[ p ] != NULL; p++) {
-                    if (strfind(package_assets[ i ], matching_any_patterns[ p ], true)) {
+                for (int p = 0;
+                     matching_any_patterns[ p ] != NULL;
+                     p++) {
+                    if (strfind(package_assets[ i ],
+                        matching_any_patterns[ p ], true)) {
                         is_server_asset = 1;
                         break;
                     }
@@ -385,14 +362,20 @@ char *package_fetching_assets(char **package_assets,
         }
         
         for (i = 0; i < counts; i++) {
-            for (int w = 0; matching_windows_patterns[ w ] != NULL && !rate_os_pattern; w++) {
+            for (int w = 0;
+                 matching_windows_patterns[ w ] != NULL &&
+                 !rate_os_pattern; w++)
+            {
                 if ( strstr(package_assets[ i ],
                     matching_windows_patterns[ w ]) )
                 {
                     rate_os_pattern = 1;
                 }
             }
-            for (int l = 0; matching_linux_patterns[ l ] != NULL && ! rate_os_pattern; l++) {
+            for (int l = 0;
+                 matching_linux_patterns[ l ] != NULL &&
+                 ! rate_os_pattern; l++)
+            {
                 if ( strstr(package_assets[ i ],
                     matching_linux_patterns[ l ]) )
                 {
@@ -1075,7 +1058,16 @@ void package_add_include( const char *modes, char *package_name, char *package_f
         char *ct_modes = wg_malloc( fle_size + 2 );
         if ( !ct_modes ) { fclose(m_file); return; }
         
-        fread( ct_modes, 1, fle_size, m_file );
+        size_t bytes_read;
+        bytes_read = fread( ct_modes, 1, fle_size, m_file );
+        if ( bytes_read != fle_size ) {
+                pr_error( stdout, "Failed to read the entire file!" );
+                __debug_function(); /* call debugger function */
+                wg_free( ct_modes );
+                fclose( m_file );
+                return;
+        }
+
         ct_modes[fle_size] = '\0';
         fclose( m_file );
         

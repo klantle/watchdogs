@@ -10,9 +10,7 @@
    - [Windows Native](#Native)
    - [MSYS2](#msys2)
    - [GitHub Codespaces](#codespaces)
-3. [Configuration](#configuration)
-4. [Usage Guide](#usage-guide)
-5. [Compiler Reference](#compiler-reference)
+3. [Usage Guide](#usage-guide)
 
 ## Introduction
 
@@ -272,30 +270,25 @@ Server = https://downloads.sourceforge.net/project/msys2/REPOS/msys/$arch
 
 ## `watchdogs.toml` Configuration
 
-| Category | Setting | Value Sample |
-|---|---|---|
-| **General** | OS | `linux` |
-|  | Binary | `samp-server.exe` |
-|  | Config | `server.cfg` |
-|  | Logs | `server_log.txt` |
-|  | API Keys | `API_KEY` |
-|  | Chatbot | `gemini` |
-|  | Model | `gemini-2.5-pro` |
-|  | Discord Webhooks | `xyzabc` |
-| **Compiler** | Options | `-Z+`, `-O2`, `-d2`, `-;+`, `-(+`, `-\\` |
-|  | Include Paths | `gamemodes/`, `gamemodes/x/`, `gamemodes/y/`, `gamemodes/z/`, `pawno/include/`, `pawno/include/x/`, `pawno/include/y/`, `pawno/include/z/` |
-|  | Input | `gamemodes/bare.pwn` |
-|  | Output | `gamemodes/bare.amx` |
-| **Dependencies** | GitHub Tokens | `xyzabc` |
-|  | Root Patterns | `config`, `amx`, `json`, `log` |
-|  | Packages | `Y-Less/sscanf?newer`, `samp-incognito/samp-streamer-plugin?newer` |
-
 **Key Points:**
-- **API Keys**: For Gemini or Groq AI (optional)
-- **Webhooks**: Discord notifications (optional)
-- **GitHub Tokens**: For private repositories (optional)
+- **API Keys**: For Gemini or Groq AI. (optional)
+- **Webhooks**: Discord webhooks for `send` command. (optional)
+- **GitHub Tokens**: For private repositories. (optional)
 - **Compiler**: PAWN compiler settings for SA-MP/Open.MP
 - **Root Patterns**: This is useful for hard list keywords, specifically for plugin names (dll/so) like sscanf amxsscanf (amx)sscanf or mysql log-core log(core), which will later be installed and still recognized as being installed by the root user into the gamemode root area, rather than being installed within plugins/.
+
+## Command Aliases
+
+Default (if in root directory):
+```yaml
+echo "alias watchdogs='./watchdogs'" >> ~/.bashrc
+source ~/.bashrc
+```
+
+And run the alias:
+```yml
+watchdogs
+```
 
 ## Usage Guide
 
@@ -307,19 +300,6 @@ Server = https://downloads.sourceforge.net/project/msys2/REPOS/msys/$arch
 ./watchdogs help
 ./watchdogs whoami
 ./watchdogs compile server.pwn
-```
-
-## Upload Our Files
-
-> This is intended to send your file to a Discord channel using cURL, via Discord Webhooks, to a specific channel listed under `[general]` with the key `webhooks`.
-
-```yaml
-send somefiles
-send some_input.pwn
-send some_output.amx
-send some_archive.zip
-send some_image.png
-send some_note.txt
 ```
 
 ## Compiler Installer
@@ -525,96 +505,3 @@ run                           # Simply type 'run' and press Enter
 bt           # Basic backtrace (shows function names)
 bt full      # Full backtrace (shows function names, variables, and arguments)
 ```
-
-## Command Aliases
-
-Create alias for easier access:
-```yaml
-alias watch='./path/to/watchdogs'
-```
-
-Default (if in root directory):
-```yaml
-alias watch='./watchdogs'
-```
-## Compiler Reference
-
-## Example Usage
-
-```yaml
-pawncc "input" -o"output.amx" -i"include/"
-```
-
-## Compiler Options
-
-## General Options
-
-| Option     | Description                                                                  | Default |
-| ---------- | ---------------------------------------------------------------------------- | ------- |
-| `-A<num>`  | Set the alignment in bytes for the data segment and stack                    | -       |
-| `-a`       | Generate assembler code output for inspection or debugging                   | -       |
-| `-C[+/-]`  | Enable or disable compact encoding of the output file                        | `+`     |
-| `-c<name>` | Specify the codepage name or number for source file encoding, e.g., 1252     | -       |
-| `-Dpath`   | Specify the active working directory path for includes and outputs           | -       |
-| `-H<hwnd>` | Provide a window handle to receive a notification when compilation finishes  | -       |
-| `-i<name>` | Add an additional directory to search for include files                      | -       |
-| `-l`       | Generate a list file containing the preprocessed source code                 | -       |
-| `-o<name>` | Set the base name for the P-code output file                                 | -       |
-| `-p<name>` | Specify the name of the "prefix" file to include before compilation          | -       |
-| `-s<num>`  | Skip a certain number of lines from the start of the input file              | -       |
-| `-t<num>`  | Set the number of characters per tab stop for indentation                    | 8       |
-| `-v<num>`  | Set verbosity level of compiler messages, from 0 (quiet) to 2 (very verbose) | 1       |
-| `-w<num>`  | Disable specific compiler warnings by number                                 | -       |
-| `-Z[+/-]`  | Enable or disable compatibility mode for legacy code                         | -       |
-| `-\`       | Use backslash character as escape character in strings                       | -       |
-| `-^`       | Use caret character as escape character in strings                           | -       |
-| `sym=val`  | Define a constant symbol with a specific value for conditional compilation   | -       |
-| `sym=`     | Define a constant symbol with a value of 0                                   | -       |
-
-## Debugging Options
-
-| Option    | Description                                                             | Default   |
-| --------- | ----------------------------------------------------------------------- | --------- |
-| `-d<num>` | Set debugging level to control runtime checks and debug information     | `-d1`     |
-| `-d0`     | Disable all debug information and runtime checks                        | -         |
-| `-d1`     | Enable runtime checks but do not generate debug info                    | *default* |
-| `-d2`     | Enable full debug information with dynamic runtime checking             | -         |
-| `-d3`     | Enable full debug and runtime checks, and disable optimizations (`-O0`) | -         |
-| `-E[+/-]` | Treat all compiler warnings as errors when enabled                      | -         |
-
-## Optimization Options
-
-| Option    | Description                                                 | Default   |
-| --------- | ----------------------------------------------------------- | --------- |
-| `-O<num>` | Set optimization level to control how code is optimized     | `-O1`     |
-| `-O0`     | Disable all optimizations to produce straightforward code   | -         |
-| `-O1`     | Enable optimizations compatible with just-in-time execution | *default* |
-| `-O2`     | Enable full optimization for maximum performance            | -         |
-
-## Memory Options
-
-| Option     | Description                                         | Default |
-| ---------- | --------------------------------------------------- | ------- |
-| `-S<num>`  | Set the size of the stack and heap in memory cells  | 4096    |
-| `-X<num>`  | Set the size limit of the abstract machine in bytes | -       |
-| `-XD<num>` | Set a limit on data and stack memory usage in bytes | -       |
-
-## Analysis Options
-
-| Option     | Description                                                    | Default |
-| ---------- | -------------------------------------------------------------- | ------- |
-| `-R[+/-]`  | Generate a detailed recursion report to analyze function calls | -       |
-| `-r[name]` | Produce a cross-reference report showing symbol usage          | -       |
-
-## Syntax Options
-
-| Option    | Description                                                  | Default |
-| --------- | ------------------------------------------------------------ | ------- |
-| `-;[+/-]` | Require semicolons at the end of each statement when enabled | -       |
-| `-([+/-]` | Require parentheses for function calls when enabled          | -       |
-
-## Output Options
-
-| Option     | Description                                                               | Default |
-| ---------- | ------------------------------------------------------------------------- | ------- |
-| `-e<name>` | Specify the name of the error file to save messages for quiet compilation | -       |

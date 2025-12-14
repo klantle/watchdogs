@@ -1,9 +1,3 @@
-static const char *description = 
-"cURL integration module for network operations - handles HTTP/HTTPS downloads," "\n"
-"URL validation, account tracking across platforms, and compiler installation"   "\n"
-"with progress display, retry logic, and SSL certificate management."
-;
-
 #include <stdio.h>
 #include <stdlib.h>
 #include <ctype.h>
@@ -24,12 +18,9 @@ static const char *description =
 #include "debug.h"
 #include "curl.h"
 
-/* Static buffer for storing compiler source directory path */
 static char
-        /* type static and pointer */
         *pawncc_dir_source = NULL;
 static char
-        /* command char */
         command[WG_MAX_PATH];
 
 /* 
@@ -46,9 +37,8 @@ void curl_verify_cacert_pem(CURL *curl) {
 #elif defined(WG_WINDOWS)
         platform = 3;
 #endif
-        static int cacert_notice = 0; /* Track if warning already shown */
+        static int cacert_notice = 0;
 
-        /* Windows-specific certificate locations */
         if (platform == 3) {
                 if (access("cacert.pem", F_OK) == 0)
                         curl_easy_setopt(curl, CURLOPT_CAINFO, "cacert.pem");
@@ -62,7 +52,7 @@ void curl_verify_cacert_pem(CURL *curl) {
                         }
                 }
         }
-        /* Android-specific certificate locations */
+
         else if (platform == 1) {
                 const char *prefix = getenv("PREFIX");
                 if (!prefix || prefix[0] == '\0') {
@@ -85,7 +75,7 @@ void curl_verify_cacert_pem(CURL *curl) {
                                 "cURL: can't locate cacert.pem - SSL verification may fail.\n");
                 }
         }
-        /* Linux-specific certificate locations */
+
         else if (platform == 2) {
                 if (access("cacert.pem", F_OK) == 0)
                         curl_easy_setopt(curl, CURLOPT_CAINFO, "cacert.pem");
@@ -131,26 +121,24 @@ static int progress_callback(void *ptr, curl_off_t dltotal,
                         curl_off_t dlnow, curl_off_t ultotal,
                         curl_off_t ulnow)
 {
-        static int last_percent = -1; /* Track last displayed percentage */
-        static int dot_index = 0;   /* Index for spinner animation */
-        static const char         /* -\\|/ [nodejs like] */
-                term_spinner[] =  "-" "\\" "|" "/";
+        static int last_percent = -1;
+        static int dot_index = 0;
+        static const char term_spinner[] =  "-" "\\" "|" "/";
 
         int percent;
 
-        /* Only show progress if total download size is known */
         if (dltotal > 0) {
                 percent = (int)((dlnow * 100) / dltotal);
-
-                /* Update display only when percentage changes */
                 if (percent != last_percent) {
                         char spin_char = term_spinner[dot_index % 4];
                         dot_index++;
 
                         if (percent < 100)
-                                printf("\r" FCOLOUR_CYAN "** Downloading... %3d%% [%c]", percent, spin_char);
+                                printf("\r" FCOLOUR_CYAN
+                                        "** Downloading... %3d%% [%c]", percent, spin_char);
                         else
-                                printf("\r" FCOLOUR_CYAN "** Downloading... %3d%% Done!", percent);
+                                printf("\r" FCOLOUR_CYAN
+                                        "** Downloading... %3d%% Done!", percent);
 
                         fflush(stdout);
                         last_percent = percent;
@@ -192,31 +180,31 @@ size_t write_callbacks(void *ptr, size_t size, size_t nmemb, void *userdata)
 {
         struct buf *b = userdata;
 
-        /* Validate buffer pointer alignment */
         if (b->data && ((uintptr_t)b->data & 0x7)) {
-                fprintf(stderr, " Buffer pointer corrupted: %p\n", b->data);
+                fprintf(stderr,
+                        " Buffer pointer corrupted: %p\n",
+                        b->data);
                 return 0;
         }
 
         size_t total = size * nmemb;
 
-        /* Prevent processing excessively large chunks */
-        if (total > 0xFFFFFFF) return 0;
+        if (total > 0xFFFFFFF)
+                return 0;
 
         size_t required = b->len + total + 1;
 
-        /* Reallocate buffer if additional space is needed */
         if (required > b->allocated) {
-                /* Grow buffer by 50% or to required size, whichever is larger */
                 size_t new_alloc = (b->allocated * 3) >> 1;
                 new_alloc = (required > new_alloc) ? required : new_alloc;
-                /* Cap maximum allocation at 64MB */
                 new_alloc = (new_alloc < 0x4000000) ? new_alloc : 0x4000000;
 
                 char *p = realloc(b->data, new_alloc);
                 if (!p) {
 #if defined(_DBG_PRINT)
-                        fprintf(stderr, " Realloc failed for %zu bytes\n", new_alloc);
+                        fprintf(stderr,
+                                " Realloc failed for %zu bytes\n",
+                                new_alloc);
 #endif
                         return 0;
                 }
@@ -227,7 +215,7 @@ size_t write_callbacks(void *ptr, size_t size, size_t nmemb, void *userdata)
 
         memcpy(b->data + b->len, ptr, total);
         b->len += total;
-        b->data[b->len] = 0; /* Null-terminate string */
+        b->data[b->len] = 0;
 
         return total;
 }
@@ -265,22 +253,22 @@ size_t write_memory_callback(void *contents, size_t size, size_t nmemb, void *us
         struct memory_struct *mem = userp;
         size_t realsize = size * nmemb;
 
-        /* Input validation and size limit check */
-        if (!contents || !mem || realsize > 0x10000000) /* Limit large chunks >256/MB */
+        if (!contents || !mem || realsize > 0x10000000)
                 return 0;
 
-        size_t required = mem->size + realsize + 1; /* +1 for null-terminator */
+        size_t
+                required = mem->size + realsize + 1;
 
-        /* Reallocate buffer if capacity is insufficient */
         if (required > mem->allocated) {
-                size_t new_alloc = mem->allocated ? (mem->allocated * 2) : 0x1000; /* Start with 4/KB */
+                size_t new_alloc = mem->allocated ? (mem->allocated * 2) : 0x1000;
                 if (new_alloc < required) new_alloc = required;
-                if (new_alloc > 0x8000000) new_alloc = 0x8000000; /* Cap at 128/MB */
+                if (new_alloc > 0x8000000) new_alloc = 0x8000000;
 
                 char *ptr = realloc(mem->memory, new_alloc);
                 if (!ptr) {
 #if defined(_DBG_PRINT)
-                        fprintf(stdout, "Memory exhausted at %zu bytes\n", new_alloc);
+                        fprintf(stdout,
+                                " Memory exhausted at %zu bytes\n", new_alloc);
 #endif
                         return 0;
                 }
@@ -288,10 +276,9 @@ size_t write_memory_callback(void *contents, size_t size, size_t nmemb, void *us
                 mem->allocated = new_alloc;
         }
 
-        /* Copy data to memory buffer */
         memcpy(mem->memory + mem->size, contents, realsize);
         mem->size += realsize;
-        mem->memory[mem->size] = '\0'; /* Null terminate string */
+        mem->memory[mem->size] = '\0';
 
         return realsize;
 }
@@ -436,121 +423,132 @@ int package_http_get_content(const char* url, const char* github_token, char** o
  * Generate username variations for account tracking.
  * Creates common username mutations to find accounts across platforms.
  */
-void tracker_discrepancy(const char *base, char discrepancy[][MAX_USERNAME_LEN], int *cnt) {
-
-        int i, j, base_len;
+/* common suffixes */
+const char *__track_suffixes[] = {
+        "!", "@",
+        "#", "$",
+        "%", "^",
+        "_", "-",
+        ".",
+        NULL	/* Sentinel */
+};
+void tracker_discrepancy(const char *base,
+                         char discrepancy[][MAX_USERNAME_LEN],
+                         int *cnt)
+{
+        int i, j;
+        size_t base_len;
         char temp[MAX_USERNAME_LEN];
 
-        if (base == NULL || discrepancy == NULL || cnt == NULL ||
-                *cnt >= MAX_VARIATIONS)
+        if (!base || !discrepancy || !cnt || *cnt >= MAX_VARIATIONS)
                 return;
 
         base_len = strlen(base);
         if (base_len == 0 || base_len >= MAX_USERNAME_LEN)
                 return;
 
-        /* Add original username */
-        strlcpy(discrepancy[ (*cnt)++ ],
-                base,
-                MAX_USERNAME_LEN);
+        strlcpy(discrepancy[(*cnt)++], base, MAX_USERNAME_LEN);
 
-        /* Create variations with duplicate characters (e.g., "heello" from "hello") */
         for (i = 0;
-             i < base_len &&
-             *cnt < MAX_VARIATIONS;
-             i++)
+                i < (int)base_len &&
+                *cnt < MAX_VARIATIONS &&
+                base_len + 1 < MAX_USERNAME_LEN;
+                i++)
         {
-                strncpy(temp, base, i);
-                temp[i] = '\0';
-                
-                temp[i] = base[i];
-                temp[i + 1] = base[i];
-                
-                strlcpy(temp + i + 2, base + i + 1, 
-                        sizeof(temp) - (i + 2));
-                
-                strlcpy(discrepancy[ (*cnt)++ ],
-                        temp,
-                        MAX_USERNAME_LEN);
-        }
+                memcpy(temp, base, i);
 
-        /* Add trailing character repetitions (e.g., "hello111") */
-        for (i = 2;
-             i <= 5 &&
-             *cnt < MAX_VARIATIONS;
-             i++)
-        {
-                strlcpy(temp, base, sizeof(temp));
-                
-                for (j = 0; j < i && strlen(temp) < MAX_USERNAME_LEN - 1; j++) {
-                        temp[strlen(temp)] = base[base_len - 1];
-                        temp[strlen(temp) + 1] = '\0';
-                }
-                
+                temp[i]     = base[i];
+                temp[i + 1] = base[i];
+
+                strlcpy(temp + i + 2,
+                        base + i + 1,
+                        sizeof(temp) - (i + 2));
+
                 strlcpy(discrepancy[(*cnt)++], temp, MAX_USERNAME_LEN);
         }
 
-        /* Add common suffixes */
-        const char *track_suffixes[] = {
-                "!", "@",
-                "#", "$",
-                "%", "^",
-                "_", "-",
-                ".",
-                NULL	/* Sentinel */
-        };
+        for (i = 2;
+                i <= 5 &&
+                *cnt < MAX_VARIATIONS;
+                i++)
+        {
+                size_t len = base_len;
 
-        for (i = 0; track_suffixes[i] != NULL && *cnt < MAX_VARIATIONS; i++) {
-                snprintf(temp, sizeof(temp), "%s" "%s", base, track_suffixes[i]);
+                if (len + i >= MAX_USERNAME_LEN)
+                break;
+
+                memcpy(temp, base, len);
+
+                for (j = 0; j < i; j++)
+                temp[len + j] = base[base_len - 1];
+
+                temp[len + i] = '\0';
+
+                strlcpy(discrepancy[(*cnt)++], temp, MAX_USERNAME_LEN);
+        }
+
+        for (i = 0;
+                __track_suffixes[i] &&
+                *cnt < MAX_VARIATIONS;
+                i++)
+        {
+                snprintf(temp,
+                        sizeof(temp),
+                        "%s%s",
+                        base,
+                        __track_suffixes[i]);
+
                 strlcpy(discrepancy[(*cnt)++], temp, MAX_USERNAME_LEN);
         }
 }
 
-/* 
- * Make sure a username exists on multiple online platforms
- * Uses CURL to probe each platform's URL pattern
- */
 void tracking_username(CURL *curl, const char *username) {
-
+        
         CURLcode res;
         struct memory_struct response;
         struct curl_slist *headers = NULL;
+
         headers = curl_slist_append(headers, "User-Agent: Mozilla/5.0");
 
-        /* Test username against each platform in the list */
-        for (int i = 0; i < MAX_NUM_SITES; i++) {
-            char url[200];
-            
-            snprintf(url, sizeof(url), social_site_list[i].url_template, username);
+        for (int i = 0; social_site_list[i].site_name != NULL; i++) {
 
-            curl_easy_setopt(curl, CURLOPT_URL, url);
-            curl_easy_setopt(curl, CURLOPT_HTTPHEADER, headers);
+                char url[512];
 
-            memory_struct_init(&response);
-            curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, write_memory_callback);
-            curl_easy_setopt(curl, CURLOPT_WRITEDATA, (void *)&response);
+                snprintf(url, sizeof(url),
+                        social_site_list[i].url_template,
+                        username);
 
-            curl_verify_cacert_pem(curl);
+                curl_easy_setopt(curl, CURLOPT_URL, url);
+                curl_easy_setopt(curl, CURLOPT_HTTPHEADER, headers);
+                curl_easy_setopt(curl, CURLOPT_FOLLOWLOCATION, 1L);
 
-            res = curl_easy_perform(curl);
+                memory_struct_init(&response);
+                curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, write_memory_callback);
+                curl_easy_setopt(curl, CURLOPT_WRITEDATA, &response);
 
-            if (res != CURLE_OK) {
-                printf("* [%s] %s -> ERROR %s\n",
-                    social_site_list[i].site_name, url, curl_easy_strerror(res));
-            } else {
-                long status_code;
-                curl_easy_getinfo(curl, CURLINFO_RESPONSE_CODE, &status_code);
+                curl_verify_cacert_pem(curl);
 
-                if (status_code == WG_CURL_RESPONSE_OK) {
-                    printf("* [%s] %s -> FOUND\n",
-                        social_site_list[i].site_name, url);
+                res = curl_easy_perform(curl);
+
+                if (res != CURLE_OK) {
+                        printf("* [%s] %s -> ERROR %s\n",
+                                social_site_list[i].site_name,
+                                url,
+                                curl_easy_strerror(res));
                 } else {
-                    printf("* [%s] %s -> NOT FOUND (%ld)\n",
-                        social_site_list[i].site_name, url, status_code);
-                }
-            }
+                        long status;
+                        curl_easy_getinfo(curl, CURLINFO_RESPONSE_CODE, &status);
 
-            memory_struct_free(&response);
+                        if (status == 200 || (status >= 300 && status < 400)) {
+                                println(stdout, "* [%s] %s -> FOUND (%ld)",
+                                        social_site_list[i].site_name, url, status);
+                        } else {
+                                println(stdout, "* [%s] %s -> NOT FOUND (%ld)",
+                                        social_site_list[i].site_name, url, status);
+                        }
+                }
+
+                memory_struct_free(&response);
         }
 
         curl_slist_free_all(headers);
@@ -696,8 +694,13 @@ static void update_library_environment(const char *lib_path)
         pr_info(stdout, "Exporting path: %s/lib", getenv("PREFIX"));
         wg_run_command(command);
 #endif
-        snprintf(command, sizeof(command),
-                "source ~/%s", shell_rc);
+        if (strfind(shell_rc, "zsh", true)) {
+                snprintf(command, sizeof(command),
+                        "zsh -c \"source ~/%s\"", shell_rc);
+        } else {
+                snprintf(command, sizeof(command),
+                        "bash -c \"source ~/%s\"", shell_rc);
+        }
         wg_run_command(command);
 
         /* Update system library cache if needed */
@@ -1036,7 +1039,6 @@ static int debug_callback(CURL *handle, curl_infotype type,
         case CURLINFO_SSL_DATA_OUT:
                 break;
         case CURLINFO_HEADER_IN:
-                /* Filter out common headers to reduce noise */
                 if (strfind(data, "location: ", true) ||
                     strfind(data, "content-security-policy: ", true))
                         break;
@@ -1056,7 +1058,6 @@ static void parsing_filename(char *filename) {
 
         if (filename[0] == '\0') return;
         
-        /* Replace invalid characters with underscores */
         for (char *p = filename; *p; ++p) {
                 if (*p == '?' || *p == '*' ||
                     *p == '<' || *p == '>' || 
@@ -1066,13 +1067,11 @@ static void parsing_filename(char *filename) {
                 }
         }
         
-        /* Trim whitespace */
         char *end = filename + strlen(filename) - 1;
         while (end > filename && isspace((unsigned char)*end)) {
                 *end-- = '\0';
         }
         
-        /* Ensure filename is not empty */
         if (strlen(filename) == 0) {
                 strcpy(filename, "downloaded_file");
         }

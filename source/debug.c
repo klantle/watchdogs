@@ -1,9 +1,3 @@
-static const char *description =
-"Debugging and diagnostic utilities module providing function tracing," "\n"
-"system information collection, and crash analysis capabilities for"    "\n"
-"the Watchdogs with cross-architecture support."
-;
-
 #ifndef _GNU_SOURCE
     #define _GNU_SOURCE
 #endif
@@ -252,6 +246,8 @@ void __debug_main_chain_(int debug_hard,
                     wgconfig.wg_toml_key_ai);
         }
 
+        fflush(stdout);
+
         return;
 }
 
@@ -297,6 +293,8 @@ void __debug_function_(const char *function,
 #else
                 "Unknown");
 #endif
+
+        fflush(stdout);
 
         return;
 }

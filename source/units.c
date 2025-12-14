@@ -1,8 +1,3 @@
-static const char *description =
-"Main command-line interface module for the Watchdogs with"       "\n"
-"interactive shell, command dispatching, and system management utilities."
-;
-
 #ifndef _GNU_SOURCE
     #define _GNU_SOURCE
 #endif
@@ -64,41 +59,16 @@ int __command__(char *chain_pre_command)
 _ptr_command:
         if (chain_pre_command && chain_pre_command[0] != '\0') {
             ptr_command = strdup(chain_pre_command);
-            printf("[" FCOLOUR_CYAN
-                "community@watchdogs" FCOLOUR_DEFAULT "] > %s\n", ptr_command);
+            printf(FCOLOUR_BLUE ">>>" FCOLOUR_DEFAULT " %s\n", ptr_command);
         } else {
-            static int help_information = 0;
-            if (help_information == 0) {
-                    printf("Usage: help <command> [options]\n\n");
-                    printf("Commands:\n");
-                    printf("  help             show this help message\n");
-                    printf("  exit             exit from watchdogs\n");
-                    printf("  kill             refresh terminal watchdogs\n");
-                    printf("  title            set-title terminal watchdogs\n");
-                    printf("  sha256           generate sha256 hash\n");
-                    printf("  crc32            generate crc32 checksum\n");
-                    printf("  djb2             generate djb2 hash file\n");
-                    printf("  time             print current time\n");
-                    printf("  config           re-create watchdogs.toml\n");
-                    printf("  replicate        installer dependencies\n");
-                    printf("  gamemode         download SA-MP gamemode\n");
-                    printf("  pawncc           download SA-MP pawncc\n");
-                    printf("  log              debugging & logging server logs\n");
-                    printf("  compile          compile your project\n");
-                    printf("  running          running your project\n");
-                    printf("  compiles         compile & running your project\n");
-                    printf("  stop             stopped server task\n");
-                    printf("  restart          restart server task\n");
-                    printf("  wanion           ask to wanion (gemini based)\n");
-                    printf("  tracker          account tracking\n");
-                    printf("  compress         create a compressed archive\n");
-                    printf("  send             send file to Discord channel via webhook\n");
-                    ++help_information;
+            static int k = 0;
+            if (k != 1) {
+                ++k;
+                println(stdout, "Type \"help\" for more information.");
             }
             while (true) {
                 snprintf(ptr_prompt, size_ptr_command,
-                        "[" FCOLOUR_CYAN
-                        "community@watchdogs" FCOLOUR_DEFAULT "] > ");
+                        FCOLOUR_BLUE ">>>" FCOLOUR_DEFAULT " ");
 
                 ptr_command = readline(ptr_prompt);
 
@@ -128,20 +98,29 @@ _reexecute_command:
             while (*args == ' ') ++args;
 
             if (strlen(args) == 0) {
-                printf("Usage: help | help [<command>]\n\n");
+                printf("Usage: help <command> | help title\n\n");
                 printf("Commands:\n");
-                for (size_t i = 0; i < __command_len; i++) {
-                    if (strcmp(__command[i], "help") == 0 /* watchdogs */) {
-                        printf("  - watchdogs:\n");
-                        continue;
-                    } if (strcmp(__command[i], "ls") == 0 /* system */) {
-                        printf("  - system:\n");
-                    }
-                    printf("    @ [=| %-15s]\n", __command[i]);
-                    if (strcmp(__command[i], "djb2sum") == 0) {
-                        printf("    * innumerable\n");
-                    }
-                }
+                printf("  exit             exit from watchdogs\n");
+                printf("  kill             refresh terminal watchdogs\n");
+                printf("  title            set-title terminal watchdogs\n");
+                printf("  sha256           generate sha256 hash\n");
+                printf("  crc32            generate crc32 checksum\n");
+                printf("  djb2             generate djb2 hash file\n");
+                printf("  time             print current time\n");
+                printf("  config           re-create watchdogs.toml\n");
+                printf("  replicate        installer dependencies\n");
+                printf("  gamemode         download SA-MP gamemode\n");
+                printf("  pawncc           download SA-MP pawncc\n");
+                printf("  log              debugging & logging server logs\n");
+                printf("  compile          compile your project\n");
+                printf("  running          running your project\n");
+                printf("  compiles         compile & running your project\n");
+                printf("  stop             stopped server task\n");
+                printf("  restart          restart server task\n");
+                printf("  wanion           ask to wanion (gemini based)\n");
+                printf("  tracker          account tracking\n");
+                printf("  compress         create a compressed archive\n");
+                printf("  send             send file to Discord channel via webhook\n");
             } else if (strcmp(args, "exit") == 0) { 
                 println(stdout, "exit: exit from watchdogs. | Usage: \"exit\"\n\tJust type 'exit' and you're outta here!");
             } else if (strcmp(args, "kill") == 0) { 
@@ -302,8 +281,10 @@ _reexecute_command:
                 remove("watchdogs.toml");
 
             __debug_main_chain(1);
-
+            
+            printf(FCOLOUR_BRED "");
             wg_printfile("watchdogs.toml");
+            printf(FCOLOUR_DEFAULT "\n");
 
             goto chain_done;
         } else if (strncmp(ptr_command, "replicate", strlen("replicate")) == 0) {
@@ -683,7 +664,9 @@ back_start:
                         #ifdef WG_WINDOWS
                         snprintf(size_run, sizeof(size_run), "%s", wgconfig.wg_toml_binary);
                         #else
-                        chmod(wgconfig.wg_toml_binary, 0777);
+                        CHMOD_FULL(wgconfig.wg_toml_binary);
+                        if (path_access("announce"))
+                            CHMOD_FULL("announce");
                         snprintf(size_run, sizeof(size_run), "./%s", wgconfig.wg_toml_binary);
                         #endif
                         int rate_runner_failed = wg_run_command(size_run);
@@ -767,7 +750,9 @@ back_start2:
                         #ifdef WG_WINDOWS
                         snprintf(size_run, sizeof(size_run), "%s", wgconfig.wg_toml_binary);
                         #else
-                        chmod(wgconfig.wg_toml_binary, 0777);
+                        CHMOD_FULL(wgconfig.wg_toml_binary);
+                        if (path_access("announce"))
+                            CHMOD_FULL("announce");
                         snprintf(size_run, sizeof(size_run), "./%s", wgconfig.wg_toml_binary);
                         #endif
                         int rate_runner_failed = wg_run_command(size_run);
@@ -1282,7 +1267,7 @@ wanion_curl_end:
                 }
 
                 int variation_count = 0;
-                char variations[100][100];
+                char variations[MAX_VARIATIONS][MAX_USERNAME_LEN];
 
                 tracker_discrepancy(args, variations, &variation_count);
 

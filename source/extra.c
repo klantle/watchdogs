@@ -1,9 +1,3 @@
-static const char *description =
-"Utility module providing compiler error analysis, cross-platform file statistics," "\n"
-"portable I/O functions, and debugging output utilities with comprehensive"         "\n"
-"error pattern matching and detailed compilation diagnostics."
-;
-
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -28,15 +22,6 @@ static const char *description =
 #include "crypto.h"
 #include "debug.h"
 #include "extra.h"
-
-char
-        *BG = "\x1b[48;5;235m";
-char
-        *FG = "\x1b[97m";
-char
-        *BORD = "\x1b[33m";
-char
-        *RST = "\x1b[0m";
 
 /*
  * Prints formatted output followed by a newline character to specified stream.

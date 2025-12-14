@@ -1,10 +1,3 @@
-static const char *description = 
-"Archive compression and extraction utility module using libarchive." "\n"
-"Supports multiple formats (ZIP, TAR, TAR.GZ, TAR.BZ2, TAR.XZ)"       "\n"
-"with secure TOCTOU protection, metadata preservation, and recursive" "\n"
-"directory handling. Includes both compression and extraction functions."
-;
-
 #include <stdio.h>
 #include <stdlib.h>
 #include <stdbool.h>

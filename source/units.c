@@ -41,7 +41,7 @@ static const char *description =
 #include "units.h"
 
 #ifndef WATCHDOGS_RELEASE
-    #define WATCHDOGS_RELEASE "WG-251206"
+    #define WATCHDOGS_RELEASE "WATCHDOGS-251214"
 #endif
 const char *watchdogs_release = WATCHDOGS_RELEASE;
 

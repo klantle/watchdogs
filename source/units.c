@@ -111,7 +111,7 @@ _reexecute_command:
                 printf("  replicate        installer dependencies\n");
                 printf("  gamemode         download SA-MP gamemode\n");
                 printf("  pawncc           download SA-MP pawncc\n");
-                printf("  log              debugging & logging server logs\n");
+                printf("  debug            debugging & logging server logs\n");
                 printf("  compile          compile your project\n");
                 printf("  running          running your project\n");
                 printf("  compiles         compile & running your project\n");
@@ -121,48 +121,48 @@ _reexecute_command:
                 printf("  tracker          account tracking\n");
                 printf("  compress         create a compressed archive\n");
                 printf("  send             send file to Discord channel via webhook\n");
-            } else if (strcmp(args, "exit") == 0) { 
+            } else if (strcmp(args, "exit") == 0) {
                 println(stdout, "exit: exit from watchdogs. | Usage: \"exit\"\n\tJust type 'exit' and you're outta here!");
-            } else if (strcmp(args, "kill") == 0) { 
+            } else if (strcmp(args, "kill") == 0) {
                 println(stdout, "kill: refresh terminal watchdogs. | Usage: \"kill\"\n\tWhen things get stuck or buggy, this is your fix!");
-            } else if (strcmp(args, "title") == 0) { 
+            } else if (strcmp(args, "title") == 0) {
                 println(stdout, "title: set-title terminal watchdogs. | Usage: \"title\" | [<args>]\n\tPersonalize your terminal window title.");
-            } else if (strcmp(args, "sha256") == 0) { 
+            } else if (strcmp(args, "sha256") == 0) {
                 println(stdout, "sha256: generate sha256. | Usage: \"sha256\" | [<args>]\n\tGet that SHA256 hash for your files or text.");
-            } else if (strcmp(args, "crc32") == 0) { 
+            } else if (strcmp(args, "crc32") == 0) {
                 println(stdout, "crc32: generate crc32. | Usage: \"crc32\" | [<args>]\n\tQuick CRC32 checksum generation.");
-            } else if (strcmp(args, "djb2") == 0) { 
+            } else if (strcmp(args, "djb2") == 0) {
                 println(stdout, "djb2: generate djb2 hash file. | Usage: \"djb2\" | [<args>]\n\tDJB2 hashing algorithm at your service.");
-            } else if (strcmp(args, "time") == 0) { 
+            } else if (strcmp(args, "time") == 0) {
                 println(stdout, "time: print current time. | Usage: \"time\"\n\tWhat time is it? Time to check!");
-            } else if (strcmp(args, "config") == 0) { 
+            } else if (strcmp(args, "config") == 0) {
                 println(stdout, "config: re-create watchdogs.toml. Usage: \"config\"\n\tReset your config file to default settings.");
-            } else if (strcmp(args, "replicate") == 0) { 
+            } else if (strcmp(args, "replicate") == 0) {
                 println(stdout, "replicate: installer dependencies. | Usage: \"replicate\"\n\tDownloads & Install Our Dependencies.");
-            } else if (strcmp(args, "gamemode") == 0) { 
+            } else if (strcmp(args, "gamemode") == 0) {
                 println(stdout, "gamemode: download SA-MP gamemode. | Usage: \"gamemode\"\n\tGrab some SA-MP gamemodes quickly.");
-            } else if (strcmp(args, "pawncc") == 0) { 
+            } else if (strcmp(args, "pawncc") == 0) {
                 println(stdout, "pawncc: download SA-MP pawncc. | Usage: \"pawncc\"\n\tGet the Pawn compiler for SA-MP.");
-            } else if (strcmp(args, "debug") == 0) { 
+            } else if (strcmp(args, "debug") == 0) {
                 println(stdout, "debug: debugging & logging server debug. | Usage: \"debug\"\n\tKeep an eye on your server logs.");
-            } else if (strcmp(args, "compile") == 0) { 
+            } else if (strcmp(args, "compile") == 0) {
                 println(stdout, "compile: compile your project. | Usage: \"compile\" | [<args>]\n\tTurn your code into something runnable!");
-            } else if (strcmp(args, "running") == 0) { 
+            } else if (strcmp(args, "running") == 0) {
                 println(stdout, "running: running your project. | Usage: \"running\" | [<args>]\n\tFire up your project and see it in action.");
-            } else if (strcmp(args, "compiles") == 0) { 
+            } else if (strcmp(args, "compiles") == 0) {
                 println(stdout, "compiles: compile & running your project. | Usage: \"compiles\" | [<args>]\n\tTwo-in-one: compile then run immediately!");
-            } else if (strcmp(args, "stop") == 0) { 
+            } else if (strcmp(args, "stop") == 0) {
                 println(stdout, "stop: stopped server task. | Usage: \"stop\"\n\tHalt everything! Stop your server tasks.");
-            } else if (strcmp(args, "restart") == 0) { 
+            } else if (strcmp(args, "restart") == 0) {
                 println(stdout, "restart: restart server task. | Usage: \"restart\"\n\tFresh start! Restart your server.");
-            } else if (strcmp(args, "wanion") == 0) { 
+            } else if (strcmp(args, "wanion") == 0) {
                 println(stdout, "wanion: ask to wanion. | Usage: \"wanion\" | [<args>] | gemini based\n\tGot questions? Ask Wanion (Gemini AI powered).");
-            } else if (strcmp(args, "tracker") == 0) { 
+            } else if (strcmp(args, "tracker") == 0) {
                 println(stdout, "tracker: account tracking. | Usage: \"tracker\" | [<args>]\n\tTrack accounts across platforms.");
             } else if (strcmp(args, "compress") == 0) {
                 println(stdout, "compress: create a compressed archive from a file or folder. | "
                     "Usage: \"compress <input> <output>\"\n\tGenerates a compressed file (e.g., .zip/.tar.gz) from the specified source.");
-            } else if (strcmp(args, "send") == 0) { 
+            } else if (strcmp(args, "send") == 0) {
                 println(stdout, "send: send file to Discord channel via webhook. | "
                     "Usage: \"send <file> <webhook_url>\"\n\tUploads a file directly to a Discord channel using a webhook.");
             } else {
@@ -281,7 +281,7 @@ _reexecute_command:
                 remove("watchdogs.toml");
 
             __debug_main_chain(1);
-            
+
             printf(FCOLOUR_BRED "");
             wg_printfile("watchdogs.toml");
             printf(FCOLOUR_DEFAULT "\n");
@@ -538,7 +538,7 @@ loop_ipcc3:
             return 3;
         } else if (strncmp(ptr_command, "compile", strlen("compile")) == 0 &&
                    !isalpha((unsigned char)ptr_command[strlen("compile")])) {
-                    
+
             wg_console_title("Watchdogs | @ compile | logging file: .watchdogs/compiler.log");
 
             char *args;
@@ -640,7 +640,7 @@ _runners_:
                 println(stdout, "\toperating system: %s", wgconfig.wg_toml_os_type);
                 println(stdout, "\tbinary file: %s", wgconfig.wg_toml_binary);
                 println(stdout, "\tconfig file: %s", wgconfig.wg_toml_config);
-                
+
                 char size_run[WG_PATH_MAX];
                 struct sigaction sa;
                 if (wg_server_env() == 1) {
@@ -853,7 +853,7 @@ n_loop_igm2:
             while (*args == ' ') ++args;
             char *args2 = NULL;
             args2 = strtok(args, " ");
-            
+
             if (args2 == NULL || args2[0] == '\0') {
                 const char *argsc[] = { NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL };
 
@@ -876,7 +876,7 @@ n_loop_igm2:
                                 argsc[8]);
 
                 if (wgconfig.wg_compiler_stat < 1) {
-                    
+
                     char size_command[WG_PATH_MAX];
                     snprintf(size_command,
                         sizeof(size_command), "running %s", args);
@@ -902,7 +902,7 @@ n_loop_igm2:
         } else if (strncmp(ptr_command, "wanion", strlen("wanion")) == 0) {
             char *args = ptr_command + strlen("wanion");
             while (*args == ' ') ++args;
-            
+
             char *raw_file = NULL;
             char *procure_args = strtok(args, " ");
             while (procure_args) {
@@ -1220,7 +1220,7 @@ wanion_retrying:
                                     printf("\033[0m");
                                 } else fprintf(stderr, "No response text found\n");
                             } else {
-                                fprintf(stderr, "No parts found in content\n");       
+                                fprintf(stderr, "No parts found in content\n");
                                 if (retry != 3) {
                                     ++retry;
                                     printf("~ try retrying...\n");
@@ -1354,7 +1354,7 @@ wanion_curl_end:
                 pr_info(stdout, "Converter file/folder "
                     "to archive (Compression) successfully: %s\n", raw_output);
             else {
-                pr_error(stdout, "Compression failed!\n");    
+                pr_error(stdout, "Compression failed!\n");
                 __debug_function(); /* call debugger function */
             }
 
@@ -1362,7 +1362,7 @@ wanion_curl_end:
         } else if (strncmp(ptr_command, "send", strlen("send")) == 0) {
             char *args = ptr_command + strlen("send");
             while (*args == ' ') ++args;
-            
+
             if (*args == '\0') {
                 println(stdout, "Usage: send [<file_path>]");
             } else {
@@ -1370,9 +1370,9 @@ wanion_curl_end:
                     pr_error(stdout, "file not found: %s", args);
                     goto send_done;
                 }
-                if (!wgconfig.wg_toml_webhooks || 
+                if (!wgconfig.wg_toml_webhooks ||
                         strfind(wgconfig.wg_toml_webhooks, "DO_HERE", true) ||
-                        strlen(wgconfig.wg_toml_webhooks) < 1) 
+                        strlen(wgconfig.wg_toml_webhooks) < 1)
                 {
                     pr_color(stdout, FCOLOUR_YELLOW, " ~ Discord webhooks not available");
                     goto send_done;
@@ -1416,7 +1416,7 @@ wanion_curl_end:
                     snprintf(timestamp, sizeof(timestamp), "%04d/%02d/%02d %02d:%02d:%02d",
                             tm.tm_year + 1900, tm.tm_mon + 1, tm.tm_mday,
                             tm.tm_hour, tm.tm_min, tm.tm_sec);
-                            
+
                     portable_stat_t st;
                     if (portable_stat(filename, &st) == 0) {
                         char content_data[WG_MAX_PATH];
@@ -1438,7 +1438,7 @@ wanion_curl_end:
 
                     part = curl_mime_addpart(mime);
                     curl_mime_name(part, "file");
-                    curl_mime_filedata(part, args); 
+                    curl_mime_filedata(part, args);
                     curl_mime_filename(part, filename);
 
                     curl_easy_setopt(curl, CURLOPT_URL, wgconfig.wg_toml_webhooks);
@@ -1561,7 +1561,9 @@ chain_try_command:
                     snprintf(ptr_command, WG_PATH_MAX, "cls");
             }
             int ret = -3;
-            ret = wg_run_command(ptr_command);
+            char size_run[WG_MAX_PATH];
+            snprintf(size_run, sizeof(size_run), "/bin/sh -c \"%s\"", ptr_command);
+            ret = wg_run_command(size_run);
             if (ret)
                 wg_console_title("Watchdogs | @ command not found");
             if (!(strcmp(ptr_command, "clear")))
@@ -1581,7 +1583,7 @@ chain_done:
 }
 
 void chain_ret_main(void *chain_pre_command) {
-    
+
         wg_console_title(NULL);
         int ret = -3;
         if (chain_pre_command != NULL ) {
@@ -1667,4 +1669,3 @@ int main(int argc, char *argv[]) {
 
         return 0;
 }
-

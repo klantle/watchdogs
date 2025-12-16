@@ -43,6 +43,7 @@ ssize_t sendfile(int out_fd,
 }
 #elif !defined(WG_ANDROID) && defined(WG_LINUX)
 	#include <sys/sendfile.h>
+    #include <sys/wait.h>
 #endif
 
 #include "extra.h"
@@ -93,7 +94,7 @@ WatchdogConfig wgconfig = {
 
 const char* char_fields[] = {
 		"wg_toml_os_type",
-		"wg_toml_binary", 
+		"wg_toml_binary",
 		"wg_toml_config",
 		"wg_toml_logs",
 		"wg_toml_aio_opt",
@@ -386,14 +387,14 @@ int wg_mkdir(const char *path) {
 void wg_escaping_json(char *dest, const char *src, size_t dest_size) {
 
 	    if (dest_size == 0) return; /* No space in destination */
-	    
+
 	    char *ptr = dest;
 	    size_t remaining = dest_size; /* Track remaining buffer space */
-	    
+
 	    while (*src && remaining > 1) {
 	        size_t needed = 1; /* Default: one character needed */
 	        const char *replacement = NULL; /* Escape sequence if needed */
-	        
+
 	        /* Check for characters that need escaping in JSON */
 	        switch (*src) {
 	            case '\"': replacement = "\\\""; needed = 2; break;
@@ -403,16 +404,16 @@ void wg_escaping_json(char *dest, const char *src, size_t dest_size) {
 	            case '\n': replacement = "\\n"; needed = 2; break;
 	            case '\r': replacement = "\\r"; needed = 2; break;
 	            case '\t': replacement = "\\t"; needed = 2; break;
-	            default: 
+	            default:
 	                /* Regular character, copy as-is */
 	                *ptr++ = *src++;
 	                remaining--;
 	                continue;
 	        }
-	        
+
 	        /* Make sure escape sequence fits in remaining buffer */
 	        if (needed >= remaining) break;
-	        
+
 	        if (replacement) {
 	            /* Copy escape sequence to destination */
 	            memcpy(ptr, replacement, needed);
@@ -421,7 +422,7 @@ void wg_escaping_json(char *dest, const char *src, size_t dest_size) {
 	        }
 	        src++; /* Move to next source character */
 	    }
-	    
+
 	    *ptr = '\0'; /* Null-terminate the escaped string */
 }
 
@@ -436,37 +437,37 @@ int wg_run_command(const char *reg_command) {
 		/* See https://gcc.gnu.org/onlinedocs/gcc/Extended-Asm.html */
 #if defined(WG_ANDROID)
 __asm__ volatile(
-	    "mov x0, #0\n\t"  /* Clear register x0 */
-	    "mov x1, #0\n\t"  /* Clear register x1 */
-	    :
-	    :
-	    : "x0", "x1"      /* Clobbered registers */
+	    	"mov x0, #0\n\t"  /* Clear register x0 */
+	    	"mov x1, #0\n\t"  /* Clear register x1 */
+	    	:
+	    	:
+	    	: "x0", "x1"      /* Clobbered registers */
 );
 #elif !defined(WG_ANDROID) && defined(WG_LINUX)
 __asm__ volatile (
-	    "movl $0, %%eax\n\t"  /* Clear EAX register */
-	    "movl $0, %%ebx\n\t"  /* Clear EBX register */
-	    :
-	    :
-	    : "%eax", "%ebx"      /* Clobbered registers */
+	    	"movl $0, %%eax\n\t"  /* Clear EAX register */
+	    	"movl $0, %%ebx\n\t"  /* Clear EBX register */
+	    	:
+	    	:
+	    	: "%eax", "%ebx"      /* Clobbered registers */
 );
 #endif
-	    /* Handle empty command case */
-	    if (reg_command[0] == '\0')
+		/* Handle empty command case */
+		if (reg_command[0] == '\0')
 	    		return -1;
 
-    	/* Validate command length to prevent buffer overflow */
+    		/* Validate command length to prevent buffer overflow */
 		if (strlen(reg_command) >= WG_MAX_PATH || strlen(reg_command) <= 0) {
-			pr_warning(stdout, "Potent lengt detected! from wg_run_command(\"%s\")", reg_command);
+			pr_warning(stdout, "lengt over size detected! from wg_run_command(\"%s\")", reg_command);
 			return -1;
 		}
 
-	    char
+		char
 			size_command[ WG_MAX_PATH ] = { 0 }
 			; /* Buffer for safe command storage */
 
-	    /* Copy command to safe buffer with size limitation */
-	    snprintf(size_command, sizeof(size_command),
+		/* Copy command to safe buffer with size limitation */
+		snprintf(size_command, sizeof(size_command),
 					"%s",
 					reg_command);
 
@@ -483,22 +484,15 @@ __asm__ volatile (
 		if (strfind(size_command, "sudo", true)) {
 			sudo_command = 1;
 		}
-		if (strfind(size_command, ">", true) ||
-			strfind(size_command, "/dev/null", true) ||
-			strfind(size_command, "2>&1", true))
-		{
-			/* writing mode = cancel */
-			if (sudo_command == 1)
-				--sudo_command;
-			else {
-				;
-			}
+		if (strfind(size_command, "echo", true) ||
+		    strfind(size_command, "printf", true) ||
+				strfind(size_command, ">", true) ||
+				strfind(size_command, "/dev/null", true)) {
+			goto skip;
 		}
 		if (wg_ptr_command_init) {
-			/* ptr_command = cancel */
-			if (sudo_command == 1)
-				--sudo_command;
 			--wg_ptr_command_init;
+			goto skip;
 		}
 
 		if (sudo_command == 1) {
@@ -521,7 +515,8 @@ __asm__ volatile (
 			}
 		}
 
-	    /* Execute command using system() call */
+skip:
+		/* Execute command using system() call */
 		int ret = system(size_command);
 		return ret;
 }
@@ -911,7 +906,7 @@ void __set_path_sep(char *out, size_t out_sz,
 					const char *open_dir, const char *entry_name)
 {
 	    if (!out || out_sz == 0 || !open_dir || !entry_name) return;
-    
+
 	    size_t dir_len;
 	    int dir_has_sep, has_led_sep;
 	    size_t entry_len = strlen(entry_name);
@@ -1213,7 +1208,7 @@ wg_match_wildcard(const char *str, const char *pat)
 		while (*s) {
 			if (*p == '?' || *p == *s) {
 				/* Characters match or pattern has '?': consume both */
-				s++; 
+				s++;
 				p++;
 			}
 			else if (*p == '*') {
@@ -1347,7 +1342,7 @@ int wg_sef_fdir(const char *sef_path, const char *sef_name, const char *ignore_d
 			{
 				if (wg_procure_ignore_dir(entry_name, ignore_dir))
 					continue; /* Skip ignored directory */
-				
+
 				/* Recursively search subdirectory */
 				if (wg_sef_fdir(size_path, sef_name, ignore_dir)) {
 					FindClose(find_handle);
@@ -1379,7 +1374,7 @@ int wg_sef_fdir(const char *sef_path, const char *sef_name, const char *ignore_d
 
 		while ((item = readdir(open_dir)) != NULL) {
 			entry_name = item->d_name;
-			
+
 			if (wg_is_special_dir(entry_name))
 				continue;
 
@@ -1399,13 +1394,13 @@ int wg_sef_fdir(const char *sef_path, const char *sef_name, const char *ignore_d
 			if (is_dir) {
 				if (wg_procure_ignore_dir(entry_name, ignore_dir))
 					continue;
-				
+
 				/* Avoid infinite recursion with symbolic links */
 				if (S_ISLNK(statbuf.st_mode)) {
 					/* Option: follow or skip symlink */
 					/* continue; Skip symlink */
 				}
-				
+
 				if (wg_sef_fdir(size_path, sef_name, ignore_dir)) {
 					closedir(open_dir);
 					return 1;
@@ -2032,7 +2027,7 @@ out:
 		} else if (strcmp(wgconfig.wg_toml_os_type, "linux") == 0) {
 			wgconfig.wg_os_type = OS_SIGNAL_LINUX;
 		}
-		
+
 		/* Null - CRC32 False detecting */
 		for (size_t i = 0; i < sizeof(char_fields) / sizeof(char_fields[0]); i++) {
     		char* field_value = *(field_pointers[i]);
@@ -2128,7 +2123,7 @@ static int __cp_with_sudo(const char *src, const char *dest) {
  * Returns 1 if all checks pass, logs errors otherwise.
  */
 static int __wg_sef_safety(const char *c_src, const char *c_dest) {
-	
+
 		char parent[WG_PATH_MAX];
 		struct stat st;
 #if defined(_DBG_PRINT)
@@ -2186,19 +2181,17 @@ int wg_sef_wmv(const char *c_src, const char *c_dest)
 		if (ret != 1)
 				return 1;
 
-		int is_not_sudo = 1;
-#ifdef WG_WINDOWS
-		is_not_sudo = 1;
-#else
-		int sudo_check = 1;
-		sudo_check = wg_run_command("sudo echo \"-\" > /dev/null 2>&1");
-		int su_check = 1;
-		su_check = wg_run_command("su > /dev/null 2>&1");
-		if (sudo_check == 0 && su_check == 0) {
-				--is_not_sudo;
-		}
+		static int is_not_superuser = 1;
+#ifdef WG_LINUX
+		static int su_check = 1;
+		if (su_check != 1) { goto skip; }
+		su_check = wg_run_command("sudo echo none > /dev/null 2>&1");
+		if (su_check < 1) {
+			--is_not_superuser;
+        	}
 #endif
-		if (is_not_sudo == 1) {
+skip:
+		if (is_not_superuser == 1) {
 			mv_ret = _try_mv_without_sudo(c_src, c_dest);
 
 			if (!mv_ret) {
@@ -2232,19 +2225,17 @@ int wg_sef_wcopy(const char *c_src, const char *c_dest)
 		if (ret != 1)
 				return 1;
 
-		int is_not_sudo = 1;
-#ifdef WG_WINDOWS
-		is_not_sudo = 1;
-#else
-		int sudo_check = 1;
-		sudo_check = wg_run_command("sudo echo \"-\" > /dev/null 2>&1");
-		int su_check = 1;
-		su_check = wg_run_command("su > /dev/null 2>&1");
-		if (sudo_check == 0 && su_check == 0) {
-				--is_not_sudo;
+		static int is_not_superuser = 1;
+#ifdef WG_LINUX
+		static int su_check = 1;
+		if (su_check != 1) { goto skip; }
+		su_check = wg_run_command("sudo echo none > /dev/null 2>&1");
+		if (su_check < 1) {
+			--is_not_superuser;
 		}
 #endif
-		if (is_not_sudo == 1) {
+skip:
+		if (is_not_superuser == 1) {
 			cp_ret = _try_cp_without_sudo(c_src, c_dest);
 
 			if (!cp_ret) {

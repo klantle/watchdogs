@@ -310,16 +310,20 @@ watchdogs
 
 ## Compilation Commands
 
-> Compile `server`:
+> Compile `server.pwn`:
 ```yaml
 # Default Compile
 compile .
-
-# Compile with specific file path
+```
+> Compile with specific file path
+```yml
 compile server.pwn
 compile path/to/server.pwn
+```
+![img](https://raw.githubusercontent.com/klantle/watchdogs/refs/heads/main/images/compile_path.png)
 
-# Compile with specific options
+> Compile with specific options
+```yml
 ## Compiler Detailed
 compile . --detailed
 ## or

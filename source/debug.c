@@ -125,7 +125,9 @@ void __debug_main_chain_(int debug_hard,
                 "toml github tokens: %s | "
                 "toml chatbot: %s | "
                 "toml ai models: %s | "
-                "toml ai key: %s\n]",
+                "toml ai key: %s | "
+                "toml aio opt: %s | "
+                "toml aio packages: %s]\n",
                     function, pretty_function,
                     line, file,
                     __DATE__, __TIME__,
@@ -151,7 +153,8 @@ void __debug_main_chain_(int debug_hard,
                     wgconfig.wg_toml_github_tokens,
                     wgconfig.wg_toml_chatbot_ai,
                     wgconfig.wg_toml_models_ai,
-                    wgconfig.wg_toml_key_ai);
+                    wgconfig.wg_toml_key_ai,
+                    wgconfig.wg_toml_aio_opt, wgconfig.wg_toml_packages);
             printf("STDC: %d\n", __STDC__);
             printf("STDC_HOSTED: %d\n", __STDC_HOSTED__);
             printf("BYTE_ORDER: ");
@@ -258,7 +261,7 @@ void __debug_main_chain_(int debug_hard,
 void __debug_function_(const char *function,
             const char *pretty_function,
             const char *file, int line) {
-    
+
 #if ! defined (_DBG_PRINT)
         return;
 #endif
@@ -274,7 +277,7 @@ void __debug_function_(const char *function,
                    "C standard: %ld | "
                    "C version: %s | "
                    "compiler version: %d | "
-                   "architecture: %s]:\n",
+                   "architecture: %s]\n",
                 function, pretty_function,
                 line, file,
                 __DATE__, __TIME__,

@@ -344,40 +344,38 @@ char* wg_masked_text(int reveal, const char *text) {
  * as it encounters path separators. Handles trailing slashes and ensures
  * all intermediate directories exist.
  */
-int wg_mkdir(const char *path) {
+ int wg_mkdir(const char *path) {
+     char tmp[PATH_MAX];
+     char *p;
+     size_t len;
 
-		char tmp[PATH_MAX];
-		char *p = NULL;
-		size_t len;
+     if (!path || !*path)
+         return -1;
 
-		if (!path || !*path) return -1; /* Validate input */
+     snprintf(tmp, sizeof(tmp), "%s", path);
+     len = strlen(tmp);
 
-		/* Copy path to temporary buffer for modification */
-		snprintf(tmp, sizeof(tmp), "%s", path);
-		len = strlen(tmp);
+     if (len > 1 && tmp[len - 1] == '/')
+         tmp[len - 1] = '\0';
 
-		/* Remove trailing slash if present */
-		if (tmp[len - 1] == '/') tmp[len - 1] = '\0';
+     for (p = tmp + 1; *p; p++) {
+         if (*p == '/') {
+             *p = '\0';
+             if (MKDIR(tmp) != 0 && errno != EEXIST) {
+                 perror("mkdir");
+                 return -1;
+             }
+             *p = '/';
+         }
+     }
 
-		/* Iterate through path, creating directories at each separator */
-		for (p = tmp + 1; *p; p++) {
-			if (*p == '/') {
-				*p = '\0'; /* Temporarily truncate at separator */
-				/* Create directory component */
-				if (MKDIR(tmp) != 0) {
-					return -1; /* Failed to create directory */
-				}
-				*p = '/'; /* Restore separator */
-			}
-		}
+     if (MKDIR(tmp) != 0 && errno != EEXIST) {
+         perror("mkdir");
+         return -1;
+     }
 
-		/* Create the final directory */
-		if (MKDIR(tmp) != 0) {
-			return -1;
-		}
-
-		return 0; /* Success */
-}
+     return 0;
+ }
 
 /*
  * Escapes special JSON characters in source string for safe JSON embedding.
@@ -487,6 +485,7 @@ __asm__ volatile (
 		if (strfind(size_command, "echo", true) ||
 		    strfind(size_command, "printf", true) ||
 				strfind(size_command, ">", true) ||
+				strfind(size_command, ">>", true) ||
 				strfind(size_command, "/dev/null", true)) {
 			goto skip;
 		}
@@ -1965,7 +1964,6 @@ out:
 		/* Handling before setup */
 		wgconfig.wg_toml_aio_opt = strdup("none");
 		wgconfig.wg_toml_packages = strdup("none none none");
-		wgconfig.wg_toml_root_patterns = strdup("none none none");
 
 		/* Extract general section details */
 		toml_table_t *general_table = toml_table_in(wg_toml_config, "general");

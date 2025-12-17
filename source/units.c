@@ -293,9 +293,11 @@ _reexecute_command:
             char *args = ptr_command + strlen("replicate");
             while (*args == ' ') ++args;
 
-            int is_null_args = 0;
-            if (*args == '\0')
-                is_null_args = 1;
+            int is_null_args = -1;
+            char *args2 = NULL;
+            args2 = strtok(args, " ");
+            if (args2 == NULL || args[0] == '\0' || strlen(args2) < 1 || strcmp(args2, ".") == 0)
+              is_null_args = 1;
 
             char *raw_branch = NULL;
             char *procure_args = strtok(args, " ");
@@ -329,7 +331,7 @@ _reexecute_command:
                 size_t arr_sz, i;
                 char *merged = NULL;
 
-                wg_depends = toml_table_in(wg_toml_config, "depends");
+                wg_depends = toml_table_in(wg_toml_config, "dependencies");
                 if (!wg_depends)
                     goto out;
 
@@ -373,6 +375,9 @@ free_val:
                     merged = strdup("");
 
                 wgconfig.wg_toml_packages = merged;
+
+                pr_info(stdout, "Loaded packages: %s", wgconfig.wg_toml_packages);
+
                 if (raw_branch)
                     wg_install_depends(wgconfig.wg_toml_packages, raw_branch);
                 else

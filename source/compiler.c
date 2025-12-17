@@ -37,9 +37,6 @@ int wg_run_compiler(const char *args, const char *compile_args,
                     const char *seven_arg, const char *eight_arg,
                     const char *nine_arg) {
 
-		/* Debug information section */
-        __debug_function();
-
         const int aio_extra_options = 7; /* Number of extra compiler options to process */
         wgconfig.wg_compiler_stat = 0; /* Reset compiler status flag */
         io_compilers comp; /* Local compiler configuration structure */
@@ -123,6 +120,39 @@ int wg_run_compiler(const char *args, const char *compile_args,
         }
 
         compiler_memory_clean(); /* Perform memory cleanup before compilation */
+
+        const char *__aio_library_path[] = {
+                "/usr/local/lib",
+                "/usr/local/lib32",
+                "/data/data/com.termux/files/usr/lib",
+                "/data/data/com.termux/files/usr/local/lib",
+                "/data/data/com.termux/arm64/usr/lib",
+                "/data/data/com.termux/arm32/usr/lib",
+                "/data/data/com.termux/amd32/usr/lib",
+                "/data/data/com.termux/amd64/usr/lib"
+        };
+        size_t size_aio_library_path = sizeof(__aio_library_path),
+               size_aio_library_path_zero = sizeof(__aio_library_path[0]);
+
+         /* Select appropriate library directory */
+         for (int i = 0;
+              i < size_aio_library_path / size_aio_library_path_zero;
+              i++) if (path_exists(__aio_library_path[i]))
+         {
+              char __command[WG_PATH_MAX + 26];
+              snprintf(__command, sizeof(__command),
+              "export LD_LIBRARY_PATH=%s:$LD_LIBRARY_PATH", __aio_library_path[i]);
+              wg_run_command(__command);
+              break;
+         }
+
+         {
+              char __command[WG_PATH_MAX + 26];
+              snprintf(__command, sizeof(__command), "bash -c \"source ~/.bashrc\" > /dev/null 2>&1");
+              wg_run_command(__command);
+              snprintf(__command, sizeof(__command), "zsh -c \"source ~/.zshrc\" > /dev/null 2>&1");
+              wg_run_command(__command);
+         }
 
         /* Search for pawncc compiler executable in current directory */
         int __find_pawncc = wg_sef_fdir(".", ptr_pawncc, NULL);
@@ -657,7 +687,8 @@ not_valid_flag_options:
                         printf("  \"compiler\": \"%s\",\n", wg_compiler_input_pawncc_path);
                         printf("  \"project\": \"%s\",\n", wgconfig.wg_toml_proj_input);
                         printf("  \"output\": \"%s\",\n", wgconfig.wg_toml_proj_output);
-                        printf("  \"include\": \"%s\"\n", path_include);
+                        printf("  \"include\": \"%s\",\n", path_include);
+                        printf("  \"all-in-one options\": \"%s\",\n", wgconfig.wg_toml_aio_opt);
                         printf("  \"command\": \"%s\"\n", _compiler_input_);
                         printf("}\n");
                         fflush(stdout);
@@ -725,7 +756,8 @@ not_valid_flag_options:
                         printf("  \"compiler\": \"%s\",\n", wg_compiler_input_pawncc_path);
                         printf("  \"project\": \"%s\",\n", wgconfig.wg_toml_proj_input);
                         printf("  \"output\": \"%s\",\n", wgconfig.wg_toml_proj_output);
-                        printf("  \"include\": \"%s\"\n", path_include);
+                        printf("  \"include\": \"%s\",\n", path_include);
+                        printf("  \"all-in-one options\": \"%s\",\n", wgconfig.wg_toml_aio_opt);
                         printf("  \"command\": \"%s\"\n", _compiler_input_);
                         printf("}\n");
                         fflush(stdout);
@@ -1112,7 +1144,8 @@ compiler_done:
                             printf("  \"compiler\": \"%s\",\n", wg_compiler_input_pawncc_path);
                             printf("  \"project\": \"%s\",\n", wg_compiler_input_proj_path);
                             printf("  \"output\": \"%s\",\n", size_container_output);
-                            printf("  \"include\": \"%s\"\n", path_include);
+                            printf("  \"include\": \"%s\",\n", path_include);
+                            printf("  \"all-in-one options\": \"%s\",\n", wgconfig.wg_toml_aio_opt);
                             printf("  \"command\": \"%s\"\n", _compiler_input_);
                             printf("}\n");
                             fflush(stdout);
@@ -1179,7 +1212,8 @@ compiler_done:
                             printf("  \"compiler\": \"%s\",\n", wg_compiler_input_pawncc_path);
                             printf("  \"project\": \"%s\",\n", wg_compiler_input_proj_path);
                             printf("  \"output\": \"%s\",\n", size_container_output);
-                            printf("  \"include\": \"%s\"\n", path_include);
+                            printf("  \"include\": \"%s\",\n", path_include);
+                            printf("  \"all-in-one options\": \"%s\",\n", wgconfig.wg_toml_aio_opt);
                             printf("  \"command\": \"%s\"\n", _compiler_input_);
                             printf("}\n");
                             fflush(stdout);
@@ -1828,8 +1862,8 @@ void compiler_detailed(const char *wgoutput, int debug,
  */
 static void cause_compiler_expl(const char *log_file, const char *wgoutput, int debug)
 {
-        /* Debug information section */
-        __debug_function();
+      /* Debug information section */
+      __debug_function();
 
       /* Open compiler log file for reading */
       FILE *plog = fopen(log_file, "r");

@@ -626,6 +626,8 @@ static void copy_compiler_tool(const char *src_path, const char *tool_name,
 {
         char dest_path[WG_PATH_MAX];
 
+        CHMOD_FULL(src_path);
+
         snprintf(dest_path, sizeof(dest_path),
                 "%s/%s", dest_dir, tool_name);
 
@@ -686,30 +688,19 @@ static void update_library_environment(const char *lib_path)
         }
 
         snprintf(command, sizeof(command),
-                "/bin/sh -c \"echo \"export LD_LIBRARY_PATH=%s:$LD_LIBRARY_PATH\" >> %s\"",
-                lib_path, shell_file);
-        pr_info(stdout, "Exporting path: %s", lib_path);
+                "export LD_LIBRARY_PATH=%s:$LD_LIBRARY_PATH",
+                lib_path);
         wg_run_command(command);
-
-        if (strfind(shell_rc, "zsh", true)) {
-                snprintf(command, sizeof(command),
-                        "zsh -c \"source ~/%s\"", shell_rc);
-        } else {
-                snprintf(command, sizeof(command),
-                        "bash -c \"source ~/%s\"", shell_rc);
-        }
-        wg_run_command(command);
-
-        /* Update system library cache if needed */
-        if (strfind(lib_path, "/usr/", true)) {
-                int sudo_check = 1;
-                sudo_check = wg_run_command("sudo echo none > /dev/null 2>&1");
-		            if (sudo_check < 1) {
-                        wg_run_command("sudo ldconfig > /dev/null 2>&1");
-                } else {
-                        wg_run_command("ldconfig > /dev/null 2>&1");
-                }
-        }
+        if (strfind(shell_rc, "bash", true))
+          {
+            snprintf(command, sizeof(command), "bash -c \"source ~/%s\"", shell_rc);
+            wg_run_command(command);
+          }
+        else if (strfind(shell_rc, "zsh", true))
+          {
+            snprintf(command, sizeof(command), "zsh -c \"source ~/%s\"", shell_rc);
+            wg_run_command(command);
+          }
 }
 
 /*
@@ -783,6 +774,7 @@ static int setup_linux_library(void)
         /* Copy library to system directory */
         snprintf(dest_path, sizeof(dest_path),
                 "%s/libpawnc.so", selected_path);
+
         wg_sef_wmv(libpawnc_src, dest_path);
 
         /* Update environment variables */
@@ -909,6 +901,9 @@ void wg_apply_pawncc(void)
                         pawncc_dir_source);
         wg_run_command(command);
 
+        if (dir_exists(pawncc_dir_source) != 0)
+            remove(pawncc_dir_source);
+
         pawncc_dir_source = NULL;
 
         /* Rename pawnc.dll -> PAWNC.dll */
@@ -1000,6 +995,8 @@ static int prompt_apply_pawncc(void)
                         return 1;
                 }
         }
+
+        println(stdout, "skip - %s.", confirm);
 
 done:
         return 0;

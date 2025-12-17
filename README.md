@@ -364,7 +364,7 @@ compile path/to/server --opt1 --opt2 --opt3 --opt4
 compile ../path/to/project/server.pwn
 ```
 
-![img](https://raw.githubusercontent.com/klantle/watchdogs/refs/heads/main/images/special_dir.png)
+![img](https://raw.githubusercontent.com/klantle/watchdogs/refs/heads/main/images/parent_dir.png)
 
 ## Server Management
 
@@ -447,7 +447,7 @@ compiles server
 6. Automatically adds includes to main gamemode file
 7. Keep `pawno/` or `qawno/` folder names unchanged for proper detection
 
-![img](https://raw.githubusercontent.com/klantle/watchdogs/refs/heads/main/images/installer.png)
+![img](https://raw.githubusercontent.com/klantle/watchdogs/refs/heads/main/images/replicate.png)
 
 **Install dependencies from `watchdogs.toml`:**
 ```yaml

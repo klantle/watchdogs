@@ -71,7 +71,7 @@ int uname(struct utsname *name)
 /*
  * Handles Pawn compiler installation specifically for Termux (Android) environment
  * Provides interactive version and architecture selection for Termux-specific builds
- * Uses mxp96 repository which provides precompiled binaries for Termux ARM architectures
+ * Uses  repository which provides precompiled binaries for Termux ARM architectures
  */
 static int pawncc_handle_termux_installation(void)
 {
@@ -79,7 +79,7 @@ static int pawncc_handle_termux_installation(void)
 		char version_selection, architecture[16], /* User's selection and target architecture */
 			 url[WG_PATH_MAX * 3], filename[128]; /* Download URL and local filename buffers */
 		
-		/* Available Pawn compiler versions for Termux from mxp96 repository */
+		/* Available Pawn compiler versions for Termux from  repository */
 		const char *library_termux_versions[] = { "3.10.11", "3.10.10" };
 		size_t size_library_termux_versions = sizeof(library_termux_versions);
 		size_t size_library_termux_versions_zero = sizeof(library_termux_versions[0]);
@@ -97,7 +97,7 @@ ret_pawncc:
         printf("\033[1;33m== Select the PawnCC version to download ==\033[0m\n");
 		/* List all available versions with letter options (A/a, B/b, etc.) */
 		for (size_t i = 0; i < version_count; i++) {
-			printf("-> [%c/%c] PawnCC %s (mxp96)\n", /* Show both uppercase and lowercase options */
+			printf("-> [%c/%c] PawnCC %s ()\n", /* Show both uppercase and lowercase options */
 				(int)('A' + i), /* Uppercase option letter */
 				(int)('a' + i), /* Lowercase option letter */
 				library_termux_versions[i]); /* Version number */
@@ -178,7 +178,7 @@ done:
 		/* Construct GitHub release download URL for Termux Pawn compiler */
 		snprintf(url, sizeof(url),
 			 "https://github.com/"
-			 "mxp96/" /* Repository owner */
+			 "/" /* Repository owner */
 			 "compiler/" /* Repository name */
 			 "releases/"
 			 "download/"

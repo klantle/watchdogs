@@ -515,9 +515,10 @@ __asm__ volatile (
 			}
 		}
 
+		int ret = -1;
 skip:
 		/* Execute command using system() call */
-		int ret = system(size_command);
+		ret = system(size_command);
 		return ret;
 }
 

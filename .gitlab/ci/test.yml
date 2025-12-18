@@ -21,19 +21,14 @@ jobs:
     - name: Install build dependencies
       run: |
         export DEBIAN_FRONTEND=noninteractive
-        sudo apt-get update -y
+        sudo dpkg --add-architecture i386
+        sudo apt update
         sudo apt-get install -y --no-install-recommends \
-          build-essential \
-          procps \
-          clang \
-          lld \
-          make \
-          libssl-dev \
-          libcurl4-openssl-dev \
-          libreadline-dev \
-          libarchive-dev \
-          zlib1g-dev \
-          libonig-dev
+          build-essential curl procps clang lld make binutils \
+          libcurl4-openssl-dev libatomic1 libreadline-dev libarchive-dev \
+          libgtk-3-dev pkg-config \
+          zlib1g-dev upx-ucl upx \
+          libc6:i386 libstdc++6:i386 libcurl4:i386
         sudo apt-get autoremove -y
         sudo apt-get clean
 

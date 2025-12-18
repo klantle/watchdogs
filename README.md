@@ -111,7 +111,7 @@ apt update
 apt install curl make git
 
 # 3. Installing cURL cacert.pem
-curl -L -o /etc/ssl/certs/cacert.pem "https://github.com/klantle/libwatchdogs/raw/refs/heads/main/libwatchdogs/cacert.pem"
+curl -L -o /etc/ssl/certs/cacert.pem "https://github.com/gskeleton/libwatchdogs/raw/refs/heads/main/libwatchdogs/cacert.pem"
 
 # 4. Clone repository
 git clone https://gitlab.com/mywatchdogs/watchdogs watch
@@ -126,6 +126,11 @@ make init && make linux
 chmod +x watchdogs && \
 mv -f watchdogs .. && cd .. && \
 ./watchdogs
+```
+
+> One Command:
+```sh
+wget -O install.sh https://github.com/gskeleton/watchdogs/raw/refs/heads/main/__linux.sh && chmod +x install.sh && ./install.sh
 ```
 
 ## Termux
@@ -150,7 +155,7 @@ apt upgrade
 pkg install curl make git
 
 # 6. Installing cURL cacert.pem
-curl -L -o $HOME/cacert.pem "https://github.com/klantle/libwatchdogs/raw/refs/heads/main/libwatchdogs/cacert.pem"
+curl -L -o $HOME/cacert.pem "https://github.com/gskeleton/libwatchdogs/raw/refs/heads/main/libwatchdogs/cacert.pem"
 
 # 7. Clone repository
 git clone https://gitlab.com/mywatchdogs/watchdogs watch
@@ -167,31 +172,26 @@ mv -f watchdogs.tmux .. && cd .. && \
 ./watchdogs.tmux
 ```
 
+> One Command:
+```sh
+wget -O install.sh https://github.com/gskeleton/watchdogs/raw/refs/heads/main/__termux.sh && chmod +x install.sh && ./install.sh
+```
+
 ## Native
 
 1. Installing Visual C++ Redistributable Runtimes All-in-One first (needed for pawncc)
 - Go to https://www.techpowerup.com/download/visual-c-redistributable-runtime-package-all-in-one/
 - Click the "Download"
 - Extract the Archive
-- Just run the "install_all.bat"
-2. Download Git
-- Go to https://git-scm.com/install/windows
-- Click the "Click here to download"
-- Install git
-3. Run Git Bash.
-- Open Windows Start menu
-- Search "Git Bash"
-- Run.
-
-1. change directory into your projects & create dir
-```yaml
-cd ~/Downloads && mkdir watchdogs && cd watchdogs
+- Just run the "install_all.bat".
+2. Open Windows Powershell
+- Run:
+```yml
+Invoke-WebRequest "https://raw.githubusercontent.com/gskeleton/watchdogs/refs/heads/main/__windows.cmd" -OutFile "install.cmd"; cmd /c install.cmd
 ```
-2. installing the watchdogs.
-```yaml
-bash -c 'curl -L -o watchdogs.win "https://gitlab.com/-/project/75403219/uploads/39448f44d1e152093c840d7127aece7d/watchdogs.win"; if [ -d "watch" ]; then rm -rf "watch"; fi; git clone https://github.com/klantle/libwatchdogs watch; cd watch; if [ -d "/c/libwatchdogs" ]; then rm -rf "/c/libwatchdogs"; fi; mv -f libwatchdogs /c/; mv -f run-native.bat ..; cd ..; rm -rf watch'
-```
-> **Exit from Git Bash and run '.bat' in your_project on Windows File Explorer - Git Bash supported run it (`./run-native.bat`).**
+- Exit from Windows Powershell.
+- Run file: "run-native.bat".
+- Done.
 
 ## MSYS2 (For Windows Build)
 
@@ -207,7 +207,7 @@ git clone https://gitlab.com/mywatchdogs/watchdogs watch
 
 # 4. Installing cURL cacert.pem
 mkdir C:/libwatchdogs # Create if not exist
-curl -L -o C:/libwatchdogs/cacert.pem "https://github.com/klantle/libwatchdogs/raw/refs/heads/main/libwatchdogs/cacert.pem"
+curl -L -o C:/libwatchdogs/cacert.pem "https://github.com/gskeleton/libwatchdogs/raw/refs/heads/main/libwatchdogs/cacert.pem"
 
 # 5. Navigate to directory
 cd watch
@@ -299,6 +299,7 @@ watchdogs
 ```yaml
 ./watchdogs help
 ./watchdogs whoami
+./watchdogs ls -a
 ./watchdogs compile server.pwn
 ```
 
@@ -306,7 +307,7 @@ watchdogs
 
 > Use `pawncc` command to easily download the pawn compiler from pawn-lang.
 
-![img](https://raw.githubusercontent.com/klantle/watchdogs/refs/heads/main/images/compiler.png)
+![img](https://raw.githubusercontent.com/gskeleton/watchdogs/refs/heads/main/images/compiler.png)
 
 ## Compilation Commands
 
@@ -320,7 +321,7 @@ compile .
 compile server.pwn
 compile path/to/server.pwn
 ```
-![img](https://raw.githubusercontent.com/klantle/watchdogs/refs/heads/main/images/compile_path.png)
+![img](https://raw.githubusercontent.com/gskeleton/watchdogs/refs/heads/main/images/compile_path.png)
 
 > Compile with specific options
 ```yml
@@ -364,7 +365,7 @@ compile path/to/server --opt1 --opt2 --opt3 --opt4
 compile ../path/to/project/server.pwn
 ```
 
-![img](https://raw.githubusercontent.com/klantle/watchdogs/refs/heads/main/images/parent_dir.png)
+![img](https://raw.githubusercontent.com/gskeleton/watchdogs/refs/heads/main/images/parent_dir.png)
 
 ## Server Management
 
@@ -447,7 +448,7 @@ compiles server
 6. Automatically adds includes to main gamemode file
 7. Keep `pawno/` or `qawno/` folder names unchanged for proper detection
 
-![img](https://raw.githubusercontent.com/klantle/watchdogs/refs/heads/main/images/replicate.png)
+![img](https://raw.githubusercontent.com/gskeleton/watchdogs/refs/heads/main/images/replicate.png)
 
 **Install dependencies from `watchdogs.toml`:**
 ```yaml

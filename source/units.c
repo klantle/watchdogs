@@ -394,7 +394,6 @@ ret_ptr:
             printf("\033[1;33m== Select a Platform ==\033[0m\n");
             printf("  \033[36m[l]\033[0m Linux\n");
             printf("  \033[36m[w]\033[0m Windows  \033[90m(WSL/WSL2/MSYS2 supported — not for WSL Docker)\033[0m\n");
-            printf("  \033[36m[t]\033[0m Termux\n");
 
             wgconfig.wg_sel_stat = 1;
 
@@ -580,11 +579,11 @@ loop_ipcc3:
 _runners_:
                 wg_stop_server_tasks();
 
-                if (!path_exists(wgconfig.wg_toml_binary)) {
+                if (!path_access(wgconfig.wg_toml_binary)) {
                     pr_error(stdout, "can't locate sa-mp/open.mp binary file!");
                     goto chain_done;
                 }
-                if (!path_exists(wgconfig.wg_toml_config)) {
+                if (!path_access(wgconfig.wg_toml_config)) {
                     pr_warning(stdout, "can't locate %s - config file!", wgconfig.wg_toml_config);
                     goto chain_done;
                 }

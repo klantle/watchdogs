@@ -7,260 +7,224 @@
 #include "extra.h"
 #include "utils.h"
 
+#include <gtk/gtk.h>
+
 #include "units.h"
 #include "archive.h"
 #include "curl.h"
 #include "debug.h"
 #include "library.h"
 
-/*
- * Handles Pawn compiler installation specifically for Termux (Android) environment
- */
+static char gtk_selected_key = 0;
+
+static void on_row_activated(GtkListBox *box, GtkListBoxRow *row, gpointer data)
+{
+      GtkWidget *window = GTK_WIDGET(data);
+      gtk_selected_key = GPOINTER_TO_INT(g_object_get_data(G_OBJECT(row), "key"));
+      gtk_widget_destroy(window);
+}
+
+static char
+gtk_select_fullscreen(const char *title, const char **items, const char *keys, int counts)
+{
+      static int inited = 0;
+      if (!inited) {
+          int argc = 0;
+          char **argv = NULL;
+          gtk_init(&argc, &argv);
+          inited = 1;
+      }
+
+	    GtkWidget *window = gtk_window_new(GTK_WINDOW_TOPLEVEL);
+	    gtk_window_set_title(GTK_WINDOW(window), title);
+	    gtk_window_fullscreen(GTK_WINDOW(window));
+	    gtk_window_set_position(GTK_WINDOW(window), GTK_WIN_POS_CENTER);
+
+	    g_signal_connect(window, "destroy", G_CALLBACK(gtk_main_quit), NULL);
+
+	    GtkWidget *scroll = gtk_scrolled_window_new(NULL, NULL);
+	    gtk_container_add(GTK_CONTAINER(window), scroll);
+
+	    GtkWidget *list = gtk_list_box_new();
+	    gtk_container_add(GTK_CONTAINER(scroll), list);
+
+	    for (int i = 0; i < counts; i++) {
+	        GtkWidget *row = gtk_list_box_row_new();
+	        GtkWidget *label = gtk_label_new(items[i]);
+	        gtk_label_set_xalign(GTK_LABEL(label), 0.0);
+	        gtk_container_add(GTK_CONTAINER(row), label);
+
+	        g_object_set_data(G_OBJECT(row), "key", GINT_TO_POINTER(keys[i]));
+	        gtk_list_box_insert(GTK_LIST_BOX(list), row, -1);
+	    }
+
+	    g_signal_connect(list, "row-activated", G_CALLBACK(on_row_activated), window);
+
+	    gtk_widget_show_all(window);
+	    gtk_main();
+
+	    return gtk_selected_key;
+}
+
 static int pawncc_handle_termux_installation(void)
 {
-		/* Manual list - Available for: 3.10.11, 3.10.10, 3.10.9, 3.10.8, 3.10.7 */
-		printf("\033[1;33m== Select the PawnCC version to download ==\033[0m\n");
+      const char *items[] = {
+          "Pawncc 3.10.11",
+          "Pawncc 3.10.10",
+          "Pawncc 3.10.9",
+          "Pawncc 3.10.8",
+          "Pawncc 3.10.7"
+      };
+      const char keys[] = { 'A','B','C','D','E' };
 
-		printf("-> [A/a] Pawncc 3.10.11\n");
-		printf("-> [B/b] Pawncc 3.10.10\n");
-		printf("-> [C/c] Pawncc 3.10.9\n");
-		printf("-> [D/d] Pawncc 3.10.8\n");
-		printf("-> [E/e] Pawncc 3.10.7\n");
+      char sel = gtk_select_fullscreen("Select PawnCC Version", items, keys, 5);
+      if (!sel) return 0;
 
-		fflush(stdout);
+      wgconfig.wg_ipawncc = 1;
 
-		char *versions;
-ret:
-		versions = readline("==> ");
-		if (strlen(versions) < 1) {
-				wg_free(versions);
-				goto ret;
-		}
+      if (sel == 'A' || sel == 'a') {
+          if (path_exists("pawncc-termux-311.zip")) remove("pawncc-termux-311.zip");
+          if (path_exists("pawncc-termux-311")) remove("pawncc-termux-311");
+          wg_download_file("https://github.com/gskeleton/compiler/releases/download/3.10.11/pawncc-termux.zip","pawncc-termux-311.zip");
+      } else if (sel == 'B' || sel == 'b') {
+          if (path_exists("pawncc-termux-310.zip")) remove("pawncc-termux-310.zip");
+          if (path_exists("pawncc-termux-310")) remove("pawncc-termux-310");
+          wg_download_file("https://github.com/gskeleton/compiler/releases/download/3.10.10/pawncc-termux.zip","pawncc-termux-310.zip");
+      } else if (sel == 'C' || sel == 'c') {
+          if (path_exists("pawncc-termux-39.zip")) remove("pawncc-termux-39.zip");
+          if (path_exists("pawncc-termux-39")) remove("pawncc-termux-39");
+          wg_download_file("https://github.com/gskeleton/compiler/releases/download/3.10.9/pawncc-termux.zip","pawncc-termux-39.zip");
+      } else if (sel == 'D' || sel == 'd') {
+          if (path_exists("pawncc-termux-38.zip")) remove("pawncc-termux-38.zip");
+          if (path_exists("pawncc-termux-38")) remove("pawncc-termux-38");
+          wg_download_file("https://github.com/gskeleton/compiler/releases/download/3.10.8/pawncc-termux.zip","pawncc-termux-38.zip");
+      } else if (sel == 'E' || sel == 'e') {
+          if (path_exists("pawncc-termux-37.zip")) remove("pawncc-termux-37.zip");
+          if (path_exists("pawncc-termux-37")) remove("pawncc-termux-37");
+          wg_download_file("https://github.com/gskeleton/compiler/releases/download/3.10.7/pawncc-termux.zip","pawncc-termux-37.zip");
+      }
 
-		wgconfig.wg_ipawncc = 1; /* Set PawnCC installation flag */
-
-		if (strcmp(versions, "A") == 0 || strcmp(versions, "a") == 0)
-		{
-				if (path_exists("pawncc-termux-311.zip"))
-						remove("pawncc-termux-311.zip");
-				if (path_exists("pawncc-termux-311"))
-						remove("pawncc-termux-311");
-
-				wg_download_file(
-					"https://github.com/klantle/compiler/releases/download/3.10.11/pawncc-termux.zip",
-					"pawncc-termux-311.zip"
-				);
-		} else if (strcmp(versions, "B") == 0 ||
-			   strcmp(versions, "b") == 0) {
- 				if (path_exists("pawncc-termux-310.zip"))
- 						remove("pawncc-termux-310.zip");
-				if (path_exists("pawncc-termux-310"))
-						remove("pawncc-termux-310");
-
-				 wg_download_file(
-					 "https://github.com/klantle/compiler/releases/download/3.10.10/pawncc-termux.zip",
-					 "pawncc-termux-310.zip"
-				 );
-		} else if (strcmp(versions, "C") == 0 ||
-			   strcmp(versions, "c") == 0) {
-				 if (path_exists("pawncc-termux-39.zip"))
-							remove("pawncc-termux-39.zip");
-					if (path_exists("pawncc-termux-39"))
-							remove("pawncc-termux-39");
-
-				 wg_download_file(
-					 "https://github.com/klantle/compiler/releases/download/3.10.9/pawncc-termux.zip",
-					 "pawncc-termux-39.zip"
-				 );
-		} else if (strcmp(versions, "D") == 0 ||
-			   strcmp(versions, "d") == 0) {
-				 if (path_exists("pawncc-termux-38.zip"))
-						 remove("pawncc-termux-38.zip");
- 				if (path_exists("pawncc-termux-38"))
- 						remove("pawncc-termux-38");
-
-				 wg_download_file(
-					 "https://github.com/klantle/compiler/releases/download/3.10.8/pawncc-termux.zip",
-					 "pawncc-termux-38.zip"
-				 );
-		} else if (strcmp(versions, "E") == 0 ||
-			   strcmp(versions, "e") == 0) {
-				 if (path_exists("pawncc-termux-37.zip"))
-						 remove("pawncc-termux-37.zip");
- 				if (path_exists("pawncc-termux-37"))
- 						remove("pawncc-termux-37");
-
-				 wg_download_file(
-					 "https://github.com/klantle/compiler/releases/download/3.10.7/pawncc-termux.zip",
-					 "pawncc-termux-37.zip"
-				 );
-		}
-		wg_free(versions);
-
-		return 0; /* Success */
+      return 0;
 }
 
-/*
- * Handles standard Pawn compiler installation for Linux and Windows platforms
- */
 static int pawncc_handle_standard_installation(const char *platform)
 {
-		/* Available Pawn compiler versions for standard platforms */
-		const char *versions[] = {
-									"3.10.11", "3.10.10", "3.10.9", "3.10.8", "3.10.7",
-									"3.10.6", "3.10.5", "3.10.4", "3.10.3", "3.10.2"
-								 };
-		const size_t version_count = sizeof(versions) / sizeof(versions[0]); /* 10 versions available */
-		char version_selection; /* User's version choice character */
-		char url[526]; /* Buffer for constructed download URL */
-		char filename[128]; /* Buffer for local filename */
-		const char *library_repo_base; /* Base GitHub repository URL */
-		const char *archive_ext; /* File extension based on platform */
-		int version_index; /* Index of selected version in array */
+      const char *versions[] = {
+          "PawnCC 3.10.11", "PawnCC 3.10.10", "PawnCC 3.10.9", "PawnCC 3.10.8",
+          "PawnCC 3.10.7", "PawnCC 3.10.6", "PawnCC 3.10.5", "PawnCC 3.10.4",
+          "PawnCC 3.10.3", "PawnCC 3.10.2"
+      };
+      const char keys[] = { 'A','B','C','D','E','F','G','H','I','J' };
+      const char *vernums[] = {
+          "3.10.11","3.10.10","3.10.9","3.10.8","3.10.7",
+          "3.10.6","3.10.5","3.10.4","3.10.3","3.10.2"
+      };
 
-		/* Validate platform parameter - only Linux and Windows supported */
-		if (strcmp(platform, "linux") != 0 && strcmp(platform, "windows") != 0) {
-				pr_error(stdout, "Unsupported platform: %s", platform);
-				return -1; /* Return error for unsupported platform */
-		}
+      if (strcmp(platform, "linux") != 0 && strcmp(platform, "windows") != 0) {
+          pr_error(stdout, "Unsupported platform: %s", platform);
+          return -1;
+      }
 
-		/* Display version selection menu */
-		printf("\033[1;33m== Select the PawnCC version to download ==\033[0m\n");
+      char sel = gtk_select_fullscreen("Select PawnCC Version", versions, keys, 10);
+      if (!sel) return 0;
 
-		/* List all available versions with letter options */
-		for (size_t i = 0; i < version_count; i++) {
-			printf("-> [%c/%c] PawnCC %s\n",
-				(int)('A' + i), /* Uppercase option */
-				(int)('a' + i), /* Lowercase option */
-				versions[i]); /* Version number */
-		}
+      int idx = -1;
+      if (sel >= 'A' && sel <= 'J') idx = sel - 'A';
+      else if (sel >= 'a' && sel <= 'j') idx = sel - 'a';
+      if (idx < 0 || idx >= 10) return 0;
 
-		fflush(stdout);
+      const char *library_repo_base;
+      if (strcmp(vernums[idx], "3.10.11") == 0)
+          library_repo_base = "https://github.com/openmultiplayer/compiler";
+      else
+          library_repo_base = "https://github.com/pawn-lang/compiler";
 
-		char *__version__; /* Buffer for user's version selection */
+      const char *archive_ext = (strcmp(platform, "linux") == 0) ? "tar.gz" : "zip";
 
-/* Label for version selection retry */
-get_back:
-		__version__ = readline("==> "); /* Get user input */
-		version_selection = __version__[0]; /* Only consider first character */
+      char url[512], filename[128];
+      snprintf(url, sizeof(url),
+          "%s/releases/download/v%s/pawnc-%s-%s.%s",
+          library_repo_base, vernums[idx], vernums[idx], platform, archive_ext);
 
-		/* Convert selection character to array index (A-J or a-j) */
-		if (version_selection >= 'A' &&
-			version_selection <= 'J') { /* Uppercase A through J */
-			version_index = version_selection - 'A'; /* A=0, B=1, ..., J=9 */
-		} else if (version_selection >= 'a' &&
-			version_selection <= 'j') { /* Lowercase a through j */
-			version_index = version_selection - 'a'; /* a=0, b=1, ..., j=9 */
-		} else {
-			/* Invalid selection */
-			wg_free(__version__);
-			if (wgconfig.wg_sel_stat == 0) /* Check selection mode */
-				return 0; /* Exit if not in selection mode */
-			pr_error(stdout, "Invalid version selection");
-			goto get_back; /* Retry version selection */
-		}
-		wg_free(__version__);
+      snprintf(filename, sizeof(filename),
+          "pawnc-%s-%s.%s", vernums[idx], platform, archive_ext);
 
-		/* Determine which GitHub repository to use based on version */
-		if (strcmp(versions[version_index], "3.10.11") == 0)
-				/* Version 3.10.11 is hosted in openmultiplayer repository */
-				library_repo_base = "https://github.com/"
-								"openmultiplayer/"
-								"compiler";
-		else
-				/* Older versions are hosted in pawn-lang repository */
-				library_repo_base = "https://github.com/"
-								"pawn-lang/"
-								"compiler";
+      wgconfig.wg_ipawncc = 1;
+      wg_download_file(url, filename);
 
-		/* Determine archive extension based on platform */
-		archive_ext = (strcmp(platform, "linux") == 0) ? "tar.gz" : "zip";
-
-		/* Construct GitHub release download URL */
-		snprintf(url, sizeof(url),
-			 "%s/releases/download/v%s/pawnc-%s-%s.%s",
-			 library_repo_base, /* Base repository URL */
-			 versions[version_index], /* Version tag (v3.10.11, etc.) */
-			 versions[version_index], /* Version in filename */
-			 platform, /* Target platform (linux/windows) */
-			 archive_ext); /* Archive extension (tar.gz/zip) */
-
-		/* Construct local filename for downloaded archive */
-		snprintf(filename, sizeof(filename), "pawnc-%s-%s.%s",
-				    versions[version_index], platform, archive_ext);
-
-		wgconfig.wg_ipawncc = 1; /* Set PawnCC installation flag */
-		wg_download_file(url, filename); /* Initiate download */
-
-		return 0; /* Success */
+      return 0;
 }
 
-/*
- * Main Pawn compiler installation entry point
- * Routes to appropriate installer based on platform (Termux, Linux, Windows)
- * Includes comprehensive debug information when debugging is enabled
- */
 int wg_install_pawncc(const char *platform)
 {
-		/* Debug information section */
-        __debug_function();
+  		__debug_function();
 
-		/* Validate platform parameter is not NULL */
-		if (!platform) {
-				pr_error(stdout, "Platform parameter is NULL");
-				if (wgconfig.wg_sel_stat == 0) /* Make sure in selection mode */
-					return 0; /* Silent exit if not in interactive mode */
-				return -1; /* Error exit */
-		}
+  		if (!platform) {
+  				pr_error(stdout, "Platform parameter is NULL");
+  				if (wgconfig.wg_sel_stat == 0)
+  					return 0;
+  				return -1;
+  		}
 
-		/* Route to Termux-specific installer */
-		if (strcmp(platform, "termux") == 0) {
-			int ret = pawncc_handle_termux_installation(); /* Call Termux installer */
+  		if (strcmp(platform, "termux") == 0) {
+  			int ret = pawncc_handle_termux_installation();
 
-/* Label for installation retry loop (Termux) */
 loop_ipcc:
-			if (ret == -1 && wgconfig.wg_sel_stat != 0) /* Retry on error in interactive mode */
-				goto loop_ipcc;
-			else if (ret == 0) /* Success */
-				return 0;
-		} else {
-			/* Route to standard platform installer */
-			int ret = pawncc_handle_standard_installation(platform); /* Call standard installer */
-
-/* Label for installation retry loop (Standard) */
+  			if (ret == -1 && wgconfig.wg_sel_stat != 0)
+  				goto loop_ipcc;
+  			else if (ret == 0)
+  				return 0;
+  		} else {
+  			int ret = pawncc_handle_standard_installation(platform);
 loop_ipcc2:
-			if (ret == -1 && wgconfig.wg_sel_stat != 0) /* Retry on error in interactive mode */
-				goto loop_ipcc2;
-			else if (ret == 0) /* Success */
-				return 0;
-		}
+  			if (ret == -1 && wgconfig.wg_sel_stat != 0)
+  				goto loop_ipcc2;
+  			else if (ret == 0)
+  				return 0;
+  		}
 
-		return 0; /* Success */
+  		return 0;
 }
 
-/*
- * SA-MP and Open.MP server installation function
- * Provides interactive menu for selecting server type and version
- * Downloads server binaries from GitHub repositories
- * Supports both SA-MP (KrustyKoyle archive) and Open.MP (official releases)
- */
 int wg_install_server(const char *platform)
 {
-		/* Debug information section */
-        __debug_function();
+      __debug_function();
 
-		/* Structure to hold version information and download URLs */
-		struct library_version_info {
-				char key;                    /* Selection key (A, B, C, etc.) */
-				const char *name;            /* Display name (e.g., "SA-MP 0.3.DL R1") */
-				const char *linux_url;       /* Linux download URL */
-				const char *linux_file;      /* Linux filename */
-				const char *windows_url;    /* Windows download URL */
-				const char *windows_file;   /* Windows filename */
-		};
+      if (strcmp(platform, "linux") != 0 && strcmp(platform, "windows") != 0) {
+          pr_error(stdout, "Unsupported platform: %s", platform);
+          return -1;
+      }
 
-		/* Array of available server versions with metadata */
-		struct library_version_info versions[] = {
+      const char *items[] = {
+          "SA-MP 0.3.DL R1",
+          "SA-MP 0.3.7 R3",
+          "SA-MP 0.3.7 R2-2-1",
+          "SA-MP 0.3.7 R2-1-1",
+          "OPEN.MP v1.5.8.3079 (Static SSL)",
+          "OPEN.MP v1.5.8.3079 (Dynamic SSL)",
+          "OPEN.MP v1.4.0.2779 (Static SSL)",
+          "OPEN.MP v1.4.0.2779 (Dynamic SSL)",
+          "OPEN.MP v1.3.1.2748 (Static SSL)",
+          "OPEN.MP v1.3.1.2748 (Dynamic SSL)",
+          "OPEN.MP v1.2.0.2670 (Static SSL)",
+          "OPEN.MP v1.2.0.2670 (Dynamic SSL)",
+          "OPEN.MP v1.1.0.2612 (Static SSL)",
+          "OPEN.MP v1.1.0.2612 (Dynamic SSL)"
+      };
+
+      const char keys[] = {
+          'A','B','C','D','E','F','G','H','I','J','K','L','M','N'
+      };
+
+      char sel = gtk_select_fullscreen("Select SA-MP / Open.MP Server", items, keys, 14);
+      if (!sel) return 0;
+
+      int idx = -1;
+      if (sel >= 'A' && sel <= 'N') idx = sel - 'A';
+      else if (sel >= 'a' && sel <= 'n') idx = sel - 'a';
+      if (idx < 0 || idx >= 14) return 0;
+
+      struct library_version_info versions[] = {
 				/* SA-MP 0.3.DL R1 - First row version */
 				{
 						'A', "SA-MP 0.3.DL R1", /* Key A, display name */
@@ -309,21 +273,57 @@ int wg_install_server(const char *platform)
 						"files.sa-mp.com-Archive/raw/refs/heads/master/samp037_svr_R2-1-1_win32.zip",
 						"samp037_svr_R2-1-1_win32.zip"
 				},
-				/* Open.MP v1.4.0.2779 - Latest Open.MP version at time of writing */
+				/* Open.MP v1.5.8.3079 - Latest Open.MP version (static SSL) */
 				{
-						'E', "OPEN.MP v1.4.0.2779",
+						'E', "OPEN.MP v1.5.8.3079 (Static SSL)",
+						"https://github.com/"
+						"openmultiplayer/"
+						"open.mp/releases/download/v1.5.8.3079/open.mp-linux-x86.tar.gz",
+						"open.mp-linux-x86.tar.gz", /* Linux Open.MP with static SSL */
+						"https://github.com/"
+						"openmultiplayer/"
+						"open.mp/releases/download/v1.5.8.3079/open.mp-win-x86.zip",
+						"open.mp-win-x86.zip" /* Windows Open.MP */
+				},
+				/* Open.MP v1.5.8.3079 - Latest Open.MP version (dynamic SSL) */
+				{
+						'F', "OPEN.MP v1.5.8.3079 (Dynamic SSL)",
+						"https://github.com/"
+						"openmultiplayer/"
+						"open.mp/releases/download/v1.5.8.3079/open.mp-linux-x86-dynssl.tar.gz",
+						"open.mp-linux-x86-dynssl.tar.gz", /* Linux Open.MP with dynamic SSL */
+						"https://github.com/"
+						"openmultiplayer/"
+						"open.mp/releases/download/v1.5.8.3079/open.mp-win-x86.zip",
+						"open.mp-win-x86.zip" /* Windows Open.MP (same as static) */
+				},
+				/* Open.MP v1.4.0.2779 - Previous Open.MP version (static SSL) */
+				{
+						'G', "OPEN.MP v1.4.0.2779 (Static SSL)",
 						"https://github.com/"
 						"openmultiplayer/"
 						"open.mp/releases/download/v1.4.0.2779/open.mp-linux-x86.tar.gz",
-						"open.mp-linux-x86.tar.gz", /* Linux Open.MP */
+						"open.mp-linux-x86.tar.gz", /* Linux Open.MP with static SSL */
 						"https://github.com/"
 						"openmultiplayer/"
 						"open.mp/releases/download/v1.4.0.2779/open.mp-win-x86.zip",
 						"open.mp-win-x86.zip" /* Windows Open.MP */
 				},
-				/* Open.MP v1.3.1.2748 - Previous Open.MP version */
+				/* Open.MP v1.4.0.2779 - Previous Open.MP version (dynamic SSL) */
 				{
-						'F', "OPEN.MP v1.3.1.2748",
+						'H', "OPEN.MP v1.4.0.2779 (Dynamic SSL)",
+						"https://github.com/"
+						"openmultiplayer/"
+						"open.mp/releases/download/v1.4.0.2779/open.mp-linux-x86-dynssl.tar.gz",
+						"open.mp-linux-x86-dynssl.tar.gz", /* Linux Open.MP with dynamic SSL */
+						"https://github.com/"
+						"openmultiplayer/"
+						"open.mp/releases/download/v1.4.0.2779/open.mp-win-x86.zip",
+						"open.mp-win-x86.zip" /* Windows Open.MP (same as static) */
+				},
+				/* Open.MP v1.3.1.2748 - Previous Open.MP version (static SSL) */
+				{
+						'I', "OPEN.MP v1.3.1.2748 (Static SSL)",
 						"https://github.com/"
 						"openmultiplayer/"
 						"open.mp/releases/download/v1.3.1.2748/open.mp-linux-x86.tar.gz",
@@ -333,9 +333,21 @@ int wg_install_server(const char *platform)
 						"open.mp/releases/download/v1.3.1.2748/open.mp-win-x86.zip",
 						"open.mp-win-x86.zip"
 				},
-				/* Open.MP v1.2.0.2670 - Older Open.MP version */
+				/* Open.MP v1.3.1.2748 - Previous Open.MP version (dynamic SSL) */
 				{
-						'G', "OPEN.MP v1.2.0.2670",
+						'J', "OPEN.MP v1.3.1.2748 (Dynamic SSL)",
+						"https://github.com/"
+						"openmultiplayer/"
+						"open.mp/releases/download/v1.3.1.2748/open.mp-linux-x86-dynssl.tar.gz",
+						"open.mp-linux-x86-dynssl.tar.gz",
+						"https://github.com/"
+						"openmultiplayer/"
+						"open.mp/releases/download/v1.3.1.2748/open.mp-win-x86.zip",
+						"open.mp-win-x86.zip"
+				},
+				/* Open.MP v1.2.0.2670 - Older Open.MP version (static SSL) */
+				{
+						'K', "OPEN.MP v1.2.0.2670 (Static SSL)",
 						"https://github.com/"
 						"openmultiplayer/"
 						"open.mp/releases/download/v1.2.0.2670/open.mp-linux-x86.tar.gz",
@@ -345,9 +357,21 @@ int wg_install_server(const char *platform)
 						"open.mp/releases/download/v1.2.0.2670/open.mp-win-x86.zip",
 						"open.mp-win-x86.zip"
 				},
-				/* Open.MP v1.1.0.2612 - Early Open.MP version */
+				/* Open.MP v1.2.0.2670 - Older Open.MP version (dynamic SSL) */
 				{
-						'H', "OPEN.MP v1.1.0.2612",
+						'L', "OPEN.MP v1.2.0.2670 (Dynamic SSL)",
+						"https://github.com/"
+						"openmultiplayer/"
+						"open.mp/releases/download/v1.2.0.2670/open.mp-linux-x86-dynssl.tar.gz",
+						"open.mp-linux-x86-dynssl.tar.gz",
+						"https://github.com/"
+						"openmultiplayer/"
+						"open.mp/releases/download/v1.2.0.2670/open.mp-win-x86.zip",
+						"open.mp-win-x86.zip"
+				},
+				/* Open.MP v1.1.0.2612 - Early Open.MP version (static SSL) */
+				{
+						'M', "OPEN.MP v1.1.0.2612 (Static SSL)",
 						"https://github.com/"
 						"openmultiplayer/"
 						"open.mp/releases/download/v1.1.0.2612/open.mp-linux-x86.tar.gz",
@@ -356,67 +380,28 @@ int wg_install_server(const char *platform)
 						"openmultiplayer/"
 						"open.mp/releases/download/v1.1.0.2612/open.mp-win-x86.zip",
 						"open.mp-win-x86.zip"
+				},
+				/* Open.MP v1.1.0.2612 - Early Open.MP version (dynamic SSL) */
+				{
+						'N', "OPEN.MP v1.1.0.2612 (Dynamic SSL)",
+						"https://github.com/"
+						"openmultiplayer/"
+						"open.mp/releases/download/v1.1.0.2612/open.mp-linux-x86-dynssl.tar.gz",
+						"open.mp-linux-x86-dynssl.tar.gz",
+						"https://github.com/"
+						"openmultiplayer/"
+						"open.mp/releases/download/v1.1.0.2612/open.mp-win-x86.zip",
+						"open.mp-win-x86.zip"
 				}
-		};
+      };
 
-		const size_t version_count = sizeof(versions) / sizeof(versions[0]); /* 8 versions total */
-		char selection; /* User's selection character */
-		struct library_version_info *chosen = NULL; /* Pointer to selected version */
-		size_t i; /* Loop counter */
+      struct library_version_info *chosen = &versions[idx];
 
-		/* Validate platform parameter */
-		if (strcmp(platform, "linux") != 0 && strcmp(platform, "windows") != 0) {
-				pr_error(stdout, "Unsupported platform: %s", platform);
-				if (wgconfig.wg_sel_stat == 0) /* Check selection mode */
-					return 0; /* Silent exit */
-				return -1; /* Error exit */
-		}
+      const char *url = (strcmp(platform, "linux") == 0) ?
+        chosen->linux_url : chosen->windows_url;
+      const char *filename = (strcmp(platform, "linux") == 0) ?
+        chosen->linux_file : chosen->windows_file;
 
-		/* Display server version selection menu */
-		printf("\033[1;33m== Select the SA-MP version to download ==\033[0m\n");
-
-		/* List all available versions with their selection keys */
-		for (i = 0; i < version_count; i++) {
-				printf("-> [%c/%c] %s\n", versions[i].key, versions[i].key + 32,
-				       versions[i].name); /* key+32 converts uppercase to lowercase */
-		}
-
-		fflush(stdout);
-
-		char *__selection__; /* Buffer for user's selection input */
-
-/* Label for selection retry */
-get_back:
-		__selection__ = readline("==> "); /* Get user input */
-		selection = __selection__[0]; /* Only consider first character */
-
-		/* Find the selected version in the array */
-		for (i = 0; i < version_count; i++) {
-			if (selection == versions[i].key || /* Uppercase match */
-				selection == versions[i].key + 32) { /* Lowercase match (key + 32 = lowercase) */
-				chosen = &versions[i]; /* Set pointer to selected version */
-				break;
-			}
-		}
-
-		/* Validate selection was found */
-		if (!chosen) {
-			wg_free(__selection__); /* Free invalid input */
-			if (wgconfig.wg_sel_stat == 0) /* Check selection mode */
-				return 0; /* Silent exit */
-			pr_error(stdout, "Invalid selection");
-			goto get_back; /* Retry selection */
-		}
-		wg_free(__selection__); /* Free valid input */
-
-		/* Select appropriate URL and filename based on platform */
-		const char *url = (strcmp(platform, "linux") == 0) ?
-				chosen->linux_url : chosen->windows_url;
-		const char *filename = (strcmp(platform, "linux") == 0) ?
-				chosen->linux_file : chosen->windows_file;
-
-		/* Initiate download process */
-		wg_download_file(url, filename);
-
-		return 0; /* Success */
+      wg_download_file(url, filename);
+      return 0;
 }

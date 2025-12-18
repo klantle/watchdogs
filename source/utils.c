@@ -65,27 +65,27 @@ const size_t
 sizeof(__command) / sizeof(__command[0]);
 
 WatchdogConfig wgconfig = {
-	    .wg_ipawncc = 0,
-	    .wg_idepends = 0,
+		.wg_ipawncc = 0,
+		.wg_idepends = 0,
 		.wg_idownload = 0,
-	    .wg_os_type = CRC32_FALSE,
-	    .wg_sel_stat = 0,
-	    .wg_is_samp = CRC32_FALSE,
-	    .wg_is_omp = CRC32_FALSE,
-	    .wg_ptr_samp = NULL,
-	    .wg_ptr_omp = NULL,
-	    .wg_compiler_stat = 0,
-	    .wg_sef_count = RATE_SEF_EMPTY,
-	    .wg_sef_found_list = { { RATE_SEF_EMPTY } },
-	    .wg_toml_os_type = NULL,
-	    .wg_toml_binary = NULL,
-	    .wg_toml_config = NULL,
+		.wg_os_type = CRC32_FALSE,
+		.wg_sel_stat = 0,
+		.wg_is_samp = CRC32_FALSE,
+		.wg_is_omp = CRC32_FALSE,
+		.wg_ptr_samp = NULL,
+		.wg_ptr_omp = NULL,
+		.wg_compiler_stat = 0,
+		.wg_sef_count = RATE_SEF_EMPTY,
+		.wg_sef_found_list = { { RATE_SEF_EMPTY } },
+		.wg_toml_os_type = NULL,
+		.wg_toml_binary = NULL,
+		.wg_toml_config = NULL,
 		.wg_toml_logs = NULL,
-	    .wg_toml_aio_opt = NULL,
+		.wg_toml_aio_opt = NULL,
 		.wg_toml_root_patterns = NULL,
-	    .wg_toml_packages = NULL,
-	    .wg_toml_proj_input = NULL,
-	    .wg_toml_proj_output = NULL,
+		.wg_toml_packages = NULL,
+		.wg_toml_proj_input = NULL,
+		.wg_toml_proj_output = NULL,
 		.wg_toml_key_ai = NULL,
 		.wg_toml_chatbot_ai = NULL,
 		.wg_toml_models_ai = NULL,
@@ -145,12 +145,41 @@ void wg_sef_fdir_memset_to_null(void) {
 			RATE_SEF_EMPTY, sizeof(wgconfig.wg_sef_found_list));
 }
 
+#ifdef WG_LINUX
+#ifndef strlcpy
+size_t strlcpy(char *dst, const char *src, size_t size)
+{
+		size_t src_len = strlen(src);
+
+		if (size) {
+			size_t copy_len = (src_len >= size) ? size - 1 : src_len;
+			memcpy(dst, src, copy_len);
+			dst[copy_len] = '\0';
+		}
+
+		return src_len;
+}
+#endif
+#ifndef strlcat
+size_t strlcat(char *dst, const char *src, size_t size)
+{
+		size_t dst_len = strlen(dst);
+		size_t src_len = strlen(src);
+
+		if (dst_len < size) {
+			size_t copy_len = size - dst_len - 1;
+			if (copy_len > src_len)
+				copy_len = src_len;
+			memcpy(dst + dst_len, src, copy_len);
+			dst[dst_len + copy_len] = '\0';
+		}
+
+		return dst_len + src_len;
+}
+#endif
+#endif
+
 #ifdef WG_WINDOWS
-/*
- * Windows implementation of strlcpy - safely copies string from source to destination
- * with null termination guarantee. Calculates source length, copies up to size-1 bytes,
- * always null-terminates destination, and returns total source length.
- */
 size_t win_strlcpy(char *dst, const char *src, size_t size)
 {
 	    size_t len = strlen(src);
@@ -162,25 +191,17 @@ size_t win_strlcpy(char *dst, const char *src, size_t size)
 	    return len;
 }
 
-/*
- * Windows implementation of strlcat - safely concatenates source string to destination
- * with buffer size protection. Calculates current destination length and available space,
- * copies only what fits, null-terminates, and returns total length that would have been
- * created if buffer was large enough.
- */
 size_t win_strlcat(char *dst, const char *src, size_t size)
 {
 	    size_t dlen = strlen(dst);
 	    size_t slen = strlen(src);
-	    /* Make sure there's space in destination buffer */
 	    if (dlen < size) {
-	        size_t space = size - dlen - 1; /* Available space minus null terminator */
-	        size_t copy = (slen > space) ? space : slen; /* Copy only what fits */
+	        size_t space = size - dlen - 1;
+	        size_t copy = (slen > space) ? space : slen;
 	        memcpy(dst + dlen, src, copy);
-	        dst[dlen + copy] = 0; /* Null-terminate the concatenated string */
-	        return dlen + slen; /* Return total length of combined strings */
+	        dst[dlen + copy] = 0;
+	        return dlen + slen;
 	    }
-	    /* If destination already fills buffer, return what length would have been */
 	    return size + slen;
 }
 
@@ -1471,9 +1492,9 @@ static void wg_check_compiler_options(int *compatibility, int *optimized_lt)
 
 		if (this_proc_fileile) {
 			while (fgets(log_line, sizeof(log_line), this_proc_fileile) != NULL) {
-				if (!found_Z && strstr(log_line, "-Z"))
+				if (!found_Z && strfind(log_line, "-Z", true))
 					found_Z = 1; /* Compiler supports -Z option */
-				if (!found_ver && strstr(log_line, "3.10.11"))
+				if (!found_ver && strfind(log_line, "3.10.11", true))
 					found_ver = 1; /* Specific compiler version */
 			}
 
@@ -1519,7 +1540,7 @@ static int wg_parse_toml_config(void)
 
 		if (!wg_toml_config) {
 				pr_error(stdout, "Parsing TOML: %s", wg_buf_err);
-                __debug_function(); /* call debugger function */
+				__debug_function(); /* call debugger function */
 				return 0;
 		}
 
@@ -1821,7 +1842,7 @@ int wg_toml_configs(void)
 			dir_exists("components"))
 			samp_user = 0; /* Open.MP */
 		else if (dir_exists("pawno") &&
-			path_exists("server.cfg"))
+			path_access("server.cfg"))
 			samp_user = 1; /* SA-MP */
 		else {
 			static int crit_nf = 0;
@@ -1881,7 +1902,7 @@ int wg_toml_configs(void)
 		}
 
 		/* Re-parse for additional configuration extraction */
-        char wg_buf_err[WG_PATH_MAX];
+		char wg_buf_err[WG_PATH_MAX];
 		toml_table_t *wg_toml_config;
 		toml_table_t *wg_toml_compiler;
 		FILE *this_proc_file = fopen("watchdogs.toml", "r");

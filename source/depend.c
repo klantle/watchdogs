@@ -29,75 +29,22 @@ static char *extension;    /* File extension */
 static char json_item[WG_PATH_MAX];    /* Json item's */
 static int fdir_counts = 0;    /* dump file counts */
 
-/*
- * This is the maximum dependency in 'watchdogs.toml' that can be read from the 'packages' key,
- * and you need to ensure this capacity is more than sufficient. If you enter 101, it will only read up to 100.
-*/
-#define MAX_DEPENDS (102)
-
-struct repositories {
-        char host[32]  ; /* repo host */
-        char domain[64]; /* repo domain */
-        char user[128] ; /* repo user */
-        char repo[128] ; /* repo name */
-        char tag[128]  ; /* repo tag */
-};
-
 const char *matching_windows_patterns[] = {
-        "windows",
-        "win",
-        "win32",
-        "win32",
-        "msvc",
-        "mingw",
-        ".dll",
-        NULL
-};
-    
-const char *matching_linux_patterns[] = {
-        "linux",
-        "ubuntu",
-        "debian",
-        "cent",
-        "centos",
-        "cent_os",
-        "fedora",
-        "arch",
-        "archlinux",
-        "alphine"
-        "rhel",
-        "redhat",
-        "linuxmint",
-        "mint",
-        ".so",
+        "windows", "win", "win32", "win32", "msvc", "mingw", ".dll",
         NULL
 };
 
-const char * matching_any_patterns[] = {
-        "src",
-        "source",
-        "proj",
-        "project",
-        "server",
-        "_server",
-        "gamemode",
-        "gamemodes",
-        "bin",
-        "build",
-        "packages",
-        "resources",
-        "modules",
-        "plugins",
-        "addons",
-        "extensions",
-        "scripts",
-        "system",
-        "core",
-        "runtime",
-        "libs",
-        "include",
-        "deps",
-        "dependencies",
+const char *matching_linux_patterns[] = {
+        "linux", "ubuntu", "debian", "cent", "centos", "cent_os", "fedora",
+        "arch", "archlinux", "alphine", "rhel", "redhat", "linuxmint", "mint", ".so",
+        NULL
+};
+
+const char *matching_any_patterns[] = {
+        "src", "source", "proj", "project", "server", "_server", "gamemode",
+        "gamemodes", "bin", "build", "packages", "resources", "modules",
+        "plugins", "addons", "extensions", "scripts", "system", "core",
+        "runtime", "libs", "include", "deps", "dependencies", ".inc",
         NULL
 };
 
@@ -113,7 +60,7 @@ static inline const char
         return l ? l : w;
 }
 
-/* 
+/*
  * Convert Windows path separators to Unix/Linux style
  * Replaces backslashes with forward slashes for cross-platform compatibility
  */
@@ -126,7 +73,7 @@ void package_sym_convert( char *path )
         }
 }
 
-/* 
+/*
  * Extract filename from full path (excluding directory)
  * Returns pointer to filename component
  */
@@ -138,7 +85,7 @@ const char *package_get_filename(
                packages + 1 : path;
 }
 
-/* 
+/*
  * Extract basename from full path (similar to package_get_filename)
  * Alternative implementation for filename extraction
  */
@@ -157,8 +104,9 @@ static const char *package_get_basename(
  * filename contains any OS pattern, 0 otherwise.
  */
 int this_os_archive( const char *filename ) {
+
         int k;
-        
+
         /* Determine target operating system at compile time */
         const char *target_os = NULL;
         #ifdef WG_WINDOWS
@@ -166,39 +114,39 @@ int this_os_archive( const char *filename ) {
         #else
         target_os = "linux";
         #endif
-        
+
         if ( !target_os ) return 0;
-        
+
         /* Convert target_os to lowercase for case-insensitive comparison */
         char size_target[ WG_PATH_MAX ];
         strncpy( size_target, target_os, sizeof ( size_target ) - 1 );
         size_target[ sizeof( size_target ) - 1 ] = '\0';
-        
+
         for (int i = 0; size_target[ i ]; i++) {
             size_target[ i ] = tolower(size_target[ i ]);
         }
-        
+
         /* Select OS-specific patterns */
         const char **patterns = NULL;
-        if (strstr( size_target, "win" )) {
+        if (strfind( size_target, "win", true )) {
             patterns = matching_windows_patterns;
-        } else if (strstr( size_target, "linux")) {
+        } else if (strfind(size_target, "linux", true )) {
             patterns = matching_linux_patterns;
         }
-        
+
         if ( !patterns ) return 0;
-        
+
         /* Convert filename to lowercase for case-insensitive matching */
         char filename_lower[ WG_PATH_MAX ];
         strncpy( filename_lower,
                 filename,
                 sizeof ( filename_lower ) - 1 );
         filename_lower [sizeof ( filename_lower ) - 1 ] = '\0';
-        
+
         for (int i = 0; filename_lower[ i ]; i++) {
             filename_lower[ i ] = tolower(filename_lower[ i ]);
         }
-        
+
         /* Check for patterns */
         for (k = 0; patterns[ k ] != NULL; ++k) {
             if ( strstr(
@@ -208,7 +156,7 @@ int this_os_archive( const char *filename ) {
                 return 1;
             }
         }
-        
+
         return 0;
 }
 
@@ -227,12 +175,12 @@ int this_more_archive(const char *filename)
         for (k = 0;
              matching_any_patterns[k] != NULL;  /* check array end */
              ++k) {
-        	/* Search for current server pattern in filename */
-        	if (strfind(
+               /* Search for current server pattern in filename */
+               if (strfind(
                         filename,               /* string to search in */
                         matching_any_patterns[k],  /* pattern to find */
                         true)                   /* case-sensitive flag */
-        	) {
+               ) {
                         ret = 1;    /* pattern found, set return to 1 */
                         break;      /* exit loop early */
                 }
@@ -254,146 +202,160 @@ int this_more_archive(const char *filename)
  * Returns a newly allocated string containing the selected asset filename,
  * or NULL if no assets are available.
  */
-char *package_fetching_assets(char **package_assets,
-                            int counts, const char *pf_os)
-{
+ /* Helper function 1: Check for OS-specific patterns */
+ static char *find_os_specific_asset( char **assets, int count, const char *os_pattern )
+ {
         int i;
-        int rate_os_pattern = 0;
+
+        if (strstr(os_pattern, "win")) {
+        	for (i = 0; i < count; i++) {
+        		for (int w = 0; matching_windows_patterns[w] != NULL; w++) {
+        			if (strstr(assets[i], matching_windows_patterns[w])) {
+        				return strdup(assets[i]);
+        			}
+        		}
+        	}
+        } else if (strstr(os_pattern, "linux")) {
+        	for (i = 0; i < count; i++) {
+        		for (int l = 0; matching_linux_patterns[l] != NULL; l++) {
+        			if (strstr(assets[i], matching_linux_patterns[l])) {
+        				return strdup(assets[i]);
+        			}
+        		}
+        	}
+        }
+
+        return NULL;
+ }
+
+ /* Helper function 2: Check for server assets with OS-specific patterns */
+ static char *find_server_asset_with_os( char **assets, int count, const char *os_pattern )
+ {
+        int i;
+
+        for (i = 0; i < count; i++) {
+        	int is_server_asset = 0;
+
+        	/* Check if it's a server asset */
+        	for (int p = 0; matching_any_patterns[p] != NULL; p++) {
+        		if (strfind(assets[i], matching_any_patterns[p], true)) {
+        			is_server_asset = 1;
+        			break;
+        		}
+        	}
+
+        	if (!is_server_asset)
+        		continue;
+
+        	/* Check OS-specific patterns for server assets */
+        	if (strstr(os_pattern, "win")) {
+        		for (int w = 0; matching_windows_patterns[w] != NULL; w++) {
+        			if (strstr(assets[i], matching_windows_patterns[w])) {
+        				return strdup(assets[i]);
+        			}
+        		}
+        	} else if (strstr(os_pattern, "linux")) {
+        		for (int l = 0; matching_linux_patterns[l] != NULL; l++) {
+        			if (strstr(assets[i], matching_linux_patterns[l])) {
+        				return strdup(assets[i]);
+        			}
+        		}
+        	}
+        }
+
+        return NULL;
+ }
+
+ /* Helper function 3: Find generic or fallback asset */
+ static char *find_generic_or_fallback_asset( char **assets, int count )
+ {
+        int i, rate_os_pattern;
+
+        /* First, try to find any generic server asset */
+        for (i = 0; i < count; i++) {
+        	for (int p = 0; matching_any_patterns[p] != NULL; p++) {
+        		if (strfind(assets[i], matching_any_patterns[p], true)) {
+        			return strdup(assets[i]);
+        		}
+        	}
+        }
+
+        /* Then, find the first non-OS-specific asset */
+        for (i = 0; i < count; i++) {
+        	rate_os_pattern = 0;
+
+        	for (int w = 0; matching_windows_patterns[w] != NULL && !rate_os_pattern; w++) {
+        		if (strstr(assets[i], matching_windows_patterns[w])) {
+        			rate_os_pattern = 1;
+        		}
+        	}
+
+        	for (int l = 0; matching_linux_patterns[l] != NULL && !rate_os_pattern; l++) {
+        		if (strstr(assets[i], matching_linux_patterns[l])) {
+        			rate_os_pattern = 1;
+        		}
+        	}
+
+        	if (!rate_os_pattern) {
+        		return strdup(assets[i]);
+        	}
+        }
+
+        /* Last resort: return the first asset */
+        return strdup(assets[0]);
+ }
+
+ /* Main function - unified interface */
+ char *package_fetching_assets( char **package_assets,
+        		      int counts, const char *pf_os )
+ {
+        char *result = NULL;
+        char size_target[32] = {0};
+        const char *target_os = NULL;
 
         /* Handle edge cases */
         if (counts == 0)
-            return NULL;
+        	return NULL;
         if (counts == 1)
-            return strdup(package_assets[ 0 ]);
-        
-        const char *target_os = NULL;
-        if (pf_os && pf_os[ 0 ]) {
-            target_os = pf_os;
+        	return strdup(package_assets[0]);
+
+        /* Determine target OS */
+        if (pf_os && pf_os[0]) {
+        	target_os = pf_os;
         } else {
-            #ifdef WG_WINDOWS
-            target_os = "windows";
-            #else
-            target_os = "linux";
-            #endif
-        }
-        
-        char size_target[ 32 ] = { 0 };
-        if (target_os) {
-            strncpy( size_target,
-                     target_os,
-                     sizeof(size_target) - 1 );
-            for (int j = 0; size_target[j]; j++) {
-                size_target[j] = tolower(size_target[j]);
-            }
+ #ifdef WG_WINDOWS
+        	target_os = "windows";
+ #else
+        	target_os = "linux";
+ #endif
         }
 
-        if (size_target[ 0 ]) {
-            for (i = 0; i < counts; i++) {
-                int is_server_asset = 0;
-                for (int p = 0;
-                     matching_any_patterns[ p ] != NULL;
-                     p++) {
-                    if (strfind(package_assets[ i ],
-                        matching_any_patterns[ p ], true)) {
-                        is_server_asset = 1;
-                        break;
-                    }
-                }
-                
-                if (is_server_asset) {
-                    if (strstr(size_target, "win")) {
-                        for (int w = 0; matching_windows_patterns[ w ] != NULL; w++)
-                        {
-                            if ( strstr(package_assets[ i ],
-                                matching_windows_patterns[ w ] )
-                            ) {
-                                return
-                                        strdup( package_assets [ i ] );
-                            }
-                        }
-                    } else if (strstr(size_target, "linux")) {
-                        for (int l = 0; matching_linux_patterns[ l ] != NULL; l++)
-                        {
-                            if (strstr( package_assets[ i ],
-                                matching_linux_patterns[ l ])
-                            ) {
-                                return strdup( package_assets [ i ] );
-                            }
-                        }
-                    }
-                }
-            }
+        /* Normalize OS string to lowercase */
+        if (target_os) {
+        	strncpy(size_target, target_os, sizeof(size_target) - 1);
+        	for (int j = 0; size_target[j]; j++) {
+        		size_target[j] = tolower(size_target[j]);
+        	}
         }
-        
-        if (size_target[ 0 ]) {
-            for (i = 0; i < counts; i++) {
-                if (strstr( size_target, "win") ) {
-                    for (int w = 0; matching_windows_patterns[ w ] != NULL; w++)
-                    {
-                        if (strstr(package_assets[ i ],
-                            matching_windows_patterns[ w ]))
-                        {
-                            return
-                                strdup( package_assets [ i ] );
-                        }
-                    }
-                } else if ( strstr(size_target, "linux") ) {
-                    for (int l = 0; matching_linux_patterns[ l ] != NULL; l++)
-                    {
-                        if (strstr(package_assets[ i ],
-                            matching_linux_patterns[ l ])) {
-                            return
-                                strdup( package_assets [ i ] );
-                        }
-                    }
-                }
-            }
+
+        /* Try different search strategies in order of preference */
+        if (size_target[0]) {
+        	/* 1. First try server assets with OS-specific patterns */
+        	result = find_server_asset_with_os(package_assets, counts, size_target);
+        	if (result)
+        		return result;
+
+        	/* 2. Then try any OS-specific patterns */
+        	result = find_os_specific_asset(package_assets, counts, size_target);
+        	if (result)
+        		return result;
         }
-        
-        for (i = 0; i < counts; i++) {
-            for (int p = 0; matching_any_patterns[ p ] != NULL; p++) {
-                if ( strfind(package_assets[ i ],
-                    matching_any_patterns[ p ], true) )
-                {
-                    return
-                        strdup( package_assets [ i ] );
-                }
-            }
-        }
-        
-        for (i = 0; i < counts; i++) {
-            for (int w = 0;
-                 matching_windows_patterns[ w ] != NULL &&
-                 !rate_os_pattern; w++)
-            {
-                if ( strstr(package_assets[ i ],
-                    matching_windows_patterns[ w ]) )
-                {
-                    rate_os_pattern = 1;
-                }
-            }
-            for (int l = 0;
-                 matching_linux_patterns[ l ] != NULL &&
-                 ! rate_os_pattern; l++)
-            {
-                if ( strstr(package_assets[ i ],
-                    matching_linux_patterns[ l ]) )
-                {
-                    rate_os_pattern = 1;
-                }
-            }
-            
-            if ( ! rate_os_pattern ) {
-                return
-                        strdup( package_assets [ i ] );
-            }
-        }
-        
-        return
-                strdup( package_assets [ 0 ] );
+
+        /* 3. Finally try generic or fallback assets */
+            return find_generic_or_fallback_asset(package_assets, counts);
 }
 
-/* 
+/*
  * Parse repository URL/identifier into structured components
  * Extracts host, domain, user, repo, and tag from dependency string
  */
@@ -493,13 +455,13 @@ package_parse_repo( const char *input, struct repositories *__package_data ) {
         return 1;
 }
 
-/* 
+/*
  * Fetch release asset URLs from GitHub repository
  * Retrieves downloadable assets for a specific release tag
  */
 static int package_gh_release_assets( const char *user, const char *repo,
                                  const char *tag, char **out_urls, int max_urls ) {
-                                        
+
         char api_url[WG_PATH_MAX * 2];
         char *json_data = NULL;
         const char *p;
@@ -546,7 +508,7 @@ static int package_gh_release_assets( const char *user, const char *repo,
         return url_count;
 }
 
-/* 
+/*
  * Construct repository URL based on parsed information
  * Builds appropriate URL for GitHub releases, tags, or branches
  */
@@ -612,7 +574,7 @@ package_build_repo_url( const struct repositories *__package_data, int is_tag_pa
 #endif
 }
 
-/* 
+/*
  * Fetch latest release tag from GitHub repository
  * Uses GitHub API to get the most recent release tag
  */
@@ -667,7 +629,7 @@ static int package_gh_latest_tag( const char *user, const char *repo,
         return ret;
 }
 
-/* 
+/*
  * Process repository information to determine download URL
  * Handles latest tag resolution, asset selection, and fallback strategies
  */
@@ -719,6 +681,8 @@ package_handle_repo( const struct repositories *repo, char *put_url, size_t put_
             return ret;
         }
 
+        pr_info(stdout, "Fetching any archive...");
+
         /* Process tagged releases */
         if ( package_actual_tag[0] ) {
             char *package_assets[10] = { 0 };
@@ -730,7 +694,7 @@ package_handle_repo( const struct repositories *repo, char *put_url, size_t put_
             /* If release has downloadable assets */
             if ( asset_counts > 0 ) {
                 char *package_best_asset = NULL;
-                
+
                 /* Determine target OS based on platform defines */
                 const char *target_os = NULL;
                 #ifdef WG_WINDOWS
@@ -738,13 +702,13 @@ package_handle_repo( const struct repositories *repo, char *put_url, size_t put_
                 #else
                 target_os = "linux";
                 #endif
-                
+
                 package_best_asset = package_fetching_assets( package_assets, asset_counts, target_os );
 
                 if ( package_best_asset ) {
                     strncpy( put_url, package_best_asset, put_size - 1 );
                     ret = 1;
-                    
+
                     /* asset selection */
                     if ( this_more_archive( package_best_asset ) ) {
                         ; /* empty statement */
@@ -754,9 +718,9 @@ package_handle_repo( const struct repositories *repo, char *put_url, size_t put_
                         ; /* empty statement */
                     }
 
-                    pr_info(stdout, "HIT Archive: %s\t\t[All good]\n", 
+                    pr_info(stdout, "Try Archive: %s\t\t[All good]\n",
                                 package_best_asset );
-                    
+
                     wg_free( package_best_asset );
                 }
 
@@ -805,7 +769,7 @@ package_handle_repo( const struct repositories *repo, char *put_url, size_t put_
         return ret;
 }
 
-/* 
+/*
  * Generate and store cryptographic hash for dependency files
  * Creates SHA-1 hash for verification and tracking
  */
@@ -818,7 +782,7 @@ int package_set_hash( const char *raw_file_path, const char *raw_json_path ) {
         strncpy( res_convert_f_path, raw_file_path, sizeof( res_convert_f_path ) );
         res_convert_f_path[sizeof( res_convert_f_path ) - 1] = '\0';
         package_sym_convert( res_convert_f_path );
-        
+
         strncpy( res_convert_json_path, raw_json_path, sizeof( res_convert_json_path ) );
         res_convert_json_path[sizeof( res_convert_json_path ) - 1] = '\0';
         package_sym_convert( res_convert_json_path );
@@ -844,7 +808,7 @@ done:
         return 1;
 }
 
-/* 
+/*
  * Add plugin dependency to SA-MP server.cfg configuration
  * Updates plugins line with new dependency
  * Replaces struct dencyconfig with direct parameters
@@ -860,7 +824,7 @@ void package_implementation_samp_conf( const char* config_file, const char* fw_l
 
         FILE* temp_file = NULL;
         temp_file = fopen( temp_path, "w" );
-        
+
         if (wg_server_env() != 1)
                 return;
 
@@ -937,7 +901,7 @@ void package_implementation_samp_conf( const char* config_file, const char* fw_l
 #define S_ADD_PLUGIN(config_file, fw_line, plugin_name) \
         package_implementation_samp_conf(config_file, fw_line, plugin_name)
 
-/* 
+/*
  * Add plugin dependency to open.mp JSON configuration
  * Updates legacy_plugins array in server configuration
  */
@@ -1040,24 +1004,24 @@ void package_implementation_omp_conf( const char* config_name, const char* packa
 /* Macro for adding open.mp plugins */
 #define M_ADD_PLUGIN( x, y ) package_implementation_omp_conf( x, y )
 
-/* 
+/*
  * Add include directive to gamemode file
  * Inserts #include statement in appropriate location
  */
 void package_add_include( const char *modes, char *package_name, char *package_following ) {
 
         if ( path_exists( modes ) == 0 ) return;
-        
+
         FILE *m_file = fopen( modes, "rb" );
         if ( !m_file ) return;
-        
+
         fseek( m_file, 0, SEEK_END );
         long fle_size = ftell( m_file );
         fseek( m_file, 0, SEEK_SET );
-        
+
         char *ct_modes = wg_malloc( fle_size + 2 );
         if ( !ct_modes ) { fclose(m_file); return; }
-        
+
         size_t bytes_read;
         bytes_read = fread( ct_modes, 1, fle_size, m_file );
         if ( bytes_read != fle_size ) {
@@ -1070,74 +1034,74 @@ void package_add_include( const char *modes, char *package_name, char *package_f
 
         ct_modes[fle_size] = '\0';
         fclose( m_file );
-        
+
         char search_name[WG_PATH_MAX];
         strncpy( search_name, package_name, sizeof(search_name)-1 );
-        
+
         char *open = strchr( search_name, '<' );
         char *close = strchr( search_name, '>' );
         if ( open && close ) {
             memmove( search_name, open+1, close-open-1 );
             search_name[close-open-1] = '\0';
         }
-        
+
         char *pos = ct_modes;
         while ( (pos = strstr(pos, "#include")) ) {
             char *line_end = strchr(pos, '\n');
             if (!line_end) line_end = ct_modes + fle_size;
-            
+
             char line[256];
             int len = line_end - pos;
             if (len >= 256) len = 255;
             strncpy(line, pos, len);
             line[len] = '\0';
-            
+
             if (strstr(line, search_name)) {
                 wg_free(ct_modes);
                 return;
             }
             pos = line_end + 1;
         }
-        
+
         char *insert_at = NULL;
         pos = ct_modes;
-        
+
         while ( (pos = strstr(pos, package_following)) ) {
             char *line_start = pos;
             while (line_start > ct_modes && *(line_start-1) != '\n') line_start--;
-            
+
             char *line_end = strchr(pos, '\n');
             if (!line_end) line_end = ct_modes + fle_size;
-            
+
             char line[256];
             int len = line_end - line_start;
             if (len >= 256) len = 255;
             strncpy(line, line_start, len);
             line[len] = '\0';
-            
+
             if (strstr(line, package_following)) {
                 insert_at = line_end;
                 break;
             }
             pos = line_end + 1;
         }
-        
+
         FILE *n_file = fopen( modes, "w" );
         if (!n_file) { wg_free(ct_modes); return; }
-        
+
         if (insert_at) {
             fwrite(ct_modes, 1, insert_at - ct_modes, n_file);
-            
+
             if (insert_at > ct_modes && *(insert_at-1) != '\n') {
                 fprintf(n_file, "\n");
             }
-            
+
             fprintf(n_file, "%s\n", package_name);
-            
+
             if (*insert_at) {
                 char *end = ct_modes + fle_size;
-                while (end > insert_at && 
-                    (*(end-1) == '\n' || *(end-1) == '\r' || 
+                while (end > insert_at &&
+                    (*(end-1) == '\n' || *(end-1) == '\r' ||
                         *(end-1) == ' ' || *(end-1) == '\t')) {
                     end--;
                 }
@@ -1150,20 +1114,20 @@ void package_add_include( const char *modes, char *package_name, char *package_f
             char *last_inc = NULL;
             char *last_inc_end = NULL;
             pos = ct_modes;
-            
+
             while ( (pos = strstr(pos, "#include")) ) {
                 last_inc = pos;
                 last_inc_end = strchr(pos, '\n');
                 if (!last_inc_end) last_inc_end = ct_modes + fle_size;
                 pos = last_inc_end + 1;
             }
-            
+
             if (last_inc_end) {
                 fwrite(ct_modes, 1, last_inc_end - ct_modes, n_file);
                 fprintf(n_file, "\n%s\n", package_name);
-                
+
                 char *end = ct_modes + fle_size;
-                while (end > last_inc_end && 
+                while (end > last_inc_end &&
                     (*(end-1) == '\n' || *(end-1) == '\r')) {
                     end--;
                 }
@@ -1175,7 +1139,7 @@ void package_add_include( const char *modes, char *package_name, char *package_f
                 fwrite(ct_modes, 1, fle_size, n_file);
             }
         }
-        
+
         fclose(n_file);
         wg_free(ct_modes);
 }
@@ -1183,7 +1147,7 @@ void package_add_include( const char *modes, char *package_name, char *package_f
 /* Macro for adding include directives */
 #define DENCY_ADD_INCLUDES( x, y, z ) package_add_include( x, y, z )
 
-/* 
+/*
  * Process and add include directive based on dependency
  * Reads TOML configuration to determine gamemode file
  */
@@ -1245,7 +1209,7 @@ static void package_include_prints( const char *package_include ) {
         }
 }
 
-/* 
+/*
  * Search for and move files matching pattern
  * Handles file relocation and configuration updates
  */
@@ -1256,7 +1220,7 @@ void dump_file_type( const char *dump_path, char *dump_pattern,
 
         const char *package_names, *basename;
         char *basename_lower;
-        
+
         /* Search for files matching dump_pattern */
         int i;
         int found = -1;
@@ -1269,14 +1233,14 @@ void dump_file_type( const char *dump_path, char *dump_pattern,
                 for ( i = 0; i < wgconfig.wg_sef_count; ++i ) {
                         package_names = package_get_filename( wgconfig.wg_sef_found_list[i] );
                         basename = package_get_basename( wgconfig.wg_sef_found_list[i] );
-                        
+
                         /* Convert to lowercase for case-insensitive comparison */
                         basename_lower = strdup( basename );
                         for ( int j = 0; basename_lower[j]; j++ )
                                 {
                                         basename_lower[j] = tolower( basename_lower[j] );
                                 }
-                                
+
                         int rate_has_prefix = 0;
 
                         /* toml parsing a value */
@@ -1286,11 +1250,11 @@ void dump_file_type( const char *dump_path, char *dump_pattern,
                         while ( *matching_root_keywords ) {
                                 while ( *matching_root_keywords == ' ' /* free */ )
                                         matching_root_keywords++;
-                                
+
                                 const char* end = matching_root_keywords;
                                 while ( *end && *end != ' ' )
                                         end++;
-                                
+
                                 if ( end > matching_root_keywords ) {
                                    size_t keyword_len = end - matching_root_keywords;
                                    if ( strncmp( basename_lower,
@@ -1302,7 +1266,7 @@ void dump_file_type( const char *dump_path, char *dump_pattern,
                                       break;
                                    }
                                 }
-                                
+
                                 matching_root_keywords = ( *end ) ? end + 1 : end;
                         }
 
@@ -1361,7 +1325,7 @@ void dump_file_type( const char *dump_path, char *dump_pattern,
                                                         "mv "
                                                         "-f \"%s\" \"%s/plugins\"",
                                                         wgconfig.wg_sef_found_list[i], dump_pwd );
-                                                
+
                                                 wg_run_command( command );
 
                                                 pr_color( stdout, FCOLOUR_CYAN, " [REPLICATE] Plugins %s -> %s/plugins\n",
@@ -1403,7 +1367,7 @@ done:
         return;
 }
 
-/* 
+/*
  * Utility function to add items between cJSON arrays
  * Copies string items from one array to another
  */
@@ -1414,7 +1378,7 @@ void package_cjson_additem( cJSON *p1, int p2, cJSON *p3 )
                         cJSON_CreateString( cJSON_GetArrayItem( p1, p2 )->valuestring ) );
 }
 
-/* 
+/*
  * Organize dependency files into appropriate directories
  * Moves plugins, includes, and components to their proper locations
  */
@@ -1439,7 +1403,7 @@ void package_move_files( const char *package_dir )
         int _sindex = -1;
         int _ssize = WG_MAX_PATH;
         int rate_found_include = 0;
-        
+
         /* Reset */
         fdir_counts = 0;
 
@@ -1462,7 +1426,7 @@ void package_move_files( const char *package_dir )
                 {
                         stack[i] = wg_malloc( WG_PATH_MAX );
                 }
-        
+
         /* Construct platform-specific paths */
         #ifdef WG_WINDOWS
         snprintf( plugins, sizeof( plugins ), "%s\\plugins",
@@ -1677,7 +1641,7 @@ void package_move_files( const char *package_dir )
                                 {
                                         continue;
                                 }
-                                
+
                         if ( S_ISDIR( dir_st.st_mode ) ) {
                                 /* Skip compiler directories */
                                 if ( strcmp( dir_item->d_name, "pawno" ) == 0 ||
@@ -1805,7 +1769,7 @@ void package_move_files( const char *package_dir )
         return;
 }
 
-/* 
+/*
  * Prepare and organize dependencies after download
  * Creates necessary directories and initiates file organization
  */
@@ -1813,7 +1777,7 @@ void wg_apply_depends( const char *depends_name )
 {
         char _dependencies[WG_PATH_MAX];
         char package_dir[WG_PATH_MAX];
-        
+
         snprintf( _dependencies, sizeof( _dependencies ), "%s", depends_name );
 
 #if defined(_DBG_PRINT)
@@ -1855,12 +1819,12 @@ void wg_apply_depends( const char *depends_name )
                         MKDIR( "components" );
                 }
         }
-        
+
         /* Organize dependency files */
         package_move_files( package_dir );
 }
 
-/* 
+/*
  * Main dependency installation function
  * Parses dependency strings, downloads archives, and applies dependencies
  */
@@ -1925,7 +1889,7 @@ void wg_install_depends( const char *dependencies_str, const char *branch )
                                         "\t\t[Fail]\n", dependencies[i] );
                                 continue;
                         }
-                
+
                 /* Handle GitHub repositories */
                 if ( !strcmp( repo.host, "github" ) ) {
                         if ( !package_handle_repo( &repo, package_url,

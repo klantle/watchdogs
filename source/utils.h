@@ -188,6 +188,14 @@ extern WatchdogConfig wgconfig;
 /* Utility function declarations */
 void wg_sef_fdir_memset_to_null(void);
 
+#ifdef WG_LINUX
+#ifndef strlcpy
+size_t strlcpy(char *dst, const char *src, size_t size);
+#endif
+#ifndef strlcat
+size_t strlcat(char *dst, const char *src, size_t size);
+#endif
+#endif
 #ifdef WG_WINDOWS
 #define strlcpy   win_strlcpy
 #define strlcat   win_strlcat

@@ -928,17 +928,20 @@ void wg_apply_pawncc(void)
             const char *target = (strlen(gamemode_compile) < 1) ?
                                 wgconfig.wg_toml_proj_input : gamemode_compile;
 
+            char *extension = strrchr(target, '.');
+            if (extension) *extension = '\0';
+
+            char size_gamemode[WG_PATH_MAX];
+            snprintf(size_gamemode, sizeof(size_gamemode),
+                    (target == wgconfig.wg_toml_proj_input) ?
+                    "%s.pwn" : "gamemodes/%s.pwn", target);
+
             /* Create file if it doesn't exist */
-            if (path_exists(target) == 0) {
-                pr_info(stdout, "File: %s.pwn not found!.. creating...", target);
+            if (!path_access(size_gamemode)) {
+                pr_info(stdout, "File: %s.pwn not found!.. creating...", size_gamemode);
 
                 if (dir_exists("gamemodes") == 0)
                         MKDIR("gamemodes");
-
-                char size_gamemode[WG_PATH_MAX];
-                snprintf(size_gamemode, sizeof(size_gamemode),
-                        (target == wgconfig.wg_toml_proj_input) ?
-                        "%s" : "gamemodes/%s.pwn", target);
 
                 FILE *test = fopen(size_gamemode, "w+");
                 if (test) {
@@ -951,6 +954,8 @@ void wg_apply_pawncc(void)
                     fwrite(default_code, 1, strlen(default_code), test);
                     fclose(test);
                 }
+            } else {
+                wgconfig.wg_toml_proj_input = strdup(size_gamemode);
             }
 
             /* Run compiler with appropriate arguments */

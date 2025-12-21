@@ -1845,12 +1845,7 @@ int wg_toml_configs(void)
 			path_access("server.cfg"))
 			samp_user = 1; /* SA-MP */
 		else {
-			static int crit_nf = 0;
-			if (crit_nf == 0) {
-				crit_nf = 1;
-				pr_warning(stdout, "can't locate sa-mp/open.mp server!");
-				return 0; /* Can't determine server type */
-			}
+				;
 		}
 
 		/* Search for PAWN compiler */

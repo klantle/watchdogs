@@ -95,6 +95,19 @@ void __debug_main_chain_(int debug_hard,
 
         __reset_sys();
 
+#ifdef WG_WINDOWS
+        {
+            static int k = 0;
+            if ( k != 1 ) {
+              HANDLE hOut = GetStdHandle(STD_OUTPUT_HANDLE);
+              DWORD dwMode = 0;
+              GetConsoleMode(hOut, &dwMode);
+              dwMode |= ENABLE_VIRTUAL_TERMINAL_PROCESSING;
+              SetConsoleMode(hOut, dwMode);
+              ++k;
+            }
+        }
+#endif
 #if ! defined(_DBG_PRINT)
         return;
 #endif

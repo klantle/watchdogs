@@ -672,13 +672,13 @@ not_valid_flag_options:
                     static int compiler_targets = 0;
                     if (compiler_targets != 1) {
                         pr_color(stdout, FCOLOUR_YELLOW,
-                                "=== COMPILER TARGET ===\n");
+                                "==== COMPILER TARGET ====\n");
                         printf("   ** This notification appears only once.\n"
                                "    * You can set the target using args in the command.\n");
                         printf("   * You run the command without any args.\n"
                             "   * Do you want to compile for " FCOLOUR_GREEN "%s " FCOLOUR_DEFAULT "(just enter), \n"
-                            "   * or do you want to compile for something else?\n"
-                            "   ** Enter your input here:", wgconfig.wg_toml_proj_input);
+                            "   * or do you want to compile for something else?\n", wgconfig.wg_toml_proj_input);
+                        printf("->");
                         char *proj_targets = readline(" ");
                         if (strlen(proj_targets) > 0) {
                             wgconfig.wg_toml_proj_input = strdup(proj_targets);

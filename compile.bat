@@ -1,2 +1,2 @@
 @ECHO OFF
-run-native.bat compile .
+windows-native.cmd compile .

@@ -1,3 +1,5 @@
+->> What is this?
+--> this is vscode tasks - run watchdogs in vscode.
 -> create dir: ".vscode" in root
  -> creae file: "tasks.json" in .vscode/
 put:
@@ -7,7 +9,7 @@ put:
             {
                 "label": "Run a bat file",
                 "type": "shell",
-                "command": "${workspaceFolder}/run-native.bat",
+                "command": "${workspaceFolder}/windows-native.cmd",
                 "group": {
                     "kind": "build",
                     "isDefault": false

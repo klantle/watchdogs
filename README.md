@@ -184,14 +184,12 @@ wget -O install.sh https://github.com/gskeleton/watchdogs/raw/refs/heads/main/__
 - Click the "Download"
 - Extract the Archive
 - Just run the "install_all.bat".
-2. Open Windows Powershell
+2. Open Windows Command Prompt
 - Run:
 ```yml
-Invoke-WebRequest "https://raw.githubusercontent.com/gskeleton/watchdogs/refs/heads/main/__windows.cmd" -OutFile "install.cmd"; cmd /c install.cmd
+powershell -Command "Invoke-WebRequest 'https://raw.githubusercontent.com/gskeleton/watchdogs/refs/heads/main/__windows.cmd' -OutFile 'install.cmd'"
+cmd /c install.cmd
 ```
-- Exit from Windows Powershell.
-- Run file: "run-native.bat".
-- Done.
 
 ## MSYS2 (For Windows Build)
 

@@ -6,14 +6,25 @@ dir "%USERPROFILE%\Downloads"
 echo.
 
 echo Enter the path you want to switch to:
+echo "Enter the path you want to switch to location in %USERPROFILE%\Downloads:"
 echo  ^^ example: my_folder
-echo  ^^ a folder name in Downloads/
+echo  ^^ a folder name for install; the folder doesn’t exist?, don’t worry..
 set /p TARGET_DIR=Path:
 
-if not exist "%TARGET_DIR%" (
-    echo Directory not found: "%TARGET_DIR%"
-    pause
-    exit /b 1
+if not exist "%USERPROFILE%\Downloads\%TARGET_DIR%" (
+    echo Directory not found: "%USERPROFILE%\Downloads\%TARGET_DIR%"
+    echo Creating directory...
+
+    mkdir "%USERPROFILE%\Downloads\%TARGET_DIR%"
+    if errorlevel 1 (
+        echo Failed to create directory: "%USERPROFILE%\Downloads\%TARGET_DIR%"
+        pause
+        exit /b 1
+    )
+
+    echo Successfully created directory: "%USERPROFILE%\Downloads\%TARGET_DIR%"
+) else (
+    echo Directory already exists: "%USERPROFILE%\Downloads\%TARGET_DIR%"
 )
 
 cd /d "%USERPROFILE%\Downloads\%TARGET_DIR%" || (
@@ -40,13 +51,13 @@ if exist "C:\libwatchdogs" (
 )
 
 move /Y "libwatchdogs" "C:\"
-move /Y "run-native.bat" "..\"
+move /Y "windows-native.cmd" "..\"
 
 cd ..
 
 rmdir /s /q "watch"
 
-.\run-native.bat
+.\windows-native.cmd
 
 echo Done.
 endlocal

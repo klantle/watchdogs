@@ -49,6 +49,6 @@ else
 fi
 
 make
-make termux && export DISPLAY=:0 && termux-x11 :0 &
+make termux
 chmod +x watchdogs.tmux
 ./watchdogs.tmux

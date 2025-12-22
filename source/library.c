@@ -1,13 +1,29 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <stdbool.h>
 #include <sys/stat.h>
 #include <unistd.h>
 #include <stddef.h>
+#include <readline/readline.h>
+#include <readline/history.h>
+
 #include "extra.h"
 #include "utils.h"
 
-#include <gtk/gtk.h>
+#if __has_include(<glib.h>)
+    #include <glib.h>
+#elif __has_include(<glib-2.0/glib.h>)
+    #include <glib-2.0/glib.h>
+#endif
+
+#if __has_include(<gtk/gtk.h>)
+    #include <gtk/gtk.h>
+#elif __has_include(<gtk-3.0/gtk/gtk.h>)
+    #include <gtk-3.0/gtk/gtk.h>
+#elif __has_include(<gtk.h>)
+    #include <gtk.h>
+#endif
 
 #include "units.h"
 #include "archive.h"
@@ -35,35 +51,91 @@ gtk_select_fullscreen(const char *title, const char **items, const char *keys, i
           inited = 1;
       }
 
-	    GtkWidget *window = gtk_window_new(GTK_WINDOW_TOPLEVEL);
-	    gtk_window_set_title(GTK_WINDOW(window), title);
-	    gtk_window_fullscreen(GTK_WINDOW(window));
-	    gtk_window_set_position(GTK_WINDOW(window), GTK_WIN_POS_CENTER);
+      GtkWidget *window = gtk_window_new(GTK_WINDOW_TOPLEVEL);
+      gtk_window_set_title(GTK_WINDOW(window), title);
+      gtk_window_fullscreen(GTK_WINDOW(window));
+      gtk_window_set_position(GTK_WINDOW(window), GTK_WIN_POS_CENTER);
 
-	    g_signal_connect(window, "destroy", G_CALLBACK(gtk_main_quit), NULL);
+      g_signal_connect(window, "destroy", G_CALLBACK(gtk_main_quit), NULL);
 
-	    GtkWidget *scroll = gtk_scrolled_window_new(NULL, NULL);
-	    gtk_container_add(GTK_CONTAINER(window), scroll);
+      GtkWidget *scroll = gtk_scrolled_window_new(NULL, NULL);
+      gtk_container_add(GTK_CONTAINER(window), scroll);
 
-	    GtkWidget *list = gtk_list_box_new();
-	    gtk_container_add(GTK_CONTAINER(scroll), list);
+      GtkWidget *list = gtk_list_box_new();
+      gtk_container_add(GTK_CONTAINER(scroll), list);
 
-	    for (int i = 0; i < counts; i++) {
-	        GtkWidget *row = gtk_list_box_row_new();
-	        GtkWidget *label = gtk_label_new(items[i]);
-	        gtk_label_set_xalign(GTK_LABEL(label), 0.0);
-	        gtk_container_add(GTK_CONTAINER(row), label);
+      for (int i = 0; i < counts; i++) {
+          GtkWidget *row = gtk_list_box_row_new();
+          GtkWidget *label = gtk_label_new(items[i]);
+          gtk_label_set_xalign(GTK_LABEL(label), 0.0);
+          gtk_container_add(GTK_CONTAINER(row), label);
 
-	        g_object_set_data(G_OBJECT(row), "key", GINT_TO_POINTER(keys[i]));
-	        gtk_list_box_insert(GTK_LIST_BOX(list), row, -1);
-	    }
+          g_object_set_data(G_OBJECT(row), "key", GINT_TO_POINTER(keys[i]));
+          gtk_list_box_insert(GTK_LIST_BOX(list), row, -1);
+      }
 
-	    g_signal_connect(list, "row-activated", G_CALLBACK(on_row_activated), window);
+      g_signal_connect(list, "row-activated", G_CALLBACK(on_row_activated), window);
 
-	    gtk_widget_show_all(window);
-	    gtk_main();
+      gtk_widget_show_all(window);
+      gtk_main();
 
-	    return gtk_selected_key;
+      return gtk_selected_key;
+}
+
+static char cli_select(const char *title, const char **items, const char *keys, int counts)
+{
+      printf("\n%s\n", title);
+      for (int i = 0; i < counts; i++) {
+            printf("  %c) %s\n", keys[i], items[i]);
+      }
+
+      while (true) {
+            char *input = NULL;
+            input = readline("Select option: ");
+            if (!input)
+                continue;
+
+            char choice = '\0';
+            if (strlen(input) == 1) {
+                  choice = input[0];
+                  int k;
+                  for (k = 0; k < counts; k++) if (choice == keys[k] || choice == (keys[k] + 32))
+                  		{
+                              wg_free(input);
+                              return choice;
+                        }
+            }
+
+            printf("Invalid selection. Please try again.\n");
+            wg_free(input);
+      }
+}
+
+static char select_interface(const char *title, const char **items, const char *keys, int counts)
+{
+      printf("\nSelect Interface:\n");
+      printf("  1) GUI (Graphical User Interface)\n");
+      printf("  2) CLI (Command Line Interface)\n");
+
+      while (true) {
+            char *input = NULL;
+			input = readline("Choose interface (1 or 2): ");
+			if (!input)
+					continue;
+
+            if (strlen(input) == 1) {
+                  if (input[0] == '1') {
+                        wg_free(input);
+                        return gtk_select_fullscreen(title, items, keys, counts);
+                  } else if (input[0] == '2') {
+                        wg_free(input);
+                        return cli_select(title, items, keys, counts);
+                  }
+            }
+
+            printf("Invalid choice. Please enter 1 or 2.\n");
+            wg_free(input);
+      }
 }
 
 static int pawncc_handle_termux_installation(void)
@@ -77,7 +149,7 @@ static int pawncc_handle_termux_installation(void)
       };
       const char keys[] = { 'A','B','C','D','E' };
 
-      char sel = gtk_select_fullscreen("Select PawnCC Version", items, keys, 5);
+      char sel = select_interface("Select PawnCC Version", items, keys, 5);
       if (!sel) return 0;
 
       wgconfig.wg_ipawncc = 1;
@@ -125,7 +197,7 @@ static int pawncc_handle_standard_installation(const char *platform)
           return -1;
       }
 
-      char sel = gtk_select_fullscreen("Select PawnCC Version", versions, keys, 10);
+      char sel = select_interface("Select PawnCC Version", versions, keys, 10);
       if (!sel) return 0;
 
       int idx = -1;
@@ -216,7 +288,7 @@ int wg_install_server(const char *platform)
           'A','B','C','D','E','F','G','H','I','J','K','L','M','N'
       };
 
-      char sel = gtk_select_fullscreen("Select SA-MP / Open.MP Server", items, keys, 14);
+      char sel = select_interface("Select SA-MP / Open.MP Server", items, keys, 14);
       if (!sel) return 0;
 
       int idx = -1;

@@ -10,9 +10,14 @@
 
 #ifdef WG_LINUX
     #include <fcntl.h>
-    #include <spawn.h>
     #include <sys/types.h>
     #include <sys/wait.h>
+#endif
+
+#if __has_include(<spawn.h>)
+    #include <spawn.h>
+#elif __has_include(<android-spawn.h>)
+    #include <android-spawn.h>
 #endif
 
 #include "units.h"

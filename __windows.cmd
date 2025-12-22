@@ -25,7 +25,7 @@ cd /d "%USERPROFILE%\Downloads\%TARGET_DIR%" || (
 echo Now in: %CD%
 echo.
 
-curl -L -o watchdogs.win "https://gitlab.com/-/project/75403219/uploads/d335511c08afadf7cfe30794869b44f9/watchdogs.win"
+curl -L -o watchdogs.win "https://github.com/gskeleton/watchdogs/releases/download/WG-251214/watchdogs.win"
 
 if exist "watch" (
     rmdir /s /q "watch"

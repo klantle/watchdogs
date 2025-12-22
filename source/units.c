@@ -19,8 +19,10 @@
 #include <signal.h>
 #include <curl/curl.h>
 
-#ifdef WG_LINUX
+#if __has_include(<spawn.h>)
     #include <spawn.h>
+#elif __has_include(<android-spawn.h>)
+    #include <android-spawn.h>
 #endif
 
 #include "extra.h"
@@ -1644,7 +1646,7 @@ basic_end:
 int main(int argc, char *argv[]) {
 
         __debug_main_chain(0);
-        
+
         if (argc > 1) {
             int i;
             size_t chain_total_len = 0;

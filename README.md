@@ -128,7 +128,7 @@ mv -f watchdogs .. && cd .. && \
 ./watchdogs
 ```
 
-> One Command:
+> One Command (Automatic):
 ```sh
 wget -O install.sh https://github.com/gskeleton/watchdogs/raw/refs/heads/main/__linux.sh && chmod +x install.sh && ./install.sh
 ```
@@ -172,7 +172,7 @@ mv -f watchdogs.tmux .. && cd .. && \
 ./watchdogs.tmux
 ```
 
-> One Command:
+> One Command (Automatic):
 ```sh
 wget -O install.sh https://github.com/gskeleton/watchdogs/raw/refs/heads/main/__termux.sh && chmod +x install.sh && ./install.sh
 ```

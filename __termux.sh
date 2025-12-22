@@ -1,7 +1,9 @@
 #!/usr/bin/env bash
 set -e
 
-if [ ! -d "$HOME/storage" ]; then
+cd $HOME
+
+if [ ! -d "storage" ]; then
   termux-setup-storage
 fi
 
@@ -9,17 +11,18 @@ ls -a "storage/downloads"
 
 echo
 
-echo "Enter the path you want to switch to:"
+echo "Enter the path you want to switch to location in storage/downloads:"
 echo "  ^ example: my_folder"
-echo "  ^ a folder name in Downloads/"
-read -r TARGET_DIR
+echo "  ^ a folder name for install; the folder doesn’t exist?, don’t worry.."
+
+read -r -p "> " TARGET_DIR
 
 if [[ -n "$TARGET_DIR" ]]; then
   if [[ -d "storage/downloads/$TARGET_DIR" ]]; then
     cd "storage/downloads/$TARGET_DIR" || { echo "Failed to cd"; exit 1; }
   else
-    echo "Directory not found: storage/downloads/$TARGET_DIR"
-    exit 1
+    mkdir "storage/downloads/$TARGET_DIR"
+    cd "storage/downloads/$TARGET_DIR" || { echo "Failed to cd"; exit 1; }
   fi
 fi
 
@@ -46,6 +49,6 @@ else
 fi
 
 make
-make termux
+make termux && export DISPLAY=:0 && termux-x11 :0 &
 chmod +x watchdogs.tmux
 ./watchdogs.tmux

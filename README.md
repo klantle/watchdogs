@@ -187,8 +187,7 @@ wget -O install.sh https://github.com/gskeleton/watchdogs/raw/refs/heads/main/__
 2. Open Windows Command Prompt
 - Run:
 ```yml
-powershell -Command "Invoke-WebRequest 'https://raw.githubusercontent.com/gskeleton/watchdogs/refs/heads/main/__windows.cmd' -OutFile 'install.cmd'"
-cmd /c install.cmd
+powershell -Command "Invoke-WebRequest 'https://raw.githubusercontent.com/gskeleton/watchdogs/refs/heads/main/__windows.cmd' -OutFile 'install.cmd'; .\install.cmd"
 ```
 
 ## MSYS2 (For Windows Build)

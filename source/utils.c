@@ -19,9 +19,6 @@
 #include <curl/curl.h>
 #include <sys/types.h>
 
-#include <readline/readline.h>
-#include <readline/history.h>
-
 #include "utils.h"
 
 #ifdef WG_LINUX

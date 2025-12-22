@@ -260,4 +260,3 @@ int wg_sef_wcopy(const char *c_src, const char *c_dest);
 int wg_sef_wmv(const char *c_src, const char *c_dest);
 
 #endif /* UTILS_H */
-

@@ -564,13 +564,13 @@ loop_ipcc3:
             }
 
             compile_args = strtok(args, " ");
-            second_arg = strtok(NULL, " ");
-            four_arg = strtok(NULL, " ");
-            five_arg = strtok(NULL, " ");
-            six_arg = strtok(NULL, " ");
-            seven_arg = strtok(NULL, " ");
-            eight_arg = strtok(NULL, " ");
-            nine_arg = strtok(NULL, " ");
+            second_arg   = strtok(NULL, " ");
+            four_arg     = strtok(NULL, " ");
+            five_arg     = strtok(NULL, " ");
+            six_arg      = strtok(NULL, " ");
+            seven_arg    = strtok(NULL, " ");
+            eight_arg    = strtok(NULL, " ");
+            nine_arg     = strtok(NULL, " ");
 
             wg_run_compiler(args, compile_args, second_arg, four_arg,
                             five_arg, six_arg, seven_arg, eight_arg,

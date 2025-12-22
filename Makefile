@@ -72,7 +72,7 @@ init:
 					clang lld libatomic libcxx-devel curl-devel \
 					readline-devel libarchive-devel \
 					zlib-devel binutils upx \
-					glibc-devel.i686 libstdc++-devel.i686 curl-devel.i686; \
+					libstdc++-devel.i686 curl-devel.i686; \
 			elif command -v yum >/dev/null 2>&1; then \
 				echo "==> Using yum (Legacy RHEL)"; \
 				yum -y groupinstall "Development Tools" && \
@@ -80,7 +80,7 @@ init:
 					clang lld libcxx-devel curl-devel \
 					readline-devel libarchive-devel \
 					zlib-devel binutils upx \
-					glibc-devel.i686 libstdc++-devel.i686 curl-devel.i686; \
+					libstdc++-devel.i686 curl-devel.i686; \
 			elif command -v zypper >/dev/null 2>&1; then \
 				echo "==> Using zypper (openSUSE)"; \
 				zypper --non-interactive refresh && \
@@ -89,14 +89,14 @@ init:
 					curl clang lld libc++-devel \
 					libcurl-devel readline-devel libarchive-devel \
 					zlib-devel binutils upx \
-					glibc-devel-32bit libstdc++6-devel-32bit libcurl4-devel-32bit; \
+					libstdc++6-devel-32bit libcurl4-devel-32bit; \
 			elif command -v pacman >/dev/null 2>&1; then \
 				echo "==> Using pacman (Arch)"; \
 				pacman -Sy --noconfirm && \
 				pacman -S --needed --noconfirm \
 					libatomic base-devel clang lld libc++ readline \
 					curl libarchive zlib binutils upx \
-					lib32-glibc lib32-gcc-libs; \
+					lib32-gcc-libs; \
 			else \
 				echo "Unsupported Linux distribution"; \
 				exit 1; \
@@ -151,7 +151,7 @@ debug:
 termux-debug: DEBUG_MODE=1
 termux-debug: OUTPUT = watchdogs.debug.tmux
 termux-debug:
-	$(CC) $(CFLAGS) glib-2.0 -g -D_DBG_PRINT -D__ANDROID__ $(SRCS) -landroid-spawn -o $(OUTPUT) $(LDFLAGS)
+	$(CC) $(CFLAGS) -g -D_DBG_PRINT -D__ANDROID__ $(SRCS) -landroid-spawn -o $(OUTPUT) $(LDFLAGS)
 
 windows-debug: DEBUG_MODE=1
 windows-debug: OUTPUT = watchdogs.debug.win

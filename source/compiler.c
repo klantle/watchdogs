@@ -61,7 +61,7 @@ int wg_run_compiler(const char *args, const char *compile_args,
            nine_arg
         };
 
-        FILE *this_proc_fileile;
+        FILE *this_proc_file;
         char proj_parse[WG_PATH_MAX] = { 0 };
         char size_log[WG_MAX_PATH * 4];
         char run_cmd[WG_PATH_MAX + 258];
@@ -76,6 +76,7 @@ int wg_run_compiler(const char *args, const char *compile_args,
         char *compiler_size_last_slash = NULL;
         char *compiler_back_slash = NULL;
 
+        char *size_include_extra = NULL;
         char *procure_string_pos = NULL;
         char compiler_extra_options[WG_PATH_MAX] = { 0 };
 
@@ -186,18 +187,19 @@ int wg_run_compiler(const char *args, const char *compile_args,
             snprintf(wg_compiler_input_pawncc_path,
                     sizeof(wg_compiler_input_pawncc_path), "%s", wgconfig.wg_sef_found_list[0]);
 
-            snprintf(run_cmd, sizeof(run_cmd),
-                "/bin/sh "
-                "-c "
-                "\"%s "
-                "> "
-                ".watchdogs/compiler_test.log "
-                "2>&1\"",
-                wg_compiler_input_pawncc_path);
-            wg_run_command(run_cmd);
+            if (path_exists(".watchdogs/compiler_test.log") == 0) {
+                this_proc_file = fopen(".watchdogs/compiler_test.log", "w+");
+                if (this_proc_file) {
+                    fclose(this_proc_file);
+                    snprintf(run_cmd, sizeof(run_cmd),
+                        "sh -c \"%s\" >> .watchdogs/compiler_test.log 2>&1\"",
+                        wg_compiler_input_pawncc_path);
+                    wg_run_command(run_cmd);
+                }
+            }
 
-            this_proc_fileile = fopen(".watchdogs/compiler_test.log", "r");
-            if (!this_proc_fileile) {
+            this_proc_file = fopen(".watchdogs/compiler_test.log", "r");
+            if (!this_proc_file) {
                 pr_error(stdout, "Failed to open .watchdogs/compiler_test.log");
                 __debug_function();
             }
@@ -256,9 +258,9 @@ int wg_run_compiler(const char *args, const char *compile_args,
                             strncpy(flag_to_search, toml_option_value.u.s, size_flag_to_search - 1);
                         }
 
-                        if (this_proc_fileile != NULL) {
-                            rewind(this_proc_fileile);
-                            while (fgets(size_log, sizeof(size_log), this_proc_fileile) != NULL) {
+                        if (this_proc_file != NULL) {
+                            rewind(this_proc_file);
+                            while (fgets(size_log, sizeof(size_log), this_proc_file) != NULL) {
                                 if (strfind(size_log, "error while loading shared libraries:", true) ||
                                     strfind(size_log, "library \"libpawnc.so\" not found", true)) {
                                     wg_printfile(".watchdogs/compiler_test.log");
@@ -307,8 +309,8 @@ not_valid_flag_options:
                         toml_option_value.u.s = NULL;
                     }
 
-                    if (this_proc_fileile) {
-                        fclose(this_proc_fileile);
+                    if (this_proc_file) {
+                        fclose(this_proc_file);
                         if (path_access(".watchdogs/compiler_test.log"))
                             remove(".watchdogs/compiler_test.log");
                     }
@@ -320,6 +322,15 @@ not_valid_flag_options:
                         wgconfig.wg_toml_aio_opt = strdup("");
                     }
 
+                    char
+                      *size_aio_option = wgconfig.wg_toml_aio_opt;
+                    size_t
+                      buffer_aio_options = strlen(wgconfig.wg_toml_aio_opt) + 1;
+                    size_t
+                      max_safe_shifts = buffer_aio_options * 2;
+
+                    size_t rate_shift = 0;
+
                     if (compiler_has_debug != 0 && compiler_debugging != 0) {
                         if (size_debug_options == 0 ||
                             size_debug_options_zero == 0)
@@ -329,6 +340,7 @@ not_valid_flag_options:
                             __debug_function();
                             goto compiler_end;
                         }
+
                         if (size_debug_options < size_debug_options_zero ||
                             size_debug_options % size_debug_options_zero != 0) {
                             pr_error(stdout,
@@ -336,7 +348,9 @@ not_valid_flag_options:
                             __debug_function();
                             goto compiler_end;
                         }
+
                         const size_t MAX_DEBUG_FLAGS = 256;
+
                         if (debug_flag_count > MAX_DEBUG_FLAGS) {
                             pr_error(stdout,
                                 "Excessive debug flag count: %zu",
@@ -357,8 +371,6 @@ not_valid_flag_options:
                             __debug_function();
                             goto compiler_end;
                         }
-                        size_t config_buffer_size = strlen(wgconfig.wg_toml_aio_opt) + 1;
-                        size_t max_safe_shifts = config_buffer_size * 2;
 
                         for (size_t i = 0; i < debug_flag_count; i++) {
                             if (i >= (size_debug_options / sizeof(debug_options[0]))) {
@@ -366,14 +378,16 @@ not_valid_flag_options:
                                     "Debug flag index %zu out of bounds", i);
                                 continue;
                             }
+
                             const char
-                                *debug_flag = debug_options[i];
-                            if (debug_flag == NULL) {
+                                *fetch_debug_flag = debug_options[i];
+
+                            if (fetch_debug_flag == NULL) {
                                 pr_warning(stdout,
                                     "NULL debug flag at index %zu", i);
                                 continue;
                             }
-                            size_t flag_length = strlen(debug_flag);
+                            size_t flag_length = strlen(fetch_debug_flag);
                             if (flag_length == 0) {
                                 continue;
                             }
@@ -383,55 +397,55 @@ not_valid_flag_options:
                                     "Suspiciously long debug flag at index %zu", i);
                                 continue;
                             }
-                            char *config_ptr = wgconfig.wg_toml_aio_opt;
-                            size_t shift_count = 0;
 
-                            while (shift_count < max_safe_shifts) {
-                                char *flag_pos = strstr(config_ptr, debug_flag);
-                                if (flag_pos == NULL) {
-                                    break;
+                            while (rate_shift < max_safe_shifts) {
+                                char *fetch_flag_pos = strstr(size_aio_option, fetch_debug_flag);
+                                if (fetch_flag_pos == NULL) {
+                                    break
+                                    ;
                                 }
                                 bool is_complete_token = true;
-                                if (flag_pos > wgconfig.wg_toml_aio_opt) {
-                                    char prev_char = *(flag_pos - 1);
+                                if (fetch_flag_pos > wgconfig.wg_toml_aio_opt) {
+                                    char prev_char = *(fetch_flag_pos - 1);
                                     if (isalnum((unsigned char)prev_char) ||
                                         prev_char == '_') {
                                         is_complete_token = false;
                                     }
                                 }
-                                char next_char = *(flag_pos + flag_length);
+                                char next_char = *(fetch_flag_pos + flag_length);
                                 if (isalnum((unsigned char)next_char) ||
                                     next_char == '_') {
                                     is_complete_token = false;
                                 }
                                 if (!is_complete_token) {
-                                    config_ptr = flag_pos + 1;
-                                    continue;
+                                    size_aio_option = fetch_flag_pos + 1;
+                                    continue
+                                    ;
                                 }
-                                char *prev_flag = flag_pos + flag_length;
-                                if ((flag_pos - wgconfig.wg_toml_aio_opt) + strlen(prev_flag) + 1 < config_buffer_size)
+                                char *prev_flag = fetch_flag_pos + flag_length;
+                                if ((fetch_flag_pos - wgconfig.wg_toml_aio_opt) + strlen(prev_flag) + 1 < buffer_aio_options)
                                 {
-                                    memmove(flag_pos, prev_flag, strlen(prev_flag) + 1);
-                                    config_buffer_size = strlen(wgconfig.wg_toml_aio_opt) + 1;
+                                    memmove(fetch_flag_pos, prev_flag, strlen(prev_flag) + 1);
+                                    buffer_aio_options = strlen(wgconfig.wg_toml_aio_opt) + 1;
                                 } else {
                                     pr_error(stdout,
                                         "Buffer overflow detected during flag removal");
                                     __debug_function();
-                                    strncpy(wgconfig.wg_toml_aio_opt, original_config, config_buffer_size);
+                                    strncpy(wgconfig.wg_toml_aio_opt, original_config, buffer_aio_options);
                                     wg_free(original_config);
                                     goto compiler_end;
                                 }
 
-                                ++shift_count;
+                                ++rate_shift;
                             }
 
-                            if (shift_count >= max_safe_shifts) {
+                            if (rate_shift >= max_safe_shifts) {
                                 pr_warning(stdout,
-                                    "Excessive flag removals for '%s', possible loop", debug_flag);
+                                    "Excessive flag removals for '%s', possible loop", fetch_debug_flag);
                             }
                         }
 
-                        wgconfig.wg_toml_aio_opt[config_buffer_size - 1] = '\0';
+                        wgconfig.wg_toml_aio_opt[buffer_aio_options - 1] = '\0';
 
                         if (strcmp(original_config, wgconfig.wg_toml_aio_opt) != 0) {
 #if defined (_DBG_PRINT)
@@ -442,7 +456,7 @@ not_valid_flag_options:
 
                         wg_free(original_config);
 
-                        if (strlen(wgconfig.wg_toml_aio_opt) >= config_buffer_size) {
+                        if (strlen(wgconfig.wg_toml_aio_opt) >= buffer_aio_options) {
                             pr_error(stdout,
                                 "Configuration string corruption detected");
                             __debug_function();
@@ -453,12 +467,16 @@ not_valid_flag_options:
 
                 if (compiler_has_debug > 0)
                     strcat(compiler_extra_options, " -d2 ");
+
                 if (compiler_has_assembler > 0)
                     strcat(compiler_extra_options, " -a ");
+
                 if (compiler_has_recursion > 0)
                     strcat(compiler_extra_options, " -R+ ");
+
                 if (compiler_has_verbose > 0)
                     strcat(compiler_extra_options, " -v2 ");
+
                 if (compiler_has_compact > 0)
                     strcat(compiler_extra_options, " -C+ ");
 
@@ -527,143 +545,86 @@ not_valid_flag_options:
                 {
                     bool k = false;
 
-                    if (strfind(compile_args, "/", true)) {
+                    if (strfind(compile_args, "../", true)) {
                         k = true;
 
                         size_t w = 0;
-                        size_t j = 0;
-                        bool found_path = false;
-                        int slash_count = 0;
+                        size_t j;
+                        bool rate_path = false;
 
-                        for (size_t i = 0; compile_args[i] != '\0'; i++) {
-                            if (compile_args[i] == '/') {
-                                slash_count++;
-                            }
-                        }
+                        for (j = 0; compile_args[j] != '\0'; ) {
+                            if (!rate_path && strncmp(&compile_args[j], "../", 3) == 0) {
+                                j += 3;
 
-                        while (compile_args[j] != '\0') {
-                            if (compile_args[j] == ' ' && compile_args[j+1] == '/') {
-                                j += 2;
-                                found_path = true;
+                                while (compile_args[j] != '\0' &&
+                                       compile_args[j] != ' ' &&
+                                       compile_args[j] != '"') {
+                                    proj_parse[w++] = compile_args[j++];
+                                }
+
+                                size_t size_last_slash = 0;
+                                for (size_t idx = 0; idx < w; idx++) {
+                                    if (proj_parse[idx] == '/' || proj_parse[idx] == '\\') {
+                                        size_last_slash = idx + 1;
+                                    }
+                                }
+
+                                if (size_last_slash > 0) {
+                                    w = size_last_slash;
+                                }
+
+                                rate_path = true;
                                 break;
+                            } else {
+                                j++;
                             }
-                            j++;
                         }
 
-                        if (found_path) {
-                            size_t start_pos = j;
-                            char path_level1[WG_PATH_MAX + 26] = { 0 };
-                            char path_level2[WG_PATH_MAX + 26] = { 0 };
-                            char size_path_include[WG_MAX_PATH] = { 0 };
-
-                            while (compile_args[j] != ' ' && compile_args[j] != '\0') {
-                                proj_parse[w++] = compile_args[j++];
-                            }
+                        if (rate_path && w > 0) {
+                            memmove(proj_parse + 3, proj_parse, w + 1);
+                            memcpy(proj_parse, "../", 3);
+                            w += 3;
                             proj_parse[w] = '\0';
 
-                            int path_slash_count = 0;
-                            for (size_t i = 0; proj_parse[i] != '\0'; i++) {
-                                if (proj_parse[i] == '/') {
-                                    path_slash_count++;
-                                }
+                            if (proj_parse[w-1] != '/' && proj_parse[w-1] != '\\') {
+                                strcat(proj_parse, "/");
                             }
-
-                            strcpy(path_level1, proj_parse);
-
-                            if (path_slash_count > 1) {
-                                strcpy(path_level2, proj_parse);
-
-                                char *size_last_slash = strrchr(path_level2, '/');
-                                if (size_last_slash) {
-                                    *size_last_slash = '\0';
-                                    char *second_size_last_slash = strrchr(path_level2, '/');
-                                    if (second_size_last_slash) {
-                                        *(second_size_last_slash + 1) = '\0';
-                                    } else {
-                                        strcpy(path_level2, "/");
-                                    }
-                                }
-                            }
-
-                            if (path_slash_count > 1) {
-                                snprintf(size_path_include, sizeof(size_path_include),
-                                        "-i%spawno/include/ -i%sqawno/include/ -i%sgamemodes/ "
-                                        "-i%spawno/include/ -i%sqawno/include/ -i%sgamemodes/",
-                                        path_level1, path_level1, path_level1,
-                                        path_level2, path_level2, path_level2);
-                            } else {
-                                snprintf(size_path_include, sizeof(size_path_include),
-                                        "-i%spawno/include/ -i%sqawno/include/ -i%sgamemodes/",
-                                        path_level1, path_level1, path_level1);
-                            }
-
-                            strcpy(path_include, size_path_include);
-
-                            pr_info(stdout,
-                                "Path auto-detection: %s - created include paths for:\n"
-                                "  Level 1: %s\n"
-                                "  Level 2: %s",
-                                compile_args, path_level1, path_slash_count > 1 ? path_level2 : "N/A");
-                        }
-                    }
-
-                    if (k != true) {
-                        if (strfind(compile_args, "../", true)) {
-                            k = true;
-
-                            size_t w = 0;
-                            size_t j;
-                            bool found_path = false;
-
-                            for (j = 0; compile_args[j] != '\0'; ) {
-                                if (!found_path && strncmp(&compile_args[j], "../", 3) == 0) {
-                                    j += 3;
-
-                                    while (compile_args[j] != '/' &&
-                                        compile_args[j] != '"' &&
-                                        compile_args[j] != ' ' &&
-                                        compile_args[j] != '\0') {
-                                        proj_parse[w++] = compile_args[j++];
-                                    }
-
-                                    if (compile_args[j] == '/') {
-                                        proj_parse[w++] = compile_args[j++];
-                                    }
-
-                                    found_path = true;
-                                    break;
-                                } else {
-                                    j++;
-                                }
-                            }
-
-                            if (found_path && w > 0) {
-                                memmove(proj_parse + 3, proj_parse, w);
-                                memcpy(proj_parse, "../", 3);
-                                w += 3;
-                                proj_parse[w] = '\0';
-
-                                if (proj_parse[w-1] != __PATH_CHR_SEP_LINUX) {
-                                    strcat(proj_parse, __PATH_STR_SEP_LINUX);
-                                }
-                            } else {
-                                strcpy(proj_parse, "../");
-                            }
-
-                            snprintf(size_path_include, sizeof(size_path_include),
-                                    "-i%spawno/include/  "
-                                    "-i%sqawno/include/ "
-                                    "-i%sgamemodes/ ",
-                                    proj_parse, proj_parse, proj_parse);
-
-                            strcpy(path_include, size_path_include);
-
-                            pr_info(stdout,
-                                "Parent dir detected: %s - new include path created: %s",
-                                compile_args, path_include);
                         } else {
-                            snprintf(path_include, sizeof(path_include), "-ipawno/");
+                            strcpy(proj_parse, "../");
                         }
+
+                        char temp_path[256];
+                        strcpy(temp_path, proj_parse);
+
+                        if (strstr(temp_path, "gamemodes/") || strstr(temp_path, "gamemodes\\")) {
+                            char *pos = strstr(temp_path, "gamemodes/");
+                            if (!pos) pos = strstr(temp_path, "gamemodes\\");
+
+                            if (pos) {
+                                *pos = '\0';
+                            }
+                        }
+
+                        snprintf(size_path_include, sizeof(size_path_include),
+                                "-i%s "
+                                "-i%spawno/include/ "
+                                "-i%sqawno/include/ ",
+                                temp_path, temp_path, temp_path);
+
+                        strcpy(path_include, size_path_include);
+
+                        pr_info(stdout,
+                            "parent dir detected: %s - new include path created: %s",
+                            compile_args, path_include);
+                    } else {
+                        if (dir_exists("pawno") && dir_exists("qawno"))
+                          snprintf(path_include, sizeof(path_include), "-ipawno/include");
+                        else if (dir_exists("pawno"))
+                          snprintf(path_include, sizeof(path_include), "-ipawno/include");
+                        else if (dir_exists("qawno"))
+                          snprintf(path_include, sizeof(path_include), "-iqawno/include");
+                        else
+                          snprintf(path_include, sizeof(path_include), "-ipawno/include");
                     }
                 }
 
@@ -719,7 +680,6 @@ not_valid_flag_options:
                                     path_include);
                     if (rate_debugger > 0) {
                         printf("{\n");
-                        printf("  \"mode\": \"%s\",\n", "non args");
                         printf("  \"compiler\": \"%s\",\n", wg_compiler_input_pawncc_path);
                         printf("  \"project\": \"%s\",\n", wgconfig.wg_toml_proj_input);
                         printf("  \"output\": \"%s\",\n", wgconfig.wg_toml_proj_output);
@@ -830,7 +790,7 @@ not_valid_flag_options:
                                  */
                                 &pi
                         );
-                        if (win32_process_success != TRUE) {
+                        if (win32_process_success == TRUE) {
                             WaitForSingleObject(pi.hProcess, INFINITE);
 
                             clock_gettime(CLOCK_MONOTONIC, &end);
@@ -871,7 +831,6 @@ not_valid_flag_options:
                     }
                     if (rate_debugger > 0) {
                         printf("{\n");
-                        printf("  \"mode\": \"%s\",\n", "non args");
                         printf("  \"compiler\": \"%s\",\n", wg_compiler_input_pawncc_path);
                         printf("  \"project\": \"%s\",\n", wgconfig.wg_toml_proj_input);
                         printf("  \"output\": \"%s\",\n", wgconfig.wg_toml_proj_output);
@@ -1060,16 +1019,16 @@ not_valid_flag_options:
                         wg_printfile(".watchdogs/compiler.log");
 
                         char log_line[WG_MAX_PATH * 4];
-                        this_proc_fileile = fopen(".watchdogs/compiler.log", "r");
+                        this_proc_file = fopen(".watchdogs/compiler.log", "r");
 
-                        if (this_proc_fileile != NULL) {
-                            while (fgets(log_line, sizeof(log_line), this_proc_fileile) != NULL) {
+                        if (this_proc_file != NULL) {
+                            while (fgets(log_line, sizeof(log_line), this_proc_file) != NULL) {
                                 if (strfind(log_line, "backtrace", true))
                                     pr_color(stdout, FCOLOUR_CYAN,
                                         "~ backtrace detected - "
                                         "make sure you are using a newer version of pawncc than the one currently in use.");
                             }
-                            fclose(this_proc_fileile);
+                            fclose(this_proc_file);
                         }
                     }
 compiler_done:
@@ -1287,7 +1246,6 @@ compiler_done:
                                         path_include);
                         if (rate_debugger > 0) {
                             printf("{\n");
-                            printf("  \"mode\": \"%s\",\n", "with args");
                             printf("  \"compiler\": \"%s\",\n", wg_compiler_input_pawncc_path);
                             printf("  \"project\": \"%s\",\n", wg_compiler_input_proj_path);
                             printf("  \"output\": \"%s\",\n", size_container_output);
@@ -1398,7 +1356,7 @@ compiler_done:
                                      */
                                     &pi
                             );
-                            if (win32_process_success != TRUE) {
+                            if (win32_process_success == TRUE) {
                                 WaitForSingleObject(pi.hProcess, INFINITE);
 
                                 clock_gettime(CLOCK_MONOTONIC, &end);
@@ -1440,7 +1398,6 @@ compiler_done:
                         }
                         if (rate_debugger > 0) {
                             printf("{\n");
-                            printf("  \"mode\": \"%s\",\n", "with args");
                             printf("  \"compiler\": \"%s\",\n", wg_compiler_input_pawncc_path);
                             printf("  \"project\": \"%s\",\n", wg_compiler_input_proj_path);
                             printf("  \"output\": \"%s\",\n", size_container_output);
@@ -1627,16 +1584,16 @@ compiler_done:
                             wg_printfile(".watchdogs/compiler.log");
 
                             char log_line[WG_MAX_PATH * 4];
-                            this_proc_fileile = fopen(".watchdogs/compiler.log", "r");
+                            this_proc_file = fopen(".watchdogs/compiler.log", "r");
 
-                            if (this_proc_fileile != NULL) {
-                                while (fgets(log_line, sizeof(log_line), this_proc_fileile) != NULL) {
+                            if (this_proc_file != NULL) {
+                                while (fgets(log_line, sizeof(log_line), this_proc_file) != NULL) {
                                     if (strfind(log_line, "backtrace", true))
                                         pr_color(stdout, FCOLOUR_CYAN,
                                             "~ backtrace detected - "
                                             "make sure you are using a newer version of pawncc than the one currently in use.\n");
                                 }
-                                fclose(this_proc_fileile);
+                                fclose(this_proc_file);
                             }
                         }
 

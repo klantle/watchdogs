@@ -10,7 +10,6 @@ TARGET_NAME    = Watchdogs
 
 CC       ?= clang
 STRIP    ?= strip
-WINDRES  ?= windres
 
 CFLAGS   = -Os -pipe
 LDFLAGS  = -lm -lcurl -lreadline -larchive
@@ -26,10 +25,7 @@ SRCS = source/extra.c source/debug.c source/curl.c source/units.c source/utils.c
 
 OBJS = $(SRCS:.c=.o)
 
-RCFILE  = source/version.rc
-RESFILE = version.res
-
-.PHONY: init clean linux termux windows strip compress debug termux-debug windows-debug
+.PHONY: init strip compress clean linux termux debug termux-debug windows-debug
 
 init:
 		@echo "==> Detecting environment..."
@@ -103,15 +99,12 @@ init:
 			fi; \
 		fi
 
-$(OUTPUT): $(OBJS) $(RESFILE)
-	$(CC) $(CFLAGS) $(OBJS) $(RESFILE) -o $(OUTPUT) $(LDFLAGS)
+$(OUTPUT): $(OBJS)
+	$(CC) $(CFLAGS) $(OBJS) -o $(OUTPUT) $(LDFLAGS)
 	@$(MAKE) strip OUTPUT=$(OUTPUT)
 
 %.o: %.c
 	$(CC) $(CFLAGS) -c $< -o $@
-
-$(RESFILE): $(RCFILE)
-	$(WINDRES) $(RCFILE) -O coff -o $(RESFILE)
 
 strip:
 	@if [ -f "$(OUTPUT)" ]; then $(STRIP) --strip-all $(OUTPUT) || true; fi
@@ -121,43 +114,41 @@ compress:
 
 linux: OUTPUT = watchdogs
 linux:
-	$(CC) $(CFLAGS) -D__LINUX__ $(SRCS) -o $(OUTPUT) $(LDFLAGS); \
+	$(CC) $(CFLAGS) -D__LINUX__ -D__W_VERSION__=\"$(FULL_VERSION)\" $(SRCS) -o $(OUTPUT) $(LDFLAGS); \
 	$(MAKE) strip OUTPUT=$(OUTPUT); \
 	$(MAKE) compress OUTPUT=$(OUTPUT)
 
 termux-fast: OUTPUT = watchdogs.tmux
 termux-fast:
-	$(CC) $(CFLAGS_FAST) \
-	 		-D__ANDROID__ -fPIE $(SRCS) -o $(OUTPUT) \
-	    $(LDFLAGS) -landroid-spawn -pie
+	$(CC) $(CFLAGS_FAST) -D__ANDROID__ -D__W_VERSION__=\"$(FULL_VERSION)\" -fPIE $(SRCS) -o $(OUTPUT) $(LDFLAGS) -landroid-spawn -pie
 
 termux: OUTPUT = watchdogs.tmux
 termux:
-	$(CC) $(CFLAGS) -D__ANDROID__ -fPIE $(SRCS) -o $(OUTPUT) $(LDFLAGS) -landroid-spawn -pie
+	$(CC) $(CFLAGS) -D__ANDROID__ -D__W_VERSION__=\"$(FULL_VERSION)\" -fPIE $(SRCS) -o $(OUTPUT) $(LDFLAGS) -landroid-spawn -pie
 	@$(MAKE) strip OUTPUT=$(OUTPUT)
 	@$(MAKE) compress OUTPUT=$(OUTPUT)
 
 windows: OUTPUT = watchdogs.win
-windows: $(RESFILE)
-	$(CC) $(CFLAGS)  $(SRCS) $(RESFILE) -D__WINDOWS32__ -o $(OUTPUT) $(LDFLAGS)
+windows:
+	$(CC) $(CFLAGS) $(SRCS) -D__WINDOWS32__ -D__W_VERSION__=\"$(FULL_VERSION)\" -o $(OUTPUT) $(LDFLAGS)
 	@$(MAKE) strip OUTPUT=$(OUTPUT)
 	@$(MAKE) compress OUTPUT=$(OUTPUT)
 
 debug: DEBUG_MODE=1
 debug: OUTPUT = watchdogs.debug
 debug:
-	$(CC) $(CFLAGS) -g -D_DBG_PRINT -D__LINUX__ $(SRCS) -o $(OUTPUT) $(LDFLAGS)
+	$(CC) $(CFLAGS) -g -D_DBG_PRINT -D__LINUX__ -D__W_VERSION__=\"$(FULL_VERSION)\" $(SRCS) -o $(OUTPUT) $(LDFLAGS)
 
 termux-debug: DEBUG_MODE=1
 termux-debug: OUTPUT = watchdogs.debug.tmux
 termux-debug:
-	$(CC) $(CFLAGS) -g -D_DBG_PRINT -D__ANDROID__ $(SRCS) -landroid-spawn -o $(OUTPUT) $(LDFLAGS)
+	$(CC) $(CFLAGS) -g -D_DBG_PRINT -D__ANDROID__ -D__W_VERSION__=\"$(FULL_VERSION)\" $(SRCS) -landroid-spawn -o $(OUTPUT) $(LDFLAGS)
 
 windows-debug: DEBUG_MODE=1
 windows-debug: OUTPUT = watchdogs.debug.win
-windows-debug: $(RESFILE)
-	$(CC) $(CFLAGS) -g -D_DBG_PRINT -D__WINDOWS32__ $(SRCS) $(RESFILE) -o $(OUTPUT) $(LDFLAGS)
+windows-debug:
+	$(CC) $(CFLAGS) -g -D_DBG_PRINT -D__WINDOWS32__ -D__W_VERSION__=\"$(FULL_VERSION)\" $(SRCS) -o $(OUTPUT) $(LDFLAGS)
 
 clean:
-	rm -rf $(OBJS) $(RESFILE) $(OUTPUT) watchdogs watchdogs.win watchdogs.tmux \
+	rm -rf $(OBJS) $(OUTPUT) watchdogs watchdogs.win watchdogs.tmux \
 	       watchdogs.debug watchdogs.debug.tmux watchdogs.debug.win

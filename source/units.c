@@ -38,7 +38,11 @@
 #include "units.h"
 
 #ifndef WATCHDOGS_RELEASE
-    #define WATCHDOGS_RELEASE "WATCHDOGS-251214"
+#if defined(__W_VERSION__)
+    #define WATCHDOGS_RELEASE __W_VERSION__
+#else
+    #define WATCHDOGS_RELEASE "WATCHDOGS"
+#endif
 #endif
 const char *watchdogs_release = WATCHDOGS_RELEASE;
 

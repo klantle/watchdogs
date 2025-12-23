@@ -33,6 +33,7 @@ void __reset_sys(void) {
         if (path_access(".watchdogs/crashdetect")) {
             remove(".watchdogs/crashdetect");
         }
+        setlocale(LC_ALL, "en_US.UTF-8");
         signal(SIGINT, SIG_DFL);
         wg_sef_fdir_memset_to_null();
         wg_toml_configs();
@@ -50,6 +51,19 @@ void __debug_main_chain_(int debug_hard,
 
         __reset_sys();
 
+#ifdef WG_WINDOWS
+        {
+            static int k = 0;
+            if ( k != 1 ) {
+              HANDLE hOut = GetStdHandle(STD_OUTPUT_HANDLE);
+              DWORD dwMode = 0;
+              GetConsoleMode(hOut, &dwMode);
+              dwMode |= ENABLE_VIRTUAL_TERMINAL_PROCESSING;
+              SetConsoleMode(hOut, dwMode);
+              ++k;
+            }
+        }
+#endif
 #if ! defined(_DBG_PRINT)
         return;
 #endif

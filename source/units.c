@@ -285,7 +285,7 @@ _reexecute_command:
 
             __debug_main_chain(1);
 
-            printf(FCOLOUR_BRED "");
+            printf(FCOLOUR_BLUE "");
             wg_printfile("watchdogs.toml");
             printf(FCOLOUR_DEFAULT "\n");
 
@@ -672,6 +672,7 @@ start_main:
                         int ret_serv = 0;
 back_start:
                         start = time(NULL);
+                        printf(FCOLOUR_BLUE "");
                         #ifdef WG_WINDOWS
                         snprintf(size_run, sizeof(size_run), "%s", wgconfig.wg_toml_binary);
                         #else
@@ -681,15 +682,19 @@ back_start:
                         int rate_runner_failed = wg_run_command(size_run);
                         if (rate_runner_failed == 0) {
                             if (!strcmp(wgconfig.wg_os_type, OS_SIGNAL_LINUX)) {
+                                    printf(FCOLOUR_DEFAULT "\n");
                                     printf("~ logging...\n");
                                     sleep(3);
+                                    printf(FCOLOUR_BLUE "");
                                     wg_display_server_logs(0);
+                                    printf(FCOLOUR_DEFAULT "\n");
                             }
                         } else {
                             /* Skip retry logic in Pterodactyl environments */
                             /* so why? -- Pterodactyl hosting doesn't need this,
                             *  because when your server restarts in Pterodactyl it will automatically retry
                             */
+                            printf(FCOLOUR_DEFAULT "\n");
                             pr_color(stdout, FCOLOUR_RED, "Server startup failed!\n");
                             if (is_pterodactyl_env()) {
                                 goto server_done;
@@ -708,7 +713,7 @@ back_start:
                                 goto back_start;
                             }
                         }
-
+                        printf(FCOLOUR_DEFAULT "\n");
 server_done:
                         end = time(NULL);
                         if (sigint_handler == 0)
@@ -756,6 +761,7 @@ start_main2:
                         int ret_serv = 0;
 back_start2:
                         start = time(NULL);
+                        printf(FCOLOUR_BLUE "");
                         #ifdef WG_WINDOWS
                         snprintf(size_run, sizeof(size_run), "%s", wgconfig.wg_toml_binary);
                         #else
@@ -768,6 +774,7 @@ back_start2:
                             /* so why? -- Pterodactyl hosting doesn't need this,
                             *  because when your server restarts in Pterodactyl it will automatically retry
                             */
+                            printf(FCOLOUR_DEFAULT "\n");
                             pr_color(stdout, FCOLOUR_RED, "Server startup failed!\n");
                             if (is_pterodactyl_env()) {
                                 goto server_done2;
@@ -786,7 +793,7 @@ back_start2:
                                 goto back_start2;
                             }
                         }
-
+                        printf(FCOLOUR_DEFAULT "\n");
 server_done2:
                         end = time(NULL);
                         if (sigint_handler == 0) {

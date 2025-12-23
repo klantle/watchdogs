@@ -849,6 +849,7 @@ void wg_run_samp_server(const char *gamemode, const char *server_bin)
         int _wg_log_acces = -0x1;
 back_start:
         start = time(NULL);
+        printf(FCOLOUR_BLUE "");
         /* Construct and execute server command */
         #ifdef WG_WINDOWS
                 snprintf(command, sizeof(command), "%s", server_bin);
@@ -861,11 +862,15 @@ back_start:
 
                 /* Display server logs for Linux systems */
                 if (!strcmp(wgconfig.wg_os_type, OS_SIGNAL_LINUX)) {
+                        printf(FCOLOUR_DEFAULT "\n");
                         printf("~ logging...\n");
                         sleep(0x3);
+                        printf(FCOLOUR_BLUE "");
                         wg_display_server_logs(0x0);
+                        printf(FCOLOUR_DEFAULT "\n");
                 }
         } else {
+                printf(FCOLOUR_DEFAULT "\n");
                 pr_color(stdout, FCOLOUR_RED, "Server startup failed!\n");
 
                 /* Skip retry logic in Pterodactyl environments */
@@ -890,6 +895,7 @@ back_start:
                         goto back_start;
                 }
         }
+        printf(FCOLOUR_DEFAULT "\n");
 
 server_done:
         end = time(NULL);
@@ -1140,6 +1146,7 @@ void wg_run_omp_server(const char *gamemode, const char *server_bin)
         int _wg_log_acces = -0x1;
 back_start:
         start = time(NULL);
+        printf(FCOLOUR_BLUE "");
         /* Construct server execution command */
         #ifdef WG_WINDOWS
                 snprintf(command, sizeof(command), "%s", server_bin);
@@ -1149,6 +1156,7 @@ back_start:
         ret = wg_run_command(command);
 
         if (ret != 0) {
+                printf(FCOLOUR_DEFAULT "\n");
                 pr_color(stdout, FCOLOUR_RED, "Server startup failed!\n");
 
                 /* Skip retry logic in Pterodactyl environments */
@@ -1172,6 +1180,7 @@ back_start:
                         goto back_start;
                 }
         }
+        printf(FCOLOUR_DEFAULT "\n");
 
 server_done:
         end = time(NULL);

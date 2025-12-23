@@ -19,10 +19,15 @@
 static void arch_extraction_path(const char *dest, const char *path,
                                  char *out, size_t out_size) {
 
-        if (strlen(dest) < 1 || strcmp(dest, ".") == 0 || strcmp(dest, "none") == 0 || strcmp(dest, "root") == 0) {
+        if (strlen(dest) < 1 ||
+            strcmp(dest, ".") == 0 ||
+            strcmp(dest, "none") == 0 ||
+            strcmp(dest, "root") == 0)
+        {
                 snprintf(out, out_size, "%s", path);
-        } else {
-                if (!strncmp(path, dest, strlen(dest))) {
+        }
+        else {
+                if (strncmp(path, dest, strlen(dest)) == 0) {
                         snprintf(out, out_size,
                                 "%s", path);
                 } else {
@@ -45,13 +50,15 @@ static int arch_copy_data(struct archive *ar, struct archive *aw)
                 if (ret == ARCHIVE_EOF)
                         return ARCHIVE_OK;
                 if (ret != ARCHIVE_OK) {
-                        pr_error(stdout, "Read error: %s", archive_error_string(ar));
+                        pr_error(stdout, "arch_copy_data getting error "
+                                    "(read error): %s", archive_error_string(ar));
                         return ret;
                 }
 
                 ret = archive_write_data_block(aw, buffer, size, offset);
                 if (ret != ARCHIVE_OK) {
-                        pr_error(stdout, "Write error: %s", archive_error_string(aw));
+                        pr_error(stdout, "arch_copy_data getting error "
+                                    "(write error): %s", archive_error_string(aw));
                         return ret;
                 }
         }
@@ -74,7 +81,8 @@ int compress_to_archive(const char *archive_path,
 
         archive = archive_write_new();
         if (archive == NULL) {
-                fprintf(stderr, "Failed to create archive object\n");
+                fprintf(stderr,
+                    "Failed to create archive object\n");
                 return -1;
         }
 
@@ -149,7 +157,7 @@ int compress_to_archive(const char *archive_path,
                  * 2. Free the archive write structure to prevent memory leaks
                  * 3. Return error code indicating failure
                  */
-                fprintf(stderr, "Unsupported compression format\n");
+                fprintf(stderr, "Unsupported compression format.. default: tgz | zip.\n");
                 archive_write_free(archive);
                 return -1;
         }
@@ -327,14 +335,14 @@ int wg_path_recursive(struct archive *archive, const char *root, const char *pat
 
                 if (!S_ISREG(fd_stat.st_mode)) {
                         fprintf(stderr,
-                                "File type changed (not regular): %s\n", full_path);
+                                "file type changed (not regular): %s\n", full_path);
                         close(fd);
                         return -1;
                 }
 
                 if (path_stat.st_ino != fd_stat.st_ino || path_stat.st_dev != fd_stat.st_dev) {
                         fprintf(stderr,
-                                "File changed during processing: %s\n", full_path);
+                                "file changed during processing: %s\n", full_path);
                         close(fd);
                         return -1;
                 }
@@ -522,7 +530,7 @@ int compress_directory(const char *archive_path,
                  *   3. Clean up internal libarchive structures
                  * - Return -1 to indicate failure to calling function
                  */
-                fprintf(stderr, "Unsupported format\n");
+                fprintf(stderr, "Unsupported format.. default: tgz | zip.\n");
                 archive_write_free(a);
                 return -1;
         }
@@ -551,8 +559,10 @@ int wg_extract_tar(const char *tar_path, const char *entry_dest) {
         struct archive *ext;
         struct archive_entry *entry;
 
-        flags = ARCHIVE_EXTRACT_TIME | ARCHIVE_EXTRACT_PERM |
-                        ARCHIVE_EXTRACT_ACL | ARCHIVE_EXTRACT_FFLAGS;
+        flags = ARCHIVE_EXTRACT_TIME |
+                ARCHIVE_EXTRACT_PERM |
+                ARCHIVE_EXTRACT_ACL |
+                ARCHIVE_EXTRACT_FFLAGS;
 
         a = archive_read_new();
         archive_read_support_format_all(a);
@@ -592,14 +602,15 @@ int wg_extract_tar(const char *tar_path, const char *entry_dest) {
                 if (entry_dest != NULL && strlen(entry_dest) > 0) {
                         char entry_new_path[1024];
                         wg_mkdir(entry_dest);
-                        snprintf(entry_new_path, sizeof(entry_new_path), "%s/%s", entry_dest, entry_path);
+                        snprintf(entry_new_path, sizeof(entry_new_path),
+                            "%s" "%s" "%s", entry_dest, __PATH_STR_SEP_LINUX, entry_path);
                         archive_entry_set_pathname(entry, entry_new_path);
                 }
 
                 r = archive_write_header(ext, entry);
                 if (r != ARCHIVE_OK) {
                         fprintf(stderr, "Error writing header for %s: %s\n",
-                                        entry_path, archive_error_string(ext));
+                                entry_path, archive_error_string(ext));
                 } else {
                         r = arch_copy_data(a, ext);
                         if (r != ARCHIVE_OK && r != ARCHIVE_EOF) {
@@ -610,7 +621,7 @@ int wg_extract_tar(const char *tar_path, const char *entry_dest) {
                 r = archive_write_finish_entry(ext);
                 if (r != ARCHIVE_OK) {
                         fprintf(stderr, "Error finishing entry %s: %s\n",
-                                        entry_path, archive_error_string(ext));
+                                entry_path, archive_error_string(ext));
                 }
         }
 
@@ -661,7 +672,7 @@ int wg_extract_zip(const char *zip_file, const char *entry_dest) {
         struct archive *archive_read;
         struct archive *archive_write;
         struct archive_entry *item;
-        char paths[1024 * 1024];
+        char paths[WG_MAX_PATH];
         int ret;
         int error_occurred = 0;
 
@@ -681,7 +692,8 @@ int wg_extract_zip(const char *zip_file, const char *entry_dest) {
 
         ret = archive_read_open_filename(archive_read, zip_file, 1024 * 1024);
         if (ret != ARCHIVE_OK) {
-                pr_error(stdout, "Cannot open file: %s", archive_error_string(archive_read));
+                pr_error(stdout, "Cannot open archive: %s",
+                      archive_error_string(archive_read));
                 goto error;
         }
 
@@ -723,53 +735,55 @@ void wg_extract_archive(const char *filename, const char *dir) {
         if (dir_exists(".watchdogs") == 0)
             MKDIR(".watchdogs");
 
-        pr_color(stdout, FCOLOUR_CYAN, " Try Extracting %s archive file...\n", filename);
+        pr_color(stdout, FCOLOUR_CYAN,
+              " Try Extracting %s archive file...\n", filename);
         fflush(stdout);
 
         if (strend(filename, ".tar.gz", true)) {
-                if (wgconfig.wg_idownload == 1) {
-                        if (path_exists("scripts")) {
-                                wg_extract_tar(filename, "scripts");
-                        } else {
-                                if (wg_mkdir(".watchdogs/scripts")) {
-                                        pr_info(stdout, "Extracting into .watchdogs/scripts...");
-                                        wg_extract_tar(filename, ".watchdogs/scripts");
-                                }
-                        }
-                } else {
-                        wg_extract_tar(filename, dir);
-                }
-        }
-        else if (strend(filename, ".tar", true)) {
-                if (wgconfig.wg_idownload == 1) {
-                        if (path_exists("scripts")) {
-                                wg_extract_tar(filename, "scripts");
-                        } else {
-                                if (wg_mkdir(".watchdogs/scripts")) {
-                                        pr_info(stdout, "Extracting into .watchdogs/scripts...");
-                                        wg_extract_tar(filename, ".watchdogs/scripts");
-                                }
-                        }
-                } else {
-                        wg_extract_tar(filename, dir);
-                }
-        }
-        else if (strend(filename, ".zip", true)) {
-                if (wgconfig.wg_idownload == 1) {
-                        if (path_exists("scripts")) {
-                                wg_extract_zip(filename, "scripts");
-                        } else {
-                                if (wg_mkdir(".watchdogs/scripts")) {
-                                        pr_info(stdout, "Extracting into .watchdogs/scripts...");
-                                        wg_extract_zip(filename, ".watchdogs/scripts");
-                                }
-                        }
-                } else {
-                        wg_extract_zip(filename, dir);
-                }
+            if (wgconfig.wg_idownload == 1) {
+                if (dir_exists("scripts") != 0)
+                  {
+                      wg_extract_tar(filename, "scripts");
+                  }
+                else
+                  {
+                      MKDIR("scripts");
+                      wg_extract_tar(filename, "scripts");
+                  }
+            } else {
+                  wg_extract_tar(filename, dir);
+            }
+        } else if (strend(filename, ".tar", true)) {
+            if (wgconfig.wg_idownload == 1) {
+                if (dir_exists("scripts") != 0)
+                  {
+                      wg_extract_tar(filename, "scripts");
+                  }
+                else
+                  {
+                      MKDIR("scripts");
+                      wg_extract_tar(filename, "scripts");
+                  }
+            } else {
+                  wg_extract_tar(filename, dir);
+            }
+        } else if (strend(filename, ".zip", true)) {
+            if (wgconfig.wg_idownload == 1) {
+                if (dir_exists("scripts") != 0)
+                  {
+                      wg_extract_zip(filename, "scripts");
+                  }
+                else
+                  {
+                      MKDIR("scripts");
+                      wg_extract_zip(filename, "scripts");
+                  }
+            } else {
+                  wg_extract_zip(filename, dir);
+            }
         }
         else {
-                pr_info(stdout, "Undefined archive: %s\n", filename);
+            pr_info(stdout, "Undefined archive: %s\n", filename);
         }
 
         wgconfig.wg_idownload = 0;

@@ -43,17 +43,18 @@ void curl_verify_cacert_pem(CURL *curl) {
         static int cacert_notice = 0;
 
         if (platform == 3) {
-                if (access("cacert.pem", F_OK) == 0)
-                        curl_easy_setopt(curl, CURLOPT_CAINFO, "cacert.pem");
+                if (path_access("cacert.pem") != 0)
+                    curl_easy_setopt(curl, CURLOPT_CAINFO, "cacert.pem");
                 else if (access("C:/libwatchdogs/cacert.pem", F_OK) == 0)
-                        curl_easy_setopt(curl, CURLOPT_CAINFO, "C:/libwatchdogs/cacert.pem");
-                else {
-                        if (cacert_notice != 1) {
-                                pr_color(stdout, FCOLOUR_GREEN,
-                                        "cURL: can't locate cacert.pem - SSL verification may fail.\n");
-                                cacert_notice = 1;
-                        }
-                }
+                    curl_easy_setopt(curl, CURLOPT_CAINFO, "C:/libwatchdogs/cacert.pem");
+                else
+                  {
+                      if (cacert_notice != 1) {
+                              pr_color(stdout, FCOLOUR_GREEN,
+                                      "cURL: can't locate cacert.pem - SSL verification may fail.\n");
+                              cacert_notice = 1;
+                      }
+                  }
         }
 
         else if (platform == 1) {
@@ -131,21 +132,21 @@ static int progress_callback(void *ptr, curl_off_t dltotal,
         int percent;
 
         if (dltotal > 0) {
-                percent = (int)((dlnow * 100) / dltotal);
-                if (percent != last_percent) {
-                        char spin_char = term_spinner[dot_index % 4];
-                        dot_index++;
+              percent = (int)((dlnow * 100) / dltotal);
+              if (percent != last_percent) {
+                    char spin_char = term_spinner[dot_index % 4];
+                    dot_index++;
 
-                        if (percent < 100)
-                                printf("\r" FCOLOUR_CYAN
-                                        "** Downloading... %3d%% [%c]", percent, spin_char);
-                        else
-                                printf("\r" FCOLOUR_CYAN
-                                        "** Downloading... %3d%% Done!", percent);
+                    if (percent < 100)
+                        printf("\r" FCOLOUR_CYAN
+                                "** Downloading... %3d%% [%c]", percent, spin_char);
+                    else
+                        printf("\r" FCOLOUR_CYAN
+                                "** Downloading... %3d%% Done!", percent);
 
-                        fflush(stdout);
-                        last_percent = percent;
-                }
+                    fflush(stdout);
+                    last_percent = percent;
+              }
         }
 
         return 0;
@@ -629,7 +630,7 @@ static void copy_compiler_tool(const char *src_path, const char *tool_name,
         CHMOD_FULL(src_path);
 
         snprintf(dest_path, sizeof(dest_path),
-                "%s/%s", dest_dir, tool_name);
+                "%s" "%s" "%s", dest_dir, __PATH_STR_SEP_LINUX, tool_name);
 
         wg_sef_wmv(src_path, dest_path);
 }
@@ -671,7 +672,7 @@ static void update_library_environment(const char *lib_path)
 
         char shell_file[WG_PATH_MAX * 2];
         snprintf(shell_file, sizeof(shell_file),
-                "%s/%s", home_dir, shell_rc);
+                "%s" "%s" "%s", home_dir, __PATH_STR_SEP_LINUX, shell_rc);
 
         /* If .bashrc doesn't exist, create it */
         if (path_access(shell_file) == 0 && strfind(shell_file, "bash", true)) {
@@ -717,7 +718,7 @@ static int setup_linux_library(void)
         int i, found_lib;
 
         /* Possible library installation paths */
-        const char *aio_library_path[] = {
+        const char *rate_each_any_path[] = {
                 "/usr/local/lib",
                 "/usr/local/lib32",
                 "/data/data/com.termux/files/usr/lib",
@@ -727,8 +728,8 @@ static int setup_linux_library(void)
                 "/data/data/com.termux/amd32/usr/lib",
                 "/data/data/com.termux/amd64/usr/lib"
         };
-        size_t size_aio_library_path = sizeof(aio_library_path),
-               size_aio_library_path_zero = sizeof(aio_library_path[0]);
+        size_t size_rate_each_any_path = sizeof(rate_each_any_path),
+               size_rate_each_any_path_zero = sizeof(rate_each_any_path[0]);
 
         /* Skip if on Windows or unknown OS */
         if (!strcmp(wgconfig.wg_toml_os_type, OS_SIGNAL_WINDOWS) ||
@@ -759,10 +760,10 @@ static int setup_linux_library(void)
 
         /* Select appropriate library directory */
         for (i = 0;
-             i < size_aio_library_path / size_aio_library_path_zero;
-             i++) if (path_exists(aio_library_path[i]))
+             i < size_rate_each_any_path / size_rate_each_any_path_zero;
+             i++) if (path_exists(rate_each_any_path[i]))
         {
-                        selected_path = aio_library_path[i];
+                        selected_path = rate_each_any_path[i];
                         break;
         }
 

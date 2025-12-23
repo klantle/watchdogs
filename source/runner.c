@@ -22,17 +22,17 @@
 int sigint_handler   = 0;           /* Signal interrupt handling flag */
 static char command[WG_MAX_PATH + WG_PATH_MAX * 2]; /* Command buffer */
 static char *cJSON_Data = NULL;     /* Raw JSON data buffer */
-static char *cjsON_PrInted_data = NULL; /* Pretty-printed JSON string */
+static char *printed = NULL; /* Pretty-printed JSON string */
 static char *sampvoice_port = NULL;  /* Detected SampVoice port */
 static int rate_sampvoice_server = 0; /* SampVoice plugin status */
 static int rate_problem_stat = 0;      /* General problem detection flag */
 static int server_crashdetect = 0; /* CrashDetect plugin detection */
 static int server_rcon_pass = 0;   /* RCON password issue detection */
-static FILE *config_in = NULL;      /* Input configuration file pointer */
-static FILE *config_out = NULL;     /* Output configuration file pointer */
+static FILE *proc_conf_in = NULL;      /* Input configuration file pointer */
+static FILE *proc_conf_out = NULL;     /* Output configuration file pointer */
 static cJSON *root = NULL; /* Root JSON object for server config */
 static cJSON *pawn = NULL;           /* Pawn-specific JSON configuration */
-static cJSON *main_scripts = NULL;   /* Main script object in JSON */
+static cJSON *msj = NULL;   /* Main script object in JSON */
 
 /*
  * Performs cleanup operations for server processes and configuration restoration.
@@ -650,16 +650,17 @@ static int update_samp_config(const char *gamemode)
                 remove(size_config);
 
         /* Create backup of original configuration file */
-        if (is_native_windows())
-                snprintf(command, sizeof(command),
-                        "ren %s %s",
-                        wgconfig.wg_toml_config,
-                        size_config);
-        else
-                snprintf(command, sizeof(command),
-                        "mv -f %s %s",
-                        wgconfig.wg_toml_config,
-                        size_config);
+        if (is_native_windows()) {
+            snprintf(command, sizeof(command),
+                    "ren %s %s",
+                    wgconfig.wg_toml_config,
+                    size_config);
+        } else {
+            snprintf(command, sizeof(command),
+                    "mv -f %s %s",
+                    wgconfig.wg_toml_config,
+                    size_config);
+        }
 
         if (wg_run_command(command) != 0x0) {
                 pr_error(stdout, "Failed to create backup file");
@@ -679,16 +680,17 @@ static int update_samp_config(const char *gamemode)
                 return -1;
         }
 
-        config_in = fdopen(fd, "r");
-        if (!config_in) {
+        proc_conf_in = fdopen(fd, "r");
+        if (!proc_conf_in) {
                 close(fd);
                 return -1;
         }
 
         /* Create new configuration file */
-        config_out = fopen(wgconfig.wg_toml_config, "w+");
-        if (!config_out) {
-                pr_error(stdout, "Failed to write new config");
+        proc_conf_out = fopen(wgconfig.wg_toml_config, "w+");
+        if (!proc_conf_out) {
+                pr_error(stdout,
+                    "Failed to write new config");
                 __debug_function(); /* call debugger function */
                 return -1;
         }
@@ -701,19 +703,19 @@ static int update_samp_config(const char *gamemode)
         gamemode = put_gamemode;
 
         /* Read backup and write new config with modified gamemode */
-        while (fgets(line, sizeof(line), config_in)) {
+        while (fgets(line, sizeof(line), proc_conf_in)) {
                   if (strfind(line, "gamemode0", true)) {
-                  char size_gamemode[WG_PATH_MAX * 0x2];
-                  snprintf(size_gamemode, sizeof(size_gamemode),
-                          "gamemode0 %s\n", put_gamemode);
-                  fputs(size_gamemode, config_out);
-                  continue;
+                      char size_gamemode[WG_PATH_MAX * 0x2];
+                      snprintf(size_gamemode, sizeof(size_gamemode),
+                              "gamemode0 %s\n", put_gamemode);
+                      fputs(size_gamemode, proc_conf_out);
+                      continue;
                   }
-                  fputs(line, config_out);  /* Copy other lines unchanged */
+                  fputs(line, proc_conf_out);  /* Copy other lines unchanged */
         }
 
-        fclose(config_in);
-        fclose(config_out);
+        fclose(proc_conf_in);
+        fclose(proc_conf_out);
 
         return 1;
 }
@@ -732,6 +734,7 @@ void restore_server_config(void) {
         printf(FCOLOUR_GREEN "warning: " FCOLOUR_DEFAULT
                 "Continue to restore %s -> %s? y/n",
                 size_config, wgconfig.wg_toml_config);
+
         char *restore_confirm = readline(" ");
         if (strfind(restore_confirm, "Y", true)) {
                 ;
@@ -747,15 +750,15 @@ void restore_server_config(void) {
                 goto restore_done;
 
         /* Delete current configuration file */
-        if (is_native_windows())
-                snprintf(command, sizeof(command),
-                "if exist \"%s\" (del /f /q \"%s\" 2>nul || "
-                "rmdir /s /q \"%s\" 2>nul)",
-                wgconfig.wg_toml_config, wgconfig.wg_toml_config, wgconfig.wg_toml_config);
-        else
-                snprintf(command, sizeof(command),
-                "rm -rf %s",
-                wgconfig.wg_toml_config);
+        if (is_native_windows()) {
+            snprintf(command, sizeof(command),
+            "if exist \"%s\" (del /f /q \"%s\" 2>nul",
+            wgconfig.wg_toml_config, wgconfig.wg_toml_config);
+        } else {
+            snprintf(command, sizeof(command),
+            "rm -rf %s",
+            wgconfig.wg_toml_config);
+        }
 
         wg_run_command(command);
 
@@ -825,10 +828,6 @@ void wg_run_samp_server(const char *gamemode, const char *server_bin)
         if (ret_c == 0 ||
                 ret_c == -1)
                 return;
-
-        CHMOD_FULL(server_bin);
-        if (path_access("announce"))
-                CHMOD_FULL("announce");
 
         /* Set up signal handler for graceful termination */
         struct sigaction sa;
@@ -911,7 +910,7 @@ server_done:
 static int update_omp_config(const char *gamemode)
 {
         struct stat st;
-        char gamemode_buf[WG_PATH_MAX + 0x1A];
+        char gf[WG_PATH_MAX + 0x1A];
         char put_gamemode[WG_PATH_MAX + 0x1A];
         int ret = -1;
 
@@ -924,19 +923,21 @@ static int update_omp_config(const char *gamemode)
                 remove(size_config);
 
         /* Create backup of current configuration */
-        if (is_native_windows())
-                snprintf(command, sizeof(command),
-                        "ren %s %s",
-                        wgconfig.wg_toml_config,
-                        size_config);
-        else
-                snprintf(command, sizeof(command),
-                        "mv -f %s %s",
-                        wgconfig.wg_toml_config,
-                        size_config);
+        if (is_native_windows()) {
+            snprintf(command, sizeof(command),
+                "ren %s %s",
+                wgconfig.wg_toml_config,
+                size_config);
+        } else {
+            snprintf(command, sizeof(command),
+                "mv -f %s %s",
+                wgconfig.wg_toml_config,
+                size_config);
+        }
 
         if (wg_run_command(command) != 0x0) {
-                pr_error(stdout, "Failed to create backup file");
+                pr_error(stdout,
+                    "Failed to create backup file");
                 __debug_function(); /* call debugger function */
                 goto runner_end;
         }
@@ -948,20 +949,22 @@ static int update_omp_config(const char *gamemode)
         int fd = open(size_config, O_RDONLY | O_NOFOLLOW);
         #endif
         if (fd < 0) {
-                pr_error(stdout, "Failed to open %s", size_config);
+                pr_error(stdout,
+                    "Failed to open %s", size_config);
                 __debug_function(); /* call debugger function */
                 goto runner_end;
         }
 
         if (fstat(fd, &st) != 0) {
-                pr_error(stdout, "Failed to stat %s", size_config);
+                pr_error(stdout,
+                    "Failed to stat %s", size_config);
                 __debug_function(); /* call debugger function */
                 close(fd);
                 goto runner_end;
         }
 
-        config_in = fdopen(fd, "rb");
-        if (!config_in) {
+        proc_conf_in = fdopen(fd, "rb");
+        if (!proc_conf_in) {
                 pr_error(stdout, "fdopen failed");
                 __debug_function(); /* call debugger function */
                 close(fd);
@@ -974,23 +977,24 @@ static int update_omp_config(const char *gamemode)
         }
 
         size_t bytes_read;
-        bytes_read = fread(cJSON_Data, 0x1, st.st_size, config_in);
+        bytes_read = fread(cJSON_Data, 0x1, st.st_size, proc_conf_in);
         if (bytes_read != (size_t)st.st_size) {
-                pr_error(stdout, "Incomplete file read (%zu of %ld bytes)",
-                        bytes_read,
-                        st.st_size);
+                pr_error(stdout,
+                    "Incomplete file read (%zu of %ld bytes)",
+                    bytes_read, st.st_size);
                 __debug_function(); /* call debugger function */
                 goto runner_cleanup;
         }
 
         cJSON_Data[st.st_size] = '\0';
-        fclose(config_in);
-        config_in = NULL;
+        fclose(proc_conf_in);
+        proc_conf_in = NULL;
 
         /* Parse JSON configuration */
         root = cJSON_Parse(cJSON_Data);
         if (!root) {
-                pr_error(stdout, "JSON parse error: %s", cJSON_GetErrorPtr());
+                pr_error(stdout,
+                    "JSON parse error: %s", cJSON_GetErrorPtr());
                 __debug_function(); /* call debugger function */
                 goto runner_end;
         }
@@ -998,7 +1002,8 @@ static int update_omp_config(const char *gamemode)
         /* Access pawn section of configuration */
         pawn = cJSON_GetObjectItem(root, "pawn");
         if (!pawn) {
-                pr_error(stdout, "Missing 'pawn' section in config!");
+                pr_error(stdout,
+                    "Missing 'pawn' section in config!");
                 __debug_function(); /* call debugger function */
                 goto runner_cleanup;
         }
@@ -1009,30 +1014,33 @@ static int update_omp_config(const char *gamemode)
         if (extension) *extension = '\0';
 
         /* Update main script array in JSON */
-        cJSON_DeleteItemFromObject(pawn, "main_scripts");
+        cJSON_DeleteItemFromObject(pawn, "msj");
 
-        main_scripts = cJSON_CreateArray();
-        snprintf(gamemode_buf, sizeof(gamemode_buf), "%s", put_gamemode);
-        cJSON_AddItemToArray(main_scripts, cJSON_CreateString(gamemode_buf));
-        cJSON_AddItemToObject(pawn, "main_scripts", main_scripts);
+        msj = cJSON_CreateArray();
+        snprintf(gf, sizeof(gf), "%s", put_gamemode);
+        cJSON_AddItemToArray(msj, cJSON_CreateString(gf));
+        cJSON_AddItemToObject(pawn, "msj", msj);
 
         /* Write updated configuration */
-        config_out = fopen(wgconfig.wg_toml_config, "w");
-        if (!config_out) {
-                pr_error(stdout, "Failed to write %s", wgconfig.wg_toml_config);
+        proc_conf_out = fopen(wgconfig.wg_toml_config, "w");
+        if (!proc_conf_out) {
+                pr_error(stdout,
+                    "Failed to write %s", wgconfig.wg_toml_config);
                 __debug_function(); /* call debugger function */
                 goto runner_end;
         }
 
-        cjsON_PrInted_data = cJSON_Print(root);
-        if (!cjsON_PrInted_data) {
-                pr_error(stdout, "Failed to print JSON");
+        printed = cJSON_Print(root);
+        if (!printed) {
+                pr_error(stdout,
+                    "Failed to print JSON");
                 __debug_function(); /* call debugger function */
                 goto runner_end;
         }
 
-        if (fputs(cjsON_PrInted_data, config_out) == EOF) {
-                pr_error(stdout, "Failed to write to %s", wgconfig.wg_toml_config);
+        if (fputs(printed, proc_conf_out) == EOF) {
+                pr_error(stdout,
+                    "Failed to write to %s", wgconfig.wg_toml_config);
                 __debug_function(); /* call debugger function */
                 goto runner_end;
         }
@@ -1043,12 +1051,12 @@ runner_end:
         ;
 runner_cleanup:
         /* Comprehensive cleanup of allocated resources */
-        if (config_out)
-                fclose(config_out);
-        if (config_in)
-                fclose(config_in);
-        if (cjsON_PrInted_data)
-                wg_free(cjsON_PrInted_data);
+        if (proc_conf_out)
+                fclose(proc_conf_out);
+        if (proc_conf_in)
+                fclose(proc_conf_in);
+        if (printed)
+                wg_free(printed);
         if (root)
                 cJSON_Delete(root);
         if (cJSON_Data)
@@ -1083,17 +1091,17 @@ void wg_run_omp_server(const char *gamemode, const char *server_bin)
         char put_gamemode[0x100];
         char *extension = strrchr(gamemode, '.');
         if (extension) {
-                size_t len = extension - gamemode;
-                snprintf(put_gamemode,
-                        sizeof(put_gamemode),
-                        "%.*s.amx",
-                        (int)len,
-                        gamemode);
+            size_t len = extension - gamemode;
+            snprintf(put_gamemode,
+                    sizeof(put_gamemode),
+                    "%.*s.amx",
+                    (int)len,
+                    gamemode);
         } else {
-                snprintf(put_gamemode,
-                        sizeof(put_gamemode),
-                        "%s.amx",
-                        gamemode);
+            snprintf(put_gamemode,
+                    sizeof(put_gamemode),
+                    "%s.amx",
+                    gamemode);
         }
 
         gamemode = put_gamemode;
@@ -1111,10 +1119,6 @@ void wg_run_omp_server(const char *gamemode, const char *server_bin)
         if (ret_c == 0 ||
                 ret_c == -1)
                 return;
-
-        CHMOD_FULL(server_bin);
-        if (path_access("announce"))
-                CHMOD_FULL("announce");
 
         /* Setup signal handling */
         struct sigaction sa;

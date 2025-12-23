@@ -268,32 +268,48 @@ Server = https://downloads.sourceforge.net/project/msys2/REPOS/msys/$arch
 ## `watchdogs.toml` Configuration
 ```toml
 [general]
+   # operating system - "windows" & "linux"
    os = "windows"
+   # sa-mp/open.mp binary file name - custom / default
    binary = "samp-server.exe"
+   # sa-mp/open.mp config file name - selection file type (doesn't support for sa-mp - default: server.cfg [cfg file])
+   #                                  open.mp: config.json, server.cfg.
    config = "server.cfg"
+   # sa-mp/open.mp log file name - custom (doesn't support for sa-mp - default: server_log.txt) / default
+   #                               open.mp: log.txt log.log server_log.log - this needed action from open.mp config file.
    logs = "server_log.txt"
+   # chatbot gemini/groq keys
    keys = "API_KEY"
+   # chatbot type - "gemini" & "groq"
    chatbot = "gemini"
+   # chatbot models - see our available models.
    models = "gemini-2.5-pro"
+   # chatbot webhooks - for 'send' command.
    webhooks = "DO_HERE"
 [compiler]
+   # compiler options - https://github.com/gskeleton/watchdogs/tree/main/options.txt
    option = ["-d3", "-;+", "-(+"]
-   include_path = []
+   # compiler include path list (where .inc from folders for compiler to read)
+   includes = ["pawno/include/", "qawno/include/", "gamemodes/"]
+   # compiler entry/input for compile non args (".") - root.
    input = "gamemodes/bare.pwn"
+   # compiler output for result of input after compile.
    output = "gamemodes/bare.amx"
 [dependencies]
+   # dependencies github token - acces your private repository.
    github_tokens = "DO_HERE"
-   root_patterns = ["lib", "log", "root", "amx", "static", "dynamic", "cfg", "config", "json", "msvcrt", "msvcr", "msvcp", "ucrtbase"]
+   # root patterns - hard core list.
+   # for what? This is useful for hard list keywords, specifically for plugin names (dll/so)
+   # like sscanf amxsscanf (amx)sscanf or mysql log-core log(core),
+   # which will later be installed and still recognized as
+   # being installed by the root user into the gamemode root area, rather than being installed within plugins/.
+   root_patterns = ["lib", "log", "root", "amx"]
+   # packages list for install
    packages = [
       "Y-Less/sscanf?newer",
       "samp-incognito/samp-streamer-plugin?newer"
    ]
 ```
-- **API Keys**: For Gemini or Groq AI. (optional)
-- **Webhooks**: Discord webhooks for `send` command. (optional)
-- **GitHub Tokens**: For private repositories. (optional)
-- **Compiler**: PAWN compiler settings for SA-MP/Open.MP
-- **Root Patterns**: This is useful for hard list keywords, specifically for plugin names (dll/so) like sscanf amxsscanf (amx)sscanf or mysql log-core log(core), which will later be installed and still recognized as being installed by the root user into the gamemode root area, rather than being installed within plugins/.
 
 ## Command Aliases
 
@@ -465,6 +481,7 @@ compiles server
 5. Plugins in archive root go to server root directory
 6. Automatically adds includes to main gamemode file
 7. Keep `pawno/` or `qawno/` folder names unchanged for proper detection
+> So why ignoring adding the plugins name to config.json if .dll/,so installed into components/ (?) - no needed actions.
 
 ![img](https://raw.githubusercontent.com/gskeleton/watchdogs/refs/heads/main/images/replicate.png)
 

@@ -1610,8 +1610,8 @@ static void __toml_base_subdirs(const char *base_path,
 					continue;
 
 				/* Construct full subdirectory path */
-				snprintf(fp, sizeof(fp), "%s/%s",
-							base_path, find_data.cFileName);
+				snprintf(fp, sizeof(fp), "%s" "%s" "%s",
+							base_path, __PATH_STR_SEP_LINUX, find_data.cFileName);
 
 				__toml_add_directory_path(toml_file, first, fp); /* Add to TOML */
 				__toml_base_subdirs(fp, toml_file, first); /* Recurse */
@@ -1640,8 +1640,8 @@ static void __toml_base_subdirs(const char *base_path,
 							item->d_name) == 0)
 					continue;
 
-				snprintf(fp, sizeof(fp), "%s/%s",
-							base_path, item->d_name);
+				snprintf(fp, sizeof(fp), "%s" "%s" "%s",
+							base_path, __PATH_STR_SEP_LINUX, item->d_name);
 
 				__toml_add_directory_path(toml_file, first, fp);
 				__toml_base_subdirs(fp, toml_file, first); /* Recurse */
@@ -1787,7 +1787,7 @@ static void wg_generate_toml_content(FILE *file, const char *wg_os_type,
 		}
 
 		/* Include paths array */
-		fprintf(file, "   include_path = [");
+		fprintf(file, "   includes = [");
 		int ret = wg_add_include_paths(file, &first_item); /* Add actual paths */
 		if (ret != 1) fprintf(file, "]\n");
 		else {

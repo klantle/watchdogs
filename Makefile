@@ -26,8 +26,8 @@ SRCS = source/extra.c source/debug.c source/curl.c source/units.c source/utils.c
 
 OBJS = $(SRCS:.c=.o)
 
-RCFILE  = VERSION.rc
-RESFILE = VERSION.res
+RCFILE  = source/version.rc
+RESFILE = version.res
 
 .PHONY: init clean linux termux windows strip compress debug termux-debug windows-debug
 

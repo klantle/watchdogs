@@ -8,7 +8,7 @@ echo.
 echo Enter the path you want to switch to:
 echo "Enter the path you want to switch to location in %USERPROFILE%\Downloads:"
 echo  ^^ example: my_folder
-echo  ^^ a folder name for install; the folder doesn’t exist?, don’t worry..
+echo  ^^ a folder name for install; the folder doesn't exist?, don't worry..
 set /p TARGET_DIR=Path:
 
 if not exist "%USERPROFILE%\Downloads\%TARGET_DIR%" (

@@ -50,9 +50,8 @@ int wg_run_compiler(const char *args, const char *compile_args,
         STARTUPINFO si = { sizeof(si) };
         SECURITY_ATTRIBUTES sa = { sizeof(sa) };
 #endif
-        struct timespec start = { 0 },
-                          end = { 0 };
-        double compiler_dur;
+        struct timespec pre_start = { 0 }, post_end = { 0 };
+        double timer_rate_compile;
 
         const char* compiler_args[] = {
            second_arg, four_arg,
@@ -91,12 +90,6 @@ int wg_run_compiler(const char *args, const char *compile_args,
         int compiler_has_recursion = 0, compiler_has_verbose = 0;
         int compiler_has_compact = 0;
 
-        const char *ptr_pawncc = NULL;
-        if (!strcmp(wgconfig.wg_os_type, OS_SIGNAL_WINDOWS))
-           ptr_pawncc = "pawncc.exe";
-        else if (!strcmp(wgconfig.wg_os_type, OS_SIGNAL_LINUX))
-           ptr_pawncc = "pawncc";
-
         if (dir_exists(".watchdogs") == 0)
            MKDIR(".watchdogs");
 
@@ -129,37 +122,79 @@ int wg_run_compiler(const char *args, const char *compile_args,
               sizeof(library_paths_list) /
               sizeof(library_paths_list[0]);
 
-        const char *old = NULL;
-        char newpath[WG_MAX_PATH];
-        char so_path[WG_PATH_MAX];
-        old = getenv("LD_LIBRARY_PATH");
-        if (!old)
-            old = "";
+        const char
+          *_old = NULL;
+        char _newpath[WG_MAX_PATH];
+        char _so_path[WG_PATH_MAX];
+        _old = getenv("LD_LIBRARY_PATH");
+        if (!_old)
+            _old = "";
 
-        snprintf(newpath, sizeof(newpath),
-              "%s", old);
+        snprintf(_newpath, sizeof(_newpath),
+              "%s", _old);
 
         for (size_t i = 0; i < counts; i++) {
-            snprintf(so_path, sizeof(so_path),
+            snprintf(_so_path, sizeof(_so_path),
                      "%s/libpawnc.so", library_paths_list[i]);
-            if (path_exists(so_path) != 0) {
-                if (newpath[0] != '\0')
-                    strncat(newpath, ":",
-                      sizeof(newpath) - strlen(newpath) - 1);
-                strncat(newpath, library_paths_list[i],
-                        sizeof(newpath) - strlen(newpath) - 1);
+            if (path_exists(_so_path) != 0) {
+                if (_newpath[0] != '\0')
+                    strncat(_newpath, ":", sizeof(_newpath) - strlen(_newpath) - 1);
+                strncat(_newpath, library_paths_list[i],
+                        sizeof(_newpath) - strlen(_newpath) - 1);
             }
         }
-        if (newpath[0] != '\0') {
-            setenv("LD_LIBRARY_PATH", newpath, 1);
-            pr_info(stdout, "LD_LIBRARY_PATH set to: %s", newpath);
+        if ( _newpath[0] != '\0' ) {
+            setenv("LD_LIBRARY_PATH", _newpath, 1);
+            pr_info(stdout, "LD_LIBRARY_PATH set to: %s", _newpath);
         } else {
             pr_info(stdout, "libpawnc.so not found in any target path");
         }
 #endif
-        int __find_pawncc = wg_sef_fdir(".", ptr_pawncc, NULL);
-        if (__find_pawncc)
-        {
+        char *_pointer_pawncc = NULL;
+        int __rate_pawncc_exists = -1;
+        if (strcmp(wgconfig.wg_toml_os_type, OS_SIGNAL_WINDOWS))
+          {
+              _pointer_pawncc = "pawncc.exe";
+          }
+        else if (strcmp(wgconfig.wg_toml_os_type, OS_SIGNAL_LINUX))
+          {
+              _pointer_pawncc = "pawncc";
+          }
+        if (dir_exists("pawno") != 0 && dir_exists("qawno") != 0)
+          {
+              __rate_pawncc_exists = wg_sef_fdir("pawno", _pointer_pawncc, NULL);
+              if (__rate_pawncc_exists) {
+                  ;
+              } else {
+                  __rate_pawncc_exists = wg_sef_fdir("qawno", _pointer_pawncc, NULL);
+                  if (__rate_pawncc_exists < 1) {
+                    __rate_pawncc_exists = wg_sef_fdir(".", _pointer_pawncc, NULL);
+                  }
+              }
+          }
+        else if (dir_exists("pawno") != 0)
+          {
+              __rate_pawncc_exists = wg_sef_fdir("pawno", _pointer_pawncc, NULL);
+              if (__rate_pawncc_exists) {
+                  ;
+              } else {
+                  __rate_pawncc_exists = wg_sef_fdir(".", _pointer_pawncc, NULL);
+              }
+          }
+        else if (dir_exists("qawno") != 0)
+          {
+              __rate_pawncc_exists = wg_sef_fdir("qawno", _pointer_pawncc, NULL);
+              if (__rate_pawncc_exists) {
+                  ;
+              } else {
+                  __rate_pawncc_exists = wg_sef_fdir(".", _pointer_pawncc, NULL);
+              }
+          }
+        else {
+            __rate_pawncc_exists = wg_sef_fdir(".", _pointer_pawncc, NULL);
+        }
+
+        if (__rate_pawncc_exists) {
             FILE *this_proc_file;
             this_proc_file = fopen("watchdogs.toml", "r");
             if (!this_proc_file) {
@@ -498,10 +533,10 @@ not_valid_flag_options:
                             sizeof(wgconfig.wg_toml_aio_opt) - current_len - 1);
                 }
 
-                toml_array_t *toml_include_path = toml_array_in(wg_compiler, "include_path");
+                toml_array_t *toml_include_path = toml_array_in(wg_compiler, "includes");
 #if defined(_DBG_PRINT)
                 if (!toml_include_path)
-                    printf("%s not exists in line:%d", "include_path", __LINE__);
+                    printf("%s not exists in line:%d", "includes", __LINE__);
 #endif
                 if (toml_include_path)
                 {
@@ -691,7 +726,7 @@ not_valid_flag_options:
                     }
                     if (ret_command > 0 && ret_command < (int)sizeof(_compiler_input_)) {
                         BOOL win32_process_success;
-                        clock_gettime(CLOCK_MONOTONIC, &start);
+                        clock_gettime(CLOCK_MONOTONIC, &pre_start);
                         win32_process_success = CreateProcessA(
                                 /* lpApplicationName [in, optional]:
                                  * - NULL = use lpCommandLine to find executable
@@ -793,7 +828,7 @@ not_valid_flag_options:
                         if (win32_process_success == TRUE) {
                             WaitForSingleObject(pi.hProcess, INFINITE);
 
-                            clock_gettime(CLOCK_MONOTONIC, &end);
+                            clock_gettime(CLOCK_MONOTONIC, &post_end);
 
                             DWORD proc_exit_code;
                             GetExitCodeProcess(pi.hProcess, &proc_exit_code);
@@ -801,12 +836,13 @@ not_valid_flag_options:
                             CloseHandle(pi.hProcess);
                             CloseHandle(pi.hThread);
                         } else {
-                            clock_gettime(CLOCK_MONOTONIC, &end);
+                            clock_gettime(CLOCK_MONOTONIC, &post_end);
                             pr_error(stdout, "CreateProcess failed! (%lu)", GetLastError());
                             __debug_function();
                         }
                     } else {
-                        clock_gettime(CLOCK_MONOTONIC, &end);pr_error(stdout, "ret_compiler too long!");
+                        clock_gettime(CLOCK_MONOTONIC, &post_end);
+                        pr_error(stdout, "ret_compiler too long!");
                         __debug_function();
                         goto compiler_end;
                     }
@@ -943,24 +979,24 @@ not_valid_flag_options:
                     if (process_spawn_result == 0) {
                         int process_status;
                         int process_timeout_occurred = 0;
-                        clock_gettime(CLOCK_MONOTONIC, &start);
+                        clock_gettime(CLOCK_MONOTONIC, &pre_start);
                         for (int i = 0; i < POSIX_TIMEOUT; i++) {
                             int p_result = -1;
                             p_result = waitpid(compiler_process_id, &process_status, WNOHANG);
                             if (p_result == 0)
                                 usleep(0xC350);
                             else if (p_result == compiler_process_id) {
-                                clock_gettime(CLOCK_MONOTONIC, &end);
+                                clock_gettime(CLOCK_MONOTONIC, &post_end);
                                 break;
                             }
                             else {
-                                clock_gettime(CLOCK_MONOTONIC, &end);
+                                clock_gettime(CLOCK_MONOTONIC, &post_end);
                                 pr_error(stdout, "waitpid error");
                                 __debug_function();
                                 break;
                             }
                             if (i == POSIX_TIMEOUT - 1) {
-                                clock_gettime(CLOCK_MONOTONIC, &end);
+                                clock_gettime(CLOCK_MONOTONIC, &post_end);
                                 kill(compiler_process_id, SIGTERM);
                                 sleep(2);
                                 kill(compiler_process_id, SIGKILL);
@@ -1057,14 +1093,14 @@ compiler_done:
                         __debug_function();
                     }
 
-                    compiler_dur = (end.tv_sec - start.tv_sec)
-                                        + (end.tv_nsec - start.tv_nsec) / 1e9;
+                    timer_rate_compile = (post_end.tv_sec - pre_start.tv_sec)
+                                        + (post_end.tv_nsec - pre_start.tv_nsec) / 1e9;
 
                     printf("\n");
                     pr_color(stdout, FCOLOUR_CYAN,
                         " <P> Finished at %.3fs (%.0f ms)\n",
-                        compiler_dur, compiler_dur * 1000.0);
-                    if (compiler_dur > 0x64) {
+                        timer_rate_compile, timer_rate_compile * 1000.0);
+                    if (timer_rate_compile > 0x64) {
                         printf("~ This is taking a while, huh?\n"
                                 "  Make sure you've cleared all the warnings,\n""  you're using the latest compiler,\n"
                                 "  and double-check that your logic\n"
@@ -1257,7 +1293,7 @@ compiler_done:
                         }
                         if (ret_command > 0 && ret_command < (int)sizeof(_compiler_input_)) {
                             BOOL win32_process_success;
-                            clock_gettime(CLOCK_MONOTONIC, &start);
+                            clock_gettime(CLOCK_MONOTONIC, &pre_start);
                             win32_process_success = CreateProcessA(
                                     /* lpApplicationName [in, optional]:
                                      * - NULL = use lpCommandLine to find executable
@@ -1359,7 +1395,7 @@ compiler_done:
                             if (win32_process_success == TRUE) {
                                 WaitForSingleObject(pi.hProcess, INFINITE);
 
-                                clock_gettime(CLOCK_MONOTONIC, &end);
+                                clock_gettime(CLOCK_MONOTONIC, &post_end);
 
                                 DWORD proc_exit_code;
                                 GetExitCodeProcess(pi.hProcess, &proc_exit_code);
@@ -1367,12 +1403,12 @@ compiler_done:
                                 CloseHandle(pi.hProcess);
                                 CloseHandle(pi.hThread);
                             } else {
-                                clock_gettime(CLOCK_MONOTONIC, &end);
+                                clock_gettime(CLOCK_MONOTONIC, &post_end);
                                 pr_error(stdout, "CreateProcess failed! (%lu)", GetLastError());
                                 __debug_function();
                             }
                         } else {
-                            clock_gettime(CLOCK_MONOTONIC, &end);
+                            clock_gettime(CLOCK_MONOTONIC, &post_end);
                             pr_error(stdout, "ret_compiler too long!");
                             __debug_function();
                             goto compiler_end;
@@ -1510,24 +1546,24 @@ compiler_done:
                         if (process_spawn_result == 0) {
                             int process_status;
                             int process_timeout_occurred = 0;
-                            clock_gettime(CLOCK_MONOTONIC, &start);
+                            clock_gettime(CLOCK_MONOTONIC, &pre_start);
                             for (int i = 0; i < POSIX_TIMEOUT; i++) {
                                 int p_result = -1;
                                 p_result = waitpid(compiler_process_id, &process_status, WNOHANG);
                                 if (p_result == 0)
                                     usleep(0xC350);
                                 else if (p_result == compiler_process_id) {
-                                    clock_gettime(CLOCK_MONOTONIC, &end);
+                                    clock_gettime(CLOCK_MONOTONIC, &post_end);
                                     break;
                                 }
                                 else {
-                                    clock_gettime(CLOCK_MONOTONIC, &end);
+                                    clock_gettime(CLOCK_MONOTONIC, &post_end);
                                     pr_error(stdout, "waitpid error");
                                     __debug_function();
                                     break;
                                 }
                                 if (i == POSIX_TIMEOUT - 1) {
-                                    clock_gettime(CLOCK_MONOTONIC, &end);
+                                    clock_gettime(CLOCK_MONOTONIC, &post_end);
                                     kill(compiler_process_id, SIGTERM);
                                     sleep(2);
                                     kill(compiler_process_id, SIGKILL);
@@ -1623,14 +1659,14 @@ compiler_done2:
                             __debug_function();
                         }
 
-                        compiler_dur = (end.tv_sec - start.tv_sec)
-                                            + (end.tv_nsec - start.tv_nsec) / 1e9;
+                        timer_rate_compile = (post_end.tv_sec - pre_start.tv_sec)
+                                            + (post_end.tv_nsec - pre_start.tv_nsec) / 1e9;
 
                         printf("\n");
                         pr_color(stdout, FCOLOUR_CYAN,
                             " <P> Finished at %.3fs (%.0f ms)\n",
-                            compiler_dur, compiler_dur * 1000.0);
-                        if (compiler_dur > 0x64) {
+                            timer_rate_compile, timer_rate_compile * 1000.0);
+                        if (timer_rate_compile > 0x64) {
                             printf("~ This is taking a while, huh?\n"
                                     "  Make sure you've cleared all the warnings,\n"
                                     "  you're using the latest compiler,\n"

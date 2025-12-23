@@ -152,11 +152,11 @@ int wg_run_compiler(const char *args, const char *compile_args,
 #endif
         char *_pointer_pawncc = NULL;
         int __rate_pawncc_exists = -1;
-        if (strcmp(wgconfig.wg_toml_os_type, OS_SIGNAL_WINDOWS))
+        if (strcmp(wgconfig.wg_toml_os_type, OS_SIGNAL_WINDOWS) == 0)
           {
               _pointer_pawncc = "pawncc.exe";
           }
-        else if (strcmp(wgconfig.wg_toml_os_type, OS_SIGNAL_LINUX))
+        else if (strcmp(wgconfig.wg_toml_os_type, OS_SIGNAL_LINUX) == 0)
           {
               _pointer_pawncc = "pawncc";
           }
@@ -226,9 +226,9 @@ int wg_run_compiler(const char *args, const char *compile_args,
                 this_proc_file = fopen(".watchdogs/compiler_test.log", "w+");
                 if (this_proc_file) {
                     fclose(this_proc_file);
-                    snprintf(run_cmd, sizeof(run_cmd),
-                        "sh -c \"%s\" >> .watchdogs/compiler_test.log 2>&1\"",
-                        wg_compiler_input_pawncc_path);
+                		snprintf(run_cmd, sizeof(run_cmd),
+                					"%s -0000000U > .watchdogs/compiler_test.log 2>&1",
+                					wg_compiler_input_pawncc_path);
                     wg_run_command(run_cmd);
                 }
             }

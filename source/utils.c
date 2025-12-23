@@ -2028,17 +2028,10 @@ out:
 				if (webhooks_val.ok) {
 					wgconfig.wg_toml_webhooks = strdup(webhooks_val.u.s);
 					wg_free(webhooks_val.u.s);
-                }
+				}
 		}
 
 		toml_free(wg_toml_config); /* Free parse tree */
-
-		/* Convert OS type string to enum value */
-		if (strcmp(wgconfig.wg_toml_os_type, "windows") == 0) {
-			wgconfig.wg_os_type = OS_SIGNAL_WINDOWS;
-		} else if (strcmp(wgconfig.wg_toml_os_type, "linux") == 0) {
-			wgconfig.wg_os_type = OS_SIGNAL_LINUX;
-		}
 
 		/* Null - CRC32 False detecting */
 		for (size_t i = 0; i < sizeof(char_fields) / sizeof(char_fields[0]); i++) {

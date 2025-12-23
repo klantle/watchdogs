@@ -138,8 +138,8 @@ enum {
 #define CRC32_FALSE   "2bcd6830"
 #define CRC32_UNKNOWN "ad26a7c7"
 
-#define OS_SIGNAL_WINDOWS CRC32_TRUE
-#define OS_SIGNAL_LINUX   CRC32_FALSE
+#define OS_SIGNAL_WINDOWS "windows"
+#define OS_SIGNAL_LINUX   "linux"
 #define OS_SIGNAL_UNKNOWN CRC32_UNKNOWN
 
 #define wg_server_env() ({ \

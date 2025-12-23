@@ -1,8 +1,8 @@
 export LANG := C.UTF-8
 export LC_ALL := C.UTF-8
 
-VERSION        = WG-12.14
-FULL_VERSION   = WG-251214
+VERSION        = WG-12.23
+FULL_VERSION   = WG-251223
 
 TARGET         ?= watchdogs
 OUTPUT         ?= $(TARGET)

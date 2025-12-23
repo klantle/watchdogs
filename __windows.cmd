@@ -36,7 +36,7 @@ cd /d "%USERPROFILE%\Downloads\%TARGET_DIR%" || (
 echo Now in: %CD%
 echo.
 
-powershell -Command "Invoke-WebRequest -Uri 'https://github.com/gskeleton/watchdogs/releases/download/WG-251214/watchdogs.win' -OutFile 'watchdogs.win'"
+powershell -Command "Invoke-WebRequest -Uri 'https://github.com/gskeleton/watchdogs/releases/download/WG-251223/watchdogs.win' -OutFile 'watchdogs.win'"
 
 if exist "watch" (
     rmdir /s /q "watch"

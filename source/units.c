@@ -1568,6 +1568,10 @@ chain_try_command:
             }
             int ret = -3;
             char size_run[WG_MAX_PATH];
+            if (is_native_windows()) {
+                snprintf(size_run, sizeof(size_run), "powershell -NoProfile -Command \"%s\"", ptr_command);
+                goto powershell;
+            }
             if (path_access("/bin/sh") != 0)
                 snprintf(size_run, sizeof(size_run), "/bin/sh -c \"%s\"", ptr_command);
             else if (path_access("~/.bashrc") != 0)
@@ -1576,6 +1580,7 @@ chain_try_command:
                 snprintf(size_run, sizeof(size_run), "zsh -c \"%s\"", ptr_command);
             else
                 snprintf(size_run, sizeof(size_run), "%s", ptr_command);
+powershell:
             ret = wg_run_command(size_run);
             if (ret)
                 wg_console_title("Watchdogs | @ command not found");

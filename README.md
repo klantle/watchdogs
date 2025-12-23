@@ -266,8 +266,29 @@ Server = https://downloads.sourceforge.net/project/msys2/REPOS/msys/$arch
 | **Android** | APK installation blocked by OEM | Use: **Shizuku** (non-root) or **Magisk/KingoRoot** (root)<br>Or alternative installers: APKMirror, APKPure, MT Manager |
 
 ## `watchdogs.toml` Configuration
-
-**Key Points:**
+```toml
+[general]
+   os = "windows"
+   binary = "samp-server.exe"
+   config = "server.cfg"
+   logs = "server_log.txt"
+   keys = "API_KEY"
+   chatbot = "gemini"
+   models = "gemini-2.5-pro"
+   webhooks = "DO_HERE"
+[compiler]
+   option = ["-d3", "-;+", "-(+"]
+   include_path = []
+   input = "gamemodes/bare.pwn"
+   output = "gamemodes/bare.amx"
+[dependencies]
+   github_tokens = "DO_HERE"
+   root_patterns = ["lib", "log", "root", "amx", "static", "dynamic", "cfg", "config", "json", "msvcrt", "msvcr", "msvcp", "ucrtbase"]
+   packages = [
+      "Y-Less/sscanf?newer",
+      "samp-incognito/samp-streamer-plugin?newer"
+   ]
+```
 - **API Keys**: For Gemini or Groq AI. (optional)
 - **Webhooks**: Discord webhooks for `send` command. (optional)
 - **GitHub Tokens**: For private repositories. (optional)

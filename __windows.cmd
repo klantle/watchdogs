@@ -36,25 +36,27 @@ cd /d "%USERPROFILE%\Downloads\%TARGET_DIR%" || (
 echo Now in: %CD%
 echo.
 
-curl -L -o watchdogs.win "https://github.com/gskeleton/watchdogs/releases/download/WG-251214/watchdogs.win"
+powershell -Command "Invoke-WebRequest -Uri 'https://github.com/gskeleton/watchdogs/releases/download/WG-251214/watchdogs.win' -OutFile 'watchdogs.win'"
 
 if exist "watch" (
     rmdir /s /q "watch"
 )
 
-git clone --single-branch --branch main https://github.com/gskeleton/libwatchdogs watch
+powershell -NoProfile -Command "Invoke-WebRequest 'https://github.com/gskeleton/libwatchdogs/archive/refs/heads/main.zip' -OutFile 'main.zip'"
+powershell -NoProfile -Command "Expand-Archive 'main.zip' -DestinationPath 'watch' -Force"
 
-cd /d watch || exit /b 1
+cd /d watch\libwatchdogs-main || exit /b 1
 
 if exist "C:\libwatchdogs" (
     rmdir /s /q "C:\libwatchdogs"
 )
 
 move /Y "libwatchdogs" "C:\"
-move /Y "windows-native.cmd" "..\"
+move /Y "windows-native.cmd" "..\..\"
 
-cd ..
+cd /d "%USERPROFILE%\Downloads\%TARGET_DIR%"
 
+del /q "main.zip"
 rmdir /s /q "watch"
 
 .\windows-native.cmd

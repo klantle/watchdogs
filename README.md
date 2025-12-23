@@ -103,6 +103,12 @@ docker rm -f <container-name>              # Force-remove the container
 
 ## Linux
 
+> One Command (Automatic):
+```yml
+wget -O install.sh https://github.com/gskeleton/watchdogs/raw/refs/heads/main/__linux.sh && chmod +x install.sh && ./install.sh
+```
+
+> Manual hardcore using:
 ```yaml
 # 1. Update package lists
 apt update
@@ -128,16 +134,17 @@ mv -f watchdogs .. && cd .. && \
 ./watchdogs
 ```
 
-> One Command (Automatic):
-```sh
-wget -O install.sh https://github.com/gskeleton/watchdogs/raw/refs/heads/main/__linux.sh && chmod +x install.sh && ./install.sh
-```
-
 ## Termux
 
 > We highly recommend using the Termux distribution directly from GitHub instead of the Google Play Store to ensure compatibility with the latest Termux features and to enjoy the freedom offered outside the Play Store. https://github.com/termux/termux-app/releases
 > Just drag this into your terminal and run it.
 
+> One Command (Automatic):
+```yml
+wget -O install.sh https://github.com/gskeleton/watchdogs/raw/refs/heads/main/__termux.sh && chmod +x install.sh && ./install.sh
+```
+
+> Manual hardcore using:
 ```yaml
 # 1. Setup storage permissions
 termux-setup-storage
@@ -170,11 +177,6 @@ make init && make termux
 chmod +x watchdogs.tmux && \
 mv -f watchdogs.tmux .. && cd .. && \
 ./watchdogs.tmux
-```
-
-> One Command (Automatic):
-```sh
-wget -O install.sh https://github.com/gskeleton/watchdogs/raw/refs/heads/main/__termux.sh && chmod +x install.sh && ./install.sh
 ```
 
 ## Native
@@ -341,8 +343,6 @@ watchdogs
 
 > Use `pawncc` command to easily download the pawn compiler from pawn-lang.
 
-![img](https://raw.githubusercontent.com/gskeleton/watchdogs/refs/heads/main/images/compiler.png)
-
 ## Compilation Commands
 
 > Compile `server.pwn`:
@@ -355,7 +355,6 @@ compile .
 compile server.pwn
 compile path/to/server.pwn
 ```
-![img](https://raw.githubusercontent.com/gskeleton/watchdogs/refs/heads/main/images/compile_path.png)
 
 > Compile with specific options
 ```yml
@@ -398,8 +397,6 @@ compile path/to/server --opt1 --opt2 --opt3 --opt4
 ```yaml
 compile ../path/to/project/server.pwn
 ```
-
-![img](https://raw.githubusercontent.com/gskeleton/watchdogs/refs/heads/main/images/parent_dir.png)
 
 ## Server Management
 
@@ -482,8 +479,6 @@ compiles server
 6. Automatically adds includes to main gamemode file
 7. Keep `pawno/` or `qawno/` folder names unchanged for proper detection
 > So why ignoring adding the plugins name to config.json if .dll/,so installed into components/ (?) - no needed actions.
-
-![img](https://raw.githubusercontent.com/gskeleton/watchdogs/refs/heads/main/images/replicate.png)
 
 **Install dependencies from `watchdogs.toml`:**
 ```yaml

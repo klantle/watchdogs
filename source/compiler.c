@@ -62,12 +62,12 @@ int wg_run_compiler(const char *args, const char *compile_args,
 
         FILE *this_proc_file;
         char proj_parse[WG_PATH_MAX] = { 0 };
-        char size_log[WG_MAX_PATH * 4];
-        char run_cmd[WG_PATH_MAX + 258];
+        char size_log[WG_MAX_PATH * 4] = { 0 };
+        char run_cmd[WG_PATH_MAX + 258] = { 0 };
         char include_aio_path[WG_PATH_MAX * 2] = { 0 };
-        char _compiler_input_[WG_MAX_PATH + WG_PATH_MAX] = { 0 };
         char path_include[WG_PATH_MAX] = { 0 };
         char size_path_include[WG_MAX_PATH] = { 0 };
+        char _compiler_input_[WG_MAX_PATH + WG_PATH_MAX] = { 0 };
 
         char flag_to_search[3] = { 0 };
         size_t size_flag_to_search = sizeof(flag_to_search);
@@ -79,7 +79,7 @@ int wg_run_compiler(const char *args, const char *compile_args,
         char *procure_string_pos = NULL;
         char compiler_extra_options[WG_PATH_MAX] = { 0 };
 
-        const char *debug_options[] = {"-d1", "-d3"};
+        static const char *debug_options[] = {"-d1", "-d3"};
         size_t size_debug_options = sizeof(debug_options);
         size_t size_debug_options_zero = sizeof(debug_options[0]);
         size_t debug_flag_count = size_debug_options / size_debug_options_zero;
@@ -108,50 +108,55 @@ int wg_run_compiler(const char *args, const char *compile_args,
         compiler_memory_clean();
 
 #ifdef WG_LINUX
-        const char *library_paths_list[] = {
-            "/usr/local/lib", "/usr/local/lib32",
-            "/data/data/com.termux/files/usr/lib",
-            "/data/data/com.termux/files/usr/local/lib",
-            "/data/data/com.termux/arm64/usr/lib",
-            "/data/data/com.termux/arm32/usr/lib",
-            "/data/data/com.termux/amd32/usr/lib",
-            "/data/data/com.termux/amd64/usr/lib"
-        };
+        static int rate_export_path = 0;
+        if (rate_export_path < 1) {
+          const char *library_paths_list[] = {
+              "/usr/local/lib", "/usr/local/lib32",
+              "/data/data/com.termux/files/usr/lib",
+              "/data/data/com.termux/files/usr/local/lib",
+              "/data/data/com.termux/arm64/usr/lib",
+              "/data/data/com.termux/arm32/usr/lib",
+              "/data/data/com.termux/amd32/usr/lib",
+              "/data/data/com.termux/amd64/usr/lib"
+          };
 
-        size_t counts =
-              sizeof(library_paths_list) /
-              sizeof(library_paths_list[0]);
+          size_t counts =
+                sizeof(library_paths_list) /
+                sizeof(library_paths_list[0]);
 
-        const char
-          *_old = NULL;
-        char _newpath[WG_MAX_PATH];
-        char _so_path[WG_PATH_MAX];
-        _old = getenv("LD_LIBRARY_PATH");
-        if (!_old)
-            _old = "";
+          const char
+            *_old = NULL;
+          char _newpath[WG_MAX_PATH];
+          char _so_path[WG_PATH_MAX];
+          _old = getenv("LD_LIBRARY_PATH");
+          if (!_old)
+              _old = "";
 
-        snprintf(_newpath, sizeof(_newpath),
-              "%s", _old);
+          snprintf(_newpath, sizeof(_newpath),
+                "%s", _old);
 
-        for (size_t i = 0; i < counts; i++) {
-            snprintf(_so_path, sizeof(_so_path),
-                     "%s/libpawnc.so", library_paths_list[i]);
-            if (path_exists(_so_path) != 0) {
-                if (_newpath[0] != '\0')
-                    strncat(_newpath, ":", sizeof(_newpath) - strlen(_newpath) - 1);
-                strncat(_newpath, library_paths_list[i],
-                        sizeof(_newpath) - strlen(_newpath) - 1);
-            }
-        }
-        if ( _newpath[0] != '\0' ) {
-            setenv("LD_LIBRARY_PATH", _newpath, 1);
-            pr_info(stdout, "LD_LIBRARY_PATH set to: %s", _newpath);
-        } else {
-            pr_info(stdout, "libpawnc.so not found in any target path");
+          for (size_t i = 0; i < counts; i++) {
+              snprintf(_so_path, sizeof(_so_path),
+                       "%s/libpawnc.so", library_paths_list[i]);
+              if (path_exists(_so_path) != 0) {
+                  if (_newpath[0] != '\0')
+                      strncat(_newpath, ":", sizeof(_newpath) - strlen(_newpath) - 1);
+                  strncat(_newpath, library_paths_list[i],
+                          sizeof(_newpath) - strlen(_newpath) - 1);
+              }
+          }
+          if ( _newpath[0] != '\0' ) {
+              setenv("LD_LIBRARY_PATH", _newpath, 1);
+              pr_info(stdout, "LD_LIBRARY_PATH set to: %s", _newpath);
+          } else {
+              pr_info(stdout, "libpawnc.so not found in any target path");
+          }
+          ++rate_export_path;
         }
 #endif
         char *_pointer_pawncc = NULL;
-        int __rate_pawncc_exists = -1;
+        int __rate_pawncc_exists = 0;
+
         if (strcmp(wgconfig.wg_toml_os_type, OS_SIGNAL_WINDOWS) == 0)
           {
               _pointer_pawncc = "pawncc.exe";
@@ -282,7 +287,8 @@ int wg_run_compiler(const char *args, const char *compile_args,
                         toml_datum_t toml_option_value;
                         toml_option_value = toml_string_at(option_arr, i);
                         if (!toml_option_value.ok)
-                            continue;
+                            continue
+                            ;
 
                         if (strlen(toml_option_value.u.s) >= 2) {
                             snprintf(flag_to_search,
@@ -328,7 +334,8 @@ not_valid_flag_options:
                             wg_free(merged);
                             wg_free(toml_option_value.u.s);
                             merged = NULL;
-                            break;
+                            break
+                            ;
                         }
 
                         merged = tmp;
@@ -411,7 +418,8 @@ not_valid_flag_options:
                             if (i >= (size_debug_options / sizeof(debug_options[0]))) {
                                 pr_warning(stdout,
                                     "Debug flag index %zu out of bounds", i);
-                                continue;
+                                continue
+                                ;
                             }
 
                             const char
@@ -420,17 +428,20 @@ not_valid_flag_options:
                             if (fetch_debug_flag == NULL) {
                                 pr_warning(stdout,
                                     "NULL debug flag at index %zu", i);
-                                continue;
+                                continue
+                                ;
                             }
                             size_t flag_length = strlen(fetch_debug_flag);
                             if (flag_length == 0) {
-                                continue;
+                                continue
+                                ;
                             }
                             const size_t MAX_FLAG_LENGTH = WG_MAX_PATH;
                             if (flag_length > MAX_FLAG_LENGTH) {
                                 pr_warning(stdout,
                                     "Suspiciously long debug flag at index %zu", i);
-                                continue;
+                                continue
+                                ;
                             }
 
                             while (rate_shift < max_safe_shifts) {
@@ -551,7 +562,8 @@ not_valid_flag_options:
                             char size_path_val[WG_PATH_MAX + 26];
                             wg_strip_dot_fns(size_path_val, sizeof(size_path_val), path_val.u.s);
                             if (size_path_val[0] == '\0')
-                                continue;
+                                continue
+                                ;
 
                             if (i > 0)
                             {
@@ -609,7 +621,8 @@ not_valid_flag_options:
                                 }
 
                                 rate_path = true;
-                                break;
+                                break
+                                ;
                             } else {
                                 j++;
                             }
@@ -987,13 +1000,15 @@ not_valid_flag_options:
                                 usleep(0xC350);
                             else if (p_result == compiler_process_id) {
                                 clock_gettime(CLOCK_MONOTONIC, &post_end);
-                                break;
+                                break
+                                ;
                             }
                             else {
                                 clock_gettime(CLOCK_MONOTONIC, &post_end);
                                 pr_error(stdout, "waitpid error");
                                 __debug_function();
-                                break;
+                                break
+                                ;
                             }
                             if (i == POSIX_TIMEOUT - 1) {
                                 clock_gettime(CLOCK_MONOTONIC, &post_end);
@@ -1077,7 +1092,8 @@ compiler_done:
                         {
                             if (strstr(compiler_line_buffer, "error")) {
                                 compiler_has_err = 1;
-                                break;
+                                break
+                                ;
                             }
                         }
                         fclose(this_proc_file);
@@ -1554,13 +1570,15 @@ compiler_done:
                                     usleep(0xC350);
                                 else if (p_result == compiler_process_id) {
                                     clock_gettime(CLOCK_MONOTONIC, &post_end);
-                                    break;
+                                    break
+                                    ;
                                 }
                                 else {
                                     clock_gettime(CLOCK_MONOTONIC, &post_end);
                                     pr_error(stdout, "waitpid error");
                                     __debug_function();
-                                    break;
+                                    break
+                                    ;
                                 }
                                 if (i == POSIX_TIMEOUT - 1) {
                                     clock_gettime(CLOCK_MONOTONIC, &post_end);
@@ -1643,7 +1661,8 @@ compiler_done2:
                             {
                                 if (strstr(compiler_line_buffer, "error")) {
                                     compiler_has_err = 1;
-                                    break;
+                                    break
+                                    ;
                                 }
                             }
                             fclose(this_proc_file);
@@ -1744,7 +1763,8 @@ loop_end:
                 else if (strcmp(pointer_signalA, "N") == 0 || strcmp(pointer_signalA, "n") == 0)
                 {
                     wg_free(pointer_signalA);
-                    break;
+                    break
+                    ;
                 }
                 else
                 {
@@ -2008,6 +2028,9 @@ void compiler_detailed(const char *wgoutput, int debug,
 static void cause_compiler_expl(const char *log_file, const char *wgoutput, int debug)
 {
       __debug_function();
+
+      if (path_exists(log_file) == 0)
+        return;
 
       FILE *plog = fopen(log_file, "r");
       if (!plog)

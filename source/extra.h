@@ -14,6 +14,7 @@
 #define FCOLOUR_MAGENTA    "\033[0;35m"
 #define FCOLOUR_CYAN       "\033[0;36m"
 #define FCOLOUR_WHITE      "\033[0;37m"
+#define FCOLOUR_BRIGHT_MAGENTA  "\033[1;35m"
 
 // Foreground Colors (Bright)
 #define FCOLOUR_BBLACK     "\033[1;30m"

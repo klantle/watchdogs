@@ -1858,17 +1858,17 @@ int wg_toml_configs(void)
 		/* Search for gamemode source files */
 		find_gamemodes = wg_sef_fdir("gamemodes/", "*.pwn", NULL);
 
-		/* Test compiler capabilities if found */
-		if (find_pawncc) {
-			wg_check_compiler_options(&compatibility, &optimized_lt);
-		}
-
 		/* Make sure TOML file already exists */
 		toml_file = fopen("watchdogs.toml", "r");
 		if (toml_file) {
 			fclose(toml_file); /* File exists, will parse later */
 		} else {
 			/* Create new TOML file */
+			/* Test compiler capabilities if found */
+			if (find_pawncc) {
+				wg_check_compiler_options(&compatibility, &optimized_lt);
+			}
+
 			toml_file = fopen("watchdogs.toml", "w");
 			if (!toml_file) {
 					pr_error(stdout, "Failed to create watchdogs.toml");

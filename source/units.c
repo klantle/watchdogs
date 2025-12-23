@@ -289,7 +289,7 @@ _reexecute_command:
 
             __debug_main_chain(1);
 
-            printf(FCOLOUR_BLUE "");
+            printf(FCOLOUR_BRIGHT_MAGENTA "");
             wg_printfile("watchdogs.toml");
             printf(FCOLOUR_DEFAULT "\n");
 
@@ -676,7 +676,7 @@ start_main:
                         int ret_serv = 0;
 back_start:
                         start = time(NULL);
-                        printf(FCOLOUR_BLUE "");
+                        printf(FCOLOUR_BRIGHT_MAGENTA "");
                         #ifdef WG_WINDOWS
                         snprintf(size_run, sizeof(size_run), "%s", wgconfig.wg_toml_binary);
                         #else
@@ -689,7 +689,7 @@ back_start:
                                     printf(FCOLOUR_DEFAULT "\n");
                                     printf("~ logging...\n");
                                     sleep(3);
-                                    printf(FCOLOUR_BLUE "");
+                                    printf(FCOLOUR_BRIGHT_MAGENTA "");
                                     wg_display_server_logs(0);
                                     printf(FCOLOUR_DEFAULT "\n");
                             }
@@ -765,7 +765,7 @@ start_main2:
                         int ret_serv = 0;
 back_start2:
                         start = time(NULL);
-                        printf(FCOLOUR_BLUE "");
+                        printf(FCOLOUR_BRIGHT_MAGENTA "");
                         #ifdef WG_WINDOWS
                         snprintf(size_run, sizeof(size_run), "%s", wgconfig.wg_toml_binary);
                         #else

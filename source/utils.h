@@ -105,6 +105,8 @@
     chmod(wx, 0777)
 #endif
 
+#define __maybe_unused__ __attribute__((unused))
+
 /* Dirent constants */
 #if ! defined(DT_UNKNOWN) && ! defined(DT_FIFO)
 #define DT_UNKNOWN 0

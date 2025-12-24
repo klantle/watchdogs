@@ -32,8 +32,10 @@ void println(FILE *stream, const char *format, ...)
 {
         va_list args;  /* Variable argument list handler */
         va_start(args, format);  /* Initialize argument list */
+        printf("%s", FCOLOUR_DEFAULT); /* Always reset colour */
         vfprintf(stream, format, args);   /* Print formatted string with variable arguments */
         printf("\n");            /* Append newline character */
+        printf("%s", FCOLOUR_DEFAULT); /* Always reset colour */
         va_end(args);            /* Clean up argument list */
         fflush(stream);          /* Ensure output is written immediately */
 }
@@ -47,6 +49,7 @@ void printf_colour(FILE *stream, const char *color, const char *format, ...)
 {
         va_list args;
         va_start(args, format);
+        printf("%s", FCOLOUR_DEFAULT); /* Always reset first. */
         printf("%s", color);     /* Apply ANSI color escape sequence */
         vfprintf(stream, format, args);   /* Print formatted content with variable arguments */
         printf("%s", FCOLOUR_DEFAULT);  /* Reset to default terminal color */
@@ -62,6 +65,7 @@ void printf_info(FILE *stream, const char *format, ...)
 {
         va_list args;
         va_start(args, format);
+        printf("%s", FCOLOUR_DEFAULT); /* Always reset first. */
         printf("%s", FCOLOUR_YELLOW);
         printf(">> I");       /* Standard informational prefix */
         printf("%s", FCOLOUR_DEFAULT);
@@ -80,6 +84,7 @@ void printf_warning(FILE *stream, const char *format, ...)
 {
         va_list args;
         va_start(args, format);
+        printf("%s", FCOLOUR_DEFAULT); /* Always reset first. */
         printf("%s", FCOLOUR_GREEN);
         printf(">> W");       /* Standard informational prefix */
         printf("%s", FCOLOUR_DEFAULT);
@@ -98,6 +103,7 @@ void printf_error(FILE *stream, const char *format, ...)
 {
         va_list args;
         va_start(args, format);
+        printf("%s", FCOLOUR_DEFAULT); /* Always reset first. */
         printf("%s", FCOLOUR_RED);
         printf(">> E");       /* Standard informational prefix */
         printf("%s", FCOLOUR_DEFAULT);
@@ -135,7 +141,7 @@ int portable_stat(const char *path, portable_stat_t *out) {
         /* Windows implementation using Win32 API */
         wchar_t wpath[WG_MAX_PATH];
         int len = MultiByteToWideChar(CP_UTF8, 0, path, -1, NULL, 0);  /* Calculate required buffer size */
-        
+
         /* Convert path to wide characters, fall back to ANSI if UTF-8 conversion fails */
         if (len == 0 || len > WG_MAX_PATH) {
                 if (!MultiByteToWideChar(CP_ACP, 0, path, -1, wpath, WG_MAX_PATH)) return -1;  /* ANSI fallback */
@@ -188,7 +194,7 @@ int portable_stat(const char *path, portable_stat_t *out) {
         /* Unix/Linux/macOS implementation using standard stat() */
         struct stat st;
         if (stat(path, &st) != 0) return -1;  /* Standard stat call failed */
-        
+
         /* Map standard stat structure to portable structure */
         out->st_size = (uint64_t)st.st_size;     /* File size in bytes */
         out->st_ino  = (uint64_t)st.st_ino;      /* Inode number */

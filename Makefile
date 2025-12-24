@@ -15,8 +15,13 @@ CFLAGS   = -Os -pipe
 LDFLAGS  = -lm -lcurl -lreadline -larchive
 
 ifeq ($(DEBUG_MODE),1)
-	CFLAGS = -g -O0 -Wall -fdata-sections -ffunction-sections -fno-omit-frame-pointer -fno-inline
-	STRIP  = true
+	CFLAGS = -ggdb3 -Og -Wall -Wextra -Wpedantic \
+	         -fdata-sections -ffunction-sections \
+	         -fno-omit-frame-pointer -fno-inline \
+	         -fno-optimize-sibling-calls \
+	         -DDEBUG
+	LDFLAGS = -rdynamic
+	STRIP = true
 endif
 
 SRCS = source/extra.c source/debug.c source/curl.c source/units.c source/utils.c source/depend.c \
@@ -43,7 +48,8 @@ init:
 			  mingw-w64-ucrt-x86_64-curl \
 			  mingw-w64-ucrt-x86_64-readline \
 			  mingw-w64-ucrt-x86_64-libarchive \
-			  mingw-w64-ucrt-x86_64-upx; \
+			  mingw-w64-ucrt-x86_64-upx \
+			  procps-ng; \
 		elif echo "$$UNAME_S" | grep -qi "Linux" && [ -d "/data/data/com.termux" ]; then \
 			echo "==> Using apt (Termux)"; \
 			apt -o Acquire::Queue-Mode=access -o Acquire::Retries=3 update -y && \
@@ -69,7 +75,7 @@ init:
 				dnf -y install \
 					clang lld libatomic libcxx-devel curl-devel \
 					readline-devel libarchive-devel \
-					zlib-devel binutils upx \
+					zlib-devel binutils upx procps-ng \
 					libstdc++-devel.i686 curl-devel.i686; \
 			elif command -v yum >/dev/null 2>&1; then \
 				echo "==> Using yum (Legacy RHEL)"; \
@@ -77,7 +83,7 @@ init:
 				yum -y install \
 					clang lld libcxx-devel curl-devel \
 					readline-devel libarchive-devel \
-					zlib-devel binutils upx \
+					zlib-devel binutils upx procps \
 					libstdc++-devel.i686 curl-devel.i686; \
 			elif command -v zypper >/dev/null 2>&1; then \
 				echo "==> Using zypper (openSUSE)"; \
@@ -86,14 +92,14 @@ init:
 				zypper --non-interactive install -y \
 					curl clang lld libc++-devel \
 					libcurl-devel readline-devel libarchive-devel \
-					zlib-devel binutils upx \
+					zlib-devel binutils upx procps \
 					libstdc++6-devel-32bit libcurl4-devel-32bit; \
 			elif command -v pacman >/dev/null 2>&1; then \
 				echo "==> Using pacman (Arch)"; \
 				pacman -Sy --noconfirm && \
 				pacman -S --needed --noconfirm \
 					libatomic base-devel clang lld libc++ readline \
-					curl libarchive zlib binutils upx \
+					curl libarchive zlib binutils upx procps-ng \
 					lib32-gcc-libs; \
 			else \
 				echo "Unsupported Linux distribution"; \

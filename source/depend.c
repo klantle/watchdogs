@@ -27,7 +27,7 @@ static char *git_dir;    /* Pointer to .git extension */
 static char *filename;    /* Extracted filename */
 static char *extension;    /* File extension */
 static char json_item[WG_PATH_MAX];    /* Json item's */
-static int fdir_counts = 0;    /* dump file counts */
+static int fdir_counts = RATE_SEF_EMPTY;    /* dump file counts */
 
 const char *matching_windows_patterns[] = {
 			"windows", "win", "win32", "win32", "msvc", "mingw", ".dll",
@@ -104,29 +104,29 @@ int this_os_archive( const char *filename ) {
 			int k;
 
 			/* Determine target operating system at compile time */
-			const char *target_os = NULL;
+			const char *build_os = NULL;
 			#ifdef WG_WINDOWS
-			target_os = "windows";
+			build_os = "windows";
 			#else
-			target_os = "linux";
+			build_os = "linux";
 			#endif
 
-			if ( !target_os ) return 0;
+			if ( !build_os ) return 0;
 
-			/* Convert target_os to lowercase for case-insensitive comparison */
-			char size_target[ WG_PATH_MAX ];
-			strncpy( size_target, target_os, sizeof ( size_target ) - 1 );
-			size_target[ sizeof( size_target ) - 1 ] = '\0';
+			/* Convert build_os to lowercase for case-insensitive comparison */
+			char size_build_os[ WG_PATH_MAX ];
+			strncpy( size_build_os, build_os, sizeof ( size_build_os ) - 1 );
+			size_build_os[ sizeof( size_build_os ) - 1 ] = '\0';
 
-			for (int i = 0; size_target[ i ]; i++) {
-			    size_target[ i ] = tolower(size_target[ i ]);
+			for (int i = RATE_SEF_EMPTY; size_build_os[ i ]; i++) {
+			    size_build_os[ i ] = tolower(size_build_os[ i ]);
 			}
 
 			/* Select OS-specific patterns */
 			const char **patterns = NULL;
-			if (strfind( size_target, "win", true )) {
+			if (strfind( size_build_os, "win", true )) {
 			    patterns = matching_windows_patterns;
-			} else if (strfind(size_target, "linux", true )) {
+			} else if (strfind(size_build_os, "linux", true )) {
 			    patterns = matching_linux_patterns;
 			}
 
@@ -139,15 +139,16 @@ int this_os_archive( const char *filename ) {
 						sizeof ( filename_lower ) - 1 );
 			filename_lower [sizeof ( filename_lower ) - 1 ] = '\0';
 
-			for (int i = 0; filename_lower[ i ]; i++) {
+			for (int i = RATE_SEF_EMPTY; filename_lower[ i ]; i++) {
 			    filename_lower[ i ] = tolower(filename_lower[ i ]);
 			}
 
 			/* Check for patterns */
-			for (k = 0; patterns[ k ] != NULL; ++k) {
-			    if ( strstr(
+			for (k = RATE_SEF_EMPTY; patterns[ k ] != NULL; ++k) {
+			    if ( strfind(
 						    filename_lower,
-						    patterns[ k ] )
+						    patterns[ k ],
+								true)
 						) {
 						return 1;
 			    }
@@ -162,10 +163,10 @@ int this_os_archive( const char *filename ) {
 int this_more_archive(const char *filename)
 {
 			int k;						     /* loop counter for array _sindex */
-			int ret = 0;			       /* return value, default 0 (not found) */
+			int ret = RATE_SEF_EMPTY;			       /* return value, default 0 (not found) */
 
 			/* Iterate through all server patterns until NULL terminator */
-			for (k = 0;
+			for (k = RATE_SEF_EMPTY;
 			     matching_any_patterns[k] != NULL;  /* check array end */
 			     ++k) {
 			       /* Search for current server pattern in filename */
@@ -182,23 +183,22 @@ int this_more_archive(const char *filename)
 			return ret;  /* return result (0=not found, 1=found) */
 }
 
- /* Helper function 1: Check for OS-specific patterns */
- static char *find_os_specific_asset( char **assets, int count, const char *os_pattern )
- {
+static char *find_os_specific_asset( char **assets, int count, const char *os_pattern )
+{
 			int i;
 
-			if (strstr(os_pattern, "win")) {
-				for (i = 0; i < count; i++) {
-					for (int w = 0; matching_windows_patterns[w] != NULL; w++) {
-						if (strstr(assets[i], matching_windows_patterns[w])) {
+			if (strfind(os_pattern, "win", true)) {
+				for (i = RATE_SEF_EMPTY; i < count; i++) {
+					for (int w = RATE_SEF_EMPTY; matching_windows_patterns[w] != NULL; w++) {
+						if (strfind(assets[i], matching_windows_patterns[w], true)) {
 							return strdup(assets[i]);
 						}
 					}
 				}
-			} else if (strstr(os_pattern, "linux")) {
-				for (i = 0; i < count; i++) {
-					for (int l = 0; matching_linux_patterns[l] != NULL; l++) {
-						if (strstr(assets[i], matching_linux_patterns[l])) {
+			} else if (strfind(os_pattern, "linux", true)) {
+				for (i = RATE_SEF_EMPTY; i < count; i++) {
+					for (int l = RATE_SEF_EMPTY; matching_linux_patterns[l] != NULL; l++) {
+						if (strfind(assets[i], matching_linux_patterns[l], true)) {
 							return strdup(assets[i]);
 						}
 					}
@@ -208,16 +208,14 @@ int this_more_archive(const char *filename)
 			return NULL;
  }
 
- /* Helper function 2: Check for server assets with OS-specific patterns */
  static char *find_server_asset_with_os( char **assets, int count, const char *os_pattern )
  {
 			int i;
 
-			for (i = 0; i < count; i++) {
-				int is_server_asset = 0;
+			for (i = RATE_SEF_EMPTY; i < count; i++) {
+				int is_server_asset = RATE_SEF_EMPTY;
 
-				/* Check if it's a server asset */
-				for (int p = 0; matching_any_patterns[p] != NULL; p++) {
+				for (int p = RATE_SEF_EMPTY; matching_any_patterns[p] != NULL; p++) {
 					if (strfind(assets[i], matching_any_patterns[p], true)) {
 						is_server_asset = 1;
 						break;
@@ -227,16 +225,15 @@ int this_more_archive(const char *filename)
 				if (!is_server_asset)
 					continue;
 
-				/* Check OS-specific patterns for server assets */
-				if (strstr(os_pattern, "win")) {
-					for (int w = 0; matching_windows_patterns[w] != NULL; w++) {
-						if (strstr(assets[i], matching_windows_patterns[w])) {
+				if (strfind(os_pattern, "win", true)) {
+					for (int w = RATE_SEF_EMPTY; matching_windows_patterns[w] != NULL; w++) {
+						if (strfind(assets[i], matching_windows_patterns[w], true)) {
 							return strdup(assets[i]);
 						}
 					}
-				} else if (strstr(os_pattern, "linux")) {
-					for (int l = 0; matching_linux_patterns[l] != NULL; l++) {
-						if (strstr(assets[i], matching_linux_patterns[l])) {
+				} else if (strfind(os_pattern, "linux", true)) {
+					for (int l = RATE_SEF_EMPTY; matching_linux_patterns[l] != NULL; l++) {
+						if (strfind(assets[i], matching_linux_patterns[l], true)) {
 							return strdup(assets[i]);
 						}
 					}
@@ -246,32 +243,29 @@ int this_more_archive(const char *filename)
 			return NULL;
  }
 
- /* Helper function 3: Find generic or fallback asset */
  static char *find_generic_or_fallback_asset( char **assets, int count )
  {
 			int i, rate_os_pattern;
 
-			/* First, try to find any generic server asset */
-			for (i = 0; i < count; i++) {
-				for (int p = 0; matching_any_patterns[p] != NULL; p++) {
+			for (i = RATE_SEF_EMPTY; i < count; i++) {
+				for (int p = RATE_SEF_EMPTY; matching_any_patterns[p] != NULL; p++) {
 					if (strfind(assets[i], matching_any_patterns[p], true)) {
 						return strdup(assets[i]);
 					}
 				}
 			}
 
-			/* Then, find the first non-OS-specific asset */
-			for (i = 0; i < count; i++) {
-				rate_os_pattern = 0;
+			for (i = RATE_SEF_EMPTY; i < count; i++) {
+				rate_os_pattern = RATE_SEF_EMPTY;
 
-				for (int w = 0; matching_windows_patterns[w] != NULL && !rate_os_pattern; w++) {
-					if (strstr(assets[i], matching_windows_patterns[w])) {
+				for (int w = RATE_SEF_EMPTY; matching_windows_patterns[w] != NULL && !rate_os_pattern; w++) {
+					if (strfind(assets[i], matching_windows_patterns[w], true)) {
 						rate_os_pattern = 1;
 					}
 				}
 
-				for (int l = 0; matching_linux_patterns[l] != NULL && !rate_os_pattern; l++) {
-					if (strstr(assets[i], matching_linux_patterns[l])) {
+				for (int l = RATE_SEF_EMPTY; matching_linux_patterns[l] != NULL && !rate_os_pattern; l++) {
+					if (strfind(assets[i], matching_linux_patterns[l], true)) {
 						rate_os_pattern = 1;
 					}
 				}
@@ -281,78 +275,63 @@ int this_more_archive(const char *filename)
 				}
 			}
 
-			/* Last resort: return the first asset */
 			return strdup(assets[0]);
  }
 
- /* Main function - unified interface */
  char *package_fetching_assets( char **package_assets,
 					      int counts, const char *pf_os )
  {
 			char *result = NULL;
-			char size_target[32] = {0};
-			const char *target_os = NULL;
+			char size_build_os[32] = {0};
+			const char *build_os = NULL;
 
-			/* Handle edge cases */
-			if (counts == 0)
+			if (counts == RATE_SEF_EMPTY)
 				return NULL;
 			if (counts == 1)
 				return strdup(package_assets[0]);
 
-			/* Determine target OS */
 			if (pf_os && pf_os[0]) {
-				target_os = pf_os;
+				build_os = pf_os;
 			} else {
  #ifdef WG_WINDOWS
-				target_os = "windows";
+				build_os = "windows";
  #else
-				target_os = "linux";
+				build_os = "linux";
  #endif
 			}
 
-			/* Normalize OS string to lowercase */
-			if (target_os) {
-				strncpy(size_target, target_os, sizeof(size_target) - 1);
-				for (int j = 0; size_target[j]; j++) {
-					size_target[j] = tolower(size_target[j]);
+			if (build_os) {
+				strncpy(size_build_os, build_os, sizeof(size_build_os) - 1);
+				for (int j = RATE_SEF_EMPTY; size_build_os[j]; j++) {
+					size_build_os[j] = tolower(size_build_os[j]);
 				}
 			}
 
-			/* Try different search strategies in order of preference */
-			if (size_target[0]) {
-				/* 1. First try server assets with OS-specific patterns */
-				result = find_server_asset_with_os(package_assets, counts, size_target);
+			if (size_build_os[0]) {
+				result = find_server_asset_with_os(package_assets, counts, size_build_os);
 				if (result)
 					return result;
 
-				/* 2. Then try any OS-specific patterns */
-				result = find_os_specific_asset(package_assets, counts, size_target);
+				result = find_os_specific_asset(package_assets, counts, size_build_os);
 				if (result)
 					return result;
 			}
 
-			/* 3. Finally try generic or fallback assets */
-			    return find_generic_or_fallback_asset(package_assets, counts);
+			return find_generic_or_fallback_asset(package_assets, counts);
 }
 
-/*
- * Parse repository URL/identifier into structured components
- * Extracts host, domain, user, repo, and tag from dependency string
- */
 static int
 package_parse_repo( const char *input, struct repositories *__package_data ) {
 
-			memset( __package_data, 0, sizeof( *__package_data ) );
+			memset( __package_data, RATE_SEF_EMPTY, sizeof( *__package_data ) );
 
-			/* Default to GitHub */
-			strcpy( __package_data->host, "github" );
+			strcpy( __package_data->host,   "github" );
 			strcpy( __package_data->domain, "github.com" );
 
 			char parse_input[WG_PATH_MAX * 2];
 			strncpy( parse_input, input, sizeof( parse_input ) - 1 );
 			parse_input[sizeof( parse_input ) - 1] = '\0';
 
-			/* Extract tag (version) if present (format: user/repo?tag) */
 			tag = strrchr( parse_input, '?' );
 			if ( tag ) {
 						*tag = '\0';
@@ -368,40 +347,36 @@ package_parse_repo( const char *input, struct repositories *__package_data ) {
 
 			path = parse_input;
 
-			/* Strip protocol prefix */
 			if ( !strncmp( path, "https://", 8 ) )
 						path += 8;
 			else if ( !strncmp( path, "http://", 7 ) )
 						path += 7;
 
-			/* Handle shorthand GitHub format */
 			if ( !strncmp( path, "github/", 7 ) ) {
 						strcpy( __package_data->host, "github" );
 						strcpy( __package_data->domain, "github.com" );
 						path += 7;
 			} else {
-						/* Parse custom domain format (e.g., gitlab.com/user/repo) */
 						path_slash = strchr( path, __PATH_CHR_SEP_LINUX );
+
 						if ( path_slash && strchr( path, '.' ) && strchr( path, '.' ) < path_slash ) {
-									char domain[128];
+									char domain[WG_PATH_MAX];
 
 									strncpy( domain, path, path_slash - path );
 									domain[path_slash - path] = '\0';
 
-									if ( strstr( domain, "github" ) ) {
+									if ( strfind ( domain, "github", true ) ) {
 												strcpy( __package_data->host, "github" );
 												strcpy( __package_data->domain, "github.com" );
 									} else {
-												strncpy( __package_data->domain, domain,
-															sizeof( __package_data->domain ) - 1 );
-												strcpy( __package_data->host, "custom" );
+												pr_error(stdout, "Currently Watchdogs only supported for GitHub..");
+												return 1;
 									}
 
 									path = path_slash + 1;
 						}
 			}
 
-			/* Extract user and repository */
 			user = path;
 			repo_slash = strchr( path, __PATH_CHR_SEP_LINUX );
 			if ( !repo_slash )
@@ -410,16 +385,19 @@ package_parse_repo( const char *input, struct repositories *__package_data ) {
 			*repo_slash = '\0';
 			repo = repo_slash + 1;
 
-			strncpy( __package_data->user, user, sizeof( __package_data->user ) - 1 );
+			strncpy( __package_data->user,
+						user,
+						sizeof( __package_data->user ) - 1 );
 
-			/* Remove .git extension if present */
-			git_dir = strstr( repo, ".git" );
+			char *__GIT = ".git";
+			git_dir = strstr( repo, __GIT );
+
 			if ( git_dir ) { *git_dir = '\0'; }
 			strncpy( __package_data->repo,
 						repo, sizeof( __package_data->repo ) - 1 );
 
-			if ( strlen( __package_data->user ) == 0 ||
-			     strlen( __package_data->repo ) == 0 )
+			if ( strlen( __package_data->user ) == RATE_SEF_EMPTY ||
+			     strlen( __package_data->repo ) == RATE_SEF_EMPTY )
 						return 0;
 
 #if defined( _DBG_PRINT )
@@ -445,7 +423,7 @@ static int package_gh_release_assets( const char *user, const char *repo,
 			char api_url[WG_PATH_MAX * 2];
 			char *json_data = NULL;
 			const char *p;
-			int url_count = 0;
+			int url_count = RATE_SEF_EMPTY;
 
 			/* Build GitHub API URL for specific release tag */
 			snprintf( api_url, sizeof( api_url ),
@@ -453,8 +431,10 @@ static int package_gh_release_assets( const char *user, const char *repo,
 									 "https://", user, repo, tag );
 
 			/* Fetch release information JSON */
-			if ( !package_http_get_content( api_url, wgconfig.wg_toml_github_tokens, &json_data ) )
+			if ( !package_http_get_content( api_url, wgconfig.wg_toml_github_tokens, &json_data ) ) {
+						wg_free( json_data );
 						return 0;
+			}
 
 			/* Parse JSON to extract browser_download_url entries */
 			p = json_data;
@@ -503,15 +483,15 @@ package_build_repo_url( const struct repositories *__package_data, int is_tag_pa
 									sizeof( package_actual_tag ) - 1 );
 
 						/* Handle "newer" tag special case */
-						if ( strcmp( package_actual_tag, "newer" ) == 0 ) {
-									if ( strcmp( __package_data->host, "github" ) == 0 && !is_tag_page ) {
+						if ( strcmp( package_actual_tag, "newer" ) == RATE_SEF_EMPTY ) {
+									if ( strcmp( __package_data->host, "github" ) == RATE_SEF_EMPTY && !is_tag_page ) {
 												strcpy( package_actual_tag, "latest" );
 									}
 						}
 			}
 
 			/* GitHub-specific URL construction */
-			if ( strcmp( __package_data->host, "github" ) == 0 ) {
+			if ( strcmp( __package_data->host, "github" ) == RATE_SEF_EMPTY ) {
 						if ( is_tag_page && package_actual_tag[0] ) {
 									/* Tag page URL (for display/verification) */
 									if ( !strcmp( package_actual_tag, "latest" ) ) {
@@ -546,12 +526,6 @@ package_build_repo_url( const struct repositories *__package_data, int is_tag_pa
 												__package_data->repo );
 						}
 			}
-
-#if defined( _DBG_PRINT )
-			pr_info( stdout, "Built URL: %s (is_tag_page=%d, tag=%s)",
-						put_url, is_tag_page,
-						package_actual_tag[0] ? package_actual_tag : "(none)" );
-#endif
 }
 
 /*
@@ -564,7 +538,7 @@ static int package_gh_latest_tag( const char *user, const char *repo,
 			char api_url[WG_PATH_MAX * 2];
 			char *json_data = NULL;
 			const char *p;
-			int ret = 0;
+			int ret = RATE_SEF_EMPTY;
 
 			/* Build GitHub API URL for latest release */
 			snprintf( api_url, sizeof( api_url ),
@@ -616,14 +590,14 @@ static int package_gh_latest_tag( const char *user, const char *repo,
 static int
 package_handle_repo( const struct repositories *repo, char *put_url, size_t put_size, const char *branch ) {
 
-			int ret = 0;
+			int ret = RATE_SEF_EMPTY;
+
 			 /* Common branch name */
 			const char *package_repo_branch[] = { branch, "main", "master" };
 			char package_actual_tag[128] = { 0 };
-			int use_fallback_branch = 0;
+			int use_fallback_branch = RATE_SEF_EMPTY;
 
-			/* Handle "latest" tag by resolving to actual tag name */
-			if ( repo->tag[0] && strcmp( repo->tag, "newer" ) == 0 ) {
+			if ( repo->tag[0] && strcmp( repo->tag, "newer" ) == RATE_SEF_EMPTY ) {
 			    if ( package_gh_latest_tag( repo->user,
 						    repo->repo,
 						    package_actual_tag,
@@ -641,9 +615,8 @@ package_handle_repo( const struct repositories *repo, char *put_url, size_t put_
 			    strncpy( package_actual_tag, repo->tag, sizeof( package_actual_tag ) - 1 );
 			}
 
-			/* Fallback to main/master branch if latest tag resolution failed */
 			if ( use_fallback_branch ) {
-			    for ( int j = 0; j < 3 && !ret; j++ ) {
+			    for ( int j = RATE_SEF_EMPTY; j < 3 && !ret; j++ ) {
 						snprintf( put_url, put_size,
 									"https://github.com/"
 									"%s/%s/archive/refs/heads/%s.zip",
@@ -666,24 +639,22 @@ package_handle_repo( const struct repositories *repo, char *put_url, size_t put_
 			/* Process tagged releases */
 			if ( package_actual_tag[0] ) {
 			    char *package_assets[10] = { 0 };
-			    int asset_counts = 0;
+			    int asset_counts = RATE_SEF_EMPTY;
 			    asset_counts = package_gh_release_assets( repo->user,
 									repo->repo, package_actual_tag,
 									package_assets, 10 );
 
-			    /* If release has downloadable assets */
 			    if ( asset_counts > 0 ) {
 						char *package_best_asset = NULL;
 
-						/* Determine target OS based on platform defines */
-						const char *target_os = NULL;
+						const char *build_os = NULL;
 						#ifdef WG_WINDOWS
-						target_os = "windows";
+						build_os = "windows";
 						#else
-						target_os = "linux";
+						build_os = "linux";
 						#endif
 
-						package_best_asset = package_fetching_assets( package_assets, asset_counts, target_os );
+						package_best_asset = package_fetching_assets( package_assets, asset_counts, build_os );
 
 						if ( package_best_asset ) {
 						    strncpy( put_url, package_best_asset, put_size - 1 );
@@ -705,11 +676,10 @@ package_handle_repo( const struct repositories *repo, char *put_url, size_t put_
 						}
 
 						/* Clean up asset array */
-						for ( int j = 0; j < asset_counts; j++ )
+						for ( int j = RATE_SEF_EMPTY; j < asset_counts; j++ )
 						    wg_free( package_assets[j] );
 			    }
 
-			    /* If no assets found, try standard archive formats */
 			    if ( !ret ) {
 						const char *package_arch_format[] = {
 						    "https://github.com/"
@@ -718,7 +688,7 @@ package_handle_repo( const struct repositories *repo, char *put_url, size_t put_
 						    "%s/%s/archive/refs/tags/%s.zip"
 						};
 
-						for ( int j = 0; j < 2 && !ret; j++ ) {
+						for ( int j = RATE_SEF_EMPTY; j < 2 && !ret; j++ ) {
 						    snprintf( put_url, put_size, package_arch_format[j],
 												    repo->user,
 												    repo->repo,
@@ -730,7 +700,7 @@ package_handle_repo( const struct repositories *repo, char *put_url, size_t put_
 			    }
 			} else {
 			    /* No tag specified - try main/master branches */
-			    for ( int j = 0; j < 2 && !ret; j++ ) {
+			    for ( int j = RATE_SEF_EMPTY; j < 2 && !ret; j++ ) {
 						snprintf( put_url, put_size,
 									"%s%s/%s/archive/refs/heads/%s.zip",
 									"https://github.com/",
@@ -775,7 +745,7 @@ int package_set_hash( const char *raw_file_path, const char *raw_json_path ) {
 						goto done;
 
 			unsigned char sha1_hash[20];
-			if ( crypto_generate_sha1_hash( res_convert_json_path, sha1_hash ) == 0 ) {
+			if ( crypto_generate_sha1_hash( res_convert_json_path, sha1_hash ) == RATE_SEF_EMPTY ) {
 						goto done;
 			}
 
@@ -810,7 +780,7 @@ void package_implementation_samp_conf( const char* config_file, const char* fw_l
 			if (wg_server_env() != 1)
 						return;
 
-			if (dir_exists( ".watchdogs" ) == 0)
+			if (dir_exists( ".watchdogs" ) == RATE_SEF_EMPTY)
 						MKDIR( ".watchdogs" );
 
 			pr_color( stdout, FCOLOUR_GREEN, "Create Dependencies '%s' into '%s'\t\t"
@@ -820,10 +790,10 @@ void package_implementation_samp_conf( const char* config_file, const char* fw_l
 			FILE* ctx_file = fopen( config_file, "r" );
 			if (ctx_file) {
 						char ctx_line[WG_PATH_MAX];
-						int t_exist = 0, tr_exist = 0, tr_ln_has_tx = 0;
+						int t_exist = RATE_SEF_EMPTY, tr_exist = RATE_SEF_EMPTY, tr_ln_has_tx = RATE_SEF_EMPTY;
 
 						while ( fgets ( ctx_line, sizeof (ctx_line ), ctx_file ) ) {
-									ctx_line[ strcspn ( ctx_line, "\n" ) ] = 0;
+									ctx_line[ strcspn ( ctx_line, "\n" ) ] = RATE_SEF_EMPTY;
 									if (strstr( ctx_line, plugin_name ) != NULL) {
 												t_exist = 1;
 									}
@@ -846,7 +816,7 @@ void package_implementation_samp_conf( const char* config_file, const char* fw_l
 									while ( fgets ( ctx_line, sizeof( ctx_line ), ctx_file) ) {
 												char clean_line[ WG_PATH_MAX ];
 												strcpy( clean_line, ctx_line );
-												clean_line[ strcspn ( clean_line, "\n" ) ] = 0;
+												clean_line[ strcspn ( clean_line, "\n" ) ] = RATE_SEF_EMPTY;
 
 												if (strstr( clean_line, fw_line ) != NULL &&
 												    strstr( clean_line, plugin_name ) == NULL)
@@ -902,9 +872,9 @@ void package_implementation_omp_conf( const char* config_name, const char* packa
 			if ( !ctx_file ) {
 						s_root = cJSON_CreateObject();
 			} else {
-						fseek( ctx_file, 0, SEEK_END );
+						fseek( ctx_file, RATE_SEF_EMPTY, SEEK_END );
 						long fle_size = ftell( ctx_file );
-						fseek( ctx_file, 0, SEEK_SET );
+						fseek( ctx_file, RATE_SEF_EMPTY, SEEK_SET );
 
 						char* buffer = ( char* )wg_malloc( fle_size + 1 );
 						if ( !buffer ) {
@@ -956,7 +926,7 @@ void package_implementation_omp_conf( const char* config_name, const char* packa
 			}
 
 			cJSON* dir_item;
-			int p_exist = 0;
+			int p_exist = RATE_SEF_EMPTY;
 
 			cJSON_ArrayForEach( dir_item, legacy_plugins ) {
 						if ( cJSON_IsString( dir_item ) &&
@@ -992,14 +962,14 @@ void package_implementation_omp_conf( const char* config_name, const char* packa
  */
 void package_add_include( const char *modes, char *package_name, char *package_following ) {
 
-			if ( path_exists( modes ) == 0 ) return;
+			if ( path_exists( modes ) == RATE_SEF_EMPTY ) return;
 
 			FILE *m_file = fopen( modes, "rb" );
 			if ( !m_file ) return;
 
-			fseek( m_file, 0, SEEK_END );
+			fseek( m_file, RATE_SEF_EMPTY, SEEK_END );
 			long fle_size = ftell( m_file );
-			fseek( m_file, 0, SEEK_SET );
+			fseek( m_file, RATE_SEF_EMPTY, SEEK_SET );
 
 			char *ct_modes = wg_malloc( fle_size + 2 );
 			if ( !ct_modes ) { fclose(m_file); return; }
@@ -1208,138 +1178,139 @@ void dump_file_type( const char *dump_path, char *dump_pattern,
 			println(stdout, "fdir_counts (%d): %d", fdir_counts, found);
 #endif
 			if ( found ) {
-						for ( i = 0; i < wgconfig.wg_sef_count; ++i ) {
-									package_names = package_get_filename( wgconfig.wg_sef_found_list[i] );
-									basename = package_get_basename( wgconfig.wg_sef_found_list[i] );
+				for ( i = RATE_SEF_EMPTY; i < wgconfig.wg_sef_count; ++i ) {
+						package_names = package_get_filename( wgconfig.wg_sef_found_list[i] );
+						basename = package_get_basename( wgconfig.wg_sef_found_list[i] );
 
-									/* Convert to lowercase for case-insensitive comparison */
-									basename_lower = strdup( basename );
-									for ( int j = 0; basename_lower[j]; j++ )
-												{
-															basename_lower[j] = tolower( basename_lower[j] );
-												}
+						/* Convert to lowercase for case-insensitive comparison */
+						basename_lower = strdup( basename );
+						for ( int j = RATE_SEF_EMPTY; basename_lower[j]; j++ )
+							{
+										basename_lower[j] = tolower( basename_lower[j] );
+							}
 
-									int rate_has_prefix = 0;
+						int rate_has_prefix = RATE_SEF_EMPTY;
 
-									/* toml parsing a value */
-									pr_info(stdout, "Loaded root patterns: %s", wgconfig.wg_toml_root_patterns);
+						/* toml parsing a value */
+						pr_info(stdout, "Loaded root patterns: %s", wgconfig.wg_toml_root_patterns);
 
-									const char* matching_root_keywords = wgconfig.wg_toml_root_patterns;
-									while ( *matching_root_keywords ) {
-												while ( *matching_root_keywords == ' ' /* free */ )
-															matching_root_keywords++;
+						const char* matching_root_keywords = wgconfig.wg_toml_root_patterns;
+						while ( *matching_root_keywords ) {
+									while ( *matching_root_keywords == ' ' /* free */ )
+												matching_root_keywords++;
 
-												const char* end = matching_root_keywords;
-												while ( *end && *end != ' ' )
-															end++;
+									const char* end = matching_root_keywords;
+									while ( *end && *end != ' ' )
+												end++;
 
-												if ( end > matching_root_keywords ) {
-												   size_t keyword_len = end - matching_root_keywords;
-												   if ( strncmp( basename_lower,
-															matching_root_keywords,
-															keyword_len
-															) == 0)
-												   {
-												      ++rate_has_prefix;
-												      break;
-												   }
-												}
-
-												matching_root_keywords = ( *end ) ? end + 1 : end;
+									if ( end > matching_root_keywords ) {
+									   size_t keyword_len = end - matching_root_keywords;
+									   if ( strncmp( basename_lower,
+												matching_root_keywords,
+												keyword_len
+												) == RATE_SEF_EMPTY)
+									   {
+									      ++rate_has_prefix;
+									      break;
+									   }
 									}
 
-									/* Move to target directory if specified */
-									if ( dump_place[0] != '\0' ) {
-									#ifdef WG_WINDOWS
-												snprintf( command, sizeof( command ),
-															"move "
-															"/Y \"%s\" \"%s\\%s\\\"",
-															wgconfig.wg_sef_found_list[i], dump_pwd, dump_place );
-
-												wg_run_command( command );
-									#else
-												snprintf( command, sizeof( command ),
-															"mv "
-															"-f \"%s\" \"%s/%s/\"",
-															wgconfig.wg_sef_found_list[i], dump_pwd, dump_place );
-
-												wg_run_command( command );
-									#endif
-												pr_color( stdout, FCOLOUR_CYAN, " [REPLICATE] Plugins %s -> %s - %s\n",
-																		 wgconfig.wg_sef_found_list[i], dump_pwd, dump_place );
-									} else {/* Move to current directory */
-												if ( rate_has_prefix ) {
-												#ifdef WG_WINDOWS
-															snprintf( command, sizeof( command ),
-																		"move "
-																		"/Y \"%s\" \"%s\"",
-																		wgconfig.wg_sef_found_list[i], dump_pwd );
-
-															wg_run_command( command );
-												#else
-															snprintf( command, sizeof( command ),
-																		"mv "
-																		"-f \"%s\" \"%s\"",
-																		wgconfig.wg_sef_found_list[i], dump_pwd );
-
-															wg_run_command( command );
-												#endif
-															pr_color( stdout, FCOLOUR_CYAN, " [REPLICATE] Plugins %s -> %s\n",
-																					wgconfig.wg_sef_found_list[i], dump_pwd );
-												} else {
-															if ( path_exists( "plugins" ) == 1 ) {
-															#ifdef WG_WINDOWS
-																		snprintf( command, sizeof( command ),
-																					"move "
-																					"/Y \"%s\" \"%s\\plugins\"",
-																					wgconfig.wg_sef_found_list[i], dump_pwd );
-
-																		wg_run_command( command );
-
-																		pr_color( stdout, FCOLOUR_CYAN, " [REPLICATE] Plugins %s -> %s\\plugins\n",
-																								wgconfig.wg_sef_found_list[i], dump_pwd );
-															#else
-																		snprintf( command, sizeof( command ),
-																					"mv "
-																					"-f \"%s\" \"%s/plugins\"",
-																					wgconfig.wg_sef_found_list[i], dump_pwd );
-
-																		wg_run_command( command );
-
-																		pr_color( stdout, FCOLOUR_CYAN, " [REPLICATE] Plugins %s -> %s/plugins\n",
-																								wgconfig.wg_sef_found_list[i], dump_pwd );
-															#endif
-															}
-												}
-
-												if ( rate_has_prefix ) {
-															pr_color( stdout, FCOLOUR_CYAN, " [REPLICATE] Plugins %s -> %s\n",
-																					wgconfig.wg_sef_found_list[i], dump_pwd );
-												} else {
-															if ( path_exists( "plugins" ) == 1 ) {
-															#ifdef WG_WINDOWS
-																		pr_color( stdout, FCOLOUR_CYAN, " [REPLICATE] Plugins %s -> %s\\plugins\n",
-																					wgconfig.wg_sef_found_list[i], dump_pwd );
-															#else
-																		pr_color( stdout, FCOLOUR_CYAN, " [REPLICATE] Plugins %s -> %s/plugins\n",
-																					wgconfig.wg_sef_found_list[i], dump_pwd );
-															#endif
-															}
-												}
-												snprintf( json_item, sizeof( json_item ), "%s", package_names );
-												package_set_hash( json_item, json_item );
-
-												if ( dump_root == 1 ) {
-															goto done;
-												}
-
-												/* Update configuration based on server environment */
-												if ( wg_server_env() == 1 && strfind( wgconfig.wg_toml_config, ".cfg", true ) )
-															S_ADD_PLUGIN( wgconfig.wg_toml_config, "plugins", basename );
-												else if ( wg_server_env() == 2 && strfind( wgconfig.wg_toml_config, ".json", true ) )
-															M_ADD_PLUGIN( wgconfig.wg_toml_config, basename );
-									}
+									matching_root_keywords = ( *end ) ? end + 1 : end;
 						}
+						wg_free(basename_lower);
+
+						/* Move to target directory if specified */
+						if ( dump_place[0] != '\0' ) {
+						#ifdef WG_WINDOWS
+								snprintf( command, sizeof( command ),
+											"move "
+											"/Y \"%s\" \"%s\\%s\\\"",
+											wgconfig.wg_sef_found_list[i], dump_pwd, dump_place );
+
+								wg_run_command( command );
+						#else
+								snprintf( command, sizeof( command ),
+											"mv "
+											"-f \"%s\" \"%s/%s/\"",
+											wgconfig.wg_sef_found_list[i], dump_pwd, dump_place );
+
+								wg_run_command( command );
+						#endif
+								pr_color( stdout, FCOLOUR_CYAN, " [REPLICATE] Plugins %s -> %s - %s\n",
+												 wgconfig.wg_sef_found_list[i], dump_pwd, dump_place );
+						} else {/* Move to current directory */
+								if ( rate_has_prefix ) {
+								#ifdef WG_WINDOWS
+											snprintf( command, sizeof( command ),
+														"move "
+														"/Y \"%s\" \"%s\"",
+														wgconfig.wg_sef_found_list[i], dump_pwd );
+
+											wg_run_command( command );
+								#else
+											snprintf( command, sizeof( command ),
+														"mv "
+														"-f \"%s\" \"%s\"",
+														wgconfig.wg_sef_found_list[i], dump_pwd );
+
+											wg_run_command( command );
+								#endif
+											pr_color( stdout, FCOLOUR_CYAN, " [REPLICATE] Plugins %s -> %s\n",
+																	wgconfig.wg_sef_found_list[i], dump_pwd );
+								} else {
+											if ( path_exists( "plugins" ) == 1 ) {
+											#ifdef WG_WINDOWS
+														snprintf( command, sizeof( command ),
+																	"move "
+																	"/Y \"%s\" \"%s\\plugins\"",
+																	wgconfig.wg_sef_found_list[i], dump_pwd );
+
+														wg_run_command( command );
+
+														pr_color( stdout, FCOLOUR_CYAN, " [REPLICATE] Plugins %s -> %s\\plugins\n",
+																				wgconfig.wg_sef_found_list[i], dump_pwd );
+											#else
+														snprintf( command, sizeof( command ),
+																	"mv "
+																	"-f \"%s\" \"%s/plugins\"",
+																	wgconfig.wg_sef_found_list[i], dump_pwd );
+
+														wg_run_command( command );
+
+														pr_color( stdout, FCOLOUR_CYAN, " [REPLICATE] Plugins %s -> %s/plugins\n",
+																				wgconfig.wg_sef_found_list[i], dump_pwd );
+											#endif
+											}
+								}
+
+								if ( rate_has_prefix ) {
+											pr_color( stdout, FCOLOUR_CYAN, " [REPLICATE] Plugins %s -> %s\n",
+																	wgconfig.wg_sef_found_list[i], dump_pwd );
+								} else {
+											if ( path_exists( "plugins" ) == 1 ) {
+											#ifdef WG_WINDOWS
+														pr_color( stdout, FCOLOUR_CYAN, " [REPLICATE] Plugins %s -> %s\\plugins\n",
+																	wgconfig.wg_sef_found_list[i], dump_pwd );
+											#else
+														pr_color( stdout, FCOLOUR_CYAN, " [REPLICATE] Plugins %s -> %s/plugins\n",
+																	wgconfig.wg_sef_found_list[i], dump_pwd );
+											#endif
+											}
+								}
+								snprintf( json_item, sizeof( json_item ), "%s", package_names );
+								package_set_hash( json_item, json_item );
+
+								if ( dump_root == 1 ) {
+											goto done;
+								}
+
+								/* Update configuration based on server environment */
+								if ( wg_server_env() == 1 && strfind( wgconfig.wg_toml_config, ".cfg", true ) )
+											S_ADD_PLUGIN( wgconfig.wg_toml_config, "plugins", basename );
+								else if ( wg_server_env() == 2 && strfind( wgconfig.wg_toml_config, ".json", true ) )
+											M_ADD_PLUGIN( wgconfig.wg_toml_config, basename );
+						}
+				}
 			}
 done:
 			return;
@@ -1380,10 +1351,10 @@ void package_move_files( const char *package_dir )
 			/* Stack */
 			int _sindex = -1;
 			int _ssize = WG_MAX_PATH;
-			int rate_found_include = 0;
+			int rate_found_include = RATE_SEF_EMPTY;
 
 			/* Reset */
-			fdir_counts = 0;
+			fdir_counts = RATE_SEF_EMPTY;
 
 			/* CWD/PWD */
 			char *fetch_pwd = NULL;
@@ -1392,18 +1363,19 @@ void package_move_files( const char *package_dir )
 			/* Stack-based directory traversal for finding nested include files */
 			struct stat dir_st;
 			struct dirent *dir_item;
-			char
-						**tmp_stack = wg_malloc( _ssize * sizeof( char* ) );
-			if ( tmp_stack == 0 )
-						{
-									return;
-						}
+			char **tmp_stack = wg_malloc( _ssize * sizeof( char* ) );
+			if ( tmp_stack == RATE_SEF_EMPTY ) { return; }
 			char **stack = tmp_stack;
-
-			for ( i = 0; i < _ssize; i++ )
-						{
-									stack[i] = wg_malloc( WG_PATH_MAX );
-						}
+			for ( i = RATE_SEF_EMPTY; i < _ssize; i++ ) {
+			    stack[i] = wg_malloc( WG_PATH_MAX );
+			    if ( stack[i] == RATE_SEF_EMPTY ) {
+			        for ( int j = RATE_SEF_EMPTY; j < i; j++ ) {
+			            wg_free( stack[j] );
+			        }
+			        wg_free( stack );
+			        return;
+			    }
+			}
 
 			/* Construct platform-specific paths */
 			#ifdef WG_WINDOWS
@@ -1461,34 +1433,34 @@ void package_move_files( const char *package_dir )
 			println(stdout, "package inc: %d", rate_found_include);
 #endif
 			if ( rate_found_include ) {
-						for ( i = 0; i < wgconfig.wg_sef_count; ++i ) {
-									packages = package_get_filename( wgconfig.wg_sef_found_list[i] );
-						#ifdef WG_WINDOWS
-									snprintf( command, sizeof( command ),
-												"move "
-												"/Y \"%s\" \"%s\\%s\\\"",
-												wgconfig.wg_sef_found_list[i], fetch_pwd, include_path );
+					for ( i = RATE_SEF_EMPTY; i < wgconfig.wg_sef_count; ++i ) {
+								packages = package_get_filename( wgconfig.wg_sef_found_list[i] );
+					#ifdef WG_WINDOWS
+								snprintf( command, sizeof( command ),
+											"move "
+											"/Y \"%s\" \"%s\\%s\\\"",
+											wgconfig.wg_sef_found_list[i], fetch_pwd, include_path );
 
-									wg_run_command( command );
+								wg_run_command( command );
 
-									pr_color( stdout, FCOLOUR_CYAN, " [REPLICATE] Include %s\\? -> %s - %s\\?\n",
-												wgconfig.wg_sef_found_list[i], fetch_pwd, include_path );
-						#else
-									snprintf( command, sizeof( command ),
-												"mv "
-												"-f \"%s\" \"%s/%s/\"",
-												wgconfig.wg_sef_found_list[i], fetch_pwd, include_path );
+								pr_color( stdout, FCOLOUR_CYAN, " [REPLICATE] Include %s\\? -> %s - %s\\?\n",
+											wgconfig.wg_sef_found_list[i], fetch_pwd, include_path );
+					#else
+								snprintf( command, sizeof( command ),
+											"mv "
+											"-f \"%s\" \"%s/%s/\"",
+											wgconfig.wg_sef_found_list[i], fetch_pwd, include_path );
 
-									wg_run_command( command );
+								wg_run_command( command );
 
-									pr_color( stdout, FCOLOUR_CYAN, " [REPLICATE] Include %s/? -> %s - %s/?\n",
-												wgconfig.wg_sef_found_list[i], fetch_pwd, include_path );
-						#endif
+								pr_color( stdout, FCOLOUR_CYAN, " [REPLICATE] Include %s/? -> %s - %s/?\n",
+											wgconfig.wg_sef_found_list[i], fetch_pwd, include_path );
+					#endif
 
-									package_set_hash( packages,
-												packages );
-									package_include_prints( packages );
-						}
+								package_set_hash( packages,
+											packages );
+								package_include_prints( packages );
+					}
 			}
 
 			wg_sef_fdir_memset_to_null();
@@ -1499,7 +1471,7 @@ void package_move_files( const char *package_dir )
 			println(stdout, "package inc2: %d", rate_found_include);
 #endif
 			if ( rate_found_include ) {
-						for ( i = 0; i < wgconfig.wg_sef_count; ++i ) {
+						for ( i = RATE_SEF_EMPTY; i < wgconfig.wg_sef_count; ++i ) {
 									const char *packages;
 									packages = package_get_filename( wgconfig.wg_sef_found_list[i] );
 
@@ -1578,6 +1550,8 @@ void package_move_files( const char *package_dir )
 			#endif
 			}
 
+			wg_free(fetch_pwd);
+
 			/* Normalize include path */
 			while ( ( pos = strstr( includes, "include\\" ) ) != NULL )
 						memmove( pos, pos + strlen( "include/" ),
@@ -1591,7 +1565,7 @@ void package_move_files( const char *package_dir )
 			snprintf( stack[_sindex], WG_PATH_MAX, "%s", package_dir );
 
 			/* Depth-first search for include files */
-			while ( _sindex >= 0 ) {
+			while ( _sindex >= RATE_SEF_EMPTY ) {
 						strlcpy( root_dir, stack[_sindex], sizeof( root_dir ) );
 						--_sindex;
 
@@ -1615,18 +1589,18 @@ void package_move_files( const char *package_dir )
 									strlcat( the_path,
 												dir_item->d_name, sizeof( the_path ) );
 
-									if ( stat( the_path, &dir_st ) != 0 )
+									if ( stat( the_path, &dir_st ) != RATE_SEF_EMPTY )
 												{
 															continue;
 												}
 
 									if ( S_ISDIR( dir_st.st_mode ) ) {
 												/* Skip compiler directories */
-												if ( strcmp( dir_item->d_name, "pawno" ) == 0 ||
-												    strcmp( dir_item->d_name, "qawno" ) == 0 ||
-												    strcmp( dir_item->d_name, "include" ) == 0 ||
-												    strcmp ( dir_item->d_name, "components") == 0 ||
-												    strcmp ( dir_item->d_name, "plugins") == 0)
+												if ( strcmp( dir_item->d_name, "pawno" ) == RATE_SEF_EMPTY ||
+												    strcmp( dir_item->d_name, "qawno" ) == RATE_SEF_EMPTY ||
+												    strcmp( dir_item->d_name, "include" ) == RATE_SEF_EMPTY ||
+												    strcmp ( dir_item->d_name, "components") == RATE_SEF_EMPTY ||
+												    strcmp ( dir_item->d_name, "plugins") == RATE_SEF_EMPTY)
 												{
 															continue;
 												}
@@ -1642,7 +1616,7 @@ void package_move_files( const char *package_dir )
 
 									/* Process ".inc" files */
 									if ( !strrchr( dir_item->d_name, '.' ) ||
-									    strcmp( strrchr( dir_item->d_name, '.' ), ".inc" ) == 0 )
+									    strcmp( strrchr( dir_item->d_name, '.' ), ".inc" ) == RATE_SEF_EMPTY )
 									{
 												continue;
 									}
@@ -1680,7 +1654,7 @@ void package_move_files( const char *package_dir )
 												       size_windows_move_parts_zero = sizeof( windows_move_parts[0] );
 												strlcpy( command, "", sizeof( command ) );
 												int j;
-												for ( j = 0;
+												for ( j = RATE_SEF_EMPTY;
 												      j < size_windows_move_parts / size_windows_move_parts_zero;
 												      j++ )
 												{
@@ -1693,6 +1667,7 @@ void package_move_files( const char *package_dir )
 												}
 												pr_color( stdout, FCOLOUR_CYAN, " [REPLICATE] Include %s\\? -> %s\\?\n",
 																		 size_src, dest );
+												wg_free(size_src);
 									#else
 												/* Unix: recursive copy and remove */
 												const char *unix_move_parts[] = {
@@ -1702,7 +1677,7 @@ void package_move_files( const char *package_dir )
 												       size_unix_move_parts_zero = sizeof( unix_move_parts[0] );
 												strlcpy( command, "", sizeof( command ) );
 												int j;
-												for ( j = 0;
+												for ( j = RATE_SEF_EMPTY;
 												      j < size_unix_move_parts / size_unix_move_parts_zero;
 												      j++ )
 												{
@@ -1720,7 +1695,7 @@ void package_move_files( const char *package_dir )
 			}
 
 			/* Clean up directory stack */
-			for ( i = 0;
+			for ( i = RATE_SEF_EMPTY;
 			      i < _ssize;
 			      i++ ) {
 						wg_free( stack [ i ] );
@@ -1780,20 +1755,20 @@ void wg_apply_depends( const char *depends_name )
 
 			/* Create necessary directories based on server environment */
 			if ( wg_server_env() == 1 ) {
-						if ( dir_exists( "pawno/include" ) == 0 ) {
+						if ( dir_exists( "pawno/include" ) == RATE_SEF_EMPTY ) {
 									wg_mkdir( "pawno/include" );
 						}
-						if ( dir_exists( "plugins" ) == 0 ) {
+						if ( dir_exists( "plugins" ) == RATE_SEF_EMPTY ) {
 									MKDIR( "plugins" );
 						}
 			} else if ( wg_server_env() == 2 ) {
-						if ( dir_exists( "qawno/include" ) == 0 ) {
+						if ( dir_exists( "qawno/include" ) == RATE_SEF_EMPTY ) {
 									wg_mkdir( "qawno/include" );
 						}
-						if ( dir_exists( "plugins" ) == 0 ) {
+						if ( dir_exists( "plugins" ) == RATE_SEF_EMPTY ) {
 									MKDIR( "plugins" );
 						}
-						if ( dir_exists( "components" ) == 0 ) {
+						if ( dir_exists( "components" ) == RATE_SEF_EMPTY ) {
 									MKDIR( "components" );
 						}
 			}
@@ -1815,11 +1790,11 @@ void wg_install_depends( const char *dependencies_str, const char *branch )
 			char package_name[WG_PATH_MAX];
 			const char *size_last_slash;
 			const char *dependencies[MAX_DEPENDS];
-			int package_counts = 0;
+			int package_counts = RATE_SEF_EMPTY;
 			int i;
 
-			memset( dependencies, 0, sizeof( dependencies ) );
-			wgconfig.wg_idepends = 0;
+			memset( dependencies, RATE_SEF_EMPTY, sizeof( dependencies ) );
+			wgconfig.wg_idepends = RATE_SEF_EMPTY;
 
 			/* Validate input */
 			if ( !dependencies_str || !*dependencies_str )
@@ -1858,7 +1833,7 @@ void wg_install_depends( const char *dependencies_str, const char *branch )
 						}
 
 			/* Process each dependency */
-			for ( i = 0; i < package_counts; i++ ) {
+			for ( i = RATE_SEF_EMPTY; i < package_counts; i++ ) {
 						/* Parse repository information */
 						if ( !package_parse_repo( dependencies[i], &repo ) )
 									{
@@ -1881,7 +1856,7 @@ void wg_install_depends( const char *dependencies_str, const char *branch )
 									}
 						} else {
 									/* Handle custom repositories */
-									package_build_repo_url( &repo, 0, package_url, sizeof( package_url ) );
+									package_build_repo_url( &repo, RATE_SEF_EMPTY, package_url, sizeof( package_url ) );
 									if ( !package_url_checking( package_url,
 									    wgconfig.wg_toml_github_tokens ) )
 									{

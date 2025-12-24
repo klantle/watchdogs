@@ -19,7 +19,7 @@ static
 char library_options_list(const char *title, const char **items, const char *keys, int counts)
 {
       if (title[0] != '\0')
-        println(stdout, "%s", title);
+          printf("\033[1;33m== %s ==\033[0m\n", title);
 
       int i;
       for (i = 0; i < counts; i++) {

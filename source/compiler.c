@@ -60,10 +60,10 @@ int wg_run_compiler(const char *args, const char *compile_args,
            nine_arg
         };
 
-        FILE *this_proc_file;
+        FILE *this_proc_file = NULL;
         char proj_parse[WG_PATH_MAX] = { 0 };
         char size_log[WG_MAX_PATH * 4] = { 0 };
-        char run_cmd[WG_PATH_MAX + 258] = { 0 };
+        char command[WG_PATH_MAX + 258] = { 0 };
         char include_aio_path[WG_PATH_MAX * 2] = { 0 };
         char path_include[WG_PATH_MAX] = { 0 };
         char size_path_include[WG_MAX_PATH] = { 0 };
@@ -89,6 +89,15 @@ int wg_run_compiler(const char *args, const char *compile_args,
         int compiler_has_clean = 0, compiler_has_assembler = 0;
         int compiler_has_recursion = 0, compiler_has_verbose = 0;
         int compiler_has_compact = 0;
+
+        char *size_config = NULL;
+        char *merged = NULL;
+        toml_table_t *wg_toml_config = NULL;
+        char *pointer_signalA = NULL;
+        char *platform = NULL;
+        char *proj_targets = NULL;
+        char *wg_compiler_unix_args[WG_MAX_PATH + 256] = {NULL};
+        char *compiler_unix_token = NULL;
 
         if (dir_exists(".watchdogs") == 0)
            MKDIR(".watchdogs");
@@ -200,7 +209,6 @@ int wg_run_compiler(const char *args, const char *compile_args,
         }
 
         if (__rate_pawncc_exists) {
-            FILE *this_proc_file;
             this_proc_file = fopen("watchdogs.toml", "r");
             if (!this_proc_file) {
                 pr_error(stdout, "Can't read file %s", "watchdogs.toml");
@@ -209,32 +217,38 @@ int wg_run_compiler(const char *args, const char *compile_args,
             }
 
             char wg_buf_err[WG_PATH_MAX];
-            toml_table_t *wg_toml_config;
             wg_toml_config = toml_parse_file(this_proc_file, wg_buf_err, sizeof(wg_buf_err));
 
             if (this_proc_file) {
                 fclose(this_proc_file);
+                this_proc_file = NULL;
             }
 
             if (!wg_toml_config) {
-                pr_error(stdout, "failed to parse the watchdogs.toml....: %s", wg_buf_err);
+                pr_error(stdout, "failed to parse the watchdogs.toml..: %s", wg_buf_err);
                 __debug_function();
                 goto compiler_end;
             }
 
             char wg_compiler_input_pawncc_path[WG_PATH_MAX],
                  wg_compiler_input_proj_path[WG_PATH_MAX];
-            snprintf(wg_compiler_input_pawncc_path,
-                    sizeof(wg_compiler_input_pawncc_path), "%s", wgconfig.wg_sef_found_list[0]);
+            if (wgconfig.wg_sef_found_list[0]) {
+                snprintf(wg_compiler_input_pawncc_path,
+                        sizeof(wg_compiler_input_pawncc_path), "%s", wgconfig.wg_sef_found_list[0]);
+            } else {
+                pr_error(stdout, "Compiler path not found");
+                goto compiler_end;
+            }
 
             if (path_exists(".watchdogs/compiler_test.log") == 0) {
                 this_proc_file = fopen(".watchdogs/compiler_test.log", "w+");
                 if (this_proc_file) {
                     fclose(this_proc_file);
-                		snprintf(run_cmd, sizeof(run_cmd),
-                					"%s -0000000U > .watchdogs/compiler_test.log 2>&1",
-                					wg_compiler_input_pawncc_path);
-                    wg_run_command(run_cmd);
+                    this_proc_file = NULL;
+                    snprintf(command, sizeof(command),
+                                "%s -0000000U > .watchdogs/compiler_test.log 2>&1",
+                                wg_compiler_input_pawncc_path);
+                    wg_run_command(command);
                 }
             }
 
@@ -249,16 +263,22 @@ int wg_run_compiler(const char *args, const char *compile_args,
                     if (strfind(compiler_args[i], "--detailed", true) ||
                         strfind(compiler_args[i], "--watchdogs", true))
                         ++compiler_has_watchdogs;
+
                     if (strfind(compiler_args[i], "--debug", true))
                         ++compiler_has_debug;
+
                     if (strfind(compiler_args[i], "--clean", true))
                         ++compiler_has_clean;
+
                     if (strfind(compiler_args[i], "--assembler", true))
                         ++compiler_has_assembler;
+
                     if (strfind(compiler_args[i], "--recursion", true))
                         ++compiler_has_recursion;
+
                     if (strfind(compiler_args[i], "--prolix", true))
                         ++compiler_has_verbose;
+
                     if (strfind(compiler_args[i], "--compact", true))
                         ++compiler_has_compact;
                 }
@@ -278,7 +298,7 @@ int wg_run_compiler(const char *args, const char *compile_args,
 #endif
                 if (option_arr)
                 {
-                    char *merged = NULL;
+                    merged = NULL;
                     size_t toml_array_size;
                     toml_array_size = toml_array_nelem(option_arr);
 
@@ -320,6 +340,7 @@ not_valid_flag_options:
                                 "compiler option ");
                             pr_color(stdout, FCOLOUR_GREEN, "\"%s\" ", toml_option_value.u.s);
                             println(stdout, "not valid flag options!..");
+                            wg_free(toml_option_value.u.s);
                             goto compiler_end;
                         }
 
@@ -353,15 +374,22 @@ not_valid_flag_options:
 
                     if (this_proc_file) {
                         fclose(this_proc_file);
+                        this_proc_file = NULL;
                         if (path_access(".watchdogs/compiler_test.log"))
                             remove(".watchdogs/compiler_test.log");
                     }
 
                     if (merged) {
+                        wg_free(wgconfig.wg_toml_aio_opt);
                         wgconfig.wg_toml_aio_opt = merged;
-                    }
-                    else {
+                        merged = NULL;
+                    } else {
+                        wg_free(wgconfig.wg_toml_aio_opt);
                         wgconfig.wg_toml_aio_opt = strdup("");
+                        if (!wgconfig.wg_toml_aio_opt) {
+                            pr_error(stdout, "Memory allocation failed");
+                            goto compiler_end;
+                        }
                     }
 
                     char
@@ -400,14 +428,16 @@ not_valid_flag_options:
                             __debug_function();
                             goto compiler_end;
                         }
+
                         if (wgconfig.wg_toml_aio_opt == NULL) {
                             pr_error(stdout,
                                 "Configuration string is NULL");
                             __debug_function();
                             goto compiler_end;
                         }
-                        char *original_config = strdup(wgconfig.wg_toml_aio_opt);
-                        if (original_config == NULL) {
+
+                        size_config = strdup(wgconfig.wg_toml_aio_opt);
+                        if (size_config == NULL) {
                             pr_error(stdout,
                                 "Memory allocation failed for config backup");
                             __debug_function();
@@ -431,15 +461,17 @@ not_valid_flag_options:
                                 continue
                                 ;
                             }
-                            size_t flag_length = strlen(fetch_debug_flag);
-                            if (flag_length == 0) {
+
+                            size_t rate_flag_length = strlen(fetch_debug_flag);
+                            if (rate_flag_length == 0) {
                                 continue
                                 ;
                             }
-                            const size_t MAX_FLAG_LENGTH = WG_MAX_PATH;
-                            if (flag_length > MAX_FLAG_LENGTH) {
+
+                            const size_t max_flag_length = WG_MAX_PATH;
+                            if (rate_flag_length > max_flag_length) {
                                 pr_warning(stdout,
-                                    "Suspiciously long debug flag at index %zu", i);
+                                    "long debug flag at index %zu", i);
                                 continue
                                 ;
                             }
@@ -450,6 +482,7 @@ not_valid_flag_options:
                                     break
                                     ;
                                 }
+
                                 bool is_complete_token = true;
                                 if (fetch_flag_pos > wgconfig.wg_toml_aio_opt) {
                                     char prev_char = *(fetch_flag_pos - 1);
@@ -458,27 +491,30 @@ not_valid_flag_options:
                                         is_complete_token = false;
                                     }
                                 }
-                                char next_char = *(fetch_flag_pos + flag_length);
-                                if (isalnum((unsigned char)next_char) ||
-                                    next_char == '_') {
+
+                                char continue_char = *(fetch_flag_pos + rate_flag_length);
+                                if (isalnum((unsigned char)continue_char) || continue_char == '_') {
                                     is_complete_token = false;
                                 }
+
                                 if (!is_complete_token) {
                                     size_aio_option = fetch_flag_pos + 1;
                                     continue
                                     ;
                                 }
-                                char *prev_flag = fetch_flag_pos + flag_length;
-                                if ((fetch_flag_pos - wgconfig.wg_toml_aio_opt) + strlen(prev_flag) + 1 < buffer_aio_options)
+
+                                char *back_flag = fetch_flag_pos + rate_flag_length;
+                                if ((fetch_flag_pos - wgconfig.wg_toml_aio_opt) + strlen(back_flag) + 1 < buffer_aio_options)
                                 {
-                                    memmove(fetch_flag_pos, prev_flag, strlen(prev_flag) + 1);
+                                    memmove(fetch_flag_pos, back_flag, strlen(back_flag) + 1);
                                     buffer_aio_options = strlen(wgconfig.wg_toml_aio_opt) + 1;
                                 } else {
                                     pr_error(stdout,
                                         "Buffer overflow detected during flag removal");
                                     __debug_function();
-                                    strncpy(wgconfig.wg_toml_aio_opt, original_config, buffer_aio_options);
-                                    wg_free(original_config);
+                                    strncpy(wgconfig.wg_toml_aio_opt, size_config, buffer_aio_options);
+                                    wg_free(size_config);
+                                    size_config = NULL;
                                     goto compiler_end;
                                 }
 
@@ -493,14 +529,15 @@ not_valid_flag_options:
 
                         wgconfig.wg_toml_aio_opt[buffer_aio_options - 1] = '\0';
 
-                        if (strcmp(original_config, wgconfig.wg_toml_aio_opt) != 0) {
+                        if (strcmp(size_config, wgconfig.wg_toml_aio_opt) != 0) {
 #if defined (_DBG_PRINT)
                             pr_info(stdout,"Debug flags removed. Original: '%s', Modified: '%s'",
-                                    original_config, wgconfig.wg_toml_aio_opt);
+                                    size_config, wgconfig.wg_toml_aio_opt);
 #endif
                         }
 
-                        wg_free(original_config);
+                        wg_free(size_config);
+                        size_config = NULL;
 
                         if (strlen(wgconfig.wg_toml_aio_opt) >= buffer_aio_options) {
                             pr_error(stdout,
@@ -561,9 +598,11 @@ not_valid_flag_options:
                         {
                             char size_path_val[WG_PATH_MAX + 26];
                             wg_strip_dot_fns(size_path_val, sizeof(size_path_val), path_val.u.s);
-                            if (size_path_val[0] == '\0')
+                            if (size_path_val[0] == '\0') {
+                                wg_free(path_val.u.s);
                                 continue
                                 ;
+                            }
 
                             if (i > 0)
                             {
@@ -693,11 +732,18 @@ not_valid_flag_options:
                             "   * Do you want to compile for " FCOLOUR_GREEN "%s " FCOLOUR_DEFAULT "(just enter), \n"
                             "   * or do you want to compile for something else?\n", wgconfig.wg_toml_proj_input);
                         printf("->");
-                        char *proj_targets = readline(" ");
-                        if (strlen(proj_targets) > 0) {
+                        proj_targets = readline(" ");
+                        if (proj_targets && strlen(proj_targets) > 0) {
+                            wg_free(wgconfig.wg_toml_proj_input);
                             wgconfig.wg_toml_proj_input = strdup(proj_targets);
+                            if (!wgconfig.wg_toml_proj_input) {
+                                pr_error(stdout, "Memory allocation failed");
+                                wg_free(proj_targets);
+                                goto compiler_end;
+                            }
                         }
                         wg_free(proj_targets);
+                        proj_targets = NULL;
                         compiler_targets = 1;
                     }
 
@@ -746,101 +792,15 @@ not_valid_flag_options:
                         BOOL win32_process_success;
                         clock_gettime(CLOCK_MONOTONIC, &pre_start);
                         win32_process_success = CreateProcessA(
-                                /* lpApplicationName [in, optional]:
-                                 * - NULL = use lpCommandLine to find executable
-                                 * - Could specify full path to executable if needed
-                                 * - If NULL, system searches in this order:
-                                 *   1. Directory of calling process
-                                 *   2. Windows system directory
-                                 *   3. 16-bit system directory
-                                 *   4. Windows directory
-                                 *   5. Current directory
-                                 *   6. PATH environment variable
-                                 */
                                 NULL,
-
-                                /* lpCommandLine [in, out, optional]:
-                                 * - Full command line to execute (including arguments)
-                                 * - Must be writable memory (CreateProcess may modify it)
-                                 * - First token should be executable name (unless lpApplicationName specified)
-                                 * - If path contains spaces, must be quoted
-                                 * - Maximum length: 32,768 characters including null terminator
-                                 */
                                 _compiler_input_,
-
-                                /* lpProcessAttributes [in, optional]:
-                                 * - NULL = Process handle cannot be inherited
-                                 * - Security descriptor for the new process
-                                 * - Typically NULL for normal process creation
-                                 */
                                 NULL,
-
-                                /* lpThreadAttributes [in, optional]:
-                                 * - NULL = Thread handle cannot be inherited
-                                 * - Security descriptor for the main thread
-                                 * - Typically NULL for normal process creation
-                                 */
                                 NULL,
-
-                                /* bInheritHandles [in]:
-                                 * - TRUE = Child inherits inheritable handles from parent
-                                 * - Important for pipes, files, or other shared resources
-                                 * - In this case, likely needed for I/O redirection
-                                 *   (parent may need to read compiler output/error)
-                                 */
                                 TRUE,
-
-                                /* dwCreationFlags [in]:
-                                 * Combination of flags controlling process creation:
-                                 *
-                                 * CREATE_NO_WINDOW (0x08000000):
-                                 * - Creates process without any visible console window
-                                 * - Essential for background/silent operation
-                                 * - Process output can still be captured via pipes
-                                 * - Alternative: CREATE_NEW_CONSOLE would show window
-                                 *
-                                 * ABOVE_NORMAL_PRIORITY_CLASS (0x00008000):
-                                 * - Gives compiler process slightly higher CPU priority
-                                 * - Priority levels (lowest to highest):
-                                 *   IDLE (0x40) -> BELOW_NORMAL (0x4000) -> NORMAL (0x20)
-                                 *   -> ABOVE_NORMAL (0x8000) -> HIGH (0x80) -> REALTIME (0x100)
-                                 * - Helps ensure compiler completes quickly
-                                 * - Use cautiously: could affect system responsiveness
-                                 */
                                 CREATE_NO_WINDOW | ABOVE_NORMAL_PRIORITY_CLASS,
-
-                                /* lpEnvironment [in, optional]:
-                                 * - NULL = Inherit parent's environment block
-                                 * - Could specify custom environment variables
-                                 * - Format: "Var1=Value1\0Var2=Value2\0\0" (double null-terminated)
-                                 */
                                 NULL,
-
-                                /* lpCurrentDirectory [in, optional]:
-                                 * - NULL = Child inherits parent's current directory
-                                 * - Could specify working directory for child process
-                                 * - Important for relative paths in compiler commands
-                                 */
                                 NULL,
-
-                                /* lpStartupInfo [in]:
-                                 * - Pointer to STARTUPINFOA structure
-                                 * - Must set cb = sizeof(STARTUPINFOA) as first member
-                                 * - Can specify stdio handles, window position, etc.
-                                 * - Typically used for I/O redirection (hStdInput, hStdOutput, hStdError)
-                                 * - If not using redirection, memset to 0 and set cb member
-                                 */
                                 &si,
-
-                                /* lpProcessInformation [out]:
-                                 * - Receives information about created process
-                                 * - Contains:
-                                 *   hProcess: Handle to the new process (must be closed with CloseHandle)
-                                 *   hThread: Handle to the main thread (must be closed with CloseHandle)
-                                 *   dwProcessId: Process ID (unique system-wide)
-                                 *   dwThreadId: Thread ID
-                                 * - IMPORTANT: Caller must close hProcess and hThread when done
-                                 */
                                 &pi
                         );
                         if (win32_process_success == TRUE) {
@@ -895,9 +855,8 @@ not_valid_flag_options:
                         fflush(stdout);
                     }
                     int i = 0;
-                    char *wg_compiler_unix_args[WG_MAX_PATH + 256];
-                    char *compiler_unix_token = strtok(_compiler_input_, " ");
-                    while (compiler_unix_token != NULL) {
+                    compiler_unix_token = strtok(_compiler_input_, " ");
+                    while (compiler_unix_token != NULL && i < (WG_MAX_PATH + 255)) {
                         wg_compiler_unix_args[i++] = compiler_unix_token;
                         compiler_unix_token = strtok(NULL, " ");
                     }
@@ -927,67 +886,11 @@ not_valid_flag_options:
 
                     pid_t compiler_process_id;
                     int process_spawn_result = posix_spawnp(
-                            /* pid_t *pid [out]:
-                             * - Pointer to store the new process ID
-                             * - On success, contains child process PID
-                             * - Used later for waitpid() or process management
-                             * - Similar to fork() return value in parent
-                             */
                             &compiler_process_id,
-
-                            /* const char *path [in]:
-                             * - Name/path of executable to run (wg_compiler_unix_args[0])
-                             * - The 'p' in posix_spawnp means PATH search:
-                             *   @ Searches directories in PATH environment variable
-                             *   @ If contains '/', treats as absolute or relative path
-                             *   @ Otherwise searches PATH
-                             * - Alternative: posix_spawn() requires absolute path
-                             */
                             wg_compiler_unix_args[0],
-
-                            /* const posix_spawn_file_actions_t *file_actions [in]:
-                             * - Optional file descriptor manipulations before exec()
-                             * - Can redirect stdin/stdout/stderr, open/close files
-                             * - &process_file_actions suggests predefined actions like:
-                             *   @ Redirect to/from pipes for I/O capture
-                             *   @ Close unnecessary file descriptors
-                             *   @ Open log files
-                             * - NULL = no file actions, inherit parent's file descriptors
-                             */
                             &process_file_actions,
-
-                            /* const posix_spawnattr_t *attrp [in]:
-                             * - Process attributes and execution flags
-                             * - &spawn_attr suggests preconfigured attributes:
-                             *   @ Signal mask/reset behavior
-                             *   @ Process group/scheduling settings
-                             *   @ Resource limits (RLIMIT_*)
-                             *   @ User/group ID changes (setuid/setgid)
-                             * - NULL = use default attributes
-                             */
                             &spawn_attr,
-
-                            /* char *const argv[] [in]:
-                             * - Argument vector for new process (NULL-terminated)
-                             * - wg_compiler_unix_args likely contains:
-                             *   argv[0]: program name
-                             *   argv[1...]: compiler flags, source files, output options
-                             *   argv[last]: NULL terminator
-                             * - Example: {"gcc", "-o", "program", "source.c", NULL}
-                             * - Must be writable memory (some implementations modify)
-                             */
                             wg_compiler_unix_args,
-
-                            /* char *const envp[] [in]:
-                             * - Environment variables for new process
-                             * - 'environ' is global variable from unistd.h
-                             *   @ Inherits parent's environment
-                             *   @ Format: "VAR=value" strings, NULL-terminated array
-                             * - Can provide custom environment:
-                             *   @ Copy/modify environ array
-                             *   @ Set specific variables (PATH, CC, CFLAGS, etc.)
-                             * - NULL = use parent's environment
-                             */
                             environ
                     );
 
@@ -1085,6 +988,7 @@ not_valid_flag_options:
                                         "make sure you are using a newer version of pawncc than the one currently in use.");
                             }
                             fclose(this_proc_file);
+                            this_proc_file = NULL;
                         }
                     }
 compiler_done:
@@ -1102,6 +1006,7 @@ compiler_done:
                             }
                         }
                         fclose(this_proc_file);
+                        this_proc_file = NULL;
                         if (compiler_has_err)
                         {
                             if (size_container_output[0] != '\0' && path_access(size_container_output))
@@ -1254,8 +1159,13 @@ compiler_done:
                         }
                     }
 
-                    snprintf(wg_compiler_input_proj_path,
-                            sizeof(wg_compiler_input_proj_path), "%s", wgconfig.wg_sef_found_list[1]);
+                    if (wgconfig.wg_sef_found_list[1]) {
+                        snprintf(wg_compiler_input_proj_path,
+                                sizeof(wg_compiler_input_proj_path), "%s", wgconfig.wg_sef_found_list[1]);
+                    } else {
+                        pr_error(stdout, "Project path not found");
+                        goto compiler_end;
+                    }
 
                     if (compiler_finding_compile_args)
                     {
@@ -1316,101 +1226,15 @@ compiler_done:
                             BOOL win32_process_success;
                             clock_gettime(CLOCK_MONOTONIC, &pre_start);
                             win32_process_success = CreateProcessA(
-                                    /* lpApplicationName [in, optional]:
-                                     * - NULL = use lpCommandLine to find executable
-                                     * - Could specify full path to executable if needed
-                                     * - If NULL, system searches in this order:
-                                     *   1. Directory of calling process
-                                     *   2. Windows system directory
-                                     *   3. 16-bit system directory
-                                     *   4. Windows directory
-                                     *   5. Current directory
-                                     *   6. PATH environment variable
-                                     */
                                     NULL,
-
-                                    /* lpCommandLine [in, out, optional]:
-                                     * - Full command line to execute (including arguments)
-                                     * - Must be writable memory (CreateProcess may modify it)
-                                     * - First token should be executable name (unless lpApplicationName specified)
-                                     * - If path contains spaces, must be quoted
-                                     * - Maximum length: 32,768 characters including null terminator
-                                     */
                                     _compiler_input_,
-
-                                    /* lpProcessAttributes [in, optional]:
-                                     * - NULL = Process handle cannot be inherited
-                                     * - Security descriptor for the new process
-                                     * - Typically NULL for normal process creation
-                                     */
                                     NULL,
-
-                                    /* lpThreadAttributes [in, optional]:
-                                     * - NULL = Thread handle cannot be inherited
-                                     * - Security descriptor for the main thread
-                                     * - Typically NULL for normal process creation
-                                     */
                                     NULL,
-
-                                    /* bInheritHandles [in]:
-                                     * - TRUE = Child inherits inheritable handles from parent
-                                     * - Important for pipes, files, or other shared resources
-                                     * - In this case, likely needed for I/O redirection
-                                     *   (parent may need to read compiler output/error)
-                                     */
                                     TRUE,
-
-                                    /* dwCreationFlags [in]:
-                                     * Combination of flags controlling process creation:
-                                     *
-                                     * CREATE_NO_WINDOW (0x08000000):
-                                     * - Creates process without any visible console window
-                                     * - Essential for background/silent operation
-                                     * - Process output can still be captured via pipes
-                                     * - Alternative: CREATE_NEW_CONSOLE would show window
-                                     *
-                                     * ABOVE_NORMAL_PRIORITY_CLASS (0x00008000):
-                                     * - Gives compiler process slightly higher CPU priority
-                                     * - Priority levels (lowest to highest):
-                                     *   IDLE (0x40) -> BELOW_NORMAL (0x4000) -> NORMAL (0x20)
-                                     *   -> ABOVE_NORMAL (0x8000) -> HIGH (0x80) -> REALTIME (0x100)
-                                     * - Helps ensure compiler completes quickly
-                                     * - Use cautiously: could affect system responsiveness
-                                     */
                                     CREATE_NO_WINDOW | ABOVE_NORMAL_PRIORITY_CLASS,
-
-                                    /* lpEnvironment [in, optional]:
-                                     * - NULL = Inherit parent's environment block
-                                     * - Could specify custom environment variables
-                                     * - Format: "Var1=Value1\0Var2=Value2\0\0" (double null-terminated)
-                                     */
                                     NULL,
-
-                                    /* lpCurrentDirectory [in, optional]:
-                                     * - NULL = Child inherits parent's current directory
-                                     * - Could specify working directory for child process
-                                     * - Important for relative paths in compiler commands
-                                     */
                                     NULL,
-
-                                    /* lpStartupInfo [in]:
-                                     * - Pointer to STARTUPINFOA structure
-                                     * - Must set cb = sizeof(STARTUPINFOA) as first member
-                                     * - Can specify stdio handles, window position, etc.
-                                     * - Typically used for I/O redirection (hStdInput, hStdOutput, hStdError)
-                                     * - If not using redirection, memset to 0 and set cb member
-                                     */
                                     &si,
-
-                                    /* lpProcessInformation [out]:
-                                     * - Receives information about created process
-                                     * - Contains:
-                                     *   hProcess: Handle to the new process (must be closed with CloseHandle)
-                                     *   hThread: Handle to the main thread (must be closed with CloseHandle)
-                                     *   dwProcessId: Process ID (unique system-wide)
-                                     *   dwThreadId: Thread ID
-                                     * - IMPORTANT: Caller must close hProcess and hThread when done
-                                     */
                                     &pi
                             );
                             if (win32_process_success == TRUE) {
@@ -1465,9 +1289,8 @@ compiler_done:
                             fflush(stdout);
                         }
                         int i = 0;
-                        char *wg_compiler_unix_args[WG_MAX_PATH + 256];
-                        char *compiler_unix_token = strtok(_compiler_input_, " ");
-                        while (compiler_unix_token != NULL) {
+                        compiler_unix_token = strtok(_compiler_input_, " ");
+                        while (compiler_unix_token != NULL && i < (WG_MAX_PATH + 255)) {
                             wg_compiler_unix_args[i++] = compiler_unix_token;
                             compiler_unix_token = strtok(NULL, " ");
                         }
@@ -1497,67 +1320,11 @@ compiler_done:
 
                         pid_t compiler_process_id;
                         int process_spawn_result = posix_spawnp(
-                                /* pid_t *pid [out]:
-                                 * - Pointer to store the new process ID
-                                 * - On success, contains child process PID
-                                 * - Used later for waitpid() or process management
-                                 * - Similar to fork() return value in parent
-                                 */
                                 &compiler_process_id,
-
-                                /* const char *path [in]:
-                                 * - Name/path of executable to run (wg_compiler_unix_args[0])
-                                 * - The 'p' in posix_spawnp means PATH search:
-                                 *   @ Searches directories in PATH environment variable
-                                 *   @ If contains '/', treats as absolute or relative path
-                                 *   @ Otherwise searches PATH
-                                 * - Alternative: posix_spawn() requires absolute path
-                                 */
                                 wg_compiler_unix_args[0],
-
-                                /* const posix_spawn_file_actions_t *file_actions [in]:
-                                 * - Optional file descriptor manipulations before exec()
-                                 * - Can redirect stdin/stdout/stderr, open/close files
-                                 * - &process_file_actions suggests predefined actions like:
-                                 *   @ Redirect to/from pipes for I/O capture
-                                 *   @ Close unnecessary file descriptors
-                                 *   @ Open log files
-                                 * - NULL = no file actions, inherit parent's file descriptors
-                                 */
                                 &process_file_actions,
-
-                                /* const posix_spawnattr_t *attrp [in]:
-                                 * - Process attributes and execution flags
-                                 * - &spawn_attr suggests preconfigured attributes:
-                                 *   @ Signal mask/reset behavior
-                                 *   @ Process group/scheduling settings
-                                 *   @ Resource limits (RLIMIT_*)
-                                 *   @ User/group ID changes (setuid/setgid)
-                                 * - NULL = use default attributes
-                                 */
                                 &spawn_attr,
-
-                                /* char *const argv[] [in]:
-                                 * - Argument vector for new process (NULL-terminated)
-                                 * - wg_compiler_unix_args likely contains:
-                                 *   argv[0]: program name
-                                 *   argv[1...]: compiler flags, source files, output options
-                                 *   argv[last]: NULL terminator
-                                 * - Example: {"gcc", "-o", "program", "source.c", NULL}
-                                 * - Must be writable memory (some implementations modify)
-                                 */
                                 wg_compiler_unix_args,
-
-                                /* char *const envp[] [in]:
-                                 * - Environment variables for new process
-                                 * - 'environ' is global variable from unistd.h
-                                 *   @ Inherits parent's environment
-                                 *   @ Format: "VAR=value" strings, NULL-terminated array
-                                 * - Can provide custom environment:
-                                 *   @ Copy/modify environ array
-                                 *   @ Set specific variables (PATH, CC, CFLAGS, etc.)
-                                 * - NULL = use parent's environment
-                                 */
                                 environ
                         );
 
@@ -1653,6 +1420,7 @@ compiler_done:
                                             "make sure you are using a newer version of pawncc than the one currently in use.\n");
                                 }
                                 fclose(this_proc_file);
+                                this_proc_file = NULL;
                             }
                         }
 
@@ -1671,6 +1439,7 @@ compiler_done2:
                                 }
                             }
                             fclose(this_proc_file);
+                            this_proc_file = NULL;
                             if (compiler_has_err)
                             {
                                 if (size_container_output[0] != '\0' && path_access(size_container_output))
@@ -1707,8 +1476,10 @@ compiler_done2:
                     }
                 }
 
-                toml_free(wg_toml_config);
-
+                if (wg_toml_config) {
+                    toml_free(wg_toml_config);
+                    wg_toml_config = NULL;
+                }
                 goto compiler_end;
             }
         } else {
@@ -1717,13 +1488,14 @@ compiler_done2:
                 "  \033[2mhelp:\033[0m install it before continuing");
             printf("\n  \033[1mInstall now?\033[0m  [\033[32mY\033[0m/\033[31mn\033[0m]: ");
 
-            char *pointer_signalA = readline("");
+            pointer_signalA = readline("");
 
             while (true)
             {
-                if (strcmp(pointer_signalA, "Y") == 0 || strcmp(pointer_signalA, "y") == 0)
+                if (pointer_signalA && (pointer_signalA[0] == '\0' || strcmp(pointer_signalA, "Y") == 0 || strcmp(pointer_signalA, "y") == 0))
                 {
                     wg_free(pointer_signalA);
+                    pointer_signalA = NULL;
 ret_ptr:
                     println(stdout, "Select platform:");
                     println(stdout, "-> [L/l] Linux");
@@ -1733,54 +1505,86 @@ ret_ptr:
 
                     wgconfig.wg_sel_stat = 1;
 
-                    char *platform = readline("==> ");
+                    platform = readline("==> ");
 
-                    if (strfind(platform, "L", true))
+                    if (platform && strfind(platform, "L", true))
                     {
                         int ret = wg_install_pawncc("linux");
                         wg_free(platform);
+                        platform = NULL;
 loop_ipcc:
                         if (ret == -1 && wgconfig.wg_sel_stat != 0)
                             goto loop_ipcc;
-                    } else if (strfind(platform, "W", true)) {
+                    } else if (platform && strfind(platform, "W", true)) {
                         int ret = wg_install_pawncc("windows");
                         wg_free(platform);
+                        platform = NULL;
 loop_ipcc2:
                         if (ret == -1 && wgconfig.wg_sel_stat != 0)
                             goto loop_ipcc2;
-                    } else if (strfind(platform, "T", true)) {
+                    } else if (platform && strfind(platform, "T", true)) {
                         int ret = wg_install_pawncc("termux");
                         wg_free(platform);
+                        platform = NULL;
 loop_ipcc3:
                         if (ret == -1 && wgconfig.wg_sel_stat != 0)
                             goto loop_ipcc3;
-                    } else if (strfind(platform, "E", true)) {
+                    } else if (platform && strfind(platform, "E", true)) {
                         wg_free(platform);
+                        platform = NULL;
                         goto loop_end;
                     } else {
-                        pr_error(stdout, "Invalid platform selection. Input 'E/e' to exit");
-                        wg_free(platform);
+                        if (platform) {
+                            pr_error(stdout, "Invalid platform selection. Input 'E/e' to exit");
+                            wg_free(platform);
+                            platform = NULL;
+                        }
                         goto ret_ptr;
                     }
 loop_end:
                     chain_ret_main(NULL);
                 }
-                else if (strcmp(pointer_signalA, "N") == 0 || strcmp(pointer_signalA, "n") == 0)
+                else if (pointer_signalA && (strcmp(pointer_signalA, "N") == 0 || strcmp(pointer_signalA, "n") == 0))
                 {
                     wg_free(pointer_signalA);
+                    pointer_signalA = NULL;
                     break
                     ;
                 }
                 else
                 {
-                    pr_error(stdout, "Invalid input. Please type Y/y to install or N/n to cancel.");
-                    wg_free(pointer_signalA);
+                    if (pointer_signalA) {
+                        pr_error(stdout, "Invalid input. Please type Y/y to install or N/n to cancel.");
+                        wg_free(pointer_signalA);
+                        pointer_signalA = NULL;
+                    }
                     goto ret_ptr;
                 }
             }
         }
 
 compiler_end:
+        if (size_config) {
+            wg_free(size_config);
+        }
+        if (merged) {
+            wg_free(merged);
+        }
+        if (wg_toml_config) {
+            toml_free(wg_toml_config);
+        }
+        if (pointer_signalA) {
+            wg_free(pointer_signalA);
+        }
+        if (platform) {
+            wg_free(platform);
+        }
+        if (proj_targets) {
+            wg_free(proj_targets);
+        }
+        if (this_proc_file) {
+            fclose(this_proc_file);
+        }
         return 1;
 }
 

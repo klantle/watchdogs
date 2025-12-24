@@ -101,6 +101,7 @@ void curl_verify_cacert_pem(CURL *curl) {
  */
 void destroy_archive(const char *filename) {
 
+        pr_info(stdout, "Removing: %s..", filename);
 #ifdef WG_WINDOWS
         snprintf( command, sizeof( command ),
                 "del "
@@ -157,6 +158,10 @@ static int progress_callback(void *ptr, curl_off_t dltotal,
  */
 void buf_init(struct buf *b) {
 
+        if (b->data) {
+            wg_free(b->data);
+            b->data = NULL;
+        }
         b->data = wg_malloc(WG_MAX_PATH);
         if (!b->data) {
                 chain_ret_main(NULL);
@@ -229,6 +234,10 @@ size_t write_callbacks(void *ptr, size_t size, size_t nmemb, void *userdata)
  */
 void memory_struct_init(struct memory_struct *mem) {
 
+        if (mem->memory) {
+            wg_free(mem->memory);
+            mem->memory = NULL;
+        }
         mem->memory = wg_malloc(WG_MAX_PATH);
         if (!mem->memory) {
                 chain_ret_main(NULL);
@@ -905,6 +914,7 @@ void wg_apply_pawncc(void)
         if (dir_exists(pawncc_dir_source) != 0)
             remove(pawncc_dir_source);
 
+        wg_free(pawncc_dir_source);
         pawncc_dir_source = NULL;
 
         /* Rename pawnc.dll -> PAWNC.dll */
@@ -919,7 +929,7 @@ void wg_apply_pawncc(void)
         /* Prompt to run compiler immediately */
         pr_color(stdout, FCOLOUR_CYAN, "Run compiler now? (y/n):");
         char *compile_now = readline(" ");
-        if (compile_now[0] == 'Y' || compile_now[0] == 'y') {
+        if (compile_now[0] == '\0' || compile_now[0] == 'Y' || compile_now[0] == 'y') {
             wg_free(compile_now);
             pr_color(stdout, FCOLOUR_CYAN, "Please input the pawn file\n\t* "
                 "(just enter for %s - input E/e to exit):", wgconfig.wg_toml_proj_input);
@@ -946,6 +956,7 @@ void wg_apply_pawncc(void)
 
                 FILE *test = fopen(size_gamemode, "w+");
                 if (test) {
+                    wg_free(wgconfig.wg_toml_proj_input);
                     wgconfig.wg_toml_proj_input = strdup(size_gamemode);
                     const char *default_code =
                         "native printf(const format[], {Float,_}:...);\n"
@@ -956,6 +967,7 @@ void wg_apply_pawncc(void)
                     fclose(test);
                 }
             } else {
+                wg_free(wgconfig.wg_toml_proj_input);
                 wgconfig.wg_toml_proj_input = strdup(size_gamemode);
             }
 
@@ -984,25 +996,12 @@ static int prompt_apply_pawncc(void)
 
         fflush(stdout);
 
-        if (!confirm) {
-                fprintf(stderr, "Error reading input\n");
+        if (confirm[0] == '\0' || strfind(confirm, "Y", true)) {
                 wg_free(confirm);
-                goto done;
+                return 1;
         }
 
-        if (strlen(confirm) == 0) {
-                wg_free(confirm);
-                confirm = readline(" >>> (y/n): ");
-        }
-
-        if (confirm) {
-                if (strfind(confirm, "Y", true)) {
-                        wg_free(confirm);
-                        return 1;
-                }
-        }
-
-        println(stdout, "skip - %s.", confirm);
+        wg_free(confirm);
 
 done:
         return 0;
@@ -1024,11 +1023,9 @@ int is_archive_file(const char *filename)
 /*
  * Debug callback for CURL to display HTTP communication details
  */
-static int debug_callback(CURL *handle, curl_infotype type,
-                          char *data, size_t size, void *userptr)
+static int debug_callback(CURL *handle __maybe_unused__, curl_infotype type,
+                          char *data, size_t size, void *userptr __maybe_unused__)
 {
-        (void)handle;
-        (void)userptr;
         switch (type) {
         case CURLINFO_TEXT:
         case CURLINFO_HEADER_OUT:
@@ -1036,9 +1033,9 @@ static int debug_callback(CURL *handle, curl_infotype type,
         case CURLINFO_SSL_DATA_OUT:
                 break;
         case CURLINFO_HEADER_IN:
+                if (!data || (int)size < 1)
+                    break;
                 if (strfind(data, "content-security-policy: ", true))
-                        break;
-                if ((int)size < 1)
                         break;
                 printf("<= Recv header: %.*s", (int)size, data);
                 fflush(stdout);
@@ -1170,7 +1167,7 @@ int wg_download_file(const char *url, const char *output_filename) {
                 curl_easy_setopt(curl, CURLOPT_URL, url);
                 curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, write_memory_callback);
 
-                struct buf download_buffer = { 0 };
+                struct buf download_buffer = { NULL, 0, 0 };
                 curl_easy_setopt(curl, CURLOPT_WRITEDATA, &download_buffer);
 
                 curl_easy_setopt(curl, CURLOPT_ACCEPT_ENCODING, "gzip");
@@ -1192,7 +1189,7 @@ int wg_download_file(const char *url, const char *output_filename) {
                         create_debugging = 1;
                         pr_color(stdout, FCOLOUR_CYAN, " * Enable HTTP debugging? ");
                         char *debug_http = readline("(y/n): ");
-                        if (debug_http && (debug_http[0] == 'Y' || debug_http[0] == 'y')) {
+                        if (debug_http[0] == '\0' || debug_http[0] == 'Y' || debug_http[0] == 'y') {
                                 always_create_debugging = 1;
                         }
                         wg_free(debug_http);
@@ -1220,9 +1217,7 @@ int wg_download_file(const char *url, const char *output_filename) {
                 curl_slist_free_all(headers);
 
                 /* Process successful download */
-                if (res == CURLE_OK && response_code == WG_CURL_RESPONSE_OK &&
-                        download_buffer.len > 0) {
-
+                if (res == CURLE_OK && response_code == WG_CURL_RESPONSE_OK && download_buffer.len > 0) {
                         /* Write data to file */
                         FILE *fp = fopen(final_filename, "wb");
                         if (!fp) {
@@ -1286,7 +1281,7 @@ int wg_download_file(const char *url, const char *output_filename) {
                                                         "==> Remove archive %s? ", final_filename);
                                                 char *confirm = readline("(y/n): ");
 
-                                                if (confirm && (confirm[0] == 'Y' || confirm[0] == 'y')) {
+                                                if (confirm[0] == '\0' || confirm[0] == 'Y' || confirm[0] == 'y') {
                                                          if (path_exists(final_filename) == 1) {
                                                                  destroy_archive(final_filename);
                                                         }
@@ -1303,7 +1298,7 @@ int wg_download_file(const char *url, const char *output_filename) {
                                                 "==> Remove archive %s? ", final_filename);
                                         char *confirm = readline("(y/n): ");
 
-                                        if (confirm && (confirm[0] == 'Y' || confirm[0] == 'y')) {
+                                        if (confirm[0] == '\0' || confirm[0] == 'Y' || confirm[0] == 'y') {
                                                 if (path_exists(final_filename) == 1) {
                                                         destroy_archive(final_filename);
                                                 }

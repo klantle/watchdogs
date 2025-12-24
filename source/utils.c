@@ -51,7 +51,7 @@ ssize_t sendfile(int out_fd,
 
 const char* __command[] = {
 		"help", "exit", "kill", "title", "sha256",
-		"crc32", "djb2", "time", "config", "replicate",
+		"crc32", "djb2", "config", "replicate",
 		"gamemode", "pawncc", "debug", "compile",
 		"running", "compiles", "stop", "restart",
 		"wanion", "tracker", "compress", "send"
@@ -340,9 +340,9 @@ char* wg_masked_text(int reveal, const char *text) {
 	    char *masked;
 	    /* Allocate memory for masked string plus null terminator */
 	    masked = wg_malloc((size_t)len + 1);
-		if (!masked) {
-			chain_ret_main(NULL);
-		}
+	    if (!masked) {
+	    		chain_ret_main(NULL);
+	    }
 
 	    /* Copy visible characters if any should be revealed */
 	    if (reveal > 0)
@@ -685,6 +685,7 @@ void wg_printfile(const char *path) {
 
 	    close(fd);
 #endif
+			return;
 }
 
 /*
@@ -862,8 +863,8 @@ char* strreplace(const char *source, const char *old_sub, const char *new_sub) {
 
 	    /* Allocate memory for result string */
 	    char *result = wg_malloc(result_len + 1);
-		if (!result)
-			chain_ret_main(NULL);
+	    if (!result)
+	    		chain_ret_main(NULL);
 
 	    /* Perform replacement copy */
 	    size_t i = 0, j = 0;
@@ -1198,15 +1199,15 @@ int wg_kill_process(const char *process) {
         snprintf(reg_command, sizeof(reg_command),
                 "pkill -SIGTERM \"%s\" > /dev/null", process);
 #else
-		/* Android: kill command with pgrep */
-		snprintf(reg_command, sizeof(reg_command),
-			 "kill -TERM $(pgrep -f \"%s\") > /dev/null 2>&1", process);
+        /* Android: kill command with pgrep */
+        snprintf(reg_command, sizeof(reg_command),
+        				"kill -TERM $(pgrep -f \"%s\") > /dev/null 2>&1", process);
 #endif
 #else
-        /* Windows: taskkill command with quiet mode */
-        snprintf(reg_command, sizeof(reg_command),
-                "C:\\Windows\\System32\\taskkill.exe "
-                "/IM \"%s\" >nul 2>&1", process);
+				/* Windows: taskkill command with quiet mode */
+				snprintf(reg_command, sizeof(reg_command),
+				        "cmd.exe /C \"C:\\Windows\\System32\\taskkill.exe /F /IM \"%s\" >nul 2>&1\"",
+				        process);
 #endif
         return wg_run_command(reg_command); /* Execute kill command */
 }
@@ -1465,7 +1466,7 @@ __toml_add_directory_path(FILE *toml_file, int *first, const char *path)
  */
 static void wg_check_compiler_options(int *compatibility, int *optimized_lt)
 {
-		char run_cmd[WG_PATH_MAX * 2];
+		char command[WG_PATH_MAX * 2];
 		FILE *this_proc_fileile;
 		char log_line[1024];
 
@@ -1478,10 +1479,10 @@ static void wg_check_compiler_options(int *compatibility, int *optimized_lt)
 			remove(".watchdogs/compiler_test.log");
 
 		/* Run compiler test command */
-		snprintf(run_cmd, sizeof(run_cmd),
+		snprintf(command, sizeof(command),
 					"%s -0000000U > .watchdogs/compiler_test.log 2>&1",
 					wgconfig.wg_sef_found_list[0]);
-		wg_run_command(run_cmd);
+		wg_run_command(command);
 
 		/* Parse log file for compiler characteristics */
 		int found_Z = 0, found_ver = 0;

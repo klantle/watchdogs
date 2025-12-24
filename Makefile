@@ -34,14 +34,16 @@ init:
 			echo "==> Using pacman (MSYS2)"; \
 			pacman -Sy --noconfirm && \
 			pacman -S --needed --noconfirm \
-				curl clang base-devel \
-				mingw-w64-ucrt-x86_64-gcc \
-				mingw-w64-ucrt-x86_64-lld \
-				mingw-w64-ucrt-x86_64-libc++ \
-				mingw-w64-ucrt-x86_64-curl \
-				mingw-w64-ucrt-x86_64-readline \
-				mingw-w64-ucrt-x86_64-libarchive \
-				mingw-w64-ucrt-x86_64-upx; \
+			  curl \
+			  base-devel \
+			  mingw-w64-ucrt-x86_64-clang \
+			  mingw-w64-ucrt-x86_64-gcc \
+			  mingw-w64-ucrt-x86_64-lld \
+			  mingw-w64-ucrt-x86_64-libc++ \
+			  mingw-w64-ucrt-x86_64-curl \
+			  mingw-w64-ucrt-x86_64-readline \
+			  mingw-w64-ucrt-x86_64-libarchive \
+			  mingw-w64-ucrt-x86_64-upx; \
 		elif echo "$$UNAME_S" | grep -qi "Linux" && [ -d "/data/data/com.termux" ]; then \
 			echo "==> Using apt (Termux)"; \
 			apt -o Acquire::Queue-Mode=access -o Acquire::Retries=3 update -y && \

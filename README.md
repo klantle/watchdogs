@@ -229,27 +229,28 @@ nano /etc/pacman.d/mirrorlist.mingw64 && nano /etc/pacman.d/mirrorlist.msys && n
 
 - Add mirrors:
 ```yaml
-## Fast & Reliable
-Server = https://repo.msys2.org/msys/$arch  # Official
-Server = https://mirror.msys2.org/msys/$arch # Official mirror
-
-## Europe
-Server = https://mirrors.bfsu.edu.cn/msys2/msys/$arch
-Server = https://mirror.selfnet.de/msys2/msys/$arch
-Server = https://mirror.clarkson.edu/msys2/msys/$arch
-
-## Indonesia & Southeast Asia
-Server = https://mirror.0x.sg/msys2/msys/$arch
-Server = https://mirrors.tuna.tsinghua.edu.cn/msys2/msys/$arch
-Server = https://mirrors.ustc.edu.cn/msys2/msys/$arch
-Server = https://mirror.nju.edu.cn/msys2/msys/$arch
-
-## Japan
-Server = https://jaist.dl.sourceforge.net/project/msys2/REPOS/msys/$arch
-Server = https://ftp.jaist.ac.jp/pub/msys2/msys/$arch
-
-## Singapore
-Server = https://downloads.sourceforge.net/project/msys2/REPOS/msys/$arch
+Server = https://repo.msys2.org/$repo/$arch
+Server = https://mirror.msys2.org/$repo/$arch
+Server = https://mirror.selfnet.de/msys2/$repo/$arch
+Server = https://mirrors.dotsrc.org/msys2/$repo/$arch
+Server = https://ftp.nluug.nl/pub/os/windows/msys2/builds/$repo/$arch
+Server = https://mirror.accum.se/mirror/msys2.org/$repo/$arch
+Server = https://quantum-mirror.hu/mirrors/pub/msys2/$repo/$arch
+Server = https://distrohub.kyiv.ua/msys2/$repo/$arch
+Server = https://mirror.yandex.ru/mirrors/msys2/$repo/$arch
+Server = https://mirror.0x.sg/msys2/$repo/$arch
+Server = https://mirrors.tuna.tsinghua.edu.cn/msys2/$repo/$arch
+Server = https://mirrors.ustc.edu.cn/msys2/$repo/$arch
+Server = https://mirrors.bfsu.edu.cn/msys2/$repo/$arch
+Server = https://mirror.nju.edu.cn/msys2/$repo/$arch
+Server = https://mirror.archlinux.tw/MSYS2/$repo/$arch
+Server = https://ftp.jaist.ac.jp/pub/msys2/$repo/$arch
+Server = https://jaist.dl.sourceforge.net/project/msys2/REPOS/$repo/$arch
+Server = https://ftp.kaist.ac.kr/msys2/$repo/$arch
+Server = https://mirror.kakao.com/msys2/$repo/$arch
+Server = https://downloads.sourceforge.net/project/msys2/REPOS/$repo/$arch
+Server = https://mirror.math.princeton.edu/pub/msys2/$repo/$arch
+Server = https://mirrors.cloud.tencent.com/msys2/$repo/$arch
 ```
 
 > Save and Exit: **CTRL + X & Y + ENTER**

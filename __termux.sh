@@ -14,6 +14,7 @@ echo
 echo "Enter the path you want to switch to location in storage/downloads:"
 echo "  ^ example: my_folder"
 echo "  ^ a folder name for install; the folder doesn't exist?, don't worry.."
+echo "  ^ just enter if you want install the watchdogs in home.."
 
 read -r -p "> " TARGET_DIR
 
@@ -24,10 +25,9 @@ if [[ -n "$TARGET_DIR" ]]; then
     mkdir "storage/downloads/$TARGET_DIR"
     cd "storage/downloads/$TARGET_DIR" || { echo "Failed to cd"; exit 1; }
   fi
+  echo "Now in: $(pwd)"
+  echo
 fi
-
-echo "Now in: $(pwd)"
-echo
 
 termux-change-repo
 pkg update -y

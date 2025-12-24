@@ -423,7 +423,7 @@ compile ../path/to/project/server.pwn
 --------------------     --------------------------
 ```
 <br>It operates as usual by running the samp-server or open.mp server binary according to its default name in watchdogs.toml.
-  In the `[<args>]` section, how it works is by modifying the `gamemode0` parameter in server.cfg for SA-MP or the `main_scripts` parameter in config.json for Open.MP.
+  In the `[<args>]` section, how it works is by modifying the `gamemode0` parameter in server.cfg for SA-MP or the `main_scripts` parameter in config.json for open.mp.
 <br>
 
 **Start server with default gamemode:**
@@ -474,7 +474,7 @@ compiles server
 1. Watchdogs-depends now scans HTML from GitHub tags (`user/repo?tag`) instead of manual parsing.
 2. Automatically picks Windows/Linux archives based on OS detection
 3. Entire any include folder moved as-is to include directory
-4. Plugin names automatically added to `server.cfg` (SA-MP) or `config.json` (Open.MP)
+4. Plugin names automatically added to `server.cfg` (SA-MP) or `config.json` (open.mp)
 5. Plugins in archive root go to server root directory
 6. Automatically adds includes to main gamemode file
 7. Keep `pawno/` or `qawno/` folder names unchanged for proper detection

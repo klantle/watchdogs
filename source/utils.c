@@ -1557,8 +1557,8 @@ static int wg_parse_toml_config(void)
 }
 
 /*
- * Searches for PAWN compiler executable based on OS type and server environment.
- * Checks different directory locations depending on server type (SA-MP vs Open.MP).
+ * Searches for Pawn Code compiler executable based on OS type and server environment.
+ * Checks different directory locations depending on server type (SA-MP vs open.mp).
  * Returns search result from recursive directory search.
  */
 static int wg_find_compiler(const char *wg_os_type)
@@ -1569,7 +1569,7 @@ static int wg_find_compiler(const char *wg_os_type)
 		/* Search based on server environment type */
 		if (wg_server_env() == 1) { /* SA-MP */
 				return wg_sef_fdir("pawno", compiler_name, NULL);
-		} else if (wg_server_env() == 2) { /* Open.MP */
+		} else if (wg_server_env() == 2) { /* open.mp */
 				return wg_sef_fdir("qawno", compiler_name, NULL);
 		} else { /* Default */
 				return wg_sef_fdir("pawno", compiler_name, NULL);
@@ -1691,7 +1691,7 @@ int wg_add_include_paths(FILE *file, int *first_item)
 		int ret2 = -1;
 		if (wg_server_env() == 1) /* SA-MP */
 				ret2 = wg_add_compiler_path(file, "pawno/include/", first_item);
-		else if (wg_server_env() == 2) /* Open.MP */
+		else if (wg_server_env() == 2) /* open.mp */
 				ret2 = wg_add_compiler_path(file, "qawno/include/", first_item);
 		else /* Default */
 				ret2 = wg_add_compiler_path(file, "pawno/include/", first_item);
@@ -1703,7 +1703,7 @@ int wg_add_include_paths(FILE *file, int *first_item)
 }
 
 /* Static variable to cache server type detection result */
-static int samp_user = -1; /* -1 = not determined, 0 = Open.MP, 1 = SA-MP */
+static int samp_user = -1; /* -1 = not determined, 0 = open.mp, 1 = SA-MP */
 /*
  * Generates complete TOML configuration file content based on detected environment.
  * Creates [general], [compiler], and [dependencies] sections with appropriate values
@@ -1751,7 +1751,7 @@ static void wg_generate_toml_content(FILE *file, const char *wg_os_type,
 		}
 
 		/* Set binary and config paths based on server type */
-		if (samp_user == 0) { /* Open.MP */
+		if (samp_user == 0) { /* open.mp */
 			if (!strcmp(wg_os_type, "windows")) {
 				fprintf(file, "   binary = \"%s\"\n", "omp-server.exe");
 			} else if (!strcmp(wg_os_type, "linux")) {
@@ -1837,7 +1837,7 @@ int wg_toml_configs(void)
 		/* Determine server type by checking directories and files */
 		if (dir_exists("qawno") &&
 			dir_exists("components"))
-			samp_user = 0; /* Open.MP */
+			samp_user = 0; /* open.mp */
 		else if (dir_exists("pawno") &&
 			path_access("server.cfg"))
 			samp_user = 1; /* SA-MP */
@@ -1845,7 +1845,7 @@ int wg_toml_configs(void)
 				;
 		}
 
-		/* Search for PAWN compiler */
+		/* Search for Pawn Code compiler */
 		find_pawncc = wg_find_compiler(wg_os_type);
 		if (!find_pawncc) {
 			/* Fallback: search in current directory */

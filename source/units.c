@@ -586,6 +586,13 @@ loop_ipcc3:
 _runners_:
                 wg_stop_server_tasks();
 
+                if (is_termux_env() == 1) {
+                    pr_warning(stdout, "Currently Termux is not supported..");
+                    pr_info(stdout, "Alternative for Termux:"
+                          "\n\tOMP Termux (Beta): https://github.com/novusr/omptmux/releases/tag/v1.5.8.3079"
+                          "\n\tSA-MP decompilation (work-in-progress): http://github.com/dashr9230/SA-MP");
+                }
+
                 if (!path_access(wgconfig.wg_toml_binary)) {
                     pr_error(stdout, "can't locate sa-mp/open.mp binary file!");
                     goto chain_done;
@@ -873,7 +880,7 @@ n_loop_igm2:
             args2 = strtok(args, " ");
 
             if (args2 == NULL || args2[0] == '\0') {
-                const char *argsc[] = { NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL };
+                const char *argsc[] = { NULL, ".", NULL, NULL, NULL, NULL, NULL, NULL, NULL };
 
                 wg_compile_running = 1;
 

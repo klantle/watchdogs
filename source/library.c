@@ -200,7 +200,7 @@ wg_install_server(const char *platform)
           'A','B','C','D','E','F','G','H','I','J','K','L','M','N'
       };
 
-      char sel = library_options_list("Select SA-MP / Open.MP Server", items, keys, 14);
+      char sel = library_options_list("Select SA-MP / open.mp Server", items, keys, 14);
       if (!sel) return 0;
 
       int idx = -1;
@@ -257,55 +257,55 @@ wg_install_server(const char *platform)
 						"files.sa-mp.com-Archive/raw/refs/heads/master/samp037_svr_R2-1-1_win32.zip",
 						"samp037_svr_R2-1-1_win32.zip"
 				},
-				/* Open.MP v1.5.8.3079 - Latest Open.MP version (static SSL) */
+				/* open.mp v1.5.8.3079 - Latest open.mp version (static SSL) */
 				{
 						'E', "OPEN.MP v1.5.8.3079 (Static SSL)",
 						"https://github.com/"
 						"openmultiplayer/"
 						"open.mp/releases/download/v1.5.8.3079/open.mp-linux-x86.tar.gz",
-						"open.mp-linux-x86.tar.gz", /* Linux Open.MP with static SSL */
+						"open.mp-linux-x86.tar.gz", /* Linux open.mp with static SSL */
 						"https://github.com/"
 						"openmultiplayer/"
 						"open.mp/releases/download/v1.5.8.3079/open.mp-win-x86.zip",
-						"open.mp-win-x86.zip" /* Windows Open.MP */
+						"open.mp-win-x86.zip" /* Windows open.mp */
 				},
-				/* Open.MP v1.5.8.3079 - Latest Open.MP version (dynamic SSL) */
+				/* open.mp v1.5.8.3079 - Latest open.mp version (dynamic SSL) */
 				{
 						'F', "OPEN.MP v1.5.8.3079 (Dynamic SSL)",
 						"https://github.com/"
 						"openmultiplayer/"
 						"open.mp/releases/download/v1.5.8.3079/open.mp-linux-x86-dynssl.tar.gz",
-						"open.mp-linux-x86-dynssl.tar.gz", /* Linux Open.MP with dynamic SSL */
+						"open.mp-linux-x86-dynssl.tar.gz", /* Linux open.mp with dynamic SSL */
 						"https://github.com/"
 						"openmultiplayer/"
 						"open.mp/releases/download/v1.5.8.3079/open.mp-win-x86.zip",
-						"open.mp-win-x86.zip" /* Windows Open.MP (same as static) */
+						"open.mp-win-x86.zip" /* Windows open.mp (same as static) */
 				},
-				/* Open.MP v1.4.0.2779 - Previous Open.MP version (static SSL) */
+				/* open.mp v1.4.0.2779 - Previous open.mp version (static SSL) */
 				{
 						'G', "OPEN.MP v1.4.0.2779 (Static SSL)",
 						"https://github.com/"
 						"openmultiplayer/"
 						"open.mp/releases/download/v1.4.0.2779/open.mp-linux-x86.tar.gz",
-						"open.mp-linux-x86.tar.gz", /* Linux Open.MP with static SSL */
+						"open.mp-linux-x86.tar.gz", /* Linux open.mp with static SSL */
 						"https://github.com/"
 						"openmultiplayer/"
 						"open.mp/releases/download/v1.4.0.2779/open.mp-win-x86.zip",
-						"open.mp-win-x86.zip" /* Windows Open.MP */
+						"open.mp-win-x86.zip" /* Windows open.mp */
 				},
-				/* Open.MP v1.4.0.2779 - Previous Open.MP version (dynamic SSL) */
+				/* open.mp v1.4.0.2779 - Previous open.mp version (dynamic SSL) */
 				{
 						'H', "OPEN.MP v1.4.0.2779 (Dynamic SSL)",
 						"https://github.com/"
 						"openmultiplayer/"
 						"open.mp/releases/download/v1.4.0.2779/open.mp-linux-x86-dynssl.tar.gz",
-						"open.mp-linux-x86-dynssl.tar.gz", /* Linux Open.MP with dynamic SSL */
+						"open.mp-linux-x86-dynssl.tar.gz", /* Linux open.mp with dynamic SSL */
 						"https://github.com/"
 						"openmultiplayer/"
 						"open.mp/releases/download/v1.4.0.2779/open.mp-win-x86.zip",
-						"open.mp-win-x86.zip" /* Windows Open.MP (same as static) */
+						"open.mp-win-x86.zip" /* Windows open.mp (same as static) */
 				},
-				/* Open.MP v1.3.1.2748 - Previous Open.MP version (static SSL) */
+				/* open.mp v1.3.1.2748 - Previous open.mp version (static SSL) */
 				{
 						'I', "OPEN.MP v1.3.1.2748 (Static SSL)",
 						"https://github.com/"
@@ -317,7 +317,7 @@ wg_install_server(const char *platform)
 						"open.mp/releases/download/v1.3.1.2748/open.mp-win-x86.zip",
 						"open.mp-win-x86.zip"
 				},
-				/* Open.MP v1.3.1.2748 - Previous Open.MP version (dynamic SSL) */
+				/* open.mp v1.3.1.2748 - Previous open.mp version (dynamic SSL) */
 				{
 						'J', "OPEN.MP v1.3.1.2748 (Dynamic SSL)",
 						"https://github.com/"
@@ -329,7 +329,7 @@ wg_install_server(const char *platform)
 						"open.mp/releases/download/v1.3.1.2748/open.mp-win-x86.zip",
 						"open.mp-win-x86.zip"
 				},
-				/* Open.MP v1.2.0.2670 - Older Open.MP version (static SSL) */
+				/* open.mp v1.2.0.2670 - Older open.mp version (static SSL) */
 				{
 						'K', "OPEN.MP v1.2.0.2670 (Static SSL)",
 						"https://github.com/"
@@ -341,7 +341,7 @@ wg_install_server(const char *platform)
 						"open.mp/releases/download/v1.2.0.2670/open.mp-win-x86.zip",
 						"open.mp-win-x86.zip"
 				},
-				/* Open.MP v1.2.0.2670 - Older Open.MP version (dynamic SSL) */
+				/* open.mp v1.2.0.2670 - Older open.mp version (dynamic SSL) */
 				{
 						'L', "OPEN.MP v1.2.0.2670 (Dynamic SSL)",
 						"https://github.com/"
@@ -353,7 +353,7 @@ wg_install_server(const char *platform)
 						"open.mp/releases/download/v1.2.0.2670/open.mp-win-x86.zip",
 						"open.mp-win-x86.zip"
 				},
-				/* Open.MP v1.1.0.2612 - Early Open.MP version (static SSL) */
+				/* open.mp v1.1.0.2612 - Early open.mp version (static SSL) */
 				{
 						'M', "OPEN.MP v1.1.0.2612 (Static SSL)",
 						"https://github.com/"
@@ -365,7 +365,7 @@ wg_install_server(const char *platform)
 						"open.mp/releases/download/v1.1.0.2612/open.mp-win-x86.zip",
 						"open.mp-win-x86.zip"
 				},
-				/* Open.MP v1.1.0.2612 - Early Open.MP version (dynamic SSL) */
+				/* open.mp v1.1.0.2612 - Early open.mp version (dynamic SSL) */
 				{
 						'N', "OPEN.MP v1.1.0.2612 (Dynamic SSL)",
 						"https://github.com/"

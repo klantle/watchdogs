@@ -676,10 +676,15 @@ not_valid_flag_options:
                     }
                 }
 
-                if (compile_args == NULL || *compile_args == '\0' || (compile_args[0] == '.' && compile_args[1] == '\0'))
+                if (compile_args == NULL)
+                  {
+                      compile_args = "";
+                  }
+
+                if (*compile_args == '\0' || (compile_args[0] == '.' && compile_args[1] == '\0'))
                 {
                     static int compiler_targets = 0;
-                    if (compiler_targets != 1) {
+                    if (compiler_targets != 1 && strlen(compile_args) < 1) {
                         pr_color(stdout, FCOLOUR_YELLOW,
                                 "==== COMPILER TARGET ====\n");
                         printf("   ** This notification appears only once.\n"
@@ -1779,183 +1784,530 @@ compiler_end:
         return 1;
 }
 
-
 causeExplanation ccs[] =
 {
 /* 001 */  /* SYNTAX ERROR */
-{"expected token", "A required token (e.g., ';', ',', ')') is missing from the code. Check the line indicated for typos or omissions."},
+{
+    "expected token",
+    "A required syntactic element is missing from the parse tree. The parser expected one of: a semicolon ';', comma ',', closing parenthesis ')', bracket ']', or brace '}'. This typically indicates a malformed statement, improper expression termination, or incorrect nesting of control structures. Verify the statement's grammatical completeness according to Pawn's context-free grammar."
+},
+
 /* 002 */  /* SYNTAX ERROR */
-{"only a single statement", "A `case` label can only be followed by a single statement. To use multiple statements, enclose them in a block with `{` and `}`."},
+{
+    "only a single statement",
+    "The `case` label syntactic production permits exactly one statement as its immediate successor. For multiple statements, you must encapsulate them within a compound statement delimited by braces `{ ... }`. This restriction stems from Pawn's simplified switch statement implementation which avoids implicit block creation."
+},
+
 /* 003 */  /* SYNTAX ERROR */
-{"declaration of a local variable must appear in a compound block", "Local variables declared inside a `case` or `default` label must be scoped within a compound block `{ ... }`."},
+{
+    "declaration of a local variable must appear in a compound block",
+    "Variable declarations within `case` or `default` labels require explicit scoping via compound blocks due to potential jump-to-label issues in the control flow graph. Without explicit braces, the variable's lifetime and scope cannot be properly determined, violating the language's static single assignment analysis."
+},
+
 /* 012 */  /* SYNTAX ERROR */
-{"invalid function call, not a valid address", "The symbol being called is not a function, or the syntax of the function call is incorrect."},
+{
+    "invalid function call, not a valid address",
+    "The identifier preceding the parenthesized argument list does not resolve to a function symbol in the current scope, or the call expression violates the function call syntax. Possible causes: attempting to call a non-function identifier, using incorrect call syntax for function pointers, or encountering a malformed expression that the parser misinterprets as a function call."
+},
+
 /* 014 */  /* SYNTAX ERROR */
-{"invalid statement; not in switch", "The `case` or `default` label is only valid inside a `switch` statement."},
+{
+    "invalid statement; not in switch",
+    "The `case` or `default` labeled statement appears outside the lexical scope of any `switch` statement. These labels are context-sensitive productions that are only syntactically valid when nested within a switch statement's body according to Pawn's grammar specification section 6.8.1."
+},
+
 /* 015 */  /* SEMANTIC ERROR */
-{"default case must be the last case", "The `default` case within a `switch` statement must appear after all other `case` labels."},
+{
+    "default case must be the last case",
+    "The `default` label within a switch statement's case list must appear after all explicit `case` constant expressions. This ordering constraint is enforced by the Pawn compiler's semantic analysis phase to ensure predictable control flow and to simplify the generated jump table implementation."
+},
+
 /* 016 */  /* SEMANTIC ERROR */
-{"multiple defaults in switch", "A `switch` statement can only have one `default` case."},
+{
+    "multiple defaults in switch",
+    "A `switch` statement contains more than one `default` label, which creates ambiguous control flow. According to the language specification (ISO/IEC TR 18037:2008), each switch statement may have at most one default case to serve as the catch-all branch in the decision tree."
+},
+
 /* 019 */  /* SEMANTIC ERROR */
-{"not a label", "The symbol used in the `goto` statement is not defined as a label."},
+{
+    "not a label",
+    "The identifier following the `goto` keyword does not correspond to any labeled statement in the current function's scope. Label resolution occurs during the semantic analysis phase, and the target must be a label defined earlier in the same function body (forward jumps are permitted)."
+},
+
 /* 020 */  /* SYNTAX ERROR */
-{"invalid symbol name", "Symbol names must start with a letter, an underscore '_', or an 'at' sign '@'."},
+{
+    "invalid symbol name",
+    "The identifier violates Pawn's lexical conventions for symbol names. Valid identifiers must match the regular expression: `[_@a-zA-Z][_@a-zA-Z0-9]*`. The '@' character has special significance for public/forward declarations and must be used consistently throughout the symbol's lifetime."
+},
+
 /* 036 */  /* SYNTAX ERROR */
-{"empty statement", "Pawn does not support a standalone semicolon as an empty statement. double `;;`? - Use an empty block `{}` instead if intentional."},
+{
+    "empty statement",
+    "A standalone semicolon constitutes a null statement, which Pawn's grammar specifically disallows in most contexts to prevent accidental emptiness. If intentional empty statement is needed, use an explicit empty block `{}`. Note that double semicolons `;;` often indicate a missing statement between them."
+},
+
 /* 037 */  /* SYNTAX ERROR */
-{"missing semicolon", "A semicolon ';' is expected at the end of this statement."},
+{
+    "missing semicolon",
+    "A statement terminator (';') is required but absent. In Pawn's LL(1) grammar, semicolons terminate: expression statements, declarations, iteration statements, jump statements, and return statements. The parser's predictive parsing table expected this token to complete the current production."
+},
+
 /* 030 */  /* SYNTAX ERROR */
-{"unexpected end of file", "The source file ended unexpectedly. This is often caused by a missing closing brace '}', parenthesis ')', or quote."},
+{
+    "unexpected end of file",
+    "The lexical analyzer reached EOF while the parser was still expecting tokens to complete one or more grammatical constructs. Common causes: unclosed block comment `/*`, string literal without terminating quote, unmatched braces/parentheses/brackets, or incomplete function/control structure."
+},
+
 /* 027 */  /* SYNTAX ERROR */
-{"illegal character", "A character was found that is not valid in the current context (e.g., outside of a string or comment)."},
+{
+    "illegal character",
+    "The source character (codepoint) is not valid in the current lexical context. Outside of string literals and comments, Pawn only accepts characters from its valid character set (typically ASCII or the active codepage). Control characters (0x00-0x1F) except whitespace are generally illegal."
+},
+
 /* 026 */  /* SYNTAX ERROR */
-{"missing closing parenthesis", "An opening parenthesis '(' was not closed with a matching ')'."},
+{
+    "missing closing parenthesis",
+    "An opening parenthesis '(' lacks its corresponding closing ')', creating an unbalanced delimiter sequence. This affects expression grouping, function call syntax, and condition specifications. The parser's delimiter stack detected this mismatch during syntax tree construction."
+},
+
 /* 028 */  /* SYNTAX ERROR */
-{"missing closing bracket", "An opening bracket '[' was not closed with a matching ']'."},
+{
+    "missing closing bracket",
+    "An opening bracket '[' was not matched with a closing ']'. This affects array subscripting, array declarations, and sizeof expressions. The bracket matching algorithm in the parser's shift-reduce automaton failed to find a closing bracket before the relevant scope ended."
+},
+
 /* 054 */  /* SYNTAX ERROR */
-{"missing closing brace", "An opening brace '{' was not closed with a matching '}'."},
+{
+    "missing closing brace",
+    "An opening brace '{' lacks its corresponding closing '}'. This affects compound statements, initializer lists, and function bodies. The brace nesting counter in the lexical analyzer reached EOF without returning to zero, indicating structural incompleteness."
+},
+
 /* 004 */  /* SEMANTIC ERROR */
-{"is not implemented", "A function was declared but its implementation (body) was not found. This can be caused by a missing closing brace `}` in a previous function."},
+{
+    "is not implemented",
+    "A function prototype was declared (forward reference) but no corresponding definition appears in the translation unit. This may also indicate that the compiler's symbol table contains an unresolved external reference, possibly due to a previous function's missing closing brace causing the parser to incorrectly associate following code."
+},
+
 /* 005 */  /* SEMANTIC ERROR */
-{"function may not have arguments", "The `main()` function cannot accept any arguments."},
+{
+    "function may not have arguments",
+    "The `main()` function, serving as the program entry point, must have signature `main()` with zero parameters. This restriction ensures consistent program initialization across all Pawn implementations and prevents ambiguity in startup argument passing conventions."
+},
+
 /* 006 */  /* SEMANTIC ERROR */
-{"must be assigned to an array", "String literals must be assigned to a character array variable; they cannot be assigned to non-array types."},
+{
+    "must be assigned to an array",
+    "String literals are rvalues of type 'array of char' and can only be assigned to compatible array types. The assignment operator's left operand must be an array lvalue with sufficient capacity (including null terminator). This is enforced during type checking of assignment expressions."
+},
+
 /* 007 */  /* SEMANTIC ERROR */
-{"operator cannot be redefined", "Only specific operators can be redefined (overloaded) in Pawn. Check the language specification."},
+{
+    "operator cannot be redefined",
+    "Attempt to overload an operator that Pawn does not support for overloading. Only a specific subset of operators (typically arithmetic and comparison operators) can be overloaded via operator functions. Consult the language specification for the exhaustive list of overloadable operators."
+},
+
 /* 008 */  /* SEMANTIC ERROR */
-{"must be a constant expression; assumed zero", "Array sizes and compiler directives (like `#if`) require constant expressions (literals or declared constants)."},
+{
+    "must be a constant expression; assumed zero",
+    "The context requires a compile-time evaluable constant expression but received a runtime expression. This affects: array dimension specifiers, case labels, bit-field widths, enumeration values, and preprocessor conditionals. The constant folder attempted evaluation but found variable references or non-constant operations."
+},
+
 /* 009 */  /* SEMANTIC ERROR */
-{"invalid array size", "The size of an array must be 1 or greater."},
+{
+    "invalid array size",
+    "Array dimension specifier evaluates to a non-positive integer. Array sizes must be ≥1. For VLAs (Variable Length Arrays), the size expression must evaluate to positive at the point of declaration. This check occurs during array type construction in the type system."
+},
+
 /* 017 */  /* SEMANTIC ERROR */
-{"undefined symbol", "A symbol (variable, function, constant) is used but was never declared. Check for typos or missing declarations."},
+{
+    "undefined symbol",
+    "Identifier lookup in the current scope chain failed to find any declaration for this symbol. The compiler traversed: local block scope → function scope → file scope → global scope. Possible causes: typographical error, missing include directive, symbol declared in excluded conditional compilation block, or incorrect namespace/visibility qualifiers."
+},
+
 /* 018 */  /* SEMANTIC ERROR */
-{"initialization data exceeds declared size", "The data used to initialize the array contains more elements than the size specified for the array."},
+{
+    "initialization data exceeds declared size",
+    "The initializer list contains more elements than the array's declared capacity. For aggregate initialization, the number of initializer-clauses must not exceed the array bound. For string literals, the literal length (including null terminator) must not exceed array size."
+},
+
 /* 022 */  /* SEMANTIC ERROR */
-{"must be lvalue", "The symbol on the left side of an assignment operator must be a modifiable variable, array element, or other 'lvalue'."},
+{
+    "must be lvalue",
+    "The left operand of an assignment operator (=, +=, etc.) does not designate a modifiable location in storage. Valid lvalues include: variables, array subscript expressions, dereferenced pointers, and structure/union members. Constants, literals, and rvalue expressions cannot appear on the left of assignment."
+},
+
 /* 023 */  /* SEMANTIC ERROR */
-{"array assignment must be simple assignment", "Arrays cannot be used with compound assignment operators (like `+=`). Only simple assignment `=` is allowed for arrays."},
+{
+    "array assignment must be simple assignment",
+    "Arrays cannot be used with compound assignment operators due to the semantic complexity of element-wise operations. Only simple assignment '=' is permitted for array types, which performs memcpy-like behavior. For element-wise operations, explicit loops or functions must be used."
+},
+
 /* 024 */  /* SEMANTIC ERROR */
-{"break or continue is out of context", "The `break` statement is only valid inside loops (`for`, `while`, `do-while`) and `switch`. `continue` is only valid inside loops."},
+{
+    "break or continue is out of context",
+    "A `break` statement appears outside any switch/loop construct, or `continue` appears outside any loop construct. These jump statements are context-sensitive and require specific enclosing syntactic structures. The control flow graph builder validates these constraints."
+},
+
 /* 025 */  /* SEMANTIC ERROR */
-{"function heading differs from prototype", "The function's definition (return type, name, parameters) does not match a previous declaration of the same function."},
+{
+    "function heading differs from prototype",
+    "Function definition signature does not match previous declaration in: return type, parameter count, parameter types (including qualifiers), or calling convention. This violates the one-definition rule and causes type incompatibility in the function type consistency check."
+},
+
 /* 027 */  /* SEMANTIC ERROR */
-{"invalid character constant", "An unknown escape sequence (like `\\z`) was used, or multiple characters were placed inside single quotes (e.g., 'ab')."},
+{
+    "invalid character constant",
+    "Character constant syntax error: multiple characters in single quotes, unknown escape sequence, or numeric escape sequence out of valid range (0-255). Valid escape sequences are: \\a, \\b, \\e, \\f, \\n, \\r, \\t, \\v, \\\\, \\', \\\", \\xHH, \\OOO (octal)."
+},
+
 /* 029 */  /* SEMANTIC ERROR */
-{"invalid expression, assumed zero", "The compiler could not understand the structure of the expression. This is often due to a syntax error or operator misuse."},
+{
+    "invalid expression, assumed zero",
+    "The expression parser encountered syntactically valid but semantically meaningless construct, such as mismatched operator operands, incorrect operator precedence binding, or type-incompatible operations. The expression evaluator defaults to zero to allow continued parsing for additional error detection."
+},
+
 /* 032 */  /* SEMANTIC ERROR */
-{"array index out of bounds", "The index used to access the array is either negative or greater than or equal to the array's size."},
+{
+    "array index out of bounds",
+    "Subscript expression evaluates to value outside array bounds [0, size-1]. This is a compile-time check for constant indices; runtime bounds checking depends on implementation. For multidimensional arrays, each dimension is checked independently."
+},
+
 /* 045 */  /* SEMANTIC ERROR */
-{"too many function arguments", "A function call was made with more than 64 arguments, which is the limit in Pawn."},
+{
+    "too many function arguments",
+    "Function call contains more than 64 actual arguments, exceeding Pawn's implementation limit. This architectural constraint stems from the virtual machine's call frame design and register allocation scheme. Consider refactoring using structures or arrays for parameter groups."
+},
+
 /* 203 */  /* WARNING */
-{"symbol is never used", "A variable, constant, or function was defined but never referenced in the code.."},
+{
+    "symbol is never used",
+    "Variable, constant, or function declared but never referenced in any reachable code path. This may indicate: dead code, incomplete implementation, debugging remnants, or accidental omission. The compiler's data flow analysis determined no read operations on the symbol after its declaration."
+},
+
 /* 204 */  /* WARNING */
-{"symbol is assigned a value that is never used", "A variable is assigned a value, but that value is never used in any subsequent operation. This might indicate unnecessary computation."},
+{
+    "symbol is assigned a value that is never used",
+    "Variable receives a value (via assignment or initialization) that is subsequently never read. This suggests: unnecessary computation, redundant initialization, or logical error where the variable should be used but isn't. The live variable analysis tracks definitions and uses."
+},
+
 /* 205 */  /* WARNING */
-{"redundant code: constant expression is zero", "A conditional expression (e.g., in an `if` or `while`) always evaluates to zero (false), making the code block unreachable."},
+{
+    "redundant code: constant expression is zero",
+    "Conditional expression in if/while/for evaluates to compile-time constant false (0), making the controlled block dead code. This often results from: macro expansion errors, contradictory preprocessor conditions, or logical errors in constant expressions. The constant folder detected this during control flow analysis."
+},
+
 /* 209 */  /* SEMANTIC ERROR */
-{"should return a value", "A function that is declared to return a value must return a value on all possible execution paths."},
+{
+    "should return a value",
+    "Non-void function reaches end of control flow without returning a value via return statement. All possible execution paths must return a value of compatible type. The control flow graph analyzer found at least one path terminating at function end without return."
+},
+
 /* 211 */  /* WARNING */
-{"possibly unintended assignment", "An assignment operator `=` was used in a context where a comparison operator `==` is typically used (e.g., in an `if` condition)."},
+{
+    "possibly unintended assignment",
+    "Assignment expression appears in boolean context where equality comparison is typical (e.g., if condition). The expression `if (a = b)` assigns b to a, then tests a's truth value. If comparison was intended, use `if (a == b)`. This heuristic warning triggers on assignment in conditional context."
+},
+
 /* 010 */  /* SYNTAX ERROR */
-{"invalid function or ", "You need to make sure that the area around the error line follows the proper syntax, structure, and rules typical of Pawn code."},
+{
+    "invalid function or declaration",
+    "The parser expected a function declarator or variable declaration but encountered tokens that don't conform to declaration syntax. This can indicate: misplaced storage class specifiers, incorrect type syntax, missing identifier, or malformed parameter list. Verify the declaration follows Pawn's declaration syntax exactly."
+},
+
 /* 213 */  /* SEMANTIC ERROR */
-{"tag mismatch", "The type (or 'tag') of the expression does not match the type expected by the context. Check variable types and function signatures."},
+{
+    "tag mismatch",
+    "Type compatibility violation: expression type differs from expected type in assignment, argument passing, or return context. Pawn's tag system enforces type safety for numeric types. The type checker found incompatible tags between source and destination types."
+},
+
 /* 215 */  /* WARNING */
-{"expression has no effect", "An expression is evaluated but does not change the program's state (e.g., `a + b;` on a line by itself). This is often a logical error."},
+{
+    "expression has no effect",
+    "Expression statement computes a value but doesn't produce side effects or store result. Examples: `a + b;` or `func();` where func returns value ignored. This often indicates: missing assignment, incorrect function call, or leftover debug expression. The side-effect analyzer detected pure expression without observable effect."
+},
+
 /* 217 */  /* WARNING */
-{"loose indentation", "The indentation (spaces/tabs) is inconsistent. While this doesn't affect compilation, it harms code readability."},
+{
+    "loose indentation",
+    "Inconsistent whitespace usage (spaces vs tabs, or varying indentation levels) detected. While syntactically irrelevant, inconsistent indentation impairs readability and may indicate structural misunderstandings. The lexer tracks column positions and detects abrupt indentation changes."
+},
+
 /* 234 */  /* WARNING */
-{"Function is deprecated", "This function is outdated and may be removed in future versions. The compiler suggests using an alternative."},
+{
+    "Function is deprecated",
+    "Function marked with deprecated attribute via `forward deprecated:` or similar. Usage triggers warning but compiles. Deprecation suggests: API evolution, security concerns, performance issues, or planned removal. Consult documentation for replacement API."
+},
+
 /* 013 */  /* SEMANTIC ERROR */
-{"no entry point", "The program must contain a `main` function or another designated public function to serve as the entry point."},
+{
+    "no entry point",
+    "Translation unit lacks valid program entry point. Required: `main()` function or designated public function based on target environment. The linker/loader cannot determine startup address. Some environments allow alternative entry points via compiler options or specific pragmas."
+},
+
 /* 021 */  /* SEMANTIC ERROR */
-{"symbol already defined", "A symbol (variable, function, etc.) is being redefined in the same scope. You cannot have two symbols with the same name in the same scope."},
+{
+    "symbol already defined",
+    "Redeclaration of identifier in same scope violates one-definition rule. Each identifier in a given namespace must have unique declaration (except for overloading, which Pawn doesn't support). The symbol table insertion failed due to duplicate key in current scope."
+},
+
 /* 028 */  /* SEMANTIC ERROR */
-{"invalid subscript", "The bracket operators `[` and `]` are being used incorrectly, likely with a variable that is not an array."},
+{
+    "invalid subscript",
+    "Bracket operator applied to non-array type, or subscript expression has wrong type. Left operand must have array or pointer type, subscript must be integer expression. The type checker validates subscript expressions during expression evaluation."
+},
+
 /* 033 */  /* SEMANTIC ERROR */
-{"array must be indexed", "An array variable is used in an expression without an index. You must specify which element of the array you want to access."},
+{
+    "array must be indexed",
+    "Array identifier used in value context without subscript. In most expressions, arrays decay to pointer to first element, but certain contexts require explicit element access. This prevents accidental pointer decay when element access was intended."
+},
+
 /* 034 */  /* SEMANTIC ERROR */
-{"argument does not have a default value", "In a function call with named arguments, a placeholder was used for an argument that does not have a default value specified."},
+{
+    "argument does not have a default value",
+    "Named argument syntax used with parameter that lacks default value specification. When calling with named arguments (`func(.param=value)`), all parameters without defaults must be explicitly provided. The argument binder cannot resolve missing required parameter."
+},
+
 /* 035 */  /* SEMANTIC ERROR */
-{"argument type mismatch", "The type of an argument passed to a function does not match the expected parameter type defined by the function."},
+{
+    "argument type mismatch",
+    "Actual argument type incompatible with formal parameter type. This includes: tag mismatch, array vs non-array, dimension mismatch for arrays, or value range issues. Function call type checking ensures actual arguments can be converted to formal parameter types."
+},
+
 /* 037 */  /* SEMANTIC ERROR */
-{"invalid string", "A string literal is not properly formed, often due to a missing closing quote or an invalid escape sequence."},
+{
+    "invalid string",
+    "String literal malformed: unterminated (missing closing quote), contains invalid escape sequences, or includes illegal characters for current codepage. The lexer's string literal parsing state machine encountered unexpected input or premature EOF."
+},
+
 /* 039 */  /* SEMANTIC ERROR */
-{"constant symbol has no size", "The `sizeof` operator cannot be applied to a symbolic constant. It is only for variables and types."},
+{
+    "constant symbol has no size",
+    "`sizeof` operator applied to symbolic constant (enumeration constant, #define macro). `sizeof` requires type name or object expression with storage. Constants exist only at compile-time and have no runtime representation with measurable size."
+},
+
 /* 040 */  /* SEMANTIC ERROR */
-{"duplicate case label", "Two `case` labels within the same `switch` statement have the same constant value. Each `case` must be unique."},
+{
+    "duplicate case label",
+    "Multiple `case` labels in same switch statement have identical constant expression values. Each case must be distinct to ensure deterministic control flow. The switch statement semantic analyzer builds case value table and detects collisions."
+},
+
 /* 041 */  /* SEMANTIC ERROR */
-{"invalid ellipsis", "The compiler cannot determine the array size from the `...` initializer syntax."},
+{
+    "invalid ellipsis",
+    "Array initializer with `...` (ellipsis) cannot determine appropriate array size. Ellipsis initializer requires either explicit array size or preceding explicit elements from which to extrapolate. The array initializer resolver failed to compute array dimension."
+},
+
 /* 042 */  /* SEMANTIC ERROR */
-{"invalid combination of class specifiers", "A combination of storage class specifiers (e.g., `public`, `static`) is used that is not allowed by the language."},
+{
+    "invalid combination of class specifiers",
+    "Storage class specifiers combined illegally (e.g., `public static`, `forward native`). Each storage class has compatibility rules. The declaration specifier parser validates specifier combinations according to language grammar."
+},
+
 /* 043 */  /* SEMANTIC ERROR */
-{"character constant exceeds range", "A character constant has a value that is outside the valid 0-255 range for an 8-bit character."},
+{
+    "character constant exceeds range",
+    "Character constant numeric value outside valid 0-255 range (8-bit character set). Pawn uses unsigned 8-bit characters. Integer character constants, escape sequences, or multibyte characters must fit in 8 bits for portability across all Pawn implementations."
+},
+
 /* 044 */  /* SEMANTIC ERROR */
-{"positional parameters must precede", "In a function call, all positional arguments must come before any named arguments."},
+{
+    "positional parameters must precede",
+    "In mixed argument passing, positional arguments appear after named arguments. Syntax requires all positional arguments first, then named arguments (`func(1, 2, .param=3)`). The parser's argument list processing enforces this ordering for unambiguous binding."
+},
+
 /* 046 */  /* SEMANTIC ERROR */
-{"unknown array size", "An array was declared without a specified size and without an initializer to infer the size. Array sizes must be explicit."},
+{
+    "unknown array size",
+    "Array declaration lacks size specifier and initializer, making size indeterminate. Array types must have known size at declaration time (except for extern incomplete arrays). The type constructor cannot create array type with unspecified bound."
+},
+
 /* 047 */  /* SEMANTIC ERROR */
-{"array sizes do not match", "In an assignment, the source and destination arrays have different sizes."},
+{
+    "array sizes do not match",
+    "Array assignment between arrays of different sizes. For array assignment, source and destination must have identical size (number of elements). The type compatibility checker for assignment verifies array dimension equality."
+},
+
 /* 048 */  /* SEMANTIC ERROR */
-{"array dimensions do not match", "The dimensions of the arrays used in an operation (e.g., addition) do not match."},
+{
+    "array dimensions do not match",
+    "Array operation (arithmetic, comparison) between arrays of different dimensions. Element-wise operations require identical shape. The array operation validator checks dimension compatibility before generating element-wise code."
+},
+
 /* 049 */  /* SEMANTIC ERROR */
-{"invalid line continuation", "A backslash `\\` was used at the end of a line, but it is not being used to continue a preprocessor directive or string literal correctly."},
+{
+    "invalid line continuation",
+    "Backslash-newline sequence appears outside valid context (preprocessor directive or string literal). Line continuation only permitted in: #define macros, #include paths, and string literals. The preprocessor's line splicing logic detected illegal continuation."
+},
+
 /* 050 */  /* SEMANTIC ERROR */
-{"invalid range", "A range expression (e.g., in a state array) is syntactically or logically invalid."},
+{
+    "invalid range",
+    "Range expression (e.g., in enum or array initializer) malformed: `start .. end` where start > end, or values non-integral, or exceeds implementation limits. Range validator ensures start ≤ end and both are integer constant expressions."
+},
+
 /* 055 */  /* SEMANTIC ERROR */
-{"start of function body without function header", "A block of code `{ ... }` that looks like a function body was encountered, but there was no preceding function declaration."},
+{
+    "start of function body without function header",
+    "Compound statement `{ ... }` appears where function body expected but no preceding function declarator. This often indicates: missing function header, extra brace, or incorrect nesting. The parser's function definition production expects declarator before body."
+},
+
 /* 100 */  /* FATAL ERROR */
-{"cannot read from file", "The specified source file or an included file could not be opened. It may not exist, or there may be permission issues."},
+{
+    "cannot read from file",
+    "File I/O error opening or reading source file. Possible causes: file doesn't exist, insufficient permissions, path too long, file locked by another process, or disk/media error. The compiler's file layer returns system error which gets mapped to this message."
+},
+
 /* 101 */  /* FATAL ERROR */
-{"cannot write to file", "The compiler cannot write to the output file. The disk might be full, the file might be in use, or there may be permission issues."},
+{
+    "cannot write to file",
+    "Output file creation/write failure. Check: disk full, write protection, insufficient permissions, output directory doesn't exist, or file in use. The code generator's output routines failed to write compiled output."
+},
+
 /* 102 */  /* FATAL ERROR */
-{"table overflow", "An internal compiler table (for symbols, tokens, etc.) has exceeded its maximum size. The source code might be too complex."},
+{
+    "table overflow",
+    "Internal compiler data structure capacity exceeded. Limits may include: symbol table entries, hash table chains, parse tree nodes, or string table size. Source code too large/complex for compiler's fixed-size internal tables. Consider modularization or compiler with larger limits."
+},
+
 /* 103 */  /* FATAL ERROR */
-{"insufficient memory", "The compiler ran out of available system memory (RAM) while processing the source code."},
+{
+    "insufficient memory",
+    "Dynamic memory allocation failed during compilation. The compiler's memory manager cannot satisfy allocation request due to system memory exhaustion or fragmentation. Source code may be too large, or compiler has memory leak."
+},
+
 /* 104 */  /* FATAL ERROR */
-{"invalid assembler instruction", "The opcode specified in an `#emit` directive is not a valid Pawn assembly instruction."},
+{
+    "invalid assembler instruction",
+    "`#emit` directive contains unrecognized or illegal opcode/operand combination. The embedded assembler validates instruction against Pawn VM instruction set. Check opcode spelling, operand count, and operand types against VM specification."
+},
+
 /* 105 */  /* FATAL ERROR */
-{"numeric overflow", "A numeric constant in the source code is too large to be represented."},
+{
+    "numeric overflow",
+    "Numeric constant exceeds representable range for its type. Integer constants beyond 32-bit signed range, or floating-point beyond implementation limits. The constant parser's range checking detected value outside allowed bounds."
+},
+
 /* 107 */  /* FATAL ERROR */
-{"too many error messages on one line", "One line of source code generated a large number of errors. The compiler is stopping to avoid flooding the output."},
+{
+    "too many error messages on one line",
+    "Error reporting threshold exceeded for single source line. Prevents infinite error cascades from severely malformed code. Compiler stops processing this line after reporting maximum errors (typically 10-20)."
+},
+
 /* 108 */  /* FATAL ERROR */
-{"codepage mapping file not found", "The file specified for character set conversion (codepage) could not be found."},
+{
+    "codepage mapping file not found",
+    "Character set conversion mapping file specified via `-C` option missing or unreadable. The compiler needs this file for non-ASCII source character processing. Verify file exists in compiler directory or specified path."
+},
+
 /* 109 */  /* FATAL ERROR */
-{"invalid path", "A file or directory path provided to the compiler is syntactically invalid or does not exist."},
+{
+    "invalid path",
+    "File system path syntax error or inaccessible directory component. Path may contain illegal characters, be too long, or refer to non-existent network resource. The compiler's path normalization routine rejected the path."
+},
+
 /* 110 */  /* FATAL ERROR */
-{"assertion failed", "A compile-time assertion check (using `#assert`) evaluated to false."},
+{
+    "assertion failed",
+    "Compile-time assertion via `#assert` directive evaluated false. Assertion condition must be constant expression; if false, compilation aborts. Used for validating compile-time assumptions about types, sizes, or configurations."
+},
+
 /* 111 */  /* FATAL ERROR */
-{"user error", "The `#error` preprocessor directive was encountered, explicitly halting the compilation process."},
+{
+    "user error",
+    "`#error` directive encountered with diagnostic message. Intentionally halts compilation with custom error message. Used for conditional compilation checks, deprecated code paths, or unmet prerequisites."
+},
+
 /* 214 */  /* WARNING */
-{"literal array/string passed to a non", "Did you forget that the parameter isn't a const parameter? Also, make sure you're using the latest version of the standard library."},
+{
+    "literal array/string passed to non-const parameter",
+    "String literal or array initializer passed to function parameter not declared `const`. While syntactically valid, this risks modification of literal data which may be in read-only memory. Declare parameter as `const` if function doesn't modify data, or copy literal to mutable array first."
+},
+
 /* 200 */  /* WARNING */
-{"is truncated to", "A symbol name (variable, function, etc.) exceeds the maximum allowed length and will be truncated, which may cause link errors."},
+{
+    "is truncated to",
+    "Identifier exceeds implementation length limit (typically 31-63 characters). Excess characters ignored for symbol table purposes. This may cause collisions if truncated names become identical. Consider shorter, distinct names."
+},
+
 /* 201 */  /* WARNING */
-{"redefinition of constant", "A constant or macro is being redefined. The new definition will override the previous one."},
+{
+    "redefinition of constant",
+    "Macro or `const` variable redefined with different value. The new definition overrides previous. This often occurs from conflicting header files or conditional compilation issues. If intentional, use `#undef` first or check inclusion order."
+},
+
 /* 202 */  /* WARNING */
-{"number of arguments does not match", "The number of arguments in a function call does not match the number of parameters in the function's declaration."},
+{
+    "number of arguments does not match",
+    "Function call argument count differs from prototype parameter count. For variadic functions, minimum count must be satisfied. The argument count checker compares call site with function signature in symbol table."
+},
+
 /* 206 */  /* WARNING */
-{"redundant test: constant expression is non-zero", "A conditional expression (e.g., in an `if` or `while`) always evaluates to a non-zero value (true), making the test unnecessary."},
+{
+    "redundant test: constant expression is non-zero",
+    "Condition always true at compile-time, making conditional redundant. Similar to warning 205 but for always-true conditions. May indicate: over-constrained condition, debug code left enabled, or macro expansion issue."
+},
+
 /* 214 */  /* WARNING */
-{"array argument was intended", "A non-constant array is being passed to a function parameter that is declared as `const`. The function promises not to modify it, so this is safe but noted."},
+{
+    "array argument was intended as const",
+    "Non-constant array argument passed to const-qualified parameter triggers this advisory. The function promises not to modify via const, but caller passes non-const. This is safe but suggests interface inconsistency."
+},
+
 /* 060 */  /* PREPROCESSOR ERROR */
-{"too many nested includes", "The level of nested `#include` directives has exceeded the compiler's limit. Check for circular or overly deep inclusion."},
+{
+    "too many nested includes",
+    "Include file nesting depth exceeds implementation limit (typically 50-100). May indicate: recursive inclusion, deep header hierarchies, or include loop. Use include guards (#ifndef) and forward declarations to reduce nesting."
+},
+
 /* 061 */  /* PREPROCESSOR ERROR */
-{"recursive include", "A file is including itself, either directly or through a chain of other includes. This creates an infinite loop."},
+{
+    "recursive include",
+    "Circular include dependency detected. File A includes B which includes A (directly or indirectly). The include graph cycle detection prevents infinite recursion. Use include guards and forward declarations to break cycles."
+},
+
 /* 062 */  /* PREPROCESSOR ERROR */
-{"macro recursion too deep", "The expansion of a recursive macro has exceeded the maximum allowed depth. Check for infinitely recursive macro definitions."},
+{
+    "macro recursion too deep",
+    "Macro expansion recursion depth limit exceeded. Occurs with recursively defined macros without termination condition. The preprocessor's macro expansion stack has safety limit to prevent infinite recursion."
+},
+
 /* 068 */  /* PREPROCESSOR ERROR */
-{"division by zero", "A compile-time constant expression attempted to divide by zero."},
+{
+    "division by zero",
+    "Constant expression evaluator encountered division/modulo by zero. Check: array sizes, case labels, enumeration values, or #if expressions. The constant folder performs arithmetic during preprocessing and catches this error."
+},
+
 /* 069 */  /* PREPROCESSOR ERROR */
-{"overflow in constant expression", "A calculation in a constant expression (e.g., in an `#if` directive) resulted in an arithmetic overflow."},
+{
+    "overflow in constant expression",
+    "Arithmetic overflow during constant expression evaluation in preprocessor. Integer operations exceed 32-bit signed range. The preprocessor uses signed 32-bit arithmetic for constant expressions."
+},
+
 /* 070 */  /* PREPROCESSOR ERROR */
-{"undefined macro", "A macro used in an `#if` or `#elif` directive has not been defined. Its value is assumed to be zero."},
+{
+    "undefined macro",
+    "Macro identifier used in `#if` or `#elif` not defined. Treated as 0 per C standard. May indicate: missing header, typo, or conditional compilation branch for undefined configuration. Use `#ifdef` or `#if defined()` to test existence."
+},
+
 /* 071 */  /* PREPROCESSOR ERROR */
-{"missing preprocessor argument", "A function-like macro was invoked without providing the required number of arguments."},
+{
+    "missing preprocessor argument",
+    "Function-like macro invoked with insufficient arguments. Each parameter in macro definition must correspond to actual argument. Check macro invocation against its definition parameter count."
+},
+
 /* 072 */  /* PREPROCESSOR ERROR */
-{"too many macro arguments", "A function-like macro was invoked with more arguments than specified in its definition."},
+{
+    "too many macro arguments",
+    "Function-like macro invoked with excess arguments beyond parameter list. Extra arguments are ignored but indicate likely error. Verify macro definition matches usage pattern."
+},
+
 /* 038 */  /* PREPROCESSOR ERROR */
-{"extra characters on line", "Unexpected characters were found on the same line after a preprocessor directive (e.g., `#include <file> junk`)."},
+{
+    "extra characters on line",
+    "Trailing tokens after preprocessor directive. Preprocessor directives must occupy complete logical line (except line continuation). Common with stray semicolons or comments on `#include` lines."
+},
+
 /* Sentinel value to mark the end of the array. */
 {NULL, NULL}
 };

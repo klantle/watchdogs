@@ -89,14 +89,14 @@ void unit_sigint_handler(int sig) {
 
 /*
  * Stops running server tasks by sending termination signals.
- * Identifies server type (SA-MP or Open.MP) and kills corresponding process.
+ * Identifies server type (SA-MP or open.mp) and kills corresponding process.
  * Uses platform-appropriate kill commands for process termination.
  */
 void wg_stop_server_tasks(void) {
 
         if (wg_server_env() == 1)           /* SA-MP server environment */
           wg_kill_process(wgconfig.wg_toml_binary);
-        else if (wg_server_env() == 2)      /* Open.MP server environment */
+        else if (wg_server_env() == 2)      /* open.mp server environment */
           wg_kill_process(wgconfig.wg_toml_binary);
 }
 
@@ -110,7 +110,7 @@ void wg_display_server_logs(int ret) {
         char *log_file = NULL;
         if (wg_server_env() == 1)            /* SA-MP log file */
             log_file = wgconfig.wg_toml_logs;
-        else if (wg_server_env() == 2)       /* Open.MP log file */
+        else if (wg_server_env() == 2)       /* open.mp log file */
             log_file = wgconfig.wg_toml_logs;
         wg_printfile(log_file);              /* Output log contents */
         return;
@@ -128,7 +128,7 @@ void wg_server_crash_check(void) {
         FILE *this_proc_file = NULL;
         if (wg_server_env() == 1)            /* SA-MP server logs */
             this_proc_file = fopen(wgconfig.wg_toml_logs, "rb");
-        else                                  /* Open.MP server logs */
+        else                                  /* open.mp server logs */
             this_proc_file = fopen(wgconfig.wg_toml_logs, "rb");
 
         if (this_proc_file == NULL) {
@@ -189,7 +189,7 @@ void wg_server_crash_check(void) {
                     char *gamemode_compile = readline("Y/n: ");
                     if (strlen(gamemode_compile) < 1) {
                         /* Compile with default configuration */
-                        const char *args[] = { NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL };
+                        const char *args[] = { NULL, ".", NULL, NULL, NULL, NULL, NULL, NULL, NULL };
                         wg_run_compiler(args[0], args[1], args[2], args[3], args[4], args[5], args[6], args[7], args[8]);
                         wg_free(gamemode_compile);
                     } else {
@@ -201,7 +201,7 @@ void wg_server_crash_check(void) {
                 } else { wg_free(recompiled); }
             }
 
-            /* Filesystem error specific to Open.MP on WSL */
+            /* Filesystem error specific to open.mp on WSL */
             if (strfind(line_buf, "terminate called after throwing an instance of 'ghc::filesystem::filesystem_error", true)) {
                 needed = snprintf(output_buf, sizeof(output_buf), "@ Filesystem C++ Error Detected\n\t");
                 fwrite(output_buf, 1, needed, stdout);
@@ -209,8 +209,8 @@ void wg_server_crash_check(void) {
                 fflush(stdout);
                 needed = snprintf(output_buf, sizeof(output_buf),
                         "\tAre you currently using the WSL ecosystem?\n"
-                        "\tYou need to move the Open.MP server folder from the /mnt area (your Windows directory) to \"~\" (your WSL HOME).\n"
-                        "\tThis is because Open.MP C++ filesystem cannot properly read directories inside the /mnt area,\n"
+                        "\tYou need to move the open.mp server folder from the /mnt area (your Windows directory) to \"~\" (your WSL HOME).\n"
+                        "\tThis is because open.mp C++ filesystem cannot properly read directories inside the /mnt area,\n"
                         "\twhich isn't part of the directory model targeted by the Linux build.\n"
                         "\t* You must run it outside the /mnt area.\n");
                 fwrite(output_buf, 1, needed, stdout);
@@ -908,7 +908,7 @@ server_done:
 }
 
 /*
- * Updates Open.MP server configuration (JSON format) with specified gamemode.
+ * Updates open.mp server configuration (JSON format) with specified gamemode.
  * Uses cJSON library for JSON manipulation, creates backup, modifies pawn
  * script array, and writes updated configuration. Handles memory allocation
  * and cleanup for JSON operations.
@@ -1072,13 +1072,13 @@ runner_kill:
 }
 
 /*
- * Restores Open.MP configuration using generic server config restoration.
+ * Restores open.mp configuration using generic server config restoration.
  * Alias function for consistency with SA-MP restoration interface.
  */
 void restore_omp_config(void) { restore_server_config(); }
 
 /*
- * Executes Open.MP server with specified gamemode.
+ * Executes open.mp server with specified gamemode.
  * Similar to SA-MP execution but with JSON configuration handling.
  * Includes gamemode validation, configuration updates, and process management.
  */
@@ -1120,7 +1120,7 @@ void wg_run_omp_server(const char *gamemode, const char *server_bin)
                 chain_ret_main(NULL);
         }
 
-        /* Update Open.MP JSON configuration */
+        /* Update open.mp JSON configuration */
         int ret_c = update_omp_config(gamemode);
         if (ret_c == 0 ||
                 ret_c == -1)

@@ -1638,7 +1638,7 @@ powershell:
                 wg_console_title("Watchdogs | @ command not found");
             wg_free(command);
             command = NULL;
-            if (!(strcmp(ptr_command, "clear")))
+            if (strcmp(ptr_command, "clear") == 0 || strcmp(ptr_command, "cls") == 0)
                 return -2;
             else
                 return -1;

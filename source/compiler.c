@@ -44,7 +44,7 @@ int wg_run_compiler(const char *args, const char *compile_args,
         const int aio_extra_options = 7;
         wgconfig.wg_compiler_stat = 0;
         io_compilers comp;
-        io_compilers *ptr_io = &comp;
+        io_compilers *revolver_compiler = &comp;
 #ifdef WG_WINDOWS
         PROCESS_INFORMATION pi;
         STARTUPINFO si = { sizeof(si) };
@@ -768,25 +768,23 @@ not_valid_flag_options:
                     }
 
                     int ret_command = 0;
-                    ret_command = snprintf(_compiler_input_,
-                            sizeof(_compiler_input_),
+                    ret_command = snprintf(_compiler_input_,  sizeof(_compiler_input_),
                                     "%s " "%s " "-o%s " "%s " "%s " "%s",
-                                    wg_compiler_input_pawncc_path,
-                                    wgconfig.wg_toml_proj_input,
-                                    wgconfig.wg_toml_proj_output,
-                                    wgconfig.wg_toml_aio_opt,
-                                    include_aio_path,
-                                    path_include);
+                        wg_compiler_input_pawncc_path,
+                        wgconfig.wg_toml_proj_input,
+                        wgconfig.wg_toml_proj_output,
+                        wgconfig.wg_toml_aio_opt,
+                        include_aio_path,
+                        path_include);
+                    fflush(stdout);
                     if (rate_debugger > 0) {
-                        printf("{\n");
-                        printf("  \"compiler\": \"%s\",\n", wg_compiler_input_pawncc_path);
-                        printf("  \"project\": \"%s\",\n", wgconfig.wg_toml_proj_input);
-                        printf("  \"output\": \"%s\",\n", wgconfig.wg_toml_proj_output);
-                        printf("  \"include\": \"%s\",\n", path_include);
-                        printf("  \"all-in-one options\": \"%s\",\n", wgconfig.wg_toml_aio_opt);
-                        printf("  \"command\": \"%s\"\n", _compiler_input_);
-                        printf("}\n");
-                        fflush(stdout);
+                        println(stdout, "# Debug compiler information");
+                        println(stdout, "   compiler: \"%s\"", wg_compiler_input_pawncc_path);
+                        println(stdout, "   project: \"%s\"", wgconfig.wg_toml_proj_input);
+                        println(stdout, "   output: \"%s\"", wgconfig.wg_toml_proj_output);
+                        println(stdout, "   include: \"%s\"", path_include);
+                        println(stdout, "   all-in-one options: \"%s\"", wgconfig.wg_toml_aio_opt);
+                        println(stdout, "   command: \"%s\"", _compiler_input_);
                     }
                     if (ret_command > 0 && ret_command < (int)sizeof(_compiler_input_)) {
                         BOOL win32_process_success;
@@ -843,16 +841,15 @@ not_valid_flag_options:
                         __debug_function();
                         goto compiler_end;
                     }
+                    fflush(stdout);
                     if (rate_debugger > 0) {
-                        printf("{\n");
-                        printf("  \"compiler\": \"%s\",\n", wg_compiler_input_pawncc_path);
-                        printf("  \"project\": \"%s\",\n", wgconfig.wg_toml_proj_input);
-                        printf("  \"output\": \"%s\",\n", wgconfig.wg_toml_proj_output);
-                        printf("  \"include\": \"%s\",\n", path_include);
-                        printf("  \"all-in-one options\": \"%s\",\n", wgconfig.wg_toml_aio_opt);
-                        printf("  \"command\": \"%s\"\n", _compiler_input_);
-                        printf("}\n");
-                        fflush(stdout);
+                        println(stdout, "# Debug compiler information");
+                        println(stdout, "   compiler: \"%s\"", wg_compiler_input_pawncc_path);
+                        println(stdout, "   project: \"%s\"", wgconfig.wg_toml_proj_input);
+                        println(stdout, "   output: \"%s\"", wgconfig.wg_toml_proj_output);
+                        println(stdout, "   include: \"%s\"", path_include);
+                        println(stdout, "   all-in-one options: \"%s\"", wgconfig.wg_toml_aio_opt);
+                        println(stdout, "   command: \"%s\"", _compiler_input_);
                     }
                     int i = 0;
                     compiler_unix_token = strtok(_compiler_input_, " ");
@@ -1036,11 +1033,11 @@ compiler_done:
                 }
                 else
                 {
-                    strncpy(ptr_io->compiler_size_temp, compile_args, sizeof(ptr_io->compiler_size_temp) - 1);
-                    ptr_io->compiler_size_temp[sizeof(ptr_io->compiler_size_temp) - 1] = '\0';
+                    strncpy(revolver_compiler->compiler_size_temp, compile_args, sizeof(revolver_compiler->compiler_size_temp) - 1);
+                    revolver_compiler->compiler_size_temp[sizeof(revolver_compiler->compiler_size_temp) - 1] = '\0';
 
-                    compiler_size_last_slash = strrchr(ptr_io->compiler_size_temp, __PATH_CHR_SEP_LINUX);
-                    compiler_back_slash = strrchr(ptr_io->compiler_size_temp, __PATH_CHR_SEP_WIN32);
+                    compiler_size_last_slash = strrchr(revolver_compiler->compiler_size_temp, __PATH_CHR_SEP_LINUX);
+                    compiler_back_slash = strrchr(revolver_compiler->compiler_size_temp, __PATH_CHR_SEP_WIN32);
 
                     if (compiler_back_slash && (!compiler_size_last_slash || compiler_back_slash > compiler_size_last_slash))
                         compiler_size_last_slash = compiler_back_slash;
@@ -1048,114 +1045,114 @@ compiler_done:
                     if (compiler_size_last_slash)
                     {
                         size_t compiler_dir_len;
-                        compiler_dir_len = (size_t)(compiler_size_last_slash - ptr_io->compiler_size_temp);
+                        compiler_dir_len = (size_t)(compiler_size_last_slash - revolver_compiler->compiler_size_temp);
 
-                        if (compiler_dir_len >= sizeof(ptr_io->compiler_direct_path))
-                            compiler_dir_len = sizeof(ptr_io->compiler_direct_path) - 1;
+                        if (compiler_dir_len >= sizeof(revolver_compiler->compiler_direct_path))
+                            compiler_dir_len = sizeof(revolver_compiler->compiler_direct_path) - 1;
 
-                        memcpy(ptr_io->compiler_direct_path, ptr_io->compiler_size_temp, compiler_dir_len);
-                        ptr_io->compiler_direct_path[compiler_dir_len] = '\0';
+                        memcpy(revolver_compiler->compiler_direct_path, revolver_compiler->compiler_size_temp, compiler_dir_len);
+                        revolver_compiler->compiler_direct_path[compiler_dir_len] = '\0';
 
                         const char *compiler_filename_start = compiler_size_last_slash + 1;
                         size_t compiler_filename_len;
                         compiler_filename_len = strlen(compiler_filename_start);
 
-                        if (compiler_filename_len >= sizeof(ptr_io->compiler_size_file_name))
-                            compiler_filename_len = sizeof(ptr_io->compiler_size_file_name) - 1;
+                        if (compiler_filename_len >= sizeof(revolver_compiler->compiler_size_file_name))
+                            compiler_filename_len = sizeof(revolver_compiler->compiler_size_file_name) - 1;
 
-                        memcpy(ptr_io->compiler_size_file_name, compiler_filename_start, compiler_filename_len);
-                        ptr_io->compiler_size_file_name[compiler_filename_len] = '\0';
+                        memcpy(revolver_compiler->compiler_size_file_name, compiler_filename_start, compiler_filename_len);
+                        revolver_compiler->compiler_size_file_name[compiler_filename_len] = '\0';
 
                         size_t total_needed;
-                        total_needed = strlen(ptr_io->compiler_direct_path) + 1 +
-                                    strlen(ptr_io->compiler_size_file_name) + 1;
+                        total_needed = strlen(revolver_compiler->compiler_direct_path) + 1 +
+                                    strlen(revolver_compiler->compiler_size_file_name) + 1;
 
-                        if (total_needed > sizeof(ptr_io->compiler_size_input_path))
+                        if (total_needed > sizeof(revolver_compiler->compiler_size_input_path))
                         {
-                            strncpy(ptr_io->compiler_direct_path, "gamemodes",
-                                sizeof(ptr_io->compiler_direct_path) - 1);
-                            ptr_io->compiler_direct_path[sizeof(ptr_io->compiler_direct_path) - 1] = '\0';
+                            strncpy(revolver_compiler->compiler_direct_path, "gamemodes",
+                                sizeof(revolver_compiler->compiler_direct_path) - 1);
+                            revolver_compiler->compiler_direct_path[sizeof(revolver_compiler->compiler_direct_path) - 1] = '\0';
 
                             size_t compiler_max_size_file_name;
-                            compiler_max_size_file_name = sizeof(ptr_io->compiler_size_file_name) - 1;
+                            compiler_max_size_file_name = sizeof(revolver_compiler->compiler_size_file_name) - 1;
 
                             if (compiler_filename_len > compiler_max_size_file_name)
                             {
-                                memcpy(ptr_io->compiler_size_file_name, compiler_filename_start,
+                                memcpy(revolver_compiler->compiler_size_file_name, compiler_filename_start,
                                     compiler_max_size_file_name);
-                                ptr_io->compiler_size_file_name[compiler_max_size_file_name] = '\0';
+                                revolver_compiler->compiler_size_file_name[compiler_max_size_file_name] = '\0';
                             }
                         }
 
-                        if (snprintf(ptr_io->compiler_size_input_path, sizeof(ptr_io->compiler_size_input_path),
-                                "%s/%s", ptr_io->compiler_direct_path, ptr_io->compiler_size_file_name) >=
-                            (int)sizeof(ptr_io->compiler_size_input_path))
+                        if (snprintf(revolver_compiler->compiler_size_input_path, sizeof(revolver_compiler->compiler_size_input_path),
+                                "%s/%s", revolver_compiler->compiler_direct_path, revolver_compiler->compiler_size_file_name) >=
+                            (int)sizeof(revolver_compiler->compiler_size_input_path))
                         {
-                            ptr_io->compiler_size_input_path[sizeof(ptr_io->compiler_size_input_path) - 1] = '\0';
+                            revolver_compiler->compiler_size_input_path[sizeof(revolver_compiler->compiler_size_input_path) - 1] = '\0';
                         }
                      }  else {
-                            strncpy(ptr_io->compiler_size_file_name, ptr_io->compiler_size_temp,
-                                sizeof(ptr_io->compiler_size_file_name) - 1);
-                            ptr_io->compiler_size_file_name[sizeof(ptr_io->compiler_size_file_name) - 1] = '\0';
+                            strncpy(revolver_compiler->compiler_size_file_name, revolver_compiler->compiler_size_temp,
+                                sizeof(revolver_compiler->compiler_size_file_name) - 1);
+                            revolver_compiler->compiler_size_file_name[sizeof(revolver_compiler->compiler_size_file_name) - 1] = '\0';
 
-                            strncpy(ptr_io->compiler_direct_path, ".", sizeof(ptr_io->compiler_direct_path) - 1);
-                            ptr_io->compiler_direct_path[sizeof(ptr_io->compiler_direct_path) - 1] = '\0';
+                            strncpy(revolver_compiler->compiler_direct_path, ".", sizeof(revolver_compiler->compiler_direct_path) - 1);
+                            revolver_compiler->compiler_direct_path[sizeof(revolver_compiler->compiler_direct_path) - 1] = '\0';
 
-                            if (snprintf(ptr_io->compiler_size_input_path, sizeof(ptr_io->compiler_size_input_path),
-                                    "./%s", ptr_io->compiler_size_file_name) >=
-                                (int)sizeof(ptr_io->compiler_size_input_path))
+                            if (snprintf(revolver_compiler->compiler_size_input_path, sizeof(revolver_compiler->compiler_size_input_path),
+                                    "./%s", revolver_compiler->compiler_size_file_name) >=
+                                (int)sizeof(revolver_compiler->compiler_size_input_path))
                             {
-                                ptr_io->compiler_size_input_path[sizeof(ptr_io->compiler_size_input_path) - 1] = '\0';
+                                revolver_compiler->compiler_size_input_path[sizeof(revolver_compiler->compiler_size_input_path) - 1] = '\0';
                             }
                         }
 
                     int compiler_finding_compile_args = 0;
-                    compiler_finding_compile_args = wg_sef_fdir(ptr_io->compiler_direct_path, ptr_io->compiler_size_file_name, NULL);
+                    compiler_finding_compile_args = wg_sef_fdir(revolver_compiler->compiler_direct_path, revolver_compiler->compiler_size_file_name, NULL);
 
                     if (!compiler_finding_compile_args &&
-                        strcmp(ptr_io->compiler_direct_path, "gamemodes") != 0)
+                        strcmp(revolver_compiler->compiler_direct_path, "gamemodes") != 0)
                     {
                         compiler_finding_compile_args = wg_sef_fdir("gamemodes",
-                                            ptr_io->compiler_size_file_name, NULL);
+                                            revolver_compiler->compiler_size_file_name, NULL);
                         if (compiler_finding_compile_args)
                         {
-                            strncpy(ptr_io->compiler_direct_path, "gamemodes",
-                                sizeof(ptr_io->compiler_direct_path) - 1);
-                            ptr_io->compiler_direct_path[sizeof(ptr_io->compiler_direct_path) - 1] = '\0';
+                            strncpy(revolver_compiler->compiler_direct_path, "gamemodes",
+                                sizeof(revolver_compiler->compiler_direct_path) - 1);
+                            revolver_compiler->compiler_direct_path[sizeof(revolver_compiler->compiler_direct_path) - 1] = '\0';
 
-                            if (snprintf(ptr_io->compiler_size_input_path, sizeof(ptr_io->compiler_size_input_path),
-                                    "gamemodes/%s", ptr_io->compiler_size_file_name) >=
-                                (int)sizeof(ptr_io->compiler_size_input_path))
+                            if (snprintf(revolver_compiler->compiler_size_input_path, sizeof(revolver_compiler->compiler_size_input_path),
+                                    "gamemodes/%s", revolver_compiler->compiler_size_file_name) >=
+                                (int)sizeof(revolver_compiler->compiler_size_input_path))
                             {
-                                ptr_io->compiler_size_input_path[sizeof(ptr_io->compiler_size_input_path) - 1] = '\0';
+                                revolver_compiler->compiler_size_input_path[sizeof(revolver_compiler->compiler_size_input_path) - 1] = '\0';
                             }
 
                             if (wgconfig.wg_sef_count > RATE_SEF_EMPTY)
                                 strncpy(wgconfig.wg_sef_found_list[wgconfig.wg_sef_count - 1],
-                                    ptr_io->compiler_size_input_path, MAX_SEF_PATH_SIZE);
+                                    revolver_compiler->compiler_size_input_path, MAX_SEF_PATH_SIZE);
                         }
                     }
 
-                    if (!compiler_finding_compile_args && !strcmp(ptr_io->compiler_direct_path, "."))
+                    if (!compiler_finding_compile_args && !strcmp(revolver_compiler->compiler_direct_path, "."))
                     {
                         compiler_finding_compile_args = wg_sef_fdir("gamemodes",
-                                            ptr_io->compiler_size_file_name, NULL);
+                                            revolver_compiler->compiler_size_file_name, NULL);
                         if (compiler_finding_compile_args)
                         {
-                            strncpy(ptr_io->compiler_direct_path, "gamemodes",
-                                sizeof(ptr_io->compiler_direct_path) - 1);
-                            ptr_io->compiler_direct_path[sizeof(ptr_io->compiler_direct_path) - 1] = '\0';
+                            strncpy(revolver_compiler->compiler_direct_path, "gamemodes",
+                                sizeof(revolver_compiler->compiler_direct_path) - 1);
+                            revolver_compiler->compiler_direct_path[sizeof(revolver_compiler->compiler_direct_path) - 1] = '\0';
 
-                            if (snprintf(ptr_io->compiler_size_input_path, sizeof(ptr_io->compiler_size_input_path),
-                                    "gamemodes/%s", ptr_io->compiler_size_file_name) >=
-                                (int)sizeof(ptr_io->compiler_size_input_path))
+                            if (snprintf(revolver_compiler->compiler_size_input_path, sizeof(revolver_compiler->compiler_size_input_path),
+                                    "gamemodes/%s", revolver_compiler->compiler_size_file_name) >=
+                                (int)sizeof(revolver_compiler->compiler_size_input_path))
                             {
-                                ptr_io->compiler_size_input_path[sizeof(ptr_io->compiler_size_input_path) - 1] = '\0';
+                                revolver_compiler->compiler_size_input_path[sizeof(revolver_compiler->compiler_size_input_path) - 1] = '\0';
                             }
 
                             if (wgconfig.wg_sef_count > RATE_SEF_EMPTY)
                                 strncpy(wgconfig.wg_sef_found_list[wgconfig.wg_sef_count - 1],
-                                    ptr_io->compiler_size_input_path, MAX_SEF_PATH_SIZE);
+                                    revolver_compiler->compiler_size_input_path, MAX_SEF_PATH_SIZE);
                         }
                     }
 
@@ -1169,16 +1166,16 @@ compiler_done:
 
                     if (compiler_finding_compile_args)
                     {
-                        char __sef_path_sz[WG_PATH_MAX];
-                        snprintf(__sef_path_sz, sizeof(__sef_path_sz), "%s", wg_compiler_input_proj_path);
-                        char *extension = strrchr(__sef_path_sz, '.');
+                        char size_sef_path[WG_PATH_MAX];
+                        snprintf(size_sef_path, sizeof(size_sef_path), "%s", wg_compiler_input_proj_path);
+                        char *extension = strrchr(size_sef_path, '.');
                         if (extension)
                             *extension = '\0';
 
-                        snprintf(ptr_io->container_output, sizeof(ptr_io->container_output), "%s", __sef_path_sz);
+                        snprintf(revolver_compiler->container_output, sizeof(revolver_compiler->container_output), "%s", size_sef_path);
 
                         char size_container_output[WG_MAX_PATH];
-                        snprintf(size_container_output, sizeof(size_container_output), "%s.amx", ptr_io->container_output);
+                        snprintf(size_container_output, sizeof(size_container_output), "%s.amx", revolver_compiler->container_output);
 
 #ifdef WG_WINDOWS
                         sa.bInheritHandle = TRUE;
@@ -1202,25 +1199,23 @@ compiler_done:
                         }
 
                         int ret_command = 0;
-                        ret_command = snprintf(_compiler_input_,
-                                sizeof(_compiler_input_),
+                        ret_command = snprintf(_compiler_input_, sizeof(_compiler_input_),
                                         "%s " "%s " "-o%s " "%s " "%s " "%s",
-                                        wg_compiler_input_pawncc_path,
-                                        wg_compiler_input_proj_path,
-                                        size_container_output,
-                                        wgconfig.wg_toml_aio_opt,
-                                        include_aio_path,
-                                        path_include);
+                            wg_compiler_input_pawncc_path,
+                            wg_compiler_input_proj_path,
+                            size_container_output,
+                            wgconfig.wg_toml_aio_opt,
+                            include_aio_path,
+                            path_include);
+                        fflush(stdout);
                         if (rate_debugger > 0) {
-                            printf("{\n");
-                            printf("  \"compiler\": \"%s\",\n", wg_compiler_input_pawncc_path);
-                            printf("  \"project\": \"%s\",\n", wg_compiler_input_proj_path);
-                            printf("  \"output\": \"%s\",\n", size_container_output);
-                            printf("  \"include\": \"%s\",\n", path_include);
-                            printf("  \"all-in-one options\": \"%s\",\n", wgconfig.wg_toml_aio_opt);
-                            printf("  \"command\": \"%s\"\n", _compiler_input_);
-                            printf("}\n");
-                            fflush(stdout);
+                            println(stdout, "# Debug compiler information");
+                            println(stdout, "   compiler: \"%s\"", wg_compiler_input_pawncc_path);
+                            println(stdout, "   project: \"%s\"", wg_compiler_input_proj_path);
+                            println(stdout, "   output: \"%s\"", size_container_output);
+                            println(stdout, "   include: \"%s\"", path_include);
+                            println(stdout, "   all-in-one options: \"%s\"", wgconfig.wg_toml_aio_opt);
+                            println(stdout, "   command: \"%s\"", _compiler_input_);
                         }
                         if (ret_command > 0 && ret_command < (int)sizeof(_compiler_input_)) {
                             BOOL win32_process_success;
@@ -1277,16 +1272,15 @@ compiler_done:
                             __debug_function();
                             goto compiler_end;
                         }
+                        fflush(stdout);
                         if (rate_debugger > 0) {
-                            printf("{\n");
-                            printf("  \"compiler\": \"%s\",\n", wg_compiler_input_pawncc_path);
-                            printf("  \"project\": \"%s\",\n", wg_compiler_input_proj_path);
-                            printf("  \"output\": \"%s\",\n", size_container_output);
-                            printf("  \"include\": \"%s\",\n", path_include);
-                            printf("  \"all-in-one options\": \"%s\",\n", wgconfig.wg_toml_aio_opt);
-                            printf("  \"command\": \"%s\"\n", _compiler_input_);
-                            printf("}\n");
-                            fflush(stdout);
+                            println(stdout, "# Debug compiler information");
+                            println(stdout, "   compiler: \"%s\"", wg_compiler_input_pawncc_path);
+                            println(stdout, "   project: \"%s\"", wg_compiler_input_proj_path);
+                            println(stdout, "   output: \"%s\"", size_container_output);
+                            println(stdout, "   include: \"%s\"", path_include);
+                            println(stdout, "   all-in-one options: \"%s\"", wgconfig.wg_toml_aio_opt);
+                            println(stdout, "   command: \"%s\"", _compiler_input_);
                         }
                         int i = 0;
                         compiler_unix_token = strtok(_compiler_input_, " ");

@@ -715,7 +715,7 @@ back_start:
                                 goto server_done;
                             }
                             elapsed = difftime(end, start);
-                            if (elapsed <= 3.0 && ret_serv == 0) {
+                            if (elapsed <= 4.1 && ret_serv == 0) {
                                 ret_serv = 1;
                                 printf("\ttry starting again..");
                                 _wg_log_acces = path_access(wgconfig.wg_toml_logs);
@@ -797,7 +797,7 @@ back_start2:
                                 goto server_done2;
                             }
                             elapsed = difftime(end, start);
-                            if (elapsed <= 3.0 && ret_serv == 0) {
+                            if (elapsed <= 4.1 && ret_serv == 0) {
                                 ret_serv = 1;
                                 printf("\ttry starting again..");
                                 _wg_log_acces = path_access(wgconfig.wg_toml_logs);
@@ -1584,14 +1584,7 @@ send_done:
             printf(" (y/n):");
             fflush(stdout);
             char *confirm = readline(" ");
-            if (!confirm) {
-                fprintf(stderr, "Error reading input\n");
-                goto chain_done;
-            }
-            if (strlen(confirm) == 0) {
-                free(confirm);
-                confirm = readline(" >>> (y/n): ");
-            }
+
             if (confirm) {
                 if (strcmp(confirm, "Y") == 0 || strcmp(confirm, "y") == 0) {
                     free(confirm);
@@ -1614,12 +1607,11 @@ send_done:
                 goto chain_try_command;
             }
         } else {
+chain_try_command:
             int ret = -3;
-            size_t cmd_len = strlen(ptr_command) + 100;
+            size_t cmd_len = strlen(ptr_command) + WG_PATH_MAX;
             char *command = wg_malloc(cmd_len);
             if (!command) goto chain_done;
-
-chain_try_command:
             if (is_native_windows()) {
                 snprintf(command, cmd_len, "powershell -NoProfile -Command \"%s\"", ptr_command);
                 goto powershell;

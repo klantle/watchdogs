@@ -211,6 +211,21 @@ struct struct_of { int (*title)(const char *); };
 extern const char* __command[];
 extern const size_t __command_len;
 
+#ifndef ASM_UTILS_H
+#define ASM_UTILS_H
+
+#ifdef __cplusplus
+extern "C" {
+#endif
+
+void asm_cross_clear_regs(void);
+
+#ifdef __cplusplus
+}
+#endif
+
+#endif
+
 void* wg_malloc(size_t size);
 void* wg_calloc(size_t count, size_t size);
 void* wg_realloc(void* ptr, size_t size);

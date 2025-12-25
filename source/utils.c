@@ -451,23 +451,8 @@ int wg_run_command(const char *reg_command) {
 
 		/* Platform-specific assembly to clear registers before system call */
 		/* See https://gcc.gnu.org/onlinedocs/gcc/Extended-Asm.html */
-#if defined(WG_ANDROID)
-__asm__ volatile(
-	    	"mov x0, #0\n\t"  /* Clear register x0 */
-	    	"mov x1, #0\n\t"  /* Clear register x1 */
-	    	:
-	    	:
-	    	: "x0", "x1"      /* Clobbered registers */
-);
-#elif !defined(WG_ANDROID) && defined(WG_LINUX)
-__asm__ volatile (
-	    	"movl $0, %%eax\n\t"  /* Clear EAX register */
-	    	"movl $0, %%ebx\n\t"  /* Clear EBX register */
-	    	:
-	    	:
-	    	: "%eax", "%ebx"      /* Clobbered registers */
-);
-#endif
+		asm_cross_clear_regs(); /* function from assembly.S */
+
 		/* Handle empty command case */
 		if (reg_command[0] == '\0')
 	    		return -1;

@@ -828,7 +828,7 @@ back_start:
                         goto server_done;
 
                 elapsed = difftime(end, start);
-                if (elapsed <= 3.0 && ret_serv == 0) {
+                if (elapsed <= 4.1 && ret_serv == 0) {
                         ret_serv = 0x1;
                         printf("\ttry starting again..");
                         _wg_log_acces = path_access(wgconfig.wg_toml_logs);
@@ -1083,7 +1083,7 @@ back_start:
                         goto server_done;
 
                 elapsed = difftime(end, start);
-                if (elapsed <= 3.0 && ret_serv == 0) {
+                if (elapsed <= 4.1 && ret_serv == 0) {
                         ret_serv = 0x1;
                         printf("\ttry starting again..");
                         _wg_log_acces = path_access(wgconfig.wg_toml_logs);

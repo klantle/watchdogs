@@ -25,10 +25,13 @@ ifeq ($(DEBUG_MODE),1)
 endif
 
 SRCS = source/extra.c source/debug.c source/curl.c source/units.c source/utils.c source/depend.c \
-       source/compiler.c source/archive.c source/library.c source/runner.c source/crypto.c \
-       include/tomlc/toml.c include/cJSON/cJSON.c
+	source/compiler.c source/archive.c source/library.c source/runner.c source/crypto.c \
+	include/tomlc/toml.c include/cJSON/cJSON.c \
+	source/assembly.S
 
 OBJS = $(SRCS:.c=.o)
+OBJS := $(OBJS:.S=.o)
+OBJS := $(OBJS:.s=.o)
 
 .PHONY: init strip compress clean linux termux debug termux-debug windows-debug
 
@@ -113,6 +116,12 @@ $(OUTPUT): $(OBJS)
 
 %.o: %.c
 	$(CC) $(CFLAGS) -c $< -o $@
+
+%.o: %.S
+	$(CC) $(CFLAGS) -c $< -o $@
+
+%.o: %.s
+	$(CC) -c $< -o $@
 
 strip:
 	@if [ -f "$(OUTPUT)" ]; then $(STRIP) --strip-all $(OUTPUT) || true; fi

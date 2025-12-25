@@ -19,6 +19,12 @@
 #define wg_a_history(cmd) add_history(cmd)
 #endif
 
+#if __has_include(<spawn.h>)
+    #include <spawn.h>
+#elif __has_include(<android-spawn.h>)
+    #include <android-spawn.h>
+#endif
+
 #include "../include/cJSON/cJSON.h"
 #include "../include/tomlc/toml.h"
 
@@ -144,15 +150,6 @@ enum {
 #define OS_SIGNAL_LINUX   "linux"
 #define OS_SIGNAL_UNKNOWN CRC32_UNKNOWN
 
-#define wg_server_env() ({ \
-    int ret = 0; \
-    if (!strcmp(wgconfig.wg_is_samp, CRC32_TRUE)) \
-        ret = 1; \
-    else if (!strcmp(wgconfig.wg_is_omp, CRC32_TRUE)) \
-        ret = 2; \
-    ret; \
-})
-
 /* Watchdog config struct */
 typedef struct {
     int    wg_ipawncc;
@@ -211,21 +208,6 @@ struct struct_of { int (*title)(const char *); };
 extern const char* __command[];
 extern const size_t __command_len;
 
-#ifndef ASM_UTILS_H
-#define ASM_UTILS_H
-
-#ifdef __cplusplus
-extern "C" {
-#endif
-
-void asm_cross_clear_regs(void);
-
-#ifdef __cplusplus
-}
-#endif
-
-#endif
-
 void* wg_malloc(size_t size);
 void* wg_calloc(size_t count, size_t size);
 void* wg_realloc(void* ptr, size_t size);
@@ -238,6 +220,7 @@ void wg_escaping_json(char *dest, const char *src, size_t dest_size);
 int wg_run_command(const char *cmd);
 void wg_clear_screen(void);
 
+int wg_server_env(void);
 int is_pterodactyl_env(void);
 int is_termux_env(void);
 int is_native_windows(void);
@@ -268,10 +251,9 @@ int file_regular(const char *path);
 int file_same_file(const char *a, const char *b);
 int ensure_parent_dir(char *out_parent, size_t n, const char *dest);
 
-int wg_is_special_dir(const char *name);
+int wg_dot_or_dotdot(const char *name);
 
-int wg_sef_fdir(const char *sef_path,
-    const char *sef_name, const char *ignore_dir);
+int wg_sef_fdir(const char *sef_path, const char *sef_name, const char *ignore_dir);
 int wg_toml_configs(void);
 int wg_sef_wcopy(const char *c_src, const char *c_dest);
 int wg_sef_wmv(const char *c_src, const char *c_dest);

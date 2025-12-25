@@ -6,20 +6,13 @@
 #include <limits.h>
 #include <time.h>
 
-#include "utils.h"
-
 #ifdef WG_LINUX
     #include <fcntl.h>
     #include <sys/types.h>
     #include <sys/wait.h>
 #endif
 
-#if __has_include(<spawn.h>)
-    #include <spawn.h>
-#elif __has_include(<android-spawn.h>)
-    #include <android-spawn.h>
-#endif
-
+#include "utils.h"
 #include "units.h"
 #include "extra.h"
 #include "library.h"
@@ -27,38 +20,43 @@
 #include "crypto.h"
 #include "compiler.h"
 
-#ifndef WG_WINDOWS
-    extern char **environ;
-    #define POSIX_TIMEOUT 0x400
-#endif
+static struct timespec pre_start = { 0 }, post_end = { 0 };
+static double timer_rate_compile;
+
 static io_compilers wg_compiler_sys = { 0 };
 
 static void cause_compiler_expl(const char *log_file, const char *wgoutput, int debug);
 
 int wg_run_compiler(const char *args, const char *compile_args,
-                    const char *second_arg, const char *four_arg,
-                    const char *five_arg, const char *six_arg,
-                    const char *seven_arg, const char *eight_arg,
-                    const char *nine_arg) {
+const char *second_arg, const char *four_arg,
+const char *five_arg, const char *six_arg,
+const char *seven_arg, const char *eight_arg,
+const char *nine_arg
+) {
 
-        const int aio_extra_options = 7;
-        wgconfig.wg_compiler_stat = 0;
-        io_compilers comp;
-        io_compilers *revolver_compiler = &comp;
 #ifdef WG_WINDOWS
         PROCESS_INFORMATION pi;
-        STARTUPINFO si = { sizeof(si) };
+        STARTUPINFO         si = { sizeof(si) };
         SECURITY_ATTRIBUTES sa = { sizeof(sa) };
 #endif
-        struct timespec pre_start = { 0 }, post_end = { 0 };
-        double timer_rate_compile;
+        io_compilers comp;
+        io_compilers *revolver_compiler = &comp;
 
-        const char* compiler_args[] = {
-           second_arg, four_arg,
-           five_arg, six_arg,
-           seven_arg, eight_arg,
-           nine_arg
-        };
+const char* this_full_of_available_args[] = {
+        second_arg, four_arg,
+        five_arg, six_arg,
+        seven_arg, eight_arg,
+        nine_arg
+};
+
+        if (dir_exists(".watchdogs") == 0)
+           MKDIR(".watchdogs");
+
+        int compiler_debugging = 0;
+        int compiler_has_watchdogs = 0, compiler_has_debug = 0;
+        int compiler_has_clean = 0, compiler_has_assembler = 0;
+        int compiler_has_compatibility  = 0, compiler_has_verbose = 0;
+        int compiler_has_compact = 0;
 
         FILE *this_proc_file = NULL;
         char proj_parse[WG_PATH_MAX] = { 0 };
@@ -79,87 +77,54 @@ int wg_run_compiler(const char *args, const char *compile_args,
         char *procure_string_pos = NULL;
         char compiler_extra_options[WG_PATH_MAX] = { 0 };
 
-        static const char *debug_options[] = {"-d1", "-d3"};
-        size_t size_debug_options = sizeof(debug_options);
-        size_t size_debug_options_zero = sizeof(debug_options[0]);
-        size_t debug_flag_count = size_debug_options / size_debug_options_zero;
-
-        int compiler_debugging = 0;
-        int compiler_has_watchdogs = 0, compiler_has_debug = 0;
-        int compiler_has_clean = 0, compiler_has_assembler = 0;
-        int compiler_has_recursion = 0, compiler_has_verbose = 0;
-        int compiler_has_compact = 0;
-
-        char *size_config = NULL;
         char *merged = NULL;
-        toml_table_t *wg_toml_config = NULL;
         char *pointer_signalA = NULL;
         char *platform = NULL;
         char *proj_targets = NULL;
-        char *wg_compiler_unix_args[WG_MAX_PATH + 256] = {NULL};
+        char *wg_compiler_unix_args[WG_MAX_PATH + 256] = { NULL };
         char *compiler_unix_token = NULL;
 
-        if (dir_exists(".watchdogs") == 0)
-           MKDIR(".watchdogs");
-
-        int _wg_log_acces = path_access(".watchdogs/compiler.log");
-        if (_wg_log_acces)
-           remove(".watchdogs/compiler.log");
-
-        FILE *wg_log_files = fopen(".watchdogs/compiler.log", "w");
-        if (wg_log_files != NULL)
-           fclose(wg_log_files);
-        else {
-           pr_error(stdout, "can't create .watchdogs/compiler.log!");
-           __debug_function();
-        }
+        toml_table_t *wg_toml_config = NULL;
 
         compiler_memory_clean();
 
 #ifdef WG_LINUX
         static int rate_export_path = 0;
+
         if (rate_export_path < 1) {
-          const char *library_paths_list[] = {
-              "/usr/local/lib", "/usr/local/lib32",
-              "/data/data/com.termux/files/usr/lib",
-              "/data/data/com.termux/files/usr/local/lib",
-              "/data/data/com.termux/arm64/usr/lib",
-              "/data/data/com.termux/arm32/usr/lib",
-              "/data/data/com.termux/amd32/usr/lib",
-              "/data/data/com.termux/amd64/usr/lib"
-          };
+const char *library_paths_list[] = {
+            "/usr/local/lib", "/usr/local/lib32",
+            "/data/data/com.termux/files/usr/lib",
+            "/data/data/com.termux/files/usr/local/lib",
+            "/data/data/com.termux/arm64/usr/lib",
+            "/data/data/com.termux/arm32/usr/lib",
+            "/data/data/com.termux/amd32/usr/lib",
+            "/data/data/com.termux/amd64/usr/lib"
+};
 
-          size_t counts =
-                sizeof(library_paths_list) /
-                sizeof(library_paths_list[0]);
+          size_t counts = sizeof(library_paths_list) / sizeof(library_paths_list[0]);
 
-          const char
-            *_old = NULL;
-          char _newpath[WG_MAX_PATH];
-          char _so_path[WG_PATH_MAX];
-          _old = getenv("LD_LIBRARY_PATH");
-          if (!_old)
-              _old = "";
+          char _newpath[WG_MAX_PATH], _so_path[WG_PATH_MAX];
+          const char *_old = getenv("LD_LIBRARY_PATH");
+          if (!_old) _old = "";
 
-          snprintf(_newpath, sizeof(_newpath),
-                "%s", _old);
+          snprintf(_newpath, sizeof(_newpath), "%s", _old);
 
           for (size_t i = 0; i < counts; i++) {
-              snprintf(_so_path, sizeof(_so_path),
-                       "%s/libpawnc.so", library_paths_list[i]);
+              snprintf(_so_path, sizeof(_so_path), "%s/libpawnc.so", library_paths_list[i]);
               if (path_exists(_so_path) != 0) {
-                  if (_newpath[0] != '\0')
-                      strncat(_newpath, ":", sizeof(_newpath) - strlen(_newpath) - 1);
-                  strncat(_newpath, library_paths_list[i],
-                          sizeof(_newpath) - strlen(_newpath) - 1);
+                  if (_newpath[0] != '\0') strncat(_newpath, ":", sizeof(_newpath) - strlen(_newpath) - 1);
+                  strncat(_newpath, library_paths_list[i], sizeof(_newpath) - strlen(_newpath) - 1);
               }
           }
           if ( _newpath[0] != '\0' ) {
               setenv("LD_LIBRARY_PATH", _newpath, 1);
               pr_info(stdout, "LD_LIBRARY_PATH set to: %s", _newpath);
           } else {
-              pr_info(stdout, "libpawnc.so not found in any target path");
+              pr_warning(stdout, "libpawnc.so not found in any target path..");
+              goto compiler_end;
           }
+
           ++rate_export_path;
         }
 #endif
@@ -246,8 +211,8 @@ int wg_run_compiler(const char *args, const char *compile_args,
                     fclose(this_proc_file);
                     this_proc_file = NULL;
                     snprintf(command, sizeof(command),
-                                "%s -0000000U > .watchdogs/compiler_test.log 2>&1",
-                                wg_compiler_input_pawncc_path);
+                        "%s -0000000U > .watchdogs/compiler_test.log 2>&1",
+                        wg_compiler_input_pawncc_path);
                     wg_run_command(command);
                 }
             }
@@ -258,44 +223,36 @@ int wg_run_compiler(const char *args, const char *compile_args,
                 __debug_function();
             }
 
-            for (int i = 0; i < aio_extra_options; ++i) {
-                if (compiler_args[i] != NULL) {
-                    if (strfind(compiler_args[i], "--detailed", true) ||
-                        strfind(compiler_args[i], "--watchdogs", true))
-                        ++compiler_has_watchdogs;
+            for (int i = 0; i < WATCHDOGS_COMPILER_AIO_OPTIONS; ++i) {
+                if (this_full_of_available_args[i] != NULL) {
+                if (strfind(this_full_of_available_args[i], "--detailed", true) ||
+                    strfind(this_full_of_available_args[i], "--watchdogs", true))
+                    ++compiler_has_watchdogs;
 
-                    if (strfind(compiler_args[i], "--debug", true))
-                        ++compiler_has_debug;
+                if (strfind(this_full_of_available_args[i], "--debug", true))
+                    ++compiler_has_debug;
 
-                    if (strfind(compiler_args[i], "--clean", true))
-                        ++compiler_has_clean;
+                if (strfind(this_full_of_available_args[i], "--clean", true))
+                    ++compiler_has_clean;
 
-                    if (strfind(compiler_args[i], "--assembler", true))
-                        ++compiler_has_assembler;
+                if (strfind(this_full_of_available_args[i], "--assembler", true))
+                    ++compiler_has_assembler;
 
-                    if (strfind(compiler_args[i], "--recursion", true))
-                        ++compiler_has_recursion;
+                if (strfind(this_full_of_available_args[i], "--compat", true))
+                    ++compiler_has_compatibility;
 
-                    if (strfind(compiler_args[i], "--prolix", true))
-                        ++compiler_has_verbose;
+                if (strfind(this_full_of_available_args[i], "--prolix", true))
+                    ++compiler_has_verbose;
 
-                    if (strfind(compiler_args[i], "--compact", true))
-                        ++compiler_has_compact;
+                if (strfind(this_full_of_available_args[i], "--compact", true))
+                    ++compiler_has_compact;
                 }
             }
 
             toml_table_t *wg_compiler = toml_table_in(wg_toml_config, "compiler");
-#if defined(_DBG_PRINT)
-            if (!wg_compiler)
-                printf("%s notexists in line:%d", "compiler", __LINE__);
-#endif
             if (wg_compiler)
             {
                 toml_array_t *option_arr = toml_array_in(wg_compiler, "option");
-#if defined(_DBG_PRINT)
-                if (!option_arr)
-                    printf("%s not exists in line:%d", "option", __LINE__);
-#endif
                 if (option_arr)
                 {
                     merged = NULL;
@@ -339,12 +296,13 @@ not_valid_flag_options:
                             printf("[WARN]: "
                                 "compiler option ");
                             pr_color(stdout, FCOLOUR_GREEN, "\"%s\" ", toml_option_value.u.s);
-                            println(stdout, "not valid flag options!..");
+                            println(stdout, "not valid flag options!.. verify first!.");
                             wg_free(toml_option_value.u.s);
                             goto compiler_end;
                         }
 
-                        if (strfind(toml_option_value.u.s, "-d", true))
+                        if (strfind(toml_option_value.u.s, "-d", true) ||
+                            compiler_has_debug > 0)
                           ++compiler_debugging;
 
                         size_t old_len = merged  ? strlen(merged) : 0,
@@ -391,177 +349,45 @@ not_valid_flag_options:
                             goto compiler_end;
                         }
                     }
+                }
 
-                    char
-                      *size_aio_option = wgconfig.wg_toml_aio_opt;
-                    size_t
-                      buffer_aio_options = strlen(wgconfig.wg_toml_aio_opt) + 1;
-                    size_t
-                      max_safe_shifts = buffer_aio_options * 2;
+typedef enum {
+                FLAG_DEBUG      = 1 << 0,
+                FLAG_ASSEMBLER  = 1 << 1,
+                FLAG_COMPAT  = 1 << 2,
+                FLAG_VERBOSE    = 1 << 3,
+                FLAG_COMPACT    = 1 << 4
+} CompilerFlags;
 
-                    size_t rate_shift = 0;
+static const struct {
+                int flag;
+                const char *option;
+                size_t len;
+} OPTIONS[] = {
+                {FLAG_DEBUG,      " -d2 ", 5},
+                {FLAG_ASSEMBLER,  " -a ",  4},
+                {FLAG_COMPAT,     " -Z+ ", 5},
+                {FLAG_VERBOSE,    " -v2 ", 5},
+                {FLAG_COMPACT,    " -C+ ", 5},
+                {0, NULL, 0}
+};
 
-                    if (compiler_has_debug != 0 && compiler_debugging != 0) {
-                        if (size_debug_options == 0 ||
-                            size_debug_options_zero == 0)
-                        {
-                            pr_error(stdout,
-                                "Invalid debug flag array configuration");
-                            __debug_function();
-                            goto compiler_end;
-                        }
+                unsigned int flags = 0;
+                if (compiler_has_debug > 0)      flags |= FLAG_DEBUG;
+                if (compiler_has_assembler > 0)  flags |= FLAG_ASSEMBLER;
+                if (compiler_has_compatibility > 0)  flags |= FLAG_COMPAT;
+                if (compiler_has_verbose > 0)    flags |= FLAG_VERBOSE;
+                if (compiler_has_compact > 0)    flags |= FLAG_COMPACT;
 
-                        if (size_debug_options < size_debug_options_zero ||
-                            size_debug_options % size_debug_options_zero != 0) {
-                            pr_error(stdout,
-                                "Debug flag array size mismatch");
-                            __debug_function();
-                            goto compiler_end;
-                        }
-
-                        const size_t MAX_DEBUG_FLAGS = 256;
-
-                        if (debug_flag_count > MAX_DEBUG_FLAGS) {
-                            pr_error(stdout,
-                                "Excessive debug flag count: %zu",
-                                debug_flag_count);
-                            __debug_function();
-                            goto compiler_end;
-                        }
-
-                        if (wgconfig.wg_toml_aio_opt == NULL) {
-                            pr_error(stdout,
-                                "Configuration string is NULL");
-                            __debug_function();
-                            goto compiler_end;
-                        }
-
-                        size_config = strdup(wgconfig.wg_toml_aio_opt);
-                        if (size_config == NULL) {
-                            pr_error(stdout,
-                                "Memory allocation failed for config backup");
-                            __debug_function();
-                            goto compiler_end;
-                        }
-
-                        for (size_t i = 0; i < debug_flag_count; i++) {
-                            if (i >= (size_debug_options / sizeof(debug_options[0]))) {
-                                pr_warning(stdout,
-                                    "Debug flag index %zu out of bounds", i);
-                                continue
-                                ;
-                            }
-
-                            const char
-                                *fetch_debug_flag = debug_options[i];
-
-                            if (fetch_debug_flag == NULL) {
-                                pr_warning(stdout,
-                                    "NULL debug flag at index %zu", i);
-                                continue
-                                ;
-                            }
-
-                            size_t rate_flag_length = strlen(fetch_debug_flag);
-                            if (rate_flag_length == 0) {
-                                continue
-                                ;
-                            }
-
-                            const size_t max_flag_length = WG_MAX_PATH;
-                            if (rate_flag_length > max_flag_length) {
-                                pr_warning(stdout,
-                                    "long debug flag at index %zu", i);
-                                continue
-                                ;
-                            }
-
-                            while (rate_shift < max_safe_shifts) {
-                                char *fetch_flag_pos = strstr(size_aio_option, fetch_debug_flag);
-                                if (fetch_flag_pos == NULL) {
-                                    break
-                                    ;
-                                }
-
-                                bool is_complete_token = true;
-                                if (fetch_flag_pos > wgconfig.wg_toml_aio_opt) {
-                                    char prev_char = *(fetch_flag_pos - 1);
-                                    if (isalnum((unsigned char)prev_char) ||
-                                        prev_char == '_') {
-                                        is_complete_token = false;
-                                    }
-                                }
-
-                                char continue_char = *(fetch_flag_pos + rate_flag_length);
-                                if (isalnum((unsigned char)continue_char) || continue_char == '_') {
-                                    is_complete_token = false;
-                                }
-
-                                if (!is_complete_token) {
-                                    size_aio_option = fetch_flag_pos + 1;
-                                    continue
-                                    ;
-                                }
-
-                                char *back_flag = fetch_flag_pos + rate_flag_length;
-                                if ((fetch_flag_pos - wgconfig.wg_toml_aio_opt) + strlen(back_flag) + 1 < buffer_aio_options)
-                                {
-                                    memmove(fetch_flag_pos, back_flag, strlen(back_flag) + 1);
-                                    buffer_aio_options = strlen(wgconfig.wg_toml_aio_opt) + 1;
-                                } else {
-                                    pr_error(stdout,
-                                        "Buffer overflow detected during flag removal");
-                                    __debug_function();
-                                    strncpy(wgconfig.wg_toml_aio_opt, size_config, buffer_aio_options);
-                                    wg_free(size_config);
-                                    size_config = NULL;
-                                    goto compiler_end;
-                                }
-
-                                ++rate_shift;
-                            }
-
-                            if (rate_shift >= max_safe_shifts) {
-                                pr_warning(stdout,
-                                    "Excessive flag removals for '%s', possible loop", fetch_debug_flag);
-                            }
-                        }
-
-                        wgconfig.wg_toml_aio_opt[buffer_aio_options - 1] = '\0';
-
-                        if (strcmp(size_config, wgconfig.wg_toml_aio_opt) != 0) {
-#if defined (_DBG_PRINT)
-                            pr_info(stdout,"Debug flags removed. Original: '%s', Modified: '%s'",
-                                    size_config, wgconfig.wg_toml_aio_opt);
-#endif
-                        }
-
-                        wg_free(size_config);
-                        size_config = NULL;
-
-                        if (strlen(wgconfig.wg_toml_aio_opt) >= buffer_aio_options) {
-                            pr_error(stdout,
-                                "Configuration string corruption detected");
-                            __debug_function();
-                            goto compiler_end;
-                        }
+                char *ptr = compiler_extra_options + strlen(compiler_extra_options);
+                for (int i = 0; OPTIONS[i].option != NULL; i++) {
+                    if (flags & OPTIONS[i].flag) {
+                    memcpy(ptr, OPTIONS[i].option, OPTIONS[i].len);
+                    ptr += OPTIONS[i].len;
                     }
                 }
 
-                if (compiler_has_debug > 0)
-                    strcat(compiler_extra_options, " -d2 ");
-
-                if (compiler_has_assembler > 0)
-                    strcat(compiler_extra_options, " -a ");
-
-                if (compiler_has_recursion > 0)
-                    strcat(compiler_extra_options, " -R+ ");
-
-                if (compiler_has_verbose > 0)
-                    strcat(compiler_extra_options, " -v2 ");
-
-                if (compiler_has_compact > 0)
-                    strcat(compiler_extra_options, " -C+ ");
+                *ptr = '\0';
 
                 int rate_debugger = 0;
 #if defined(_DBG_PRINT)
@@ -571,21 +397,28 @@ not_valid_flag_options:
                     ++rate_debugger;
 
                 if (strlen(compiler_extra_options) > 0) {
-                    size_t current_len = strlen(wgconfig.wg_toml_aio_opt);
-                    size_t extra_opt_len = strlen(compiler_extra_options);
+                    size_t current_len = 0;
+                    if (wgconfig.wg_toml_aio_opt) {
+                        current_len = strlen(wgconfig.wg_toml_aio_opt);
+                    } else {
+                        wgconfig.wg_toml_aio_opt = strdup("");
+                    }
 
-                    if (current_len + extra_opt_len < sizeof(wgconfig.wg_toml_aio_opt))
-                        strcat(wgconfig.wg_toml_aio_opt, compiler_extra_options);
-                    else
-                        strncat(wgconfig.wg_toml_aio_opt, compiler_extra_options,
-                            sizeof(wgconfig.wg_toml_aio_opt) - current_len - 1);
+                    size_t extra_len = strlen(compiler_extra_options);
+                    
+                    char
+                        *new_ptr = wg_realloc(wgconfig.wg_toml_aio_opt, current_len + extra_len + 1);
+                    
+                    if (!new_ptr) {
+                        pr_error(stdout, "Memory allocation failed for extra options");
+                        goto compiler_end;
+                    }
+
+                    wgconfig.wg_toml_aio_opt = new_ptr;
+                    strcat(wgconfig.wg_toml_aio_opt, compiler_extra_options);
                 }
 
                 toml_array_t *toml_include_path = toml_array_in(wg_compiler, "includes");
-#if defined(_DBG_PRINT)
-                if (!toml_include_path)
-                    printf("%s not exists in line:%d", "includes", __LINE__);
-#endif
                 if (toml_include_path)
                 {
                     int toml_array_size;
@@ -746,9 +579,15 @@ not_valid_flag_options:
                         proj_targets = NULL;
                         compiler_targets = 1;
                     }
-
 #ifdef WG_WINDOWS
+                    ZeroMemory(&si, sizeof(si));
+                    si.cb = sizeof(si);
+                    ZeroMemory(&pi, sizeof(pi));
+
+                    sa.nLength = sizeof(SECURITY_ATTRIBUTES);
                     sa.bInheritHandle = TRUE;
+                    sa.lpSecurityDescriptor = NULL;
+
                     HANDLE hFile = CreateFileA(
                             ".watchdogs/compiler.log",
                             GENERIC_WRITE,
@@ -756,9 +595,11 @@ not_valid_flag_options:
                             &sa,
                             CREATE_ALWAYS,
                             FILE_ATTRIBUTE_NORMAL |
-                                FILE_FLAG_SEQUENTIAL_SCAN,
+                                FILE_FLAG_SEQUENTIAL_SCAN |
+                                FILE_ATTRIBUTE_TEMPORARY,
                             NULL
                     );
+
                     si.dwFlags = STARTF_USESTDHANDLES | STARTF_USESHOWWINDOW;
                     si.wShowWindow = SW_HIDE;
 
@@ -786,23 +627,24 @@ not_valid_flag_options:
                         println(stdout, "   all-in-one options: \"%s\"", wgconfig.wg_toml_aio_opt);
                         println(stdout, "   command: \"%s\"", _compiler_input_);
                     }
+
                     if (ret_command > 0 && ret_command < (int)sizeof(_compiler_input_)) {
                         BOOL win32_process_success;
                         clock_gettime(CLOCK_MONOTONIC, &pre_start);
                         win32_process_success = CreateProcessA(
-                                NULL,
-                                _compiler_input_,
-                                NULL,
-                                NULL,
-                                TRUE,
-                                CREATE_NO_WINDOW | ABOVE_NORMAL_PRIORITY_CLASS,
-                                NULL,
-                                NULL,
-                                &si,
-                                &pi
+                        NULL,
+                        _compiler_input_,
+                        NULL,
+                        NULL,
+                        TRUE,
+                        CREATE_NO_WINDOW | ABOVE_NORMAL_PRIORITY_CLASS,
+                        NULL,
+                        NULL,
+                        &si,
+                        &pi
                         );
                         if (win32_process_success == TRUE) {
-                            WaitForSingleObject(pi.hProcess, INFINITE);
+                            WaitForSingleObject(pi.hProcess, WIN32_TIMEOUT);
 
                             clock_gettime(CLOCK_MONOTONIC, &post_end);
 
@@ -883,12 +725,12 @@ not_valid_flag_options:
 
                     pid_t compiler_process_id;
                     int process_spawn_result = posix_spawnp(
-                            &compiler_process_id,
-                            wg_compiler_unix_args[0],
-                            &process_file_actions,
-                            &spawn_attr,
-                            wg_compiler_unix_args,
-                            environ
+                        &compiler_process_id,
+                        wg_compiler_unix_args[0],
+                        &process_file_actions,
+                        &spawn_attr,
+                        wg_compiler_unix_args,
+                        environ
                     );
 
                     posix_spawnattr_destroy(&spawn_attr);
@@ -1009,6 +851,8 @@ compiler_done:
                             if (size_container_output[0] != '\0' && path_access(size_container_output))
                                 remove(size_container_output);
                             wgconfig.wg_compiler_stat = 1;
+                        } else {
+                            wgconfig.wg_compiler_stat = 0;
                         }
                     }
                     else {
@@ -1023,7 +867,7 @@ compiler_done:
                     pr_color(stdout, FCOLOUR_CYAN,
                         " <P> Finished at %.3fs (%.0f ms)\n",
                         timer_rate_compile, timer_rate_compile * 1000.0);
-                    if (timer_rate_compile > 0x64) {
+                    if (timer_rate_compile > 60) {
                         printf("~ This is taking a while, huh?\n"
                                 "  Make sure you've cleared all the warnings,\n""  you're using the latest compiler,\n"
                                 "  and double-check that your logic\n"
@@ -1178,7 +1022,14 @@ compiler_done:
                         snprintf(size_container_output, sizeof(size_container_output), "%s.amx", revolver_compiler->container_output);
 
 #ifdef WG_WINDOWS
+                        ZeroMemory(&si, sizeof(si));
+                        si.cb = sizeof(si);
+                        ZeroMemory(&pi, sizeof(pi));
+
+                        sa.nLength = sizeof(SECURITY_ATTRIBUTES);
                         sa.bInheritHandle = TRUE;
+                        sa.lpSecurityDescriptor = NULL;
+
                         HANDLE hFile = CreateFileA(
                                 ".watchdogs/compiler.log",
                                 GENERIC_WRITE,
@@ -1186,7 +1037,8 @@ compiler_done:
                                 &sa,
                                 CREATE_ALWAYS,
                                 FILE_ATTRIBUTE_NORMAL |
-                                    FILE_FLAG_SEQUENTIAL_SCAN,
+                                    FILE_FLAG_SEQUENTIAL_SCAN |
+                                    FILE_ATTRIBUTE_TEMPORARY,
                                 NULL
                         );
 
@@ -1217,23 +1069,24 @@ compiler_done:
                             println(stdout, "   all-in-one options: \"%s\"", wgconfig.wg_toml_aio_opt);
                             println(stdout, "   command: \"%s\"", _compiler_input_);
                         }
+
                         if (ret_command > 0 && ret_command < (int)sizeof(_compiler_input_)) {
                             BOOL win32_process_success;
                             clock_gettime(CLOCK_MONOTONIC, &pre_start);
                             win32_process_success = CreateProcessA(
-                                    NULL,
-                                    _compiler_input_,
-                                    NULL,
-                                    NULL,
-                                    TRUE,
-                                    CREATE_NO_WINDOW | ABOVE_NORMAL_PRIORITY_CLASS,
-                                    NULL,
-                                    NULL,
-                                    &si,
-                                    &pi
+                            NULL,
+                            _compiler_input_,
+                            NULL,
+                            NULL,
+                            TRUE,
+                            CREATE_NO_WINDOW | ABOVE_NORMAL_PRIORITY_CLASS,
+                            NULL,
+                            NULL,
+                            &si,
+                            &pi
                             );
                             if (win32_process_success == TRUE) {
-                                WaitForSingleObject(pi.hProcess, INFINITE);
+                                WaitForSingleObject(pi.hProcess, WIN32_TIMEOUT);
 
                                 clock_gettime(CLOCK_MONOTONIC, &post_end);
 
@@ -1314,12 +1167,12 @@ compiler_done:
 
                         pid_t compiler_process_id;
                         int process_spawn_result = posix_spawnp(
-                                &compiler_process_id,
-                                wg_compiler_unix_args[0],
-                                &process_file_actions,
-                                &spawn_attr,
-                                wg_compiler_unix_args,
-                                environ
+                            &compiler_process_id,
+                            wg_compiler_unix_args[0],
+                            &process_file_actions,
+                            &spawn_attr,
+                            wg_compiler_unix_args,
+                            environ
                         );
 
                         posix_spawnattr_destroy(&spawn_attr);
@@ -1439,6 +1292,8 @@ compiler_done2:
                                 if (size_container_output[0] != '\0' && path_access(size_container_output))
                                     remove(size_container_output);
                                 wgconfig.wg_compiler_stat = 1;
+                            } else {
+                                wgconfig.wg_compiler_stat = 0;
                             }
                         }
                         else {
@@ -1453,7 +1308,7 @@ compiler_done2:
                         pr_color(stdout, FCOLOUR_CYAN,
                             " <P> Finished at %.3fs (%.0f ms)\n",
                             timer_rate_compile, timer_rate_compile * 1000.0);
-                        if (timer_rate_compile > 0x64) {
+                        if (timer_rate_compile > 60) {
                             printf("~ This is taking a while, huh?\n"
                                     "  Make sure you've cleared all the warnings,\n"
                                     "  you're using the latest compiler,\n"
@@ -1464,8 +1319,7 @@ compiler_done2:
                     }
                     else
                     {
-                        printf("Cannot locate input: ");
-                        pr_color(stdout, FCOLOUR_CYAN, "%s\n", compile_args);
+                        printf("Cannot locate input: " FCOLOUR_CYAN "%s" FCOLOUR_DEFAULT " - No such file or directory\n", compile_args);
                         goto compiler_end;
                     }
                 }
@@ -1558,26 +1412,16 @@ loop_end:
         }
 
 compiler_end:
-        if (size_config) {
-            wg_free(size_config);
-        }
-        if (merged) {
-            wg_free(merged);
-        }
+        wg_free(merged);
         if (wg_toml_config) {
             toml_free(wg_toml_config);
         }
-        if (pointer_signalA) {
-            wg_free(pointer_signalA);
-        }
-        if (platform) {
-            wg_free(platform);
-        }
-        if (proj_targets) {
-            wg_free(proj_targets);
-        }
+        wg_free(proj_targets);
         if (this_proc_file) {
             fclose(this_proc_file);
+        }
+        if (path_exists(".watchdogs/compiler.log") != 0) {
+                remove(".watchdogs/compiler.log");
         }
         return 1;
 }
@@ -2136,9 +1980,9 @@ void compiler_detailed(const char *wgoutput, int debug,
 
                 printf("Output path: %s\n", wgoutput);
                 printf("Header : %dB  |  Total        : %dB\n"
-                       "Code   : %dB  |  hash (djb2)  : %#lx\n"
-                       "Data   : %dB\n"
-                       "Stack  : %dB\n",
+                       "Code (static mem)   : %dB  |  hash (djb2)  : %#lx\n"
+                       "Data (static mem)   : %dB\n"
+                       "Stack (dynamic mem)  : %dB\n",
                        header_size, total_size, code_size,
                        hash, data_size, stack_size);
                 fflush(stdout);
@@ -2179,7 +2023,7 @@ static void cause_compiler_expl(const char *log_file, const char *wgoutput, int 
 {
       __debug_function();
 
-      if (path_exists(log_file) == 0)
+      if (path_exists(wgoutput) == 0)
         return;
 
       FILE *plog = fopen(log_file, "r");
@@ -2192,7 +2036,7 @@ static void cause_compiler_expl(const char *log_file, const char *wgoutput, int 
       int stack_size = 0, total_size = 0;
       char compiler_ver[64] = { 0 };
 
-      while (fgets(line, sizeof(line), plog)) {
+        while (fgets(line, sizeof(line), plog)) {
         if (wg_strcase(line, "Warnings.") ||
             wg_strcase(line, "Warning.") ||
             wg_strcase(line, "Errors.")  ||
@@ -2243,7 +2087,5 @@ static void cause_compiler_expl(const char *log_file, const char *wgoutput, int 
 
       fclose(plog);
 
-      compiler_detailed(wgoutput, debug, wcnt, ecnt,
-                        compiler_ver, header_size, code_size,
-                        data_size, stack_size, total_size);
+      compiler_detailed(wgoutput, debug, wcnt, ecnt, compiler_ver, header_size, code_size, data_size, stack_size, total_size);
 }

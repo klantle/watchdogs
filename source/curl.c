@@ -127,20 +127,15 @@ static int progress_callback(void *ptr, curl_off_t dltotal,
                         curl_off_t ulnow)
 {
         static int last_percent = -1;
-        static int dot_index = 0;
-        static const char term_spinner[] =  "-" "\\" "|" "/";
 
         int percent;
 
         if (dltotal > 0) {
               percent = (int)((dlnow * 100) / dltotal);
               if (percent != last_percent) {
-                    char spin_char = term_spinner[dot_index % 4];
-                    dot_index++;
-
                     if (percent < 100)
                         printf("\r" FCOLOUR_CYAN
-                                "** Downloading... %3d%% [%c]", percent, spin_char);
+                                "** Downloading... %3d%%", percent);
                     else
                         printf("\r" FCOLOUR_CYAN
                                 "** Downloading... %3d%% Done!", percent);
@@ -973,7 +968,7 @@ void wg_apply_pawncc(void)
 
             /* Run compiler with appropriate arguments */
             wg_run_compiler(
-                NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL
+                NULL, ".", NULL, NULL, NULL, NULL, NULL, NULL, NULL
             );
             wg_free(gamemode_compile);
         } else {

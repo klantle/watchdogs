@@ -1,41 +1,43 @@
 #ifndef DEPENDENCY_H
 #define DEPENDENCY_H
 
-/*
- * This is the maximum dependency in 'watchdogs.toml' that can be read from the 'packages' key,
- * and you need to ensure this capacity is more than sufficient. If you enter 101, it will only read up to 100.
-*/
 #define MAX_DEPENDS (102)
 
-struct repositories {
-        char host[32]  ; /* repo host */
-        char domain[64]; /* repo domain */
-        char user[128] ; /* repo user */
-        char repo[128] ; /* repo name */
-        char tag[128]  ; /* repo tag */
+#define REPLICATE_RATE_ZERO 0
+
+enum {
+    host_size = 32,
+    domain_size = 64,
+    user_size = 128,
+    repo_size = 128,
+    tag_size = 128
 };
 
-#define PATH_SEPARATOR(path) ({ \
-    const char *_p = (path); \
+struct _repositories {
+    char host[host_size]; char domain[domain_size]; char user[user_size]; char repo[repo_size]; char tag[tag_size];
+};
+
+#define PATH_SEPARATOR(sep_path) ({ \
+    const char *_p = (sep_path); \
     const char *_l = _p ? strrchr(_p, __PATH_CHR_SEP_LINUX) : NULL; \
     const char *_w = _p ? strrchr(_p, __PATH_CHR_SEP_WIN32) : NULL; \
     (_l && _w) ? ((_l > _w) ? _l : _w) : (_l ? _l : _w); \
 })
-#define PACKAGE_GET_FILENAME(path) \
+
+#define PACKAGE_GET_FILENAME(pkg_path) \
     ({ \
-        const char *_p = (path); \
+        const char *_p = (pkg_path); \
         const char *_sep = PATH_SEPARATOR(_p); \
         _sep ? _sep + 1 : _p; \
     })
 
-#define PACKAGE_GET_BASENAME(path) \
+#define PACKAGE_GET_BASENAME(pkg_path) \
     ({ \
-        const char *_p = (path); \
+        const char *_p = (pkg_path); \
         const char *_sep = PATH_SEPARATOR(_p); \
         _sep ? _sep + 1 : _p; \
     })
     
-void wg_install_depends(const char *depends_string,
-		const char *dependencies_branch);
+void wg_install_depends(const char *packages, const char *branch);
 
 #endif

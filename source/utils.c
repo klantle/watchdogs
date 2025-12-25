@@ -50,10 +50,10 @@ ssize_t sendfile(int out_fd,
 #include "debug.h"
 
 const char* __command[] = {
-		"help", "exit", "kill", "title", "sha256",
-		"crc32", "djb2", "config", "replicate",
-		"gamemode", "pawncc", "debug", "compile",
-		"running", "compiles", "stop", "restart",
+		"help", "exit", "kill", "title",
+		"sha1", "sha256", "crc32", "djb2", "config",
+		"replicate", "gamemode", "pawncc", "debug",
+		"compile", "running", "compiles", "stop", "restart",
 		"wanion", "tracker", "compress", "send"
 };
 
@@ -449,10 +449,6 @@ void wg_escaping_json(char *dest, const char *src, size_t dest_size) {
  */
 int wg_run_command(const char *reg_command) {
 
-		/* Platform-specific assembly to clear registers before system call */
-		/* See https://gcc.gnu.org/onlinedocs/gcc/Extended-Asm.html */
-		asm_cross_clear_regs(); /* function from assembly.S */
-
 		/* Handle empty command case */
 		if (reg_command[0] == '\0')
 	    		return -1;
@@ -540,6 +536,17 @@ void wg_clear_screen(void) {
 			wg_run_command("clear");
 		}
 		return; /* back */
+}
+
+/* Detects if server is SA-MP or open.mp */
+int wg_server_env(void) {
+	if (strcmp(wgconfig.wg_is_samp, CRC32_TRUE) == 0) {
+			return 1;
+	} else if (strcmp(wgconfig.wg_is_omp, CRC32_TRUE) == 0) {
+			return 2;
+	} else {
+			return 1;
+	}
 }
 
 /*
@@ -1258,7 +1265,7 @@ wg_match_filename(const char *entry_name, const char *pattern)
  * Identifies special directory entries "." and "..".
  * Returns true if entry name is exactly "." or "..".
  */
-int wg_is_special_dir(const char *entry_name)
+int wg_dot_or_dotdot(const char *entry_name)
 {
 		return (entry_name[0] == '.' &&
 		       (entry_name[1] == '\0' ||
@@ -1336,7 +1343,7 @@ int wg_sef_fdir(const char *sef_path, const char *sef_name, const char *ignore_d
 
 		do {
 			entry_name = find_data.cFileName;
-			if (wg_is_special_dir(entry_name))
+			if (wg_dot_or_dotdot(entry_name))
 				continue; /* Skip "." and ".." */
 
 			__set_path_sep(size_path, sizeof(size_path), sef_path, entry_name);
@@ -1379,7 +1386,7 @@ int wg_sef_fdir(const char *sef_path, const char *sef_name, const char *ignore_d
 		while ((item = readdir(open_dir)) != NULL) {
 			entry_name = item->d_name;
 
-			if (wg_is_special_dir(entry_name))
+			if (wg_dot_or_dotdot(entry_name))
 				continue;
 
 			__set_path_sep(size_path,
@@ -1586,7 +1593,7 @@ static void __toml_base_subdirs(const char *base_path,
 		do {
 			if (find_data.dwFileAttributes &
 					FILE_ATTRIBUTE_DIRECTORY) { /* Directory */
-				if (wg_is_special_dir(find_data.cFileName))
+				if (wg_dot_or_dotdot(find_data.cFileName))
 					continue; /* Skip "." and ".." */
 
 				/* Skip directory with same name as last component of base path */
@@ -1617,7 +1624,7 @@ static void __toml_base_subdirs(const char *base_path,
 
 		while ((item = readdir(open_dir)) != NULL) {
 			if (item->d_type == DT_DIR) { /* Directory entry */
-				if (wg_is_special_dir(item->d_name))
+				if (wg_dot_or_dotdot(item->d_name))
 					continue;
 
 				/* Skip directory with same name as last component */
@@ -1763,6 +1770,12 @@ static void wg_generate_toml_content(FILE *file, const char *wg_os_type,
 		/* Write [compiler] section */
 		fprintf(file, "[compiler]\n");
 
+		/* Termux Settings */
+		if (is_termux_env())
+			{
+				fprintf(file, "   option = [\"-d3\", \"-;+\", \"-(+\"]\n");
+				goto _tmux;
+			}
 		/* Set compiler options based on detected capabilities */
 		if (compatible && optimized_lt) {
 				fprintf(file, "   option = [\"-Z+\", \"-d2\", \"-O2\", \"-;+\", \"-(+\"]\n");
@@ -1771,6 +1784,7 @@ static void wg_generate_toml_content(FILE *file, const char *wg_os_type,
 		} else {
 				fprintf(file, "   option = [\"-d3\", \"-;+\", \"-(+\"]\n");
 		}
+_tmux:
 
 		/* Include paths array */
 		fprintf(file, "   includes = [");

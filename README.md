@@ -373,8 +373,8 @@ compile . --debug
 # Assembler Output (-a wraps flag)
 compile . --assembler
 
-# Recursion report (-R+ wraps flag)
-compile . --recursion
+# Compatibility Mode (-Z+ wraps flag)
+compile . --compat
 
 # Encoding compact (-C+ wraps flag)
 compile . --compact

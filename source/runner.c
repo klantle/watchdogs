@@ -161,7 +161,7 @@ void wg_server_crash_check(void) {
                 char *recompiled = readline("Recompiled scripts now? (Auto-fix)");
                 if (recompiled && (recompiled[0] == '\0' || !strcmp(recompiled, "Y") || !strcmp(recompiled, "y"))) {
                     wg_free(recompiled);
-                        pr_color(stdout, FCOLOUR_CYAN, "Please input the pawn file\n\t* (just enter for %s - input E/e to exit):", wgconfig.wg_toml_proj_input);
+                    pr_color(stdout, FCOLOUR_CYAN, "Please input the pawn file\n\t* (just enter for %s - input E/e to exit):", wgconfig.wg_toml_proj_input);
                     char *gamemode_compile = readline("Y/n: ");
                     if (gamemode_compile && strlen(gamemode_compile) < 1) {
                         const char *args[] = { NULL, ".", NULL, NULL, NULL, NULL, NULL, NULL, NULL };
@@ -173,7 +173,7 @@ void wg_server_crash_check(void) {
                         wg_free(gamemode_compile);
                     }
                 } else {
-                    if (recompiled) wg_free(recompiled);
+                    wg_free(recompiled);
                 }
             }
 
@@ -197,9 +197,7 @@ void wg_server_crash_check(void) {
                 if (scanf("%*[^v]voice server running on port %d", &_sampvoice_port) != 1)
                     continue;
                 ++rate_sampvoice_server;
-                if (sampvoice_port) {
-                    wg_free(sampvoice_port);
-                }
+                wg_free(sampvoice_port);
                 sampvoice_port = (char *)wg_malloc(16);
                 if (sampvoice_port) {
                     snprintf(sampvoice_port, 16, "%d", _sampvoice_port);
@@ -297,7 +295,7 @@ void wg_server_crash_check(void) {
                                 if (downgrading && (downgrading[0] == '\0' || strcmp(downgrading, "Y") == 0 || strcmp(downgrading, "y") == 0)) {
                                     wg_install_depends("CyberMor/sampvoice?v3.0-alpha", "master");
                                 }
-                                if (downgrading) wg_free(downgrading);
+                                wg_free(downgrading);
                             }
                         }
                     }
@@ -575,7 +573,7 @@ skip:
                     }
                 }
             }
-            if (fixed_now) wg_free(fixed_now);
+            wg_free(fixed_now);
         }
 
 wg_skip_fixed:
@@ -585,7 +583,7 @@ wg_skip_fixed:
         fflush(stdout);
 
         if (sampvoice_port) {
-            wg_free(sampvoice_port);
+            free(sampvoice_port);
             sampvoice_port = NULL;
         }
 
@@ -706,11 +704,11 @@ void restore_server_config(void) {
         if (restore_confirm && strfind(restore_confirm, "Y", true)) {
                 ;
         } else {
-                if (restore_confirm) wg_free(restore_confirm);
+                wg_free(restore_confirm);
                 chain_ret_main(NULL);
         }
 
-        if (restore_confirm) wg_free(restore_confirm);
+        wg_free(restore_confirm);
 
         if (path_access(size_config) == 0)
                 goto restore_done;
@@ -992,7 +990,7 @@ runner_cleanup:
         if (proc_conf_in)
                 fclose(proc_conf_in);
         if (printed) {
-                wg_free(printed);
+                free(printed);
                 printed = NULL;
         }
         if (root) {
@@ -1000,7 +998,7 @@ runner_cleanup:
                 root = NULL;
         }
         if (cJSON_Data) {
-                wg_free(cJSON_Data);
+                free(cJSON_Data);
                 cJSON_Data = NULL;
         }
 runner_kill:

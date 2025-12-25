@@ -26,7 +26,7 @@ static char *git_dir;
 static char *filename;
 static char *extension;
 static char json_item[WG_PATH_MAX];
-static int fdir_counts = RATE_SEF_EMPTY;
+static int fdir_counts = REPLICATE_RATE_ZERO;
 
 const char *match_windows_lookup_pattern[] = { "windows", "win", "win32", "win32", "msvc", "mingw", ".dll", NULL };
 const char *match_linux_lookup_pattern[] = { "linux", "ubuntu", "debian", "cent", "centos", "cent_os", "fedora", "arch", "archlinux", "alphine", "rhel", "redhat", "linuxmint", "mint", ".so", NULL };
@@ -61,37 +61,31 @@ int thrate_os_archive( const char *filename ) {
 		if ( !__HOST_OS )
 				return 0;
 
-		char
-				size_host_os[ WG_PATH_MAX ];
-		const char
-				**lookup_pattern = NULL;
+		char size_host_os[ WG_PATH_MAX ];
+		const char **lookup_pattern = NULL;
+		char filename_lwr[ WG_PATH_MAX ];
+
 		strncpy( size_host_os, __HOST_OS, sizeof ( size_host_os ) - 1 );
 		size_host_os[ sizeof( size_host_os ) - 1 ] = '\0';
 
-		for (int i = RATE_SEF_EMPTY; size_host_os[ i ]; i++) {
+		for (int i = REPLICATE_RATE_ZERO; size_host_os[ i ]; i++) {
 		    size_host_os[ i ] = tolower(size_host_os[ i ]);
 		}
 
-		if (strfind( size_host_os, "win", true )) {
-		    lookup_pattern = match_windows_lookup_pattern;
-		} else if (strfind(size_host_os, "linux", true )) {
-		    lookup_pattern = match_linux_lookup_pattern;
-		}
+		if (strfind( size_host_os, "win", true )) lookup_pattern = match_windows_lookup_pattern;
+		else if (strfind(size_host_os, "linux", true )) lookup_pattern = match_linux_lookup_pattern;
 
 		if ( !lookup_pattern )
 				return 0;
 
-		char filename_lwr[ WG_PATH_MAX ];
-		strncpy( filename_lwr,
-				filename,
-				sizeof ( filename_lwr ) - 1 );
+		strncpy( filename_lwr, filename, sizeof ( filename_lwr ) - 1 );
 		filename_lwr [sizeof ( filename_lwr ) - 1 ] = '\0';
 
-		for (int i = RATE_SEF_EMPTY; filename_lwr[ i ]; i++) {
+		for (int i = REPLICATE_RATE_ZERO; filename_lwr[ i ]; i++) {
 		    filename_lwr[ i ] = tolower(filename_lwr[ i ]);
 		}
 
-		for (k = RATE_SEF_EMPTY; lookup_pattern[ k ] != NULL; ++k) {
+		for (k = REPLICATE_RATE_ZERO; lookup_pattern[ k ] != NULL; ++k) {
 		    if ( strfind(
 				    filename_lwr,
 				    lookup_pattern[ k ],
@@ -107,10 +101,10 @@ int thrate_os_archive( const char *filename ) {
 int thrate_more_archive(const char *filename)
 {
 		int k;				     /* loop counter for array _sindex */
-		int ret = RATE_SEF_EMPTY;		       /* return value, default 0 (not found) */
+		int ret = REPLICATE_RATE_ZERO;		       /* return value, default 0 (not found) */
 
 		/* Iterate through all server lookup_pattern until NULL terminator */
-		for (k = RATE_SEF_EMPTY;
+		for (k = REPLICATE_RATE_ZERO;
 		     match_any_lookup_pattern[k] != NULL;  /* check array end */
 		     ++k) {
 		       /* Search for current server pattern in filename */
@@ -127,7 +121,7 @@ int thrate_more_archive(const char *filename)
 		return ret;  /* return result (0=not found, 1=found) */
 }
 
-static char *fetch_build_os_asseets( char **assets, int count, const char *os_pattern )
+static char *try_build_os_asseets( char **assets, int count, const char *os_pattern )
 {
 		int i;
 
@@ -140,11 +134,11 @@ static char *fetch_build_os_asseets( char **assets, int count, const char *os_pa
 		else
 			return NULL;
 
-		for (i = RATE_SEF_EMPTY; i < count; i++) {
+		for (i = REPLICATE_RATE_ZERO; i < count; i++) {
 			const char *asset = assets[i];
 			int p;
 
-			for (p = RATE_SEF_EMPTY; lookup_pattern[p]; p++) {
+			for (p = REPLICATE_RATE_ZERO; lookup_pattern[p]; p++) {
 				if (!strfind(asset, lookup_pattern[p], true))
 					continue;
 
@@ -155,7 +149,7 @@ static char *fetch_build_os_asseets( char **assets, int count, const char *os_pa
 		return NULL;
  }
 
- static char *fetch_server_assets( char **assets, int count, const char *os_pattern )
+ static char *try_server_assets( char **assets, int count, const char *os_pattern )
  {
 		const char *const *os_patterns = NULL;
 		int i;
@@ -167,11 +161,11 @@ static char *fetch_build_os_asseets( char **assets, int count, const char *os_pa
 		else
 			return NULL;
 
-		for (i = RATE_SEF_EMPTY; i < count; i++) {
+		for (i = REPLICATE_RATE_ZERO; i < count; i++) {
 		 	const char *asset = assets[i];
 		 	int p;
 
-		 	for (p = RATE_SEF_EMPTY; match_any_lookup_pattern[p]; p++) {
+		 	for (p = REPLICATE_RATE_ZERO; match_any_lookup_pattern[p]; p++) {
 		 		if (strfind(asset, match_any_lookup_pattern[p], true))
 		 			break;
 		 	}
@@ -179,7 +173,7 @@ static char *fetch_build_os_asseets( char **assets, int count, const char *os_pa
 		 	if (!match_any_lookup_pattern[p])
 		 		continue;
 
-		 	for (p = RATE_SEF_EMPTY; os_patterns[p]; p++) {
+		 	for (p = REPLICATE_RATE_ZERO; os_patterns[p]; p++) {
 		 		if (strfind(asset, os_patterns[p], true))
 		 			return strdup(asset);
 		 	}
@@ -188,25 +182,25 @@ static char *fetch_build_os_asseets( char **assets, int count, const char *os_pa
 		return NULL;
  }
 
- static char *fetch_generic_assets( char **assets, int count )
+ static char *try_generic_assets( char **assets, int count )
  {
 	 	int i;
 
-		for (i = RATE_SEF_EMPTY; i < count; i++) {
+		for (i = REPLICATE_RATE_ZERO; i < count; i++) {
 			const char *asset = assets[i];
 			int p;
 
-			for (p = RATE_SEF_EMPTY; match_any_lookup_pattern[p]; p++) {
+			for (p = REPLICATE_RATE_ZERO; match_any_lookup_pattern[p]; p++) {
 				if (strfind(asset, match_any_lookup_pattern[p], true))
 					return strdup(asset);
 			}
 		}
 
-		for (i = RATE_SEF_EMPTY; i < count; i++) {
+		for (i = REPLICATE_RATE_ZERO; i < count; i++) {
 			const char *asset = assets[i];
 			int p;
 
-			for (p = RATE_SEF_EMPTY; match_windows_lookup_pattern[p]; p++) {
+			for (p = REPLICATE_RATE_ZERO; match_windows_lookup_pattern[p]; p++) {
 				if (strfind(asset, match_windows_lookup_pattern[p], true))
 					break;
 			}
@@ -214,7 +208,7 @@ static char *fetch_build_os_asseets( char **assets, int count, const char *os_pa
 			if (match_windows_lookup_pattern[p])
 				continue;
 
-			for (p = RATE_SEF_EMPTY; match_linux_lookup_pattern[p]; p++) {
+			for (p = REPLICATE_RATE_ZERO; match_linux_lookup_pattern[p]; p++) {
 				if (strfind(asset, match_linux_lookup_pattern[p], true))
 					break;
 			}
@@ -235,7 +229,7 @@ static char *fetch_build_os_asseets( char **assets, int count, const char *os_pa
 		char size_host_os[32] = {0};
 		const char *__HOST_OS = NULL;
 
-		if (counts == RATE_SEF_EMPTY)
+		if (counts == REPLICATE_RATE_ZERO)
 			return NULL;
 		if (counts == 1)
 			return strdup(package_assets[0]);
@@ -252,28 +246,28 @@ static char *fetch_build_os_asseets( char **assets, int count, const char *os_pa
 
 		if (__HOST_OS) {
 			strncpy(size_host_os, __HOST_OS, sizeof(size_host_os) - 1);
-			for (int j = RATE_SEF_EMPTY; size_host_os[j]; j++) {
+			for (int j = REPLICATE_RATE_ZERO; size_host_os[j]; j++) {
 				size_host_os[j] = tolower(size_host_os[j]);
 			}
 		}
 
 		if (size_host_os[0]) {
-			result = fetch_server_assets(package_assets, counts, size_host_os);
+			result = try_server_assets(package_assets, counts, size_host_os);
 			if (result)
 				return result;
 
-			result = fetch_build_os_asseets(package_assets, counts, size_host_os);
+			result = try_build_os_asseets(package_assets, counts, size_host_os);
 			if (result)
 				return result;
 		}
 
-		return fetch_generic_assets(package_assets, counts);
+		return try_generic_assets(package_assets, counts);
 }
 
 static int
-package_parse_repo( const char *input, struct repositories *__package_data ) {
+package_parse_repo( const char *input, struct _repositories *__package_data ) {
 
-		memset( __package_data, RATE_SEF_EMPTY, sizeof( *__package_data ) );
+		memset( __package_data, REPLICATE_RATE_ZERO, sizeof( *__package_data ) );
 
 		strcpy( __package_data->host,   "github" );
 		strcpy( __package_data->domain, "github.com" );
@@ -309,20 +303,20 @@ package_parse_repo( const char *input, struct repositories *__package_data ) {
 				path_slash = strchr( path, __PATH_CHR_SEP_LINUX );
 
 				if ( path_slash && strchr( path, '.' ) && strchr( path, '.' ) < path_slash ) {
-						char domain[WG_PATH_MAX];
+					char domain[WG_PATH_MAX];
 
-						strncpy( domain, path, path_slash - path );
-						domain[path_slash - path] = '\0';
+					strncpy( domain, path, path_slash - path );
+					domain[path_slash - path] = '\0';
 
-						if ( strfind ( domain, "github", true ) ) {
-								strcpy( __package_data->host, "github" );
-								strcpy( __package_data->domain, "github.com" );
-						} else {
-								pr_error(stdout, "Currently Watchdogs only supported for GitHub..");
-								return 1;
-						}
+					if ( strfind ( domain, "github", true ) ) {
+							strcpy( __package_data->host, "github" );
+							strcpy( __package_data->domain, "github.com" );
+					} else {
+							pr_error(stdout, "Currently Watchdogs only supported for GitHub..");
+							return 1;
+					}
 
-						path = path_slash + 1;
+					path = path_slash + 1;
 				}
 		}
 
@@ -345,8 +339,8 @@ package_parse_repo( const char *input, struct repositories *__package_data ) {
 		strncpy( __package_data->repo,
 				repo, sizeof( __package_data->repo ) - 1 );
 
-		if ( strlen( __package_data->user ) == RATE_SEF_EMPTY ||
-		     strlen( __package_data->repo ) == RATE_SEF_EMPTY )
+		if ( strlen( __package_data->user ) == REPLICATE_RATE_ZERO ||
+		     strlen( __package_data->repo ) == REPLICATE_RATE_ZERO )
 				return 0;
 
 #if defined( _DBG_PRINT )
@@ -372,7 +366,7 @@ static int package_gh_release_assets( const char *user, const char *repo,
 		char api_url[WG_PATH_MAX * 2];
 		char *json_data = NULL;
 		const char *p;
-		int url_count = RATE_SEF_EMPTY;
+		int url_count = REPLICATE_RATE_ZERO;
 
 		/* Build GitHub API URL for specific release tag */
 		snprintf( api_url, sizeof( api_url ),
@@ -422,58 +416,54 @@ static int package_gh_release_assets( const char *user, const char *repo,
  * Builds appropriate URL for GitHub releases, tags, or branches
  */
 static void
-package_build_repo_url( const struct repositories *__package_data, int rate_tag_page,
+package_build_repo_url( const struct _repositories *__package_data, int rate_tag_page,
 				   char *put_url, size_t put_size )
 {
 		char package_actual_tag[128] = { 0 };
 
 		if ( __package_data->tag[0] ) {
-				strncpy( package_actual_tag, __package_data->tag,
-						sizeof( package_actual_tag ) - 1 );
+			strncpy( package_actual_tag, __package_data->tag,
+					sizeof( package_actual_tag ) - 1 );
 
-				/* Handle "newer" tag special case */
-				if ( strcmp( package_actual_tag, "newer" ) == RATE_SEF_EMPTY ) {
-						if ( strcmp( __package_data->host, "github" ) == RATE_SEF_EMPTY && !rate_tag_page ) {
-								strcpy( package_actual_tag, "latest" );
-						}
+			/* Handle "newer" tag special case */
+			if ( strcmp( package_actual_tag, "newer" ) == REPLICATE_RATE_ZERO ) {
+				if ( strcmp( __package_data->host, "github" ) == REPLICATE_RATE_ZERO && !rate_tag_page ) {
+						strcpy( package_actual_tag, "latest" );
 				}
+			}
 		}
 
-		/* GitHub-specific URL construction */
-		if ( strcmp( __package_data->host, "github" ) == RATE_SEF_EMPTY ) {
-				if ( rate_tag_page && package_actual_tag[0] ) {
-						/* Tag page URL (for display/verification) */
-						if ( !strcmp( package_actual_tag, "latest" ) ) {
-								snprintf( put_url, put_size,
-										"https://%s/%s/%s/releases/latest",
-										__package_data->domain, __package_data->user,
-										__package_data->repo );
-						} else {
-								snprintf( put_url, put_size,
-										"https://%s/%s/%s/releases/tag/%s",
-										__package_data->domain, __package_data->user,
-										__package_data->repo, package_actual_tag );
-						}
-				} else if ( package_actual_tag[0] ) {
-						/* Direct archive URL for specific tag */
-						if ( !strcmp( package_actual_tag, "latest" ) ) {
-								snprintf( put_url, put_size,
-										"https://%s/%s/%s/releases/latest",
-										__package_data->domain, __package_data->user,
-										__package_data->repo );
-						} else {
-								snprintf( put_url, put_size,
-										"https://%s/%s/%s/archive/refs/tags/%s.tar.gz",
-										__package_data->domain, __package_data->user,
-										__package_data->repo, package_actual_tag );
-						}
-				} else {
-						/* Default to main branch ZIP */
-						snprintf( put_url, put_size,
-								"https://%s/%s/%s/archive/refs/heads/main.zip",
-								__package_data->domain, __package_data->user,
-								__package_data->repo );
-				}
+		if ( strcmp( __package_data->host, "github" ) == REPLICATE_RATE_ZERO ) {
+			if ( rate_tag_page && package_actual_tag[0] ) {
+					if ( !strcmp( package_actual_tag, "latest" ) ) {
+							snprintf( put_url, put_size,
+									"https://%s/%s/%s/releases/latest",
+									__package_data->domain, __package_data->user,
+									__package_data->repo );
+					} else {
+							snprintf( put_url, put_size,
+									"https://%s/%s/%s/releases/tag/%s",
+									__package_data->domain, __package_data->user,
+									__package_data->repo, package_actual_tag );
+					}
+			} else if ( package_actual_tag[0] ) {
+					if ( !strcmp( package_actual_tag, "latest" ) ) {
+							snprintf( put_url, put_size,
+									"https://%s/%s/%s/releases/latest",
+									__package_data->domain, __package_data->user,
+									__package_data->repo );
+					} else {
+							snprintf( put_url, put_size,
+									"https://%s/%s/%s/archive/refs/tags/%s.tar.gz",
+									__package_data->domain, __package_data->user,
+									__package_data->repo, package_actual_tag );
+					}
+			} else {
+					snprintf( put_url, put_size,
+							"https://%s/%s/%s/archive/refs/heads/main.zip",
+							__package_data->domain, __package_data->user,
+							__package_data->repo );
+			}
 		}
 }
 
@@ -487,7 +477,7 @@ static int package_gh_latest_tag( const char *user, const char *repo,
 		char api_url[WG_PATH_MAX * 2];
 		char *json_data = NULL;
 		const char *p;
-		int ret = RATE_SEF_EMPTY;
+		int ret = REPLICATE_RATE_ZERO;
 
 		/* Build GitHub API URL for latest release */
 		snprintf( api_url, sizeof( api_url ),
@@ -537,16 +527,16 @@ static int package_gh_latest_tag( const char *user, const char *repo,
  * Handles latest tag resolution, asset selection, and fallback strategies
  */
 static int
-package_handle_repo( const struct repositories *revolver_repos, char *put_url, size_t put_size, const char *branch ) {
+package_handle_repo( const struct _repositories *revolver_repos, char *put_url, size_t put_size, const char *branch ) {
 
-		int ret = RATE_SEF_EMPTY;
+		int ret = REPLICATE_RATE_ZERO;
 
 		 /* Common branch name */
 		const char *package_repo_branch[] = { branch, "main", "master" };
 		char package_actual_tag[128] = { 0 };
-		int use_fallback_branch = RATE_SEF_EMPTY;
+		int use_fallback_branch = REPLICATE_RATE_ZERO;
 
-		if ( revolver_repos->tag[0] && strcmp( revolver_repos->tag, "newer" ) == RATE_SEF_EMPTY ) {
+		if ( revolver_repos->tag[0] && strcmp( revolver_repos->tag, "newer" ) == REPLICATE_RATE_ZERO ) {
 		    if ( package_gh_latest_tag( revolver_repos->user,
 				    revolver_repos->repo,
 				    package_actual_tag,
@@ -565,7 +555,7 @@ package_handle_repo( const struct repositories *revolver_repos, char *put_url, s
 		}
 
 		if ( use_fallback_branch ) {
-		    for ( int j = RATE_SEF_EMPTY; j < 3 && !ret; j++ ) {
+		    for ( int j = REPLICATE_RATE_ZERO; j < 3 && !ret; j++ ) {
 				snprintf( put_url, put_size,
 						"https://github.com/"
 						"%s/%s/archive/refs/heads/%s.zip",
@@ -588,7 +578,7 @@ package_handle_repo( const struct repositories *revolver_repos, char *put_url, s
 		/* Process tagged releases */
 		if ( package_actual_tag[0] ) {
 		    char *package_assets[10] = { 0 };
-		    int asset_counts = RATE_SEF_EMPTY;
+		    int asset_counts = REPLICATE_RATE_ZERO;
 		    asset_counts = package_gh_release_assets( revolver_repos->user,
 						revolver_repos->repo, package_actual_tag,
 						package_assets, 10 );
@@ -625,7 +615,7 @@ package_handle_repo( const struct repositories *revolver_repos, char *put_url, s
 				}
 
 				/* Clean up asset array */
-				for ( int j = RATE_SEF_EMPTY; j < asset_counts; j++ )
+				for ( int j = REPLICATE_RATE_ZERO; j < asset_counts; j++ )
 				    wg_free( package_assets[j] );
 		    }
 
@@ -637,7 +627,7 @@ package_handle_repo( const struct repositories *revolver_repos, char *put_url, s
 				    "%s/%s/archive/refs/tags/%s.zip"
 				};
 
-				for ( int j = RATE_SEF_EMPTY; j < 2 && !ret; j++ ) {
+				for ( int j = REPLICATE_RATE_ZERO; j < 2 && !ret; j++ ) {
 				    snprintf( put_url, put_size, package_arch_format[j],
 								    revolver_repos->user,
 								    revolver_repos->repo,
@@ -649,7 +639,7 @@ package_handle_repo( const struct repositories *revolver_repos, char *put_url, s
 		    }
 		} else {
 		    /* No tag specified - try main/master branches */
-		    for ( int j = RATE_SEF_EMPTY; j < 2 && !ret; j++ ) {
+		    for ( int j = REPLICATE_RATE_ZERO; j < 2 && !ret; j++ ) {
 				snprintf( put_url, put_size,
 						"%s%s/%s/archive/refs/heads/%s.zip",
 						"https://github.com/",
@@ -694,7 +684,7 @@ int package_set_hash( const char *raw_file_path, const char *raw_json_path ) {
 				goto done;
 
 		unsigned char sha1_hash[20];
-		if ( crypto_generate_sha1_hash( res_convert_json_path, sha1_hash ) == RATE_SEF_EMPTY ) {
+		if ( crypto_generate_sha1_hash( res_convert_json_path, sha1_hash ) == REPLICATE_RATE_ZERO ) {
 				goto done;
 		}
 
@@ -729,7 +719,7 @@ void package_implementation_samp_conf( const char* config_file, const char* fw_l
 		if (wg_server_env() != 1)
 				return;
 
-		if (dir_exists( ".watchdogs" ) == RATE_SEF_EMPTY)
+		if (dir_exists( ".watchdogs" ) == REPLICATE_RATE_ZERO)
 				MKDIR( ".watchdogs" );
 
 		pr_color( stdout, FCOLOUR_GREEN, "Create Dependencies '%s' into '%s'\t\t"
@@ -739,10 +729,10 @@ void package_implementation_samp_conf( const char* config_file, const char* fw_l
 		FILE* ctx_file = fopen( config_file, "r" );
 		if (ctx_file) {
 				char ctx_line[WG_PATH_MAX];
-				int t_exist = RATE_SEF_EMPTY, tr_exist = RATE_SEF_EMPTY, tr_ln_has_tx = RATE_SEF_EMPTY;
+				int t_exist = REPLICATE_RATE_ZERO, tr_exist = REPLICATE_RATE_ZERO, tr_ln_has_tx = REPLICATE_RATE_ZERO;
 
 				while ( fgets ( ctx_line, sizeof (ctx_line ), ctx_file ) ) {
-						ctx_line[ strcspn ( ctx_line, "\n" ) ] = RATE_SEF_EMPTY;
+						ctx_line[ strcspn ( ctx_line, "\n" ) ] = REPLICATE_RATE_ZERO;
 						if (strstr( ctx_line, plugin_name ) != NULL) {
 								t_exist = 1;
 						}
@@ -765,7 +755,7 @@ void package_implementation_samp_conf( const char* config_file, const char* fw_l
 						while ( fgets ( ctx_line, sizeof( ctx_line ), ctx_file) ) {
 								char clean_line[ WG_PATH_MAX ];
 								strcpy( clean_line, ctx_line );
-								clean_line[ strcspn ( clean_line, "\n" ) ] = RATE_SEF_EMPTY;
+								clean_line[ strcspn ( clean_line, "\n" ) ] = REPLICATE_RATE_ZERO;
 
 								if (strstr( clean_line, fw_line ) != NULL &&
 								    strstr( clean_line, plugin_name ) == NULL)
@@ -821,9 +811,9 @@ void package_implementation_omp_conf( const char* config_name, const char* packa
 		if ( !ctx_file ) {
 				s_root = cJSON_CreateObject();
 		} else {
-				fseek( ctx_file, RATE_SEF_EMPTY, SEEK_END );
+				fseek( ctx_file, REPLICATE_RATE_ZERO, SEEK_END );
 				long fle_size = ftell( ctx_file );
-				fseek( ctx_file, RATE_SEF_EMPTY, SEEK_SET );
+				fseek( ctx_file, REPLICATE_RATE_ZERO, SEEK_SET );
 
 				char* buffer = ( char* )wg_malloc( fle_size + 1 );
 				if ( !buffer ) {
@@ -875,7 +865,7 @@ void package_implementation_omp_conf( const char* config_name, const char* packa
 		}
 
 		cJSON* dir_item;
-		int p_exist = RATE_SEF_EMPTY;
+		int p_exist = REPLICATE_RATE_ZERO;
 
 		cJSON_ArrayForEach( dir_item, legacy_plugins ) {
 				if ( cJSON_IsString( dir_item ) &&
@@ -911,14 +901,14 @@ void package_implementation_omp_conf( const char* config_name, const char* packa
  */
 void package_add_include( const char *modes, char *package_name, char *package_following ) {
 
-		if ( path_exists( modes ) == RATE_SEF_EMPTY ) return;
+		if ( path_exists( modes ) == REPLICATE_RATE_ZERO ) return;
 
 		FILE *m_file = fopen( modes, "rb" );
 		if ( !m_file ) return;
 
-		fseek( m_file, RATE_SEF_EMPTY, SEEK_END );
+		fseek( m_file, REPLICATE_RATE_ZERO, SEEK_END );
 		long fle_size = ftell( m_file );
-		fseek( m_file, RATE_SEF_EMPTY, SEEK_SET );
+		fseek( m_file, REPLICATE_RATE_ZERO, SEEK_SET );
 
 		char *ct_modes = wg_malloc( fle_size + 2 );
 		if ( !ct_modes ) { fclose(m_file); return; }
@@ -1127,18 +1117,18 @@ void dump_file_type( const char *dump_path, char *dump_pattern,
 		println(stdout, "fdir_counts (%d): %d", fdir_counts, found);
 #endif
 		if ( found ) {
-			for ( i = RATE_SEF_EMPTY; i < wgconfig.wg_sef_count; ++i ) {
+			for ( i = REPLICATE_RATE_ZERO; i < wgconfig.wg_sef_count; ++i ) {
 				package_names = PACKAGE_GET_FILENAME( wgconfig.wg_sef_found_list[i] );
 				basename = PACKAGE_GET_BASENAME( wgconfig.wg_sef_found_list[i] );
 
 				/* Convert to lowercase for case-insensitive comparison */
 				basename_lwr = strdup( basename );
-				for ( int j = RATE_SEF_EMPTY; basename_lwr[j]; j++ )
+				for ( int j = REPLICATE_RATE_ZERO; basename_lwr[j]; j++ )
 					{
 							basename_lwr[j] = tolower( basename_lwr[j] );
 					}
 
-				int rate_has_prefix = RATE_SEF_EMPTY;
+				int rate_has_prefix = REPLICATE_RATE_ZERO;
 
 				/* toml parsing a value */
 				pr_info(stdout, "Loaded root patterns: %s", wgconfig.wg_toml_root_patterns);
@@ -1157,7 +1147,7 @@ void dump_file_type( const char *dump_path, char *dump_pattern,
 						   if ( strncmp( basename_lwr,
 								match_root_keywords,
 								keyword_len
-								) == RATE_SEF_EMPTY)
+								) == REPLICATE_RATE_ZERO)
 						   {
 						      ++rate_has_prefix;
 						      break;
@@ -1300,10 +1290,10 @@ void package_move_files( const char *package_dir )
 		/* Stack */
 		int _sindex = -1;
 		int _ssize = WG_MAX_PATH;
-		int rate_found_include = RATE_SEF_EMPTY;
+		int rate_found_include = REPLICATE_RATE_ZERO;
 
 		/* Reset */
-		fdir_counts = RATE_SEF_EMPTY;
+		fdir_counts = REPLICATE_RATE_ZERO;
 
 		/* CWD/PWD */
 		char *fetch_pwd = NULL;
@@ -1313,12 +1303,12 @@ void package_move_files( const char *package_dir )
 		struct stat dir_st;
 		struct dirent *dir_item;
 		char **tmp_stack = wg_malloc( _ssize * sizeof( char* ) );
-		if ( tmp_stack == RATE_SEF_EMPTY ) { return; }
+		if ( tmp_stack == REPLICATE_RATE_ZERO ) { return; }
 		char **stack = tmp_stack;
-		for ( i = RATE_SEF_EMPTY; i < _ssize; i++ ) {
+		for ( i = REPLICATE_RATE_ZERO; i < _ssize; i++ ) {
 		    stack[i] = wg_malloc( WG_PATH_MAX );
-		    if ( stack[i] == RATE_SEF_EMPTY ) {
-		        for ( int j = RATE_SEF_EMPTY; j < i; j++ ) {
+		    if ( stack[i] == REPLICATE_RATE_ZERO ) {
+		        for ( int j = REPLICATE_RATE_ZERO; j < i; j++ ) {
 		            wg_free( stack[j] );
 		        }
 		        wg_free( stack );
@@ -1382,7 +1372,7 @@ void package_move_files( const char *package_dir )
 		println(stdout, "package inc: %d", rate_found_include);
 #endif
 		if ( rate_found_include ) {
-				for ( i = RATE_SEF_EMPTY; i < wgconfig.wg_sef_count; ++i ) {
+				for ( i = REPLICATE_RATE_ZERO; i < wgconfig.wg_sef_count; ++i ) {
 						packages = PACKAGE_GET_FILENAME( wgconfig.wg_sef_found_list[i] );
 				#ifdef WG_WINDOWS
 						snprintf( command, sizeof( command ),
@@ -1420,7 +1410,7 @@ void package_move_files( const char *package_dir )
 		println(stdout, "package inc2: %d", rate_found_include);
 #endif
 		if ( rate_found_include ) {
-				for ( i = RATE_SEF_EMPTY; i < wgconfig.wg_sef_count; ++i ) {
+				for ( i = REPLICATE_RATE_ZERO; i < wgconfig.wg_sef_count; ++i ) {
 						const char *packages;
 						packages = PACKAGE_GET_FILENAME( wgconfig.wg_sef_found_list[i] );
 
@@ -1512,7 +1502,7 @@ void package_move_files( const char *package_dir )
 		snprintf( stack[_sindex], WG_PATH_MAX, "%s", package_dir );
 
 		/* Depth-first search for include files */
-		while ( _sindex >= RATE_SEF_EMPTY ) {
+		while ( _sindex >= REPLICATE_RATE_ZERO ) {
 				strlcpy( root_dir, stack[_sindex], sizeof( root_dir ) );
 				--_sindex;
 
@@ -1523,7 +1513,7 @@ void package_move_files( const char *package_dir )
 						}
 
 				while ( ( dir_item = readdir( open_dir ) ) != NULL ) {
-						if ( wg_is_special_dir( dir_item->d_name ) )
+						if ( wg_dot_or_dotdot( dir_item->d_name ) )
 								{
 										continue;
 								}
@@ -1536,18 +1526,18 @@ void package_move_files( const char *package_dir )
 						strlcat( the_path,
 								dir_item->d_name, sizeof( the_path ) );
 
-						if ( stat( the_path, &dir_st ) != RATE_SEF_EMPTY )
+						if ( stat( the_path, &dir_st ) != REPLICATE_RATE_ZERO )
 								{
 										continue;
 								}
 
 						if ( S_ISDIR( dir_st.st_mode ) ) {
 								/* Skip compiler directories */
-								if ( strcmp( dir_item->d_name, "pawno" ) == RATE_SEF_EMPTY ||
-								    strcmp( dir_item->d_name, "qawno" ) == RATE_SEF_EMPTY ||
-								    strcmp( dir_item->d_name, "include" ) == RATE_SEF_EMPTY ||
-								    strcmp ( dir_item->d_name, "components") == RATE_SEF_EMPTY ||
-								    strcmp ( dir_item->d_name, "plugins") == RATE_SEF_EMPTY)
+								if ( strcmp( dir_item->d_name, "pawno" ) == REPLICATE_RATE_ZERO ||
+								    strcmp( dir_item->d_name, "qawno" ) == REPLICATE_RATE_ZERO ||
+								    strcmp( dir_item->d_name, "include" ) == REPLICATE_RATE_ZERO ||
+								    strcmp ( dir_item->d_name, "components") == REPLICATE_RATE_ZERO ||
+								    strcmp ( dir_item->d_name, "plugins") == REPLICATE_RATE_ZERO)
 								{
 										continue;
 								}
@@ -1563,7 +1553,7 @@ void package_move_files( const char *package_dir )
 
 						/* Process ".inc" files */
 						if ( !strrchr( dir_item->d_name, '.' ) ||
-						    strcmp( strrchr( dir_item->d_name, '.' ), ".inc" ) == RATE_SEF_EMPTY )
+						    strcmp( strrchr( dir_item->d_name, '.' ), ".inc" ) == REPLICATE_RATE_ZERO )
 						{
 								continue;
 						}
@@ -1601,7 +1591,7 @@ void package_move_files( const char *package_dir )
 								       size_windows_move_parts_zero = sizeof( windows_move_parts[0] );
 								strlcpy( command, "", sizeof( command ) );
 								int j;
-								for ( j = RATE_SEF_EMPTY;
+								for ( j = REPLICATE_RATE_ZERO;
 								      j < size_windows_move_parts / size_windows_move_parts_zero;
 								      j++ )
 								{
@@ -1624,7 +1614,7 @@ void package_move_files( const char *package_dir )
 								       size_unix_move_parts_zero = sizeof( unix_move_parts[0] );
 								strlcpy( command, "", sizeof( command ) );
 								int j;
-								for ( j = RATE_SEF_EMPTY;
+								for ( j = REPLICATE_RATE_ZERO;
 								      j < size_unix_move_parts / size_unix_move_parts_zero;
 								      j++ )
 								{
@@ -1642,7 +1632,7 @@ void package_move_files( const char *package_dir )
 		}
 
 		/* Clean up directory stack */
-		for ( i = RATE_SEF_EMPTY;
+		for ( i = REPLICATE_RATE_ZERO;
 		      i < _ssize;
 		      i++ ) {
 				wg_free( stack [ i ] );
@@ -1702,20 +1692,20 @@ void wg_apply_depends( const char *depends_name )
 
 		/* Create necessary directories based on server environment */
 		if ( wg_server_env() == 1 ) {
-				if ( dir_exists( "pawno/include" ) == RATE_SEF_EMPTY ) {
+				if ( dir_exists( "pawno/include" ) == REPLICATE_RATE_ZERO ) {
 						wg_mkdir( "pawno/include" );
 				}
-				if ( dir_exists( "plugins" ) == RATE_SEF_EMPTY ) {
+				if ( dir_exists( "plugins" ) == REPLICATE_RATE_ZERO ) {
 						MKDIR( "plugins" );
 				}
 		} else if ( wg_server_env() == 2 ) {
-				if ( dir_exists( "qawno/include" ) == RATE_SEF_EMPTY ) {
+				if ( dir_exists( "qawno/include" ) == REPLICATE_RATE_ZERO ) {
 						wg_mkdir( "qawno/include" );
 				}
-				if ( dir_exists( "plugins" ) == RATE_SEF_EMPTY ) {
+				if ( dir_exists( "plugins" ) == REPLICATE_RATE_ZERO ) {
 						MKDIR( "plugins" );
 				}
-				if ( dir_exists( "components" ) == RATE_SEF_EMPTY ) {
+				if ( dir_exists( "components" ) == REPLICATE_RATE_ZERO ) {
 						MKDIR( "components" );
 				}
 		}
@@ -1728,23 +1718,23 @@ void wg_apply_depends( const char *depends_name )
  * Main dependency installation function
  * Parses dependency strings, downloads archives, and applies dependencies
  */
-void wg_install_depends( const char *dependencies_str, const char *branch )
+void wg_install_depends( const char *packages, const char *branch )
 {
 		char buffer[1024];
 		char package_url[1024];
 		char *procure_buffer;
-		struct repositories repo;
+		struct _repositories repo;
 		char package_name[WG_PATH_MAX];
 		const char *size_last_slash;
 		const char *dependencies[MAX_DEPENDS];
-		int package_counts = RATE_SEF_EMPTY;
+		int package_counts = REPLICATE_RATE_ZERO;
 		int i;
 
-		memset( dependencies, RATE_SEF_EMPTY, sizeof( dependencies ) );
-		wgconfig.wg_idepends = RATE_SEF_EMPTY;
+		memset( dependencies, REPLICATE_RATE_ZERO, sizeof( dependencies ) );
+		wgconfig.wg_idepends = REPLICATE_RATE_ZERO;
 
 		/* Validate input */
-		if ( !dependencies_str || !*dependencies_str )
+		if ( !packages || !*packages )
 				{
 						pr_color( stdout, FCOLOUR_RED, "" );
 						printf( "no valid dependencies to install!"
@@ -1752,16 +1742,16 @@ void wg_install_depends( const char *dependencies_str, const char *branch )
 						goto done;
 				}
 
-		if ( strlen( dependencies_str ) >= sizeof( buffer ) )
+		if ( strlen( packages ) >= sizeof( buffer ) )
 				{
 						pr_color( stdout, FCOLOUR_RED, "" );
-						printf( "dependencies_str too long!"
+						printf( "packages too long!"
 								"\t\t[Fail]\n" );
 						goto done;
 				}
 
 		/* Tokenize dependency string */
-		snprintf( buffer, sizeof( buffer ), "%s", dependencies_str );
+		snprintf( buffer, sizeof( buffer ), "%s", packages );
 
 		procure_buffer = strtok( buffer, " " );
 		while ( procure_buffer
@@ -1780,7 +1770,7 @@ void wg_install_depends( const char *dependencies_str, const char *branch )
 				}
 
 		/* Process each dependency */
-		for ( i = RATE_SEF_EMPTY; i < package_counts; i++ ) {
+		for ( i = REPLICATE_RATE_ZERO; i < package_counts; i++ ) {
 				/* Parse repository information */
 				if ( !package_parse_repo( dependencies[i], &repo ) )
 						{
@@ -1790,7 +1780,7 @@ void wg_install_depends( const char *dependencies_str, const char *branch )
 								continue;
 						}
 
-				/* Handle GitHub repositories */
+				/* Handle GitHub _repositories */
 				if ( !strcmp( repo.host, "github" ) ) {
 						if ( !package_handle_repo( &repo, package_url,
 						    sizeof( package_url ),
@@ -1802,8 +1792,8 @@ void wg_install_depends( const char *dependencies_str, const char *branch )
 								continue;
 						}
 				} else {
-						/* Handle custom repositories */
-						package_build_repo_url( &repo, RATE_SEF_EMPTY, package_url, sizeof( package_url ) );
+						/* Handle custom _repositories */
+						package_build_repo_url( &repo, REPLICATE_RATE_ZERO, package_url, sizeof( package_url ) );
 						if ( !package_url_checking( package_url,
 						    wgconfig.wg_toml_github_tokens ) )
 						{

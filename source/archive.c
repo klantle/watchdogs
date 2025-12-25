@@ -417,7 +417,7 @@ int wg_path_recursive(struct archive *archive, const char *root, const char *pat
                 }
 
                 while ((dent = readdir(dirp)) != NULL) {
-                        if (wg_is_special_dir(dent->d_name))
+                        if (wg_dot_or_dotdot(dent->d_name))
                                 continue;
 
                         snprintf(child_path, sizeof(child_path),

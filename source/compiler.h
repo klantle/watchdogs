@@ -4,6 +4,14 @@
 #include "utils.h"
 
 #define WATCHDOGS_COMPILER_ZERO 0
+#define WATCHDOGS_COMPILER_AIO_OPTIONS 7
+
+#ifndef WG_WINDOWS
+    extern char **environ;
+    #define POSIX_TIMEOUT 900
+#else
+    #define WIN32_TIMEOUT 900000
+#endif
 
 typedef struct {
     char container_output[WG_PATH_MAX];
@@ -27,6 +35,17 @@ do { \
     memset(wg_compiler_sys.compiler_size_input_path, WATCHDOGS_COMPILER_ZERO, sizeof(wg_compiler_sys.compiler_size_input_path)); \
     memset(wg_compiler_sys.compiler_size_temp, WATCHDOGS_COMPILER_ZERO, sizeof(wg_compiler_sys.compiler_size_temp)); \
 } while(0)
+
+/* Debug flag specific error/warning messages */
+#define OPTION_FLAG_DEBUG_OUT_OF_BOUNDS    "Debug flag index %zu out of bounds"
+#define OPTION_FLAG_DEBUG_NULL_FLAG        "NULL debug flag at index %zu"
+#define OPTION_FLAG_DEBUG_LONG_FLAG        "Long debug flag at index %zu, length exceeds maximum"
+#define OPTION_FLAG_DEBUG_EXCESSIVE_REMOVALS "Excessive flag removals for '%s', possible infinite loop"
+#define OPTION_FLAG_DEBUG_BUFFER_OVERFLOW  "Buffer overflow detected during flag removal"
+
+/* Optional: For general debug operations */
+#define OPTION_FLAG_DEBUG_EMPTY_FLAG       "Empty debug flag encountered"
+#define OPTION_FLAG_DEBUG_FLAG_NOT_FOUND   "Debug flag '%s' not found in configuration"
 
 int
 wg_run_compiler(const char *arg,

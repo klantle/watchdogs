@@ -67,7 +67,7 @@ int __command__(char *chain_pre_command)
 
 _ptr_command:
         if (ptr_command) {
-            wg_free(ptr_command);
+            free(ptr_command);
             ptr_command = NULL;
         }
         if (chain_pre_command && chain_pre_command[0] != '\0') {
@@ -118,9 +118,10 @@ _reexecute_command:
                 println(stdout, "  exit             exit from watchdogs | Usage: \"exit\" "FCOLOUR_CYAN"; Just type 'exit' and you're outta here!");
                 println(stdout, "  kill             refresh terminal watchdogs | Usage: \"kill\" "FCOLOUR_CYAN"; When things get stuck or buggy, this is your fix!");
                 println(stdout, "  title            set-title terminal watchdogs | Usage: \"title\" | [<args>] "FCOLOUR_CYAN"; Personalize your terminal window title.");
-                println(stdout, "  sha256           generate sha256 hash | Usage: \"sha256\" | [<args>] "FCOLOUR_CYAN"; Get that SHA256 hash for your files or text.");
+                println(stdout, "  sha1             generate sha1 hash | Usage: \"sha1\" | [<args>] "FCOLOUR_CYAN"; Get that SHA1 hash for your text.");
+                println(stdout, "  sha256           generate sha256 hash | Usage: \"sha256\" | [<args>] "FCOLOUR_CYAN"; Get that SHA256 hash for your text.");
                 println(stdout, "  crc32            generate crc32 checksum | Usage: \"crc32\" | [<args>] "FCOLOUR_CYAN"; Quick CRC32 checksum generation.");
-                println(stdout, "  djb2             generate djb2 hash file | Usage: \"djb2\" | [<args>] "FCOLOUR_CYAN"; djb2 hashing algorithm at your service.");
+                println(stdout, "  djb2             generate djb2 hash file | Usage: \"djb2\" | [<args>] "FCOLOUR_CYAN"; djb2 hashing for your files.");
                 println(stdout, "  config           re-create watchdogs.toml | Usage: \"config\" "FCOLOUR_CYAN"; Reset your config file to default settings.");
                 println(stdout, "  replicate        dependency installer | Usage: \"replicate\" "FCOLOUR_CYAN"; Downloads & Install Our Dependencies.");
                 println(stdout, "  gamemode         download SA-MP gamemode | Usage: \"gamemode\" "FCOLOUR_CYAN"; Grab some SA-MP gamemodes quickly.");
@@ -143,12 +144,14 @@ _reexecute_command:
                 println(stdout, "kill: refresh terminal watchdogs. | Usage: \"kill\"\n\tWhen things get stuck or buggy, this is your fix!");
             } else if (strcmp(args, "title") == 0) {
                 println(stdout, "title: set-title terminal watchdogs. | Usage: \"title\" | [<args>]\n\tPersonalize your terminal window title.");
+            } else if (strcmp(args, "sha1") == 0) {
+                println(stdout, "sha1: generate sha1. | Usage: \"sha1\" | [<args>]\n\tGet that SHA1 hash for your text.");
             } else if (strcmp(args, "sha256") == 0) {
-                println(stdout, "sha256: generate sha256. | Usage: \"sha256\" | [<args>]\n\tGet that SHA256 hash for your files or text.");
+                println(stdout, "sha256: generate sha256. | Usage: \"sha256\" | [<args>]\n\tGet that SHA256 hash for your text.");
             } else if (strcmp(args, "crc32") == 0) {
                 println(stdout, "crc32: generate crc32. | Usage: \"crc32\" | [<args>]\n\tQuick CRC32 checksum generation.");
             } else if (strcmp(args, "djb2") == 0) {
-                println(stdout, "djb2: generate djb2 hash file. | Usage: \"djb2\" | [<args>]\n\tdjb2 hashing algorithm at your service.");
+                println(stdout, "djb2: generate djb2 hash file. | Usage: \"djb2\" | [<args>]\n\tdjb2 hashing for your files.");
             } else if (strcmp(args, "config") == 0) {
                 println(stdout, "config: re-create watchdogs.toml. | Usage: \"config\"\n\tReset your config file to default settings.");
             } else if (strcmp(args, "replicate") == 0) {
@@ -222,6 +225,25 @@ _reexecute_command:
             }
 
             goto chain_done;
+        } else if (strncmp(ptr_command, "sha1", strlen("sha1")) == 0) {
+            char *args = ptr_command + strlen("sha1");
+            while (*args == ' ') ++args;
+
+            if (*args == '\0') {
+                println(stdout, "Usage: sha1 [<words>]");
+            } else {
+                unsigned char digest[20];
+
+                if (crypto_generate_sha1_hash(args, digest) != 1) {
+                    goto chain_done;
+                }
+
+                printf("        Crypto Input : %s\n", args);
+                printf("Crypto Output (sha1) : ");
+                crypto_print_hex(digest, sizeof(digest), 1);
+            }
+
+            goto chain_done;
         } else if (strncmp(ptr_command, "sha256", strlen("sha256")) == 0) {
             char *args = ptr_command + strlen("sha256");
             while (*args == ' ') ++args;
@@ -273,6 +295,10 @@ _reexecute_command:
             if (*args == '\0') {
                 println(stdout, "Usage: djb2 [<file>]");
             } else {
+                if (path_exists(args) == 0) {
+                    pr_error(stdout, "djb2: " FCOLOUR_CYAN "%s" " - No such file or directory", args);
+                    goto chain_done;
+                }
                 unsigned long djb2_generate;
                 djb2_generate = crypto_djb2_hash_file(args);
 
@@ -885,7 +911,7 @@ n_loop_igm2:
                 }
 
                 if (command) {
-                    wg_free(command);
+                    free(command);
                     command = NULL;
                 }
                 goto chain_done;
@@ -1327,24 +1353,24 @@ wanion_curl_end:
                     curl_easy_cleanup(h);
                 }
                 if (b.data) {
-                    wg_free(b.data);
+                    free(b.data);
                     b.data = NULL;
                 }
 wanion_cleanup:
                 if (wanion_escaped_argument) {
-                    wg_free(wanion_escaped_argument);
+                    free(wanion_escaped_argument);
                     wanion_escaped_argument = NULL;
                 }
                 if (wanion_json_payload) {
-                    wg_free(wanion_json_payload);
+                    free(wanion_json_payload);
                     wanion_json_payload = NULL;
                 }
                 if (size_tokens) {
-                    wg_free(size_tokens);
+                    free(size_tokens);
                     size_tokens = NULL;
                 }
                 if (size_rest_api_perform) {
-                    wg_free(size_rest_api_perform);
+                    free(size_rest_api_perform);
                     size_rest_api_perform = NULL;
                 }
                 goto chain_done;
@@ -1554,7 +1580,7 @@ wanion_cleanup:
                     curl_mime_free(mime);
                     curl_easy_cleanup(curl);
                     if (timestamp) {
-                        wg_free(timestamp);
+                        free(timestamp);
                         timestamp = NULL;
                     }
                 }
@@ -1607,10 +1633,13 @@ send_done:
                 goto chain_try_command;
             }
         } else {
+            int ret;
+            size_t cmd_len;
+            char *command = NULL;
 chain_try_command:
-            int ret = -3;
-            size_t cmd_len = strlen(ptr_command) + WG_PATH_MAX;
-            char *command = wg_malloc(cmd_len);
+            ret = -3;
+            cmd_len = strlen(ptr_command) + WG_PATH_MAX;
+            command = wg_malloc(cmd_len);
             if (!command) goto chain_done;
             if (is_native_windows()) {
                 snprintf(command, cmd_len,
@@ -1645,7 +1674,7 @@ chain_done:
             ptr_command = NULL;
         }
         if (ptr_prompt) {
-            wg_free(ptr_prompt);
+            free(ptr_prompt);
             ptr_prompt = NULL;
         }
 
@@ -1734,6 +1763,7 @@ int main(int argc, char *argv[]) {
 
             wg_free(chain_size_prompt);
             chain_size_prompt = NULL;
+            
             return 0;
         } else {
             chain_ret_main(NULL);

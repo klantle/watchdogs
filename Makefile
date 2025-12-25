@@ -11,7 +11,7 @@ TARGET_NAME    = Watchdogs
 CC       ?= clang
 STRIP    ?= strip
 
-CFLAGS   = -Os -pipe
+CFLAGS   = -O2 -pipe
 LDFLAGS  = -lm -lcurl -lreadline -larchive
 
 ifeq ($(DEBUG_MODE),1)
@@ -127,7 +127,7 @@ strip:
 	@if [ -f "$(OUTPUT)" ]; then $(STRIP) --strip-all $(OUTPUT) || true; fi
 
 compress:
-	@if [ -f "$(OUTPUT)" ] && command -v upx >/dev/null 2>&1; then upx -v --best --lzma "$(OUTPUT)"; fi
+	@if [ -f "$(OUTPUT)" ] && command -v upx >/dev/null 2>&1; then upx -v --fast "$(OUTPUT)"; fi
 
 linux: OUTPUT = watchdogs
 linux:

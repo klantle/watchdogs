@@ -595,7 +595,7 @@ _runners_:
 
                 if (is_termux_env() == 1) {
                     pr_warning(stdout, "Currently Termux is not supported..");
-                    pr_info(stdout, "Alternative for Termux:"
+                    pr_info(stdout, "Alternative's for Termux:"
                           "\n\tOMP Termux (Beta): https://github.com/novusr/omptmux/releases/tag/v1.5.8.3079"
                           "\n\tSA-MP decompilation (work-in-progress): http://github.com/dashr9230/SA-MP");
                 }

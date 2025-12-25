@@ -24,7 +24,7 @@ ifeq ($(DEBUG_MODE),1)
 	STRIP = true
 endif
 
-SRCS = source/extra.c source/debug.c source/curl.c source/units.c source/utils.c source/depend.c \
+SRCS = source/extra.c source/debug.c source/curl.c source/units.c source/utils.c source/replicate.c \
 	source/compiler.c source/archive.c source/library.c source/runner.c source/crypto.c \
 	include/tomlc/toml.c include/cJSON/cJSON.c \
 	source/assembly.S

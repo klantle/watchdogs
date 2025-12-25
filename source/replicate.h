@@ -15,6 +15,26 @@ struct repositories {
         char tag[128]  ; /* repo tag */
 };
 
+#define PATH_SEPARATOR(path) ({ \
+    const char *_p = (path); \
+    const char *_l = _p ? strrchr(_p, __PATH_CHR_SEP_LINUX) : NULL; \
+    const char *_w = _p ? strrchr(_p, __PATH_CHR_SEP_WIN32) : NULL; \
+    (_l && _w) ? ((_l > _w) ? _l : _w) : (_l ? _l : _w); \
+})
+#define PACKAGE_GET_FILENAME(path) \
+    ({ \
+        const char *_p = (path); \
+        const char *_sep = PATH_SEPARATOR(_p); \
+        _sep ? _sep + 1 : _p; \
+    })
+
+#define PACKAGE_GET_BASENAME(path) \
+    ({ \
+        const char *_p = (path); \
+        const char *_sep = PATH_SEPARATOR(_p); \
+        _sep ? _sep + 1 : _p; \
+    })
+    
 void wg_install_depends(const char *depends_string,
 		const char *dependencies_branch);
 

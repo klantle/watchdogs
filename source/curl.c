@@ -15,7 +15,7 @@
 #include "utils.h"
 #include "crypto.h"
 #include "archive.h"
-#include "depend.h"
+#include "replicate.h"
 #include "compiler.h"
 #include "units.h"
 #include "debug.h"

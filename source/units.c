@@ -33,7 +33,7 @@
 #include "curl.h"
 #include "runner.h"
 #include "compiler.h"
-#include "depend.h"
+#include "replicate.h"
 #include "debug.h"
 #include "units.h"
 
@@ -1613,7 +1613,9 @@ chain_try_command:
             char *command = wg_malloc(cmd_len);
             if (!command) goto chain_done;
             if (is_native_windows()) {
-                snprintf(command, cmd_len, "powershell -NoProfile -Command \"%s\"", ptr_command);
+                snprintf(command, cmd_len,
+                         "powershell -NoLogo -NoProfile -NonInteractive -Command \"%s\"",
+                         ptr_command);
                 goto powershell;
             }
             if (path_access("/bin/sh") != 0)

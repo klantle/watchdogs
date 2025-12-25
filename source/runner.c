@@ -13,7 +13,7 @@
 #include "extra.h"
 #include "utils.h"
 #include "crypto.h"
-#include "depend.h"
+#include "replicate.h"
 #include "compiler.h"
 #include "debug.h"
 #include "runner.h"

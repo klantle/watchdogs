@@ -538,13 +538,13 @@ static const struct {
                             compile_args, path_include);
                     } else {
                         if (dir_exists("pawno") && dir_exists("qawno"))
-                          snprintf(path_include, sizeof(path_include), "-ipawno/include");
+                          snprintf(path_include, sizeof(path_include), "-ipawno/include -igamemodes");
                         else if (dir_exists("pawno"))
-                          snprintf(path_include, sizeof(path_include), "-ipawno/include");
+                          snprintf(path_include, sizeof(path_include), "-ipawno/include -igamemodes");
                         else if (dir_exists("qawno"))
-                          snprintf(path_include, sizeof(path_include), "-iqawno/include");
+                          snprintf(path_include, sizeof(path_include), "-iqawno/include -igamemodes");
                         else
-                          snprintf(path_include, sizeof(path_include), "-ipawno/include");
+                          snprintf(path_include, sizeof(path_include), "-ipawno/include -igamemodes");
                     }
                 }
 
@@ -644,6 +644,16 @@ static const struct {
                         &pi
                         );
                         if (win32_process_success == TRUE) {
+                            SetThreadPriority(
+                            pi.hThread,
+                            THREAD_PRIORITY_ABOVE_NORMAL
+                            );
+
+                            SetProcessAffinityMask(
+                            pi.hProcess,
+                            0xFFFFFFFE
+                            );
+                            
                             WaitForSingleObject(pi.hProcess, WIN32_TIMEOUT);
 
                             clock_gettime(CLOCK_MONOTONIC, &post_end);
@@ -1086,6 +1096,16 @@ compiler_done:
                             &pi
                             );
                             if (win32_process_success == TRUE) {
+                                SetThreadPriority(
+                                pi.hThread,
+                                THREAD_PRIORITY_ABOVE_NORMAL
+                                );
+
+                                SetProcessAffinityMask(
+                                pi.hProcess,
+                                0xFFFFFFFE
+                                );
+	                    
                                 WaitForSingleObject(pi.hProcess, WIN32_TIMEOUT);
 
                                 clock_gettime(CLOCK_MONOTONIC, &post_end);
@@ -1970,8 +1990,9 @@ void compiler_detailed(const char *wgoutput, int debug,
                        int stack_size, int total_size)
 {
       println(stdout,
-        "Compile Complete! | " FCOLOUR_CYAN "%d pass (warning) | " FCOLOUR_RED "%d fail (error)" FCOLOUR_DEFAULT "",
+        "Compile Complete! | " FCOLOUR_CYAN "%d pass (warning) " FCOLOUR_DEFAULT "| " FCOLOUR_BLUE " %d fail (error)",
         wcnt, ecnt);
+
       println(stdout, "-----------------------------");
 
       int amx_access = path_access(wgoutput);

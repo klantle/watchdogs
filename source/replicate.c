@@ -1101,7 +1101,7 @@ static void package_include_prints( const char *package_include ) {
  * Handles file relocation and configuration updates
  */
 void dump_file_type( const char *dump_path, char *dump_pattern,
-				    char *dump_exclude, char *dump_pwd, char *dump_place, int dump_root )
+				    char *dump_exclude, char *dump_loc, char *dump_place, int dump_root )
 {
 		wg_sef_fdir_memset_to_null();
 
@@ -1131,7 +1131,8 @@ void dump_file_type( const char *dump_path, char *dump_pattern,
 				int rate_has_prefix = REPLICATE_RATE_ZERO;
 
 				/* toml parsing a value */
-				pr_info(stdout, "Loaded root patterns: %s", wgconfig.wg_toml_root_patterns);
+				pr_info(stdout,
+					"Loaded root patterns: " FCOLOUR_CYAN "%s", wgconfig.wg_toml_root_patterns);
 
 				const char* match_root_keywords = wgconfig.wg_toml_root_patterns;
 				while ( *match_root_keywords ) {
@@ -1164,75 +1165,75 @@ void dump_file_type( const char *dump_path, char *dump_pattern,
 						snprintf( command, sizeof( command ),
 								"move "
 								"/Y \"%s\" \"%s\\%s\\\"",
-								wgconfig.wg_sef_found_list[i], dump_pwd, dump_place );
+								wgconfig.wg_sef_found_list[i], dump_loc, dump_place );
 
 						wg_run_command( command );
 				#else
 						snprintf( command, sizeof( command ),
 								"mv "
 								"-f \"%s\" \"%s/%s/\"",
-								wgconfig.wg_sef_found_list[i], dump_pwd, dump_place );
+								wgconfig.wg_sef_found_list[i], dump_loc, dump_place );
 
 						wg_run_command( command );
 				#endif
 						pr_color( stdout, FCOLOUR_CYAN, " [REPLICATE] Plugins %s -> %s - %s\n",
-								 wgconfig.wg_sef_found_list[i], dump_pwd, dump_place );
+								 wgconfig.wg_sef_found_list[i], dump_loc, dump_place );
 				} else {/* Move to current directory */
 						if ( rate_has_prefix ) {
 						#ifdef WG_WINDOWS
 								snprintf( command, sizeof( command ),
 										"move "
 										"/Y \"%s\" \"%s\"",
-										wgconfig.wg_sef_found_list[i], dump_pwd );
+										wgconfig.wg_sef_found_list[i], dump_loc );
 
 								wg_run_command( command );
 						#else
 								snprintf( command, sizeof( command ),
 										"mv "
 										"-f \"%s\" \"%s\"",
-										wgconfig.wg_sef_found_list[i], dump_pwd );
+										wgconfig.wg_sef_found_list[i], dump_loc );
 
 								wg_run_command( command );
 						#endif
 								pr_color( stdout, FCOLOUR_CYAN, " [REPLICATE] Plugins %s -> %s\n",
-												wgconfig.wg_sef_found_list[i], dump_pwd );
+												wgconfig.wg_sef_found_list[i], dump_loc );
 						} else {
 								if ( path_exists( "plugins" ) == 1 ) {
 								#ifdef WG_WINDOWS
 										snprintf( command, sizeof( command ),
 												"move "
 												"/Y \"%s\" \"%s\\plugins\"",
-												wgconfig.wg_sef_found_list[i], dump_pwd );
+												wgconfig.wg_sef_found_list[i], dump_loc );
 
 										wg_run_command( command );
 
 										pr_color( stdout, FCOLOUR_CYAN, " [REPLICATE] Plugins %s -> %s\\plugins\n",
-														wgconfig.wg_sef_found_list[i], dump_pwd );
+														wgconfig.wg_sef_found_list[i], dump_loc );
 								#else
 										snprintf( command, sizeof( command ),
 												"mv "
 												"-f \"%s\" \"%s/plugins\"",
-												wgconfig.wg_sef_found_list[i], dump_pwd );
+												wgconfig.wg_sef_found_list[i], dump_loc );
 
 										wg_run_command( command );
 
 										pr_color( stdout, FCOLOUR_CYAN, " [REPLICATE] Plugins %s -> %s/plugins\n",
-														wgconfig.wg_sef_found_list[i], dump_pwd );
+														wgconfig.wg_sef_found_list[i], dump_loc );
 								#endif
 								}
 						}
 
 						if ( rate_has_prefix ) {
 								pr_color( stdout, FCOLOUR_CYAN, " [REPLICATE] Plugins %s -> %s\n",
-												wgconfig.wg_sef_found_list[i], dump_pwd );
+												wgconfig.wg_sef_found_list[i], dump_loc );
 						} else {
 								if ( path_exists( "plugins" ) == 1 ) {
 								#ifdef WG_WINDOWS
 										pr_color( stdout, FCOLOUR_CYAN, " [REPLICATE] Plugins %s -> %s\\plugins\n",
-												wgconfig.wg_sef_found_list[i], dump_pwd );
+												wgconfig.wg_sef_found_list[i], dump_loc );
 								#else
 										pr_color( stdout, FCOLOUR_CYAN, " [REPLICATE] Plugins %s -> %s/plugins\n",
-												wgconfig.wg_sef_found_list[i], dump_pwd );
+												wgconfig.wg_sef_found_list[i], dump_loc );
 								#endif
 								}
 						}
@@ -1270,7 +1271,7 @@ void package_cjson_additem( cJSON *p1, int p2, cJSON *p3 )
  * Organize dependency files into appropriate directories
  * Moves plugins, includes, and components to their proper locations
  */
-void package_move_files( const char *package_dir )
+void package_move_files( const char *package_dir, const char *package_loc )
 {
 		/* Char */
 		char root_dir[WG_PATH_MAX], includes[WG_MAX_PATH],
@@ -1294,10 +1295,6 @@ void package_move_files( const char *package_dir )
 
 		/* Reset */
 		fdir_counts = REPLICATE_RATE_ZERO;
-
-		/* CWD/PWD */
-		char *fetch_pwd = NULL;
-		fetch_pwd = wg_procure_pwd();
 
 		/* Stack-based directory traversal for finding nested include files */
 		struct stat dir_st;
@@ -1378,22 +1375,22 @@ void package_move_files( const char *package_dir )
 						snprintf( command, sizeof( command ),
 								"move "
 								"/Y \"%s\" \"%s\\%s\\\"",
-								wgconfig.wg_sef_found_list[i], fetch_pwd, include_path );
+								wgconfig.wg_sef_found_list[i], package_loc, include_path );
 
 						wg_run_command( command );
 
 						pr_color( stdout, FCOLOUR_CYAN, " [REPLICATE] Include %s\\? -> %s - %s\\?\n",
-								wgconfig.wg_sef_found_list[i], fetch_pwd, include_path );
+								wgconfig.wg_sef_found_list[i], package_loc, include_path );
 				#else
 						snprintf( command, sizeof( command ),
 								"mv "
 								"-f \"%s\" \"%s/%s/\"",
-								wgconfig.wg_sef_found_list[i], fetch_pwd, include_path );
+								wgconfig.wg_sef_found_list[i], package_loc, include_path );
 
 						wg_run_command( command );
 
 						pr_color( stdout, FCOLOUR_CYAN, " [REPLICATE] Include %s/? -> %s - %s/?\n",
-								wgconfig.wg_sef_found_list[i], fetch_pwd, include_path );
+								wgconfig.wg_sef_found_list[i], package_loc, include_path );
 				#endif
 
 						package_set_hash( packages,
@@ -1418,22 +1415,22 @@ void package_move_files( const char *package_dir )
 						snprintf( command, sizeof( command ),
 								"move "
 								"/Y \"%s\" \"%s\\%s\\\"",
-								wgconfig.wg_sef_found_list[i], fetch_pwd, include_path );
+								wgconfig.wg_sef_found_list[i], package_loc, include_path );
 
 						wg_run_command( command );
 
 						pr_color( stdout, FCOLOUR_CYAN, " [REPLICATE] Include %s\\? -> %s - %s\\?\n",
-								wgconfig.wg_sef_found_list[i], fetch_pwd, include_path );
+								wgconfig.wg_sef_found_list[i], package_loc, include_path );
 				#else
 						snprintf( command, sizeof( command ),
 								"mv "
 								"-f \"%s\" \"%s/%s/\"",
-								wgconfig.wg_sef_found_list[i], fetch_pwd, include_path );
+								wgconfig.wg_sef_found_list[i], package_loc, include_path );
 
 						wg_run_command( command );
 
 						pr_color( stdout, FCOLOUR_CYAN, " [REPLICATE] Include %s/? -> %s - %s/?\n",
-								wgconfig.wg_sef_found_list[i], fetch_pwd, include_path );
+								wgconfig.wg_sef_found_list[i], package_loc, include_path );
 				#endif
 
 						package_set_hash( packages,
@@ -1455,22 +1452,23 @@ void package_move_files( const char *package_dir )
 		while ( ( pos = strstr( full_path, "include/" ) ) != NULL )
 				memmove( pos, pos + strlen( "include/" ),
 						strlen( pos + strlen( "include/" ) ) + 1 );
-
+		
+		char *size_location = strdup(package_loc);
 		/* Move plugin files */
 #ifndef WG_WINDOWS
-		dump_file_type( plugins, "*.dll", NULL, fetch_pwd, "/plugins", 0 );
-		dump_file_type( plugins, "*.so", NULL, fetch_pwd, "/plugins", 0 );
+		dump_file_type( plugins, "*.dll", NULL, size_location, "/plugins", 0 );
+		dump_file_type( plugins, "*.so", NULL, size_location, "/plugins", 0 );
 #else
-		dump_file_type( plugins, "*.dll", NULL, fetch_pwd, "\\plugins", 0 );
-		dump_file_type( plugins, "*.so", NULL, fetch_pwd, "\\plugins", 0 );
+		dump_file_type( plugins, "*.dll", NULL, size_location, "\\plugins", 0 );
+		dump_file_type( plugins, "*.so", NULL, size_location, "\\plugins", 0 );
 #endif
 
 #if defined(_DBG_PRINT)
 		println(stdout, "plug path: %s", plugins);
 #endif
 		/* Move root-level plugin files */
-		dump_file_type( package_dir, "*.dll", "plugins", fetch_pwd, "", 1 );
-		dump_file_type( package_dir, "*.so", "plugins", fetch_pwd, "", 1 );
+		dump_file_type( package_dir, "*.dll", "plugins", size_location, "", 1 );
+		dump_file_type( package_dir, "*.so", "plugins", size_location, "", 1 );
 
 		/* Handle open.mp specific components */
 		if ( wg_server_env() == 2 ) {
@@ -1479,8 +1477,8 @@ void package_move_files( const char *package_dir )
 		#else
 				snprintf( includes, sizeof( includes ), "qawno/include" );
 		#endif
-				dump_file_type( components, "*.dll", NULL, fetch_pwd, "components", 0 );
-				dump_file_type( components, "*.so", NULL, fetch_pwd, "components", 0 );
+				dump_file_type( components, "*.dll", NULL, size_location, "components", 0 );
+				dump_file_type( components, "*.so", NULL, size_location, "components", 0 );
 		} else {
 		#ifdef WG_WINDOWS
 				snprintf( includes, sizeof( includes ), "pawno\\include" );
@@ -1663,7 +1661,7 @@ void package_move_files( const char *package_dir )
  * Prepare and organize dependencies after download
  * Creates necessary directories and initiates file organization
  */
-void wg_apply_depends( const char *depends_name )
+void wg_apply_depends( const char *depends_name, const char *depends_location )
 {
 		char _dependencies[WG_PATH_MAX];
 		char package_dir[WG_PATH_MAX];
@@ -1690,35 +1688,47 @@ void wg_apply_depends( const char *depends_name )
 		println(stdout, "dency dir: %s", package_dir);
 #endif
 
+		char size_depends_location[WG_PATH_MAX * 2];
+
 		/* Create necessary directories based on server environment */
 		if ( wg_server_env() == 1 ) {
-				if ( dir_exists( "pawno/include" ) == REPLICATE_RATE_ZERO ) {
-						wg_mkdir( "pawno/include" );
+				snprintf(size_depends_location, sizeof(size_depends_location),
+						"%s/pawno/include", depends_location);
+				if ( dir_exists( size_depends_location ) == REPLICATE_RATE_ZERO ) {
+						wg_mkdir( size_depends_location );
 				}
-				if ( dir_exists( "plugins" ) == REPLICATE_RATE_ZERO ) {
-						MKDIR( "plugins" );
+				snprintf(size_depends_location, sizeof(size_depends_location),
+						"%s/plugins", depends_location);
+				if ( dir_exists( size_depends_location ) == REPLICATE_RATE_ZERO ) {
+						wg_mkdir( size_depends_location );
 				}
 		} else if ( wg_server_env() == 2 ) {
-				if ( dir_exists( "qawno/include" ) == REPLICATE_RATE_ZERO ) {
-						wg_mkdir( "qawno/include" );
+				snprintf(size_depends_location, sizeof(size_depends_location),
+						"%s/qawno/include", depends_location);
+				if ( dir_exists( size_depends_location ) == REPLICATE_RATE_ZERO ) {
+						wg_mkdir( size_depends_location );
 				}
-				if ( dir_exists( "plugins" ) == REPLICATE_RATE_ZERO ) {
-						MKDIR( "plugins" );
+				snprintf(size_depends_location, sizeof(size_depends_location),
+						"%s/plugins", depends_location);
+				if ( dir_exists( size_depends_location ) == REPLICATE_RATE_ZERO ) {
+						wg_mkdir( size_depends_location );
 				}
-				if ( dir_exists( "components" ) == REPLICATE_RATE_ZERO ) {
-						MKDIR( "components" );
+				snprintf(size_depends_location, sizeof(size_depends_location),
+						"%s/components", depends_location);
+				if ( dir_exists( size_depends_location ) == REPLICATE_RATE_ZERO ) {
+						wg_mkdir( size_depends_location );
 				}
 		}
 
 		/* Organize dependency files */
-		package_move_files( package_dir );
+		package_move_files( package_dir, depends_location );
 }
 
 /*
  * Main dependency installation function
  * Parses dependency strings, downloads archives, and applies dependencies
  */
-void wg_install_depends( const char *packages, const char *branch )
+void wg_install_depends( const char *packages, const char *branch, const char *where )
 {
 		char buffer[1024];
 		char package_url[1024];
@@ -1834,7 +1844,41 @@ void wg_install_depends( const char *packages, const char *branch )
 
 				/* Time the dependency installation process */
 				wg_download_file( package_url, package_name );
-				wg_apply_depends( package_name );
+				if (where == NULL || where[0] == '\0')
+					{
+						static int k = 0;
+						static char *__location = NULL;
+						if (! k ) {
+							printf("\n");
+							println(stdout, FCOLOUR_YELLOW "==== Location is Null: %s ====", where);
+							printf(">>> where you want? just enter if you want install in root...\n");
+							printf("   example: " FCOLOUR_CYAN "../storage/downloads/myproj" FCOLOUR_DEFAULT "\n");
+							printf("            " FCOLOUR_CYAN "myfolder/myproj" FCOLOUR_DEFAULT "\n");
+							fflush(stdout);
+							char *locations = readline("> ");
+							if (!locations || locations[0] == '.') {
+								static char *fetch_pwd = NULL;
+								fetch_pwd = wg_procure_pwd();
+								__location = strdup(fetch_pwd);
+								wg_apply_depends( package_name, fetch_pwd );
+							} else {
+								if (dir_exists(locations) == 0) {
+									wg_mkdir(locations);
+								}
+								__location = strdup(locations);
+								wg_apply_depends ( package_name, locations );
+							}
+							++k;
+						} else {
+							wg_apply_depends ( package_name, __location );
+						}
+					}
+				else {
+					if (dir_exists(where) == 0) {
+						wg_mkdir(where);
+					}
+					wg_apply_depends ( package_name, where );
+				}
 		}
 
 done:

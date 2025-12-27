@@ -293,7 +293,7 @@ void wg_server_crash_check(void) {
                                 fflush(stdout);
                                 char *downgrading = readline("   answer (y/n): ");
                                 if (downgrading && (downgrading[0] == '\0' || strcmp(downgrading, "Y") == 0 || strcmp(downgrading, "y") == 0)) {
-                                    wg_install_depends("CyberMor/sampvoice?v3.0-alpha", "master");
+                                    wg_install_depends("CyberMor/sampvoice?v3.0-alpha", "master", NULL);
                                 }
                                 wg_free(downgrading);
                             }
@@ -598,7 +598,7 @@ wg_skip_fixed:
               confirm = readline("Y/n ");
               if (confirm && (confirm[0] == '\0' || strfind(confirm, "y", true))) {
                   wg_free(confirm);
-                  wg_install_depends("Y-Less/samp-plugin-crashdetect?newer", "master");
+                  wg_install_depends("Y-Less/samp-plugin-crashdetect?newer", "master", NULL);
               } else {
                   if (confirm) wg_free(confirm);
                   int _wg_crash_ck = path_access(".watchdogs/crashdetect");

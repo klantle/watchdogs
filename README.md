@@ -505,6 +505,15 @@ replicate repo/user?newer
 replicate repo/user --branch master
 ```
 
+**Install specific location:**
+```yaml
+# root
+replicate repo/user --save .
+# specific
+replicate repo/user --save ../parent/myproj
+replicate repo/user --save myfol/myproj
+```
+
 ## Make Commands Reference
 
 ```yaml

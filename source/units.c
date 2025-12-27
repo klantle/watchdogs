@@ -323,31 +323,50 @@ _reexecute_command:
             goto chain_done;
         } else if (strncmp(ptr_command, "replicate", strlen("replicate")) == 0) {
             wg_console_title("Watchdogs | @ replicate depends");
-
             char *args = ptr_command + strlen("replicate");
             while (*args == ' ') ++args;
 
             int is_null_args = -1;
-            char *args2 = NULL;
-            args2 = strtok(args, " ");
-            if (args2 == NULL || args[0] == '\0' || strlen(args2) < 1 || strcmp(args2, ".") == 0)
-              is_null_args = 1;
+            if (args[0] == '\0' || strlen(args) < 1)
+                is_null_args = 1;
 
+            char *__args = strdup(args);
             char *raw_branch = NULL;
+            char *raw_save = NULL;
+
+            char *args2 = strtok(__args, " ");
+            if (args2 == NULL || strcmp(args2, ".") == 0)
+                is_null_args = 1;
+
             char *procure_args = strtok(args, " ");
             while (procure_args) {
                 if (strcmp(procure_args, "--branch") == 0) {
                     procure_args = strtok(NULL, " ");
                     if (procure_args) raw_branch = procure_args;
+                } else if (strcmp(procure_args, "--save") == 0) {
+                    procure_args = strtok(NULL, " ");
+                    if (procure_args) raw_save = procure_args;
                 }
                 procure_args = strtok(NULL, " ");
             }
 
+            if (raw_save && strcmp(raw_save, ".") == 0) {
+                static char *fetch_pwd = NULL;
+                fetch_pwd = wg_procure_pwd();
+                raw_save = strdup(fetch_pwd);
+            }
+
+            wg_free(__args);
+
             if (is_null_args != 1) {
-                if (raw_branch)
-                    wg_install_depends(args, raw_branch);
+                if (raw_branch && raw_save)
+                    wg_install_depends(args, raw_branch, raw_save);
+                else if (raw_branch)
+                    wg_install_depends(args, raw_branch, NULL);
+                else if (raw_save)
+                    wg_install_depends(args, "main", raw_save);
                 else
-                    wg_install_depends(args, "main");
+                    wg_install_depends(args, "main", NULL);
             } else {
                 char errbuf[WG_PATH_MAX];
                 toml_table_t *wg_toml_config;
@@ -413,11 +432,14 @@ free_val:
 
                 pr_info(stdout, "Loaded packages: %s", wgconfig.wg_toml_packages);
 
-                if (raw_branch)
-                    wg_install_depends(wgconfig.wg_toml_packages, raw_branch);
+                if (raw_branch && raw_save)
+                    wg_install_depends(wgconfig.wg_toml_packages, raw_branch, raw_save);
+                else if (raw_branch)
+                    wg_install_depends(wgconfig.wg_toml_packages, raw_branch, NULL);
+                else if (raw_save)
+                    wg_install_depends(wgconfig.wg_toml_packages, "main", raw_save);
                 else
-                    wg_install_depends(wgconfig.wg_toml_packages, "main");
-
+                    wg_install_depends(wgconfig.wg_toml_packages, "main", NULL);
 out:
                 toml_free(wg_toml_config);
             }

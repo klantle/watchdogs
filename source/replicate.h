@@ -38,6 +38,6 @@ struct _repositories {
         _sep ? _sep + 1 : _p; \
     })
     
-void wg_install_depends(const char *packages, const char *branch);
+void wg_install_depends(const char *packages, const char *branch, const char *where);
 
 #endif

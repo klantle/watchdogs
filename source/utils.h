@@ -111,6 +111,13 @@
     chmod(wx, 0777)
 #endif
 
+#define PATH_SEPARATOR(sep_path) ({ \
+    const char *_p = (sep_path); \
+    const char *_l = _p ? strrchr(_p, __PATH_CHR_SEP_LINUX) : NULL; \
+    const char *_w = _p ? strrchr(_p, __PATH_CHR_SEP_WIN32) : NULL; \
+    (_l && _w) ? ((_l > _w) ? _l : _w) : (_l ? _l : _w); \
+})
+
 #define __maybe_unused__ __attribute__((unused))
 
 /* Dirent constants */
@@ -212,6 +219,10 @@ void* wg_malloc(size_t size);
 void* wg_calloc(size_t count, size_t size);
 void* wg_realloc(void* ptr, size_t size);
 void  wg_free(void* ptr);
+
+void path_sym_convert(char *path);
+const char *try_get_basename(const char *path);
+const char *try_get_filename(const char *path);
 
 char *wg_procure_pwd(void);
 char* wg_masked_text(int reveal, const char *text);

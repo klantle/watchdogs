@@ -272,7 +272,6 @@ void* wg_realloc(void* ptr, size_t size) {
 		return new_ptr;
 }
 
-
 /**
  * Safely free memory. Checks if pointer is not NULL before freeing
  * to avoid double-free issues.
@@ -287,6 +286,39 @@ void wg_free(void* ptr) {
 			*   ptr = NULL;
 			*/
 		}
+}
+
+/**
+ * Convert Windows path separators to Linux path separators in-place.
+ * Replaces all backslashes ('\') with forward slashes ('/').
+ */
+void path_sym_convert(char *path) {
+		char *pos;
+		for (pos = path; *pos; pos++) {
+			if (*pos == __PATH_CHR_SEP_WIN32)
+				*pos = __PATH_CHR_SEP_LINUX;
+		}
+}
+
+/**
+ * Extract the filename (including extension) from a path.
+ * Returns a pointer to the character after the last path separator,
+ * or the beginning of the string if no separator is found.
+ */
+const char *try_get_filename(const char *path) {
+		const char *__name = PATH_SEPARATOR(path);
+		return __name ? __name + 1 : path;
+}
+
+/**
+ * Extract the basename (filename without directory) from a path.
+ * This appears to be functionally identical to try_get_filename().
+ * Returns a pointer to the character after the last path separator,
+ * or the beginning of the string if no separator is found.
+ */
+const char *try_get_basename(const char *path) {
+		const char *p = PATH_SEPARATOR(path);
+		return p ? p + 1 : path;
 }
 
 /*
@@ -1902,7 +1934,7 @@ int wg_toml_configs(void)
 		if (this_proc_file) fclose(this_proc_file);
 
 		if (!wg_toml_config) {
-			pr_error(stdout, "failed to parse the watchdogs.toml....: %s", wg_buf_err);
+			pr_error(stdout, "failed to parse the watchdogs.toml...: %s", wg_buf_err);
 			__debug_function(); /* call debugger function */
 			chain_ret_main(NULL); /* Error handling */
 		}

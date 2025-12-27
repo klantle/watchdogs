@@ -3,52 +3,70 @@
 -> create dir: ".vscode" in root
  -> creae file: "tasks.json" in .vscode/
 put:
-    {
-        "version": "2.0.0",
-        "tasks": [
-            {
-                "label": "Run a bat file",
-                "type": "shell",
-                "command": "${workspaceFolder}/windows-native.cmd",
-                "group": {
-                    "kind": "build",
-                    "isDefault": false
-                },
-                "presentation": {
-                    "echo": true,
-                    "reveal": "always",
-                    "focus": false,
-                    "panel": "shared",
-                    "showReuseMessage": true,
-                    "clear": true
-                },
-                "problemMatcher": []
+{
+    "label": "Run a bat file",
+    "type": "shell",
+    "command": "cmd.exe",
+    "args": ["/c", "${workspaceFolder}/windows-native.cmd"],
+    "group": {
+        "kind": "build",
+        "isDefault": false
+    },
+    "presentation": {
+        "echo": true,
+        "reveal": "always",
+        "focus": false,
+        "panel": "shared",
+        "showReuseMessage": true,
+        "clear": true
+    },
+    "problemMatcher": [
+        {
+            "owner": "custom",
+            "fileLocation": ["relative", "${workspaceFolder}"],
+            "pattern": {
+                "regexp": "^(.*):(\\d+):(\\d+):\\s+(error|warning|info):\\s+(.*)$",
+                "file": 1,
+                "line": 2,
+                "column": 3,
+                "severity": 4,
+                "message": 5
             }
-        ]
-    }
+        }
+    ]
+}
 put (linux):
-    {
-        "version": "2.0.0",
-        "tasks": [
-            {
-                "label": "Run a linux file",
-                "type": "shell",
-                "command": "${workspaceFolder}/watchdogs",
-                "group": {
-                    "kind": "build",
-                    "isDefault": false
-                },
-                "presentation": {
-                    "echo": true,
-                    "reveal": "always",
-                    "focus": false,
-                    "panel": "shared",
-                    "showReuseMessage": true,
-                    "clear": true
-                },
-                "problemMatcher": []
+{
+    "label": "Run a shell file",
+    "type": "shell",
+    "command": "./watchdogs",
+    "args": ["${workspaceFolder}/watchdogs"],
+    "group": {
+        "kind": "build",
+        "isDefault": false
+    },
+    "presentation": {
+        "echo": true,
+        "reveal": "always",
+        "focus": false,
+        "panel": "shared",
+        "showReuseMessage": true,
+        "clear": true
+    },
+    "problemMatcher": [
+        {
+            "owner": "custom",
+            "fileLocation": ["relative", "${workspaceFolder}"],
+            "pattern": {
+                "regexp": "^(.*):(\\d+):(\\d+):\\s+(error|warning|info):\\s+(.*)$",
+                "file": 1,
+                "line": 2,
+                "column": 3,
+                "severity": 4,
+                "message": 5
             }
-        ]
-    }
+        }
+    ]
+}
 -> save.
 -> usage: CTRL & SHIFT + B

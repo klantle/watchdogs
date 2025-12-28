@@ -103,7 +103,7 @@ void destroy_archive(const char *filename)
            "-rf %s",
            filename);
 #endif
-  wg_run_command(command);
+  wg_exec_command(command);
   return;
 }
 
@@ -141,7 +141,7 @@ void buf_init(struct buf *b)
   }
   b->data=wg_malloc(WG_MAX_PATH);
   if(!b->data) {
-    chain_ret_main(NULL);
+    unit_ret_main(NULL);
   }
   b->len=0;
   b->allocated=(b->data)?WG_MAX_PATH:0;
@@ -207,7 +207,7 @@ void memory_struct_init(struct memory_struct *mem)
   }
   mem->memory=wg_malloc(WG_MAX_PATH);
   if(!mem->memory) {
-    chain_ret_main(NULL);
+    unit_ret_main(NULL);
   }
   mem->size=0;
   mem->allocated=mem->memory?WG_MAX_PATH:0;
@@ -263,7 +263,7 @@ int package_url_checking(const char* url,const char* github_token)
   CURLcode res;
   long response_code=0;
   struct curl_slist* headers=NULL;
-  char wg_buf_err[CURL_ERROR_SIZE]={0};
+  char wg_buffer_error[CURL_ERROR_SIZE]={0};
 
   printf("\tCreate & Checking URL: %s...\t\t[All good]\n",url);
 
@@ -287,13 +287,13 @@ int package_url_checking(const char* url,const char* github_token)
   curl_easy_setopt(curl,CURLOPT_FOLLOWLOCATION,1L);
   curl_easy_setopt(curl,CURLOPT_TIMEOUT,30L);
 
-  printf("   Connecting... ");
+  printf("   Try Connecting... ");
   fflush(stdout);
 
   res=curl_easy_perform(curl);
   curl_easy_getinfo(curl,CURLINFO_RESPONSE_CODE,&response_code);
 
-  curl_easy_setopt(curl,CURLOPT_ERRORBUFFER,wg_buf_err);
+  curl_easy_setopt(curl,CURLOPT_ERRORBUFFER,wg_buffer_error);
 
   curl_verify_cacert_pem(curl);
 
@@ -302,18 +302,18 @@ int package_url_checking(const char* url,const char* github_token)
   res=curl_easy_perform(curl);
   curl_easy_getinfo(curl,CURLINFO_RESPONSE_CODE,&response_code);
 
-  if(response_code==WG_CURL_RESPONSE_OK&&strlen(wg_buf_err)==0) {
+  if(response_code==WG_CURL_RESPONSE_OK&&strlen(wg_buffer_error)==0) {
     printf("cURL result: %s\t\t[All good]\n",curl_easy_strerror(res));
     printf("Response code: %ld\t\t[All good]\n",response_code);
   }
   else {
-    if(strlen(wg_buf_err)>0) {
-      printf("Error: %s\t\t[Fail]\n",wg_buf_err);
-      __debug_function();
+    if(strlen(wg_buffer_error)>0) {
+      printf("Error: %s\t\t[Fail]\n",wg_buffer_error);
+      __create_logging();
     }
     else {
       printf("cURL result: %s\t\t[Fail]\n",curl_easy_strerror(res));
-      __debug_function();
+      __create_logging();
     }
   }
 
@@ -615,14 +615,14 @@ static void update_library_environment(const char *lib_path)
   snprintf(command,sizeof(command),
            "export LD_LIBRARY_PATH=%s:$LD_LIBRARY_PATH",
            lib_path);
-  wg_run_command(command);
+  wg_exec_command(command);
   if(strfind(shell_rc,"bash",true)) {
     snprintf(command,sizeof(command),"bash -c \"source ~/%s\"",shell_rc);
-    wg_run_command(command);
+    wg_exec_command(command);
   }
   else if(strfind(shell_rc,"zsh",true)) {
     snprintf(command,sizeof(command),"zsh -c \"source ~/%s\"",shell_rc);
-    wg_run_command(command);
+    wg_exec_command(command);
   }
 }
 
@@ -723,7 +723,7 @@ void wg_apply_pawncc(void)
   dest_dir=get_compiler_directory();
   if(!dest_dir) {
     pr_error(stdout,"Failed to create compiler directory");
-    __debug_function();
+    __create_logging();
     goto apply_done;
   }
 
@@ -802,7 +802,7 @@ void wg_apply_pawncc(void)
     snprintf(command,sizeof(command),
              "rm -rf %s",
              pawncc_dir_source);
-  wg_run_command(command);
+  wg_exec_command(command);
 
   if(dir_exists(pawncc_dir_source)!=0)
     remove(pawncc_dir_source);
@@ -818,60 +818,24 @@ void wg_apply_pawncc(void)
 
   pr_info(stdout,"Congratulations! - Done.");
 
-  pr_color(stdout,FCOLOUR_CYAN,"Run compiler now? (y/n):");
+  pr_color(stdout,FCOLOUR_CYAN,"Compile now? (y/n):");
   char *compile_now=readline(" ");
   if(compile_now[0]=='\0'||compile_now[0]=='Y'||compile_now[0]=='y') {
     wg_free(compile_now);
-    pr_color(stdout,FCOLOUR_CYAN,"Please input the pawn file\n\t* "
-            "(just enter for %s - input E/e to exit):",wgconfig.wg_toml_proj_input);
-    char *gamemode_compile=readline(" ");
-
-    const char *target=(strlen(gamemode_compile)<1)?
-                      wgconfig.wg_toml_proj_input:gamemode_compile;
-
-    char *extension=strrchr(target,'.');
-    if(extension) *extension='\0';
-
-    char size_gamemode[WG_PATH_MAX];
-    snprintf(size_gamemode,sizeof(size_gamemode),
-            (target==wgconfig.wg_toml_proj_input)?
-            "%s.pwn":"gamemodes/%s.pwn",target);
-
-    if(!path_access(size_gamemode)) {
-      pr_info(stdout,"File: %s not found!.. creating...",size_gamemode);
-
-      if(dir_exists("gamemodes")==0)
-        MKDIR("gamemodes");
-
-      FILE *test=fopen(size_gamemode,"w+");
-      if(test) {
-        wg_free(wgconfig.wg_toml_proj_input);
-        wgconfig.wg_toml_proj_input=strdup(size_gamemode);
-        const char *default_code=
-          "native printf(const format[], {Float,_}:...);\n"
-          "main() {\n"
-          "\tprintf(\"Hello, World!\");\n"
-          "}";
-        fwrite(default_code,1,strlen(default_code),test);
-        fclose(test);
-      }
+    pr_color(stdout,FCOLOUR_CYAN,"Please input the pawn file with dot type (.pwn/.p):\n");
+    printf(FCOLOUR_CYAN ">>>");
+    char *compile_target = readline(" ");
+    if (compile_target) {
+      const char *argsc[]={NULL,compile_target,NULL,NULL,NULL,NULL,NULL,NULL,NULL};
+      wg_exec_compiler(argsc[0],argsc[1],argsc[2],argsc[3],
+                      argsc[4],argsc[5],argsc[6],argsc[7],
+                      argsc[8]);
     }
-    else {
-      wg_free(wgconfig.wg_toml_proj_input);
-      wgconfig.wg_toml_proj_input=strdup(size_gamemode);
-    }
-
-    wg_run_compiler(
-      NULL,".",NULL,NULL,NULL,NULL,NULL,NULL,NULL
-    );
-    wg_free(gamemode_compile);
-  }
-  else {
-    wg_free(compile_now);
+    wg_free(compile_target);
   }
 
 apply_done:
-  chain_ret_main(NULL);
+  unit_ret_main(NULL);
 }
 
 static int prompt_apply_pawncc(void)
@@ -954,7 +918,7 @@ static void parsing_filename(char *filename)
 
 int wg_download_file(const char *url,const char *output_filename)
 {
-  __debug_function();
+  __create_logging();
 
   if(!url||!output_filename) {
     pr_color(stdout,FCOLOUR_RED,"Error: Invalid URL or filename\n");

@@ -29,7 +29,7 @@ fi
 echo "Now in: $(pwd)"
 echo
 
-rand=$((100000 + RANDOM % 900000))
+rand=$(date +%s%N | tail -c 7)
 
 if ! command -v git >/dev/null 2>&1; then
   echo "git not found! install first.."

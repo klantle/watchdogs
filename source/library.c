@@ -28,7 +28,8 @@ char library_options_list(const char *title,const char **items,const char *keys,
 
   while(true) {
     char *input=NULL;
-    input=readline("Select option: ");
+    printf(FCOLOUR_CYAN ">>>");
+    input = readline(" ");
     if(!input)
       continue;
 
@@ -144,7 +145,7 @@ static int pawncc_handle_standard_installation(const char *platform)
 
 int wg_install_pawncc(const char *platform)
 {
-  __debug_function();
+  __create_logging();
 
   if(!platform) {
     pr_error(stdout,"Platform parameter is NULL");
@@ -176,7 +177,7 @@ loop_ipcc2:
 
 int wg_install_server(const char *platform)
 {
-  __debug_function();
+  __create_logging();
 
   if(strcmp(platform,"linux")!=0&&strcmp(platform,"windows")!=0) {
     pr_error(stdout,"Unsupported platform: %s",platform);

@@ -1,4 +1,5 @@
-name: C/C++ CI
+name: C/C++ CI (Multi-Platform)
+
 permissions:
   contents: read
   pull-requests: write
@@ -10,7 +11,8 @@ on:
     branches: [ "main" ]
 
 jobs:
-  build:
+  build-ubuntu:
+    name: Build on Ubuntu
     runs-on: ubuntu-latest
     env:
       CC: clang
@@ -21,8 +23,9 @@ jobs:
       with:
         fetch-depth: 1
 
-    - name: Install build dependencies
+    - name: Install build dependencies (Ubuntu)
       run: |
+        echo "[TASKS] Installing dependencies on Ubuntu"
         export DEBIAN_FRONTEND=noninteractive
         sudo dpkg --add-architecture i386
         sudo apt update
@@ -56,4 +59,260 @@ jobs:
         echo "[TASKS - BUILD] ARTIFACT STATISTICS"
         ls -la watchdogs.debug
         size watchdogs.debug || true
-        echo "[TASKS - BUILD] BUILD COMPLETED SUCCESSFULLY"
+        echo "[TASKS - BUILD] BUILD COMPLETED SUCCESSFULLY ON UBUNTU"
+
+  build-fedora:
+    name: Build on Fedora
+    runs-on: ubuntu-latest
+    env:
+      CC: clang
+      CXX: clang++
+
+    steps:
+    - uses: actions/checkout@v4
+      with:
+        fetch-depth: 1
+
+    - name: Setup Docker for Fedora
+      run: |
+        echo "[TASKS] Setting up Fedora build environment in Docker"
+    
+    - name: Build using Fedora Docker container
+      run: |
+        docker run --rm -v $(pwd):/workspace -w /workspace fedora:latest /bin/bash -c "
+          if command -v dnf5 >/dev/null 2>&1; then
+            echo '[TASKS] Using dnf5 (Fedora 39+)'
+            DNF_CMD='dnf5'
+          else
+            echo '[TASKS] Using dnf (Fedora <= 38)'
+            DNF_CMD='dnf'
+          fi
+          
+          echo '[TASKS] Installing dependencies on Fedora'
+          
+          \$DNF_CMD -y update
+          \$DNF_CMD -y install @development-tools make file binutils readline
+          
+          if [[ \"\$DNF_CMD\" == \"dnf5\" ]]; then
+            \$DNF_CMD -y install '@Development Tools'
+          else
+            \$DNF_CMD -y groupinstall 'Development Tools'
+          fi
+          
+          \$DNF_CMD -y install \
+            clang lld libatomic libcxx-devel curl-devel \
+            readline-devel libarchive-devel \
+            zlib-devel upx procps-ng \
+            glibc-devel.i686 libstdc++-devel.i686 libcurl-devel.i686
+
+          echo '[TASKS - BUILD] RUNNING DEBUG BUILD'
+          make debug
+          
+          echo '[TASKS - BUILD] BUILD FILE DETAILS'
+          file watchdogs.debug
+          
+          echo '[TASKS - BUILD] TESTING HELP COMMAND'
+          ./watchdogs.debug help || echo 'Help command test skipped'
+          
+          echo '[TASKS - BUILD] TESTING WATCHDOGS COMMAND'
+          ./watchdogs.debug watchdogs || echo 'Watchdogs command test skipped'
+          
+          echo '[TASKS - BUILD] CHECKING BINARY DEPENDENCIES'
+          ldd watchdogs.debug 2>/dev/null || readelf -d watchdogs.debug | grep NEEDED || true
+          
+          echo '[TASKS - BUILD] ARTIFACT STATISTICS'
+          ls -la watchdogs.debug
+          size watchdogs.debug 2>/dev/null || true
+          
+          echo '[TASKS - BUILD] BUILD COMPLETED SUCCESSFULLY ON FEDORA'
+        "
+
+  build-centos:
+    name: Build on CentOS
+    runs-on: ubuntu-latest
+    env:
+      CC: clang
+      CXX: clang++
+
+    steps:
+    - uses: actions/checkout@v4
+      with:
+        fetch-depth: 1
+
+    - name: Build using CentOS Docker container
+      run: |
+        docker run --rm -v $(pwd):/workspace -w /workspace centos:7 /bin/bash -c "
+          echo '[TASKS] Installing dependencies on CentOS 7'
+          yum -y update
+          yum -y groupinstall 'Development Tools'
+          yum -y install epel-release
+          yum -y install \
+            clang lld libatomic libcxx-devel curl-devel \
+            readline-devel libarchive-devel \
+            zlib-devel binutils upx procps \
+            glibc-devel.i686 libstdc++-devel.i686 curl-devel.i686
+          
+          echo '[TASKS - BUILD] RUNNING DEBUG BUILD'
+          make debug
+          
+          echo '[TASKS - BUILD] BUILD FILE DETAILS'
+          file watchdogs.debug
+          
+          echo '[TASKS - BUILD] TESTING HELP COMMAND'
+          ./watchdogs.debug help || echo 'Help command test skipped'
+          
+          echo '[TASKS - BUILD] TESTING WATCHDOGS COMMAND'
+          ./watchdogs.debug watchdogs || echo 'Watchdogs command test skipped'
+          
+          echo '[TASKS - BUILD] CHECKING BINARY DEPENDENCIES'
+          ldd watchdogs.debug 2>/dev/null || readelf -d watchdogs.debug | grep NEEDED || true
+          
+          echo '[TASKS - BUILD] ARTIFACT STATISTICS'
+          ls -la watchdogs.debug
+          size watchdogs.debug 2>/dev/null || true
+          
+          echo '[TASKS - BUILD] BUILD COMPLETED SUCCESSFULLY ON CENTOS'
+        "
+
+  build-opensuse:
+    name: Build on openSUSE
+    runs-on: ubuntu-latest
+    env:
+      CC: clang
+      CXX: clang++
+
+    steps:
+    - uses: actions/checkout@v4
+      with:
+        fetch-depth: 1
+
+    - name: Build using openSUSE Docker container
+      run: |
+        docker run --rm -v $(pwd):/workspace -w /workspace opensuse/leap:15 /bin/bash -c "
+          echo '[TASKS] Installing dependencies on openSUSE Leap'
+          zypper --non-interactive refresh
+          zypper --non-interactive install -y -t pattern devel_basis
+          zypper --non-interactive install -y \
+            curl clang lld libc++-devel libatomic \
+            libcurl-devel readline-devel libarchive-devel \
+            zlib-devel binutils upx procps \
+            glibc-devel-32bit libstdc++6-devel-32bit libcurl4-devel-32bit
+          
+          echo '[TASKS - BUILD] RUNNING DEBUG BUILD'
+          make debug
+          
+          echo '[TASKS - BUILD] BUILD FILE DETAILS'
+          file watchdogs.debug
+          
+          echo '[TASKS - BUILD] TESTING HELP COMMAND'
+          ./watchdogs.debug help || echo 'Help command test skipped'
+          
+          echo '[TASKS - BUILD] TESTING WATCHDOGS COMMAND'
+          ./watchdogs.debug watchdogs || echo 'Watchdogs command test skipped'
+          
+          echo '[TASKS - BUILD] CHECKING BINARY DEPENDENCIES'
+          ldd watchdogs.debug 2>/dev/null || readelf -d watchdogs.debug | grep NEEDED || true
+          
+          echo '[TASKS - BUILD] ARTIFACT STATISTICS'
+          ls -la watchdogs.debug
+          size watchdogs.debug 2>/dev/null || true
+          
+          echo '[TASKS - BUILD] BUILD COMPLETED SUCCESSFULLY ON OPENSUSE'
+        "
+
+  build-arch:
+    name: Build on Arch Linux
+    runs-on: ubuntu-latest
+    env:
+      CC: clang
+      CXX: clang++
+
+    steps:
+    - uses: actions/checkout@v4
+      with:
+        fetch-depth: 1
+
+    - name: Build using Arch Linux Docker container
+      run: |
+        docker run --rm -v $(pwd):/workspace -w /workspace archlinux:base-devel /bin/bash -c "
+          echo '[TASKS] Installing dependencies on Arch Linux'
+          pacman -Sy --noconfirm
+          pacman -S --needed --noconfirm \
+            libatomic base-devel clang lld libc++ readline \
+            curl libarchive zlib binutils upx procps-ng \
+            lib32-glibc lib32-gcc-libs
+          
+          echo '[TASKS - BUILD] RUNNING DEBUG BUILD'
+          make debug
+          
+          echo '[TASKS - BUILD] BUILD FILE DETAILS'
+          file watchdogs.debug
+          
+          echo '[TASKS - BUILD] TESTING HELP COMMAND'
+          ./watchdogs.debug help || echo 'Help command test skipped'
+          
+          echo '[TASKS - BUILD] TESTING WATCHDOGS COMMAND'
+          ./watchdogs.debug watchdogs || echo 'Watchdogs command test skipped'
+          
+          echo '[TASKS - BUILD] CHECKING BINARY DEPENDENCIES'
+          ldd watchdogs.debug 2>/dev/null || readelf -d watchdogs.debug | grep NEEDED || true
+          
+          echo '[TASKS - BUILD] ARTIFACT STATISTICS'
+          ls -la watchdogs.debug
+          size watchdogs.debug 2>/dev/null || true
+          
+          echo '[TASKS - BUILD] BUILD COMPLETED SUCCESSFULLY ON ARCH LINUX'
+        "
+  build-termux:
+    name: Build on Termux (Android)
+    runs-on: ubuntu-latest
+    env:
+      CC: clang
+      CXX: clang++
+
+    steps:
+    - uses: actions/checkout@v4
+      with:
+        fetch-depth: 1
+
+    - name: Build using Termux Docker container
+      run: |
+        docker run --rm -v $(pwd):/workspace -w /workspace termux/termux-docker /bin/bash -c "
+          echo '[TASKS] Installing dependencies in Termux'
+          apt -o Acquire::Queue-Mode=access -o Acquire::Retries=3 update -y
+          DEBIAN_FRONTEND=noninteractive apt -o Dpkg::Use-Pty=0 install -y --no-install-recommends \
+            x11-repo unstable-repo \
+            coreutils binutils procps clang curl \
+            libarchive libandroid-spawn readline upx make
+
+          echo '[TASKS - BUILD] RUNNING TERMUX-DEBUG BUILD'
+          make termux-debug
+          
+          echo '[TASKS - BUILD] BUILD COMPLETED FOR TERMUX'
+        "
+
+  build-windows:
+    name: Build on Windows
+    runs-on: windows-latest
+    
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Install MSYS2 and MinGW-w64
+      shell: powershell
+      run: |
+        choco install -y msys2 --params "/NoUpdate"
+        refreshenv
+
+    - name: Install build dependencies
+      shell: powershell
+      run: |
+        C:\tools\msys64\usr\bin\bash.exe -lc "pacman -Syu --noconfirm"
+        C:\tools\msys64\usr\bin\bash.exe -lc "pacman -S --needed --noconfirm mingw-w64-ucrt-x86_64-toolchain mingw-w64-ucrt-x86_64-clang mingw-w64-ucrt-x86_64-lld mingw-w64-ucrt-x86_64-libc++ mingw-w64-ucrt-x86_64-curl mingw-w64-ucrt-x86_64-readline mingw-w64-ucrt-x86_64-libarchive mingw-w64-ucrt-x86_64-zlib mingw-w64-ucrt-x86_64-upx mingw-w64-ucrt-x86_64-make mingw-w64-ucrt-x86_64-windows-default-manifest"
+    
+    - name: Build using Makefile
+      shell: powershell
+      run: |
+        $env:Path = "C:\tools\msys64\ucrt64\bin;C:\tools\msys64\usr\bin;$env:Path"
+        mingw32-make windows-debug
+        # C:\tools\msys64\usr\bin\bash.exe -c "cd '$PWD' && make windows-debug"

@@ -3,30 +3,47 @@
 
 #define __WATCHDOGS__
 
+#if __has_include(<stddef.h>)
 #include <stddef.h>
+#endif
+#if __has_include(<stdbool.h>)
 #include <stdbool.h>
+#endif
+#if __has_include(<stdint.h>)
 #include <stdint.h>
+#endif
+#if __has_include(<fcntl.h>)
 #include <fcntl.h>
+#endif
+#if __has_include(<limits.h>)
 #include <limits.h>
+#endif
+#if __has_include(<dirent.h>)
 #include <dirent.h>
+#endif
+#if __has_include(<sys/stat.h>)
 #include <sys/stat.h>
+#endif
+#if __has_include(<sys/types.h>)
 #include <sys/types.h>
-
+#endif
 #if __has_include(<readline/history.h>)
 #include <readline/history.h>
 #include <readline/readline.h>
 #define wg_u_history() using_history()
 #define wg_a_history(cmd) add_history(cmd)
 #endif
-
 #if __has_include(<spawn.h>)
     #include <spawn.h>
 #elif __has_include(<android-spawn.h>)
     #include <android-spawn.h>
 #endif
-
+#if __has_include("../include/cJSON/cJSON.h")
 #include "../include/cJSON/cJSON.h"
+#endif
+#if __has_include("../include/tomlc/toml.h")
 #include "../include/tomlc/toml.h"
+#endif
 
 /* Platform detection */
 #if defined(__WINDOWS32__)
@@ -39,6 +56,7 @@
 #endif
 
 /* Path constants */
+#define __PARENT_DIR "../"
 #define __PATH_CHR_SEP_LINUX '/'
 #define __PATH_CHR_SEP_WIN32 '\\'
 #define __PATH_STR_SEP_LINUX "/"
@@ -46,31 +64,32 @@
 
 /* Platform-specific includes & defines */
 #ifdef WG_WINDOWS
+#if __has_include(<io.h>)
 #include <io.h>
-#include <time.h>
-#include <direct.h>
+#endif
+#if __has_include(<windows.h>)
 #include <windows.h>
+#endif
+#if __has_include(<time.h>)
+#include <time.h>
+#endif
+#if __has_include(<direct.h>)
+#include <direct.h>
+#endif
+#if __has_include(<strings.h>)
 #include <strings.h>
-
+#endif
 #define __PATH_SEP __PATH_STR_SEP_WIN32
 #define IS_PATH_SEP(c) \
     ((c) == __PATH_CHR_SEP_LINUX || (c) == __PATH_CHR_SEP_WIN32)
-#define mkdir(wx) \
-    _mkdir(wx)
-#define MKDIR(wx) \
-    mkdir(wx)
-#define Sleep(sec) \
-    Sleep((sec)*1000)
-#define sleep(wx) \
-    Sleep(wx)
-#define setenv(wx,wy,wz) \
-    _putenv_s(wx,wy)
-#define SETENV(wx,wy,wz) \
-    setenv(wx,wy)
-#define lstat(wx, wy) \
-    stat(wx, wy)
-#define S_ISLNK(wx) \
-    ((wx & S_IFMT) == S_IFLNK)
+#define mkdir(wx) _mkdir(wx)
+#define MKDIR(wx) mkdir(wx)
+#define Sleep(sec) Sleep((sec)*1000)
+#define sleep(wx) Sleep(wx)
+#define setenv(wx,wy,wz) _putenv_s(wx,wy)
+#define SETENV(wx,wy,wz) setenv(wx,wy)
+#define lstat(wx, wy) stat(wx, wy)
+#define S_ISLNK(wx) ((wx & S_IFMT) == S_IFLNK)
 #define CHMOD_OWNER_GROUP(wx) \
     ({ \
         const char *_p = (wx); \
@@ -93,22 +112,24 @@
 #define O_RDONLY _O_RDONLY
 #define getcwd _getcwd
 #else
+#if __has_include(<sys/utsname.h>)
 #include <sys/utsname.h>
+#endif
+#if __has_include(<sys/wait.h>)
 #include <sys/wait.h>
+#endif
+#if __has_include(<unistd.h>)
 #include <unistd.h>
+#endif
+#if __has_include(<fnmatch.h>)
 #include <fnmatch.h>
-
+#endif
 #define __PATH_SEP __PATH_STR_SEP_LINUX
-#define IS_PATH_SEP(c) \
-    ((c) == __PATH_CHR_SEP_LINUX)
-#define MKDIR(wx) \
-    mkdir(wx, 0755)
-#define SETENV(wx,wy,wz) \
-    setenv(wx,wy,wz)
-#define CHMOD_OWNER_GROUP(wx) \
-    chmod(wx, 0775)
-#define CHMOD_FULL(wx) \
-    chmod(wx, 0777)
+#define IS_PATH_SEP(c) ((c) == __PATH_CHR_SEP_LINUX)
+#define MKDIR(wx) mkdir(wx, 0755)
+#define SETENV(wx,wy,wz) setenv(wx,wy,wz)
+#define CHMOD_OWNER_GROUP(wx) chmod(wx, 0775)
+#define CHMOD_FULL(wx) chmod(wx, 0777)
 #endif
 
 #define PATH_SEPARATOR(sep_path) ({ \
@@ -138,9 +159,9 @@
 
 /* SEF constants */
 enum {
-    RATE_SEF_EMPTY = 0,
-    MAX_SEF_ENTRIES = 28,
-    MAX_SEF_PATH_SIZE = WG_PATH_MAX
+    /****/RATE_SEF_EMPTY = 0,
+    /****/MAX_SEF_ENTRIES = 28,
+    /****/MAX_SEF_PATH_SIZE = WG_PATH_MAX
 };
 
 /* Compiler flags */
@@ -171,8 +192,7 @@ typedef struct {
     int    wg_compiler_stat;
     size_t wg_sef_count;
     char   wg_sef_found_list \
-        [MAX_SEF_ENTRIES] \
-        [MAX_SEF_PATH_SIZE];
+        [MAX_SEF_ENTRIES] [MAX_SEF_PATH_SIZE];
     char * wg_toml_os_type;
     char * wg_toml_binary;
     char * wg_toml_config;
@@ -194,7 +214,7 @@ extern WatchdogConfig wgconfig;
 /* Utility function declarations */
 void wg_sef_fdir_memset_to_null(void);
 
-#ifdef WG_LINUX
+#ifdef WG_LINUX /* Pop!_OS, etc. */
 #ifndef strlcpy
 size_t strlcpy(char *dst, const char *src, size_t size);
 #endif
@@ -224,11 +244,13 @@ void path_sym_convert(char *path);
 const char *try_get_basename(const char *path);
 const char *try_get_filename(const char *path);
 
+void unit_show_help(const char* command);
+
 char *wg_procure_pwd(void);
 char* wg_masked_text(int reveal, const char *text);
 int wg_mkdir(const char *path);
 void wg_escaping_json(char *dest, const char *src, size_t dest_size);
-int wg_run_command(const char *cmd);
+int wg_exec_command(const char *cmd);
 void wg_clear_screen(void);
 
 int wg_server_env(void);

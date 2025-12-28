@@ -30,13 +30,13 @@ static char json_item[WG_PATH_MAX];
 static int fdir_counts = REPLICATE_RATE_ZERO;
 
 const char
-*match_windows_lookup_pattern[] = { "windows", "win", "win32", "win32", "msvc", "mingw", ".dll", NULL },
-*match_linux_lookup_pattern[] = { "linux", "ubuntu", "debian", "cent", "centos", "cent_os", "fedora", "arch", "archlinux", "alphine", "rhel", "redhat", "linuxmint", "mint", ".so", NULL },
+*match_windows_lookup_pattern[] = { "windows", "win", "win32", "win32", "msvc", "mingw", NULL },
+*match_linux_lookup_pattern[] = { "linux", "ubuntu", "debian", "cent", "centos", "cent_os", "fedora", "arch", "archlinux", "alphine", "rhel", "redhat", "linuxmint", "mint", NULL },
 *match_any_lookup_pattern[] = {
 "src", "source", "proj", "project", "server", "_server", "gamemode",
 "gamemodes", "bin", "build", "packages", "resources", "modules",
 "plugins", "addons", "extensions", "scripts", "system", "core",
-"runtime", "libs", "include", "deps", "dependencies", ".inc", NULL
+"runtime", "libs", "include", "deps", "dependencies", NULL
 };
 
 int this_os_archive(const char *filename)
@@ -260,7 +260,7 @@ static int package_parse_repo(const char *input,struct _repositories *__package_
     if(!strcmp(__package_data->tag,"newer")) {
       printf("Spot ");
       pr_color(stdout,FCOLOUR_CYAN,"[?newer] ");
-      printf("tag, rolling with the freshest release..\t\t[All good]\n");
+      printf("tag, rolling with the freshest release..\t\t" FCOLOUR_YELLOW "[V]\n");
     }
   }
 
@@ -367,7 +367,7 @@ static int package_gh_release_assets(const char *user,const char *repo,
     url_len=url_end-p;
     out_urls[url_count]=wg_malloc(url_len+1);
     if(!out_urls[url_count]) {
-      chain_ret_main(NULL);
+      unit_ret_main(NULL);
     }
     strncpy(out_urls[url_count],p,url_len);
     out_urls[url_count][url_len]='\0';
@@ -489,13 +489,13 @@ static int package_handle_repo(const struct _repositories *revolver_repos,char *
                              revolver_repos->repo,
                              package_actual_tag,
                              sizeof(package_actual_tag))) {
-      printf("Create latest tag: %s "
-             "~instead of latest (?newer)\t\t[All good]\n",package_actual_tag);
+      pr_info(stdout,"Creating latest/newer tag: " FCOLOUR_CYAN "%s " FCOLOUR_DEFAULT
+             "~instead of latest " FCOLOUR_CYAN "(?newer)"FCOLOUR_DEFAULT"\t\t" FCOLOUR_YELLOW "[V]",package_actual_tag);
     } else {
       pr_error(stdout,"Failed to get latest tag for %s/%s,"
                "Falling back to main branch\t\t[Fail]",
                revolver_repos->user,revolver_repos->repo);
-      __debug_function();
+      __create_logging();
       use_fallback_branch=1;
     }
   } else {
@@ -514,14 +514,14 @@ static int package_handle_repo(const struct _repositories *revolver_repos,char *
         if(j==1) {
           printf("Create master branch "
                  "(main branch not found)"
-                 "\t\t[All good]\n");
+                 "\t\t" FCOLOUR_YELLOW "[V]\n");
         }
       }
     }
     return ret;
   }
 
-  pr_info(stdout,"Fetching any archive...");
+  pr_info(stdout,"Fetching any archive from %s..", package_actual_tag);
 
   if(package_actual_tag[0]) {
     char *package_assets[10]={0};
@@ -554,7 +554,8 @@ static int package_handle_repo(const struct _repositories *revolver_repos,char *
           ;
         }
 
-        pr_info(stdout,"Try Archive: %s\t\t[All good]\n",
+        pr_info(stdout,"Trying to install Archive:\n   "
+           FCOLOUR_YELLOW "\033[1m > \033[0m" FCOLOUR_CYAN "%s\t\t" FCOLOUR_YELLOW "[V]\n",
                 package_best_asset);
 
         wg_free(package_best_asset);
@@ -595,8 +596,8 @@ static int package_handle_repo(const struct _repositories *revolver_repos,char *
         ret=1;
         if(j==1)
           printf("Create master branch "
-                 "(main branch not found)\t\t"
-                 "[All good]\n");
+                 "(main branch not found)\t\t" FCOLOUR_YELLOW
+                 "[V]\n");
       }
     }
   }
@@ -604,7 +605,7 @@ static int package_handle_repo(const struct _repositories *revolver_repos,char *
   return ret;
 }
 
-int package_set_hash(const char *raw_file_path,const char *raw_json_path)
+int package_try_parsing(const char *raw_file_path,const char *raw_json_path)
 {
   char res_convert_f_path[WG_PATH_MAX],
        res_convert_json_path[WG_PATH_MAX];
@@ -620,17 +621,6 @@ int package_set_hash(const char *raw_file_path,const char *raw_json_path)
   if(strfind(res_convert_json_path,"pawno",true) ||
      strfind(res_convert_json_path,"qawno",true))
     goto done;
-
-  unsigned char sha1_hash[20];
-  if(crypto_generate_sha1_hash(res_convert_json_path,sha1_hash)==REPLICATE_RATE_ZERO) {
-    goto done;
-  }
-
-  pr_color(stdout,FCOLOUR_GREEN,
-           "Create hash (SHA1) for '%s': ",
-           res_convert_json_path);
-  crypto_print_hex(sha1_hash,sizeof(sha1_hash),0);
-  printf("\t\t[All good]\n");
 
 done:
   return 1;
@@ -654,8 +644,8 @@ void package_implementation_samp_conf(const char* config_file,const char* fw_lin
   if(dir_exists(".watchdogs")==REPLICATE_RATE_ZERO)
     MKDIR(".watchdogs");
 
-  pr_color(stdout,FCOLOUR_GREEN,"Create Dependencies '%s' into '%s'\t\t"
-           "[All good]\n",
+  pr_color(stdout,FCOLOUR_GREEN,"Create Dependencies '%s' into '%s'\t\t" FCOLOUR_YELLOW
+           "[V]\n",
            plugin_name,config_file);
 
   FILE* ctx_file=fopen(config_file,"r");
@@ -728,8 +718,8 @@ void package_implementation_omp_conf(const char* config_name,const char* package
   if(wg_server_env()!=2)
     return;
 
-  pr_color(stdout,FCOLOUR_GREEN,"Create Dependencies '%s' into '%s'\t\t"
-           "[All good]\n",
+  pr_color(stdout,FCOLOUR_GREEN,"Create Dependencies '%s' into '%s'\t\t" FCOLOUR_YELLOW
+           "[V]\n",
            package_name,config_name);
 
   FILE* ctx_file=fopen(config_name,"r");
@@ -745,7 +735,7 @@ void package_implementation_omp_conf(const char* config_name,const char* package
     char* buffer=(char*)wg_malloc(fle_size+1);
     if(!buffer) {
       pr_error(stdout,"Memory allocation failed!");
-      __debug_function();
+      __create_logging();
       fclose(ctx_file);
       return;
     }
@@ -753,7 +743,7 @@ void package_implementation_omp_conf(const char* config_name,const char* package
     size_t file_read=fread(buffer,1,fle_size,ctx_file);
     if(file_read!=fle_size) {
       pr_error(stdout,"Failed to read the entire file!");
-      __debug_function();
+      __create_logging();
       wg_free(buffer);
       fclose(ctx_file);
       return;
@@ -840,7 +830,7 @@ void package_add_include(const char *modes,char *package_name,char *package_foll
   bytes_read=fread(ct_modes,1,fle_size,m_file);
   if(bytes_read!=fle_size) {
     pr_error(stdout,"Failed to read the entire file!");
-    __debug_function();
+    __create_logging();
     wg_free(ct_modes);
     fclose(m_file);
     return;
@@ -962,7 +952,7 @@ void package_add_include(const char *modes,char *package_name,char *package_foll
 
 static void package_include_prints(const char *package_include)
 {
-  char wg_buf_err[WG_PATH_MAX],dependencies[WG_PATH_MAX],
+  char wg_buffer_error[WG_PATH_MAX],dependencies[WG_PATH_MAX],
        _directive[WG_MAX_PATH];
   toml_table_t *wg_toml_config;
 
@@ -972,12 +962,12 @@ static void package_include_prints(const char *package_include)
   const char *direct_bnames=try_get_basename(dependencies);
 
   FILE *this_proc_file=fopen("watchdogs.toml","r");
-  wg_toml_config=toml_parse_file(this_proc_file,wg_buf_err,sizeof(wg_buf_err));
+  wg_toml_config=toml_parse_file(this_proc_file,wg_buffer_error,sizeof(wg_buffer_error));
   if(this_proc_file) fclose(this_proc_file);
 
   if(!wg_toml_config) {
-    pr_error(stdout,"failed to parse the watchdogs.toml..: %s",wg_buf_err);
-    __debug_function();
+    pr_error(stdout,"failed to parse the watchdogs.toml..: %s",wg_buffer_error);
+    __create_logging();
     return;
   }
 
@@ -995,39 +985,49 @@ static void package_include_prints(const char *package_include)
            "#include <%s>",direct_bnames);
 
   static int k=0;
-  static const char *__added;
+  static const char *expect_add;
+
   if(k==0) {
-    pr_info(stdout,FCOLOUR_CYAN "%s " FCOLOUR_DEFAULT "Added into?",_directive);
-    pr_info(stdout,"   just enter for: " FCOLOUR_CYAN "%s",wgconfig.wg_toml_proj_input);
-    char *added=readline("> ");
+    pr_color(
+        stdout, FCOLOUR_YELLOW, "\033[1m====== REPLICATE ======\033[0m\n");
+    pr_info(
+        stdout,FCOLOUR_CYAN "%s " FCOLOUR_DEFAULT "Added into?",_directive);
+    pr_info(
+        stdout,"   Press Enter for: " FCOLOUR_CYAN "%s",wgconfig.wg_toml_proj_input);
+
+    fflush(stdout);
+
+    printf(FCOLOUR_CYAN ">>>");
+    char *added = readline(" ");
     if(added[0]=='\0')
       {
         added=strdup(wgconfig.wg_toml_proj_input);
       }
-    __added=strdup(added);
+    expect_add=strdup(added);
+
     ++k;
   }
 
   char size_added[WG_PATH_MAX]={0};
-  snprintf(size_added,sizeof(size_added),"gamemodes/%s.pwn",__added);
+  snprintf(size_added,sizeof(size_added),"gamemodes/%s.pwn",expect_add);
 
-  if(path_exists(__added)==0)
+  if(path_exists(expect_add)==0)
     {
       FILE *creat=NULL;
       creat=fopen(size_added,"w+");
       if(creat) { fclose(creat); }
     }
 
-  __added=strdup(size_added);
+  expect_add=strdup(size_added);
 
   if(wg_server_env()==1) {
-    DENCY_ADD_INCLUDES(__added,
+    DENCY_ADD_INCLUDES(expect_add,
                        _directive,"#include <a_samp>");
   } else if(wg_server_env()==2) {
-    DENCY_ADD_INCLUDES(__added,
+    DENCY_ADD_INCLUDES(expect_add,
                        _directive,"#include <open.mp>");
   } else {
-    DENCY_ADD_INCLUDES(__added,
+    DENCY_ADD_INCLUDES(expect_add,
                        _directive,"#include <a_samp>");
   }
 }
@@ -1060,8 +1060,13 @@ void dump_file_type(const char *dump_path,char *dump_pattern,
 
       int rate_has_prefix=REPLICATE_RATE_ZERO;
 
-      pr_info(stdout,
-        "Loaded root patterns: " FCOLOUR_CYAN "%s",wgconfig.wg_toml_root_patterns);
+      static int k = 0;
+      if (k!=1)
+        {
+          pr_info(stdout,
+            "Try: " FCOLOUR_CYAN "%s",wgconfig.wg_toml_root_patterns);
+          ++k;
+        }
 
       const char* match_root_keywords=wgconfig.wg_toml_root_patterns;
       while(*match_root_keywords) {
@@ -1095,16 +1100,16 @@ void dump_file_type(const char *dump_path,char *dump_pattern,
                    "/Y \"%s\" \"%s\\%s\\\"",
                    wgconfig.wg_sef_found_list[i],dump_loc,dump_place);
 
-          wg_run_command(command);
+          wg_exec_command(command);
         #else
           snprintf(command,sizeof(command),
                    "mv "
                    "-f \"%s\" \"%s/%s/\"",
                    wgconfig.wg_sef_found_list[i],dump_loc,dump_place);
 
-          wg_run_command(command);
+          wg_exec_command(command);
         #endif
-        pr_color(stdout,FCOLOUR_CYAN," [REPLICATE] Plugins %s -> %s - %s\n",
+        pr_color(stdout,FCOLOUR_CYAN," [M] Plugins %s -> %s - %s\n",
                  wgconfig.wg_sef_found_list[i],dump_loc,dump_place);
       } else {
         if(rate_has_prefix) {
@@ -1114,16 +1119,16 @@ void dump_file_type(const char *dump_path,char *dump_pattern,
                      "/Y \"%s\" \"%s\"",
                      wgconfig.wg_sef_found_list[i],dump_loc);
 
-            wg_run_command(command);
+            wg_exec_command(command);
           #else
             snprintf(command,sizeof(command),
                      "mv "
                      "-f \"%s\" \"%s\"",
                      wgconfig.wg_sef_found_list[i],dump_loc);
 
-            wg_run_command(command);
+            wg_exec_command(command);
           #endif
-          pr_color(stdout,FCOLOUR_CYAN," [REPLICATE] Plugins %s -> %s\n",
+          pr_color(stdout,FCOLOUR_CYAN," [M] Plugins %s -> %s\n",
                    wgconfig.wg_sef_found_list[i],dump_loc);
         } else {
           if(path_exists("plugins")==1) {
@@ -1133,9 +1138,9 @@ void dump_file_type(const char *dump_path,char *dump_pattern,
                        "/Y \"%s\" \"%s\\plugins\"",
                        wgconfig.wg_sef_found_list[i],dump_loc);
 
-              wg_run_command(command);
+              wg_exec_command(command);
 
-              pr_color(stdout,FCOLOUR_CYAN," [REPLICATE] Plugins %s -> %s\\plugins\n",
+              pr_color(stdout,FCOLOUR_CYAN," [M] Plugins %s -> %s\\plugins\n",
                        wgconfig.wg_sef_found_list[i],dump_loc);
             #else
               snprintf(command,sizeof(command),
@@ -1143,30 +1148,30 @@ void dump_file_type(const char *dump_path,char *dump_pattern,
                        "-f \"%s\" \"%s/plugins\"",
                        wgconfig.wg_sef_found_list[i],dump_loc);
 
-              wg_run_command(command);
+              wg_exec_command(command);
 
-              pr_color(stdout,FCOLOUR_CYAN," [REPLICATE] Plugins %s -> %s/plugins\n",
+              pr_color(stdout,FCOLOUR_CYAN," [M] Plugins %s -> %s/plugins\n",
                        wgconfig.wg_sef_found_list[i],dump_loc);
             #endif
           }
         }
 
         if(rate_has_prefix) {
-          pr_color(stdout,FCOLOUR_CYAN," [REPLICATE] Plugins %s -> %s\n",
+          pr_color(stdout,FCOLOUR_CYAN," [M] Plugins %s -> %s\n",
                    wgconfig.wg_sef_found_list[i],dump_loc);
         } else {
           if(path_exists("plugins")==1) {
             #ifdef WG_WINDOWS
-              pr_color(stdout,FCOLOUR_CYAN," [REPLICATE] Plugins %s -> %s\\plugins\n",
+              pr_color(stdout,FCOLOUR_CYAN," [M] Plugins %s -> %s\\plugins\n",
                        wgconfig.wg_sef_found_list[i],dump_loc);
             #else
-              pr_color(stdout,FCOLOUR_CYAN," [REPLICATE] Plugins %s -> %s/plugins\n",
+              pr_color(stdout,FCOLOUR_CYAN," [M] Plugins %s -> %s/plugins\n",
                        wgconfig.wg_sef_found_list[i],dump_loc);
             #endif
           }
         }
         snprintf(json_item,sizeof(json_item),"%s",package_names);
-        package_set_hash(json_item,json_item);
+        package_try_parsing(json_item,json_item);
 
         if(dump_root==1) {
           goto done;
@@ -1286,9 +1291,9 @@ void package_move_files(const char *package_dir,const char *package_loc)
                  "/Y \"%s\" \"%s\\%s\\\"",
                  wgconfig.wg_sef_found_list[i],package_loc,include_path);
 
-        wg_run_command(command);
+        wg_exec_command(command);
 
-        pr_color(stdout,FCOLOUR_CYAN," [REPLICATE] Include %s\\? -> %s - %s\\?\n",
+        pr_color(stdout,FCOLOUR_CYAN," [M] Include %s\\? -> %s - %s\\?\n",
                  wgconfig.wg_sef_found_list[i],package_loc,include_path);
       #else
         snprintf(command,sizeof(command),
@@ -1296,13 +1301,13 @@ void package_move_files(const char *package_dir,const char *package_loc)
                  "-f \"%s\" \"%s/%s/\"",
                  wgconfig.wg_sef_found_list[i],package_loc,include_path);
 
-        wg_run_command(command);
+        wg_exec_command(command);
 
-        pr_color(stdout,FCOLOUR_CYAN," [REPLICATE] Include %s/? -> %s - %s/?\n",
+        pr_color(stdout,FCOLOUR_CYAN," [M] Include %s/? -> %s - %s/?\n",
                  wgconfig.wg_sef_found_list[i],package_loc,include_path);
       #endif
 
-      package_set_hash(packages,
+      package_try_parsing(packages,
                        packages);
       package_include_prints(packages);
     }
@@ -1325,9 +1330,9 @@ void package_move_files(const char *package_dir,const char *package_loc)
                  "/Y \"%s\" \"%s\\%s\\\"",
                  wgconfig.wg_sef_found_list[i],package_loc,include_path);
 
-        wg_run_command(command);
+        wg_exec_command(command);
 
-        pr_color(stdout,FCOLOUR_CYAN," [REPLICATE] Include %s\\? -> %s - %s\\?\n",
+        pr_color(stdout,FCOLOUR_CYAN," [M] Include %s\\? -> %s - %s\\?\n",
                  wgconfig.wg_sef_found_list[i],package_loc,include_path);
       #else
         snprintf(command,sizeof(command),
@@ -1335,13 +1340,13 @@ void package_move_files(const char *package_dir,const char *package_loc)
                  "-f \"%s\" \"%s/%s/\"",
                  wgconfig.wg_sef_found_list[i],package_loc,include_path);
 
-        wg_run_command(command);
+        wg_exec_command(command);
 
-        pr_color(stdout,FCOLOUR_CYAN," [REPLICATE] Include %s/? -> %s - %s/?\n",
+        pr_color(stdout,FCOLOUR_CYAN," [M] Include %s/? -> %s - %s/?\n",
                  wgconfig.wg_sef_found_list[i],package_loc,include_path);
       #endif
 
-      package_set_hash(packages,
+      package_try_parsing(packages,
                        packages);
       package_include_prints(packages);
     }
@@ -1493,7 +1498,7 @@ void package_move_files(const char *package_dir,const char *package_loc)
           {
             *pos=__PATH_CHR_SEP_WIN32;
           }
-          pr_color(stdout,FCOLOUR_CYAN," [REPLICATE] Include %s\\? -> %s\\?\n",
+          pr_color(stdout,FCOLOUR_CYAN," [M] Include %s\\? -> %s\\?\n",
                    size_src,dest);
           wg_free(size_src);
         #else
@@ -1510,12 +1515,12 @@ void package_move_files(const char *package_dir,const char *package_loc)
           {
             strlcat(command,unix_move_parts[j],sizeof(command));
           }
-          pr_color(stdout,FCOLOUR_CYAN," [REPLICATE] Include %s/? -> %s/?\n",
+          pr_color(stdout,FCOLOUR_CYAN," [M] Include %s/? -> %s/?\n",
                    src,dest);
         #endif
       }
 
-      package_set_hash(dest,dest);
+      package_try_parsing(dest,dest);
     }
 
     closedir(open_dir);
@@ -1542,7 +1547,7 @@ void package_move_files(const char *package_dir,const char *package_loc)
              "-rf %s",
              package_dir);
   #endif
-  wg_run_command(command);
+  wg_exec_command(command);
 
   return;
 }
@@ -1716,30 +1721,45 @@ void wg_install_depends(const char *packages,const char *branch,const char *wher
     if(where==NULL || where[0]=='\0')
       {
         static int k=0;
-        static char *__location=NULL;
+        static char *fetch_pwd=NULL;
+        static char *init_location=NULL;
         if(!k) {
           printf("\n");
-          println(stdout,FCOLOUR_YELLOW "==== Location is Null: %s ====",where);
-          printf(">>> where you want? just enter if you want install in root...\n");
-          printf("   example: " FCOLOUR_CYAN "../storage/downloads/myproj" FCOLOUR_DEFAULT "\n");
-          printf("            " FCOLOUR_CYAN "myfolder/myproj" FCOLOUR_DEFAULT "\n");
+
+          pr_color(
+              stdout, FCOLOUR_YELLOW, "\033[1m====== LOCATION ======\033[0m\n");
+          pr_info(
+              stdout,"Example: " FCOLOUR_CYAN "../myproj/myproj myproj/myproj myproj/myproj/too ");
+          pr_info(
+              stdout,"Press Enter for: " FCOLOUR_CYAN "%s", wg_procure_pwd());
+
           fflush(stdout);
-          char *locations=readline("> ");
+
+          #ifdef WG_LINUX
+          wg_exec_command("ls -ld */");
+          #else
+          wg_exec_command("dir /ad /b");
+          #endif
+
+          fflush(stdout);
+
+          printf(FCOLOUR_CYAN ">>>");
+          char *locations=readline(" ");
           if(locations[0]=='\0' || locations[0]=='.') {
-            static char *fetch_pwd=NULL;
             fetch_pwd=wg_procure_pwd();
-            __location=strdup(fetch_pwd);
+            init_location=strdup(fetch_pwd);
             wg_apply_depends(package_name,fetch_pwd);
           } else {
             if(dir_exists(locations)==0) {
               wg_mkdir(locations);
             }
-            __location=strdup(locations);
+            init_location=strdup(locations);
             wg_apply_depends(package_name,locations);
           }
+
           ++k;
         } else {
-          wg_apply_depends(package_name,__location);
+          wg_apply_depends(package_name,init_location);
         }
       }
     else {

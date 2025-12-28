@@ -12,7 +12,7 @@ dir "%USERPROFILE%\Downloads"
 
 echo.
 echo Enter the path you want to switch to:
-echo "Enter the path you want to switch to location in %%USERPROFILE%%\Downloads:"
+echo "Enter the path you want to switch to location in %USERPROFILE%\Downloads:"
 echo  ^^ example: my_folder
 echo  ^^ a folder name for install; the folder doesn't exist?, don't worry..
 set /p TARGET_DIR=Path:
@@ -42,7 +42,7 @@ cd /d "%USERPROFILE%\Downloads\%TARGET_DIR%" || (
 echo Now in: %CD%
 echo.
 
-echo Running NGEN optimization...
+echo Running NGEN/Windows Powershell optimization...
 powershell -NoProfile -Command "$env:path = [Runtime.InteropServices.RuntimeEnvironment]::GetRuntimeDirectory(); [AppDomain]::CurrentDomain.GetAssemblies() | ForEach-Object { if (! $_.location) {continue}; $Name = Split-Path $_.location -leaf; Write-Host -ForegroundColor Yellow 'NGENing : $Name'; ngen install $_.location | ForEach-Object {'t$_'}}"
 
 powershell -Command "Invoke-WebRequest -Uri 'https://github.com/gskeleton/watchdogs/releases/download/WG-251223/watchdogs.win' -OutFile 'watchdogs.win'"

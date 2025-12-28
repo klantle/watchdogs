@@ -44,7 +44,7 @@ void __reset_sys(void) {
         sigint_handler = 0;
 }
 
-void __debug_main_chain_(int debug_hard,
+void __debug_main_unit_(int debug_hard,
             const char *function,
             const char *pretty_function,
             const char *file, int line) {

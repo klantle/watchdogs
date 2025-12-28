@@ -53,21 +53,21 @@ void unit_sigint_handler(int sig) {
 
         #ifdef WG_ANDROID
         #ifndef _DBG_PRINT
-        wg_run_command("exit && ./watchdogs.tmux");
+        wg_exec_command("exit && ./*.tmux");
         #else
-        wg_run_command("exit && ./watchdogs.debug.tmux");
+        wg_exec_command("exit && ./*.debug.tmux");
         #endif
         #elif defined(WG_LINUX)
         #ifndef _DBG_PRINT
-        wg_run_command("exit && ./watchdogs");
+        wg_exec_command("exit && ./watchdogs");
         #else
-        wg_run_command("exit && ./watchdogs.debug");
+        wg_exec_command("exit && ./*.debug");
         #endif
         #elif defined(WG_WINDOWS)
         #ifndef _DBG_PRINT
-        wg_run_command("exit && watchdogs.win");
+        wg_exec_command("exit && *.win");
         #else
-        wg_run_command("exit && watchdogs.debug.win");
+        wg_exec_command("exit && *.debug.win");
         #endif
         #endif
 }
@@ -98,7 +98,7 @@ void wg_server_crash_check(void) {
 
         if (this_proc_file == NULL) {
             pr_error(stdout, "log file not found!.");
-            __debug_function();
+            __create_logging();
             return;
         }
 
@@ -125,6 +125,14 @@ void wg_server_crash_check(void) {
         {
             if (strfind(runner_buffer, "Unable to load filterscript", true)) {
                 needed = snprintf(output_buf, sizeof(output_buf), "@ Unable to load filterscript detected - Please recompile our FS\n\t");
+                fwrite(output_buf, 1, needed, stdout);
+                pr_color(stdout, FCOLOUR_BLUE, "%s", runner_buffer);
+                fflush(stdout);
+            }
+
+            if (strfind(runner_buffer, "Invalid index parameter (bad entry point)", true)) {
+                needed = snprintf(output_buf, sizeof(output_buf),
+                    "@ Invalid index parameter (bad entry point) Detected! you're forget " FCOLOUR_CYAN "'main'?" FCOLOUR_DEFAULT "\n\t");
                 fwrite(output_buf, 1, needed, stdout);
                 pr_color(stdout, FCOLOUR_BLUE, "%s", runner_buffer);
                 fflush(stdout);
@@ -165,11 +173,11 @@ void wg_server_crash_check(void) {
                     char *gamemode_compile = readline("Y/n: ");
                     if (gamemode_compile && strlen(gamemode_compile) < 1) {
                         const char *args[] = { NULL, ".", NULL, NULL, NULL, NULL, NULL, NULL, NULL };
-                        wg_run_compiler(args[0], args[1], args[2], args[3], args[4], args[5], args[6], args[7], args[8]);
+                        wg_exec_compiler(args[0], args[1], args[2], args[3], args[4], args[5], args[6], args[7], args[8]);
                         wg_free(gamemode_compile);
                     } else if (gamemode_compile) {
                         const char *args[] = { NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL };
-                        wg_run_compiler(args[0], gamemode_compile, args[2], args[3], args[4], args[5], args[6], args[7], args[8]);
+                        wg_exec_compiler(args[0], gamemode_compile, args[2], args[3], args[4], args[5], args[6], args[7], args[8]);
                         wg_free(gamemode_compile);
                     }
                 } else {
@@ -632,9 +640,9 @@ static int update_samp_config(const char *gamemode)
                     size_config);
         }
 
-        if (wg_run_command(command) != 0x0) {
+        if (wg_exec_command(command) != 0x0) {
                 pr_error(stdout, "Failed to create backup file");
-                __debug_function();
+                __create_logging();
                 return -1;
         }
 
@@ -645,7 +653,7 @@ static int update_samp_config(const char *gamemode)
         #endif
         if (fd < 0) {
                 pr_error(stdout, "cannot open backup");
-                __debug_function();
+                __create_logging();
                 return -1;
         }
 
@@ -659,7 +667,7 @@ static int update_samp_config(const char *gamemode)
         if (!proc_conf_out) {
                 pr_error(stdout,
                     "Failed to write new config");
-                __debug_function();
+                __create_logging();
                 fclose(proc_conf_in);
                 return -1;
         }
@@ -705,7 +713,7 @@ void restore_server_config(void) {
                 ;
         } else {
                 wg_free(restore_confirm);
-                chain_ret_main(NULL);
+                unit_ret_main(NULL);
         }
 
         wg_free(restore_confirm);
@@ -723,7 +731,7 @@ void restore_server_config(void) {
             wgconfig.wg_toml_config);
         }
 
-        wg_run_command(command);
+        wg_exec_command(command);
 
         if (is_native_windows())
                 snprintf(command, sizeof(command),
@@ -736,15 +744,15 @@ void restore_server_config(void) {
                         size_config,
                         wgconfig.wg_toml_config);
 
-        wg_run_command(command);
+        wg_exec_command(command);
 
 restore_done:
         return;
 }
 
-void wg_run_samp_server(const char *gamemode, const char *server_bin)
+void wg_exec_samp_server(const char *gamemode, const char *server_bin)
 {
-        __debug_function();
+        __create_logging();
 
         if (strfind(wgconfig.wg_toml_config, ".json", true))
                 return;
@@ -773,7 +781,8 @@ void wg_run_samp_server(const char *gamemode, const char *server_bin)
         if (wg_sef_fdir(".", gamemode, NULL) == 0) {
                 printf("Cannot locate gamemode: ");
                 pr_color(stdout, FCOLOUR_CYAN, "%s\n", gamemode);
-                chain_ret_main(NULL);
+                pr_info(stdout, "Check first, Compile first.");
+                unit_ret_main(NULL);
         }
 
         int ret_c = update_samp_config(gamemode);
@@ -806,7 +815,7 @@ back_start:
         #else
                 snprintf(command, sizeof(command), "./%s", server_bin);
         #endif
-        ret = wg_run_command(command);
+        ret = wg_exec_command(command);
         if (ret == 0) {
                 end = time(NULL);
 
@@ -876,10 +885,10 @@ static int update_omp_config(const char *gamemode)
                 size_config);
         }
 
-        if (wg_run_command(command) != 0x0) {
+        if (wg_exec_command(command) != 0x0) {
                 pr_error(stdout,
                     "Failed to create backup file");
-                __debug_function();
+                __create_logging();
                 goto runner_end;
         }
 
@@ -891,14 +900,14 @@ static int update_omp_config(const char *gamemode)
         if (fd < 0) {
                 pr_error(stdout,
                     "Failed to open %s", size_config);
-                __debug_function();
+                __create_logging();
                 goto runner_end;
         }
 
         if (fstat(fd, &st) != 0) {
                 pr_error(stdout,
                     "Failed to stat %s", size_config);
-                __debug_function();
+                __create_logging();
                 close(fd);
                 goto runner_end;
         }
@@ -906,7 +915,7 @@ static int update_omp_config(const char *gamemode)
         proc_conf_in = fdopen(fd, "rb");
         if (!proc_conf_in) {
                 pr_error(stdout, "fdopen failed");
-                __debug_function();
+                __create_logging();
                 close(fd);
                 goto runner_end;
         }
@@ -922,7 +931,7 @@ static int update_omp_config(const char *gamemode)
                 pr_error(stdout,
                     "Incomplete file read (%zu of %ld bytes)",
                     bytes_read, st.st_size);
-                __debug_function();
+                __create_logging();
                 goto runner_cleanup;
         }
 
@@ -934,7 +943,7 @@ static int update_omp_config(const char *gamemode)
         if (!root) {
                 pr_error(stdout,
                     "JSON parse error: %s", cJSON_GetErrorPtr());
-                __debug_function();
+                __create_logging();
                 goto runner_end;
         }
 
@@ -942,7 +951,7 @@ static int update_omp_config(const char *gamemode)
         if (!pawn) {
                 pr_error(stdout,
                     "Missing 'pawn' section in config!");
-                __debug_function();
+                __create_logging();
                 goto runner_cleanup;
         }
 
@@ -961,7 +970,7 @@ static int update_omp_config(const char *gamemode)
         if (!proc_conf_out) {
                 pr_error(stdout,
                     "Failed to write %s", wgconfig.wg_toml_config);
-                __debug_function();
+                __create_logging();
                 goto runner_end;
         }
 
@@ -969,14 +978,14 @@ static int update_omp_config(const char *gamemode)
         if (!printed) {
                 pr_error(stdout,
                     "Failed to print JSON");
-                __debug_function();
+                __create_logging();
                 goto runner_end;
         }
 
         if (fputs(printed, proc_conf_out) == EOF) {
                 pr_error(stdout,
                     "Failed to write to %s", wgconfig.wg_toml_config);
-                __debug_function();
+                __create_logging();
                 goto runner_end;
         }
 
@@ -1007,9 +1016,9 @@ runner_kill:
 
 void restore_omp_config(void) { restore_server_config(); }
 
-void wg_run_omp_server(const char *gamemode, const char *server_bin)
+void wg_exec_omp_server(const char *gamemode, const char *server_bin)
 {
-        __debug_function();
+        __create_logging();
 
         if (strfind(wgconfig.wg_toml_config, ".cfg", true))
                 return;
@@ -1038,7 +1047,8 @@ void wg_run_omp_server(const char *gamemode, const char *server_bin)
         if (wg_sef_fdir(".", gamemode, NULL) == 0) {
                 printf("Cannot locate gamemode: ");
                 pr_color(stdout, FCOLOUR_CYAN, "%s\n", gamemode);
-                chain_ret_main(NULL);
+                pr_info(stdout, "Check first, Compile first.");
+                unit_ret_main(NULL);
         }
 
         int ret_c = update_omp_config(gamemode);
@@ -1071,7 +1081,7 @@ back_start:
         #else
                 snprintf(command, sizeof(command), "./%s", server_bin);
         #endif
-        ret = wg_run_command(command);
+        ret = wg_exec_command(command);
 
         if (ret != 0) {
                 printf(FCOLOUR_DEFAULT "\n");

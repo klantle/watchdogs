@@ -21,10 +21,21 @@ typedef struct {
     char compiler_size_temp[WG_PATH_MAX];
 } io_compilers;
 
+typedef enum {
+    __FLAG_DEBUG     = 1 << 0,
+    __FLAG_ASSEMBLER = 1 << 1,
+    __FLAG_COMPAT    = 1 << 2,
+    __FLAG_PROLIX    = 1 << 3,
+    __FLAG_COMPACT   = 1 << 4
+} CompilerFlags;
+
 typedef struct {
-        char *cs_t;
-        char *cs_i;
-} causeExplanation;
+    int flag;
+    const char *option;
+    size_t len;
+} CompilerOption;
+
+extern const CompilerOption object_opt[];
 
 #define compiler_memory_clean() \
 do { \
@@ -48,7 +59,7 @@ do { \
 #define OPTION_FLAG_DEBUG_FLAG_NOT_FOUND   "Debug flag '%s' not found in configuration"
 
 int
-wg_run_compiler(const char *arg,
+wg_exec_compiler(const char *arg,
 				const char *compile_args,
 				const char *second_arg,
 				const char *four_arg,

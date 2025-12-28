@@ -36,7 +36,7 @@ void wg_stop_server_tasks(void);
 void wg_display_server_logs(int ret);
 void wg_server_crash_check(void);
 void restore_server_config(void);
-void wg_run_samp_server(const char *gamemode_arg, const char *server_bin);
-void wg_run_omp_server(const char *gamemode_arg, const char *server_bin);
+void wg_exec_samp_server(const char *gamemode_arg, const char *server_bin);
+void wg_exec_omp_server(const char *gamemode_arg, const char *server_bin);
 
 #endif

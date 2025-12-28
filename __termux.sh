@@ -38,7 +38,7 @@ if [ ! -f "$HOME/cacert.pem" ]; then
     "https://github.com/gskeleton/libwatchdogs/raw/refs/heads/main/libwatchdogs/cacert.pem"
 fi
 
-rand=$((100000 + RANDOM % 900000))
+rand=$(date +%s%N | tail -c 7)
 
 if [ -d "watchdogs" ]; then
   git clone --single-branch --branch main https://github.com/gskeleton/watchdogs "watchdogs_$rand"

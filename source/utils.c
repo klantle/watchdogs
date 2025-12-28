@@ -373,7 +373,7 @@ char* wg_masked_text(int reveal, const char *text) {
 	    /* Allocate memory for masked string plus null terminator */
 	    masked = wg_malloc((size_t)len + 1);
 	    if (!masked) {
-	    		chain_ret_main(NULL);
+	    		unit_ret_main(NULL);
 	    }
 
 	    /* Copy visible characters if any should be revealed */
@@ -425,7 +425,92 @@ char* wg_masked_text(int reveal, const char *text) {
      }
 
      return 0;
- }
+}
+
+/*
+ * Watchdogs Units Help
+ */
+void unit_show_help(const char* command) {
+    if (strlen(command) == 0) {
+        printf("Usage: help <command> | help title\n\n");
+        printf("Commands:\n");
+        println(stdout,"  exit             exit from watchdogs | Usage: \"exit\" "FCOLOUR_CYAN"; Just type 'exit' and you're outta here!");
+        println(stdout,"  kill             refresh terminal watchdogs | Usage: \"kill\" "FCOLOUR_CYAN"; When things get stuck or buggy, this is your fix!");
+        println(stdout,"  title            set-title terminal watchdogs | Usage: \"title\" | [<args>] "FCOLOUR_CYAN"; Personalize your terminal window title.");
+        println(stdout,"  sha1             generate sha1 hash | Usage: \"sha1\" | [<args>] "FCOLOUR_CYAN"; Get that SHA1 hash for your text.");
+        println(stdout,"  sha256           generate sha256 hash | Usage: \"sha256\" | [<args>] "FCOLOUR_CYAN"; Get that SHA256 hash for your text.");
+        println(stdout,"  crc32            generate crc32 checksum | Usage: \"crc32\" | [<args>] "FCOLOUR_CYAN"; Quick CRC32 checksum generation.");
+        println(stdout,"  djb2             generate djb2 hash file | Usage: \"djb2\" | [<args>] "FCOLOUR_CYAN"; djb2 hashing for your files.");
+        println(stdout,"  config           re-write watchdogs.toml | Usage: \"config\" "FCOLOUR_CYAN"; Reset your config file to default settings.");
+        println(stdout,"  replicate        dependency installer | Usage: \"replicate\" "FCOLOUR_CYAN"; Downloads & Install Our Dependencies.");
+        println(stdout,"  gamemode         download SA-MP gamemode | Usage: \"gamemode\" "FCOLOUR_CYAN"; Grab some SA-MP gamemodes quickly.");
+        println(stdout,"  pawncc           download SA-MP pawncc | Usage: \"pawncc\" "FCOLOUR_CYAN"; Get the Pawn Compiler for SA-MP.");
+        println(stdout,"  debug            debugging & logging server logs | Usage: \"debug\" "FCOLOUR_CYAN"; Keep an eye on your server logs.");
+        println(stdout,"  compile          compile your project | Usage: \"compile\" | [<args>] "FCOLOUR_CYAN"; Turn your code into something runnable!");
+        println(stdout,"  running          running your project | Usage: \"running\" | [<args>] "FCOLOUR_CYAN"; Fire up your project and see it in action.");
+        println(stdout,"  compiles         compile and running your project | Usage: \"compiles\" | [<args>] "FCOLOUR_CYAN"; Two-in-one: compile then run immediately!.");
+        println(stdout,"  stop             stopped server tasks | Usage: \"stop\" "FCOLOUR_CYAN"; Halt everything! Stop your server tasks.");
+        println(stdout,"  restart          re-start server tasks | Usage: \"restart\" "FCOLOUR_CYAN"; Fresh start! Restart your server.");
+        println(stdout,"  wanion           ask to wanion (gemini/groq based) | Usage: \"wanion\" | [<args>] "FCOLOUR_CYAN"; Got questions? Ask Wanion (Gemini/Groq AI powered).");
+        println(stdout,"  tracker          account tracking | Usage: \"tracker\" | [<args>] "FCOLOUR_CYAN"; Track accounts across platforms.");
+        println(stdout,"  compress         create a compressed archive "
+               "| Usage: \"compress <input> <output>\" "FCOLOUR_CYAN"; Generates a compressed file (e.g., .zip/.tar.gz) from the specified source.");
+        println(stdout,"  send             send file to Discord channel via webhook "
+               "| Usage: \"send <file> <webhook_url>\" "FCOLOUR_CYAN"; Uploads a file directly to a Discord channel using a webhook.");
+        return;
+    }
+    
+    if (strcmp(command, "exit") == 0) {
+        println(stdout, "exit: exit from watchdogs. | Usage: \"exit\"\n\tJust type 'exit' and you're outta here!");
+    } else if (strcmp(command, "kill") == 0) {
+        println(stdout, "kill: refresh terminal watchdogs. | Usage: \"kill\"\n\tWhen things get stuck or buggy, this is your fix!");
+    } else if (strcmp(command, "title") == 0) {
+        println(stdout, "title: set-title terminal watchdogs. | Usage: \"title\" | [<args>]\n\tPersonalize your terminal window title.");
+    } else if (strcmp(command, "sha1") == 0) {
+        println(stdout, "sha1: generate sha1. | Usage: \"sha1\" | [<args>]\n\tGet that SHA1 hash for your text.");
+    } else if (strcmp(command, "sha256") == 0) {
+        println(stdout, "sha256: generate sha256. | Usage: \"sha256\" | [<args>]\n\tGet that SHA256 hash for your text.");
+    } else if (strcmp(command, "crc32") == 0) {
+        println(stdout, "crc32: generate crc32. | Usage: \"crc32\" | [<args>]\n\tQuick CRC32 checksum generation.");
+    } else if (strcmp(command, "djb2") == 0) {
+        println(stdout, "djb2: generate djb2 hash file. | Usage: \"djb2\" | [<args>]\n\tdjb2 hashing for your files.");
+    } else if (strcmp(command, "config") == 0) {
+        println(stdout, "config: re-write watchdogs.toml. | Usage: \"config\"\n\tReset your config file to default settings.");
+    } else if (strcmp(command, "replicate") == 0) {
+        println(stdout, "replicate: dependency installer. | Usage: \"replicate\"\n\tDownloads & Install Our Dependencies.");
+    } else if (strcmp(command, "gamemode") == 0) {
+        println(stdout, "gamemode: download SA-MP gamemode. | Usage: \"gamemode\"\n\tGrab some SA-MP gamemodes quickly.");
+    } else if (strcmp(command, "pawncc") == 0) {
+        println(stdout, "pawncc: download SA-MP pawncc. | Usage: \"pawncc\"\n\tGet the Pawn Compiler for SA-MP.");
+    } else if (strcmp(command, "debug") == 0) {
+        println(stdout, "debug: debugging & logging server debug. | Usage: \"debug\"\n\tKeep an eye on your server logs.");
+    } else if (strcmp(command, "compile") == 0) {
+        println(stdout, "compile: compile your project. | Usage: \"compile\" | [<args>]\n\tTurn your code into something runnable!");
+    } else if (strcmp(command, "running") == 0) {
+        println(stdout, "running: running your project. | Usage: \"running\" | [<args>]\n\tFire up your project and see it in action.");
+    } else if (strcmp(command, "compiles") == 0) {
+        println(stdout, "compiles: compile and running your project. | Usage: \"compiles\" | [<args>]\n\tTwo-in-one: compile then run immediately!");
+    } else if (strcmp(command, "stop") == 0) {
+        println(stdout, "stop: stopped server task. | Usage: \"stop\"\n\tHalt everything! Stop your server tasks.");
+    } else if (strcmp(command, "restart") == 0) {
+        println(stdout, "restart: re-start server task. | Usage: \"restart\"\n\tFresh start! Restart your server.");
+    } else if (strcmp(command, "wanion") == 0) {
+        println(stdout, "wanion: ask to wanion. | Usage: \"wanion\" | [<args>] | gemini based\n\tGot questions? Ask Wanion (Gemini/Groq AI powered).");
+    } else if (strcmp(command, "tracker") == 0) {
+        println(stdout, "tracker: account tracking. | Usage: \"tracker\" | [<args>]\n\tTrack accounts across platforms.");
+    } else if (strcmp(command, "compress") == 0) {
+        println(stdout, "compress: create a compressed archive from a file or folder. | "
+               "Usage: \"compress <input> <output>\"\n\tGenerates a compressed file (e.g., .zip/.tar.gz) from the specified source.");
+    } else if (strcmp(command, "send") == 0) {
+        println(stdout, "send: send file to Discord channel via webhook. | "
+               "Usage: \"send <file> <webhook_url>\"\n\tUploads a file directly to a Discord channel using a webhook.");
+    } else {
+        printf("help can't found for: '");
+        pr_color(stdout, FCOLOUR_YELLOW, "%s", command);
+        printf("'\n     Oops! That command doesn't exist. Try 'help' to see available commands.\n");
+    }
+	return;
+}
 
 /*
  * Escapes special JSON characters in source string for safe JSON embedding.
@@ -479,7 +564,7 @@ void wg_escaping_json(char *dest, const char *src, size_t dest_size) {
  * Includes assembly instructions for Android and Linux to clear registers before execution.
  * Validates command length and prevents buffer overflow in command construction.
  */
-int wg_run_command(const char *reg_command) {
+int wg_exec_command(const char *reg_command) {
 
 		/* Handle empty command case */
 		if (reg_command[0] == '\0')
@@ -487,7 +572,7 @@ int wg_run_command(const char *reg_command) {
 
     		/* Validate command length to prevent buffer overflow */
 		if (strlen(reg_command) >= WG_MAX_PATH || strlen(reg_command) <= 0) {
-			pr_warning(stdout, "lengt over size detected! from wg_run_command(\"%s\")", reg_command);
+			pr_warning(stdout, "lengt over size detected! from wg_exec_command(\"%s\")", reg_command);
 			return -1;
 		}
 
@@ -509,9 +594,10 @@ int wg_run_command(const char *reg_command) {
 		}
 
 		/* sudo validate */
-		int sudo_command = 0;
-		if (strfind(size_command, "sudo", true)) {
-			sudo_command = 1;
+		int high_acces_command = 0;
+		if (strfind(size_command, "sudo", true) ||
+			strfind(size_command, "run0", true)) {
+			high_acces_command = 1;
 		}
 		if (strfind(size_command, "echo", true) ||
 		    strfind(size_command, "printf", true) ||
@@ -525,21 +611,16 @@ int wg_run_command(const char *reg_command) {
 			goto skip;
 		}
 
-		if (sudo_command == 1) {
+		if (high_acces_command == 1) {
 			/* sudo notice */
 			static int k = 0;
 			if (k != 1) {
 				k = 1;
 				printf("\n");
-				printf("\t=== SUDO SECURITY WARNING ===\n");
+				printf("\t=== HIGH ACCESS SECURITY WARNING ===\n");
 				printf("\tYou are about to run commands with ROOT privileges!\n");
 				printf("\tThis can DAMAGE your system if used incorrectly.\n");
-				printf("\n");
-				printf("\t* Always verify commands before pressing Enter\n");
-				printf("\t* Never run untrusted scripts with sudo\n");
-				printf("\t* Use 'sudo -k' to clear privileges when done\n");
-				printf("\n");
-				printf("\tType 'man sudo_root' for safety guidelines.\n");
+				printf("\t* Always verify commands before pressing Enter...\n");
 				printf("\t===========================================\n");
 				printf("\n");
 			}
@@ -562,23 +643,23 @@ void wg_clear_screen(void) {
 
 		/* Make sure user in Windows */
 		if (is_native_windows()) {
-			wg_run_command("cls");
+			wg_exec_command("cls");
 		} else {
 			/* if not */
-			wg_run_command("clear");
+			wg_exec_command("clear");
 		}
 		return; /* back */
 }
 
 /* Detects if server is SA-MP or open.mp */
 int wg_server_env(void) {
-	if (strcmp(wgconfig.wg_is_samp, CRC32_TRUE) == 0) {
-			return 1;
-	} else if (strcmp(wgconfig.wg_is_omp, CRC32_TRUE) == 0) {
-			return 2;
-	} else {
-			return 1;
-	}
+		if (strcmp(wgconfig.wg_is_samp, CRC32_TRUE) == 0) {
+				return 1;
+		} else if (strcmp(wgconfig.wg_is_omp, CRC32_TRUE) == 0) {
+				return 2;
+		} else {
+				return 1;
+		}
 }
 
 /*
@@ -719,6 +800,9 @@ void wg_printfile(const char *path) {
  */
 int wg_console_title(const char *title)
 {
+#ifdef WG_ANDROID
+		return 0;
+#endif
 		const char *new_title;
 		/* Use provided title or default release string */
 		if (!title)
@@ -888,7 +972,7 @@ char* strreplace(const char *source, const char *old_sub, const char *new_sub) {
 	    /* Allocate memory for result string */
 	    char *result = wg_malloc(result_len + 1);
 	    if (!result)
-	    		chain_ret_main(NULL);
+	    		unit_ret_main(NULL);
 
 	    /* Perform replacement copy */
 	    size_t i = 0, j = 0;
@@ -1233,7 +1317,7 @@ int wg_kill_process(const char *process) {
 				        "cmd.exe /C \"C:\\Windows\\System32\\taskkill.exe /F /IM \"%s\" >nul 2>&1\"",
 				        process);
 #endif
-        return wg_run_command(reg_command); /* Execute kill command */
+        return wg_exec_command(reg_command); /* Execute kill command */
 }
 
 /*
@@ -1506,7 +1590,7 @@ static void wg_check_compiler_options(int *compatibility, int *optimized_lt)
 		snprintf(command, sizeof(command),
 					"%s -0000000U > .watchdogs/compiler_test.log 2>&1",
 					wgconfig.wg_sef_found_list[0]);
-		wg_run_command(command);
+		wg_exec_command(command);
 
 		/* Parse log file for compiler characteristics */
 		int found_Z = 0, found_ver = 0;
@@ -1529,7 +1613,7 @@ static void wg_check_compiler_options(int *compatibility, int *optimized_lt)
 			fclose(this_proc_fileile);
 		} else {
 			pr_error(stdout, "Failed to open .watchdogs/compiler_test.log");
-			__debug_function(); /* call debugger function */
+			__create_logging();
 		}
 
 		/* Clean up test log file */
@@ -1545,24 +1629,24 @@ static void wg_check_compiler_options(int *compatibility, int *optimized_lt)
 static int wg_parse_toml_config(void)
 {
 		FILE *this_proc_fileile;
-        char wg_buf_err[WG_PATH_MAX];
+        char wg_buffer_error[WG_PATH_MAX];
 		toml_table_t *wg_toml_config;
 		toml_table_t *general_table;
 
 		this_proc_fileile = fopen("watchdogs.toml", "r");
 		if (!this_proc_fileile) {
 				pr_error(stdout, "Cannot read file %s", "watchdogs.toml");
-                __debug_function(); /* call debugger function */
+                __create_logging();
 				return 0;
 		}
 
 		/* Parse TOML file */
-		wg_toml_config = toml_parse_file(this_proc_fileile, wg_buf_err, sizeof(wg_buf_err));
+		wg_toml_config = toml_parse_file(this_proc_fileile, wg_buffer_error, sizeof(wg_buffer_error));
 		fclose(this_proc_fileile);
 
 		if (!wg_toml_config) {
-				pr_error(stdout, "Parsing TOML: %s", wg_buf_err);
-				__debug_function(); /* call debugger function */
+				pr_error(stdout, "Parsing TOML: %s", wg_buffer_error);
+				__create_logging();
 				return 0;
 		}
 
@@ -1582,7 +1666,7 @@ static int wg_parse_toml_config(void)
 }
 
 /*
- * Searches for Pawn Code compiler executable based on OS type and server environment.
+ * Searches for Pawn Compiler executable based on OS type and server environment.
  * Checks different directory locations depending on server type (SA-MP vs open.mp).
  * Returns search result from recursive directory search.
  */
@@ -1877,7 +1961,7 @@ int wg_toml_configs(void)
 				;
 		}
 
-		/* Search for Pawn Code compiler */
+		/* Search for Pawn Compiler */
 		find_pawncc = wg_find_compiler(wg_os_type);
 		if (!find_pawncc) {
 			/* Fallback: search in current directory */
@@ -1904,7 +1988,7 @@ int wg_toml_configs(void)
 			toml_file = fopen("watchdogs.toml", "w");
 			if (!toml_file) {
 					pr_error(stdout, "Failed to create watchdogs.toml");
-                	__debug_function(); /* call debugger function */
+                	__create_logging();
 					return 1;
 			}
 
@@ -1921,22 +2005,22 @@ int wg_toml_configs(void)
 		/* Parse the TOML file */
 		if (!wg_parse_toml_config()) {
 				pr_error(stdout, "Failed to parse TOML configuration");
-                __debug_function(); /* call debugger function */
+                __create_logging();
 				return 1;
 		}
 
 		/* Re-parse for additional configuration extraction */
-		char wg_buf_err[WG_PATH_MAX];
+		char wg_buffer_error[WG_PATH_MAX];
 		toml_table_t *wg_toml_config;
 		toml_table_t *wg_toml_compiler;
 		FILE *this_proc_file = fopen("watchdogs.toml", "r");
-		wg_toml_config = toml_parse_file(this_proc_file, wg_buf_err, sizeof(wg_buf_err));
+		wg_toml_config = toml_parse_file(this_proc_file, wg_buffer_error, sizeof(wg_buffer_error));
 		if (this_proc_file) fclose(this_proc_file);
 
 		if (!wg_toml_config) {
-			pr_error(stdout, "failed to parse the watchdogs.toml...: %s", wg_buf_err);
-			__debug_function(); /* call debugger function */
-			chain_ret_main(NULL); /* Error handling */
+			pr_error(stdout, "failed to parse the watchdogs.toml...: %s", wg_buffer_error);
+			__create_logging();
+			unit_ret_main(NULL); /* Error handling */
 		}
 
 		/* Extract dependencies section */
@@ -1950,7 +2034,7 @@ int wg_toml_configs(void)
 				}
 
                 size_t arr_sz, i;
-                char *merged = NULL;
+                char *expect = NULL;
 
                 toml_array_t *wg_toml_root_patterns = toml_array_in(wg_toml_depends, "root_patterns");
                 if (!wg_toml_root_patterns)
@@ -1964,27 +2048,27 @@ int wg_toml_configs(void)
                     if (!val.ok)
                             continue;
 
-                    if (!merged) {
-                            merged = wg_realloc(NULL, strlen(val.u.s) + 1);
-                            if (!merged)
+                    if (!expect) {
+                            expect = wg_realloc(NULL, strlen(val.u.s) + 1);
+                            if (!expect)
                                     goto free_val;
 
-                            snprintf(merged, strlen(val.u.s) + 1, "%s", val.u.s);
+                            snprintf(expect, strlen(val.u.s) + 1, "%s", val.u.s);
                     } else {
                             char *tmp;
-                            size_t old_len = strlen(merged);
+                            size_t old_len = strlen(expect);
                             size_t new_len = old_len + strlen(val.u.s) + 2;
 
-                            tmp = wg_realloc(merged, new_len);
+                            tmp = wg_realloc(expect, new_len);
                             if (!tmp)
                                     goto free_val;
 
-                            merged = tmp;
-                            snprintf(merged + old_len, new_len - old_len, " %s", val.u.s);
+                            expect = tmp;
+                            snprintf(expect + old_len, new_len - old_len, " %s", val.u.s);
                     }
 
 free_val:
-					wgconfig.wg_toml_root_patterns = strdup(merged);
+					wgconfig.wg_toml_root_patterns = strdup(expect);
                     wg_free(val.u.s);
                     val.u.s = NULL;
 				}
@@ -2095,7 +2179,7 @@ static int _try_mv_without_sudo(const char *src, const char *dest) {
 	    else
 	        snprintf(size_mv, sizeof(size_mv),
 				"mv -f %s %s", src, dest);
-	    int ret = wg_run_command(size_mv);
+	    int ret = wg_exec_command(size_mv);
 	    return ret;
 }
 
@@ -2113,7 +2197,7 @@ static int __mv_with_sudo(const char *src, const char *dest) {
 	    else
 	        snprintf(size_mv, sizeof(size_mv),
 				"sudo mv -f %s %s", src, dest);
-	    int ret = wg_run_command(size_mv);
+	    int ret = wg_exec_command(size_mv);
 	    return ret;
 }
 
@@ -2131,7 +2215,7 @@ static int _try_cp_without_sudo(const char *src, const char *dest) {
 	    else
 	        snprintf(size_cp, sizeof(size_cp),
 				"cp -f %s %s", src, dest);
-	    int ret = wg_run_command(size_cp);
+	    int ret = wg_exec_command(size_cp);
 	    return ret;
 }
 
@@ -2149,7 +2233,7 @@ static int __cp_with_sudo(const char *src, const char *dest) {
 	    else
 	        snprintf(size_cp, sizeof(size_cp),
 				"sudo cp -f %s %s", src, dest);
-	    int ret = wg_run_command(size_cp);
+	    int ret = wg_exec_command(size_cp);
 	    return ret;
 }
 
@@ -2222,7 +2306,7 @@ int wg_sef_wmv(const char *c_src, const char *c_dest)
 #ifdef WG_LINUX
 		static int su_check = 1;
 		if (su_check != 1) { goto skip; }
-		su_check = wg_run_command("sudo echo none > /dev/null 2>&1");
+		su_check = wg_exec_command("sudo echo none > /dev/null 2>&1");
 		if (su_check < 1) {
 			--is_not_superuser;
         	}
@@ -2266,7 +2350,7 @@ int wg_sef_wcopy(const char *c_src, const char *c_dest)
 #ifdef WG_LINUX
 		static int su_check = 1;
 		if (su_check != 1) { goto skip; }
-		su_check = wg_run_command("sudo echo none > /dev/null 2>&1");
+		su_check = wg_exec_command("sudo echo none > /dev/null 2>&1");
 		if (su_check < 1) {
 			--is_not_superuser;
 		}

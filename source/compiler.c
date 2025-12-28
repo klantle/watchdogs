@@ -18,73 +18,126 @@
 #include "library.h"
 #include "debug.h"
 #include "crypto.h"
+#include "cause.h"
 #include "compiler.h"
 
-static struct timespec pre_start = { 0 }, post_end = { 0 };
+const CompilerOption object_opt[]={
+    { __FLAG_DEBUG,     " -d2 ", 5 }, { __FLAG_ASSEMBLER, " -a ",  4 },
+    { __FLAG_COMPAT,    " -Z+ ", 5 }, { __FLAG_PROLIX,    " -v2 ", 5 },
+    { __FLAG_COMPACT,   " -C+ ", 5 },
+    { 0, NULL, 0 }
+};
+
+#ifndef WG_WINDOWS
+const char *usr_paths[]={
+    "/usr/local/lib","/usr/local/lib32", "/data/data/com.termux/files/usr/lib",
+    "/data/data/com.termux/files/usr/local/lib", "/data/data/com.termux/arm64/usr/lib",
+    "/data/data/com.termux/arm32/usr/lib", "/data/data/com.termux/amd32/usr/lib",
+    "/data/data/com.termux/amd64/usr/lib"
+};
+#endif
+
+static struct timespec pre_start={ 0 }, post_end={ 0 };
 static double timer_rate_compile;
 
-static io_compilers wg_compiler_sys = { 0 };
+static io_compilers wg_compiler_sys={ 0 };
 
-static void cause_compiler_expl(const char *log_file, const char *wgoutput, int debug);
-
-int wg_run_compiler(const char *args,const char *compile_args,
-const char *second_arg,const char *four_arg,
-const char *five_arg,const char *six_arg,
-const char *seven_arg,const char *eight_arg,
-const char *nine_arg)
-{
+static
+  int
+  compilr_with_debugging=0,
+  compiler_debugging=0,compiler_has_watchdogs=0,compiler_has_debug=0,
+  compiler_has_clean=0,compiler_has_assembler=0,compiler_has_compatibility=0,
+  compiler_has_verbose=0,compiler_has_compact=0;
+static
+  FILE
+  *this_proc_file=NULL;
+static
+  char
+  pawn_project_parse[WG_PATH_MAX]={0},
+  temp_pawn_project_parse[WG_PATH_MAX] = {0},
+  size_log[WG_MAX_PATH*4]={0},
+  command[WG_PATH_MAX+258]={0},
+  include_aio_path[WG_PATH_MAX*2]={0},
+  this_path_include[WG_PATH_MAX]={0},
+  size_this_path_include[WG_MAX_PATH]={0},
+  compiler_input[WG_MAX_PATH+WG_PATH_MAX]={0},
+  compiler_extra_options[WG_PATH_MAX]={0},
+  init_flag_for_search[3]={0},
+  compiler_pawncc_path[WG_PATH_MAX]={0},
+  compiler_proj_path[WG_PATH_MAX]={0};
+static
+  size_t
+  size_init_flag_for_search;
+static
+  char
+  *compiler_size_last_slash=NULL,
+  *compiler_back_slash=NULL,
+  *size_include_extra=NULL,
+  *procure_string_pos=NULL,
+  *expect=NULL,
+  *pointer_signalA=NULL,
+  *platform=NULL,
+  *proj_targets=NULL,
+  *wg_compiler_unix_args[WG_MAX_PATH+256]={NULL},
+  *compiler_unix_token=NULL;
+static
+  toml_table_t
+  *wg_toml_config=NULL;
+static
+  char
+  wg_buffer_error[WG_PATH_MAX];
 #ifdef WG_WINDOWS
-  PROCESS_INFORMATION pi;
-  STARTUPINFO         si={sizeof(si)};
-  SECURITY_ATTRIBUTES sa={sizeof(sa)};
+  static PROCESS_INFORMATION pi;
+  static STARTUPINFO         si;
+  static SECURITY_ATTRIBUTES sa;
 #endif
-  
-  io_compilers comp;
-  io_compilers *revolver_compiler=&comp;
 
-  const char* this_full_of_available_args[]={
-    second_arg,four_arg,
-    five_arg,six_arg,
-    seven_arg,eight_arg,
-    nine_arg
+int wg_exec_compiler(const char *args,const char *compile_args, const char *second_arg,const char *four_arg,
+const char *five_arg,const char *six_arg, const char *seven_arg,const char *eight_arg, const char *nine_arg)
+{
+  io_compilers comp; io_compilers *revolver_compiler=&comp;
+
+  const char*
+    this_full_of_available_args[]={
+    second_arg,four_arg, five_arg,six_arg, seven_arg,eight_arg, nine_arg
   };
 
   if(dir_exists(".watchdogs")==0)
     MKDIR(".watchdogs");
 
-  int compiler_debugging=0;
-  int compiler_has_watchdogs=0,compiler_has_debug=0;
-  int compiler_has_clean=0,compiler_has_assembler=0;
-  int compiler_has_compatibility=0,compiler_has_verbose=0;
-  int compiler_has_compact=0;
+  compiler_debugging=0,compiler_has_watchdogs=0,compiler_has_debug=0,
+  compiler_has_clean=0,compiler_has_assembler=0,compiler_has_compatibility=0,
+  compiler_has_verbose=0,compiler_has_compact=0;
+  this_proc_file=NULL;
 
-  FILE *this_proc_file=NULL;
-  char proj_parse[WG_PATH_MAX]={0};
-  char size_log[WG_MAX_PATH*4]={0};
-  char command[WG_PATH_MAX+258]={0};
-  char include_aio_path[WG_PATH_MAX*2]={0};
-  char path_include[WG_PATH_MAX]={0};
-  char size_path_include[WG_MAX_PATH]={0};
-  char _compiler_input_[WG_MAX_PATH+WG_PATH_MAX]={0};
+  memset(pawn_project_parse, 0, sizeof(pawn_project_parse));
+  memset(temp_pawn_project_parse, 0, sizeof(temp_pawn_project_parse));
+  memset(size_log, 0, sizeof(size_log));
+  memset(command, 0, sizeof(command));
+  memset(include_aio_path, 0, sizeof(include_aio_path));
+  memset(this_path_include, 0, sizeof(this_path_include));
+  memset(size_this_path_include, 0, sizeof(size_this_path_include));
+  memset(compiler_input, 0, sizeof(compiler_input));
+  memset(compiler_extra_options, 0, sizeof(compiler_extra_options));
+  memset(init_flag_for_search, 0, sizeof(init_flag_for_search));
+  memset(compiler_pawncc_path, 0, sizeof(compiler_pawncc_path));
+  memset(compiler_proj_path, 0, sizeof(compiler_proj_path));
 
-  char flag_to_search[3]={0};
-  size_t size_flag_to_search=sizeof(flag_to_search);
+  size_init_flag_for_search=sizeof(init_flag_for_search);
+  compiler_size_last_slash=NULL;
+  compiler_back_slash=NULL;
+  size_include_extra=NULL;
+  procure_string_pos=NULL;
+  expect=NULL;
+  pointer_signalA=NULL;
+  platform=NULL;
 
-  char *compiler_size_last_slash=NULL;
-  char *compiler_back_slash=NULL;
+  proj_targets=NULL;
 
-  char *size_include_extra=NULL;
-  char *procure_string_pos=NULL;
-  char compiler_extra_options[WG_PATH_MAX]={0};
+  memset(wg_compiler_unix_args, 0, sizeof(wg_compiler_unix_args));
 
-  char *merged=NULL;
-  char *pointer_signalA=NULL;
-  char *platform=NULL;
-  char *proj_targets=NULL;
-  char *wg_compiler_unix_args[WG_MAX_PATH+256]={NULL};
-  char *compiler_unix_token=NULL;
-
-  toml_table_t *wg_toml_config=NULL;
+  compiler_unix_token=NULL;
+  wg_toml_config=NULL;
 
   compiler_memory_clean();
 
@@ -92,17 +145,7 @@ const char *nine_arg)
   static int rate_export_path=0;
 
   if(rate_export_path<1) {
-    const char *library_paths_list[]={
-      "/usr/local/lib","/usr/local/lib32",
-      "/data/data/com.termux/files/usr/lib",
-      "/data/data/com.termux/files/usr/local/lib",
-      "/data/data/com.termux/arm64/usr/lib",
-      "/data/data/com.termux/arm32/usr/lib",
-      "/data/data/com.termux/amd32/usr/lib",
-      "/data/data/com.termux/amd64/usr/lib"
-    };
-
-    size_t counts=sizeof(library_paths_list)/sizeof(library_paths_list[0]);
+    size_t counts=sizeof(usr_paths)/sizeof(usr_paths[0]);
 
     char _newpath[WG_MAX_PATH],_so_path[WG_PATH_MAX];
     const char *_old=getenv("LD_LIBRARY_PATH");
@@ -111,22 +154,20 @@ const char *nine_arg)
     snprintf(_newpath,sizeof(_newpath),"%s",_old);
 
     for(size_t i=0;i<counts;i++) {
-      snprintf(_so_path,sizeof(_so_path),"%s/libpawnc.so",library_paths_list[i]);
+      snprintf(_so_path,sizeof(_so_path),"%s/libpawnc.so",usr_paths[i]);
       if(path_exists(_so_path)!=0) {
         if(_newpath[0]!='\0') strncat(_newpath,":",sizeof(_newpath)-strlen(_newpath)-1);
-        strncat(_newpath,library_paths_list[i],sizeof(_newpath)-strlen(_newpath)-1);
+        strncat(_newpath,usr_paths[i],sizeof(_newpath)-strlen(_newpath)-1);
       }
     }
     
     if(_newpath[0]!='\0') {
       setenv("LD_LIBRARY_PATH",_newpath,1);
       pr_info(stdout,"LD_LIBRARY_PATH set to: %s",_newpath);
+      ++rate_export_path;
     } else {
       pr_warning(stdout,"libpawnc.so not found in any target path..");
-      goto compiler_end;
     }
-
-    ++rate_export_path;
   }
 #endif
   
@@ -171,12 +212,11 @@ const char *nine_arg)
     this_proc_file=fopen("watchdogs.toml","r");
     if(!this_proc_file) {
       pr_error(stdout,"Can't read file %s","watchdogs.toml");
-      __debug_function();
+      __create_logging();
       goto compiler_end;
     }
 
-    char wg_buf_err[WG_PATH_MAX];
-    wg_toml_config=toml_parse_file(this_proc_file,wg_buf_err,sizeof(wg_buf_err));
+    wg_toml_config=toml_parse_file(this_proc_file,wg_buffer_error,sizeof(wg_buffer_error));
 
     if(this_proc_file) {
       fclose(this_proc_file);
@@ -184,71 +224,77 @@ const char *nine_arg)
     }
 
     if(!wg_toml_config) {
-      pr_error(stdout,"failed to parse the watchdogs.toml..: %s",wg_buf_err);
-      __debug_function();
+      pr_error(stdout,"failed to parse the watchdogs.toml..: %s",wg_buffer_error);
+      __create_logging();
       goto compiler_end;
     }
 
-    char wg_compiler_input_pawncc_path[WG_PATH_MAX],
-         wg_compiler_input_proj_path[WG_PATH_MAX];
-         
     if(wgconfig.wg_sef_found_list[0]) {
-      snprintf(wg_compiler_input_pawncc_path,
-              sizeof(wg_compiler_input_pawncc_path),"%s",wgconfig.wg_sef_found_list[0]);
+      snprintf(compiler_pawncc_path,
+              sizeof(compiler_pawncc_path),"%s",wgconfig.wg_sef_found_list[0]);
     } else {
       pr_error(stdout,"Compiler path not found");
       goto compiler_end;
     }
 
+    if (path_exists(".watchdogs/compiler_test.log")==1) {
+        remove(".watchdogs/compiler_test.log");
+    }
     if(path_exists(".watchdogs/compiler_test.log")==0) {
       this_proc_file=fopen(".watchdogs/compiler_test.log","w+");
       if(this_proc_file) {
         fclose(this_proc_file);
         this_proc_file=NULL;
-        snprintf(command,sizeof(command),
-                "%s -0000000U > .watchdogs/compiler_test.log 2>&1",
-                wg_compiler_input_pawncc_path);
-        wg_run_command(command);
+        snprintf(command,sizeof(command), "%s -0000000U > .watchdogs/compiler_test.log 2>&1", compiler_pawncc_path);
+        wg_exec_command(command);
       }
     }
 
     this_proc_file=fopen(".watchdogs/compiler_test.log","r");
     if(!this_proc_file) {
       pr_error(stdout,"Failed to open .watchdogs/compiler_test.log");
-      __debug_function();
+      __create_logging();
     }
 
     for(int i=0;i<WATCHDOGS_COMPILER_AIO_OPTIONS;++i) {
       if(this_full_of_available_args[i]!=NULL) {
         if(strfind(this_full_of_available_args[i],"--detailed",true) ||
-           strfind(this_full_of_available_args[i],"--watchdogs",true))
+           strfind(this_full_of_available_args[i],"--watchdogs",true) ||
+           strfind(this_full_of_available_args[i],"-w",true))
           ++compiler_has_watchdogs;
 
-        if(strfind(this_full_of_available_args[i],"--debug",true))
+        if(strfind(this_full_of_available_args[i],"--debug",true) ||
+           strfind(this_full_of_available_args[i],"-d",true))
           ++compiler_has_debug;
 
-        if(strfind(this_full_of_available_args[i],"--clean",true))
+        if(strfind(this_full_of_available_args[i],"--clean",true) ||
+           strfind(this_full_of_available_args[i],"-n",true))
           ++compiler_has_clean;
 
-        if(strfind(this_full_of_available_args[i],"--assembler",true))
+        if(strfind(this_full_of_available_args[i],"--assembler",true) ||
+           strfind(this_full_of_available_args[i],"-a",true))
           ++compiler_has_assembler;
 
-        if(strfind(this_full_of_available_args[i],"--compat",true))
+        if(strfind(this_full_of_available_args[i],"--compat",true) ||
+           strfind(this_full_of_available_args[i],"-c",true))
           ++compiler_has_compatibility;
 
-        if(strfind(this_full_of_available_args[i],"--prolix",true))
+        if(strfind(this_full_of_available_args[i],"--prolix",true) ||
+           strfind(this_full_of_available_args[i],"-p",true))
           ++compiler_has_verbose;
 
-        if(strfind(this_full_of_available_args[i],"--compact",true))
+        if(strfind(this_full_of_available_args[i],"--compact",true) ||
+           strfind(this_full_of_available_args[i],"-t",true))
           ++compiler_has_compact;
       }
     }
 
     toml_table_t *wg_compiler=toml_table_in(wg_toml_config,"compiler");
-    if(wg_compiler) {
+    if(wg_compiler)
+    {
       toml_array_t *option_arr=toml_array_in(wg_compiler,"option");
       if(option_arr) {
-        merged=NULL;
+        expect=NULL;
         size_t toml_array_size;
         toml_array_size=toml_array_nelem(option_arr);
 
@@ -259,35 +305,33 @@ const char *nine_arg)
             continue;
 
           if(strlen(toml_option_value.u.s)>=2) {
-            snprintf(flag_to_search,
-                    size_flag_to_search,
-                    "%.2s",
-                    toml_option_value.u.s);
+            snprintf(init_flag_for_search, size_init_flag_for_search,"%.2s", toml_option_value.u.s);
           } else {
-            strncpy(flag_to_search,toml_option_value.u.s,size_flag_to_search-1);
+            strncpy(init_flag_for_search,toml_option_value.u.s,size_init_flag_for_search-1);
           }
 
-          if(this_proc_file!=NULL) {
-            rewind(this_proc_file);
-            while(fgets(size_log,sizeof(size_log),this_proc_file)!=NULL) {
-              if(strfind(size_log,"error while loading shared libraries:",true) ||
-                 strfind(size_log,"library \"libpawnc.so\" not found",true)) {
-                wg_printfile(".watchdogs/compiler_test.log");
-                goto compiler_end;
-              }
+          if(this_proc_file!=NULL) 
+            {
+              rewind(this_proc_file);
+              while(fgets(size_log,sizeof(size_log),this_proc_file)!=NULL &&
+                strfind(size_log,"error while loading shared libraries:",true))
+                {
+                  wg_printfile(".watchdogs/compiler_test.log");
+                  goto compiler_end;
+                }
             }
-          }
 
           char *_compiler_options=toml_option_value.u.s;
           while(*_compiler_options && isspace(*_compiler_options))
             ++_compiler_options;
 
           if(*_compiler_options!='-') {
-not_valid_flag_options:
-            printf("[WARN]: "
-                  "compiler option ");
-            pr_color(stdout,FCOLOUR_GREEN,"\"%s\" ",toml_option_value.u.s);
-            println(stdout,"not valid flag options!.. verify first!.");
+            pr_color(stdout,FCOLOUR_GREEN,
+                "[COMPILER]: "FCOLOUR_CYAN"\"%s\" "FCOLOUR_DEFAULT"is not valid compiler flag!",
+                toml_option_value.u.s);
+            sleep(2);
+            printf("\n");
+            wg_printfile(".watchdogs/compiler_test.log");
             wg_free(toml_option_value.u.s);
             goto compiler_end;
           }
@@ -296,25 +340,23 @@ not_valid_flag_options:
              compiler_has_debug>0)
             ++compiler_debugging;
 
-          size_t old_len=merged ? strlen(merged):0,
+          size_t old_len=expect ? strlen(expect):0,
                  new_len=old_len+strlen(toml_option_value.u.s)+2;
 
-          char *tmp=wg_realloc(merged,new_len);
+          char *tmp=wg_realloc(expect,new_len);
           if(!tmp) {
-            wg_free(merged);
+            wg_free(expect);
             wg_free(toml_option_value.u.s);
-            merged=NULL;
+            expect=NULL;
             break;
           }
 
-          merged=tmp;
+          expect=tmp;
 
           if(!old_len)
-            snprintf(merged,new_len,"%s",toml_option_value.u.s);
+            snprintf(expect,new_len,"%s",toml_option_value.u.s);
           else
-            snprintf(merged+old_len,
-                    new_len-old_len,
-                    " %s",toml_option_value.u.s);
+            snprintf(expect+old_len, new_len-old_len, " %s",toml_option_value.u.s);
 
           wg_free(toml_option_value.u.s);
           toml_option_value.u.s=NULL;
@@ -327,10 +369,10 @@ not_valid_flag_options:
             remove(".watchdogs/compiler_test.log");
         }
 
-        if(merged) {
+        if(expect) {
           wg_free(wgconfig.wg_toml_aio_opt);
-          wgconfig.wg_toml_aio_opt=merged;
-          merged=NULL;
+          wgconfig.wg_toml_aio_opt=expect;
+          expect=NULL;
         } else {
           wg_free(wgconfig.wg_toml_aio_opt);
           wgconfig.wg_toml_aio_opt=strdup("");
@@ -341,62 +383,54 @@ not_valid_flag_options:
         }
       }
 
-      typedef enum {
-        FLAG_DEBUG=1<<0,
-        FLAG_ASSEMBLER=1<<1,
-        FLAG_COMPAT=1<<2,
-        FLAG_VERBOSE=1<<3,
-        FLAG_COMPACT=1<<4
-      } CompilerFlags;
+      {
+        unsigned int compiler_bit_flag=0;
 
-      static const struct {
-        int flag;
-        const char *option;
-        size_t len;
-      } OPTIONS[]={
-        {FLAG_DEBUG," -d2 ",5},
-        {FLAG_ASSEMBLER," -a ",4},
-        {FLAG_COMPAT," -Z+ ",5},
-        {FLAG_VERBOSE," -v2 ",5},
-        {FLAG_COMPACT," -C+ ",5},
-        {0,NULL,0}
-      };
+        if(compiler_has_debug>0)
+          compiler_bit_flag|=__FLAG_DEBUG;
 
-      unsigned int flags=0;
-      if(compiler_has_debug>0) flags|=FLAG_DEBUG;
-      if(compiler_has_assembler>0) flags|=FLAG_ASSEMBLER;
-      if(compiler_has_compatibility>0) flags|=FLAG_COMPAT;
-      if(compiler_has_verbose>0) flags|=FLAG_VERBOSE;
-      if(compiler_has_compact>0) flags|=FLAG_COMPACT;
+        if(compiler_has_assembler>0)
+          compiler_bit_flag|=__FLAG_ASSEMBLER;
 
-      char *ptr=compiler_extra_options+strlen(compiler_extra_options);
-      for(int i=0;OPTIONS[i].option!=NULL;i++) {
-        if(flags&OPTIONS[i].flag) {
-          memcpy(ptr,OPTIONS[i].option,OPTIONS[i].len);
-          ptr+=OPTIONS[i].len;
+        if(compiler_has_compatibility>0)
+          compiler_bit_flag|=__FLAG_COMPAT;
+
+        if(compiler_has_verbose>0)
+          compiler_bit_flag|=__FLAG_PROLIX;
+
+        if(compiler_has_compact>0)
+          compiler_bit_flag|=__FLAG_COMPACT;
+
+        char
+            *pointer=compiler_extra_options+strlen(compiler_extra_options);
+        
+        for(int i=0;object_opt[i].option!=NULL;i++) {
+          if(compiler_bit_flag&object_opt[i].flag) {
+            memcpy(pointer,object_opt[i].option,object_opt[i].len);
+            pointer+=object_opt[i].len;
+          }
         }
+
+        *pointer='\0';
       }
-
-      *ptr='\0';
-
-      int rate_debugger=0;
+      
 #if defined(_DBG_PRINT)
-      ++rate_debugger;
+      ++compilr_with_debugging;
 #endif
       if(compiler_has_watchdogs)
-        ++rate_debugger;
+        ++compilr_with_debugging;
 
       if(strlen(compiler_extra_options)>0) {
-        size_t current_len=0;
+        size_t current_aio_opt_len=0;
+
         if(wgconfig.wg_toml_aio_opt) {
-          current_len=strlen(wgconfig.wg_toml_aio_opt);
+          current_aio_opt_len=strlen(wgconfig.wg_toml_aio_opt);
         } else {
           wgconfig.wg_toml_aio_opt=strdup("");
         }
 
         size_t extra_len=strlen(compiler_extra_options);
-        
-        char *new_ptr=wg_realloc(wgconfig.wg_toml_aio_opt,current_len+extra_len+1);
+        char *new_ptr=wg_realloc(wgconfig.wg_toml_aio_opt,current_aio_opt_len+extra_len+1);
         
         if(!new_ptr) {
           pr_error(stdout,"Memory allocation failed for extra options");
@@ -421,112 +455,122 @@ not_valid_flag_options:
               wg_free(path_val.u.s);
               continue;
             }
-
             if(i>0) {
               size_t cur=strlen(include_aio_path);
               if(cur<sizeof(include_aio_path)-1) {
-                snprintf(include_aio_path+cur,
-                        sizeof(include_aio_path)-cur,
-                        " ");
+                snprintf(include_aio_path+cur, sizeof(include_aio_path)-cur, " ");
               }
             }
-
             size_t cur=strlen(include_aio_path);
             if(cur<sizeof(include_aio_path)-1) {
               snprintf(include_aio_path+cur,
-                      sizeof(include_aio_path)-cur,
-                      "-i%s ",
-                      size_path_val);
+                sizeof(include_aio_path)-cur, "-i%s ", size_path_val);
             }
             wg_free(path_val.u.s);
           }
         }
       }
 
-      {
-        bool k=false;
-
-        if(strfind(compile_args,"../",true)) {
-          k=true;
-
-          size_t w=0;
-          size_t j;
-          bool rate_path=false;
-
-          for(j=0;compile_args[j]!='\0';) {
-            if(!rate_path && strncmp(&compile_args[j],"../",3)==0) {
-              j+=3;
-
-              while(compile_args[j]!='\0' &&
-                    compile_args[j]!=' ' &&
-                    compile_args[j]!='"') {
-                proj_parse[w++]=compile_args[j++];
-              }
-
-              size_t size_last_slash=0;
-              for(size_t idx=0;idx<w;idx++) {
-                if(proj_parse[idx]=='/' || proj_parse[idx]=='\\') {
-                  size_last_slash=idx+1;
+      bool rate_parent=false;
+      if(strfind(compile_args,__PARENT_DIR,true) != false) {
+        rate_parent=true;
+        size_t w=0;
+        size_t j;
+        bool rate_parent_dir=false;
+        for(j=0;compile_args[j]!='\0';) {
+          if(!rate_parent_dir && strncmp(&compile_args[j],__PARENT_DIR,3)==0) {
+            j+=3;
+            while(compile_args[j]!='\0' &&
+              compile_args[j]!=' ' &&
+              compile_args[j]!='"') {
+              pawn_project_parse[w++]=compile_args[j++];
+            }
+            size_t size_last_slash=0;
+            for(size_t idx=0;idx<w;idx++) {
+              if(pawn_project_parse[idx]==__PATH_CHR_SEP_LINUX ||
+                  pawn_project_parse[idx]==__PATH_CHR_SEP_WIN32)
+                {
+                    size_last_slash=idx+1;
                 }
-              }
-
-              if(size_last_slash>0) {
-                w=size_last_slash;
-              }
-
-              rate_path=true;
-              break;
-            } else {
-              j++;
             }
-          }
-
-          if(rate_path && w>0) {
-            memmove(proj_parse+3,proj_parse,w+1);
-            memcpy(proj_parse,"../",3);
-            w+=3;
-            proj_parse[w]='\0';
-
-            if(proj_parse[w-1]!='/' && proj_parse[w-1]!='\\') {
-              strcat(proj_parse,"/");
+            if(size_last_slash>0) {
+              w=size_last_slash;
             }
-          } else {
-            strcpy(proj_parse,"../");
-          }
-
-          char temp_path[256];
-          strcpy(temp_path,proj_parse);
-
-          if(strstr(temp_path,"gamemodes/") || strstr(temp_path,"gamemodes\\")) {
-            char *pos=strstr(temp_path,"gamemodes/");
-            if(!pos) pos=strstr(temp_path,"gamemodes\\");
-
-            if(pos) {
-              *pos='\0';
-            }
-          }
-
-          snprintf(size_path_include,sizeof(size_path_include),
-                  "-i%s "
-                  "-i%spawno/include/ "
-                  "-i%sqawno/include/ ",
-                  temp_path,temp_path,temp_path);
-
-          strcpy(path_include,size_path_include);
-
-          pr_info(stdout,
-                "parent dir detected: %s - new include path created: %s",
-                compile_args,path_include);
-        } else {
-          if(dir_exists("pawno") && dir_exists("qawno"))
-            snprintf(path_include,sizeof(path_include),"-ipawno/include -igamemodes");
-          else if(dir_exists("pawno"))
-            snprintf(path_include,sizeof(path_include),"-ipawno/include -igamemodes");
-          else if(dir_exists("qawno"))
-            snprintf(path_include,sizeof(path_include),"-iqawno/include -igamemodes");
-          else
-            snprintf(path_include,sizeof(path_include),"-ipawno/include -igamemodes");
+            rate_parent_dir=true;
+            break;
+          } else j++;
         }
+
+        if(rate_parent_dir && w>0) {
+          memmove(pawn_project_parse+3,pawn_project_parse,w+1);
+          memcpy(pawn_project_parse,__PARENT_DIR,3);
+          w+=3;
+          pawn_project_parse[w]='\0';
+          if(pawn_project_parse[w-1]!=__PATH_CHR_SEP_LINUX && pawn_project_parse[w-1]!=__PATH_CHR_SEP_WIN32) strcat(pawn_project_parse,"/");
+        } else {
+          strcpy(pawn_project_parse,__PARENT_DIR);
+        }
+
+        strcpy(temp_pawn_project_parse,pawn_project_parse);
+
+        if(strstr(temp_pawn_project_parse,"gamemodes/") ||
+           strstr(temp_pawn_project_parse,"gamemodes\\"))
+          {
+            char *pos=strstr(temp_pawn_project_parse,"gamemodes/");
+            if(!pos) pos=strstr(temp_pawn_project_parse,"gamemodes\\");
+            if(pos) { *pos='\0'; }
+          }
+
+        snprintf(
+                size_this_path_include,sizeof(size_this_path_include),
+                "-i%s "
+                "-i%sgamemodes/ "
+                "-i%spawno/include/ "
+                "-i%sqawno/include/ ",
+                temp_pawn_project_parse,temp_pawn_project_parse,temp_pawn_project_parse,temp_pawn_project_parse);
+
+        strcpy(this_path_include,size_this_path_include);
+      } else
+        {
+          snprintf(this_path_include,sizeof(this_path_include), "-ipawno/include -iqawno/include -igamemodes");
+        }
+    
+      static int shown=0;
+      if (!shown) {
+          printf("\n");
+          printf(FCOLOUR_YELLOW "Options:\n" FCOLOUR_DEFAULT);
+
+          printf("  %s-w%s, %s--watchdogs%s   Show detailed output\n",
+              FCOLOUR_CYAN, FCOLOUR_DEFAULT,
+              FCOLOUR_CYAN, FCOLOUR_DEFAULT);
+
+          printf("  %s-d%s, %s--debug%s       Enable debug level 2\n",
+              FCOLOUR_CYAN, FCOLOUR_DEFAULT,
+              FCOLOUR_CYAN, FCOLOUR_DEFAULT);
+
+          printf("  %s-p%s, %s--prolix%s      Verbose mode\n",
+              FCOLOUR_CYAN, FCOLOUR_DEFAULT,
+              FCOLOUR_CYAN, FCOLOUR_DEFAULT);
+
+          printf("  %s-a%s, %s--assembler%s   Generate assembler file\n",
+              FCOLOUR_CYAN, FCOLOUR_DEFAULT,
+              FCOLOUR_CYAN, FCOLOUR_DEFAULT);
+
+          printf("  %s-t%s, %s--compact%s     Compact encoding\n",
+              FCOLOUR_CYAN, FCOLOUR_DEFAULT,
+              FCOLOUR_CYAN, FCOLOUR_DEFAULT);
+
+          printf("  %s-c%s, %s--compat%s      Compatibility mode\n",
+              FCOLOUR_CYAN, FCOLOUR_DEFAULT,
+              FCOLOUR_CYAN, FCOLOUR_DEFAULT);
+
+          printf("  %s-n%s, %s--clean%s       Remove '.amx' after compile\n",
+              FCOLOUR_CYAN, FCOLOUR_DEFAULT,
+              FCOLOUR_CYAN, FCOLOUR_DEFAULT);
+
+          printf("\n");
+          fflush(stdout);
+          shown=1;
       }
 
       if(compile_args==NULL) {
@@ -536,14 +580,14 @@ not_valid_flag_options:
       if(*compile_args=='\0' || (compile_args[0]=='.' && compile_args[1]=='\0')) {
         static int compiler_targets=0;
         if(compiler_targets!=1 && strlen(compile_args)<1) {
-          pr_color(stdout,FCOLOUR_YELLOW,
-                  "==== COMPILER TARGET ====\n");
+          pr_color(stdout, FCOLOUR_YELLOW,
+         "\033[1m====== COMPILER TARGET ======\033[0m\n");
           printf("   ** This notification appears only once.\n"
                 "    * You can set the target using args in the command.\n");
           printf("   * You run the command without any args.\n"
                 "   * Do you want to compile for " FCOLOUR_GREEN "%s " FCOLOUR_DEFAULT "(just enter), \n"
                 "   * or do you want to compile for something else?\n",wgconfig.wg_toml_proj_input);
-          printf("->");
+          printf(FCOLOUR_CYAN ">>>");
           proj_targets=readline(" ");
           if(proj_targets && strlen(proj_targets)>0) {
             wg_free(wgconfig.wg_toml_proj_input);
@@ -559,13 +603,15 @@ not_valid_flag_options:
           compiler_targets=1;
         }
 #ifdef WG_WINDOWS
-        ZeroMemory(&si,sizeof(si));
-        si.cb=sizeof(si);
-        ZeroMemory(&pi,sizeof(pi));
+        ZeroMemory(&si, sizeof(si));
+        si.cb = sizeof(si);
 
-        sa.nLength=sizeof(SECURITY_ATTRIBUTES);
-        sa.bInheritHandle=TRUE;
-        sa.lpSecurityDescriptor=NULL;
+        ZeroMemory(&sa, sizeof(sa));
+        sa.nLength = sizeof(sa);
+        sa.bInheritHandle = TRUE;
+        sa.lpSecurityDescriptor = NULL;
+
+        ZeroMemory(&pi, sizeof(pi));
 
         HANDLE hFile=CreateFileA(
                 ".watchdogs/compiler.log",
@@ -586,33 +632,35 @@ not_valid_flag_options:
           si.hStdOutput=hFile;
           si.hStdError=hFile;
         }
+        si.hStdInput = GetStdHandle(STD_INPUT_HANDLE);
 
         int ret_command=0;
-        ret_command=snprintf(_compiler_input_,sizeof(_compiler_input_),
+        ret_command=snprintf(compiler_input,sizeof(compiler_input),
                         "%s %s -o%s %s %s %s",
-            wg_compiler_input_pawncc_path,
+            compiler_pawncc_path,
             wgconfig.wg_toml_proj_input,
             wgconfig.wg_toml_proj_output,
             wgconfig.wg_toml_aio_opt,
             include_aio_path,
-            path_include);
-        fflush(stdout);
-        if(rate_debugger>0) {
-          println(stdout,"# Debug compiler information");
-          println(stdout,"   compiler: \"%s\"",wg_compiler_input_pawncc_path);
-          println(stdout,"   project: \"%s\"",wgconfig.wg_toml_proj_input);
-          println(stdout,"   output: \"%s\"",wgconfig.wg_toml_proj_output);
-          println(stdout,"   include: \"%s\"",path_include);
-          println(stdout,"   all-in-one options: \"%s\"",wgconfig.wg_toml_aio_opt);
-          println(stdout,"   command: \"%s\"",_compiler_input_);
+            this_path_include);
+
+        if(compilr_with_debugging>0) {
+           #ifdef WG_ANDROID
+               println(stdout, "%s", compiler_input);
+           #else
+               wg_console_title(compiler_input);
+           #endif
         }
 
-        if(ret_command>0 && ret_command<(int)sizeof(_compiler_input_)) {
+        char multi_compiler_input[sizeof(compiler_input)];
+        memcpy(multi_compiler_input, compiler_input, sizeof(multi_compiler_input));
+
+        if(ret_command>0 && ret_command<(int)sizeof(multi_compiler_input)) {
           BOOL win32_process_success;
           clock_gettime(CLOCK_MONOTONIC,&pre_start);
           win32_process_success=CreateProcessA(
             NULL,
-            _compiler_input_,
+            multi_compiler_input,
             NULL,
             NULL,
             TRUE,
@@ -622,16 +670,17 @@ not_valid_flag_options:
             &si,
             &pi
           );
+          if (hFile != INVALID_HANDLE_VALUE)
+            SetHandleInformation(hFile, HANDLE_FLAG_INHERIT, 0);
           if(win32_process_success==TRUE) {
             SetThreadPriority(
               pi.hThread,
               THREAD_PRIORITY_ABOVE_NORMAL
             );
 
-            SetProcessAffinityMask(
-              pi.hProcess,
-              0xFFFFFFFE
-            );
+            DWORD_PTR procMask, sysMask;
+            GetProcessAffinityMask(GetCurrentProcess(), &procMask, &sysMask);
+            SetProcessAffinityMask(pi.hProcess, procMask & ~1);
             
             WaitForSingleObject(pi.hProcess,WIN32_TIMEOUT);
 
@@ -645,12 +694,12 @@ not_valid_flag_options:
           } else {
             clock_gettime(CLOCK_MONOTONIC,&post_end);
             pr_error(stdout,"CreateProcess failed! (%lu)",GetLastError());
-            __debug_function();
+            __create_logging();
           }
         } else {
           clock_gettime(CLOCK_MONOTONIC,&post_end);
           pr_error(stdout,"ret_compiler too long!");
-          __debug_function();
+          __create_logging();
           goto compiler_end;
         }
         if(hFile!=INVALID_HANDLE_VALUE) {
@@ -658,32 +707,30 @@ not_valid_flag_options:
         }
 #else
         int ret_command=0;
-        ret_command=snprintf(_compiler_input_,sizeof(_compiler_input_),
+        ret_command=snprintf(compiler_input,sizeof(compiler_input),
             "%s %s %s%s %s %s %s",
-            wg_compiler_input_pawncc_path,
+            compiler_pawncc_path,
             wgconfig.wg_toml_proj_input,
             "-o",
             wgconfig.wg_toml_proj_output,
             wgconfig.wg_toml_aio_opt,
             include_aio_path,
-            path_include);
-        if(ret_command>(int)sizeof(_compiler_input_)) {
+            this_path_include);
+        if(ret_command>(int)sizeof(compiler_input)) {
           pr_error(stdout,"ret_compiler too long!");
-          __debug_function();
+          __create_logging();
           goto compiler_end;
         }
         fflush(stdout);
-        if(rate_debugger>0) {
-          println(stdout,"# Debug compiler information");
-          println(stdout,"   compiler: \"%s\"",wg_compiler_input_pawncc_path);
-          println(stdout,"   project: \"%s\"",wgconfig.wg_toml_proj_input);
-          println(stdout,"   output: \"%s\"",wgconfig.wg_toml_proj_output);
-          println(stdout,"   include: \"%s\"",path_include);
-          println(stdout,"   all-in-one options: \"%s\"",wgconfig.wg_toml_aio_opt);
-          println(stdout,"   command: \"%s\"",_compiler_input_);
+        if(compilr_with_debugging>0) {
+           #ifdef WG_ANDROID
+               println(stdout, "%s", compiler_input);
+           #else
+               wg_console_title(compiler_input);
+           #endif
         }
         int i=0;
-        compiler_unix_token=strtok(_compiler_input_," ");
+        compiler_unix_token=strtok(compiler_input," ");
         while(compiler_unix_token!=NULL && i<(WG_MAX_PATH+255)) {
           wg_compiler_unix_args[i++]=compiler_unix_token;
           compiler_unix_token=strtok(NULL," ");
@@ -740,7 +787,7 @@ not_valid_flag_options:
             } else {
               clock_gettime(CLOCK_MONOTONIC,&post_end);
               pr_error(stdout,"waitpid error");
-              __debug_function();
+              __create_logging();
               break;
             }
             if(i==POSIX_TIMEOUT-1) {
@@ -750,7 +797,7 @@ not_valid_flag_options:
               kill(compiler_process_id,SIGKILL);
               pr_error(stdout,
                       "posix_spawn process execution timeout! (%d seconds)",POSIX_TIMEOUT);
-              __debug_function();
+              __create_logging();
               waitpid(compiler_process_id,&process_status,0);
               process_timeout_occurred=1;
             }
@@ -762,7 +809,7 @@ not_valid_flag_options:
               if(proc_exit_code!=0 && proc_exit_code!=1) {
                 pr_error(stdout,
                         "compiler process exited with code (%d)",proc_exit_code);
-                __debug_function();
+                __create_logging();
               }
             } else if(WIFSIGNALED(process_status)) {
               pr_error(stdout,
@@ -771,7 +818,7 @@ not_valid_flag_options:
           }
         } else {
           pr_error(stdout,"posix_spawn failed: %s",strerror(process_spawn_result));
-          __debug_function();
+          __create_logging();
         }
 #endif
         char size_container_output[WG_PATH_MAX*2];
@@ -838,7 +885,7 @@ compiler_done:
           }
         } else {
           pr_error(stdout,"Failed to open .watchdogs/compiler.log");
-          __debug_function();
+          __create_logging();
         }
 
         timer_rate_compile=(post_end.tv_sec-pre_start.tv_sec)
@@ -970,8 +1017,8 @@ compiler_done:
         }
 
         if(wgconfig.wg_sef_found_list[1]) {
-          snprintf(wg_compiler_input_proj_path,
-                  sizeof(wg_compiler_input_proj_path),"%s",wgconfig.wg_sef_found_list[1]);
+          snprintf(compiler_proj_path,
+                  sizeof(compiler_proj_path),"%s",wgconfig.wg_sef_found_list[1]);
         } else {
           pr_error(stdout,"Project path not found");
           goto compiler_end;
@@ -979,7 +1026,7 @@ compiler_done:
 
         if(compiler_finding_compile_args) {
           char size_sef_path[WG_PATH_MAX];
-          snprintf(size_sef_path,sizeof(size_sef_path),"%s",wg_compiler_input_proj_path);
+          snprintf(size_sef_path,sizeof(size_sef_path),"%s",compiler_proj_path);
           char *extension=strrchr(size_sef_path,'.');
           if(extension)
             *extension='\0';
@@ -990,13 +1037,15 @@ compiler_done:
           snprintf(size_container_output,sizeof(size_container_output),"%s.amx",revolver_compiler->container_output);
 
 #ifdef WG_WINDOWS
-          ZeroMemory(&si,sizeof(si));
-          si.cb=sizeof(si);
-          ZeroMemory(&pi,sizeof(pi));
+          ZeroMemory(&si, sizeof(si));
+          si.cb = sizeof(si);
 
-          sa.nLength=sizeof(SECURITY_ATTRIBUTES);
-          sa.bInheritHandle=TRUE;
-          sa.lpSecurityDescriptor=NULL;
+          ZeroMemory(&sa, sizeof(sa));
+          sa.nLength = sizeof(sa);
+          sa.bInheritHandle = TRUE;
+          sa.lpSecurityDescriptor = NULL;
+
+          ZeroMemory(&pi, sizeof(pi));
 
           HANDLE hFile=CreateFileA(
                   ".watchdogs/compiler.log",
@@ -1017,33 +1066,35 @@ compiler_done:
             si.hStdOutput=hFile;
             si.hStdError=hFile;
           }
+          si.hStdInput = GetStdHandle(STD_INPUT_HANDLE);
 
           int ret_command=0;
-          ret_command=snprintf(_compiler_input_,sizeof(_compiler_input_),
+          ret_command=snprintf(compiler_input,sizeof(compiler_input),
                           "%s %s -o%s %s %s %s",
-              wg_compiler_input_pawncc_path,
-              wg_compiler_input_proj_path,
+              compiler_pawncc_path,
+              compiler_proj_path,
               size_container_output,
               wgconfig.wg_toml_aio_opt,
               include_aio_path,
-              path_include);
-          fflush(stdout);
-          if(rate_debugger>0) {
-            println(stdout,"# Debug compiler information");
-            println(stdout,"   compiler: \"%s\"",wg_compiler_input_pawncc_path);
-            println(stdout,"   project: \"%s\"",wg_compiler_input_proj_path);
-            println(stdout,"   output: \"%s\"",size_container_output);
-            println(stdout,"   include: \"%s\"",path_include);
-            println(stdout,"   all-in-one options: \"%s\"",wgconfig.wg_toml_aio_opt);
-            println(stdout,"   command: \"%s\"",_compiler_input_);
+              this_path_include);
+
+          if(compilr_with_debugging>0) {
+             #ifdef WG_ANDROID
+                 println(stdout, "%s", compiler_input);
+             #else
+                 wg_console_title(compiler_input);
+             #endif
           }
 
-          if(ret_command>0 && ret_command<(int)sizeof(_compiler_input_)) {
+          char multi_compiler_input[sizeof(compiler_input)];
+          memcpy(multi_compiler_input, compiler_input, sizeof(multi_compiler_input));
+
+          if(ret_command>0 && ret_command<(int)sizeof(multi_compiler_input)) {
             BOOL win32_process_success;
             clock_gettime(CLOCK_MONOTONIC,&pre_start);
             win32_process_success=CreateProcessA(
               NULL,
-              _compiler_input_,
+              multi_compiler_input,
               NULL,
               NULL,
               TRUE,
@@ -1053,16 +1104,17 @@ compiler_done:
               &si,
               &pi
             );
+            if (hFile != INVALID_HANDLE_VALUE)
+              SetHandleInformation(hFile, HANDLE_FLAG_INHERIT, 0);
             if(win32_process_success==TRUE) {
               SetThreadPriority(
                 pi.hThread,
                 THREAD_PRIORITY_ABOVE_NORMAL
               );
 
-              SetProcessAffinityMask(
-                pi.hProcess,
-                0xFFFFFFFE
-              );
+              DWORD_PTR procMask, sysMask;
+              GetProcessAffinityMask(GetCurrentProcess(), &procMask, &sysMask);
+              SetProcessAffinityMask(pi.hProcess, procMask & ~1);
               
               WaitForSingleObject(pi.hProcess,WIN32_TIMEOUT);
 
@@ -1076,12 +1128,12 @@ compiler_done:
             } else {
               clock_gettime(CLOCK_MONOTONIC,&post_end);
               pr_error(stdout,"CreateProcess failed! (%lu)",GetLastError());
-              __debug_function();
+              __create_logging();
             }
           } else {
             clock_gettime(CLOCK_MONOTONIC,&post_end);
             pr_error(stdout,"ret_compiler too long!");
-            __debug_function();
+            __create_logging();
             goto compiler_end;
           }
           if(hFile!=INVALID_HANDLE_VALUE) {
@@ -1089,32 +1141,30 @@ compiler_done:
           }
 #else
           int ret_command=0;
-          ret_command=snprintf(_compiler_input_,sizeof(_compiler_input_),
+          ret_command=snprintf(compiler_input,sizeof(compiler_input),
               "%s %s %s%s %s %s %s",
-              wg_compiler_input_pawncc_path,
-              wg_compiler_input_proj_path,
+              compiler_pawncc_path,
+              compiler_proj_path,
               "-o",
               size_container_output,
               wgconfig.wg_toml_aio_opt,
               include_aio_path,
-              path_include);
-          if(ret_command>(int)sizeof(_compiler_input_)) {
+              this_path_include);
+          if(ret_command>(int)sizeof(compiler_input)) {
             pr_error(stdout,"ret_compiler too long!");
-            __debug_function();
+            __create_logging();
             goto compiler_end;
           }
           fflush(stdout);
-          if(rate_debugger>0) {
-            println(stdout,"# Debug compiler information");
-            println(stdout,"   compiler: \"%s\"",wg_compiler_input_pawncc_path);
-            println(stdout,"   project: \"%s\"",wg_compiler_input_proj_path);
-            println(stdout,"   output: \"%s\"",size_container_output);
-            println(stdout,"   include: \"%s\"",path_include);
-            println(stdout,"   all-in-one options: \"%s\"",wgconfig.wg_toml_aio_opt);
-            println(stdout,"   command: \"%s\"",_compiler_input_);
+          if(compilr_with_debugging>0) {
+             #ifdef WG_ANDROID
+                 println(stdout, "%s", compiler_input);
+             #else
+                 wg_console_title(compiler_input);
+             #endif
           }
           int i=0;
-          compiler_unix_token=strtok(_compiler_input_," ");
+          compiler_unix_token=strtok(compiler_input," ");
           while(compiler_unix_token!=NULL && i<(WG_MAX_PATH+255)) {
             wg_compiler_unix_args[i++]=compiler_unix_token;
             compiler_unix_token=strtok(NULL," ");
@@ -1171,7 +1221,7 @@ compiler_done:
               } else {
                 clock_gettime(CLOCK_MONOTONIC,&post_end);
                 pr_error(stdout,"waitpid error");
-                __debug_function();
+                __create_logging();
                 break;
               }
               if(i==POSIX_TIMEOUT-1) {
@@ -1181,7 +1231,7 @@ compiler_done:
                 kill(compiler_process_id,SIGKILL);
                 pr_error(stdout,
                         "posix_spawn process execution timeout! (%d seconds)",POSIX_TIMEOUT);
-                __debug_function();
+                __create_logging();
                 waitpid(compiler_process_id,&process_status,0);
                 process_timeout_occurred=1;
               }
@@ -1193,17 +1243,17 @@ compiler_done:
                 if(proc_exit_code!=0 && proc_exit_code!=1) {
                   pr_error(stdout,
                           "compiler process exited with code (%d)",proc_exit_code);
-                  __debug_function();
+                  __create_logging();
                 }
               } else if(WIFSIGNALED(process_status)) {
                 pr_error(stdout,
                         "compiler process terminated by signal (%d)",WTERMSIG(process_status));
-                __debug_function();
+                __create_logging();
               }
             }
           } else {
             pr_error(stdout,"posix_spawn failed: %s",strerror(process_spawn_result));
-            __debug_function();
+            __create_logging();
           }
 #endif
           if(path_exists(".watchdogs/compiler.log")) {
@@ -1268,7 +1318,7 @@ compiler_done2:
             }
           } else {
             pr_error(stdout,"Failed to open .watchdogs/compiler.log");
-            __debug_function();
+            __create_logging();
           }
 
           timer_rate_compile=(post_end.tv_sec-pre_start.tv_sec)
@@ -1355,7 +1405,7 @@ loop_ipcc3:
           goto ret_ptr;
         }
 loop_end:
-        chain_ret_main(NULL);
+        unit_ret_main(NULL);
       } else if(pointer_signalA && (strcmp(pointer_signalA,"N")==0 || strcmp(pointer_signalA,"n")==0)) {
         wg_free(pointer_signalA);
         pointer_signalA=NULL;
@@ -1372,7 +1422,7 @@ loop_end:
   }
 
 compiler_end:
-  wg_free(merged);
+  wg_free(expect);
   if(wg_toml_config) {
     toml_free(wg_toml_config);
   }
@@ -1384,669 +1434,4 @@ compiler_end:
     remove(".watchdogs/compiler.log");
   }
   return 1;
-}
-
-causeExplanation ccs[] =
-{
-/* 001 */  /* SYNTAX ERROR */
-{
-    "expected token",
-    "A required syntactic element is missing from the parse tree. The parser expected one of: a semicolon ';', comma ',', closing parenthesis ')', bracket ']', or brace '}'. This typically indicates a malformed statement, improper expression termination, or incorrect nesting of control structures. Verify the statement's grammatical completeness according to Pawn's context-free grammar."
-},
-
-/* 002 */  /* SYNTAX ERROR */
-{
-    "only a single statement",
-    "The `case` label syntactic production permits exactly one statement as its immediate successor. For multiple statements, you must encapsulate them within a compound statement delimited by braces `{ ... }`. This restriction stems from Pawn's simplified switch statement implementation which avoids implicit block creation."
-},
-
-/* 003 */  /* SYNTAX ERROR */
-{
-    "declaration of a local variable must appear in a compound block",
-    "Variable declarations within `case` or `default` labels require explicit scoping via compound blocks due to potential jump-to-label issues in the control flow graph. Without explicit braces, the variable's lifetime and scope cannot be properly determined, violating the language's static single assignment analysis."
-},
-
-/* 012 */  /* SYNTAX ERROR */
-{
-    "invalid function call, not a valid address",
-    "The identifier preceding the parenthesized argument list does not resolve to a function symbol in the current scope, or the call expression violates the function call syntax. Possible causes: attempting to call a non-function identifier, using incorrect call syntax for function pointers, or encountering a malformed expression that the parser misinterprets as a function call."
-},
-
-/* 014 */  /* SYNTAX ERROR */
-{
-    "invalid statement; not in switch",
-    "The `case` or `default` labeled statement appears outside the lexical scope of any `switch` statement. These labels are context-sensitive productions that are only syntactically valid when nested within a switch statement's body according to Pawn's grammar specification section 6.8.1."
-},
-
-/* 015 */  /* SEMANTIC ERROR */
-{
-    "default case must be the last case",
-    "The `default` label within a switch statement's case list must appear after all explicit `case` constant expressions. This ordering constraint is enforced by the Pawn compiler's semantic analysis phase to ensure predictable control flow and to simplify the generated jump table implementation."
-},
-
-/* 016 */  /* SEMANTIC ERROR */
-{
-    "multiple defaults in switch",
-    "A `switch` statement contains more than one `default` label, which creates ambiguous control flow. According to the language specification (ISO/IEC TR 18037:2008), each switch statement may have at most one default case to serve as the catch-all branch in the decision tree."
-},
-
-/* 019 */  /* SEMANTIC ERROR */
-{
-    "not a label",
-    "The identifier following the `goto` keyword does not correspond to any labeled statement in the current function's scope. Label resolution occurs during the semantic analysis phase, and the target must be a label defined earlier in the same function body (forward jumps are permitted)."
-},
-
-/* 020 */  /* SYNTAX ERROR */
-{
-    "invalid symbol name",
-    "The identifier violates Pawn's lexical conventions for symbol names. Valid identifiers must match the regular expression: `[_@a-zA-Z][_@a-zA-Z0-9]*`. The '@' character has special significance for public/forward declarations and must be used consistently throughout the symbol's lifetime."
-},
-
-/* 036 */  /* SYNTAX ERROR */
-{
-    "empty statement",
-    "A standalone semicolon constitutes a null statement, which Pawn's grammar specifically disallows in most contexts to prevent accidental emptiness. If intentional empty statement is needed, use an explicit empty block `{}`. Note that double semicolons `;;` often indicate a missing statement between them."
-},
-
-/* 037 */  /* SYNTAX ERROR */
-{
-    "missing semicolon",
-    "A statement terminator (';') is required but absent. In Pawn's LL(1) grammar, semicolons terminate: expression statements, declarations, iteration statements, jump statements, and return statements. The parser's predictive parsing table expected this token to complete the current production."
-},
-
-/* 030 */  /* SYNTAX ERROR */
-{
-    "unexpected end of file",
-    "The lexical analyzer reached EOF while the parser was still expecting tokens to complete one or more grammatical constructs. Common causes: unclosed block comment `/*`, string literal without terminating quote, unmatched braces/parentheses/brackets, or incomplete function/control structure."
-},
-
-/* 027 */  /* SYNTAX ERROR */
-{
-    "illegal character",
-    "The source character (codepoint) is not valid in the current lexical context. Outside of string literals and comments, Pawn only accepts characters from its valid character set (typically ASCII or the active codepage). Control characters (0x00-0x1F) except whitespace are generally illegal."
-},
-
-/* 026 */  /* SYNTAX ERROR */
-{
-    "missing closing parenthesis",
-    "An opening parenthesis '(' lacks its corresponding closing ')', creating an unbalanced delimiter sequence. This affects expression grouping, function call syntax, and condition specifications. The parser's delimiter stack detected this mismatch during syntax tree construction."
-},
-
-/* 028 */  /* SYNTAX ERROR */
-{
-    "missing closing bracket",
-    "An opening bracket '[' was not matched with a closing ']'. This affects array subscripting, array declarations, and sizeof expressions. The bracket matching algorithm in the parser's shift-reduce automaton failed to find a closing bracket before the relevant scope ended."
-},
-
-/* 054 */  /* SYNTAX ERROR */
-{
-    "missing closing brace",
-    "An opening brace '{' lacks its corresponding closing '}'. This affects compound statements, initializer lists, and function bodies. The brace nesting counter in the lexical analyzer reached EOF without returning to zero, indicating structural incompleteness."
-},
-
-/* 004 */  /* SEMANTIC ERROR */
-{
-    "is not implemented",
-    "A function prototype was declared (forward reference) but no corresponding definition appears in the translation unit. This may also indicate that the compiler's symbol table contains an unresolved external reference, possibly due to a previous function's missing closing brace causing the parser to incorrectly associate following code."
-},
-
-/* 005 */  /* SEMANTIC ERROR */
-{
-    "function may not have arguments",
-    "The `main()` function, serving as the program entry point, must have signature `main()` with zero parameters. This restriction ensures consistent program initialization across all Pawn implementations and prevents ambiguity in startup argument passing conventions."
-},
-
-/* 006 */  /* SEMANTIC ERROR */
-{
-    "must be assigned to an array",
-    "String literals are rvalues of type 'array of char' and can only be assigned to compatible array types. The assignment operator's left operand must be an array lvalue with sufficient capacity (including null terminator). This is enforced during type checking of assignment expressions."
-},
-
-/* 007 */  /* SEMANTIC ERROR */
-{
-    "operator cannot be redefined",
-    "Attempt to overload an operator that Pawn does not support for overloading. Only a specific subset of operators (typically arithmetic and comparison operators) can be overloaded via operator functions. Consult the language specification for the exhaustive list of overloadable operators."
-},
-
-/* 008 */  /* SEMANTIC ERROR */
-{
-    "must be a constant expression; assumed zero",
-    "The context requires a compile-time evaluable constant expression but received a runtime expression. This affects: array dimension specifiers, case labels, bit-field widths, enumeration values, and preprocessor conditionals. The constant folder attempted evaluation but found variable references or non-constant operations."
-},
-
-/* 009 */  /* SEMANTIC ERROR */
-{
-    "invalid array size",
-    "Array dimension specifier evaluates to a non-positive integer. Array sizes must be ≥1. For VLAs (Variable Length Arrays), the size expression must evaluate to positive at the point of declaration. This check occurs during array type construction in the type system."
-},
-
-/* 017 */  /* SEMANTIC ERROR */
-{
-    "undefined symbol",
-    "Identifier lookup in the current scope chain failed to find any declaration for this symbol. The compiler traversed: local block scope → function scope → file scope → global scope. Possible causes: typographical error, missing include directive, symbol declared in excluded conditional compilation block, or incorrect namespace/visibility qualifiers."
-},
-
-/* 018 */  /* SEMANTIC ERROR */
-{
-    "initialization data exceeds declared size",
-    "The initializer list contains more elements than the array's declared capacity. For aggregate initialization, the number of initializer-clauses must not exceed the array bound. For string literals, the literal length (including null terminator) must not exceed array size."
-},
-
-/* 022 */  /* SEMANTIC ERROR */
-{
-    "must be lvalue",
-    "The left operand of an assignment operator (=, +=, etc.) does not designate a modifiable location in storage. Valid lvalues include: variables, array subscript expressions, dereferenced pointers, and structure/union members. Constants, literals, and rvalue expressions cannot appear on the left of assignment."
-},
-
-/* 023 */  /* SEMANTIC ERROR */
-{
-    "array assignment must be simple assignment",
-    "Arrays cannot be used with compound assignment operators due to the semantic complexity of element-wise operations. Only simple assignment '=' is permitted for array types, which performs memcpy-like behavior. For element-wise operations, explicit loops or functions must be used."
-},
-
-/* 024 */  /* SEMANTIC ERROR */
-{
-    "break or continue is out of context",
-    "A `break` statement appears outside any switch/loop construct, or `continue` appears outside any loop construct. These jump statements are context-sensitive and require specific enclosing syntactic structures. The control flow graph builder validates these constraints."
-},
-
-/* 025 */  /* SEMANTIC ERROR */
-{
-    "function heading differs from prototype",
-    "Function definition signature does not match previous declaration in: return type, parameter count, parameter types (including qualifiers), or calling convention. This violates the one-definition rule and causes type incompatibility in the function type consistency check."
-},
-
-/* 027 */  /* SEMANTIC ERROR */
-{
-    "invalid character constant",
-    "Character constant syntax error: multiple characters in single quotes, unknown escape sequence, or numeric escape sequence out of valid range (0-255). Valid escape sequences are: \\a, \\b, \\e, \\f, \\n, \\r, \\t, \\v, \\\\, \\', \\\", \\xHH, \\OOO (octal)."
-},
-
-/* 029 */  /* SEMANTIC ERROR */
-{
-    "invalid expression, assumed zero",
-    "The expression parser encountered syntactically valid but semantically meaningless construct, such as mismatched operator operands, incorrect operator precedence binding, or type-incompatible operations. The expression evaluator defaults to zero to allow continued parsing for additional error detection."
-},
-
-/* 032 */  /* SEMANTIC ERROR */
-{
-    "array index out of bounds",
-    "Subscript expression evaluates to value outside array bounds [0, size-1]. This is a compile-time check for constant indices; runtime bounds checking depends on implementation. For multidimensional arrays, each dimension is checked independently."
-},
-
-/* 045 */  /* SEMANTIC ERROR */
-{
-    "too many function arguments",
-    "Function call contains more than 64 actual arguments, exceeding Pawn's implementation limit. This architectural constraint stems from the virtual machine's call frame design and register allocation scheme. Consider refactoring using structures or arrays for parameter groups."
-},
-
-/* 203 */  /* WARNING */
-{
-    "symbol is never used",
-    "Variable, constant, or function declared but never referenced in any reachable code path. This may indicate: dead code, incomplete implementation, debugging remnants, or accidental omission. The compiler's data flow analysis determined no read operations on the symbol after its declaration."
-},
-
-/* 204 */  /* WARNING */
-{
-    "symbol is assigned a value that is never used",
-    "Variable receives a value (via assignment or initialization) that is subsequently never read. This suggests: unnecessary computation, redundant initialization, or logical error where the variable should be used but isn't. The live variable analysis tracks definitions and uses."
-},
-
-/* 205 */  /* WARNING */
-{
-    "redundant code: constant expression is zero",
-    "Conditional expression in if/while/for evaluates to compile-time constant false (0), making the controlled block dead code. This often results from: macro expansion errors, contradictory preprocessor conditions, or logical errors in constant expressions. The constant folder detected this during control flow analysis."
-},
-
-/* 209 */  /* SEMANTIC ERROR */
-{
-    "should return a value",
-    "Non-void function reaches end of control flow without returning a value via return statement. All possible execution paths must return a value of compatible type. The control flow graph analyzer found at least one path terminating at function end without return."
-},
-
-/* 211 */  /* WARNING */
-{
-    "possibly unintended assignment",
-    "Assignment expression appears in boolean context where equality comparison is typical (e.g., if condition). The expression `if (a = b)` assigns b to a, then tests a's truth value. If comparison was intended, use `if (a == b)`. This heuristic warning triggers on assignment in conditional context."
-},
-
-/* 010 */  /* SYNTAX ERROR */
-{
-    "invalid function or declaration",
-    "The parser expected a function declarator or variable declaration but encountered tokens that don't conform to declaration syntax. This can indicate: misplaced storage class specifiers, incorrect type syntax, missing identifier, or malformed parameter list. Verify the declaration follows Pawn's declaration syntax exactly."
-},
-
-/* 213 */  /* SEMANTIC ERROR */
-{
-    "tag mismatch",
-    "Type compatibility violation: expression type differs from expected type in assignment, argument passing, or return context. Pawn's tag system enforces type safety for numeric types. The type checker found incompatible tags between source and destination types."
-},
-
-/* 215 */  /* WARNING */
-{
-    "expression has no effect",
-    "Expression statement computes a value but doesn't produce side effects or store result. Examples: `a + b;` or `func();` where func returns value ignored. This often indicates: missing assignment, incorrect function call, or leftover debug expression. The side-effect analyzer detected pure expression without observable effect."
-},
-
-/* 217 */  /* WARNING */
-{
-    "loose indentation",
-    "Inconsistent whitespace usage (spaces vs tabs, or varying indentation levels) detected. While syntactically irrelevant, inconsistent indentation impairs readability and may indicate structural misunderstandings. The lexer tracks column positions and detects abrupt indentation changes."
-},
-
-/* 234 */  /* WARNING */
-{
-    "Function is deprecated",
-    "Function marked with deprecated attribute via `forward deprecated:` or similar. Usage triggers warning but compiles. Deprecation suggests: API evolution, security concerns, performance issues, or planned removal. Consult documentation for replacement API."
-},
-
-/* 013 */  /* SEMANTIC ERROR */
-{
-    "no entry point",
-    "Translation unit lacks valid program entry point. Required: `main()` function or designated public function based on target environment. The linker/loader cannot determine startup address. Some environments allow alternative entry points via compiler options or specific pragmas."
-},
-
-/* 021 */  /* SEMANTIC ERROR */
-{
-    "symbol already defined",
-    "Redeclaration of identifier in same scope violates one-definition rule. Each identifier in a given namespace must have unique declaration (except for overloading, which Pawn doesn't support). The symbol table insertion failed due to duplicate key in current scope."
-},
-
-/* 028 */  /* SEMANTIC ERROR */
-{
-    "invalid subscript",
-    "Bracket operator applied to non-array type, or subscript expression has wrong type. Left operand must have array or pointer type, subscript must be integer expression. The type checker validates subscript expressions during expression evaluation."
-},
-
-/* 033 */  /* SEMANTIC ERROR */
-{
-    "array must be indexed",
-    "Array identifier used in value context without subscript. In most expressions, arrays decay to pointer to first element, but certain contexts require explicit element access. This prevents accidental pointer decay when element access was intended."
-},
-
-/* 034 */  /* SEMANTIC ERROR */
-{
-    "argument does not have a default value",
-    "Named argument syntax used with parameter that lacks default value specification. When calling with named arguments (`func(.param=value)`), all parameters without defaults must be explicitly provided. The argument binder cannot resolve missing required parameter."
-},
-
-/* 035 */  /* SEMANTIC ERROR */
-{
-    "argument type mismatch",
-    "Actual argument type incompatible with formal parameter type. This includes: tag mismatch, array vs non-array, dimension mismatch for arrays, or value range issues. Function call type checking ensures actual arguments can be converted to formal parameter types."
-},
-
-/* 037 */  /* SEMANTIC ERROR */
-{
-    "invalid string",
-    "String literal malformed: unterminated (missing closing quote), contains invalid escape sequences, or includes illegal characters for current codepage. The lexer's string literal parsing state machine encountered unexpected input or premature EOF."
-},
-
-/* 039 */  /* SEMANTIC ERROR */
-{
-    "constant symbol has no size",
-    "`sizeof` operator applied to symbolic constant (enumeration constant, #define macro). `sizeof` requires type name or object expression with storage. Constants exist only at compile-time and have no runtime representation with measurable size."
-},
-
-/* 040 */  /* SEMANTIC ERROR */
-{
-    "duplicate case label",
-    "Multiple `case` labels in same switch statement have identical constant expression values. Each case must be distinct to ensure deterministic control flow. The switch statement semantic analyzer builds case value table and detects collisions."
-},
-
-/* 041 */  /* SEMANTIC ERROR */
-{
-    "invalid ellipsis",
-    "Array initializer with `...` (ellipsis) cannot determine appropriate array size. Ellipsis initializer requires either explicit array size or preceding explicit elements from which to extrapolate. The array initializer resolver failed to compute array dimension."
-},
-
-/* 042 */  /* SEMANTIC ERROR */
-{
-    "invalid combination of class specifiers",
-    "Storage class specifiers combined illegally (e.g., `public static`, `forward native`). Each storage class has compatibility rules. The declaration specifier parser validates specifier combinations according to language grammar."
-},
-
-/* 043 */  /* SEMANTIC ERROR */
-{
-    "character constant exceeds range",
-    "Character constant numeric value outside valid 0-255 range (8-bit character set). Pawn uses unsigned 8-bit characters. Integer character constants, escape sequences, or multibyte characters must fit in 8 bits for portability across all Pawn implementations."
-},
-
-/* 044 */  /* SEMANTIC ERROR */
-{
-    "positional parameters must precede",
-    "In mixed argument passing, positional arguments appear after named arguments. Syntax requires all positional arguments first, then named arguments (`func(1, 2, .param=3)`). The parser's argument list processing enforces this ordering for unambiguous binding."
-},
-
-/* 046 */  /* SEMANTIC ERROR */
-{
-    "unknown array size",
-    "Array declaration lacks size specifier and initializer, making size indeterminate. Array types must have known size at declaration time (except for extern incomplete arrays). The type constructor cannot create array type with unspecified bound."
-},
-
-/* 047 */  /* SEMANTIC ERROR */
-{
-    "array sizes do not match",
-    "Array assignment between arrays of different sizes. For array assignment, source and destination must have identical size (number of elements). The type compatibility checker for assignment verifies array dimension equality."
-},
-
-/* 048 */  /* SEMANTIC ERROR */
-{
-    "array dimensions do not match",
-    "Array operation (arithmetic, comparison) between arrays of different dimensions. Element-wise operations require identical shape. The array operation validator checks dimension compatibility before generating element-wise code."
-},
-
-/* 049 */  /* SEMANTIC ERROR */
-{
-    "invalid line continuation",
-    "Backslash-newline sequence appears outside valid context (preprocessor directive or string literal). Line continuation only permitted in: #define macros, #include paths, and string literals. The preprocessor's line splicing logic detected illegal continuation."
-},
-
-/* 050 */  /* SEMANTIC ERROR */
-{
-    "invalid range",
-    "Range expression (e.g., in enum or array initializer) malformed: `start .. end` where start > end, or values non-integral, or exceeds implementation limits. Range validator ensures start ≤ end and both are integer constant expressions."
-},
-
-/* 055 */  /* SEMANTIC ERROR */
-{
-    "start of function body without function header",
-    "Compound statement `{ ... }` appears where function body expected but no preceding function declarator. This often indicates: missing function header, extra brace, or incorrect nesting. The parser's function definition production expects declarator before body."
-},
-
-/* 100 */  /* FATAL ERROR */
-{
-    "cannot read from file",
-    "File I/O error opening or reading source file. Possible causes: file doesn't exist, insufficient permissions, path too long, file locked by another process, or disk/media error. The compiler's file layer returns system error which gets mapped to this message."
-},
-
-/* 101 */  /* FATAL ERROR */
-{
-    "cannot write to file",
-    "Output file creation/write failure. Check: disk full, write protection, insufficient permissions, output directory doesn't exist, or file in use. The code generator's output routines failed to write compiled output."
-},
-
-/* 102 */  /* FATAL ERROR */
-{
-    "table overflow",
-    "Internal compiler data structure capacity exceeded. Limits may include: symbol table entries, hash table chains, parse tree nodes, or string table size. Source code too large/complex for compiler's fixed-size internal tables. Consider modularization or compiler with larger limits."
-},
-
-/* 103 */  /* FATAL ERROR */
-{
-    "insufficient memory",
-    "Dynamic memory allocation failed during compilation. The compiler's memory manager cannot satisfy allocation request due to system memory exhaustion or fragmentation. Source code may be too large, or compiler has memory leak."
-},
-
-/* 104 */  /* FATAL ERROR */
-{
-    "invalid assembler instruction",
-    "`#emit` directive contains unrecognized or illegal opcode/operand combination. The embedded assembler validates instruction against Pawn VM instruction set. Check opcode spelling, operand count, and operand types against VM specification."
-},
-
-/* 105 */  /* FATAL ERROR */
-{
-    "numeric overflow",
-    "Numeric constant exceeds representable range for its type. Integer constants beyond 32-bit signed range, or floating-point beyond implementation limits. The constant parser's range checking detected value outside allowed bounds."
-},
-
-/* 107 */  /* FATAL ERROR */
-{
-    "too many error messages on one line",
-    "Error reporting threshold exceeded for single source line. Prevents infinite error cascades from severely malformed code. Compiler stops processing this line after reporting maximum errors (typically 10-20)."
-},
-
-/* 108 */  /* FATAL ERROR */
-{
-    "codepage mapping file not found",
-    "Character set conversion mapping file specified via `-C` option missing or unreadable. The compiler needs this file for non-ASCII source character processing. Verify file exists in compiler directory or specified path."
-},
-
-/* 109 */  /* FATAL ERROR */
-{
-    "invalid path",
-    "File system path syntax error or inaccessible directory component. Path may contain illegal characters, be too long, or refer to non-existent network resource. The compiler's path normalization routine rejected the path."
-},
-
-/* 110 */  /* FATAL ERROR */
-{
-    "assertion failed",
-    "Compile-time assertion via `#assert` directive evaluated false. Assertion condition must be constant expression; if false, compilation aborts. Used for validating compile-time assumptions about types, sizes, or configurations."
-},
-
-/* 111 */  /* FATAL ERROR */
-{
-    "user error",
-    "`#error` directive encountered with diagnostic message. Intentionally halts compilation with custom error message. Used for conditional compilation checks, deprecated code paths, or unmet prerequisites."
-},
-
-/* 214 */  /* WARNING */
-{
-    "literal array/string passed to non-const parameter",
-    "String literal or array initializer passed to function parameter not declared `const`. While syntactically valid, this risks modification of literal data which may be in read-only memory. Declare parameter as `const` if function doesn't modify data, or copy literal to mutable array first."
-},
-
-/* 200 */  /* WARNING */
-{
-    "is truncated to",
-    "Identifier exceeds implementation length limit (typically 31-63 characters). Excess characters ignored for symbol table purposes. This may cause collisions if truncated names become identical. Consider shorter, distinct names."
-},
-
-/* 201 */  /* WARNING */
-{
-    "redefinition of constant",
-    "Macro or `const` variable redefined with different value. The new definition overrides previous. This often occurs from conflicting header files or conditional compilation issues. If intentional, use `#undef` first or check inclusion order."
-},
-
-/* 202 */  /* WARNING */
-{
-    "number of arguments does not match",
-    "Function call argument count differs from prototype parameter count. For variadic functions, minimum count must be satisfied. The argument count checker compares call site with function signature in symbol table."
-},
-
-/* 206 */  /* WARNING */
-{
-    "redundant test: constant expression is non-zero",
-    "Condition always true at compile-time, making conditional redundant. Similar to warning 205 but for always-true conditions. May indicate: over-constrained condition, debug code left enabled, or macro expansion issue."
-},
-
-/* 214 */  /* WARNING */
-{
-    "array argument was intended as const",
-    "Non-constant array argument passed to const-qualified parameter triggers this advisory. The function promises not to modify via const, but caller passes non-const. This is safe but suggests interface inconsistency."
-},
-
-/* 060 */  /* PREPROCESSOR ERROR */
-{
-    "too many nested includes",
-    "Include file nesting depth exceeds implementation limit (typically 50-100). May indicate: recursive inclusion, deep header hierarchies, or include loop. Use include guards (#ifndef) and forward declarations to reduce nesting."
-},
-
-/* 061 */  /* PREPROCESSOR ERROR */
-{
-    "recursive include",
-    "Circular include dependency detected. File A includes B which includes A (directly or indirectly). The include graph cycle detection prevents infinite recursion. Use include guards and forward declarations to break cycles."
-},
-
-/* 062 */  /* PREPROCESSOR ERROR */
-{
-    "macro recursion too deep",
-    "Macro expansion recursion depth limit exceeded. Occurs with recursively defined macros without termination condition. The preprocessor's macro expansion stack has safety limit to prevent infinite recursion."
-},
-
-/* 068 */  /* PREPROCESSOR ERROR */
-{
-    "division by zero",
-    "Constant expression evaluator encountered division/modulo by zero. Check: array sizes, case labels, enumeration values, or #if expressions. The constant folder performs arithmetic during preprocessing and catches this error."
-},
-
-/* 069 */  /* PREPROCESSOR ERROR */
-{
-    "overflow in constant expression",
-    "Arithmetic overflow during constant expression evaluation in preprocessor. Integer operations exceed 32-bit signed range. The preprocessor uses signed 32-bit arithmetic for constant expressions."
-},
-
-/* 070 */  /* PREPROCESSOR ERROR */
-{
-    "undefined macro",
-    "Macro identifier used in `#if` or `#elif` not defined. Treated as 0 per C standard. May indicate: missing header, typo, or conditional compilation branch for undefined configuration. Use `#ifdef` or `#if defined()` to test existence."
-},
-
-/* 071 */  /* PREPROCESSOR ERROR */
-{
-    "missing preprocessor argument",
-    "Function-like macro invoked with insufficient arguments. Each parameter in macro definition must correspond to actual argument. Check macro invocation against its definition parameter count."
-},
-
-/* 072 */  /* PREPROCESSOR ERROR */
-{
-    "too many macro arguments",
-    "Function-like macro invoked with excess arguments beyond parameter list. Extra arguments are ignored but indicate likely error. Verify macro definition matches usage pattern."
-},
-
-/* 038 */  /* PREPROCESSOR ERROR */
-{
-    "extra characters on line",
-    "Trailing tokens after preprocessor directive. Preprocessor directives must occupy complete logical line (except line continuation). Common with stray semicolons or comments on `#include` lines."
-},
-
-/* Sentinel value to mark the end of the array. */
-{NULL, NULL}
-};
-
-static const char *wg_find_warn_err(const char *line)
-{
-  int cindex;
-  for(cindex=0;ccs[cindex].cs_t;++cindex) {
-    if(strstr(line,ccs[cindex].cs_t))
-      return ccs[cindex].cs_i;
-  }
-  return NULL;
-}
-
-void compiler_detailed(const char *wgoutput,int debug,
-                       int wcnt,int ecnt,const char *compiler_ver,
-                       int header_size,int code_size,int data_size,
-                       int stack_size,int total_size)
-{
-  println(stdout,
-          "Compile Complete! | " FCOLOUR_CYAN "%d pass (warning) " FCOLOUR_DEFAULT "| " FCOLOUR_BLUE " %d fail (error)",
-          wcnt,ecnt);
-
-  println(stdout,"-----------------------------");
-
-  int amx_access=path_access(wgoutput);
-  if(amx_access && debug!=0) {
-    unsigned long hash=crypto_djb2_hash_file(wgoutput);
-
-    printf("Output path: %s\n",wgoutput);
-    printf("Header : %dB  |  Total        : %dB\n"
-           "Code (static mem)   : %dB  |  hash (djb2)  : %#lx\n"
-           "Data (static mem)   : %dB\n"
-           "Stack (dynamic mem)  : %dB\n",
-           header_size,total_size,code_size,
-           hash,data_size,stack_size);
-    fflush(stdout);
-
-    portable_stat_t st;
-    if(portable_stat(wgoutput,&st)==0) {
-      printf("ino    : %llu   |  File   : %lluB\n"
-             "dev    : %llu\n"
-             "read   : %s   |  write  : %s\n"
-             "execute: %s   |  mode   : %020o\n"
-             "atime  : %llu\n"
-             "mtime  : %llu\n"
-             "ctime  : %llu\n",
-             (unsigned long long)st.st_ino,
-             (unsigned long long)st.st_size,
-             (unsigned long long)st.st_dev,
-             (st.st_mode & S_IRUSR)?"Y":"N",
-             (st.st_mode & S_IWUSR)?"Y":"N",
-             (st.st_mode & S_IXUSR)?"Y":"N",
-             st.st_mode,
-             (unsigned long long)st.st_latime,
-             (unsigned long long)st.st_lmtime,
-             (unsigned long long)st.st_mctime
-      );
-      fflush(stdout);
-    }
-  }
-
-  fflush(stdout);
-  printf("\n");
-
-  printf("* Pawn Compiler %s - Copyright (c) 1997-2006, ITB CompuPhase\n",compiler_ver);
-
-  return;
-}
-
-static void cause_compiler_expl(const char *log_file,const char *wgoutput,int debug)
-{
-  __debug_function();
-
-  if(path_exists(wgoutput)==0)
-    return;
-
-  FILE *plog=fopen(log_file,"r");
-  if(!plog)
-    return;
-
-  char line[WG_MAX_PATH];
-  int wcnt=0,ecnt=0;
-  int header_size=0,code_size=0,data_size=0;
-  int stack_size=0,total_size=0;
-  char compiler_ver[64]={0};
-
-  while(fgets(line,sizeof(line),plog)) {
-    if(wg_strcase(line,"Warnings.") ||
-       wg_strcase(line,"Warning.") ||
-       wg_strcase(line,"Errors.") ||
-       wg_strcase(line,"Error."))
-      continue;
-
-    if(wg_strcase(line,"Header size:")) {
-      header_size=strtol(strchr(line,':')+1,NULL,10);
-      continue;
-    } else if(wg_strcase(line,"Code size:")) {
-      code_size=strtol(strchr(line,':')+1,NULL,10);
-      continue;
-    } else if(wg_strcase(line,"Data size:")) {
-      data_size=strtol(strchr(line,':')+1,NULL,10);
-      continue;
-    } else if(wg_strcase(line,"Stack/heap size:")) {
-      stack_size=strtol(strchr(line,':')+1,NULL,10);
-      continue;
-    } else if(wg_strcase(line,"Total requirements:")) {
-      total_size=strtol(strchr(line,':')+1,NULL,10);
-      continue;
-    } else if(wg_strcase(line,"Pawn compiler ")) {
-      const char *p=strstr(line,"Pawn compiler ");
-      if(p) sscanf(p,"Pawn compiler %63s",compiler_ver);
-      continue;
-    }
-
-    fwrite(line,1,strlen(line),stdout);
-
-    if(wg_strcase(line,"warning")) ++wcnt;
-    if(wg_strcase(line,"error")) ++ecnt;
-
-    const char *description=wg_find_warn_err(line);
-    if(description) {
-      const char *found=NULL;
-      int mk_pos=0;
-      for(int i=0;ccs[i].cs_t;++i) {
-        if((found=strstr(line,ccs[i].cs_t))) {
-          mk_pos=found-line;
-          break;
-        }
-      }
-      for(int i=0;i<mk_pos;i++)
-        putchar(' ');
-      pr_color(stdout,FCOLOUR_BLUE,"^ %s :(\n",description);
-    }
-  }
-
-  fclose(plog);
-
-  compiler_detailed(wgoutput,debug,wcnt,ecnt,compiler_ver,header_size,code_size,data_size,stack_size,total_size);
 }

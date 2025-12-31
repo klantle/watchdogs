@@ -124,7 +124,7 @@ void wg_server_crash_check(void) {
         while (fgets(runner_buffer, sizeof(runner_buffer), this_proc_file))
         {
             if (strfind(runner_buffer, "Unable to load filterscript", true)) {
-                needed = snprintf(output_buf, sizeof(output_buf), "@ Unable to load filterscript detected - Please recompile our FS\n\t");
+                needed = snprintf(output_buf, sizeof(output_buf), "@ Unable to load filterscript detected - Please recompile our filterscripts.\n\t");
                 fwrite(output_buf, 1, needed, stdout);
                 pr_color(stdout, FCOLOUR_BLUE, "%s", runner_buffer);
                 fflush(stdout);
@@ -132,7 +132,7 @@ void wg_server_crash_check(void) {
 
             if (strfind(runner_buffer, "Invalid index parameter (bad entry point)", true)) {
                 needed = snprintf(output_buf, sizeof(output_buf),
-                    "@ Invalid index parameter (bad entry point) Detected! you're forget " FCOLOUR_CYAN "'main'?" FCOLOUR_DEFAULT "\n\t");
+                    "@ Invalid index parameter (bad entry point) detected - You're forget " FCOLOUR_CYAN "'main'" FCOLOUR_DEFAULT "?\n\t");
                 fwrite(output_buf, 1, needed, stdout);
                 pr_color(stdout, FCOLOUR_BLUE, "%s", runner_buffer);
                 fflush(stdout);

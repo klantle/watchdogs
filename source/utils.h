@@ -30,8 +30,8 @@
 #if __has_include(<readline/history.h>)
 #include <readline/history.h>
 #include <readline/readline.h>
-#define wg_u_history() using_history()
-#define wg_a_history(cmd) add_history(cmd)
+#define dog_u_history() using_history()
+#define dog_a_history(cmd) add_history(cmd)
 #endif
 #if __has_include(<spawn.h>)
     #include <spawn.h>
@@ -47,12 +47,12 @@
 
 /* Platform detection */
 #if defined(__WINDOWS32__)
-#define WG_WINDOWS
+#define DOG_WINDOWS
 #elif defined(__LINUX__)
-#define WG_LINUX
+#define DOG_LINUX
 #elif defined(__ANDROID__)
-#define WG_LINUX
-#define WG_ANDROID
+#define DOG_LINUX
+#define DOG_ANDROID
 #endif
 
 /* Path constants */
@@ -63,7 +63,7 @@
 #define __PATH_STR_SEP_WIN32 "\\"
 
 /* Platform-specific includes & defines */
-#ifdef WG_WINDOWS
+#ifdef DOG_WINDOWS
 #if __has_include(<io.h>)
 #include <io.h>
 #endif
@@ -141,6 +141,19 @@
 
 #define __maybe_unused__ __attribute__((unused))
 
+#define __BIT_MASK_ZERO   (0x01)  /* 0000 0000 0000 0001 */
+#define __BIT_MASK_ONE    (0x02)  /* 0000 0000 0000 0010 */
+#define __BIT_MASK_TWO    (0x04)  /* 0000 0000 0000 0100 */
+#define __BIT_MASK_THREE  (0x08)  /* 0000 0000 0000 1000 */
+#define __BIT_MASK_FOUR   (0x10)  /* 0000 0000 0001 0000 */
+#define __BIT_MASK_FIVE   (0x20)  /* 0000 0000 0010 0000 */
+#define __BIT_MASK_SIX    (0x40)  /* 0000 0000 0100 0000 */
+#define __BIT_MASK_SEVEN  (0x80)  /* 0000 0000 1000 0000 */
+#define __BIT_MASK_EIGHT  (0x100) /* 0000 0001 0000 0000 */
+#define __BIT_MASK_NINE   (0x200) /* 0000 0010 0000 0000 */
+#define __BIT_MASK_TEN    (0x400) /* 0000 0100 0000 0000 */
+#define __BIT_MASK_ELEVEN (0x800) /* 0000 1000 0000 0000 */
+
 /* Dirent constants */
 #if ! defined(DT_UNKNOWN) && ! defined(DT_FIFO)
 #define DT_UNKNOWN 0
@@ -154,14 +167,14 @@
 #define DT_WHT    14
 #endif
 
-#define WG_PATH_MAX  (260 + 126)
-#define WG_MAX_PATH  4096
+#define DOG_PATH_MAX  (260 + 126)
+#define DOG_MAX_PATH  4096
 
 /* SEF constants */
 enum {
     /****/RATE_SEF_EMPTY = 0,
     /****/MAX_SEF_ENTRIES = 28,
-    /****/MAX_SEF_PATH_SIZE = WG_PATH_MAX
+    /****/MAX_SEF_PATH_SIZE = DOG_PATH_MAX
 };
 
 /* Compiler flags */
@@ -180,41 +193,41 @@ enum {
 
 /* Watchdog config struct */
 typedef struct {
-    int    wg_ipawncc;
-    int    wg_idepends;
-    int    wg_idownload;
-    char * wg_os_type;
-    int    wg_sel_stat;
-    char * wg_is_samp;
-    char * wg_is_omp;
-    char * wg_ptr_samp;
-    char * wg_ptr_omp;
-    int    wg_compiler_stat;
-    size_t wg_sef_count;
-    char   wg_sef_found_list \
+    int    dog_ipawncc;
+    int    dog_idepends;
+    int    dog_idownload;
+    char * dog_os_type;
+    int    dog_sel_stat;
+    char * dog_is_samp;
+    char * dog_is_omp;
+    char * dog_ptr_samp;
+    char * dog_ptr_omp;
+    int    dog_compiler_stat;
+    size_t dog_sef_count;
+    char   dog_sef_found_list \
         [MAX_SEF_ENTRIES] [MAX_SEF_PATH_SIZE];
-    char * wg_toml_os_type;
-    char * wg_toml_binary;
-    char * wg_toml_config;
-    char * wg_toml_logs;
-    char * wg_toml_aio_opt;
-    char * wg_toml_root_patterns;
-    char * wg_toml_packages;
-    char * wg_toml_proj_input;
-    char * wg_toml_proj_output;
-    char * wg_toml_github_tokens;
-    char * wg_toml_key_ai;
-    char * wg_toml_chatbot_ai;
-    char * wg_toml_models_ai;
-    char * wg_toml_webhooks;
+    char * dog_toml_os_type;
+    char * dog_toml_binary;
+    char * dog_toml_config;
+    char * dog_toml_logs;
+    char * dog_toml_aio_opt;
+    char * dog_toml_root_patterns;
+    char * dog_toml_packages;
+    char * dog_toml_proj_input;
+    char * dog_toml_proj_output;
+    char * dog_toml_github_tokens;
+    char * dog_toml_key_ai;
+    char * dog_toml_chatbot_ai;
+    char * dog_toml_models_ai;
+    char * dog_toml_webhooks;
 } WatchdogConfig;
 
 extern WatchdogConfig wgconfig;
 
 /* Utility function declarations */
-void wg_sef_fdir_memset_to_null(void);
+void dog_sef_fdir_memset_to_null(void);
 
-#ifdef WG_LINUX /* Pop!_OS, etc. */
+#ifdef DOG_LINUX /* Pop!_OS, etc. */
 #ifndef strlcpy
 size_t strlcpy(char *dst, const char *src, size_t size);
 #endif
@@ -222,7 +235,7 @@ size_t strlcpy(char *dst, const char *src, size_t size);
 size_t strlcat(char *dst, const char *src, size_t size);
 #endif
 #endif
-#ifdef WG_WINDOWS
+#ifdef DOG_WINDOWS
 #define strlcpy   win_strlcpy
 #define strlcat   win_strlcat
 #define ftruncate win_ftruncate
@@ -235,10 +248,10 @@ struct struct_of { int (*title)(const char *); };
 extern const char* __command[];
 extern const size_t __command_len;
 
-void* wg_malloc(size_t size);
-void* wg_calloc(size_t count, size_t size);
-void* wg_realloc(void* ptr, size_t size);
-void  wg_free(void* ptr);
+void* dog_malloc(size_t size);
+void* dog_calloc(size_t count, size_t size);
+void* dog_realloc(void* ptr, size_t size);
+void  dog_free(void* ptr);
 
 void path_sym_convert(char *path);
 const char *try_get_basename(const char *path);
@@ -246,35 +259,35 @@ const char *try_get_filename(const char *path);
 
 void unit_show_help(const char* command);
 
-char *wg_procure_pwd(void);
-char* wg_masked_text(int reveal, const char *text);
-int wg_mkdir(const char *path);
-void wg_escaping_json(char *dest, const char *src, size_t dest_size);
-int wg_exec_command(const char *cmd);
-void wg_clear_screen(void);
+char *dog_procure_pwd(void);
+char* dog_masked_text(int reveal, const char *text);
+int dog_mkdir(const char *path);
+void dog_escaping_json(char *dest, const char *src, size_t dest_size);
+int dog_exec_command(const char *cmd);
+void dog_clear_screen(void);
 
-int wg_server_env(void);
+int dog_server_env(void);
 int is_pterodactyl_env(void);
 int is_termux_env(void);
 int is_native_windows(void);
 
-void wg_printfile(const char *path);
-int wg_console_title(const char *__title);
-void wg_strip_dot_fns(char *dst, size_t dst_sz, const char *src);
+void dog_printfile(const char *path);
+int dog_console_title(const char *__title);
+void dog_strip_dot_fns(char *dst, size_t dst_sz, const char *src);
 
-bool wg_strcase(const char *text, const char *pattern);
+bool dog_strcase(const char *text, const char *pattern);
 bool strend(const char *str, const char *suffix, bool nocase);
 bool strfind(const char *text, const char *pattern, bool nocase);
 char* strreplace(const char *source, const char *old_sub, const char *new_sub);
-void wg_escape_quotes(char *dest, size_t size, const char *src);
+void dog_escape_quotes(char *dest, size_t size, const char *src);
 
-extern const char* wg_find_near_command(const char *ptr_command,
+extern const char* dog_find_near_command(const char *ptr_command,
     const char *__commands[], size_t num_cmds, int *out_distance);
 
-int wg_kill_process(const char *process);
+int dog_kill_process(const char *process);
 
-int wg_match_wildcard(const char *str, const char *pat);
-const char *wg_procure_os(void);
+int dog_match_wildcard(const char *str, const char *pat);
+const char *dog_procure_os(void);
 
 int dir_exists(const char *path);
 int path_exists(const char *path);
@@ -284,11 +297,11 @@ int file_regular(const char *path);
 int file_same_file(const char *a, const char *b);
 int ensure_parent_dir(char *out_parent, size_t n, const char *dest);
 
-int wg_dot_or_dotdot(const char *name);
+int dog_dot_or_dotdot(const char *name);
 
-int wg_sef_fdir(const char *sef_path, const char *sef_name, const char *ignore_dir);
-int wg_toml_configs(void);
-int wg_sef_wcopy(const char *c_src, const char *c_dest);
-int wg_sef_wmv(const char *c_src, const char *c_dest);
+int dog_sef_fdir(const char *sef_path, const char *sef_name, const char *ignore_dir);
+int dog_toml_configs(void);
+int dog_sef_wcopy(const char *c_src, const char *c_dest);
+int dog_sef_wmv(const char *c_src, const char *c_dest);
 
 #endif /* UTILS_H */

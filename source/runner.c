@@ -19,7 +19,7 @@
 #include "runner.h"
 
 int sigint_handler   = 0;
-static char command[WG_MAX_PATH + WG_PATH_MAX * 2];
+static char command[DOG_MAX_PATH + DOG_PATH_MAX * 2];
 static char *cJSON_Data = NULL;
 static char *printed = NULL;
 static char *sampvoice_port = NULL;
@@ -35,7 +35,7 @@ static cJSON *msj = NULL;
 
 void try_cleanup_server(void) {
         sigint_handler = 1;
-        wg_stop_server_tasks();
+        dog_stop_server_tasks();
         restore_server_config();
         return;
 }
@@ -51,50 +51,50 @@ void unit_sigint_handler(int sig) {
         if (crashdetect_file != NULL)
             fclose(crashdetect_file);
 
-        #ifdef WG_ANDROID
+        #ifdef DOG_ANDROID
         #ifndef _DBG_PRINT
-        wg_exec_command("exit && ./*.tmux");
+        dog_exec_command("exit && ./*.tmux");
         #else
-        wg_exec_command("exit && ./*.debug.tmux");
+        dog_exec_command("exit && ./*.debug.tmux");
         #endif
-        #elif defined(WG_LINUX)
+        #elif defined(DOG_LINUX)
         #ifndef _DBG_PRINT
-        wg_exec_command("exit && ./watchdogs");
+        dog_exec_command("exit && ./watchdogs");
         #else
-        wg_exec_command("exit && ./*.debug");
+        dog_exec_command("exit && ./*.debug");
         #endif
-        #elif defined(WG_WINDOWS)
+        #elif defined(DOG_WINDOWS)
         #ifndef _DBG_PRINT
-        wg_exec_command("exit && *.win");
+        dog_exec_command("exit && *.win");
         #else
-        wg_exec_command("exit && *.debug.win");
+        dog_exec_command("exit && *.debug.win");
         #endif
         #endif
 }
 
-void wg_stop_server_tasks(void) {
-        if (wg_server_env() == 1)
-          wg_kill_process(wgconfig.wg_toml_binary);
-        else if (wg_server_env() == 2)
-          wg_kill_process(wgconfig.wg_toml_binary);
+void dog_stop_server_tasks(void) {
+        if (dog_server_env() == 1)
+          dog_kill_process(wgconfig.dog_toml_binary);
+        else if (dog_server_env() == 2)
+          dog_kill_process(wgconfig.dog_toml_binary);
 }
 
-void wg_display_server_logs(int ret) {
+void dog_display_server_logs(int ret) {
         char *log_file = NULL;
-        if (wg_server_env() == 1)
-            log_file = wgconfig.wg_toml_logs;
-        else if (wg_server_env() == 2)
-            log_file = wgconfig.wg_toml_logs;
-        wg_printfile(log_file);
+        if (dog_server_env() == 1)
+            log_file = wgconfig.dog_toml_logs;
+        else if (dog_server_env() == 2)
+            log_file = wgconfig.dog_toml_logs;
+        dog_printfile(log_file);
         return;
 }
 
-void wg_server_crash_check(void) {
+void dog_server_crash_check(void) {
         FILE *this_proc_file = NULL;
-        if (wg_server_env() == 1)
-            this_proc_file = fopen(wgconfig.wg_toml_logs, "rb");
+        if (dog_server_env() == 1)
+            this_proc_file = fopen(wgconfig.dog_toml_logs, "rb");
         else
-            this_proc_file = fopen(wgconfig.wg_toml_logs, "rb");
+            this_proc_file = fopen(wgconfig.dog_toml_logs, "rb");
 
         if (this_proc_file == NULL) {
             pr_error(stdout, "log file not found!.");
@@ -103,17 +103,17 @@ void wg_server_crash_check(void) {
         }
 
         int needed;
-        char output_buf[WG_MAX_PATH + 26];
-        char runner_buffer[WG_MAX_PATH * 4];
+        char output_buf[DOG_MAX_PATH + 26];
+        char runner_buffer[DOG_MAX_PATH * 4];
 
         if (path_exists("crashinfo.txt") != 0)
             {
                 pr_info(stdout, "crashinfo.txt detected..");
                 char *confirm = readline("-> show? ");
                 if (confirm && (confirm[0] == '\0' || confirm[0] == 'Y' || confirm[0] == 'y')) {
-                    wg_printfile("crashinfo.txt");
+                    dog_printfile("crashinfo.txt");
                 }
-                wg_free(confirm);
+                dog_free(confirm);
             }
 
         needed = snprintf(output_buf, sizeof(output_buf),
@@ -168,20 +168,20 @@ void wg_server_crash_check(void) {
 
                 char *recompiled = readline("Recompiled scripts now? (Auto-fix)");
                 if (recompiled && (recompiled[0] == '\0' || !strcmp(recompiled, "Y") || !strcmp(recompiled, "y"))) {
-                    wg_free(recompiled);
-                    pr_color(stdout, FCOLOUR_CYAN, "Please input the pawn file\n\t* (just enter for %s - input E/e to exit):", wgconfig.wg_toml_proj_input);
+                    dog_free(recompiled);
+                    pr_color(stdout, FCOLOUR_CYAN, "Please input the pawn file\n\t* (just enter for %s - input E/e to exit):", wgconfig.dog_toml_proj_input);
                     char *gamemode_compile = readline("Y/n: ");
                     if (gamemode_compile && strlen(gamemode_compile) < 1) {
                         const char *args[] = { NULL, ".", NULL, NULL, NULL, NULL, NULL, NULL, NULL };
-                        wg_exec_compiler(args[0], args[1], args[2], args[3], args[4], args[5], args[6], args[7], args[8]);
-                        wg_free(gamemode_compile);
+                        dog_exec_compiler(args[0], args[1], args[2], args[3], args[4], args[5], args[6], args[7], args[8]);
+                        dog_free(gamemode_compile);
                     } else if (gamemode_compile) {
                         const char *args[] = { NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL };
-                        wg_exec_compiler(args[0], gamemode_compile, args[2], args[3], args[4], args[5], args[6], args[7], args[8]);
-                        wg_free(gamemode_compile);
+                        dog_exec_compiler(args[0], gamemode_compile, args[2], args[3], args[4], args[5], args[6], args[7], args[8]);
+                        dog_free(gamemode_compile);
                     }
                 } else {
-                    wg_free(recompiled);
+                    dog_free(recompiled);
                 }
             }
 
@@ -205,8 +205,8 @@ void wg_server_crash_check(void) {
                 if (scanf("%*[^v]voice server running on port %d", &_sampvoice_port) != 1)
                     continue;
                 ++rate_sampvoice_server;
-                wg_free(sampvoice_port);
-                sampvoice_port = (char *)wg_malloc(16);
+                dog_free(sampvoice_port);
+                sampvoice_port = (char *)dog_malloc(16);
                 if (sampvoice_port) {
                     snprintf(sampvoice_port, 16, "%d", _sampvoice_port);
                 }
@@ -301,9 +301,9 @@ void wg_server_crash_check(void) {
                                 fflush(stdout);
                                 char *downgrading = readline("   answer (y/n): ");
                                 if (downgrading && (downgrading[0] == '\0' || strcmp(downgrading, "Y") == 0 || strcmp(downgrading, "y") == 0)) {
-                                    wg_install_depends("CyberMor/sampvoice?v3.0-alpha", "master", NULL);
+                                    dog_install_depends("CyberMor/sampvoice?v3.0-alpha", "master", NULL);
                                 }
-                                wg_free(downgrading);
+                                dog_free(downgrading);
                             }
                         }
                     }
@@ -360,7 +360,7 @@ void wg_server_crash_check(void) {
                 fflush(stdout);
             }
 
-            if (wg_server_env() == 1) {
+            if (dog_server_env() == 1) {
                 if (strfind(runner_buffer, "Your password must be changed from the default password", true)) {
                     ++server_rcon_pass;
                 }
@@ -513,8 +513,8 @@ skip:
                         fseek(read_f, 0, SEEK_SET);
 
                         char *server_f_content = NULL;
-                        server_f_content = wg_malloc(server_fle_size + 1);
-                        if (!server_f_content) { goto wg_skip_fixed; }
+                        server_f_content = dog_malloc(server_fle_size + 1);
+                        if (!server_f_content) { goto dog_skip_fixed; }
 
                         size_t bytes_read;
                         bytes_read = fread(server_f_content, 1, server_fle_size, read_f);
@@ -526,10 +526,10 @@ skip:
 
                         uint32_t crc32_generate;
                         if (pos) {
-                                server_n_content = wg_malloc(server_fle_size + 10);
+                                server_n_content = dog_malloc(server_fle_size + 10);
                                 if (!server_n_content) {
-                                    wg_free(server_f_content);
-                                    goto wg_skip_fixed;
+                                    dog_free(server_f_content);
+                                    goto dog_skip_fixed;
                                 }
 
                                 strncpy(server_n_content, server_f_content, pos - server_f_content);
@@ -543,7 +543,7 @@ skip:
 
                                 srand ( ( unsigned int )time(NULL) ^ rand());
                           			int rand7 = rand () % 10000000;
-                                char size_rand7[WG_PATH_MAX];
+                                char size_rand7[DOG_PATH_MAX];
                                 snprintf(size_rand7, sizeof(size_rand7), "%d", rand7);
                                 crc32_generate = crypto_generate_crc32(size_rand7, sizeof(size_rand7) - 1);
 
@@ -567,7 +567,7 @@ skip:
                                         fwrite(output_buf, 1, needed, stdout);
                                         fflush(stdout);
                                 }
-                                wg_free(server_n_content);
+                                dog_free(server_n_content);
                         } else {
                                 needed = snprintf(output_buf, sizeof(output_buf),
                                         "-Replacement failed!\n"
@@ -577,14 +577,14 @@ skip:
                                 fwrite(output_buf, 1, needed, stdout);
                                 fflush(stdout);
                         }
-                        wg_free(server_f_content);
+                        dog_free(server_f_content);
                     }
                 }
             }
-            wg_free(fixed_now);
+            dog_free(fixed_now);
         }
 
-wg_skip_fixed:
+dog_skip_fixed:
         needed = snprintf(output_buf, sizeof(output_buf),
               "====================================================================\n");
         fwrite(output_buf, 1, needed, stdout);
@@ -605,12 +605,12 @@ wg_skip_fixed:
               char *confirm;
               confirm = readline("Y/n ");
               if (confirm && (confirm[0] == '\0' || strfind(confirm, "y", true))) {
-                  wg_free(confirm);
-                  wg_install_depends("Y-Less/samp-plugin-crashdetect?newer", "master", NULL);
+                  dog_free(confirm);
+                  dog_install_depends("Y-Less/samp-plugin-crashdetect?newer", "master", NULL);
               } else {
-                  if (confirm) wg_free(confirm);
-                  int _wg_crash_ck = path_access(".watchdogs/crashdetect");
-                  if (_wg_crash_ck)
+                  if (confirm) dog_free(confirm);
+                  int _dog_crash_ck = path_access(".watchdogs/crashdetect");
+                  if (_dog_crash_ck)
                     remove(".watchdogs/crashdetect");
                   return;
               }
@@ -621,9 +621,9 @@ static int update_samp_config(const char *gamemode)
 {
         char line[0x400];
 
-        char size_config[WG_PATH_MAX];
+        char size_config[DOG_PATH_MAX];
         snprintf(size_config, sizeof(size_config),
-                ".watchdogs/%s.bak", wgconfig.wg_toml_config);
+                ".watchdogs/%s.bak", wgconfig.dog_toml_config);
 
         if (path_access(size_config))
                 remove(size_config);
@@ -631,22 +631,22 @@ static int update_samp_config(const char *gamemode)
         if (is_native_windows()) {
             snprintf(command, sizeof(command),
                     "ren %s %s",
-                    wgconfig.wg_toml_config,
+                    wgconfig.dog_toml_config,
                     size_config);
         } else {
             snprintf(command, sizeof(command),
                     "mv -f %s %s",
-                    wgconfig.wg_toml_config,
+                    wgconfig.dog_toml_config,
                     size_config);
         }
 
-        if (wg_exec_command(command) != 0x0) {
+        if (dog_exec_command(command) != 0x0) {
                 pr_error(stdout, "Failed to create backup file");
                 __create_logging();
                 return -1;
         }
 
-        #ifdef WG_WINDOWS
+        #ifdef DOG_WINDOWS
         int fd = open(size_config, O_RDONLY);
         #else
         int fd = open(size_config, O_RDONLY | O_NOFOLLOW);
@@ -663,7 +663,7 @@ static int update_samp_config(const char *gamemode)
                 return -1;
         }
 
-        proc_conf_out = fopen(wgconfig.wg_toml_config, "w+");
+        proc_conf_out = fopen(wgconfig.dog_toml_config, "w+");
         if (!proc_conf_out) {
                 pr_error(stdout,
                     "Failed to write new config");
@@ -672,7 +672,7 @@ static int update_samp_config(const char *gamemode)
                 return -1;
         }
 
-        char put_gamemode[WG_PATH_MAX + 0x1A];
+        char put_gamemode[DOG_PATH_MAX + 0x1A];
         snprintf(put_gamemode, sizeof(put_gamemode), "%s", gamemode);
         char *extension = strrchr(put_gamemode, '.');
         if (extension) *extension = '\0';
@@ -680,7 +680,7 @@ static int update_samp_config(const char *gamemode)
 
         while (fgets(line, sizeof(line), proc_conf_in)) {
                   if (strfind(line, "gamemode0", true)) {
-                      char size_gamemode[WG_PATH_MAX * 0x2];
+                      char size_gamemode[DOG_PATH_MAX * 0x2];
                       snprintf(size_gamemode, sizeof(size_gamemode),
                               "gamemode0 %s\n", put_gamemode);
                       fputs(size_gamemode, proc_conf_out);
@@ -697,26 +697,26 @@ static int update_samp_config(const char *gamemode)
 
 void restore_server_config(void) {
 
-        char size_config[WG_PATH_MAX];
+        char size_config[DOG_PATH_MAX];
         snprintf(size_config, sizeof(size_config),
-                ".watchdogs/%s.bak", wgconfig.wg_toml_config);
+                ".watchdogs/%s.bak", wgconfig.dog_toml_config);
 
         if (path_exists(size_config) == 0)
             goto restore_done;
 
         printf(FCOLOUR_GREEN "warning: " FCOLOUR_DEFAULT
                 "Continue to restore %s -> %s? y/n",
-                size_config, wgconfig.wg_toml_config);
+                size_config, wgconfig.dog_toml_config);
 
         char *restore_confirm = readline(" ");
         if (restore_confirm && strfind(restore_confirm, "Y", true)) {
                 ;
         } else {
-                wg_free(restore_confirm);
+                dog_free(restore_confirm);
                 unit_ret_main(NULL);
         }
 
-        wg_free(restore_confirm);
+        dog_free(restore_confirm);
 
         if (path_access(size_config) == 0)
                 goto restore_done;
@@ -724,37 +724,37 @@ void restore_server_config(void) {
         if (is_native_windows()) {
             snprintf(command, sizeof(command),
             "if exist \"%s\" (del /f /q \"%s\" 2>nul",
-            wgconfig.wg_toml_config, wgconfig.wg_toml_config);
+            wgconfig.dog_toml_config, wgconfig.dog_toml_config);
         } else {
             snprintf(command, sizeof(command),
             "rm -rf %s",
-            wgconfig.wg_toml_config);
+            wgconfig.dog_toml_config);
         }
 
-        wg_exec_command(command);
+        dog_exec_command(command);
 
         if (is_native_windows())
                 snprintf(command, sizeof(command),
                         "ren %s %s",
                         size_config,
-                        wgconfig.wg_toml_config);
+                        wgconfig.dog_toml_config);
         else
                 snprintf(command, sizeof(command),
                         "mv -f %s %s",
                         size_config,
-                        wgconfig.wg_toml_config);
+                        wgconfig.dog_toml_config);
 
-        wg_exec_command(command);
+        dog_exec_command(command);
 
 restore_done:
         return;
 }
 
-void wg_exec_samp_server(const char *gamemode, const char *server_bin)
+void dog_exec_samp_server(const char *gamemode, const char *server_bin)
 {
         __create_logging();
 
-        if (strfind(wgconfig.wg_toml_config, ".json", true))
+        if (strfind(wgconfig.dog_toml_config, ".json", true))
                 return;
 
         int ret = -1;
@@ -777,8 +777,8 @@ void wg_exec_samp_server(const char *gamemode, const char *server_bin)
 
         gamemode = put_gamemode;
 
-        wg_sef_fdir_memset_to_null();
-        if (wg_sef_fdir(".", gamemode, NULL) == 0) {
+        dog_sef_fdir_memset_to_null();
+        if (dog_sef_fdir(".", gamemode, NULL) == 0) {
                 printf("Cannot locate gamemode: ");
                 pr_color(stdout, FCOLOUR_CYAN, "%s\n", gamemode);
                 pr_info(stdout, "Check first, Compile first.");
@@ -806,25 +806,25 @@ void wg_exec_samp_server(const char *gamemode, const char *server_bin)
 
         int ret_serv = 0x0;
 
-        int _wg_log_acces = -0x1;
+        int _dog_log_acces = -0x1;
 back_start:
         start = time(NULL);
         printf(FCOLOUR_BLUE "");
-        #ifdef WG_WINDOWS
+        #ifdef DOG_WINDOWS
                 snprintf(command, sizeof(command), "%s", server_bin);
         #else
                 snprintf(command, sizeof(command), "./%s", server_bin);
         #endif
-        ret = wg_exec_command(command);
+        ret = dog_exec_command(command);
         if (ret == 0) {
                 end = time(NULL);
 
-                if (!strcmp(wgconfig.wg_os_type, OS_SIGNAL_LINUX)) {
+                if (!strcmp(wgconfig.dog_os_type, OS_SIGNAL_LINUX)) {
                         printf(FCOLOUR_DEFAULT "\n");
                         printf("~ logging...\n");
                         sleep(0x3);
                         printf(FCOLOUR_BLUE "");
-                        wg_display_server_logs(0x0);
+                        dog_display_server_logs(0x0);
                         printf(FCOLOUR_DEFAULT "\n");
                 }
         } else {
@@ -838,12 +838,12 @@ back_start:
                 if (elapsed <= 4.1 && ret_serv == 0) {
                         ret_serv = 0x1;
                         printf("\ttry starting again..");
-                        _wg_log_acces = path_access(wgconfig.wg_toml_logs);
-                        if (_wg_log_acces)
-                                remove(wgconfig.wg_toml_logs);
-                        _wg_log_acces = path_access(wgconfig.wg_toml_logs);
-                        if (_wg_log_acces)
-                                remove(wgconfig.wg_toml_logs);
+                        _dog_log_acces = path_access(wgconfig.dog_toml_logs);
+                        if (_dog_log_acces)
+                                remove(wgconfig.dog_toml_logs);
+                        _dog_log_acces = path_access(wgconfig.dog_toml_logs);
+                        if (_dog_log_acces)
+                                remove(wgconfig.dog_toml_logs);
                         end = time(NULL);
                         goto back_start;
                 }
@@ -862,13 +862,13 @@ server_done:
 static int update_omp_config(const char *gamemode)
 {
         struct stat st;
-        char gf[WG_PATH_MAX + 0x1A];
-        char put_gamemode[WG_PATH_MAX + 0x1A];
+        char gf[DOG_PATH_MAX + 0x1A];
+        char put_gamemode[DOG_PATH_MAX + 0x1A];
         int ret = -1;
 
-        char size_config[WG_PATH_MAX];
+        char size_config[DOG_PATH_MAX];
         snprintf(size_config, sizeof(size_config),
-                ".watchdogs/%s.bak", wgconfig.wg_toml_config);
+                ".watchdogs/%s.bak", wgconfig.dog_toml_config);
 
         if (path_access(size_config))
                 remove(size_config);
@@ -876,23 +876,23 @@ static int update_omp_config(const char *gamemode)
         if (is_native_windows()) {
             snprintf(command, sizeof(command),
                 "ren %s %s",
-                wgconfig.wg_toml_config,
+                wgconfig.dog_toml_config,
                 size_config);
         } else {
             snprintf(command, sizeof(command),
                 "mv -f %s %s",
-                wgconfig.wg_toml_config,
+                wgconfig.dog_toml_config,
                 size_config);
         }
 
-        if (wg_exec_command(command) != 0x0) {
+        if (dog_exec_command(command) != 0x0) {
                 pr_error(stdout,
                     "Failed to create backup file");
                 __create_logging();
                 goto runner_end;
         }
 
-        #ifdef WG_WINDOWS
+        #ifdef DOG_WINDOWS
         int fd = open(size_config, O_RDONLY);
         #else
         int fd = open(size_config, O_RDONLY | O_NOFOLLOW);
@@ -920,7 +920,7 @@ static int update_omp_config(const char *gamemode)
                 goto runner_end;
         }
 
-        cJSON_Data = wg_malloc(st.st_size + 0x1);
+        cJSON_Data = dog_malloc(st.st_size + 0x1);
         if (!cJSON_Data) {
                 goto runner_kill;
         }
@@ -966,10 +966,10 @@ static int update_omp_config(const char *gamemode)
         cJSON_AddItemToArray(msj, cJSON_CreateString(gf));
         cJSON_AddItemToObject(pawn, "msj", msj);
 
-        proc_conf_out = fopen(wgconfig.wg_toml_config, "w");
+        proc_conf_out = fopen(wgconfig.dog_toml_config, "w");
         if (!proc_conf_out) {
                 pr_error(stdout,
-                    "Failed to write %s", wgconfig.wg_toml_config);
+                    "Failed to write %s", wgconfig.dog_toml_config);
                 __create_logging();
                 goto runner_end;
         }
@@ -984,7 +984,7 @@ static int update_omp_config(const char *gamemode)
 
         if (fputs(printed, proc_conf_out) == EOF) {
                 pr_error(stdout,
-                    "Failed to write to %s", wgconfig.wg_toml_config);
+                    "Failed to write to %s", wgconfig.dog_toml_config);
                 __create_logging();
                 goto runner_end;
         }
@@ -1016,11 +1016,11 @@ runner_kill:
 
 void restore_omp_config(void) { restore_server_config(); }
 
-void wg_exec_omp_server(const char *gamemode, const char *server_bin)
+void dog_exec_omp_server(const char *gamemode, const char *server_bin)
 {
         __create_logging();
 
-        if (strfind(wgconfig.wg_toml_config, ".cfg", true))
+        if (strfind(wgconfig.dog_toml_config, ".cfg", true))
                 return;
 
         int ret = -1;
@@ -1043,8 +1043,8 @@ void wg_exec_omp_server(const char *gamemode, const char *server_bin)
 
         gamemode = put_gamemode;
 
-        wg_sef_fdir_memset_to_null();
-        if (wg_sef_fdir(".", gamemode, NULL) == 0) {
+        dog_sef_fdir_memset_to_null();
+        if (dog_sef_fdir(".", gamemode, NULL) == 0) {
                 printf("Cannot locate gamemode: ");
                 pr_color(stdout, FCOLOUR_CYAN, "%s\n", gamemode);
                 pr_info(stdout, "Check first, Compile first.");
@@ -1072,16 +1072,16 @@ void wg_exec_omp_server(const char *gamemode, const char *server_bin)
 
         int ret_serv = 0x0;
 
-        int _wg_log_acces = -0x1;
+        int _dog_log_acces = -0x1;
 back_start:
         start = time(NULL);
         printf(FCOLOUR_BLUE "");
-        #ifdef WG_WINDOWS
+        #ifdef DOG_WINDOWS
                 snprintf(command, sizeof(command), "%s", server_bin);
         #else
                 snprintf(command, sizeof(command), "./%s", server_bin);
         #endif
-        ret = wg_exec_command(command);
+        ret = dog_exec_command(command);
 
         if (ret != 0) {
                 printf(FCOLOUR_DEFAULT "\n");
@@ -1094,12 +1094,12 @@ back_start:
                 if (elapsed <= 4.1 && ret_serv == 0) {
                         ret_serv = 0x1;
                         printf("\ttry starting again..");
-                        _wg_log_acces = path_access(wgconfig.wg_toml_logs);
-                        if (_wg_log_acces)
-                                remove(wgconfig.wg_toml_logs);
-                        _wg_log_acces = path_access(wgconfig.wg_toml_logs);
-                        if (_wg_log_acces)
-                                remove(wgconfig.wg_toml_logs);
+                        _dog_log_acces = path_access(wgconfig.dog_toml_logs);
+                        if (_dog_log_acces)
+                                remove(wgconfig.dog_toml_logs);
+                        _dog_log_acces = path_access(wgconfig.dog_toml_logs);
+                        if (_dog_log_acces)
+                                remove(wgconfig.dog_toml_logs);
                         end = time(NULL);
                         goto back_start;
                 }

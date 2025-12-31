@@ -40,20 +40,20 @@ const char *watchdogs_release=WATCHDOGS_RELEASE;
 
 static struct timespec cmd_start, cmd_end={ 0 };
 static double command_dur;
-int wg_ptr_command_init=0;
+int dog_ptr_command_init=0;
 
 int __command__(char *unit_pre_command)
 {
   __create_unit_logging(1);
 
-  int wg_compile_running=0;
+  int dog_compile_running=0;
   char *ptr_prompt=NULL;
-  size_t size_ptr_command=WG_MAX_PATH+WG_PATH_MAX;
+  size_t size_ptr_command=DOG_MAX_PATH+DOG_PATH_MAX;
   char *ptr_command=NULL;
   const char *command_similar;
   int dist=INT_MAX;
 
-  ptr_prompt=wg_malloc(size_ptr_command);
+  ptr_prompt=dog_malloc(size_ptr_command);
   if(!ptr_prompt) return -1;
 
 _ptr_command:
@@ -69,7 +69,8 @@ _ptr_command:
     static int k=0;
     if(k!=1) {
       ++k;
-      ptr_command=strdup("watchdogs");
+      ptr_command=strdup("dog");
+      printf(FCOLOUR_BLUE ">>>" FCOLOUR_DEFAULT " %s\n",ptr_command);
       goto _reexecute_command;
     }
     while(true) {
@@ -96,20 +97,20 @@ _ptr_command:
       if(last == NULL ||
           strcmp(last->line, ptr_command)!=0)
         {
-          wg_a_history(ptr_command);
+          dog_a_history(ptr_command);
         }
   }
 
-  wg_a_history(ptr_command);
+  dog_a_history(ptr_command);
 
-  command_similar=wg_find_near_command(ptr_command,__command,__command_len,&dist);
+  command_similar=dog_find_near_command(ptr_command,__command,__command_len,&dist);
 
 _reexecute_command:
-  ++wg_ptr_command_init;
+  ++dog_ptr_command_init;
   __create_unit_logging(0);
   clock_gettime(CLOCK_MONOTONIC,&cmd_start);
   if(strncmp(ptr_command,"help",strlen("help"))==0) {
-    wg_console_title("Watchdogs | @ help");
+    dog_console_title("Watchdogs | @ help");
 
     char *args;
     args=ptr_command+strlen("help");
@@ -119,18 +120,18 @@ _reexecute_command:
 
     goto unit_done;
   } else if(strcmp(ptr_command,"exit")==0) {
-    wg_free(ptr_command);
+    dog_free(ptr_command);
     ptr_command=NULL;
-    wg_free(ptr_prompt);
+    dog_free(ptr_prompt);
     ptr_prompt=NULL;
     return 2;
   } else if(strcmp(ptr_command,"kill")==0) {
-    wg_console_title("Watchdogs | @ kill");
+    dog_console_title("Watchdogs | @ kill");
 
-    wg_clear_screen();
+    dog_clear_screen();
 
-    wgconfig.wg_sel_stat=0;
-    wg_compile_running=0;
+    wgconfig.dog_sel_stat=0;
+    dog_compile_running=0;
 
     __create_unit_logging(1);
 
@@ -146,11 +147,11 @@ _reexecute_command:
       println(stdout,"Usage: title [<title>]");
     } else {
       size_t title_len=strlen(args)+1;
-      char *title_set=wg_malloc(title_len);
+      char *title_set=dog_malloc(title_len);
       if(!title_set) goto unit_done;
       snprintf(title_set,title_len,"%s",args);
-      wg_console_title(title_set);
-      wg_free(title_set);
+      dog_console_title(title_set);
+      dog_free(title_set);
       title_set=NULL;
     }
 
@@ -247,12 +248,12 @@ _reexecute_command:
     __create_unit_logging(1);
 
     printf(FCOLOUR_B_BLUE "");
-    wg_printfile("watchdogs.toml");
+    dog_printfile("watchdogs.toml");
     printf(FCOLOUR_DEFAULT "\n");
 
     goto unit_done;
   } else if(strncmp(ptr_command,"replicate",strlen("replicate"))==0) {
-    wg_console_title("Watchdogs | @ replicate depends");
+    dog_console_title("Watchdogs | @ replicate depends");
     char *args=ptr_command+strlen("replicate");
     while(*args==' ') ++args;
 
@@ -282,56 +283,56 @@ _reexecute_command:
 
     if(raw_save && strcmp(raw_save,".")==0) {
       static char *fetch_pwd=NULL;
-      fetch_pwd=wg_procure_pwd();
+      fetch_pwd=dog_procure_pwd();
       raw_save=strdup(fetch_pwd);
     }
 
-    wg_free(__args);
+    dog_free(__args);
 
     if(is_null_args!=1) {
       if(raw_branch && raw_save)
-        wg_install_depends(args,raw_branch,raw_save);
+        dog_install_depends(args,raw_branch,raw_save);
       else if(raw_branch)
-        wg_install_depends(args,raw_branch,NULL);
+        dog_install_depends(args,raw_branch,NULL);
       else if(raw_save)
-        wg_install_depends(args,"main",raw_save);
+        dog_install_depends(args,"main",raw_save);
       else
-        wg_install_depends(args,"main",NULL);
+        dog_install_depends(args,"main",NULL);
     } else {
-      char errbuf[WG_PATH_MAX];
-      toml_table_t *wg_toml_config;
+      char errbuf[DOG_PATH_MAX];
+      toml_table_t *dog_toml_config;
       FILE *this_proc_file=fopen("watchdogs.toml","r");
-      wg_toml_config=toml_parse_file(this_proc_file,errbuf,sizeof(errbuf));
+      dog_toml_config=toml_parse_file(this_proc_file,errbuf,sizeof(errbuf));
       if(this_proc_file) fclose(this_proc_file);
 
-      if(!wg_toml_config) {
+      if(!dog_toml_config) {
         pr_error(stdout,"failed to parse the watchdogs.toml...: %s",errbuf);
         __create_logging();
         return 0;
       }
 
-      toml_table_t *wg_depends;
+      toml_table_t *dog_depends;
       size_t arr_sz,i;
       char *expect=NULL;
 
-      wg_depends=toml_table_in(wg_toml_config,"dependencies");
-      if(!wg_depends)
+      dog_depends=toml_table_in(dog_toml_config,"dependencies");
+      if(!dog_depends)
         goto out;
 
-      toml_array_t *wg_toml_packages=toml_array_in(wg_depends,"packages");
-      if(!wg_toml_packages)
+      toml_array_t *dog_toml_packages=toml_array_in(dog_depends,"packages");
+      if(!dog_toml_packages)
         goto out;
 
-      arr_sz=toml_array_nelem(wg_toml_packages);
+      arr_sz=toml_array_nelem(dog_toml_packages);
       for(i=0;i<arr_sz;i++) {
         toml_datum_t val;
 
-        val=toml_string_at(wg_toml_packages,i);
+        val=toml_string_at(dog_toml_packages,i);
         if(!val.ok)
           continue;
 
         if(!expect) {
-          expect=wg_realloc(NULL,strlen(val.u.s)+1);
+          expect=dog_realloc(NULL,strlen(val.u.s)+1);
           if(!expect)
             goto free_val;
 
@@ -341,7 +342,7 @@ _reexecute_command:
           size_t old_len=strlen(expect);
           size_t new_len=old_len+strlen(val.u.s)+2;
 
-          tmp=wg_realloc(expect,new_len);
+          tmp=dog_realloc(expect,new_len);
           if(!tmp)
             goto free_val;
 
@@ -350,39 +351,39 @@ _reexecute_command:
         }
 
 free_val:
-        wg_free(val.u.s);
+        dog_free(val.u.s);
         val.u.s=NULL;
       }
 
       if(!expect)
         expect=strdup("");
 
-      wg_free(wgconfig.wg_toml_packages);
-      wgconfig.wg_toml_packages=expect;
+      dog_free(wgconfig.dog_toml_packages);
+      wgconfig.dog_toml_packages=expect;
 
-      pr_info(stdout,"Trying install packages: %s",wgconfig.wg_toml_packages);
+      pr_info(stdout,"Trying install packages: %s",wgconfig.dog_toml_packages);
 
       if(raw_branch && raw_save)
-        wg_install_depends(wgconfig.wg_toml_packages,raw_branch,raw_save);
+        dog_install_depends(wgconfig.dog_toml_packages,raw_branch,raw_save);
       else if(raw_branch)
-        wg_install_depends(wgconfig.wg_toml_packages,raw_branch,NULL);
+        dog_install_depends(wgconfig.dog_toml_packages,raw_branch,NULL);
       else if(raw_save)
-        wg_install_depends(wgconfig.wg_toml_packages,"main",raw_save);
+        dog_install_depends(wgconfig.dog_toml_packages,"main",raw_save);
       else
-        wg_install_depends(wgconfig.wg_toml_packages,"main",NULL);
+        dog_install_depends(wgconfig.dog_toml_packages,"main",NULL);
 out:
-      toml_free(wg_toml_config);
+      toml_free(dog_toml_config);
     }
 
     goto unit_done;
   } else if(strcmp(ptr_command,"gamemode")==0) {
-    wg_console_title("Watchdogs | @ gamemode");
+    dog_console_title("Watchdogs | @ gamemode");
 ret_ptr:
     printf("\033[1;33m== Select a Platform ==\033[0m\n");
     printf("  \033[36m[l]\033[0m Linux\n");
     printf("  \033[36m[w]\033[0m Windows  \033[90m(WSL/WSL2/MSYS2 supported — not for WSL Docker)\033[0m\n");
 
-    wgconfig.wg_sel_stat=1;
+    wgconfig.dog_sel_stat=1;
 
     char *platform=readline("==> ");
 
@@ -390,9 +391,9 @@ ret_ptr:
       free(ptr_command);
       ptr_command=NULL;
       free(platform);
-      int ret=wg_install_server("linux");
+      int ret=dog_install_server("linux");
 loop_igm:
-      if(ret==-1 && wgconfig.wg_sel_stat!=0)
+      if(ret==-1 && wgconfig.dog_sel_stat!=0)
         goto loop_igm;
       else if(ret==0)
       {
@@ -405,9 +406,9 @@ loop_igm:
       free(ptr_command);
       ptr_command=NULL;
       free(platform);
-      int ret=wg_install_server("windows");
+      int ret=dog_install_server("windows");
 loop_igm2:
-      if(ret==-1 && wgconfig.wg_sel_stat!=0)
+      if(ret==-1 && wgconfig.dog_sel_stat!=0)
         goto loop_igm2;
       else if(ret==0)
       {
@@ -433,14 +434,14 @@ loop_igm2:
 
     goto unit_done;
   } else if(strcmp(ptr_command,"pawncc")==0) {
-    wg_console_title("Watchdogs | @ pawncc");
+    dog_console_title("Watchdogs | @ pawncc");
 ret_ptr2:
     printf("\033[1;33m== Select a Platform ==\033[0m\n");
     printf("  \033[36m[l]\033[0m Linux\n");
     printf("  \033[36m[w]\033[0m Windows  \033[90m(WSL/WSL2/MSYS2 supported — not for WSL Docker)\033[0m\n");
     printf("  \033[36m[t]\033[0m Termux\n");
 
-    wgconfig.wg_sel_stat=1;
+    wgconfig.dog_sel_stat=1;
 
     char *platform=readline("==> ");
 
@@ -448,9 +449,9 @@ ret_ptr2:
       free(ptr_command);
       ptr_command=NULL;
       free(platform);
-      int ret=wg_install_pawncc("linux");
+      int ret=dog_install_pawncc("linux");
 loop_ipcc:
-      if(ret==-1 && wgconfig.wg_sel_stat!=0)
+      if(ret==-1 && wgconfig.dog_sel_stat!=0)
         goto loop_ipcc;
       else if(ret==0)
       {
@@ -463,9 +464,9 @@ loop_ipcc:
       free(ptr_command);
       ptr_command=NULL;
       free(platform);
-      int ret=wg_install_pawncc("windows");
+      int ret=dog_install_pawncc("windows");
 loop_ipcc2:
-      if(ret==-1 && wgconfig.wg_sel_stat!=0)
+      if(ret==-1 && wgconfig.dog_sel_stat!=0)
         goto loop_ipcc2;
       else if(ret==0)
       {
@@ -478,9 +479,9 @@ loop_ipcc2:
       free(ptr_command);
       ptr_command=NULL;
       free(platform);
-      int ret=wg_install_pawncc("termux");
+      int ret=dog_install_pawncc("termux");
 loop_ipcc3:
-      if(ret==-1 && wgconfig.wg_sel_stat!=0)
+      if(ret==-1 && wgconfig.dog_sel_stat!=0)
         goto loop_ipcc3;
       else if(ret==0)
       {
@@ -506,35 +507,35 @@ loop_ipcc3:
 
     goto unit_done;
   } else if(strcmp(ptr_command,"debug")==0) {
-    wg_console_title("Watchdogs | @ debug");
-    #ifdef WG_ANDROID
+    dog_console_title("Watchdogs | @ debug");
+    #ifdef DOG_ANDROID
       #ifndef _DBG_PRINT
-        wg_exec_command("./watchdogs.tmux 0000WGDEBUGGINGSERVER");
+        dog_exec_command("./watchdogs.tmux 0000WGDEBUGGINGSERVER");
       #else
-        wg_exec_command("./watchdogs.debug.tmux 0000WGDEBUGGINGSERVER");
+        dog_exec_command("./watchdogs.debug.tmux 0000WGDEBUGGINGSERVER");
       #endif
-    #elif defined(WG_LINUX)
+    #elif defined(DOG_LINUX)
       #ifndef _DBG_PRINT
-        wg_exec_command("./watchdogs 0000WGDEBUGGINGSERVER");
+        dog_exec_command("./watchdogs 0000WGDEBUGGINGSERVER");
       #else
-        wg_exec_command("./watchdogs.debug 0000WGDEBUGGINGSERVER");
+        dog_exec_command("./watchdogs.debug 0000WGDEBUGGINGSERVER");
       #endif
-    #elif defined(WG_WINDOWS)
+    #elif defined(DOG_WINDOWS)
       #ifndef _DBG_PRINT
-        wg_exec_command("watchdogs.win 0000WGDEBUGGINGSERVER");
+        dog_exec_command("watchdogs.win 0000WGDEBUGGINGSERVER");
       #else
-        wg_exec_command("watchdogs.debug.win 0000WGDEBUGGINGSERVER");
+        dog_exec_command("watchdogs.debug.win 0000WGDEBUGGINGSERVER");
       #endif
     #endif
     goto unit_done;
   } else if(strcmp(ptr_command,"0000WGDEBUGGINGSERVER")==0) {
-    wg_server_crash_check();
-    wg_free(ptr_command);
+    dog_server_crash_check();
+    dog_free(ptr_command);
     ptr_command=NULL;
     return 3;
   } else if(strncmp(ptr_command,"compile",strlen("compile"))==0 &&
             !isalpha((unsigned char)ptr_command[strlen("compile")])) {
-    wg_console_title("Watchdogs | @ compile | logging file: .watchdogs/compiler.log");
+    dog_console_title("Watchdogs | @ compile | logging file: .watchdogs/compiler.log");
 
     char *args;
     char *compile_args;
@@ -561,14 +562,14 @@ loop_ipcc3:
     eight_arg=strtok(NULL," ");
     nine_arg=strtok(NULL," ");
 
-    wg_exec_compiler(args,compile_args,second_arg,four_arg,
+    dog_exec_compiler(args,compile_args,second_arg,four_arg,
                     five_arg,six_arg,seven_arg,eight_arg,
                     nine_arg);
 
     goto unit_done;
   } else if(strncmp(ptr_command,"running",strlen("running"))==0) {
 _runners_:
-    wg_stop_server_tasks();
+    dog_stop_server_tasks();
 
     if(is_termux_env()==1) {
       pr_warning(stdout,"Currently Termux is not supported..");
@@ -577,24 +578,24 @@ _runners_:
              "\n\tSA-MP decompilation (work-in-progress): http://github.com/dashr9230/SA-MP");
     }
 
-    if(!path_access(wgconfig.wg_toml_binary)) {
+    if(!path_access(wgconfig.dog_toml_binary)) {
       pr_error(stdout,"can't locate sa-mp/open.mp binary file!");
       goto unit_done;
     }
-    if(!path_access(wgconfig.wg_toml_config)) {
-      pr_warning(stdout,"can't locate %s - config file!",wgconfig.wg_toml_config);
+    if(!path_access(wgconfig.dog_toml_config)) {
+      pr_warning(stdout,"can't locate %s - config file!",wgconfig.dog_toml_config);
       goto unit_done;
     }
 
     if(dir_exists(".watchdogs")==0)
       MKDIR(".watchdogs");
 
-    int _wg_log_acces=path_access(wgconfig.wg_toml_logs);
-    if(_wg_log_acces)
-      remove(wgconfig.wg_toml_logs);
-    _wg_log_acces=path_access(wgconfig.wg_toml_logs);
-    if(_wg_log_acces)
-      remove(wgconfig.wg_toml_logs);
+    int _dog_log_acces=path_access(wgconfig.dog_toml_logs);
+    if(_dog_log_acces)
+      remove(wgconfig.dog_toml_logs);
+    _dog_log_acces=path_access(wgconfig.dog_toml_logs);
+    if(_dog_log_acces)
+      remove(wgconfig.dog_toml_logs);
 
     size_t cmd_len=7;
     char *args=ptr_command+cmd_len;
@@ -604,15 +605,15 @@ _runners_:
 
     char *size_arg1=NULL;
     if(args2==NULL || args2[0]=='\0')
-      size_arg1=wgconfig.wg_toml_proj_output;
+      size_arg1=wgconfig.dog_toml_proj_output;
     else
       size_arg1=args2;
 
     size_t needed=snprintf(NULL,0, "Watchdogs | "
                            "@ running | " "args: %s | "
                            "config: %s | " "CTRL + C to stop. | \"debug\" for debugging",
-                           size_arg1, wgconfig.wg_toml_config)+1;
-    char *title_running_info=wg_malloc(needed);
+                           size_arg1, wgconfig.dog_toml_config)+1;
+    char *title_running_info=dog_malloc(needed);
     if(!title_running_info) { goto unit_done; }
     snprintf(title_running_info,needed,
              "Watchdogs | "
@@ -621,36 +622,36 @@ _runners_:
              "config: %s | "
              "CTRL + C to stop. | \"debug\" for debugging",
              size_arg1,
-             wgconfig.wg_toml_config);
+             wgconfig.dog_toml_config);
     if(title_running_info) {
-      #ifdef WG_ANDROID
+      #ifdef DOG_ANDROID
         println(stdout, "%s", title_running_info);
       #else
-        wg_console_title(title_running_info);
+        dog_console_title(title_running_info);
       #endif
-      wg_free(title_running_info);
+      dog_free(title_running_info);
       title_running_info=NULL;
     }
 
-    int _wg_config_acces=path_access(wgconfig.wg_toml_config);
-    if(!_wg_config_acces) {
-      pr_error(stdout,"%s not found!",wgconfig.wg_toml_config);
+    int _dog_config_acces=path_access(wgconfig.dog_toml_config);
+    if(!_dog_config_acces) {
+      pr_error(stdout,"%s not found!",wgconfig.dog_toml_config);
       goto unit_done;
     }
 
     pr_color(stdout,FCOLOUR_YELLOW,"running..\n");
-    println(stdout,"\toperating system: %s",wgconfig.wg_toml_os_type);
-    println(stdout,"\tbinary file: %s",wgconfig.wg_toml_binary);
-    println(stdout,"\tconfig file: %s",wgconfig.wg_toml_config);
+    println(stdout,"\toperating system: %s",wgconfig.dog_toml_os_type);
+    println(stdout,"\tbinary file: %s",wgconfig.dog_toml_binary);
+    println(stdout,"\tconfig file: %s",wgconfig.dog_toml_config);
 
-    char *command=wg_malloc(WG_PATH_MAX);
+    char *command=dog_malloc(DOG_PATH_MAX);
     if(!command) goto unit_done;
     struct sigaction sa;
 
     if(path_access("announce"))
       CHMOD_FULL("announce");
 
-    if(wg_server_env()==1) {
+    if(dog_server_env()==1) {
       if(args2==NULL || (args2[0]=='.' && args2[1]=='\0')) {
 start_main:
         sa.sa_handler=unit_sigint_handler;
@@ -669,20 +670,20 @@ start_main:
 back_start:
         start=time(NULL);
         printf(FCOLOUR_B_BLUE "");
-        #ifdef WG_WINDOWS
-          snprintf(command,WG_PATH_MAX,"%s",wgconfig.wg_toml_binary);
+        #ifdef DOG_WINDOWS
+          snprintf(command,DOG_PATH_MAX,"%s",wgconfig.dog_toml_binary);
         #else
-          CHMOD_FULL(wgconfig.wg_toml_binary);
-          snprintf(command,WG_PATH_MAX,"./%s",wgconfig.wg_toml_binary);
+          CHMOD_FULL(wgconfig.dog_toml_binary);
+          snprintf(command,DOG_PATH_MAX,"./%s",wgconfig.dog_toml_binary);
         #endif
-        int rate_runner_failed=wg_exec_command(command);
+        int rate_runner_failed=dog_exec_command(command);
         if(rate_runner_failed==0) {
-          if(!strcmp(wgconfig.wg_os_type,OS_SIGNAL_LINUX)) {
+          if(!strcmp(wgconfig.dog_os_type,OS_SIGNAL_LINUX)) {
             printf(FCOLOUR_DEFAULT "\n");
             printf("~ logging...\n");
             sleep(3);
             printf(FCOLOUR_B_BLUE "");
-            wg_display_server_logs(0);
+            dog_display_server_logs(0);
             printf(FCOLOUR_DEFAULT "\n");
           }
         } else {
@@ -695,12 +696,12 @@ back_start:
           if(elapsed<=4.1 && ret_serv==0) {
             ret_serv=1;
             printf("\ttry starting again..");
-            _wg_log_acces=path_access(wgconfig.wg_toml_logs);
-            if(_wg_log_acces)
-              remove(wgconfig.wg_toml_logs);
-            _wg_log_acces=path_access(wgconfig.wg_toml_logs);
-            if(_wg_log_acces)
-              remove(wgconfig.wg_toml_logs);
+            _dog_log_acces=path_access(wgconfig.dog_toml_logs);
+            if(_dog_log_acces)
+              remove(wgconfig.dog_toml_logs);
+            _dog_log_acces=path_access(wgconfig.dog_toml_logs);
+            if(_dog_log_acces)
+              remove(wgconfig.dog_toml_logs);
             end=time(NULL);
             goto back_start;
           }
@@ -717,17 +718,17 @@ server_done:
           free(ptr_command);
           ptr_command=strdup("debug");
           free(debug_runner);
-          wg_free(command);
+          dog_free(command);
           command=NULL;
           goto _reexecute_command;
         }
         if(debug_runner) free(debug_runner);
       } else {
-        if(wg_compile_running==1) {
-          wg_compile_running=0;
+        if(dog_compile_running==1) {
+          dog_compile_running=0;
           goto start_main;
         }
-        wg_exec_samp_server(args2,wgconfig.wg_toml_binary);
+        dog_exec_samp_server(args2,wgconfig.dog_toml_binary);
         restore_server_config();
         printf("\x1b[32m==> create debugging runner?\x1b[0m\n");
         char *debug_runner=readline("   answer (y/n): ");
@@ -735,13 +736,13 @@ server_done:
           free(ptr_command);
           ptr_command=strdup("debug");
           free(debug_runner);
-          wg_free(command);
+          dog_free(command);
           command=NULL;
           goto _reexecute_command;
         }
         if(debug_runner) free(debug_runner);
       }
-    } else if(wg_server_env()==2) {
+    } else if(dog_server_env()==2) {
       if(args2==NULL || (args2[0]=='.' && args2[1]=='\0')) {
 start_main2:
         sa.sa_handler=unit_sigint_handler;
@@ -760,13 +761,13 @@ start_main2:
 back_start2:
         start=time(NULL);
         printf(FCOLOUR_B_BLUE "");
-        #ifdef WG_WINDOWS
-          snprintf(command,WG_PATH_MAX,"%s",wgconfig.wg_toml_binary);
+        #ifdef DOG_WINDOWS
+          snprintf(command,DOG_PATH_MAX,"%s",wgconfig.dog_toml_binary);
         #else
-          CHMOD_FULL(wgconfig.wg_toml_binary);
-          snprintf(command,WG_PATH_MAX,"./%s",wgconfig.wg_toml_binary);
+          CHMOD_FULL(wgconfig.dog_toml_binary);
+          snprintf(command,DOG_PATH_MAX,"./%s",wgconfig.dog_toml_binary);
         #endif
-        int rate_runner_failed=wg_exec_command(command);
+        int rate_runner_failed=dog_exec_command(command);
         if(rate_runner_failed!=0) {
           printf(FCOLOUR_DEFAULT "\n");
           pr_color(stdout,FCOLOUR_RED,"Server startup failed!\n");
@@ -777,12 +778,12 @@ back_start2:
           if(elapsed<=4.1 && ret_serv==0) {
             ret_serv=1;
             printf("\ttry starting again..");
-            _wg_log_acces=path_access(wgconfig.wg_toml_logs);
-            if(_wg_log_acces)
-              remove(wgconfig.wg_toml_logs);
-            _wg_log_acces=path_access(wgconfig.wg_toml_logs);
-            if(_wg_log_acces)
-              remove(wgconfig.wg_toml_logs);
+            _dog_log_acces=path_access(wgconfig.dog_toml_logs);
+            if(_dog_log_acces)
+              remove(wgconfig.dog_toml_logs);
+            _dog_log_acces=path_access(wgconfig.dog_toml_logs);
+            if(_dog_log_acces)
+              remove(wgconfig.dog_toml_logs);
             end=time(NULL);
             goto back_start2;
           }
@@ -800,17 +801,17 @@ server_done2:
           free(ptr_command);
           ptr_command=strdup("debug");
           free(debug_runner);
-          wg_free(command);
+          dog_free(command);
           command=NULL;
           goto _reexecute_command;
         }
         if(debug_runner) free(debug_runner);
       } else {
-        if(wg_compile_running==1) {
-          wg_compile_running=0;
+        if(dog_compile_running==1) {
+          dog_compile_running=0;
           goto start_main2;
         }
-        wg_exec_omp_server(args2,wgconfig.wg_ptr_omp);
+        dog_exec_omp_server(args2,wgconfig.dog_ptr_omp);
         restore_server_config();
         printf("\x1b[32m==> create debugging runner?\x1b[0m\n");
         char *debug_runner=readline("   answer (y/n): ");
@@ -818,7 +819,7 @@ server_done2:
           free(ptr_command);
           ptr_command=strdup("debug");
           free(debug_runner);
-          wg_free(command);
+          dog_free(command);
           command=NULL;
           goto _reexecute_command;
         }
@@ -837,15 +838,15 @@ ret_ptr3:
       while(true) {
         if(pointer_signalA && (strcmp(pointer_signalA,"Y")==0 || strcmp(pointer_signalA,"y")==0)) {
           free(pointer_signalA);
-          if(!strcmp(wgconfig.wg_os_type,OS_SIGNAL_WINDOWS)) {
-            int ret=wg_install_server("windows");
+          if(!strcmp(wgconfig.dog_os_type,OS_SIGNAL_WINDOWS)) {
+            int ret=dog_install_server("windows");
 n_loop_igm:
-            if(ret==-1 && wgconfig.wg_sel_stat!=0)
+            if(ret==-1 && wgconfig.dog_sel_stat!=0)
               goto n_loop_igm;
-          } else if(!strcmp(wgconfig.wg_os_type,OS_SIGNAL_LINUX)) {
-            int ret=wg_install_server("linux");
+          } else if(!strcmp(wgconfig.dog_os_type,OS_SIGNAL_LINUX)) {
+            int ret=dog_install_server("linux");
 n_loop_igm2:
-            if(ret==-1 && wgconfig.wg_sel_stat!=0)
+            if(ret==-1 && wgconfig.dog_sel_stat!=0)
               goto n_loop_igm2;
           }
           break;
@@ -867,7 +868,7 @@ n_loop_igm2:
     }
     goto unit_done;
   } else if(strncmp(ptr_command,"compiles",strlen("compiles"))==0) {
-    wg_console_title("Watchdogs | @ compiles");
+    dog_console_title("Watchdogs | @ compiles");
 
     char *args=ptr_command+strlen("compiles");
     while(*args==' ') ++args;
@@ -877,27 +878,27 @@ n_loop_igm2:
     if(args2==NULL || args2[0]=='\0') {
       const char *argsc[]={NULL,".",NULL,NULL,NULL,NULL,NULL,NULL,NULL};
 
-      wg_compile_running=1;
+      dog_compile_running=1;
 
-      wg_exec_compiler(argsc[0],argsc[1],argsc[2],argsc[3],
+      dog_exec_compiler(argsc[0],argsc[1],argsc[2],argsc[3],
                       argsc[4],argsc[5],argsc[6],argsc[7],
                       argsc[8]);
 
-      if(wgconfig.wg_compiler_stat<1) {
+      if(wgconfig.dog_compiler_stat<1) {
         goto _runners_;
       }
     } else {
       const char *argsc[]={NULL,args2,NULL,NULL,NULL,NULL,NULL,NULL,NULL};
 
-      wg_compile_running=1;
+      dog_compile_running=1;
 
-      wg_exec_compiler(argsc[0],argsc[1],argsc[2],argsc[3],
+      dog_exec_compiler(argsc[0],argsc[1],argsc[2],argsc[3],
                       argsc[4],argsc[5],argsc[6],argsc[7],
                       argsc[8]);
 
-      if(wgconfig.wg_compiler_stat<1) {
+      if(wgconfig.dog_compiler_stat<1) {
         size_t cmd_len=strlen(args)+10;
-        char *size_command=wg_malloc(cmd_len);
+        char *size_command=dog_malloc(cmd_len);
         if(!size_command) goto unit_done;
         snprintf(size_command,cmd_len,"running %s",args);
         free(ptr_command);
@@ -909,15 +910,15 @@ n_loop_igm2:
 
     goto unit_done;
   } else if(strcmp(ptr_command,"stop")==0) {
-    wg_console_title("Watchdogs | @ stop");
+    dog_console_title("Watchdogs | @ stop");
 
-    wg_stop_server_tasks();
+    dog_stop_server_tasks();
 
     goto unit_done;
   } else if(strcmp(ptr_command,"restart")==0) {
-    wg_console_title("Watchdogs | @ restart");
+    dog_console_title("Watchdogs | @ restart");
 
-    wg_stop_server_tasks();
+    dog_stop_server_tasks();
     sleep(2);
     goto _runners_;
   } else if(strncmp(ptr_command,"wanion",strlen("wanion"))==0) {
@@ -938,18 +939,18 @@ n_loop_igm2:
       println(stdout,"Usage: wanion [<text>]");
     } else {
       int retry=0;
-      size_t rest_api_len=strlen(wgconfig.wg_toml_models_ai)+100;
-      char *size_rest_api_perform=wg_malloc(rest_api_len);
+      size_t rest_api_len=strlen(wgconfig.dog_toml_models_ai)+100;
+      char *size_rest_api_perform=dog_malloc(rest_api_len);
       if(!size_rest_api_perform) goto unit_done;
 
       int is_chatbot_groq_based=0;
-      if(strcmp(wgconfig.wg_toml_chatbot_ai,"gemini")==0)
+      if(strcmp(wgconfig.dog_toml_chatbot_ai,"gemini")==0)
 rest_def:
         snprintf(size_rest_api_perform,rest_api_len,
                  "https://generativelanguage.googleapis.com/"
                  "v1beta/models/%s:generateContent",
-                 wgconfig.wg_toml_models_ai);
-      else if(strcmp(wgconfig.wg_toml_chatbot_ai,"groq")==0) {
+                 wgconfig.dog_toml_models_ai);
+      else if(strcmp(wgconfig.dog_toml_chatbot_ai,"groq")==0) {
         is_chatbot_groq_based=1;
         snprintf(size_rest_api_perform,rest_api_len,
                  "https://api.groq.com/"
@@ -962,24 +963,24 @@ rest_def:
       size_t escaped_len=strlen(args)*2+1;
       size_t json_len=escaped_len+512;
 
-      char *wanion_escaped_argument=wg_malloc(escaped_len);
-      char *wanion_json_payload=wg_malloc(json_len);
+      char *wanion_escaped_argument=dog_malloc(escaped_len);
+      char *wanion_json_payload=dog_malloc(json_len);
 
       if(!wanion_escaped_argument || !wanion_json_payload) {
-        wg_free(wanion_escaped_argument);
-        wg_free(wanion_json_payload);
-        wg_free(size_rest_api_perform);
+        dog_free(wanion_escaped_argument);
+        dog_free(wanion_json_payload);
+        dog_free(size_rest_api_perform);
         goto unit_done;
       }
 
-      wg_escaping_json(wanion_escaped_argument,args,escaped_len);
+      dog_escaping_json(wanion_escaped_argument,args,escaped_len);
 
       if(is_chatbot_groq_based==1) {
         snprintf(wanion_json_payload,json_len,
                  "{\"model\":\"%s\",\"messages\":[{\"role\":\"user\","
                  "\"content\":\"Your name in here Wanion (use it) made from Groq my asking: %s\""
                  "}],\"max_tokens\":1024}",
-                 wgconfig.wg_toml_models_ai,
+                 wgconfig.dog_toml_models_ai,
                  wanion_escaped_argument);
       } else {
         snprintf(wanion_json_payload,json_len,
@@ -993,12 +994,12 @@ rest_def:
       double wanion_dur;
       struct buf b={0};
       struct curl_slist *hdr=NULL;
-      size_t tokens_len=strlen(wgconfig.wg_toml_key_ai)+30;
-      char *size_tokens=wg_malloc(tokens_len);
+      size_t tokens_len=strlen(wgconfig.dog_toml_key_ai)+30;
+      char *size_tokens=dog_malloc(tokens_len);
       if(!size_tokens) {
-        wg_free(wanion_escaped_argument);
-        wg_free(wanion_json_payload);
-        wg_free(size_rest_api_perform);
+        dog_free(wanion_escaped_argument);
+        dog_free(wanion_json_payload);
+        dog_free(size_rest_api_perform);
         goto unit_done;
       }
 
@@ -1015,9 +1016,9 @@ wanion_retrying:
 
       hdr=curl_slist_append(NULL,"Content-Type: application/json");
       if(is_chatbot_groq_based==1)
-        snprintf(size_tokens,tokens_len,"Authorization: Bearer %s",wgconfig.wg_toml_key_ai);
+        snprintf(size_tokens,tokens_len,"Authorization: Bearer %s",wgconfig.dog_toml_key_ai);
       else
-        snprintf(size_tokens,tokens_len,"x-goog-api-key: %s",wgconfig.wg_toml_key_ai);
+        snprintf(size_tokens,tokens_len,"x-goog-api-key: %s",wgconfig.dog_toml_key_ai);
       hdr=curl_slist_append(hdr,size_tokens);
 
       curl_easy_setopt(h,CURLOPT_ACCEPT_ENCODING,"gzip");
@@ -1098,7 +1099,7 @@ wanion_retrying:
       #if defined(_DBG_PRINT)
         char *response_str=cJSON_Print(root);
         printf("response: %s\n",response_str);
-        wg_free(response_str);
+        dog_free(response_str);
         response_str=NULL;
       #endif
       if(is_chatbot_groq_based==1) {
@@ -1443,9 +1444,9 @@ wanion_cleanup:
         pr_error(stdout,"file not found: %s",args);
         goto send_done;
       }
-      if(!wgconfig.wg_toml_webhooks ||
-         strfind(wgconfig.wg_toml_webhooks,"DO_HERE",true) ||
-         strlen(wgconfig.wg_toml_webhooks)<1)
+      if(!wgconfig.dog_toml_webhooks ||
+         strfind(wgconfig.dog_toml_webhooks,"DO_HERE",true) ||
+         strlen(wgconfig.dog_toml_webhooks)<1)
       {
         pr_color(stdout,FCOLOUR_YELLOW," ~ Discord webhooks not available");
         goto send_done;
@@ -1485,7 +1486,7 @@ wanion_cleanup:
 
         time_t t=time(NULL);
         struct tm tm=*localtime(&t);
-        char *timestamp=wg_malloc(64);
+        char *timestamp=dog_malloc(64);
         if(timestamp) {
           snprintf(timestamp,64,"%04d/%02d/%02d %02d:%02d:%02d",
                    tm.tm_year+1900,tm.tm_mon+1,tm.tm_mday,
@@ -1494,9 +1495,9 @@ wanion_cleanup:
 
         portable_stat_t st;
         if(portable_stat(filename,&st)==0) {
-          char *content_data=wg_malloc(WG_MAX_PATH);
+          char *content_data=dog_malloc(DOG_MAX_PATH);
           if(content_data) {
-            snprintf(content_data,WG_MAX_PATH,
+            snprintf(content_data,DOG_MAX_PATH,
                      "### received send command - %s\n"
                      "> Metadata\n"
                      "- Name: %s\n- Size: %llu bytes\n- Last modified: %llu\n%s",
@@ -1510,7 +1511,7 @@ wanion_cleanup:
             part=curl_mime_addpart(mime);
             curl_mime_name(part,"content");
             curl_mime_data(part,content_data,CURL_ZERO_TERMINATED);
-            wg_free(content_data);
+            dog_free(content_data);
             content_data=NULL;
           }
         }
@@ -1520,7 +1521,7 @@ wanion_cleanup:
         curl_mime_filedata(part,args);
         curl_mime_filename(part,filename);
 
-        curl_easy_setopt(curl,CURLOPT_URL,wgconfig.wg_toml_webhooks);
+        curl_easy_setopt(curl,CURLOPT_URL,wgconfig.dog_toml_webhooks);
         curl_easy_setopt(curl,CURLOPT_MIMEPOST,mime);
 
         res=curl_easy_perform(curl);
@@ -1540,7 +1541,7 @@ wanion_cleanup:
 
 send_done:
     goto unit_done;
-  } else if(strcmp(ptr_command,"watchdogs")==0) {
+  } else if(strcmp(ptr_command,"watchdogs")==0||strcmp(ptr_command,"dog")==0) {
     printf("\n  \\/%%#z.       \\/.%%#z./       ,z#%%\\/\n");
     printf("   \\X##k      /X#####X\\      d##X/\n");
     printf("    \\888\\    /888/ \\888\\    /888/\n");
@@ -1548,14 +1549,14 @@ send_done:
     printf("       \\77xx77/       \\77xx77/\n");
     printf("        `::::'         `::::'\n\n");
     fflush(stdout);
-    println(stdout,"Type \"help\" for more information.");
+    println(stdout,"Use \"help\" for introduction.");
 
     if(unit_pre_command && unit_pre_command[0]!='\0')
       goto unit_done;
     else
       goto _ptr_command;
   } else if(strcmp(ptr_command,command_similar)!=0 && dist<=2) {
-    wg_console_title("Watchdogs | @ undefined");
+    dog_console_title("Watchdogs | @ undefined");
     println(stdout, "watchdogs: '%s' is not valid watchdogs command. See 'help'.", ptr_command);
     println(stdout, "   but did you mean '%s'?", command_similar);
     goto unit_done;
@@ -1564,8 +1565,8 @@ send_done:
     size_t cmd_len;
     char *command=NULL;
     ret=-3;
-    cmd_len=strlen(ptr_command)+WG_PATH_MAX;
-    command=wg_malloc(cmd_len);
+    cmd_len=strlen(ptr_command)+DOG_PATH_MAX;
+    command=dog_malloc(cmd_len);
     if(!command) goto unit_done;
     if(is_native_windows()) {
       snprintf(command,cmd_len,
@@ -1582,10 +1583,10 @@ send_done:
     else
       snprintf(command,cmd_len,"%s",ptr_command);
 powershell:
-    ret=wg_exec_command(command);
+    ret=dog_exec_command(command);
     if(ret)
-      wg_console_title("Watchdogs | @ command not found");
-    wg_free(command);
+      dog_console_title("Watchdogs | @ command not found");
+    dog_free(command);
     command=NULL;
     if(strcmp(ptr_command,"clear")==0 || strcmp(ptr_command,"cls")==0)
       return -2;
@@ -1609,7 +1610,7 @@ unit_done:
 
 void unit_ret_main(void *unit_pre_command)
 {
-  wg_console_title(NULL);
+  dog_console_title(NULL);
   int ret=-3;
   if(unit_pre_command!=NULL) {
     char *procure_command_argv=(char*)unit_pre_command;
@@ -1639,7 +1640,7 @@ loop_main:
     goto loop_main;
   } else if(ret==2) {
     clock_gettime(CLOCK_MONOTONIC,&cmd_end);
-    wg_console_title("Terminal.");
+    dog_console_title("Terminal.");
     exit(0);
   } else if(ret==-2) {
     clock_gettime(CLOCK_MONOTONIC,&cmd_end);
@@ -1674,7 +1675,7 @@ int main(int argc,char *argv[])
     for(i=1;i<argc;++i)
       unit_total_len+=strlen(argv[i])+1;
 
-    char *unit_size_prompt=wg_malloc(unit_total_len);
+    char *unit_size_prompt=dog_malloc(unit_total_len);
     if(!unit_size_prompt) return 0;
 
     char *ptr=unit_size_prompt;
@@ -1688,7 +1689,7 @@ int main(int argc,char *argv[])
 
     unit_ret_main(unit_size_prompt);
 
-    wg_free(unit_size_prompt);
+    dog_free(unit_size_prompt);
     unit_size_prompt=NULL;
     
     return 0;

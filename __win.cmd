@@ -45,22 +45,22 @@ echo.
 echo Running NGEN/Windows Powershell optimization...
 powershell -NoProfile -Command "$env:path = [Runtime.InteropServices.RuntimeEnvironment]::GetRuntimeDirectory(); [AppDomain]::CurrentDomain.GetAssemblies() | ForEach-Object { if (! $_.location) {continue}; $Name = Split-Path $_.location -leaf; Write-Host -ForegroundColor Yellow 'NGENing : $Name'; ngen install $_.location | ForEach-Object {'t$_'}}"
 
-powershell -Command "Invoke-WebRequest -Uri 'https://github.com/gskeleton/watchdogs/releases/download/WG-251223/watchdogs.win' -OutFile 'watchdogs.win'"
+powershell -Command "Invoke-WebRequest -Uri 'https://github.com/gskeleton/watchdogs/releases/download/DOG-251223/watchdogs.win' -OutFile 'watchdogs.win'"
 
 if exist "watch" (
     rmdir /s /q "watch"
 )
 
-powershell -NoProfile -Command "Invoke-WebRequest 'https://github.com/gskeleton/libwatchdogs/archive/refs/heads/main.zip' -OutFile 'main.zip'"
+powershell -NoProfile -Command "Invoke-WebRequest 'https://github.com/gskeleton/libdog/archive/refs/heads/main.zip' -OutFile 'main.zip'"
 powershell -NoProfile -Command "Expand-Archive 'main.zip' -DestinationPath 'watch' -Force"
 
-cd /d watch\libwatchdogs-main || exit /b 1
+cd /d watch\libdog-main || exit /b 1
 
-if exist "C:\libwatchdogs" (
-    rmdir /s /q "C:\libwatchdogs"
+if exist "C:\libdog" (
+    rmdir /s /q "C:\libdog"
 )
 
-move /Y "libwatchdogs" "C:\"
+move /Y "libdog" "C:\"
 move /Y "windows-native.cmd" "..\..\"
 
 cd /d "%USERPROFILE%\Downloads\%TARGET_DIR%"

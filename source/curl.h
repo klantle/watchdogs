@@ -20,7 +20,7 @@ struct memory_struct {
 		size_t allocated;
 };
 
-#define WG_CURL_RESPONSE_OK (200)
+#define DOG_CURL_RESPONSE_OK (200)
 #define MAX_NUM_SITES (80)
 #define MAX_USERNAME_LEN	100
 #define MAX_VARIATIONS		100
@@ -83,6 +83,6 @@ void tracker_discrepancy(const char *base,
                          int *variation_count);
 void tracking_username(CURL *curl, const char *username);
 
-int wg_download_file(const char *url, const char *fname);
+int dog_download_file(const char *url, const char *fname);
 
 #endif

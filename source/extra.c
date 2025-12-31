@@ -7,7 +7,7 @@
 #include <fcntl.h>
 #include "utils.h"
 
-#ifdef WG_WINDOWS
+#ifdef DOG_WINDOWS
     #define WIN32_LEAN_AND_MEAN
     #include <windows.h>
     #include <sys/types.h>
@@ -114,7 +114,7 @@ void printf_error(FILE *stream, const char *format, ...)
         fflush(stream);
 }
 
-#ifdef WG_WINDOWS
+#ifdef DOG_WINDOWS
 /*
  * Converts Windows FILETIME structure to Unix time_t (seconds since epoch).
  * FILETIME represents 100-nanosecond intervals since January 1, 1601 (UTC).
@@ -137,16 +137,16 @@ int portable_stat(const char *path, portable_stat_t *out) {
         if (!path || !out) return -1;  /* Validate input parameters */
         memset(out, 0, sizeof(*out));  /* Initialize output structure to zero */
 
-#ifdef WG_WINDOWS
+#ifdef DOG_WINDOWS
         /* Windows implementation using Win32 API */
-        wchar_t wpath[WG_MAX_PATH];
+        wchar_t wpath[DOG_MAX_PATH];
         int len = MultiByteToWideChar(CP_UTF8, 0, path, -1, NULL, 0);  /* Calculate required buffer size */
 
         /* Convert path to wide characters, fall back to ANSI if UTF-8 conversion fails */
-        if (len == 0 || len > WG_MAX_PATH) {
-                if (!MultiByteToWideChar(CP_ACP, 0, path, -1, wpath, WG_MAX_PATH)) return -1;  /* ANSI fallback */
+        if (len == 0 || len > DOG_MAX_PATH) {
+                if (!MultiByteToWideChar(CP_ACP, 0, path, -1, wpath, DOG_MAX_PATH)) return -1;  /* ANSI fallback */
         } else {
-                MultiByteToWideChar(CP_UTF8, 0, path, -1, wpath, WG_MAX_PATH);  /* UTF-8 conversion */
+                MultiByteToWideChar(CP_UTF8, 0, path, -1, wpath, DOG_MAX_PATH);  /* UTF-8 conversion */
         }
 
         WIN32_FILE_ATTRIBUTE_DATA fad;

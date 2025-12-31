@@ -17,6 +17,6 @@ struct _repositories {
     char host[host_size]; char domain[domain_size]; char user[user_size]; char repo[repo_size]; char tag[tag_size];
 };
     
-void wg_install_depends(const char *packages, const char *branch, const char *where);
+void dog_install_depends(const char *packages, const char *branch, const char *where);
 
 #endif

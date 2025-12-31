@@ -35,12 +35,12 @@ void __reset_sys(void) {
         }
         setlocale(LC_ALL, "en_US.UTF-8");
         signal(SIGINT, SIG_DFL);
-        wg_sef_fdir_memset_to_null();
-        wg_toml_configs();
-        wg_stop_server_tasks();
-        wg_u_history();
-        wg_ptr_command_init = 0;
-        wgconfig.wg_sel_stat = 0;
+        dog_sef_fdir_memset_to_null();
+        dog_toml_configs();
+        dog_stop_server_tasks();
+        dog_u_history();
+        dog_ptr_command_init = 0;
+        wgconfig.dog_sel_stat = 0;
         sigint_handler = 0;
 }
 
@@ -51,7 +51,7 @@ void __debug_main_unit_(int debug_hard,
 
         __reset_sys();
 
-#ifdef WG_WINDOWS
+#ifdef DOG_WINDOWS
         {
             static int k = 0;
             if ( k != 1 ) {
@@ -115,15 +115,15 @@ void __debug_main_unit_(int debug_hard,
 #else
                     "Unknown",
 #endif
-                    wgconfig.wg_os_type, wgconfig.wg_ptr_samp,
-                    wgconfig.wg_ptr_omp, wgconfig.wg_is_samp, wgconfig.wg_is_omp,
-                    wgconfig.wg_toml_proj_input, wgconfig.wg_toml_proj_output,
-                    wgconfig.wg_toml_binary, wgconfig.wg_toml_config, wgconfig.wg_toml_logs,
-                    wgconfig.wg_toml_github_tokens,
-                    wgconfig.wg_toml_chatbot_ai,
-                    wgconfig.wg_toml_models_ai,
-                    wgconfig.wg_toml_key_ai,
-                    wgconfig.wg_toml_aio_opt, wgconfig.wg_toml_packages);
+                    wgconfig.dog_os_type, wgconfig.dog_ptr_samp,
+                    wgconfig.dog_ptr_omp, wgconfig.dog_is_samp, wgconfig.dog_is_omp,
+                    wgconfig.dog_toml_proj_input, wgconfig.dog_toml_proj_output,
+                    wgconfig.dog_toml_binary, wgconfig.dog_toml_config, wgconfig.dog_toml_logs,
+                    wgconfig.dog_toml_github_tokens,
+                    wgconfig.dog_toml_chatbot_ai,
+                    wgconfig.dog_toml_models_ai,
+                    wgconfig.dog_toml_key_ai,
+                    wgconfig.dog_toml_aio_opt, wgconfig.dog_toml_packages);
             printf("STDC: %d\n", __STDC__);
             printf("STDC_HOSTED: %d\n", __STDC_HOSTED__);
             printf("BYTE_ORDER: ");
@@ -208,14 +208,14 @@ void __debug_main_unit_(int debug_hard,
 #else
                     "Unknown",
 #endif
-                    wgconfig.wg_os_type, wgconfig.wg_ptr_samp,
-                    wgconfig.wg_ptr_omp, wgconfig.wg_is_samp, wgconfig.wg_is_omp,
-                    wgconfig.wg_toml_proj_input, wgconfig.wg_toml_proj_output,
-                    wgconfig.wg_toml_binary, wgconfig.wg_toml_config, wgconfig.wg_toml_logs,
-                    wgconfig.wg_toml_github_tokens,
-                    wgconfig.wg_toml_chatbot_ai,
-                    wgconfig.wg_toml_models_ai,
-                    wgconfig.wg_toml_key_ai);
+                    wgconfig.dog_os_type, wgconfig.dog_ptr_samp,
+                    wgconfig.dog_ptr_omp, wgconfig.dog_is_samp, wgconfig.dog_is_omp,
+                    wgconfig.dog_toml_proj_input, wgconfig.dog_toml_proj_output,
+                    wgconfig.dog_toml_binary, wgconfig.dog_toml_config, wgconfig.dog_toml_logs,
+                    wgconfig.dog_toml_github_tokens,
+                    wgconfig.dog_toml_chatbot_ai,
+                    wgconfig.dog_toml_models_ai,
+                    wgconfig.dog_toml_key_ai);
         }
 
         fflush(stdout);

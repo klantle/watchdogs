@@ -10,7 +10,7 @@ struct library_version_info {
 		const char *windows_file;
 };
 
-int wg_install_pawncc(const char *platform);
-int wg_install_server(const char *platform);
+int dog_install_pawncc(const char *platform);
+int dog_install_server(const char *platform);
 
 #endif

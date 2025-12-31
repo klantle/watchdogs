@@ -5,7 +5,7 @@
 #include <errno.h>
 #include <inttypes.h>
 #include <sys/stat.h>
-#ifdef WG_LINUX
+#ifdef DOG_LINUX
   #include <sys/wait.h>
 #endif
 
@@ -22,16 +22,16 @@
 #include "curl.h"
 
 static char *pawncc_dir_source=NULL;
-static char command[WG_MAX_PATH];
+static char command[DOG_MAX_PATH];
 
 void curl_verify_cacert_pem(CURL *curl)
 {
   int platform=0;
-#ifdef WG_ANDROID
+#ifdef DOG_ANDROID
   platform=1;
-#elif defined(WG_LINUX)
+#elif defined(DOG_LINUX)
   platform=2;
-#elif defined(WG_WINDOWS)
+#elif defined(DOG_WINDOWS)
   platform=3;
 #endif
   static int cacert_notice=0;
@@ -39,8 +39,8 @@ void curl_verify_cacert_pem(CURL *curl)
   if(platform==3) {
     if(path_access("cacert.pem")!=0)
       curl_easy_setopt(curl,CURLOPT_CAINFO,"cacert.pem");
-    else if(access("C:/libwatchdogs/cacert.pem",F_OK)==0)
-      curl_easy_setopt(curl,CURLOPT_CAINFO,"C:/libwatchdogs/cacert.pem");
+    else if(access("C:/libdog/cacert.pem",F_OK)==0)
+      curl_easy_setopt(curl,CURLOPT_CAINFO,"C:/libdog/cacert.pem");
     else {
       if(cacert_notice!=1) {
         pr_color(stdout,FCOLOUR_GREEN,
@@ -56,7 +56,7 @@ void curl_verify_cacert_pem(CURL *curl)
       prefix="/data/data/com.termux/files/usr";
     }
 
-    char ca1[WG_PATH_MAX],ca2[WG_PATH_MAX];
+    char ca1[DOG_PATH_MAX],ca2[DOG_PATH_MAX];
 
     snprintf(ca1,sizeof(ca1),
              "%s/etc/tls/cert.pem",prefix);
@@ -91,7 +91,7 @@ void curl_verify_cacert_pem(CURL *curl)
 void destroy_archive(const char *filename)
 {
   pr_info(stdout,"Removing: %s..",filename);
-#ifdef WG_WINDOWS
+#ifdef DOG_WINDOWS
   snprintf(command,sizeof(command),
            "del "
            "/f "
@@ -103,7 +103,7 @@ void destroy_archive(const char *filename)
            "-rf %s",
            filename);
 #endif
-  wg_exec_command(command);
+  dog_exec_command(command);
   return;
 }
 
@@ -136,20 +136,20 @@ static int progress_callback(void *ptr,curl_off_t dltotal,
 void buf_init(struct buf *b)
 {
   if(b->data) {
-    wg_free(b->data);
+    dog_free(b->data);
     b->data=NULL;
   }
-  b->data=wg_malloc(WG_MAX_PATH);
+  b->data=dog_malloc(DOG_MAX_PATH);
   if(!b->data) {
     unit_ret_main(NULL);
   }
   b->len=0;
-  b->allocated=(b->data)?WG_MAX_PATH:0;
+  b->allocated=(b->data)?DOG_MAX_PATH:0;
 }
 
 void buf_free(struct buf *b)
 {
-  wg_free(b->data);
+  dog_free(b->data);
   b->data=NULL;
   b->len=0;
   b->allocated=0;
@@ -202,20 +202,20 @@ size_t write_callbacks(void *ptr,size_t size,size_t nmemb,void *userdata)
 void memory_struct_init(struct memory_struct *mem)
 {
   if(mem->memory) {
-    wg_free(mem->memory);
+    dog_free(mem->memory);
     mem->memory=NULL;
   }
-  mem->memory=wg_malloc(WG_MAX_PATH);
+  mem->memory=dog_malloc(DOG_MAX_PATH);
   if(!mem->memory) {
     unit_ret_main(NULL);
   }
   mem->size=0;
-  mem->allocated=mem->memory?WG_MAX_PATH:0;
+  mem->allocated=mem->memory?DOG_MAX_PATH:0;
 }
 
 void memory_struct_free(struct memory_struct *mem)
 {
-  wg_free(mem->memory);
+  dog_free(mem->memory);
   mem->memory=NULL;
   mem->size=0;
   mem->allocated=0;
@@ -263,13 +263,13 @@ int package_url_checking(const char* url,const char* github_token)
   CURLcode res;
   long response_code=0;
   struct curl_slist* headers=NULL;
-  char wg_buffer_error[CURL_ERROR_SIZE]={0};
+  char dog_buffer_error[CURL_ERROR_SIZE]={0};
 
   printf("\tCreate & Checking URL: %s...\t\t[All good]\n",url);
 
-  if(strfind(wgconfig.wg_toml_github_tokens,"DO_HERE",true)||
-     wgconfig.wg_toml_github_tokens==NULL||
-     strlen(wgconfig.wg_toml_github_tokens)<1) {
+  if(strfind(wgconfig.dog_toml_github_tokens,"DO_HERE",true)||
+     wgconfig.dog_toml_github_tokens==NULL||
+     strlen(wgconfig.dog_toml_github_tokens)<1) {
     pr_color(stdout,FCOLOUR_GREEN,"Can't read Github token.. skipping\n");
   }
   else {
@@ -293,7 +293,7 @@ int package_url_checking(const char* url,const char* github_token)
   res=curl_easy_perform(curl);
   curl_easy_getinfo(curl,CURLINFO_RESPONSE_CODE,&response_code);
 
-  curl_easy_setopt(curl,CURLOPT_ERRORBUFFER,wg_buffer_error);
+  curl_easy_setopt(curl,CURLOPT_ERRORBUFFER,dog_buffer_error);
 
   curl_verify_cacert_pem(curl);
 
@@ -302,13 +302,13 @@ int package_url_checking(const char* url,const char* github_token)
   res=curl_easy_perform(curl);
   curl_easy_getinfo(curl,CURLINFO_RESPONSE_CODE,&response_code);
 
-  if(response_code==WG_CURL_RESPONSE_OK&&strlen(wg_buffer_error)==0) {
+  if(response_code==DOG_CURL_RESPONSE_OK&&strlen(dog_buffer_error)==0) {
     printf("cURL result: %s\t\t[All good]\n",curl_easy_strerror(res));
     printf("Response code: %ld\t\t[All good]\n",response_code);
   }
   else {
-    if(strlen(wg_buffer_error)>0) {
-      printf("Error: %s\t\t[Fail]\n",wg_buffer_error);
+    if(strlen(dog_buffer_error)>0) {
+      printf("Error: %s\t\t[Fail]\n",dog_buffer_error);
       __create_logging();
     }
     else {
@@ -361,7 +361,7 @@ int package_http_get_content(const char* url,const char* github_token,char** out
   curl_slist_free_all(headers);
 
   if(res!=CURLE_OK||buffer.size==0) {
-    wg_free(buffer.data);
+    dog_free(buffer.data);
     return 0;
   }
 
@@ -508,28 +508,28 @@ static void find_compiler_tools(int compiler_type,
 {
   const char *ignore_dir=NULL;
 
-  *found_pawncc_exe=wg_sef_fdir(pawncc_dir_source,"pawncc.exe",ignore_dir);
-  *found_pawncc=wg_sef_fdir(pawncc_dir_source,"pawncc",ignore_dir);
-  *found_pawndisasm_exe=wg_sef_fdir(pawncc_dir_source,"pawndisasm.exe",ignore_dir);
-  *found_pawndisasm=wg_sef_fdir(pawncc_dir_source,"pawndisasm",ignore_dir);
-  *found_PAWNC_DLL=wg_sef_fdir(pawncc_dir_source,"PAWNC.dll",ignore_dir);
-  *found_pawnc_dll=wg_sef_fdir(pawncc_dir_source,"pawnc.dll",ignore_dir);
+  *found_pawncc_exe=dog_sef_fdir(pawncc_dir_source,"pawncc.exe",ignore_dir);
+  *found_pawncc=dog_sef_fdir(pawncc_dir_source,"pawncc",ignore_dir);
+  *found_pawndisasm_exe=dog_sef_fdir(pawncc_dir_source,"pawndisasm.exe",ignore_dir);
+  *found_pawndisasm=dog_sef_fdir(pawncc_dir_source,"pawndisasm",ignore_dir);
+  *found_PAWNC_DLL=dog_sef_fdir(pawncc_dir_source,"PAWNC.dll",ignore_dir);
+  *found_pawnc_dll=dog_sef_fdir(pawncc_dir_source,"pawnc.dll",ignore_dir);
 
   if(*found_pawncc_exe<1&&*found_pawncc<1) {
-    *found_pawncc_exe=wg_sef_fdir(".","pawncc.exe",ignore_dir);
-    *found_pawncc=wg_sef_fdir(".","pawncc",ignore_dir);
-    *found_PAWNC_DLL=wg_sef_fdir(".","PAWNC.dll",ignore_dir);
-    *found_pawnc_dll=wg_sef_fdir(".","pawnc.dll",ignore_dir);
-    *found_pawndisasm_exe=wg_sef_fdir(".","pawndisasm.exe",ignore_dir);
-    *found_pawndisasm=wg_sef_fdir(".","pawndisasm",ignore_dir);
+    *found_pawncc_exe=dog_sef_fdir(".","pawncc.exe",ignore_dir);
+    *found_pawncc=dog_sef_fdir(".","pawncc",ignore_dir);
+    *found_PAWNC_DLL=dog_sef_fdir(".","PAWNC.dll",ignore_dir);
+    *found_pawnc_dll=dog_sef_fdir(".","pawnc.dll",ignore_dir);
+    *found_pawndisasm_exe=dog_sef_fdir(".","pawndisasm.exe",ignore_dir);
+    *found_pawndisasm=dog_sef_fdir(".","pawndisasm",ignore_dir);
   }
   if(*found_pawncc_exe<1&&*found_pawncc<1) {
-    *found_pawncc_exe=wg_sef_fdir("bin/","pawncc.exe",ignore_dir);
-    *found_pawncc=wg_sef_fdir("bin/","pawncc",ignore_dir);
-    *found_PAWNC_DLL=wg_sef_fdir("bin/","PAWNC.dll",ignore_dir);
-    *found_pawnc_dll=wg_sef_fdir("bin/","pawnc.dll",ignore_dir);
-    *found_pawndisasm_exe=wg_sef_fdir("bin/","pawndisasm.exe",ignore_dir);
-    *found_pawndisasm=wg_sef_fdir("bin/","pawndisasm",ignore_dir);
+    *found_pawncc_exe=dog_sef_fdir("bin/","pawncc.exe",ignore_dir);
+    *found_pawncc=dog_sef_fdir("bin/","pawncc",ignore_dir);
+    *found_PAWNC_DLL=dog_sef_fdir("bin/","PAWNC.dll",ignore_dir);
+    *found_pawnc_dll=dog_sef_fdir("bin/","pawnc.dll",ignore_dir);
+    *found_pawndisasm_exe=dog_sef_fdir("bin/","pawndisasm.exe",ignore_dir);
+    *found_pawndisasm=dog_sef_fdir("bin/","pawndisasm",ignore_dir);
   }
 }
 
@@ -554,14 +554,14 @@ static const char *get_compiler_directory(void)
 static void copy_compiler_tool(const char *src_path,const char *tool_name,
                                const char *dest_dir)
 {
-  char dest_path[WG_PATH_MAX];
+  char dest_path[DOG_PATH_MAX];
 
   CHMOD_FULL(src_path);
 
   snprintf(dest_path,sizeof(dest_path),
            "%s" "%s" "%s",dest_dir,__PATH_STR_SEP_LINUX,tool_name);
 
-  wg_sef_wmv(src_path,dest_path);
+  dog_sef_wmv(src_path,dest_path);
 }
 
 static void update_library_environment(const char *lib_path)
@@ -573,7 +573,7 @@ static void update_library_environment(const char *lib_path)
   }
 
   const char *shell_rc=NULL;
-  char shell_path[WG_PATH_MAX];
+  char shell_path[DOG_PATH_MAX];
 
   char *shell=getenv("SHELL");
   if(shell) {
@@ -595,7 +595,7 @@ static void update_library_environment(const char *lib_path)
     }
   }
 
-  char shell_file[WG_PATH_MAX*2];
+  char shell_file[DOG_PATH_MAX*2];
   snprintf(shell_file,sizeof(shell_file),
            "%s" "%s" "%s",home_dir,__PATH_STR_SEP_LINUX,shell_rc);
 
@@ -603,7 +603,7 @@ static void update_library_environment(const char *lib_path)
     FILE *fp=fopen(shell_file,"w");
     if(fp) {
       fclose(fp);
-#ifdef WG_WINDOWS
+#ifdef DOG_WINDOWS
       chmod(shell_file,0644);
 #endif
     }
@@ -615,25 +615,25 @@ static void update_library_environment(const char *lib_path)
   snprintf(command,sizeof(command),
            "export LD_LIBRARY_PATH=%s:$LD_LIBRARY_PATH",
            lib_path);
-  wg_exec_command(command);
+  dog_exec_command(command);
   if(strfind(shell_rc,"bash",true)) {
     snprintf(command,sizeof(command),"bash -c \"source ~/%s\"",shell_rc);
-    wg_exec_command(command);
+    dog_exec_command(command);
   }
   else if(strfind(shell_rc,"zsh",true)) {
     snprintf(command,sizeof(command),"zsh -c \"source ~/%s\"",shell_rc);
-    wg_exec_command(command);
+    dog_exec_command(command);
   }
 }
 
 static int setup_linux_library(void)
 {
-#ifdef WG_WINDOWS
+#ifdef DOG_WINDOWS
   return 0;
 #endif
   const char *selected_path=NULL;
-  char libpawnc_src[WG_PATH_MAX];
-  char dest_path[WG_PATH_MAX];
+  char libpawnc_src[DOG_PATH_MAX];
+  char dest_path[DOG_PATH_MAX];
   int i,found_lib;
 
   const char *rate_each_any_path[]={
@@ -649,25 +649,25 @@ static int setup_linux_library(void)
   size_t size_rate_each_any_path=sizeof(rate_each_any_path),
          size_rate_each_any_path_zero=sizeof(rate_each_any_path[0]);
 
-  if(!strcmp(wgconfig.wg_toml_os_type,OS_SIGNAL_WINDOWS)||
-     !strcmp(wgconfig.wg_toml_os_type,OS_SIGNAL_UNKNOWN))
+  if(!strcmp(wgconfig.dog_toml_os_type,OS_SIGNAL_WINDOWS)||
+     !strcmp(wgconfig.dog_toml_os_type,OS_SIGNAL_UNKNOWN))
     return 0;
 
-  found_lib=wg_sef_fdir(pawncc_dir_source,"libpawnc.so",NULL);
+  found_lib=dog_sef_fdir(pawncc_dir_source,"libpawnc.so",NULL);
 
   if(found_lib<1) {
-    found_lib=wg_sef_fdir(".","libpawnc.so",NULL);
+    found_lib=dog_sef_fdir(".","libpawnc.so",NULL);
     if(found_lib<1)
-      found_lib=wg_sef_fdir("lib/","libpawnc.so",NULL);
+      found_lib=dog_sef_fdir("lib/","libpawnc.so",NULL);
   }
 
-  for(i=0;i<wgconfig.wg_sef_count;i++) {
+  for(i=0;i<wgconfig.dog_sef_count;i++) {
     if(strstr(
-        wgconfig.wg_sef_found_list[i],
+        wgconfig.dog_sef_found_list[i],
         "libpawnc.so"))
     {
       strncpy(libpawnc_src,
-              wgconfig.wg_sef_found_list[i],
+              wgconfig.dog_sef_found_list[i],
               sizeof(libpawnc_src));
       break;
     }
@@ -689,14 +689,14 @@ static int setup_linux_library(void)
   snprintf(dest_path,sizeof(dest_path),
            "%s/libpawnc.so",selected_path);
 
-  wg_sef_wmv(libpawnc_src,dest_path);
+  dog_sef_wmv(libpawnc_src,dest_path);
 
   update_library_environment(selected_path);
 
   return 0;
 }
 
-void wg_apply_pawncc(void)
+void dog_apply_pawncc(void)
 {
   int found_pawncc_exe,found_pawncc;
   int found_pawndisasm_exe,found_pawndisasm;
@@ -704,18 +704,18 @@ void wg_apply_pawncc(void)
 
   const char *dest_dir;
 
-  char pawncc_src[WG_PATH_MAX]={0},
-       pawncc_exe_src[WG_PATH_MAX]={0},
-       pawndisasm_src[WG_PATH_MAX]={0},
-       pawndisasm_exe_src[WG_PATH_MAX]={0},
-       pawnc_dll_src[WG_PATH_MAX]={0},
-       PAWNC_DLL_src[WG_PATH_MAX]={0};
+  char pawncc_src[DOG_PATH_MAX]={0},
+       pawncc_exe_src[DOG_PATH_MAX]={0},
+       pawndisasm_src[DOG_PATH_MAX]={0},
+       pawndisasm_exe_src[DOG_PATH_MAX]={0},
+       pawnc_dll_src[DOG_PATH_MAX]={0},
+       PAWNC_DLL_src[DOG_PATH_MAX]={0};
 
   int i;
 
-  wg_sef_fdir_memset_to_null();
+  dog_sef_fdir_memset_to_null();
 
-  find_compiler_tools(wgconfig.wg_is_samp?COMPILER_SAMP:COMPILER_OPENMP,
+  find_compiler_tools(wgconfig.dog_is_samp?COMPILER_SAMP:COMPILER_OPENMP,
                       &found_pawncc_exe,&found_pawncc,
                       &found_pawndisasm_exe,&found_pawndisasm,
                       &found_pawnc_dll,&found_PAWNC_DLL);
@@ -727,8 +727,8 @@ void wg_apply_pawncc(void)
     goto apply_done;
   }
 
-  for(i=0;i<wgconfig.wg_sef_count;i++) {
-    const char *item=wgconfig.wg_sef_found_list[i];
+  for(i=0;i<wgconfig.dog_sef_count;i++) {
+    const char *item=wgconfig.dog_sef_found_list[i];
     if(!item) continue;
     if(strstr(item,"pawncc.exe")) {
       char *size_last_slash=strrchr(item,__PATH_CHR_SEP_LINUX);
@@ -802,12 +802,12 @@ void wg_apply_pawncc(void)
     snprintf(command,sizeof(command),
              "rm -rf %s",
              pawncc_dir_source);
-  wg_exec_command(command);
+  dog_exec_command(command);
 
   if(dir_exists(pawncc_dir_source)!=0)
     remove(pawncc_dir_source);
 
-  wg_free(pawncc_dir_source);
+  dog_free(pawncc_dir_source);
   pawncc_dir_source=NULL;
 
   if(path_exists("pawno/pawnc.dll")==1)
@@ -821,17 +821,17 @@ void wg_apply_pawncc(void)
   pr_color(stdout,FCOLOUR_CYAN,"Compile now? (y/n):");
   char *compile_now=readline(" ");
   if(compile_now[0]=='\0'||compile_now[0]=='Y'||compile_now[0]=='y') {
-    wg_free(compile_now);
+    dog_free(compile_now);
     pr_color(stdout,FCOLOUR_CYAN,"Please input the pawn file with dot type (.pwn/.p):\n");
     printf(FCOLOUR_CYAN ">>>");
     char *compile_target = readline(" ");
     if (compile_target) {
       const char *argsc[]={NULL,compile_target,NULL,NULL,NULL,NULL,NULL,NULL,NULL};
-      wg_exec_compiler(argsc[0],argsc[1],argsc[2],argsc[3],
+      dog_exec_compiler(argsc[0],argsc[1],argsc[2],argsc[3],
                       argsc[4],argsc[5],argsc[6],argsc[7],
                       argsc[8]);
     }
-    wg_free(compile_target);
+    dog_free(compile_target);
   }
 
 apply_done:
@@ -840,7 +840,7 @@ apply_done:
 
 static int prompt_apply_pawncc(void)
 {
-  wgconfig.wg_ipawncc=0;
+  wgconfig.dog_ipawncc=0;
 
   printf("\x1b[32m==> Apply pawncc?\x1b[0m\n");
   char *confirm=readline("   answer (y/n): ");
@@ -848,11 +848,11 @@ static int prompt_apply_pawncc(void)
   fflush(stdout);
 
   if(confirm[0]=='\0'||strfind(confirm,"Y",true)) {
-    wg_free(confirm);
+    dog_free(confirm);
     return 1;
   }
 
-  wg_free(confirm);
+  dog_free(confirm);
 
 done:
   return 0;
@@ -916,7 +916,7 @@ static void parsing_filename(char *filename)
   }
 }
 
-int wg_download_file(const char *url,const char *output_filename)
+int dog_download_file(const char *url,const char *output_filename)
 {
   __create_logging();
 
@@ -931,7 +931,7 @@ int wg_download_file(const char *url,const char *output_filename)
   int retry_count=0;
   struct stat file_stat;
 
-  char clean_filename[WG_PATH_MAX];
+  char clean_filename[DOG_PATH_MAX];
   char *query_pos=strchr(output_filename,'?');
   if(query_pos) {
     size_t name_len=query_pos-output_filename;
@@ -946,7 +946,7 @@ int wg_download_file(const char *url,const char *output_filename)
     clean_filename[sizeof(clean_filename)-1]='\0';
   }
 
-  char final_filename[WG_PATH_MAX];
+  char final_filename[DOG_PATH_MAX];
   if(strstr(clean_filename,"://")||strstr(clean_filename,"http")) {
     const char *url_filename=strrchr(url,__PATH_CHR_SEP_LINUX);
     if(url_filename) {
@@ -987,19 +987,19 @@ int wg_download_file(const char *url,const char *output_filename)
 
     struct curl_slist *headers=NULL;
 
-    if(wgconfig.wg_idepends==1) {
-      if(!wgconfig.wg_toml_github_tokens||
-         strfind(wgconfig.wg_toml_github_tokens,"DO_HERE",true)||
-         strlen(wgconfig.wg_toml_github_tokens)<1) {
+    if(wgconfig.dog_idepends==1) {
+      if(!wgconfig.dog_toml_github_tokens||
+         strfind(wgconfig.dog_toml_github_tokens,"DO_HERE",true)||
+         strlen(wgconfig.dog_toml_github_tokens)<1) {
         pr_color(stdout,FCOLOUR_YELLOW," ~ GitHub token not available\n");
       }
       else {
         char auth_header[512];
         snprintf(auth_header,sizeof(auth_header),"Authorization: token %s",
-                 wgconfig.wg_toml_github_tokens);
+                 wgconfig.dog_toml_github_tokens);
         headers=curl_slist_append(headers,auth_header);
         pr_color(stdout,FCOLOUR_GREEN," ~ Using GitHub token: %s\n",
-                 wg_masked_text(8,wgconfig.wg_toml_github_tokens));
+                 dog_masked_text(8,wgconfig.dog_toml_github_tokens));
       }
     }
 
@@ -1033,7 +1033,7 @@ int wg_download_file(const char *url,const char *output_filename)
       if(debug_http[0]=='\0'||debug_http[0]=='Y'||debug_http[0]=='y') {
         always_create_debugging=1;
       }
-      wg_free(debug_http);
+      dog_free(debug_http);
     }
 
     if(always_create_debugging) {
@@ -1054,12 +1054,12 @@ int wg_download_file(const char *url,const char *output_filename)
     curl_easy_cleanup(curl);
     curl_slist_free_all(headers);
 
-    if(res==CURLE_OK&&response_code==WG_CURL_RESPONSE_OK&&download_buffer.len>0) {
+    if(res==CURLE_OK&&response_code==DOG_CURL_RESPONSE_OK&&download_buffer.len>0) {
       FILE *fp=fopen(final_filename,"wb");
       if(!fp) {
         pr_color(stdout,FCOLOUR_RED,"* Failed to open file for writing: %s (errno: %d - %s)\n",
                 final_filename,errno,strerror(errno));
-        wg_free(download_buffer.data);
+        dog_free(download_buffer.data);
         ++retry_count;
         continue;
       }
@@ -1070,13 +1070,13 @@ int wg_download_file(const char *url,const char *output_filename)
       if(written!=download_buffer.len) {
         pr_color(stdout,FCOLOUR_RED,"* Failed to write all data to file: %s (written: %zu, expected: %zu)\n",
                 final_filename,written,download_buffer.len);
-        wg_free(download_buffer.data);
+        dog_free(download_buffer.data);
         unlink(final_filename);
         ++retry_count;
         continue;
       }
 
-      wg_free(download_buffer.data);
+      dog_free(download_buffer.data);
 
       if(stat(final_filename,&file_stat)==0&&file_stat.st_size>0) {
         pr_color(stdout,FCOLOUR_GREEN," %% successful: %" PRIdMAX " bytes to %s\n",
@@ -1088,7 +1088,7 @@ int wg_download_file(const char *url,const char *output_filename)
           return 1;
         }
 
-        char size_filename[WG_PATH_MAX];
+        char size_filename[DOG_PATH_MAX];
         snprintf(size_filename,sizeof(size_filename),
                  "%s",final_filename);
 
@@ -1103,9 +1103,9 @@ int wg_download_file(const char *url,const char *output_filename)
           *extension='\0';
         }
 
-        wg_extract_archive(final_filename,size_filename);
+        dog_extract_archive(final_filename,size_filename);
 
-        if(wgconfig.wg_idepends==1) {
+        if(wgconfig.dog_idepends==1) {
           static int remove_archive=0;
           if(remove_archive==0) {
             pr_color(stdout,FCOLOUR_CYAN,
@@ -1118,7 +1118,7 @@ int wg_download_file(const char *url,const char *output_filename)
               }
               remove_archive=1;
             }
-            wg_free(confirm);
+            dog_free(confirm);
           }
           else {
             if(path_exists(final_filename)==1) {
@@ -1136,12 +1136,12 @@ int wg_download_file(const char *url,const char *output_filename)
               destroy_archive(final_filename);
             }
           }
-          wg_free(confirm);
+          dog_free(confirm);
         }
 
-        if(wgconfig.wg_ipawncc&&prompt_apply_pawncc()) {
+        if(wgconfig.dog_ipawncc&&prompt_apply_pawncc()) {
           pawncc_dir_source=strdup(size_filename);
-          wg_apply_pawncc();
+          dog_apply_pawncc();
         }
 
         return 0;
@@ -1149,7 +1149,7 @@ int wg_download_file(const char *url,const char *output_filename)
     }
 
     if(download_buffer.data) {
-      wg_free(download_buffer.data);
+      dog_free(download_buffer.data);
     }
 
     pr_color(stdout,FCOLOUR_YELLOW," Attempt %d/5 failed (HTTP: %ld). Retrying in 3s...\n",

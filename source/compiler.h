@@ -3,10 +3,12 @@
 
 #include "utils.h"
 
-#define WATCHDOGS_COMPILER_ZERO 0
-#define WATCHDOGS_COMPILER_AIO_OPTIONS 7
+enum {
+    __compiler_rate_zero = 0,
+    __compiler_rate_aio_repo = 7
+};
 
-#ifndef WG_WINDOWS
+#ifndef DOG_WINDOWS
     extern char **environ;
     #define POSIX_TIMEOUT 900
 #else
@@ -14,11 +16,11 @@
 #endif
 
 typedef struct {
-    char container_output[WG_PATH_MAX];
-    char compiler_direct_path[WG_PATH_MAX];
-    char compiler_size_file_name[WG_PATH_MAX];
-    char compiler_size_input_path[WG_PATH_MAX];
-    char compiler_size_temp[WG_PATH_MAX];
+    char container_output[DOG_PATH_MAX];
+    char compiler_direct_path[DOG_PATH_MAX];
+    char compiler_size_file_name[DOG_PATH_MAX];
+    char compiler_size_input_path[DOG_PATH_MAX];
+    char compiler_size_temp[DOG_PATH_MAX];
 } io_compilers;
 
 typedef enum {
@@ -39,12 +41,12 @@ extern const CompilerOption object_opt[];
 
 #define compiler_memory_clean() \
 do { \
-    wg_sef_fdir_memset_to_null(); \
-    memset(wg_compiler_sys.container_output, WATCHDOGS_COMPILER_ZERO, sizeof(wg_compiler_sys.container_output)); \
-    memset(wg_compiler_sys.compiler_direct_path, WATCHDOGS_COMPILER_ZERO, sizeof(wg_compiler_sys.compiler_direct_path)); \
-    memset(wg_compiler_sys.compiler_size_file_name, WATCHDOGS_COMPILER_ZERO, sizeof(wg_compiler_sys.compiler_size_file_name)); \
-    memset(wg_compiler_sys.compiler_size_input_path, WATCHDOGS_COMPILER_ZERO, sizeof(wg_compiler_sys.compiler_size_input_path)); \
-    memset(wg_compiler_sys.compiler_size_temp, WATCHDOGS_COMPILER_ZERO, sizeof(wg_compiler_sys.compiler_size_temp)); \
+    dog_sef_fdir_memset_to_null(); \
+    memset(dog_compiler_sys.container_output, __compiler_rate_zero, sizeof(dog_compiler_sys.container_output)); \
+    memset(dog_compiler_sys.compiler_direct_path, __compiler_rate_zero, sizeof(dog_compiler_sys.compiler_direct_path)); \
+    memset(dog_compiler_sys.compiler_size_file_name, __compiler_rate_zero, sizeof(dog_compiler_sys.compiler_size_file_name)); \
+    memset(dog_compiler_sys.compiler_size_input_path, __compiler_rate_zero, sizeof(dog_compiler_sys.compiler_size_input_path)); \
+    memset(dog_compiler_sys.compiler_size_temp, __compiler_rate_zero, sizeof(dog_compiler_sys.compiler_size_temp)); \
 } while(0)
 
 /* Debug flag specific error/warning messages */
@@ -59,7 +61,7 @@ do { \
 #define OPTION_FLAG_DEBUG_FLAG_NOT_FOUND   "Debug flag '%s' not found in configuration"
 
 int
-wg_exec_compiler(const char *arg,
+dog_exec_compiler(const char *arg,
 				const char *compile_args,
 				const char *second_arg,
 				const char *four_arg,

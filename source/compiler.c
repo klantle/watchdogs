@@ -6,7 +6,7 @@
 #include <limits.h>
 #include <time.h>
 
-#ifdef WG_LINUX
+#ifdef DOG_LINUX
     #include <fcntl.h>
     #include <sys/types.h>
     #include <sys/wait.h>
@@ -28,7 +28,7 @@ const CompilerOption object_opt[]={
     { 0, NULL, 0 }
 };
 
-#ifndef WG_WINDOWS
+#ifndef DOG_WINDOWS
 const char *usr_paths[]={
     "/usr/local/lib","/usr/local/lib32", "/data/data/com.termux/files/usr/lib",
     "/data/data/com.termux/files/usr/local/lib", "/data/data/com.termux/arm64/usr/lib",
@@ -37,34 +37,34 @@ const char *usr_paths[]={
 };
 #endif
 
-static struct timespec pre_start={ 0 }, post_end={ 0 };
+static struct timespec pre_start={__compiler_rate_zero}, post_end={__compiler_rate_zero};
 static double timer_rate_compile;
 
-static io_compilers wg_compiler_sys={ 0 };
+static io_compilers dog_compiler_sys={__compiler_rate_zero};
 
 static
-  int
-  compilr_with_debugging=0,
-  compiler_debugging=0,compiler_has_watchdogs=0,compiler_has_debug=0,
-  compiler_has_clean=0,compiler_has_assembler=0,compiler_has_compatibility=0,
-  compiler_has_verbose=0,compiler_has_compact=0;
+  bool
+  compilr_with_debugging=false,
+  compiler_debugging=false,has_detailed=false,has_debug=false,
+  has_clean=false,has_assembler=false,has_compat=false,
+  has_verbose=false,has_compact=false,compiler_retrying=false;
 static
   FILE
   *this_proc_file=NULL;
 static
   char
-  pawn_project_parse[WG_PATH_MAX]={0},
-  temp_pawn_project_parse[WG_PATH_MAX] = {0},
-  size_log[WG_MAX_PATH*4]={0},
-  command[WG_PATH_MAX+258]={0},
-  include_aio_path[WG_PATH_MAX*2]={0},
-  this_path_include[WG_PATH_MAX]={0},
-  size_this_path_include[WG_MAX_PATH]={0},
-  compiler_input[WG_MAX_PATH+WG_PATH_MAX]={0},
-  compiler_extra_options[WG_PATH_MAX]={0},
-  init_flag_for_search[3]={0},
-  compiler_pawncc_path[WG_PATH_MAX]={0},
-  compiler_proj_path[WG_PATH_MAX]={0};
+  pawn_parse[DOG_PATH_MAX]={__compiler_rate_zero},
+  temp[DOG_PATH_MAX] = {__compiler_rate_zero},
+  buf_log[DOG_MAX_PATH*4]={__compiler_rate_zero},
+  command[DOG_PATH_MAX+258]={__compiler_rate_zero},
+  include_aio_path[DOG_PATH_MAX*2]={__compiler_rate_zero},
+  this_path_include[DOG_PATH_MAX]={__compiler_rate_zero},
+  buf[DOG_MAX_PATH]={__compiler_rate_zero},
+  compiler_input[DOG_MAX_PATH+DOG_PATH_MAX]={__compiler_rate_zero},
+  compiler_extra_options[DOG_PATH_MAX]={__compiler_rate_zero},
+  init_flag_for_search[3]={__compiler_rate_zero},
+  compiler_pawncc_path[DOG_PATH_MAX]={__compiler_rate_zero},
+  compiler_proj_path[DOG_PATH_MAX]={__compiler_rate_zero};
 static
   size_t
   size_init_flag_for_search;
@@ -78,50 +78,52 @@ static
   *pointer_signalA=NULL,
   *platform=NULL,
   *proj_targets=NULL,
-  *wg_compiler_unix_args[WG_MAX_PATH+256]={NULL},
+  *dog_compiler_unix_args[DOG_MAX_PATH+256]={NULL},
   *compiler_unix_token=NULL;
 static
   toml_table_t
-  *wg_toml_config=NULL;
+  *dog_toml_config=NULL;
 static
   char
-  wg_buffer_error[WG_PATH_MAX];
-#ifdef WG_WINDOWS
+  dog_buffer_error[DOG_PATH_MAX];
+#ifdef DOG_WINDOWS
   static PROCESS_INFORMATION pi;
   static STARTUPINFO         si;
   static SECURITY_ATTRIBUTES sa;
 #endif
 
-int wg_exec_compiler(const char *args,const char *compile_args, const char *second_arg,const char *four_arg,
+int dog_exec_compiler(const char *args,const char *compile_args_val, const char *second_arg,const char *four_arg,
 const char *five_arg,const char *six_arg, const char *seven_arg,const char *eight_arg, const char *nine_arg)
 {
   io_compilers comp; io_compilers *revolver_compiler=&comp;
 
   const char*
-    this_full_of_available_args[]={
+    argv_buf[]={
     second_arg,four_arg, five_arg,six_arg, seven_arg,eight_arg, nine_arg
   };
 
   if(dir_exists(".watchdogs")==0)
     MKDIR(".watchdogs");
 
-  compiler_debugging=0,compiler_has_watchdogs=0,compiler_has_debug=0,
-  compiler_has_clean=0,compiler_has_assembler=0,compiler_has_compatibility=0,
-  compiler_has_verbose=0,compiler_has_compact=0;
+  compilr_with_debugging=false,
+  compiler_debugging=false,has_detailed=false,has_debug=false,
+  has_clean=false,has_assembler=false,has_compat=false,
+  has_verbose=false,has_compact=false,compiler_retrying=false;
+
   this_proc_file=NULL;
 
-  memset(pawn_project_parse, 0, sizeof(pawn_project_parse));
-  memset(temp_pawn_project_parse, 0, sizeof(temp_pawn_project_parse));
-  memset(size_log, 0, sizeof(size_log));
-  memset(command, 0, sizeof(command));
-  memset(include_aio_path, 0, sizeof(include_aio_path));
-  memset(this_path_include, 0, sizeof(this_path_include));
-  memset(size_this_path_include, 0, sizeof(size_this_path_include));
-  memset(compiler_input, 0, sizeof(compiler_input));
-  memset(compiler_extra_options, 0, sizeof(compiler_extra_options));
-  memset(init_flag_for_search, 0, sizeof(init_flag_for_search));
-  memset(compiler_pawncc_path, 0, sizeof(compiler_pawncc_path));
-  memset(compiler_proj_path, 0, sizeof(compiler_proj_path));
+  memset(pawn_parse,__compiler_rate_zero, sizeof(pawn_parse));
+  memset(temp,__compiler_rate_zero, sizeof(temp));
+  memset(buf_log,__compiler_rate_zero, sizeof(buf_log));
+  memset(command,__compiler_rate_zero, sizeof(command));
+  memset(include_aio_path,__compiler_rate_zero, sizeof(include_aio_path));
+  memset(this_path_include,__compiler_rate_zero, sizeof(this_path_include));
+  memset(buf,__compiler_rate_zero, sizeof(buf));
+  memset(compiler_input,__compiler_rate_zero, sizeof(compiler_input));
+  memset(compiler_extra_options,__compiler_rate_zero, sizeof(compiler_extra_options));
+  memset(init_flag_for_search,__compiler_rate_zero, sizeof(init_flag_for_search));
+  memset(compiler_pawncc_path,__compiler_rate_zero, sizeof(compiler_pawncc_path));
+  memset(compiler_proj_path,__compiler_rate_zero, sizeof(compiler_proj_path));
 
   size_init_flag_for_search=sizeof(init_flag_for_search);
   compiler_size_last_slash=NULL;
@@ -134,20 +136,20 @@ const char *five_arg,const char *six_arg, const char *seven_arg,const char *eigh
 
   proj_targets=NULL;
 
-  memset(wg_compiler_unix_args, 0, sizeof(wg_compiler_unix_args));
+  memset(dog_compiler_unix_args,__compiler_rate_zero, sizeof(dog_compiler_unix_args));
 
   compiler_unix_token=NULL;
-  wg_toml_config=NULL;
+  dog_toml_config=NULL;
 
   compiler_memory_clean();
 
-#ifdef WG_LINUX
+#ifdef DOG_LINUX
   static int rate_export_path=0;
 
   if(rate_export_path<1) {
     size_t counts=sizeof(usr_paths)/sizeof(usr_paths[0]);
 
-    char _newpath[WG_MAX_PATH],_so_path[WG_PATH_MAX];
+    char _newpath[DOG_MAX_PATH],_so_path[DOG_PATH_MAX];
     const char *_old=getenv("LD_LIBRARY_PATH");
     if(!_old) _old="";
 
@@ -174,38 +176,38 @@ const char *five_arg,const char *six_arg, const char *seven_arg,const char *eigh
   char *_pointer_pawncc=NULL;
   int __rate_pawncc_exists=0;
 
-  if(strcmp(wgconfig.wg_toml_os_type,OS_SIGNAL_WINDOWS)==0) {
+  if(strcmp(wgconfig.dog_toml_os_type,OS_SIGNAL_WINDOWS)==0) {
     _pointer_pawncc="pawncc.exe";
-  } else if(strcmp(wgconfig.wg_toml_os_type,OS_SIGNAL_LINUX)==0) {
+  } else if(strcmp(wgconfig.dog_toml_os_type,OS_SIGNAL_LINUX)==0) {
     _pointer_pawncc="pawncc";
   }
   
   if(dir_exists("pawno")!=0 && dir_exists("qawno")!=0) {
-    __rate_pawncc_exists=wg_sef_fdir("pawno",_pointer_pawncc,NULL);
+    __rate_pawncc_exists=dog_sef_fdir("pawno",_pointer_pawncc,NULL);
     if(__rate_pawncc_exists) {
       ;
     } else {
-      __rate_pawncc_exists=wg_sef_fdir("qawno",_pointer_pawncc,NULL);
+      __rate_pawncc_exists=dog_sef_fdir("qawno",_pointer_pawncc,NULL);
       if(__rate_pawncc_exists<1) {
-        __rate_pawncc_exists=wg_sef_fdir(".",_pointer_pawncc,NULL);
+        __rate_pawncc_exists=dog_sef_fdir(".",_pointer_pawncc,NULL);
       }
     }
   } else if(dir_exists("pawno")!=0) {
-    __rate_pawncc_exists=wg_sef_fdir("pawno",_pointer_pawncc,NULL);
+    __rate_pawncc_exists=dog_sef_fdir("pawno",_pointer_pawncc,NULL);
     if(__rate_pawncc_exists) {
       ;
     } else {
-      __rate_pawncc_exists=wg_sef_fdir(".",_pointer_pawncc,NULL);
+      __rate_pawncc_exists=dog_sef_fdir(".",_pointer_pawncc,NULL);
     }
   } else if(dir_exists("qawno")!=0) {
-    __rate_pawncc_exists=wg_sef_fdir("qawno",_pointer_pawncc,NULL);
+    __rate_pawncc_exists=dog_sef_fdir("qawno",_pointer_pawncc,NULL);
     if(__rate_pawncc_exists) {
       ;
     } else {
-      __rate_pawncc_exists=wg_sef_fdir(".",_pointer_pawncc,NULL);
+      __rate_pawncc_exists=dog_sef_fdir(".",_pointer_pawncc,NULL);
     }
   } else {
-    __rate_pawncc_exists=wg_sef_fdir(".",_pointer_pawncc,NULL);
+    __rate_pawncc_exists=dog_sef_fdir(".",_pointer_pawncc,NULL);
   }
 
   if(__rate_pawncc_exists) {
@@ -216,22 +218,22 @@ const char *five_arg,const char *six_arg, const char *seven_arg,const char *eigh
       goto compiler_end;
     }
 
-    wg_toml_config=toml_parse_file(this_proc_file,wg_buffer_error,sizeof(wg_buffer_error));
+    dog_toml_config=toml_parse_file(this_proc_file,dog_buffer_error,sizeof(dog_buffer_error));
 
     if(this_proc_file) {
       fclose(this_proc_file);
       this_proc_file=NULL;
     }
 
-    if(!wg_toml_config) {
-      pr_error(stdout,"failed to parse the watchdogs.toml..: %s",wg_buffer_error);
+    if(!dog_toml_config) {
+      pr_error(stdout,"failed to parse the watchdogs.toml..: %s",dog_buffer_error);
       __create_logging();
       goto compiler_end;
     }
 
-    if(wgconfig.wg_sef_found_list[0]) {
+    if(wgconfig.dog_sef_found_list[0]) {
       snprintf(compiler_pawncc_path,
-              sizeof(compiler_pawncc_path),"%s",wgconfig.wg_sef_found_list[0]);
+              sizeof(compiler_pawncc_path),"%s",wgconfig.dog_sef_found_list[0]);
     } else {
       pr_error(stdout,"Compiler path not found");
       goto compiler_end;
@@ -246,7 +248,7 @@ const char *five_arg,const char *six_arg, const char *seven_arg,const char *eigh
         fclose(this_proc_file);
         this_proc_file=NULL;
         snprintf(command,sizeof(command), "%s -0000000U > .watchdogs/compiler_test.log 2>&1", compiler_pawncc_path);
-        wg_exec_command(command);
+        dog_exec_command(command);
       }
     }
 
@@ -256,43 +258,43 @@ const char *five_arg,const char *six_arg, const char *seven_arg,const char *eigh
       __create_logging();
     }
 
-    for(int i=0;i<WATCHDOGS_COMPILER_AIO_OPTIONS;++i) {
-      if(this_full_of_available_args[i]!=NULL) {
-        if(strfind(this_full_of_available_args[i],"--detailed",true) ||
-           strfind(this_full_of_available_args[i],"--watchdogs",true) ||
-           strfind(this_full_of_available_args[i],"-w",true))
-          ++compiler_has_watchdogs;
+    for(int i=0;i<__compiler_rate_aio_repo;++i) {
+      if(argv_buf[i]!=NULL) {
+        if(strfind(argv_buf[i],"--detailed",true) ||
+           strfind(argv_buf[i],"--watchdogs",true) ||
+           strfind(argv_buf[i],"-w",true))
+          has_detailed=true;
 
-        if(strfind(this_full_of_available_args[i],"--debug",true) ||
-           strfind(this_full_of_available_args[i],"-d",true))
-          ++compiler_has_debug;
+        if(strfind(argv_buf[i],"--debug",true) ||
+           strfind(argv_buf[i],"-d",true))
+          has_debug=true;
 
-        if(strfind(this_full_of_available_args[i],"--clean",true) ||
-           strfind(this_full_of_available_args[i],"-n",true))
-          ++compiler_has_clean;
+        if(strfind(argv_buf[i],"--clean",true) ||
+           strfind(argv_buf[i],"-n",true))
+          has_clean=true;
 
-        if(strfind(this_full_of_available_args[i],"--assembler",true) ||
-           strfind(this_full_of_available_args[i],"-a",true))
-          ++compiler_has_assembler;
+        if(strfind(argv_buf[i],"--assembler",true) ||
+           strfind(argv_buf[i],"-a",true))
+          has_assembler=true;
 
-        if(strfind(this_full_of_available_args[i],"--compat",true) ||
-           strfind(this_full_of_available_args[i],"-c",true))
-          ++compiler_has_compatibility;
+        if(strfind(argv_buf[i],"--compat",true) ||
+           strfind(argv_buf[i],"-c",true))
+          has_compat=true;
 
-        if(strfind(this_full_of_available_args[i],"--prolix",true) ||
-           strfind(this_full_of_available_args[i],"-p",true))
-          ++compiler_has_verbose;
+        if(strfind(argv_buf[i],"--prolix",true) ||
+           strfind(argv_buf[i],"-p",true))
+          has_verbose=true;
 
-        if(strfind(this_full_of_available_args[i],"--compact",true) ||
-           strfind(this_full_of_available_args[i],"-t",true))
-          ++compiler_has_compact;
+        if(strfind(argv_buf[i],"--compact",true) ||
+           strfind(argv_buf[i],"-t",true))
+          has_compact=true;
       }
     }
 
-    toml_table_t *wg_compiler=toml_table_in(wg_toml_config,"compiler");
-    if(wg_compiler)
+    toml_table_t *dog_compiler=toml_table_in(dog_toml_config,"compiler");
+    if(dog_compiler)
     {
-      toml_array_t *option_arr=toml_array_in(wg_compiler,"option");
+      toml_array_t *option_arr=toml_array_in(dog_compiler,"option");
       if(option_arr) {
         expect=NULL;
         size_t toml_array_size;
@@ -313,10 +315,10 @@ const char *five_arg,const char *six_arg, const char *seven_arg,const char *eigh
           if(this_proc_file!=NULL) 
             {
               rewind(this_proc_file);
-              while(fgets(size_log,sizeof(size_log),this_proc_file)!=NULL &&
-                strfind(size_log,"error while loading shared libraries:",true))
+              while(fgets(buf_log,sizeof(buf_log),this_proc_file)!=NULL &&
+                strfind(buf_log,"error while loading shared libraries:",true))
                 {
-                  wg_printfile(".watchdogs/compiler_test.log");
+                  dog_printfile(".watchdogs/compiler_test.log");
                   goto compiler_end;
                 }
             }
@@ -331,22 +333,20 @@ const char *five_arg,const char *six_arg, const char *seven_arg,const char *eigh
                 toml_option_value.u.s);
             sleep(2);
             printf("\n");
-            wg_printfile(".watchdogs/compiler_test.log");
-            wg_free(toml_option_value.u.s);
+            dog_printfile(".watchdogs/compiler_test.log");
+            dog_free(toml_option_value.u.s);
             goto compiler_end;
           }
 
-          if(strfind(toml_option_value.u.s,"-d",true) ||
-             compiler_has_debug>0)
-            ++compiler_debugging;
+          if(strfind(toml_option_value.u.s,"-d",true) || has_debug>0)
+            compiler_debugging=true;
 
-          size_t old_len=expect ? strlen(expect):0,
-                 new_len=old_len+strlen(toml_option_value.u.s)+2;
+          size_t old_len=expect ? strlen(expect):0,new_len=old_len+strlen(toml_option_value.u.s)+2;
 
-          char *tmp=wg_realloc(expect,new_len);
+          char *tmp=dog_realloc(expect,new_len);
           if(!tmp) {
-            wg_free(expect);
-            wg_free(toml_option_value.u.s);
+            dog_free(expect);
+            dog_free(toml_option_value.u.s);
             expect=NULL;
             break;
           }
@@ -358,7 +358,7 @@ const char *five_arg,const char *six_arg, const char *seven_arg,const char *eigh
           else
             snprintf(expect+old_len, new_len-old_len, " %s",toml_option_value.u.s);
 
-          wg_free(toml_option_value.u.s);
+          dog_free(toml_option_value.u.s);
           toml_option_value.u.s=NULL;
         }
 
@@ -370,78 +370,88 @@ const char *five_arg,const char *six_arg, const char *seven_arg,const char *eigh
         }
 
         if(expect) {
-          wg_free(wgconfig.wg_toml_aio_opt);
-          wgconfig.wg_toml_aio_opt=expect;
+          dog_free(wgconfig.dog_toml_aio_opt);
+          wgconfig.dog_toml_aio_opt=expect;
           expect=NULL;
         } else {
-          wg_free(wgconfig.wg_toml_aio_opt);
-          wgconfig.wg_toml_aio_opt=strdup("");
-          if(!wgconfig.wg_toml_aio_opt) {
+          dog_free(wgconfig.dog_toml_aio_opt);
+          wgconfig.dog_toml_aio_opt=strdup("");
+          if(!wgconfig.dog_toml_aio_opt) {
             pr_error(stdout,"Memory allocation failed");
             goto compiler_end;
           }
         }
       }
 
+_compiler_retrying:
+      if (compiler_retrying) {
+        if(has_compat!=true)
+          has_compat=true;
+        if(has_detailed!=true)
+          has_detailed=true;
+      }
+
       {
-        unsigned int compiler_bit_flag=0;
+        unsigned int flags=0;
 
-        if(compiler_has_debug>0)
-          compiler_bit_flag|=__FLAG_DEBUG;
+        if(has_debug)
+          flags |= __FLAG_DEBUG;
 
-        if(compiler_has_assembler>0)
-          compiler_bit_flag|=__FLAG_ASSEMBLER;
+        if(has_assembler)
+          flags |= __FLAG_ASSEMBLER;
 
-        if(compiler_has_compatibility>0)
-          compiler_bit_flag|=__FLAG_COMPAT;
+        if(has_compat)
+          flags |= __FLAG_COMPAT;
 
-        if(compiler_has_verbose>0)
-          compiler_bit_flag|=__FLAG_PROLIX;
+        if(has_verbose)
+          flags |= __FLAG_PROLIX;
 
-        if(compiler_has_compact>0)
-          compiler_bit_flag|=__FLAG_COMPACT;
+        if(has_compact)
+          flags |= __FLAG_COMPACT;
 
-        char
-            *pointer=compiler_extra_options+strlen(compiler_extra_options);
-        
-        for(int i=0;object_opt[i].option!=NULL;i++) {
-          if(compiler_bit_flag&object_opt[i].flag) {
-            memcpy(pointer,object_opt[i].option,object_opt[i].len);
-            pointer+=object_opt[i].len;
-          }
+        char *p = compiler_extra_options;
+        p += strlen(p);
+
+        int i;
+        for (i = 0; object_opt[i].option; i++) {
+            if (!(flags & object_opt[i].flag))
+                continue;
+
+            memcpy(p, object_opt[i].option, object_opt[i].len);
+            p += object_opt[i].len;
         }
 
-        *pointer='\0';
+        *p = '\0';
       }
       
 #if defined(_DBG_PRINT)
-      ++compilr_with_debugging;
+      compilr_with_debugging=true;
 #endif
-      if(compiler_has_watchdogs)
-        ++compilr_with_debugging;
+      if(has_detailed)
+        compilr_with_debugging=true;
 
       if(strlen(compiler_extra_options)>0) {
         size_t current_aio_opt_len=0;
 
-        if(wgconfig.wg_toml_aio_opt) {
-          current_aio_opt_len=strlen(wgconfig.wg_toml_aio_opt);
+        if(wgconfig.dog_toml_aio_opt) {
+          current_aio_opt_len=strlen(wgconfig.dog_toml_aio_opt);
         } else {
-          wgconfig.wg_toml_aio_opt=strdup("");
+          wgconfig.dog_toml_aio_opt=strdup("");
         }
 
         size_t extra_len=strlen(compiler_extra_options);
-        char *new_ptr=wg_realloc(wgconfig.wg_toml_aio_opt,current_aio_opt_len+extra_len+1);
+        char *new_ptr=dog_realloc(wgconfig.dog_toml_aio_opt,current_aio_opt_len+extra_len+1);
         
         if(!new_ptr) {
           pr_error(stdout,"Memory allocation failed for extra options");
           goto compiler_end;
         }
 
-        wgconfig.wg_toml_aio_opt=new_ptr;
-        strcat(wgconfig.wg_toml_aio_opt,compiler_extra_options);
+        wgconfig.dog_toml_aio_opt=new_ptr;
+        strcat(wgconfig.dog_toml_aio_opt,compiler_extra_options);
       }
 
-      toml_array_t *toml_include_path=toml_array_in(wg_compiler,"includes");
+      toml_array_t *toml_include_path=toml_array_in(dog_compiler,"includes");
       if(toml_include_path) {
         int toml_array_size;
         toml_array_size=toml_array_nelem(toml_include_path);
@@ -449,10 +459,10 @@ const char *five_arg,const char *six_arg, const char *seven_arg,const char *eigh
         for(int i=0;i<toml_array_size;i++) {
           toml_datum_t path_val=toml_string_at(toml_include_path,i);
           if(path_val.ok) {
-            char size_path_val[WG_PATH_MAX+26];
-            wg_strip_dot_fns(size_path_val,sizeof(size_path_val),path_val.u.s);
+            char size_path_val[DOG_PATH_MAX+26];
+            dog_strip_dot_fns(size_path_val,sizeof(size_path_val),path_val.u.s);
             if(size_path_val[0]=='\0') {
-              wg_free(path_val.u.s);
+              dog_free(path_val.u.s);
               continue;
             }
             if(i>0) {
@@ -466,35 +476,35 @@ const char *five_arg,const char *six_arg, const char *seven_arg,const char *eigh
               snprintf(include_aio_path+cur,
                 sizeof(include_aio_path)-cur, "-i%s ", size_path_val);
             }
-            wg_free(path_val.u.s);
+            dog_free(path_val.u.s);
           }
         }
       }
 
       bool rate_parent=false;
-      if(strfind(compile_args,__PARENT_DIR,true) != false) {
+      if(strfind(compile_args_val,__PARENT_DIR,true) != false) {
         rate_parent=true;
         size_t w=0;
         size_t j;
         bool rate_parent_dir=false;
-        for(j=0;compile_args[j]!='\0';) {
-          if(!rate_parent_dir && strncmp(&compile_args[j],__PARENT_DIR,3)==0) {
+        for(j=0;compile_args_val[j]!='\0';) {
+          if(!rate_parent_dir && strncmp(&compile_args_val[j],__PARENT_DIR,3)==0) {
             j+=3;
-            while(compile_args[j]!='\0' &&
-              compile_args[j]!=' ' &&
-              compile_args[j]!='"') {
-              pawn_project_parse[w++]=compile_args[j++];
+            while(compile_args_val[j]!='\0' &&
+              compile_args_val[j]!=' ' &&
+              compile_args_val[j]!='"') {
+              pawn_parse[w++]=compile_args_val[j++];
             }
-            size_t size_last_slash=0;
-            for(size_t idx=0;idx<w;idx++) {
-              if(pawn_project_parse[idx]==__PATH_CHR_SEP_LINUX ||
-                  pawn_project_parse[idx]==__PATH_CHR_SEP_WIN32)
+            size_t s=0;
+            for(size_t v=0;v<w;v++) {
+              if(pawn_parse[v]==__PATH_CHR_SEP_LINUX ||
+                  pawn_parse[v]==__PATH_CHR_SEP_WIN32)
                 {
-                    size_last_slash=idx+1;
+                    s=v+1;
                 }
             }
-            if(size_last_slash>0) {
-              w=size_last_slash;
+            if(s>0) {
+              w=s;
             }
             rate_parent_dir=true;
             break;
@@ -502,34 +512,33 @@ const char *five_arg,const char *six_arg, const char *seven_arg,const char *eigh
         }
 
         if(rate_parent_dir && w>0) {
-          memmove(pawn_project_parse+3,pawn_project_parse,w+1);
-          memcpy(pawn_project_parse,__PARENT_DIR,3);
+          memmove(pawn_parse+3,pawn_parse,w+1);
+          memcpy(pawn_parse,__PARENT_DIR,3);
           w+=3;
-          pawn_project_parse[w]='\0';
-          if(pawn_project_parse[w-1]!=__PATH_CHR_SEP_LINUX && pawn_project_parse[w-1]!=__PATH_CHR_SEP_WIN32) strcat(pawn_project_parse,"/");
+          pawn_parse[w]='\0';
+          if(pawn_parse[w-1]!=__PATH_CHR_SEP_LINUX && pawn_parse[w-1]!=__PATH_CHR_SEP_WIN32) strcat(pawn_parse,"/");
         } else {
-          strcpy(pawn_project_parse,__PARENT_DIR);
+          strcpy(pawn_parse,__PARENT_DIR);
         }
 
-        strcpy(temp_pawn_project_parse,pawn_project_parse);
+        strcpy(temp,pawn_parse);
 
-        if(strstr(temp_pawn_project_parse,"gamemodes/") ||
-           strstr(temp_pawn_project_parse,"gamemodes\\"))
+        if(strstr(temp,"gamemodes/") ||
+           strstr(temp,"gamemodes\\"))
           {
-            char *pos=strstr(temp_pawn_project_parse,"gamemodes/");
-            if(!pos) pos=strstr(temp_pawn_project_parse,"gamemodes\\");
+            char *pos=strstr(temp,"gamemodes/");
+            if(!pos) pos=strstr(temp,"gamemodes\\");
             if(pos) { *pos='\0'; }
           }
 
-        snprintf(
-                size_this_path_include,sizeof(size_this_path_include),
+        snprintf(buf,sizeof(buf),
                 "-i%s "
                 "-i%sgamemodes/ "
                 "-i%spawno/include/ "
                 "-i%sqawno/include/ ",
-                temp_pawn_project_parse,temp_pawn_project_parse,temp_pawn_project_parse,temp_pawn_project_parse);
+                temp,temp,temp,temp);
 
-        strcpy(this_path_include,size_this_path_include);
+        strcpy(this_path_include,buf);
       } else
         {
           snprintf(this_path_include,sizeof(this_path_include), "-ipawno/include -iqawno/include -igamemodes");
@@ -573,36 +582,36 @@ const char *five_arg,const char *six_arg, const char *seven_arg,const char *eigh
           shown=1;
       }
 
-      if(compile_args==NULL) {
-        compile_args="";
+      if(compile_args_val==NULL) {
+        compile_args_val="";
       }
-
-      if(*compile_args=='\0' || (compile_args[0]=='.' && compile_args[1]=='\0')) {
+      
+      if(*compile_args_val=='\0' || (compile_args_val[0]=='.' && compile_args_val[1]=='\0')) {
         static int compiler_targets=0;
-        if(compiler_targets!=1 && strlen(compile_args)<1) {
+        if(compiler_targets!=1 && strlen(compile_args_val)<1) {
           pr_color(stdout, FCOLOUR_YELLOW,
          "\033[1m====== COMPILER TARGET ======\033[0m\n");
           printf("   ** This notification appears only once.\n"
                 "    * You can set the target using args in the command.\n");
           printf("   * You run the command without any args.\n"
                 "   * Do you want to compile for " FCOLOUR_GREEN "%s " FCOLOUR_DEFAULT "(just enter), \n"
-                "   * or do you want to compile for something else?\n",wgconfig.wg_toml_proj_input);
+                "   * or do you want to compile for something else?\n",wgconfig.dog_toml_proj_input);
           printf(FCOLOUR_CYAN ">>>");
           proj_targets=readline(" ");
           if(proj_targets && strlen(proj_targets)>0) {
-            wg_free(wgconfig.wg_toml_proj_input);
-            wgconfig.wg_toml_proj_input=strdup(proj_targets);
-            if(!wgconfig.wg_toml_proj_input) {
+            dog_free(wgconfig.dog_toml_proj_input);
+            wgconfig.dog_toml_proj_input=strdup(proj_targets);
+            if(!wgconfig.dog_toml_proj_input) {
               pr_error(stdout,"Memory allocation failed");
-              wg_free(proj_targets);
+              dog_free(proj_targets);
               goto compiler_end;
             }
           }
-          wg_free(proj_targets);
+          dog_free(proj_targets);
           proj_targets=NULL;
           compiler_targets=1;
         }
-#ifdef WG_WINDOWS
+#ifdef DOG_WINDOWS
         ZeroMemory(&si, sizeof(si));
         si.cb = sizeof(si);
 
@@ -638,17 +647,17 @@ const char *five_arg,const char *six_arg, const char *seven_arg,const char *eigh
         ret_command=snprintf(compiler_input,sizeof(compiler_input),
                         "%s %s -o%s %s %s %s",
             compiler_pawncc_path,
-            wgconfig.wg_toml_proj_input,
-            wgconfig.wg_toml_proj_output,
-            wgconfig.wg_toml_aio_opt,
+            wgconfig.dog_toml_proj_input,
+            wgconfig.dog_toml_proj_output,
+            wgconfig.dog_toml_aio_opt,
             include_aio_path,
             this_path_include);
 
-        if(compilr_with_debugging>0) {
-           #ifdef WG_ANDROID
+        if(compilr_with_debugging==true) {
+           #ifdef DOG_ANDROID
                println(stdout, "%s", compiler_input);
            #else
-               wg_console_title(compiler_input);
+               dog_console_title(compiler_input);
            #endif
         }
 
@@ -710,10 +719,10 @@ const char *five_arg,const char *six_arg, const char *seven_arg,const char *eigh
         ret_command=snprintf(compiler_input,sizeof(compiler_input),
             "%s %s %s%s %s %s %s",
             compiler_pawncc_path,
-            wgconfig.wg_toml_proj_input,
+            wgconfig.dog_toml_proj_input,
             "-o",
-            wgconfig.wg_toml_proj_output,
-            wgconfig.wg_toml_aio_opt,
+            wgconfig.dog_toml_proj_output,
+            wgconfig.dog_toml_aio_opt,
             include_aio_path,
             this_path_include);
         if(ret_command>(int)sizeof(compiler_input)) {
@@ -722,20 +731,20 @@ const char *five_arg,const char *six_arg, const char *seven_arg,const char *eigh
           goto compiler_end;
         }
         fflush(stdout);
-        if(compilr_with_debugging>0) {
-           #ifdef WG_ANDROID
+        if(compilr_with_debugging==true) {
+           #ifdef DOG_ANDROID
                println(stdout, "%s", compiler_input);
            #else
-               wg_console_title(compiler_input);
+               dog_console_title(compiler_input);
            #endif
         }
         int i=0;
         compiler_unix_token=strtok(compiler_input," ");
-        while(compiler_unix_token!=NULL && i<(WG_MAX_PATH+255)) {
-          wg_compiler_unix_args[i++]=compiler_unix_token;
+        while(compiler_unix_token!=NULL && i<(DOG_MAX_PATH+255)) {
+          dog_compiler_unix_args[i++]=compiler_unix_token;
           compiler_unix_token=strtok(NULL," ");
         }
-        wg_compiler_unix_args[i]=NULL;
+        dog_compiler_unix_args[i]=NULL;
 
         posix_spawn_file_actions_t process_file_actions;
         posix_spawn_file_actions_init(&process_file_actions);
@@ -762,10 +771,10 @@ const char *five_arg,const char *six_arg, const char *seven_arg,const char *eigh
         pid_t compiler_process_id;
         int process_spawn_result=posix_spawnp(
           &compiler_process_id,
-          wg_compiler_unix_args[0],
+          dog_compiler_unix_args[0],
           &process_file_actions,
           &spawn_attr,
-          wg_compiler_unix_args,
+          dog_compiler_unix_args,
           environ
         );
 
@@ -821,35 +830,36 @@ const char *five_arg,const char *six_arg, const char *seven_arg,const char *eigh
           __create_logging();
         }
 #endif
-        char size_container_output[WG_PATH_MAX*2];
+        char size_container_output[DOG_PATH_MAX*2];
         snprintf(size_container_output,
-                sizeof(size_container_output),"%s",wgconfig.wg_toml_proj_output);
+                sizeof(size_container_output),"%s",wgconfig.dog_toml_proj_output);
         if(path_exists(".watchdogs/compiler.log")) {
           printf("\n");
           char *ca=NULL;
           ca=size_container_output;
-          int cb=0;
-          cb=compiler_debugging;
-          if(compiler_has_watchdogs && compiler_has_clean) {
+          bool cb=0;
+          if (compiler_debugging)
+            cb=1;
+          if(has_detailed && has_clean) {
             cause_compiler_expl(".watchdogs/compiler.log",ca,cb);
             if(path_exists(ca)) {
               remove(ca);
             }
             goto compiler_done;
-          } else if(compiler_has_watchdogs) {
+          } else if(has_detailed) {
             cause_compiler_expl(".watchdogs/compiler.log",ca,cb);
             goto compiler_done;
-          } else if(compiler_has_clean) {
-            wg_printfile(".watchdogs/compiler.log");
+          } else if(has_clean) {
+            dog_printfile(".watchdogs/compiler.log");
             if(path_exists(ca)) {
               remove(ca);
             }
             goto compiler_done;
           }
 
-          wg_printfile(".watchdogs/compiler.log");
+          dog_printfile(".watchdogs/compiler.log");
 
-          char log_line[WG_MAX_PATH*4];
+          char log_line[DOG_MAX_PATH*4];
           this_proc_file=fopen(".watchdogs/compiler.log","r");
 
           if(this_proc_file!=NULL) {
@@ -866,22 +876,22 @@ const char *five_arg,const char *six_arg, const char *seven_arg,const char *eigh
 compiler_done:
         this_proc_file=fopen(".watchdogs/compiler.log","r");
         if(this_proc_file) {
-          char compiler_line_buffer[WG_PATH_MAX];
-          int compiler_has_err=0;
+          char compiler_line_buffer[DOG_PATH_MAX];
+          int has_err=0;
           while(fgets(compiler_line_buffer,sizeof(compiler_line_buffer),this_proc_file)) {
             if(strstr(compiler_line_buffer,"error")) {
-              compiler_has_err=1;
+              has_err=1;
               break;
             }
           }
           fclose(this_proc_file);
           this_proc_file=NULL;
-          if(compiler_has_err) {
+          if(has_err) {
             if(size_container_output[0]!='\0' && path_access(size_container_output))
               remove(size_container_output);
-            wgconfig.wg_compiler_stat=1;
+            wgconfig.dog_compiler_stat=1;
           } else {
-            wgconfig.wg_compiler_stat=0;
+            wgconfig.dog_compiler_stat=0;
           }
         } else {
           pr_error(stdout,"Failed to open .watchdogs/compiler.log");
@@ -895,16 +905,17 @@ compiler_done:
         pr_color(stdout,FCOLOUR_CYAN,
                 " <P> Finished at %.3fs (%.0f ms)\n",
                 timer_rate_compile,timer_rate_compile*1000.0);
-        if(timer_rate_compile>60) {
+        if(timer_rate_compile>20) {
           printf("~ This is taking a while, huh?\n"
                 "  Make sure you've cleared all the warnings,\n"
                 "  you're using the latest compiler,\n"
                 "  and double-check that your logic\n"
-                "  and pawn algorithm tweaks in the gamemode scripts line up.\n");
+                "  and pawn algorithm tweaks in the gamemode scripts line up.\n"
+                "  make sure the 'MAX_PLAYERS' is not too large and not too small\n");
           fflush(stdout);
         }
       } else {
-        strncpy(revolver_compiler->compiler_size_temp,compile_args,sizeof(revolver_compiler->compiler_size_temp)-1);
+        strncpy(revolver_compiler->compiler_size_temp,compile_args_val,sizeof(revolver_compiler->compiler_size_temp)-1);
         revolver_compiler->compiler_size_temp[sizeof(revolver_compiler->compiler_size_temp)-1]='\0';
 
         compiler_size_last_slash=strrchr(revolver_compiler->compiler_size_temp,__PATH_CHR_SEP_LINUX);
@@ -973,11 +984,11 @@ compiler_done:
         }
 
         int compiler_finding_compile_args=0;
-        compiler_finding_compile_args=wg_sef_fdir(revolver_compiler->compiler_direct_path,revolver_compiler->compiler_size_file_name,NULL);
+        compiler_finding_compile_args=dog_sef_fdir(revolver_compiler->compiler_direct_path,revolver_compiler->compiler_size_file_name,NULL);
 
         if(!compiler_finding_compile_args &&
           strcmp(revolver_compiler->compiler_direct_path,"gamemodes")!=0) {
-          compiler_finding_compile_args=wg_sef_fdir("gamemodes",
+          compiler_finding_compile_args=dog_sef_fdir("gamemodes",
                                       revolver_compiler->compiler_size_file_name,NULL);
           if(compiler_finding_compile_args) {
             strncpy(revolver_compiler->compiler_direct_path,"gamemodes",
@@ -990,14 +1001,14 @@ compiler_done:
               revolver_compiler->compiler_size_input_path[sizeof(revolver_compiler->compiler_size_input_path)-1]='\0';
             }
 
-            if(wgconfig.wg_sef_count>RATE_SEF_EMPTY)
-              strncpy(wgconfig.wg_sef_found_list[wgconfig.wg_sef_count-1],
+            if(wgconfig.dog_sef_count>RATE_SEF_EMPTY)
+              strncpy(wgconfig.dog_sef_found_list[wgconfig.dog_sef_count-1],
                       revolver_compiler->compiler_size_input_path,MAX_SEF_PATH_SIZE);
           }
         }
 
         if(!compiler_finding_compile_args && !strcmp(revolver_compiler->compiler_direct_path,".")) {
-          compiler_finding_compile_args=wg_sef_fdir("gamemodes",
+          compiler_finding_compile_args=dog_sef_fdir("gamemodes",
                                       revolver_compiler->compiler_size_file_name,NULL);
           if(compiler_finding_compile_args) {
             strncpy(revolver_compiler->compiler_direct_path,"gamemodes",
@@ -1010,22 +1021,22 @@ compiler_done:
               revolver_compiler->compiler_size_input_path[sizeof(revolver_compiler->compiler_size_input_path)-1]='\0';
             }
 
-            if(wgconfig.wg_sef_count>RATE_SEF_EMPTY)
-              strncpy(wgconfig.wg_sef_found_list[wgconfig.wg_sef_count-1],
+            if(wgconfig.dog_sef_count>RATE_SEF_EMPTY)
+              strncpy(wgconfig.dog_sef_found_list[wgconfig.dog_sef_count-1],
                       revolver_compiler->compiler_size_input_path,MAX_SEF_PATH_SIZE);
           }
         }
 
-        if(wgconfig.wg_sef_found_list[1]) {
+        if(wgconfig.dog_sef_found_list[1]) {
           snprintf(compiler_proj_path,
-                  sizeof(compiler_proj_path),"%s",wgconfig.wg_sef_found_list[1]);
+                  sizeof(compiler_proj_path),"%s",wgconfig.dog_sef_found_list[1]);
         } else {
           pr_error(stdout,"Project path not found");
           goto compiler_end;
         }
 
         if(compiler_finding_compile_args) {
-          char size_sef_path[WG_PATH_MAX];
+          char size_sef_path[DOG_PATH_MAX];
           snprintf(size_sef_path,sizeof(size_sef_path),"%s",compiler_proj_path);
           char *extension=strrchr(size_sef_path,'.');
           if(extension)
@@ -1033,10 +1044,10 @@ compiler_done:
 
           snprintf(revolver_compiler->container_output,sizeof(revolver_compiler->container_output),"%s",size_sef_path);
 
-          char size_container_output[WG_MAX_PATH];
+          char size_container_output[DOG_MAX_PATH];
           snprintf(size_container_output,sizeof(size_container_output),"%s.amx",revolver_compiler->container_output);
 
-#ifdef WG_WINDOWS
+#ifdef DOG_WINDOWS
           ZeroMemory(&si, sizeof(si));
           si.cb = sizeof(si);
 
@@ -1074,15 +1085,15 @@ compiler_done:
               compiler_pawncc_path,
               compiler_proj_path,
               size_container_output,
-              wgconfig.wg_toml_aio_opt,
+              wgconfig.dog_toml_aio_opt,
               include_aio_path,
               this_path_include);
 
-          if(compilr_with_debugging>0) {
-             #ifdef WG_ANDROID
+          if(compilr_with_debugging==true) {
+             #ifdef DOG_ANDROID
                  println(stdout, "%s", compiler_input);
              #else
-                 wg_console_title(compiler_input);
+                 dog_console_title(compiler_input);
              #endif
           }
 
@@ -1147,7 +1158,7 @@ compiler_done:
               compiler_proj_path,
               "-o",
               size_container_output,
-              wgconfig.wg_toml_aio_opt,
+              wgconfig.dog_toml_aio_opt,
               include_aio_path,
               this_path_include);
           if(ret_command>(int)sizeof(compiler_input)) {
@@ -1156,20 +1167,20 @@ compiler_done:
             goto compiler_end;
           }
           fflush(stdout);
-          if(compilr_with_debugging>0) {
-             #ifdef WG_ANDROID
+          if(compilr_with_debugging==true) {
+             #ifdef DOG_ANDROID
                  println(stdout, "%s", compiler_input);
              #else
-                 wg_console_title(compiler_input);
+                 dog_console_title(compiler_input);
              #endif
           }
           int i=0;
           compiler_unix_token=strtok(compiler_input," ");
-          while(compiler_unix_token!=NULL && i<(WG_MAX_PATH+255)) {
-            wg_compiler_unix_args[i++]=compiler_unix_token;
+          while(compiler_unix_token!=NULL && i<(DOG_MAX_PATH+255)) {
+            dog_compiler_unix_args[i++]=compiler_unix_token;
             compiler_unix_token=strtok(NULL," ");
           }
-          wg_compiler_unix_args[i]=NULL;
+          dog_compiler_unix_args[i]=NULL;
 
           posix_spawn_file_actions_t process_file_actions;
           posix_spawn_file_actions_init(&process_file_actions);
@@ -1196,10 +1207,10 @@ compiler_done:
           pid_t compiler_process_id;
           int process_spawn_result=posix_spawnp(
             &compiler_process_id,
-            wg_compiler_unix_args[0],
+            dog_compiler_unix_args[0],
             &process_file_actions,
             &spawn_attr,
-            wg_compiler_unix_args,
+            dog_compiler_unix_args,
             environ
           );
 
@@ -1260,28 +1271,29 @@ compiler_done:
             printf("\n");
             char *ca=NULL;
             ca=size_container_output;
-            int cb=0;
-            cb=compiler_debugging;
-            if(compiler_has_watchdogs && compiler_has_clean) {
+            bool cb=0;
+            if (compiler_debugging)
+              cb=1;
+            if(has_detailed && has_clean) {
               cause_compiler_expl(".watchdogs/compiler.log",ca,cb);
               if(path_exists(ca)) {
                 remove(ca);
               }
               goto compiler_done2;
-            } else if(compiler_has_watchdogs) {
+            } else if(has_detailed) {
               cause_compiler_expl(".watchdogs/compiler.log",ca,cb);
               goto compiler_done2;
-            } else if(compiler_has_clean) {
-              wg_printfile(".watchdogs/compiler.log");
+            } else if(has_clean) {
+              dog_printfile(".watchdogs/compiler.log");
               if(path_exists(ca)) {
                 remove(ca);
               }
               goto compiler_done2;
             }
 
-            wg_printfile(".watchdogs/compiler.log");
+            dog_printfile(".watchdogs/compiler.log");
 
-            char log_line[WG_MAX_PATH*4];
+            char log_line[DOG_MAX_PATH*4];
             this_proc_file=fopen(".watchdogs/compiler.log","r");
 
             if(this_proc_file!=NULL) {
@@ -1295,26 +1307,26 @@ compiler_done:
               this_proc_file=NULL;
             }
           }
-
+          
 compiler_done2:
           this_proc_file=fopen(".watchdogs/compiler.log","r");
           if(this_proc_file) {
-            char compiler_line_buffer[WG_PATH_MAX];
-            int compiler_has_err=0;
+            char compiler_line_buffer[DOG_PATH_MAX];
+            int has_err=0;
             while(fgets(compiler_line_buffer,sizeof(compiler_line_buffer),this_proc_file)) {
               if(strstr(compiler_line_buffer,"error")) {
-                compiler_has_err=1;
+                has_err=1;
                 break;
               }
             }
             fclose(this_proc_file);
             this_proc_file=NULL;
-            if(compiler_has_err) {
+            if(has_err) {
               if(size_container_output[0]!='\0' && path_access(size_container_output))
                 remove(size_container_output);
-              wgconfig.wg_compiler_stat=1;
+              wgconfig.dog_compiler_stat=1;
             } else {
-              wgconfig.wg_compiler_stat=0;
+              wgconfig.dog_compiler_stat=0;
             }
           } else {
             pr_error(stdout,"Failed to open .watchdogs/compiler.log");
@@ -1328,23 +1340,52 @@ compiler_done2:
           pr_color(stdout,FCOLOUR_CYAN,
                   " <P> Finished at %.3fs (%.0f ms)\n",
                   timer_rate_compile,timer_rate_compile*1000.0);
-          if(timer_rate_compile>60) {
+          if(timer_rate_compile>20) {
             printf("~ This is taking a while, huh?\n"
                   "  Make sure you've cleared all the warnings,\n"
                   "  you're using the latest compiler,\n"
                   "  and double-check that your logic\n"
-                  "  and pawn algorithm tweaks in the gamemode scripts line up.\n");
+                  "  and pawn algorithm tweaks in the gamemode scripts line up.\n"
+                  "  make sure the 'MAX_PLAYERS' is not too large and not too small\n");
             fflush(stdout);
           }
         } else {
-          printf("Cannot locate input: " FCOLOUR_CYAN "%s" FCOLOUR_DEFAULT " - No such file or directory\n",compile_args);
+          printf("Cannot locate input: " FCOLOUR_CYAN "%s" FCOLOUR_DEFAULT " - No such file or directory\n",compile_args_val);
           goto compiler_end;
         }
       }
 
-      if(wg_toml_config) {
-        toml_free(wg_toml_config);
-        wg_toml_config=NULL;
+      if (this_proc_file)
+        fclose(this_proc_file);
+      
+      memset(buf_log,__compiler_rate_zero, sizeof(buf_log));
+
+      this_proc_file=fopen(".watchdogs/compiler.log", "rb");
+      if(this_proc_file!=NULL && compiler_retrying != 1) 
+        {
+          rewind(this_proc_file);
+          while(fgets(buf_log,sizeof(buf_log),this_proc_file)!=NULL) {
+            if (strfind(buf_log,"cannot read from file",true)!=false)
+              {
+                pr_info(stdout,"compile exit with failed. retrying?");
+                printf(FCOLOUR_CYAN ">>>");
+                char *retrying=readline(" ");
+                if (retrying) {
+                  compiler_retrying=true;
+                  dog_free(retrying);
+                  goto _compiler_retrying;
+                }
+                dog_free(retrying);
+              }
+          }
+        }
+
+      if (this_proc_file)
+        fclose(this_proc_file);
+
+      if(dog_toml_config) {
+        toml_free(dog_toml_config);
+        dog_toml_config=NULL;
       }
       goto compiler_end;
     }
@@ -1358,7 +1399,7 @@ compiler_done2:
 
     while(true) {
       if(pointer_signalA && (pointer_signalA[0]=='\0' || strcmp(pointer_signalA,"Y")==0 || strcmp(pointer_signalA,"y")==0)) {
-        wg_free(pointer_signalA);
+        dog_free(pointer_signalA);
         pointer_signalA=NULL;
 ret_ptr:
         println(stdout,"Select platform:");
@@ -1367,39 +1408,39 @@ ret_ptr:
         pr_color(stdout,FCOLOUR_YELLOW," ^ work's in WSL/MSYS2\n");
         println(stdout,"-> [T/t] Termux");
 
-        wgconfig.wg_sel_stat=1;
+        wgconfig.dog_sel_stat=1;
 
         platform=readline("==> ");
 
         if(platform && strfind(platform,"L",true)) {
-          int ret=wg_install_pawncc("linux");
-          wg_free(platform);
+          int ret=dog_install_pawncc("linux");
+          dog_free(platform);
           platform=NULL;
 loop_ipcc:
-          if(ret==-1 && wgconfig.wg_sel_stat!=0)
+          if(ret==-1 && wgconfig.dog_sel_stat!=0)
             goto loop_ipcc;
         } else if(platform && strfind(platform,"W",true)) {
-          int ret=wg_install_pawncc("windows");
-          wg_free(platform);
+          int ret=dog_install_pawncc("windows");
+          dog_free(platform);
           platform=NULL;
 loop_ipcc2:
-          if(ret==-1 && wgconfig.wg_sel_stat!=0)
+          if(ret==-1 && wgconfig.dog_sel_stat!=0)
             goto loop_ipcc2;
         } else if(platform && strfind(platform,"T",true)) {
-          int ret=wg_install_pawncc("termux");
-          wg_free(platform);
+          int ret=dog_install_pawncc("termux");
+          dog_free(platform);
           platform=NULL;
 loop_ipcc3:
-          if(ret==-1 && wgconfig.wg_sel_stat!=0)
+          if(ret==-1 && wgconfig.dog_sel_stat!=0)
             goto loop_ipcc3;
         } else if(platform && strfind(platform,"E",true)) {
-          wg_free(platform);
+          dog_free(platform);
           platform=NULL;
           goto loop_end;
         } else {
           if(platform) {
             pr_error(stdout,"Invalid platform selection. Input 'E/e' to exit");
-            wg_free(platform);
+            dog_free(platform);
             platform=NULL;
           }
           goto ret_ptr;
@@ -1407,13 +1448,13 @@ loop_ipcc3:
 loop_end:
         unit_ret_main(NULL);
       } else if(pointer_signalA && (strcmp(pointer_signalA,"N")==0 || strcmp(pointer_signalA,"n")==0)) {
-        wg_free(pointer_signalA);
+        dog_free(pointer_signalA);
         pointer_signalA=NULL;
         break;
       } else {
         if(pointer_signalA) {
           pr_error(stdout,"Invalid input. Please type Y/y to install or N/n to cancel.");
-          wg_free(pointer_signalA);
+          dog_free(pointer_signalA);
           pointer_signalA=NULL;
         }
         goto ret_ptr;
@@ -1422,11 +1463,11 @@ loop_end:
   }
 
 compiler_end:
-  wg_free(expect);
-  if(wg_toml_config) {
-    toml_free(wg_toml_config);
+  dog_free(expect);
+  if(dog_toml_config) {
+    toml_free(dog_toml_config);
   }
-  wg_free(proj_targets);
+  dog_free(proj_targets);
   if(this_proc_file) {
     fclose(this_proc_file);
   }

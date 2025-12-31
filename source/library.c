@@ -39,13 +39,13 @@ char library_options_list(const char *title,const char **items,const char *keys,
       int k;
       for(k=0;k<counts;k++) if(choice==keys[k]||choice==(keys[k]+32))
       {
-        wg_free(input);
+        dog_free(input);
         return choice;
       }
     }
 
     printf("Invalid selection. Please try again.\n");
-    wg_free(input);
+    dog_free(input);
   }
 }
 
@@ -64,32 +64,32 @@ int pawncc_handle_termux_installation(void)
   char sel=library_options_list("Select PawnCC Version",items,keys,5);
   if(!sel) return 0;
 
-  wgconfig.wg_ipawncc=1;
+  wgconfig.dog_ipawncc=1;
 
   if(sel=='A'||sel=='a') {
     if(path_exists("pawncc-termux-311.zip")) remove("pawncc-termux-311.zip");
     if(path_exists("pawncc-termux-311")) remove("pawncc-termux-311");
-    wg_download_file("https://github.com/gskeleton/compiler/releases/download/3.10.11/pawncc-termux.zip","pawncc-termux-311.zip");
+    dog_download_file("https://github.com/gskeleton/compiler/releases/download/3.10.11/pawncc-termux.zip","pawncc-termux-311.zip");
   }
   else if(sel=='B'||sel=='b') {
     if(path_exists("pawncc-termux-310.zip")) remove("pawncc-termux-310.zip");
     if(path_exists("pawncc-termux-310")) remove("pawncc-termux-310");
-    wg_download_file("https://github.com/gskeleton/compiler/releases/download/3.10.10/pawncc-termux.zip","pawncc-termux-310.zip");
+    dog_download_file("https://github.com/gskeleton/compiler/releases/download/3.10.10/pawncc-termux.zip","pawncc-termux-310.zip");
   }
   else if(sel=='C'||sel=='c') {
     if(path_exists("pawncc-termux-39.zip")) remove("pawncc-termux-39.zip");
     if(path_exists("pawncc-termux-39")) remove("pawncc-termux-39");
-    wg_download_file("https://github.com/gskeleton/compiler/releases/download/3.10.9/pawncc-termux.zip","pawncc-termux-39.zip");
+    dog_download_file("https://github.com/gskeleton/compiler/releases/download/3.10.9/pawncc-termux.zip","pawncc-termux-39.zip");
   }
   else if(sel=='D'||sel=='d') {
     if(path_exists("pawncc-termux-38.zip")) remove("pawncc-termux-38.zip");
     if(path_exists("pawncc-termux-38")) remove("pawncc-termux-38");
-    wg_download_file("https://github.com/gskeleton/compiler/releases/download/3.10.8/pawncc-termux.zip","pawncc-termux-38.zip");
+    dog_download_file("https://github.com/gskeleton/compiler/releases/download/3.10.8/pawncc-termux.zip","pawncc-termux-38.zip");
   }
   else if(sel=='E'||sel=='e') {
     if(path_exists("pawncc-termux-37.zip")) remove("pawncc-termux-37.zip");
     if(path_exists("pawncc-termux-37")) remove("pawncc-termux-37");
-    wg_download_file("https://github.com/gskeleton/compiler/releases/download/3.10.7/pawncc-termux.zip","pawncc-termux-37.zip");
+    dog_download_file("https://github.com/gskeleton/compiler/releases/download/3.10.7/pawncc-termux.zip","pawncc-termux-37.zip");
   }
 
   return 0;
@@ -137,19 +137,19 @@ static int pawncc_handle_standard_installation(const char *platform)
   snprintf(filename,sizeof(filename),
            "pawnc-%s-%s.%s",vernums[idx],platform,archive_ext);
 
-  wgconfig.wg_ipawncc=1;
-  wg_download_file(url,filename);
+  wgconfig.dog_ipawncc=1;
+  dog_download_file(url,filename);
 
   return 0;
 }
 
-int wg_install_pawncc(const char *platform)
+int dog_install_pawncc(const char *platform)
 {
   __create_logging();
 
   if(!platform) {
     pr_error(stdout,"Platform parameter is NULL");
-    if(wgconfig.wg_sel_stat==0)
+    if(wgconfig.dog_sel_stat==0)
       return 0;
     return -1;
   }
@@ -158,7 +158,7 @@ int wg_install_pawncc(const char *platform)
     int ret=pawncc_handle_termux_installation();
 
 loop_ipcc:
-    if(ret==-1&&wgconfig.wg_sel_stat!=0)
+    if(ret==-1&&wgconfig.dog_sel_stat!=0)
       goto loop_ipcc;
     else if(ret==0)
       return 0;
@@ -166,7 +166,7 @@ loop_ipcc:
   else {
     int ret=pawncc_handle_standard_installation(platform);
 loop_ipcc2:
-    if(ret==-1&&wgconfig.wg_sel_stat!=0)
+    if(ret==-1&&wgconfig.dog_sel_stat!=0)
       goto loop_ipcc2;
     else if(ret==0)
       return 0;
@@ -175,7 +175,7 @@ loop_ipcc2:
   return 0;
 }
 
-int wg_install_server(const char *platform)
+int dog_install_server(const char *platform)
 {
   __create_logging();
 
@@ -377,6 +377,6 @@ int wg_install_server(const char *platform)
   const char *filename=(strcmp(platform,"linux")==0)?
     chosen->linux_file:chosen->windows_file;
 
-  wg_download_file(url,filename);
+  dog_download_file(url,filename);
   return 0;
 }

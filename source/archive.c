@@ -219,23 +219,23 @@ fallback:
   return ret;
 }
 
-int wg_path_recursive(struct archive *archive,const char *root,const char *path)
+int dog_path_recursive(struct archive *archive,const char *root,const char *path)
 {
   struct archive_entry *entry=NULL;
   struct stat path_stat;
-  char full_path[WG_MAX_PATH*2];
+  char full_path[DOG_MAX_PATH*2];
   int fd=-1;
   struct stat fd_stat;
   ssize_t read_len;
   char buffer[8192];
   DIR *dirp=NULL;
   struct dirent *dent;
-  char child_path[WG_MAX_PATH];
+  char child_path[DOG_MAX_PATH];
 
   snprintf(full_path,sizeof(full_path),
            "%s" "%s" "%s",root,__PATH_STR_SEP_LINUX,path);
 
-#ifdef WG_WINDOWS
+#ifdef DOG_WINDOWS
   if(stat(full_path,&path_stat)!=0) {
     fprintf(stderr,"stat failed: %s: %s\n",
             full_path,strerror(errno));
@@ -250,7 +250,7 @@ int wg_path_recursive(struct archive *archive,const char *root,const char *path)
 #endif
 
   if(S_ISREG(path_stat.st_mode)) {
-#ifdef WG_WINDOWS
+#ifdef DOG_WINDOWS
     fd=open(full_path,O_RDONLY|O_BINARY);
 #else
 #ifdef O_NOFOLLOW
@@ -357,14 +357,14 @@ int wg_path_recursive(struct archive *archive,const char *root,const char *path)
     }
 
     while((dent=readdir(dirp))!=NULL) {
-      if(wg_dot_or_dotdot(dent->d_name))
+      if(dog_dot_or_dotdot(dent->d_name))
         continue;
 
       snprintf(child_path,sizeof(child_path),
                "%s" "%s" "%s",
                path,__PATH_STR_SEP_LINUX,dent->d_name);
 
-      if(wg_path_recursive(archive,root,child_path)!=0) {
+      if(dog_path_recursive(archive,root,child_path)!=0) {
         closedir(dirp);
         return -1;
       }
@@ -425,7 +425,7 @@ int compress_directory(const char *archive_path,
     return -1;
   }
 
-  wg_path_recursive(a,dir_path,"");
+  dog_path_recursive(a,dir_path,"");
 
   archive_write_close(a);
   archive_write_free(a);
@@ -433,7 +433,7 @@ int compress_directory(const char *archive_path,
   return 0;
 }
 
-int wg_extract_tar(const char *tar_path,const char *entry_dest)
+int dog_extract_tar(const char *tar_path,const char *entry_dest)
 {
   int r;
   int flags;
@@ -483,7 +483,7 @@ int wg_extract_tar(const char *tar_path,const char *entry_dest)
 #endif
     if(entry_dest!=NULL && strlen(entry_dest)>0) {
       char entry_new_path[1024];
-      wg_mkdir(entry_dest);
+      dog_mkdir(entry_dest);
       snprintf(entry_new_path,sizeof(entry_new_path),
                "%s" "%s" "%s",entry_dest,__PATH_STR_SEP_LINUX,entry_path);
       archive_entry_set_pathname(entry,entry_new_path);
@@ -550,12 +550,12 @@ static int extract_zip_entry(struct archive *archive_read,
   return 0;
 }
 
-int wg_extract_zip(const char *zip_file,const char *entry_dest)
+int dog_extract_zip(const char *zip_file,const char *entry_dest)
 {
   struct archive *archive_read;
   struct archive *archive_write;
   struct archive_entry *item;
-  char paths[WG_MAX_PATH];
+  char paths[DOG_MAX_PATH];
   int ret;
   int error_occurred=0;
 
@@ -613,7 +613,7 @@ error:
   return -1;
 }
 
-void wg_extract_archive(const char *filename,const char *dir)
+void dog_extract_archive(const char *filename,const char *dir)
 {
   if(dir_exists(".watchdogs")==0)
     MKDIR(".watchdogs");
@@ -623,52 +623,52 @@ void wg_extract_archive(const char *filename,const char *dir)
   fflush(stdout);
 
   if(strend(filename,".tar.gz",true)) {
-    if(wgconfig.wg_idownload==1) {
+    if(wgconfig.dog_idownload==1) {
       if(dir_exists("scripts")!=0) {
-        wg_extract_tar(filename,"scripts");
+        dog_extract_tar(filename,"scripts");
       }
       else {
         MKDIR("scripts");
-        wg_extract_tar(filename,"scripts");
+        dog_extract_tar(filename,"scripts");
       }
     }
     else {
-      wg_extract_tar(filename,dir);
+      dog_extract_tar(filename,dir);
     }
   }
   else if(strend(filename,".tar",true)) {
-    if(wgconfig.wg_idownload==1) {
+    if(wgconfig.dog_idownload==1) {
       if(dir_exists("scripts")!=0) {
-        wg_extract_tar(filename,"scripts");
+        dog_extract_tar(filename,"scripts");
       }
       else {
         MKDIR("scripts");
-        wg_extract_tar(filename,"scripts");
+        dog_extract_tar(filename,"scripts");
       }
     }
     else {
-      wg_extract_tar(filename,dir);
+      dog_extract_tar(filename,dir);
     }
   }
   else if(strend(filename,".zip",true)) {
-    if(wgconfig.wg_idownload==1) {
+    if(wgconfig.dog_idownload==1) {
       if(dir_exists("scripts")!=0) {
-        wg_extract_zip(filename,"scripts");
+        dog_extract_zip(filename,"scripts");
       }
       else {
         MKDIR("scripts");
-        wg_extract_zip(filename,"scripts");
+        dog_extract_zip(filename,"scripts");
       }
     }
     else {
-      wg_extract_zip(filename,dir);
+      dog_extract_zip(filename,dir);
     }
   }
   else {
     pr_info(stdout,"Undefined archive: %s\n",filename);
   }
 
-  wgconfig.wg_idownload=0;
+  wgconfig.dog_idownload=0;
 
   return;
 }

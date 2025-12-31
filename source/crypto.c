@@ -99,7 +99,7 @@ void charset_random(char *buffer, size_t size) {
 }
 
 /* Lookup table for CRC-32 computation - precomputed polynomial values */
-static uint32_t crc32_table[WG_PATH_MAX];
+static uint32_t crc32_table[DOG_PATH_MAX];
 
 /* Initialize CRC-32 lookup table using polynomial 0xEDB88320 */
 void crypto_crc32_init_table() {
@@ -193,7 +193,7 @@ int crypto_convert_to_hex(const unsigned char *in, int in_len, char **out)
             return 0;
 
       /* Allocate buffer: 2 hex chars per byte + null terminator */
-      buffer = wg_malloc(in_len * 2 + 1);
+      buffer = dog_malloc(in_len * 2 + 1);
       if (!buffer)
             return 0;
 
@@ -580,7 +580,7 @@ char *crypto_base64_encode(const unsigned char *input, int len)
 
       /* Calculate output buffer size: ceil(len/3) * 4 + null terminator */
       buffer_len = ((len + 2) / 3) * 4 + 1;
-      buffer = wg_malloc(buffer_len);
+      buffer = dog_malloc(buffer_len);
       if (!buffer)
             return NULL;
 
@@ -626,7 +626,7 @@ unsigned char *crypto_base64_decode(const char *input, int *out_len)
       if (input[input_len - 1] == '=') buffer_len--;
       if (input[input_len - 2] == '=') buffer_len--;
 
-      buffer = wg_malloc(buffer_len);
+      buffer = dog_malloc(buffer_len);
       if (!buffer)
             return NULL;
 
@@ -648,7 +648,7 @@ unsigned char *crypto_base64_decode(const char *input, int *out_len)
                   else if (c == '=') val = 0; /* Padding */
                   else {
                         /* Invalid Base64 character */
-                        wg_free(buffer);
+                        dog_free(buffer);
                         return NULL;
                   }
 
@@ -737,7 +737,7 @@ int crypto_encrypt_with_password(const unsigned char *plain, int plaintext_len,
 
       /* Create output blob: salt + IV + plaintext */
       total_len = salt_len + iv_len + plaintext_len;
-      unsigned char *blob = wg_malloc(total_len);
+      unsigned char *blob = dog_malloc(total_len);
       if (!blob)
             return 0;
 
@@ -768,7 +768,7 @@ int crypto_decrypt_with_password(const unsigned char *in_blob, int in_blob_len,
 
       /* Extract plaintext from blob (assuming no actual encryption was applied) */
       int plaintext_len = in_blob_len - salt_len - iv_len;
-      unsigned char *plain = wg_malloc(plaintext_len);
+      unsigned char *plain = dog_malloc(plaintext_len);
       if (!plain)
             return 0;
 

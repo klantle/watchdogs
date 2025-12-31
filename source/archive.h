@@ -16,8 +16,8 @@ int compress_to_archive(const char *archive_path,
 int compress_directory(const char *archive_path, 
                        const char *dir_path,
                        CompressionFormat format);
-void wg_extract_archive(const char *filename, const char *dir);
-int wg_extract_tar(const char *tar_path, const char *dest_path);
-int wg_extract_zip(const char *zip_path, const char *dest_path);
+void dog_extract_archive(const char *filename, const char *dir);
+int dog_extract_tar(const char *tar_path, const char *dest_path);
+int dog_extract_zip(const char *zip_path, const char *dest_path);
 
 #endif

@@ -10,7 +10,7 @@
 #define FCOLOUR_RED        "\033[0;31m"
 #define FCOLOUR_GREEN      "\033[0;32m"
 #define FCOLOUR_YELLOW     "\033[0;33m"
-#define FCOLOUR_BLUE       "\033[0;34m"
+#define FCOLOUR_BLUE       "\033[94m"
 #define FCOLOUR_MAGENTA    "\033[0;35m"
 #define FCOLOUR_CYAN       "\033[0;36m"
 #define FCOLOUR_WHITE      "\033[0;37m"

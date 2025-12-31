@@ -1,7 +1,7 @@
 #ifndef WATCHDOGS
 #define WATCHDOGS
 
-extern int wg_ptr_command_init;
+extern int dog_ptr_command_init;
 
 extern const char*watchdogs_release;
 

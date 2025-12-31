@@ -18,18 +18,18 @@ static
   stack_size=0,total_size=0;
 static
   char
-  compiler_line[WG_MAX_PATH]={0},
+  compiler_line[DOG_MAX_PATH]={0},
   compiler_ver[64]={0};
 
 extern causeExplanation ccs[];
 
-static const char *wg_find_warn_err(const char *line)
+static const char *dog_find_warn_err(const char *line)
 {
     if (!line || !*line)
         return NULL;
     
     size_t line_len = strlen(line);
-    if (line_len == 0 || line_len > WG_MAX_PATH) {
+    if (line_len == 0 || line_len > DOG_MAX_PATH) {
         return NULL;
     }
     
@@ -55,8 +55,13 @@ static void compiler_detailed(const char *wgoutput,int debug,
                        int header_size,int code_size,int data_size,
                        int stack_size,int total_size)
 {
+  if (error_count<1)
   println(stdout,
-          "Compile Complete! | " FCOLOUR_CYAN "%d pass (warning) " FCOLOUR_DEFAULT "| " FCOLOUR_BLUE "%d fail (error)",
+          "Compile Complete! - success. | " FCOLOUR_CYAN "%d pass (warning) " FCOLOUR_DEFAULT "| " FCOLOUR_BLUE "%d fail (error)",
+          warning_count,error_count);
+  else
+  println(stdout,
+          "Compile Complete! - failed. | " FCOLOUR_CYAN "%d pass (warning) " FCOLOUR_DEFAULT "| " FCOLOUR_BLUE "%d fail (error)",
           warning_count,error_count);
 
   println(stdout,"-----------------------------");
@@ -66,7 +71,7 @@ static void compiler_detailed(const char *wgoutput,int debug,
 
       unsigned long hash=crypto_djb2_hash_file(wgoutput);
 
-      char outbuf[WG_MAX_PATH];
+      char outbuf[DOG_MAX_PATH];
       int len;
 
       len=snprintf(outbuf, sizeof outbuf,
@@ -145,28 +150,28 @@ void cause_compiler_expl(const char *log_file,const char *wgoutput,int debug)
   memset(compiler_ver, 0, sizeof(compiler_ver));
 
   while(fgets(compiler_line,sizeof(compiler_line),_log_file)) {
-    if(wg_strcase(compiler_line,"Warnings.") ||
-       wg_strcase(compiler_line,"Warning.") ||
-       wg_strcase(compiler_line,"Errors.") ||
-       wg_strcase(compiler_line,"Error."))
+    if(dog_strcase(compiler_line,"Warnings.") ||
+       dog_strcase(compiler_line,"Warning.") ||
+       dog_strcase(compiler_line,"Errors.") ||
+       dog_strcase(compiler_line,"Error."))
       continue;
 
-    if(wg_strcase(compiler_line,"Header size:")) {
+    if(dog_strcase(compiler_line,"Header size:")) {
       header_size=strtol(strchr(compiler_line,':')+1,NULL,10);
       continue;
-    } else if(wg_strcase(compiler_line,"Code size:")) {
+    } else if(dog_strcase(compiler_line,"Code size:")) {
       code_size=strtol(strchr(compiler_line,':')+1,NULL,10);
       continue;
-    } else if(wg_strcase(compiler_line,"Data size:")) {
+    } else if(dog_strcase(compiler_line,"Data size:")) {
       data_size=strtol(strchr(compiler_line,':')+1,NULL,10);
       continue;
-    } else if(wg_strcase(compiler_line,"Stack/heap size:")) {
+    } else if(dog_strcase(compiler_line,"Stack/heap size:")) {
       stack_size=strtol(strchr(compiler_line,':')+1,NULL,10);
       continue;
-    } else if(wg_strcase(compiler_line,"Total requirements:")) {
+    } else if(dog_strcase(compiler_line,"Total requirements:")) {
       total_size=strtol(strchr(compiler_line,':')+1,NULL,10);
       continue;
-    } else if(wg_strcase(compiler_line,"Pawn Compiler ")) {
+    } else if(dog_strcase(compiler_line,"Pawn Compiler ")) {
       const char *p=strstr(compiler_line,"Pawn Compiler ");
       if(p) sscanf(p,"Pawn Compiler %63s",compiler_ver);
       continue;
@@ -174,12 +179,12 @@ void cause_compiler_expl(const char *log_file,const char *wgoutput,int debug)
 
     fwrite(compiler_line,1,strlen(compiler_line),stdout);
 
-    if(wg_strcase(compiler_line,"warning") != false)
+    if(dog_strcase(compiler_line,"warning") != false)
       ++warning_count;
-    if(wg_strcase(compiler_line,"error") != false)
+    if(dog_strcase(compiler_line,"error") != false)
       ++error_count;
 
-    const char *description=wg_find_warn_err(compiler_line);
+    const char *description=dog_find_warn_err(compiler_line);
     if(description) {
       const char *found=NULL;
       int column=0;

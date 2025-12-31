@@ -1,10 +1,10 @@
 #ifndef RUNNER_H
 #define RUNNER_H
 
-#ifdef WG_WINDOWS
+#ifdef DOG_WINDOWS
 /*
  * Windows compatibility layer for signal handling
- * WG_WINDOWS macro is defined when compiling for Windows systems
+ * DOG_WINDOWS macro is defined when compiling for Windows systems
  */
 /* Stub implementation of sigaction for Windows */
 #define sigaction _sigaction_stub
@@ -32,11 +32,11 @@ static inline int _sigaction_stub(int sig, const struct sigaction *act, struct s
 #endif
 extern int sigint_handler;
 void unit_sigint_handler(int sig);
-void wg_stop_server_tasks(void);
-void wg_display_server_logs(int ret);
-void wg_server_crash_check(void);
+void dog_stop_server_tasks(void);
+void dog_display_server_logs(int ret);
+void dog_server_crash_check(void);
 void restore_server_config(void);
-void wg_exec_samp_server(const char *gamemode_arg, const char *server_bin);
-void wg_exec_omp_server(const char *gamemode_arg, const char *server_bin);
+void dog_exec_samp_server(const char *gamemode_arg, const char *server_bin);
+void dog_exec_omp_server(const char *gamemode_arg, const char *server_bin);
 
 #endif

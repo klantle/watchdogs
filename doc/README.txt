@@ -1,0 +1,2 @@
+- https://github.com/compuphase/pawn/tree/main/doc
+- https://github.com/pawn-lang/compiler/tree/master/doc

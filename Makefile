@@ -95,26 +95,26 @@ init:
 			DNF_CMD="dnf"; \
 			echo "==> Detected dnf (Fedora <= 38)"; \
 		fi; \
-		$DNF_CMD -y update; \
-		if [ "$DNF_CMD" = "dnf5" ]; then \
+		$$DNF_CMD -y update; \
+		if [ "$$DNF_CMD" = "dnf5" ]; then \
 			echo "==> Installing Development Tools with dnf5"; \
-			$DNF_CMD -y install '@Development Tools' || \
-			$DNF_CMD -y install @development-tools; \
+			$$DNF_CMD -y install '@Development Tools' || \
+			$$DNF_CMD -y install @development-tools; \
 		else \
 			echo "==> Installing Development Tools with dnf"; \
-			$DNF_CMD -y groupinstall 'Development Tools'; \
+			$$DNF_CMD -y groupinstall 'Development Tools'; \
 		fi; \
 		echo "==> Installing additional dependencies"; \
-		if $DNF_CMD list 'curl-devel.i686' >/dev/null 2>&1; then \
+		if $$DNF_CMD list 'curl-devel.i686' >/dev/null 2>&1; then \
 			echo "==> 32-bit packages available, installing both architectures"; \
-			$DNF_CMD -y install \
+			$$DNF_CMD -y install \
 				clang lld libatomic libcxx-devel curl-devel \
 				readline-devel libarchive-devel \
 				zlib-devel binutils upx procps-ng file \
 				glibc-devel.i686 libstdc++-devel.i686 curl-devel.i686; \
 		else \
 			echo "==> 32-bit packages not available, installing only 64-bit"; \
-			$DNF_CMD -y install \
+			$$DNF_CMD -y install \
 				clang lld libatomic libcxx-devel curl-devel \
 				readline-devel libarchive-devel \
 				zlib-devel binutils upx procps-ng file; \

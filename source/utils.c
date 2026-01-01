@@ -790,7 +790,7 @@ void dog_printfile(const char *path) {
 
 	    close(fd);
 #endif
-			return;
+		return;
 }
 
 /*

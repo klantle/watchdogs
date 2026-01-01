@@ -609,7 +609,8 @@ _compiler_retrying:
           /* cross check */
           pr_info(stdout,"hello, nice day!.\n   We detected that you are compiling in Localhost status.\n"
                       "   Do you want to target the server for localhost or non-localhost (hosting)?\n"
-                      "   1/enter = localhost | 2/rand = hosting server.");printf(FCOLOUR_CYAN ">>>");
+                      "   1/enter = localhost | 2/rand = hosting server.");
+          printf(FCOLOUR_CYAN ">>>");
           static int __cross=-1; /* one-time check */
           if (__cross==-1) {
               char *cross=readline(" ");
@@ -620,6 +621,7 @@ _compiler_retrying:
                   __cross=1;
               }
           }
+          printf(FCOLOUR_DEFAULT "");
           if (__cross==1) {
               snprintf(buf,sizeof(buf), "%s LOCALHOST=1 MYSQL_LOCALHOST=1 SQL_LOCALHOST=1 LOCAL_SERVER=1",
                       wgconfig.dog_toml_aio_opt);
@@ -645,6 +647,7 @@ _compiler_retrying:
                 "   * or do you want to compile for something else?\n",wgconfig.dog_toml_proj_input);
           printf(FCOLOUR_CYAN ">>>");
           proj_targets=readline(" ");
+          printf(FCOLOUR_DEFAULT "");
           if(proj_targets && strlen(proj_targets)>0) {
             dog_free(wgconfig.dog_toml_proj_input);
             wgconfig.dog_toml_proj_input=strdup(proj_targets);
@@ -1407,6 +1410,7 @@ compiler_done2:
                 pr_info(stdout,"compile exit with failed. retrying?");
                 printf(FCOLOUR_CYAN ">>>");
                 char *retrying=readline(" ");
+                printf(FCOLOUR_DEFAULT "");
                 if (retrying) {
                   compiler_retrying=true;
                   dog_free(retrying);

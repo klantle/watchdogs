@@ -828,9 +828,9 @@ _compiler_retrying:
         if(process_spawn_result==0) {
           int process_status;
           int process_timeout_occurred=0;
+          clock_gettime(CLOCK_MONOTONIC,&pre_start);
           for(int i=0;i<POSIX_TIMEOUT;i++) {
             int p_result=-1;
-            clock_gettime(CLOCK_MONOTONIC,&pre_start);
             p_result=waitpid(compiler_process_id,&process_status,WNOHANG);
             clock_gettime(CLOCK_MONOTONIC,&post_end);
             if(p_result==0)
@@ -1259,9 +1259,9 @@ compiler_done:
           if(process_spawn_result==0) {
             int process_status;
             int process_timeout_occurred=0;
+            clock_gettime(CLOCK_MONOTONIC,&pre_start);
             for(int i=0;i<POSIX_TIMEOUT;i++) {
               int p_result=-1;
-              clock_gettime(CLOCK_MONOTONIC,&pre_start);
               p_result=waitpid(compiler_process_id,&process_status,WNOHANG);
               clock_gettime(CLOCK_MONOTONIC,&post_end);
               if(p_result==0)

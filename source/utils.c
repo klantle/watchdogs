@@ -946,7 +946,7 @@ bool strfind(const char *text, const char *pattern, bool nocase)
 }
 
 /* Pure function attribute indicates no side effects and depends only on parameters */
-__attribute__((pure))
+__PURE__
 /*
  * Replaces all occurrences of old_sub with new_sub in source string.
  * Allocates new string with appropriate size, counts occurrences to calculate
@@ -1072,7 +1072,7 @@ void __set_path_sep(char *out, size_t out_sz,
 }
 
 /* Pure function: depends only on parameters, no side effects */
-__attribute__((pure))
+__PURE__
 /*
  * Calculates Levenshtein edit distance between two strings for command suggestion.
  * Implements optimized Wagner-Fischer algorithm with early termination and
@@ -1286,7 +1286,7 @@ int file_same_file(const char *a, const char *b)
 }
 
 /* Pure function: no side effects, depends only on parameters */
-__attribute__((pure))
+__PURE__
 /*
  * Extracts parent directory path from full file path.
  * Uses dirname() function to get directory component, copies to output buffer.

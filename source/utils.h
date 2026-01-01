@@ -139,16 +139,16 @@
     (_l && _w) ? ((_l > _w) ? _l : _w) : (_l ? _l : _w); \
 })
 
-#define UNUSED      __attribute__((unused))
-#define DEPRECATED  __attribute__((deprecated))
-#define NORETURN    __attribute__((noreturn))
-#define PACKED      __attribute__((packed))
-#define ALIGN(N)    __attribute__((aligned(N)))
-#define FORMAT(F,V) __attribute__((format(F,V,V)))
-#define CONSTRUCTOR __attribute__((constructor))
-#define DESTRUCTOR  __attribute__((destructor))
-#define PURE        __attribute__((pure))
-#define CONST       __attribute__((const))
+#define __UNUSED__      __attribute__((unused))
+#define __DEPRECATED__  __attribute__((deprecated))
+#define __NORETURN__    __attribute__((noreturn))
+#define __PACKED__      __attribute__((packed))
+#define __ALIGN(N)__    __attribute__((aligned(N)))
+#define __FORMAT(F,V)__ __attribute__((format(F,V,V)))
+#define __CONSTRUCTOR__ __attribute__((constructor))
+#define __DESTRUCTOR__  __attribute__((destructor))
+#define __PURE__        __attribute__((pure))
+#define __CONST__       __attribute__((const))
 
 #define __BIT_MASK_NONE   (0x00)  /* 0000 0000 0000 0000 */
 #define __BIT_MASK_ZERO   (0x01)  /* 0000 0000 0000 0001 */

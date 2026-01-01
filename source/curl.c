@@ -866,8 +866,8 @@ int is_archive_file(const char *filename)
   return 0;
 }
 
-static int debug_callback(CURL *handle UNUSED,curl_infotype type,
-                          char *data,size_t size,void *userptr UNUSED)
+static int debug_callback(CURL *handle __UNUSED__,curl_infotype type,
+                          char *data,size_t size,void *userptr __UNUSED__)
 {
   switch(type) {
   case CURLINFO_TEXT:

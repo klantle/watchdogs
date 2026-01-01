@@ -385,9 +385,9 @@ const char *five_arg,const char *six_arg, const char *seven_arg,const char *eigh
 
 _compiler_retrying:
       if (compiler_retrying) {
-        if(has_compat!=true)
           has_compat=true;
-        if(has_detailed!=true)
+          has_compact=true;
+          has_debug=true;
           has_detailed=true;
       }
 
@@ -1361,11 +1361,11 @@ compiler_done2:
       memset(buf_log,__compiler_rate_zero, sizeof(buf_log));
 
       this_proc_file=fopen(".watchdogs/compiler.log", "rb");
-      if(this_proc_file!=NULL && compiler_retrying != 1) 
+      if(this_proc_file!=NULL && compiler_retrying!=1 && has_compat!=1) 
         {
           rewind(this_proc_file);
           while(fgets(buf_log,sizeof(buf_log),this_proc_file)!=NULL) {
-            if (strfind(buf_log,"cannot read from file",true)!=false)
+            if (strfind(buf_log,"error",true)!=false)
               {
                 pr_info(stdout,"compile exit with failed. retrying?");
                 printf(FCOLOUR_CYAN ">>>");

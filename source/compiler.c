@@ -523,25 +523,28 @@ _compiler_retrying:
 
         strcpy(temp,pawn_parse);
 
-        if(strstr(temp,"gamemodes/") ||
-           strstr(temp,"gamemodes\\"))
+        char *gamemodes_slash = "gamemodes/";
+        char *gamemodes_back_slash = "gamemodes\\";
+
+        if(strstr(temp,gamemodes_slash) ||
+           strstr(temp,gamemodes_back_slash))
           {
-            char *pos=strstr(temp,"gamemodes/");
-            if(!pos) pos=strstr(temp,"gamemodes\\");
+            char *pos=strstr(temp,gamemodes_slash);
+            if(!pos) pos=strstr(temp,gamemodes_back_slash);
             if(pos) { *pos='\0'; }
           }
 
-        snprintf(buf,sizeof(buf),
-                "-i%s "
-                "-i%sgamemodes/ "
-                "-i%spawno/include/ "
-                "-i%sqawno/include/ ",
+        snprintf(buf,sizeof(buf), "-i%s -i%sgamemodes/ "
+                "-i%spawno/include/ -i%sqawno/include/ ",
                 temp,temp,temp,temp);
 
-        strcpy(this_path_include,buf);
+        strncpy(this_path_include, buf, sizeof(this_path_include) - 1);
+        this_path_include[sizeof(this_path_include) - 1] = '\0';
       } else
         {
-          snprintf(this_path_include,sizeof(this_path_include), "-ipawno/include -iqawno/include -igamemodes");
+          snprintf(buf,sizeof(buf), "-igamemodes/ -ipawno/include/ -iqawno/include ");
+          strncpy(this_path_include, buf, sizeof(this_path_include) - 1);
+          this_path_include[sizeof(this_path_include) - 1] = '\0';
         }
     
       static int shown=0;
@@ -586,6 +589,49 @@ _compiler_retrying:
         compile_args_val="";
       }
       
+      if (!is_pterodactyl_env()) {
+          /* localhost detecting
+            #include <a_samp>
+
+            #if LOCALHOST==1 || MYSQL_LOCALHOST==1 || SQL_LOCALHOST==1 || LOCAL_SERVER==1
+                /// also #if defined LOCALHOST
+              ... YES
+            #else
+              ... NO
+            #endif
+          */
+          /* options https://github.com/gskeleton/watchdogs/blob/main/options.txt
+            ... ..
+            sym=val  define constant "sym" with value "val"
+            sym=     define constant "sym" with value 0
+          */
+          /* cross check */
+          pr_info(stdout,"hello, nice day!.\n   We detected that you are compiling in Localhost status.\n"
+                      "   Do you want to target the server for localhost or non-localhost (hosting)?\n"
+                      "   1/enter = localhost | 2/rand = hosting server.");printf(FCOLOUR_CYAN ">>>");
+          static int __cross=-1; /* one-time check */
+          if (__cross==-1) {
+              char *cross=readline(" ");
+              if (cross) {
+                  __cross=(strfind(cross,"1",true)==1) ? 1 : 2;
+                  dog_free(cross);
+              } else {
+                  __cross=1;
+              }
+          }
+          if (__cross==1) {
+              snprintf(buf,sizeof(buf), "%s LOCALHOST=1 MYSQL_LOCALHOST=1 SQL_LOCALHOST=1 LOCAL_SERVER=1",
+                      wgconfig.dog_toml_aio_opt);
+              pr_info(stdout, "Activating: " FCOLOUR_CYAN "LOCALHOST=1 MYSQL_LOCALHOST=1 SQL_LOCALHOST=1 LOCAL_SERVER=1");
+          } else {
+              snprintf(buf,sizeof(buf), "%s LOCALHOST=0 MYSQL_LOCALHOST=0 SQL_LOCALHOST=0 LOCAL_SERVER=0",
+                      wgconfig.dog_toml_aio_opt);
+              pr_info(stdout, "Disable: " FCOLOUR_CYAN "LOCALHOST=0 MYSQL_LOCALHOST=0 SQL_LOCALHOST=0 LOCAL_SERVER=0");
+          }
+          dog_free(wgconfig.dog_toml_aio_opt);
+          wgconfig.dog_toml_aio_opt=strdup(buf);
+      }
+
       if(*compile_args_val=='\0' || (compile_args_val[0]=='.' && compile_args_val[1]=='\0')) {
         static int compiler_targets=0;
         if(compiler_targets!=1 && strlen(compile_args_val)<1) {

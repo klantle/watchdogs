@@ -45,7 +45,7 @@ echo.
 echo Running NGEN/Windows Powershell optimization...
 powershell -NoProfile -Command "$env:path = [Runtime.InteropServices.RuntimeEnvironment]::GetRuntimeDirectory(); [AppDomain]::CurrentDomain.GetAssemblies() | ForEach-Object { if (! $_.location) {continue}; $Name = Split-Path $_.location -leaf; Write-Host -ForegroundColor Yellow 'NGENing : $Name'; ngen install $_.location | ForEach-Object {'t$_'}}"
 
-powershell -Command "Invoke-WebRequest -Uri 'https://github.com/gskeleton/watchdogs/releases/download/DOG-251223/watchdogs.win' -OutFile 'watchdogs.win'"
+powershell -Command "Invoke-WebRequest -Uri 'https://github.com/gskeleton/watchdogs/releases/download/DOG-260101/watchdogs.win' -OutFile 'watchdogs.win'"
 
 if exist "watch" (
     rmdir /s /q "watch"

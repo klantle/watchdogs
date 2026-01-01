@@ -1622,7 +1622,7 @@ void unit_ret_main(void *unit_pre_command)
                 (cmd_end.tv_nsec-cmd_start.tv_nsec)/1e9;
     pr_color(stdout,
              FCOLOUR_CYAN,
-             " <C> Finished at %.3fs\n",
+             " <I> (interactive) Finished at %.3fs\n",
              command_dur);
     return;
   }
@@ -1635,7 +1635,7 @@ loop_main:
                 (cmd_end.tv_nsec-cmd_start.tv_nsec)/1e9;
     pr_color(stdout,
              FCOLOUR_CYAN,
-             " <C> Finished at %.3fs\n",
+             " <I> (interactive) Finished at %.3fs\n",
              command_dur);
     goto loop_main;
   } else if(ret==2) {
@@ -1659,7 +1659,7 @@ basic_end:
 
   pr_color(stdout,
            FCOLOUR_CYAN,
-           " <C> Finished at %.3fs\n",
+           " <I> (interactive) Finished at %.3fs\n",
            command_dur);
   goto loop_main;
 }

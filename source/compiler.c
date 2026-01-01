@@ -712,7 +712,6 @@ _compiler_retrying:
 
         if(ret_command>0 && ret_command<(int)sizeof(multi_compiler_input)) {
           BOOL win32_process_success;
-          clock_gettime(CLOCK_MONOTONIC,&pre_start);
           win32_process_success=CreateProcessA(
             NULL,
             multi_compiler_input,
@@ -737,8 +736,8 @@ _compiler_retrying:
             GetProcessAffinityMask(GetCurrentProcess(), &procMask, &sysMask);
             SetProcessAffinityMask(pi.hProcess, procMask & ~1);
             
+            clock_gettime(CLOCK_MONOTONIC,&pre_start);
             WaitForSingleObject(pi.hProcess,WIN32_TIMEOUT);
-
             clock_gettime(CLOCK_MONOTONIC,&post_end);
 
             DWORD proc_exit_code;
@@ -747,12 +746,10 @@ _compiler_retrying:
             CloseHandle(pi.hProcess);
             CloseHandle(pi.hThread);
           } else {
-            clock_gettime(CLOCK_MONOTONIC,&post_end);
             pr_error(stdout,"CreateProcess failed! (%lu)",GetLastError());
             __create_logging();
           }
         } else {
-          clock_gettime(CLOCK_MONOTONIC,&post_end);
           pr_error(stdout,"ret_compiler too long!");
           __create_logging();
           goto compiler_end;
@@ -830,23 +827,21 @@ _compiler_retrying:
         if(process_spawn_result==0) {
           int process_status;
           int process_timeout_occurred=0;
-          clock_gettime(CLOCK_MONOTONIC,&pre_start);
           for(int i=0;i<POSIX_TIMEOUT;i++) {
             int p_result=-1;
+            clock_gettime(CLOCK_MONOTONIC,&pre_start);
             p_result=waitpid(compiler_process_id,&process_status,WNOHANG);
+            clock_gettime(CLOCK_MONOTONIC,&post_end);
             if(p_result==0)
               usleep(0xC350);
             else if(p_result==compiler_process_id) {
-              clock_gettime(CLOCK_MONOTONIC,&post_end);
               break;
             } else {
-              clock_gettime(CLOCK_MONOTONIC,&post_end);
               pr_error(stdout,"waitpid error");
               __create_logging();
               break;
             }
             if(i==POSIX_TIMEOUT-1) {
-              clock_gettime(CLOCK_MONOTONIC,&post_end);
               kill(compiler_process_id,SIGTERM);
               sleep(2);
               kill(compiler_process_id,SIGKILL);
@@ -949,7 +944,7 @@ compiler_done:
 
         printf("\n");
         pr_color(stdout,FCOLOUR_CYAN,
-                " <P> Finished at %.3fs (%.0f ms)\n",
+                " <C> (compile-time) Finished at %.3fs (%.0f ms)\n",
                 timer_rate_compile,timer_rate_compile*1000.0);
         if(timer_rate_compile>20) {
           printf("~ This is taking a while, huh?\n"
@@ -1148,7 +1143,6 @@ compiler_done:
 
           if(ret_command>0 && ret_command<(int)sizeof(multi_compiler_input)) {
             BOOL win32_process_success;
-            clock_gettime(CLOCK_MONOTONIC,&pre_start);
             win32_process_success=CreateProcessA(
               NULL,
               multi_compiler_input,
@@ -1173,8 +1167,8 @@ compiler_done:
               GetProcessAffinityMask(GetCurrentProcess(), &procMask, &sysMask);
               SetProcessAffinityMask(pi.hProcess, procMask & ~1);
               
+              clock_gettime(CLOCK_MONOTONIC,&pre_start);
               WaitForSingleObject(pi.hProcess,WIN32_TIMEOUT);
-
               clock_gettime(CLOCK_MONOTONIC,&post_end);
 
               DWORD proc_exit_code;
@@ -1183,12 +1177,10 @@ compiler_done:
               CloseHandle(pi.hProcess);
               CloseHandle(pi.hThread);
             } else {
-              clock_gettime(CLOCK_MONOTONIC,&post_end);
               pr_error(stdout,"CreateProcess failed! (%lu)",GetLastError());
               __create_logging();
             }
           } else {
-            clock_gettime(CLOCK_MONOTONIC,&post_end);
             pr_error(stdout,"ret_compiler too long!");
             __create_logging();
             goto compiler_end;
@@ -1266,23 +1258,21 @@ compiler_done:
           if(process_spawn_result==0) {
             int process_status;
             int process_timeout_occurred=0;
-            clock_gettime(CLOCK_MONOTONIC,&pre_start);
             for(int i=0;i<POSIX_TIMEOUT;i++) {
               int p_result=-1;
+              clock_gettime(CLOCK_MONOTONIC,&pre_start);
               p_result=waitpid(compiler_process_id,&process_status,WNOHANG);
+              clock_gettime(CLOCK_MONOTONIC,&post_end);
               if(p_result==0)
                 usleep(0xC350);
               else if(p_result==compiler_process_id) {
-                clock_gettime(CLOCK_MONOTONIC,&post_end);
                 break;
               } else {
-                clock_gettime(CLOCK_MONOTONIC,&post_end);
                 pr_error(stdout,"waitpid error");
                 __create_logging();
                 break;
               }
               if(i==POSIX_TIMEOUT-1) {
-                clock_gettime(CLOCK_MONOTONIC,&post_end);
                 kill(compiler_process_id,SIGTERM);
                 sleep(2);
                 kill(compiler_process_id,SIGKILL);
@@ -1384,7 +1374,7 @@ compiler_done2:
 
           printf("\n");
           pr_color(stdout,FCOLOUR_CYAN,
-                  " <P> Finished at %.3fs (%.0f ms)\n",
+                  " <C> (compile-time) Finished at %.3fs (%.0f ms)\n",
                   timer_rate_compile,timer_rate_compile*1000.0);
           if(timer_rate_compile>20) {
             printf("~ This is taking a while, huh?\n"

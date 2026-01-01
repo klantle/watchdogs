@@ -263,6 +263,7 @@ jobs:
           
           echo '[TASKS - BUILD] BUILD COMPLETED SUCCESSFULLY ON ARCH LINUX'
         "
+        
   build-termux:
     name: Build on Termux (Android)
     runs-on: ubuntu-latest

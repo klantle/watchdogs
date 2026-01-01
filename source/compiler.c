@@ -316,7 +316,8 @@ const char *five_arg,const char *six_arg, const char *seven_arg,const char *eigh
             {
               rewind(this_proc_file);
               while(fgets(buf_log,sizeof(buf_log),this_proc_file)!=NULL &&
-                strfind(buf_log,"error while loading shared libraries:",true))
+                strfind(buf_log,"error while loading shared libraries:",true)||
+                strfind(buf_log,"required file not found",true))
                 {
                   dog_printfile(".watchdogs/compiler_test.log");
                   goto compiler_end;
@@ -612,7 +613,7 @@ _compiler_retrying:
           static int __cross=-1; /* one-time check */
           if (__cross==-1) {
               char *cross=readline(" ");
-              if (cross) {
+              if (cross[0] != '\0') {
                   __cross=(strfind(cross,"1",true)==1) ? 1 : 2;
                   dog_free(cross);
               } else {
@@ -1503,10 +1504,7 @@ compiler_end:
   if(dog_toml_config) {
     toml_free(dog_toml_config);
   }
-  dog_free(proj_targets);
-  if(this_proc_file) {
-    fclose(this_proc_file);
-  }
+  dog_free(proj_targets); 
   if(path_exists(".watchdogs/compiler.log")!=0) {
     remove(".watchdogs/compiler.log");
   }

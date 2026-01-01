@@ -117,7 +117,7 @@ init:
 			$$DNF_CMD -y install \
 				clang lld libatomic libcxx-devel curl-devel \
 				readline-devel libarchive-devel \
-				zlib-devel binutils upx procps-ng file; \
+				glibc.i686 libstdc++.i686 zlib-devel binutils upx procps-ng file; \
 		fi; \
 		elif command -v yum >/dev/null 2>&1; then \
 			echo "==> Using yum (Legacy RHEL)"; \

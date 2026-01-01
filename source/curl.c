@@ -501,8 +501,7 @@ void tracking_username(CURL *curl,const char *username)
   curl_slist_free_all(headers);
 }
 
-static void find_compiler_tools(int compiler_type,
-                                int *found_pawncc_exe,int *found_pawncc,
+static void find_compiler_tools(int *found_pawncc_exe,int *found_pawncc,
                                 int *found_pawndisasm_exe,int *found_pawndisasm,
                                 int *found_pawnc_dll,int *found_PAWNC_DLL)
 {
@@ -715,8 +714,7 @@ void dog_apply_pawncc(void)
 
   dog_sef_fdir_memset_to_null();
 
-  find_compiler_tools(wgconfig.dog_is_samp?COMPILER_SAMP:COMPILER_OPENMP,
-                      &found_pawncc_exe,&found_pawncc,
+  find_compiler_tools(&found_pawncc_exe,&found_pawncc,
                       &found_pawndisasm_exe,&found_pawndisasm,
                       &found_pawnc_dll,&found_PAWNC_DLL);
 
@@ -868,8 +866,8 @@ int is_archive_file(const char *filename)
   return 0;
 }
 
-static int debug_callback(CURL *handle __maybe_unused__,curl_infotype type,
-                          char *data,size_t size,void *userptr __maybe_unused__)
+static int debug_callback(CURL *handle UNUSED,curl_infotype type,
+                          char *data,size_t size,void *userptr UNUSED)
 {
   switch(type) {
   case CURLINFO_TEXT:

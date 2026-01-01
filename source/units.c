@@ -590,11 +590,11 @@ _runners_:
     if(dir_exists(".watchdogs")==0)
       MKDIR(".watchdogs");
 
-    int _dog_log_acces=path_access(wgconfig.dog_toml_logs);
-    if(_dog_log_acces)
+    int access_debugging_file=path_access(wgconfig.dog_toml_logs);
+    if(access_debugging_file)
       remove(wgconfig.dog_toml_logs);
-    _dog_log_acces=path_access(wgconfig.dog_toml_logs);
-    if(_dog_log_acces)
+    access_debugging_file=path_access(wgconfig.dog_toml_logs);
+    if(access_debugging_file)
       remove(wgconfig.dog_toml_logs);
 
     size_t cmd_len=7;
@@ -696,11 +696,11 @@ back_start:
           if(elapsed<=4.1 && ret_serv==0) {
             ret_serv=1;
             printf("\ttry starting again..");
-            _dog_log_acces=path_access(wgconfig.dog_toml_logs);
-            if(_dog_log_acces)
+            access_debugging_file=path_access(wgconfig.dog_toml_logs);
+            if(access_debugging_file)
               remove(wgconfig.dog_toml_logs);
-            _dog_log_acces=path_access(wgconfig.dog_toml_logs);
-            if(_dog_log_acces)
+            access_debugging_file=path_access(wgconfig.dog_toml_logs);
+            if(access_debugging_file)
               remove(wgconfig.dog_toml_logs);
             end=time(NULL);
             goto back_start;
@@ -778,11 +778,11 @@ back_start2:
           if(elapsed<=4.1 && ret_serv==0) {
             ret_serv=1;
             printf("\ttry starting again..");
-            _dog_log_acces=path_access(wgconfig.dog_toml_logs);
-            if(_dog_log_acces)
+            access_debugging_file=path_access(wgconfig.dog_toml_logs);
+            if(access_debugging_file)
               remove(wgconfig.dog_toml_logs);
-            _dog_log_acces=path_access(wgconfig.dog_toml_logs);
-            if(_dog_log_acces)
+            access_debugging_file=path_access(wgconfig.dog_toml_logs);
+            if(access_debugging_file)
               remove(wgconfig.dog_toml_logs);
             end=time(NULL);
             goto back_start2;

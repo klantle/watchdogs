@@ -1,6 +1,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <stdbool.h>
 #include <errno.h>
 #include <sys/types.h>
 #include <sys/stat.h>
@@ -640,7 +641,7 @@ static int update_samp_config(const char *gamemode)
                     size_config);
         }
 
-        if (dog_exec_command(command) != 0x0) {
+        if (dog_exec_command(command) != __BIT_MASK_NONE) {
                 pr_error(stdout, "Failed to create backup file");
                 __create_logging();
                 return -1;
@@ -804,9 +805,9 @@ void dog_exec_samp_server(const char *gamemode, const char *server_bin)
         time_t start, end;
         double elapsed;
 
-        int ret_serv = 0x0;
+        bool runner_retry = false;
 
-        int _dog_log_acces = -0x1;
+        int access_debugging_file = -1;
 back_start:
         start = time(NULL);
         printf(FCOLOUR_BLUE "");
@@ -824,7 +825,7 @@ back_start:
                         printf("~ logging...\n");
                         sleep(0x3);
                         printf(FCOLOUR_BLUE "");
-                        dog_display_server_logs(0x0);
+                        dog_display_server_logs(__BIT_MASK_NONE);
                         printf(FCOLOUR_DEFAULT "\n");
                 }
         } else {
@@ -835,14 +836,14 @@ back_start:
                         goto server_done;
 
                 elapsed = difftime(end, start);
-                if (elapsed <= 4.1 && ret_serv == 0) {
-                        ret_serv = 0x1;
+                if (elapsed <= 4.1 && runner_retry == false) {
+                        runner_retry = true;
                         printf("\ttry starting again..");
-                        _dog_log_acces = path_access(wgconfig.dog_toml_logs);
-                        if (_dog_log_acces)
+                        access_debugging_file = path_access(wgconfig.dog_toml_logs);
+                        if (access_debugging_file)
                                 remove(wgconfig.dog_toml_logs);
-                        _dog_log_acces = path_access(wgconfig.dog_toml_logs);
-                        if (_dog_log_acces)
+                        access_debugging_file = path_access(wgconfig.dog_toml_logs);
+                        if (access_debugging_file)
                                 remove(wgconfig.dog_toml_logs);
                         end = time(NULL);
                         goto back_start;
@@ -885,7 +886,7 @@ static int update_omp_config(const char *gamemode)
                 size_config);
         }
 
-        if (dog_exec_command(command) != 0x0) {
+        if (dog_exec_command(command) != __BIT_MASK_NONE) {
                 pr_error(stdout,
                     "Failed to create backup file");
                 __create_logging();
@@ -920,13 +921,13 @@ static int update_omp_config(const char *gamemode)
                 goto runner_end;
         }
 
-        cJSON_Data = dog_malloc(st.st_size + 0x1);
+        cJSON_Data = dog_malloc(st.st_size + 1);
         if (!cJSON_Data) {
                 goto runner_kill;
         }
 
         size_t bytes_read;
-        bytes_read = fread(cJSON_Data, 0x1, st.st_size, proc_conf_in);
+        bytes_read = fread(cJSON_Data, 1, st.st_size, proc_conf_in);
         if (bytes_read != (size_t)st.st_size) {
                 pr_error(stdout,
                     "Incomplete file read (%zu of %ld bytes)",
@@ -1070,9 +1071,9 @@ void dog_exec_omp_server(const char *gamemode, const char *server_bin)
         time_t start, end;
         double elapsed;
 
-        int ret_serv = 0x0;
+        bool runner_retry = false;
 
-        int _dog_log_acces = -0x1;
+        int access_debugging_file = -1;
 back_start:
         start = time(NULL);
         printf(FCOLOUR_BLUE "");
@@ -1091,14 +1092,14 @@ back_start:
                         goto server_done;
 
                 elapsed = difftime(end, start);
-                if (elapsed <= 4.1 && ret_serv == 0) {
-                        ret_serv = 0x1;
+                if (elapsed <= 4.1 && runner_retry == false) {
+                        runner_retry = true;
                         printf("\ttry starting again..");
-                        _dog_log_acces = path_access(wgconfig.dog_toml_logs);
-                        if (_dog_log_acces)
+                        access_debugging_file = path_access(wgconfig.dog_toml_logs);
+                        if (access_debugging_file)
                                 remove(wgconfig.dog_toml_logs);
-                        _dog_log_acces = path_access(wgconfig.dog_toml_logs);
-                        if (_dog_log_acces)
+                        access_debugging_file = path_access(wgconfig.dog_toml_logs);
+                        if (access_debugging_file)
                                 remove(wgconfig.dog_toml_logs);
                         end = time(NULL);
                         goto back_start;

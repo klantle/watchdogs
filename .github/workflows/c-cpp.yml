@@ -126,6 +126,11 @@ jobs:
           
           echo '[TASKS - BUILD] BUILD COMPLETED SUCCESSFULLY ON FEDORA'
         "
+    - name: Upload build artifact
+      uses: actions/upload-artifact@v4
+      with:
+        name: watchdogs-fedora-debug
+        path: watchdogs.debug
 
   build-centos:
     name: Build on CentOS
@@ -173,6 +178,11 @@ jobs:
           
           echo '[TASKS - BUILD] BUILD COMPLETED SUCCESSFULLY ON CENTOS'
         "
+    - name: Upload build artifact
+      uses: actions/upload-artifact@v4
+      with:
+        name: watchdogs-centos-debug
+        path: watchdogs.debug
 
   build-opensuse:
     name: Build on openSUSE
@@ -219,6 +229,11 @@ jobs:
           
           echo '[TASKS - BUILD] BUILD COMPLETED SUCCESSFULLY ON OPENSUSE'
         "
+    - name: Upload build artifact
+      uses: actions/upload-artifact@v4
+      with:
+        name: watchdogs-opensuse-debug
+        path: watchdogs.debug
 
   build-arch:
     name: Build on Arch Linux
@@ -263,7 +278,12 @@ jobs:
           
           echo '[TASKS - BUILD] BUILD COMPLETED SUCCESSFULLY ON ARCH LINUX'
         "
-        
+    - name: Upload build artifact
+      uses: actions/upload-artifact@v4
+      with:
+        name: watchdogs-archlinux-debug
+        path: watchdogs.debug
+
   build-termux:
     name: Build on Termux (Android)
     runs-on: ubuntu-latest
@@ -291,6 +311,11 @@ jobs:
           
           echo '[TASKS - BUILD] BUILD COMPLETED FOR TERMUX'
         "
+    - name: Upload build artifact
+      uses: actions/upload-artifact@v4
+      with:
+        name: watchdogs-termux-debug
+        path: watchdogs.debug.tmux
 
   build-windows:
     name: Build on Windows
@@ -317,3 +342,9 @@ jobs:
         $env:Path = "C:\tools\msys64\ucrt64\bin;C:\tools\msys64\usr\bin;$env:Path"
         mingw32-make windows-debug
         # C:\tools\msys64\usr\bin\bash.exe -c "cd '$PWD' && make windows-debug"
+    
+    - name: Upload build artifact
+      uses: actions/upload-artifact@v4
+      with:
+        name: watchdogs-windows-debug
+        path: watchdogs.debug.win

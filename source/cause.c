@@ -223,6 +223,35 @@ void cause_compiler_expl(const char *log_file,const char *wgoutput,int debug)
       }
       for(int i=0;i<column;i++)
         putchar(' ');
+      #ifdef DOG_LINUX
+      if (strfind(description,"file doesn't exist, insufficient permissions",true) == 1) {
+        pr_color(stdout,FCOLOUR_CYAN,"^ %s" FCOLOUR_YELLOW " See " FCOLOUR_CYAN ".watchdogs/help.txt | cat .watchdogs/help.txt\n",description);
+        if (path_exists(".watchdogs/help.txt") == 1)
+            remove(".watchdogs/help.txt");
+        FILE *help = fopen(".watchdogs/help.txt", "w");
+        if (help) {
+            fprintf(help, "You have checked that the file exists, but lowercase and uppercase letters are an issue in Linux?\n");
+            fprintf(help, "* Linux filesystem is free case-sensitive.\n");
+            fprintf(help, "** You need to fix it with renaming any files and folders in gamemodes/ and changing #include name to lowercase only.\n");
+            fprintf(help, "like:\n   gamemodes\n   ├── main.pwn\n   └── TEST\n   └── test.inc\n");
+            fprintf(help, "- #include \"TEST.inc\" -> #include \"test.inc\"\n");
+            fprintf(help, "shell (bash) operation:\n");
+            fprintf(help, "linux native:\n");
+            fprintf(help, "bash -c 'BASE=\"gamemodes\"; find \"$BASE\" -type f "
+                "\\( -name \"*.pwn\" -o -name \"*.inc\" \\) -exec sed -i -E \"s|(#include[[:space:]]+\\\")([^\\\"]+)(\\\")|\\1\\L\\2\\3|g\" {} "
+                "+ && find \"$BASE\" -depth | while IFS= read -r p; do [ \"$p\" = \"$BASE\" ] && continue; d=$(dirname \"$p\"); b=$(basename \"$p\" | "
+                "tr \"A-Z\" \"a-z\"); [ \"$p\" != \"$d/$b\" ] && mv \"$p\" \"$d/$b\"; done'\n");
+            fprintf(help, "termux (android - please change the 'GAMEMODE_FOLDER_NAME' to folder name of your gamemode in downloads/):\n");
+            fprintf(help, "bash -c 'BASE=\"../storage/downloads/GAMEMODE_FOLDER_NAME/gamemodes\"; "
+                "find \"$BASE\" -type f \\( -name \"*.pwn\" -o -name \"*.inc\" \\) "
+                "-exec sed -i -E \"s|(#include[[:space:]]+\\\")([^\\\"]+)(\\\")|\\1\\L\\2\\3|g\" {} "
+                "+ && find \"$BASE\" -depth | while IFS= read -r p; do [ \"$p\" = \"$BASE\" ] && continue; d=$(dirname \"$p\"); "
+                "b=$(basename \"$p\" | tr \"A-Z\" \"a-z\"); [ \"$p\" != \"$d/$b\" ] && mv \"$p\" \"$d/$b\"; done'\n");
+            fclose(help);
+        }
+        continue;
+      }
+      #endif
       pr_color(stdout,FCOLOUR_CYAN,"^ %s \n",description);
     }
   }

@@ -294,9 +294,9 @@ int package_url_checking(const char* url,const char* github_token)
 
   printf("\tCreate & Checking URL: %s...\t\t[All good]\n",url);
 
-  if(strfind(wgconfig.dog_toml_github_tokens,"DO_HERE",true)||
-     wgconfig.dog_toml_github_tokens==NULL||
-     strlen(wgconfig.dog_toml_github_tokens)<1) {
+  if(strfind(dogconfig.dog_toml_github_tokens,"DO_HERE",true)||
+     dogconfig.dog_toml_github_tokens==NULL||
+     strlen(dogconfig.dog_toml_github_tokens)<1) {
     pr_color(stdout,FCOLOUR_GREEN,"Can't read Github token.. skipping\n");
   }
   else {
@@ -675,8 +675,8 @@ static int setup_linux_library(void)
   size_t size_rate_each_any_path=sizeof(rate_each_any_path),
          size_rate_each_any_path_zero=sizeof(rate_each_any_path[0]);
 
-  if(!strcmp(wgconfig.dog_toml_os_type,OS_SIGNAL_WINDOWS)||
-     !strcmp(wgconfig.dog_toml_os_type,OS_SIGNAL_UNKNOWN))
+  if(!strcmp(dogconfig.dog_toml_os_type,OS_SIGNAL_WINDOWS)||
+     !strcmp(dogconfig.dog_toml_os_type,OS_SIGNAL_UNKNOWN))
     return 0;
 
   found_lib=dog_sef_fdir(pawncc_dir_source,"libpawnc.so",NULL);
@@ -687,13 +687,13 @@ static int setup_linux_library(void)
       found_lib=dog_sef_fdir("lib/","libpawnc.so",NULL);
   }
 
-  for(i=0;i<wgconfig.dog_sef_count;i++) {
+  for(i=0;i<dogconfig.dog_sef_count;i++) {
     if(strstr(
-        wgconfig.dog_sef_found_list[i],
+        dogconfig.dog_sef_found_list[i],
         "libpawnc.so"))
     {
       strncpy(libpawnc_src,
-              wgconfig.dog_sef_found_list[i],
+              dogconfig.dog_sef_found_list[i],
               sizeof(libpawnc_src));
       break;
     }
@@ -752,8 +752,8 @@ void dog_apply_pawncc(void)
     goto apply_done;
   }
 
-  for(i=0;i<wgconfig.dog_sef_count;i++) {
-    const char *item=wgconfig.dog_sef_found_list[i];
+  for(i=0;i<dogconfig.dog_sef_count;i++) {
+    const char *item=dogconfig.dog_sef_found_list[i];
     if(!item) continue;
     if(strstr(item,"pawncc.exe")) {
       char *size_last_slash=strrchr(item,__PATH_CHR_SEP_LINUX);
@@ -843,12 +843,11 @@ void dog_apply_pawncc(void)
 
   pr_info(stdout,"Congratulations! - Done.");
 
-  pr_color(stdout,FCOLOUR_CYAN,"Compile now? (y/n):");
+  printf(FCOLOUR_BCYAN "Compile now? y/n: " FCOLOUR_DEFAULT);
   char *compile_now=readline(" ");
   if(compile_now[0]=='\0'||compile_now[0]=='Y'||compile_now[0]=='y') {
     dog_free(compile_now);
-    pr_color(stdout,FCOLOUR_CYAN,"Please input the pawn file with dot type (.pwn/.p):\n");
-    printf(FCOLOUR_CYAN ">>>" FCOLOUR_DEFAULT);
+    printf(FCOLOUR_BCYAN "Please input the pawn file with dot type (.pwn/.p):\n" FCOLOUR_DEFAULT);
     char *compile_target = readline(" ");
     if (compile_target) {
       const char *argsc[]={NULL,compile_target,NULL,NULL,NULL,NULL,NULL,NULL,NULL};
@@ -865,7 +864,7 @@ apply_done:
 
 static int prompt_apply_pawncc(void)
 {
-  wgconfig.dog_ipawncc=0;
+  dogconfig.dog_ipawncc=0;
 
   printf("\x1b[32m==> Apply pawncc?\x1b[0m\n");
   char *confirm=readline("   answer (y/n): ");
@@ -1012,19 +1011,19 @@ int dog_download_file(const char *url,const char *output_filename)
 
     struct curl_slist *headers=NULL;
 
-    if(wgconfig.dog_idepends==1) {
-      if(!wgconfig.dog_toml_github_tokens||
-         strfind(wgconfig.dog_toml_github_tokens,"DO_HERE",true)||
-         strlen(wgconfig.dog_toml_github_tokens)<1) {
+    if(dogconfig.dog_idepends==1) {
+      if(!dogconfig.dog_toml_github_tokens||
+         strfind(dogconfig.dog_toml_github_tokens,"DO_HERE",true)||
+         strlen(dogconfig.dog_toml_github_tokens)<1) {
         pr_color(stdout,FCOLOUR_YELLOW," ~ GitHub token not available\n");
       }
       else {
         char auth_header[512];
         snprintf(auth_header,sizeof(auth_header),"Authorization: token %s",
-                 wgconfig.dog_toml_github_tokens);
+                 dogconfig.dog_toml_github_tokens);
         headers=curl_slist_append(headers,auth_header);
         pr_color(stdout,FCOLOUR_GREEN," ~ Using GitHub token: %s\n",
-                 dog_masked_text(8,wgconfig.dog_toml_github_tokens));
+                 dog_masked_text(8,dogconfig.dog_toml_github_tokens));
       }
     }
 
@@ -1130,7 +1129,7 @@ int dog_download_file(const char *url,const char *output_filename)
 
         dog_extract_archive(final_filename,size_filename);
 
-        if(wgconfig.dog_idepends==1) {
+        if(dogconfig.dog_idepends==1) {
           static int remove_archive=0;
           if(remove_archive==0) {
             pr_color(stdout,FCOLOUR_CYAN,
@@ -1164,7 +1163,7 @@ int dog_download_file(const char *url,const char *output_filename)
           dog_free(confirm);
         }
 
-        if(wgconfig.dog_ipawncc&&prompt_apply_pawncc()) {
+        if(dogconfig.dog_ipawncc&&prompt_apply_pawncc()) {
           pawncc_dir_source=strdup(size_filename);
           dog_apply_pawncc();
         }

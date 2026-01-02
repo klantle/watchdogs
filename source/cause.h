@@ -6,6 +6,6 @@ typedef struct {
         char *cs_i;
 } causeExplanation;
 
-void cause_compiler_expl(const char *log_file,const char *wgoutput,int debug);    
+void cause_compiler_expl(const char *log_file,const char *dogoutput,int debug);    
 
 #endif

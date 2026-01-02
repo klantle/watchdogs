@@ -227,7 +227,7 @@ typedef struct {
     char * dog_toml_webhooks;
 } WatchdogConfig;
 
-extern WatchdogConfig wgconfig;
+extern WatchdogConfig dogconfig;
 
 /* Utility function declarations */
 void dog_sef_fdir_memset_to_null(void);

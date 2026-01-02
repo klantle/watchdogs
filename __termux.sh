@@ -14,7 +14,7 @@ echo
 echo "Enter the path you want to switch to location in storage/downloads:"
 echo "  ^ example: my_folder"
 echo "  ^ a folder name for install; the folder doesn't exist?, don't worry.."
-echo "  ^ just enter if you want install the watchdogs in home (recommended).."
+echo "  ^ enter if you want install the watchdogs in home (recommended).."
 
 read -r -p "> " TARGET_DIR
 

@@ -650,7 +650,7 @@ void dog_extract_archive(const char *filename,const char *dir)
   fflush(stdout);
 
   if(strend(filename,".tar.gz",true)) {
-    if(wgconfig.dog_idownload==1) {
+    if(dogconfig.dog_idownload==1) {
       if(dir_exists("scripts")!=0) {
         dog_extract_tar(filename,"scripts");
       }
@@ -664,7 +664,7 @@ void dog_extract_archive(const char *filename,const char *dir)
     }
   }
   else if(strend(filename,".tar",true)) {
-    if(wgconfig.dog_idownload==1) {
+    if(dogconfig.dog_idownload==1) {
       if(dir_exists("scripts")!=0) {
         dog_extract_tar(filename,"scripts");
       }
@@ -678,7 +678,7 @@ void dog_extract_archive(const char *filename,const char *dir)
     }
   }
   else if(strend(filename,".zip",true)) {
-    if(wgconfig.dog_idownload==1) {
+    if(dogconfig.dog_idownload==1) {
       if(dir_exists("scripts")!=0) {
         dog_extract_zip(filename,"scripts");
       }
@@ -695,7 +695,7 @@ void dog_extract_archive(const char *filename,const char *dir)
     pr_info(stdout,"Undefined archive: %s\n",filename);
   }
 
-  wgconfig.dog_idownload=0;
+  dogconfig.dog_idownload=0;
 
   return;
 }

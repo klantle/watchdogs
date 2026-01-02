@@ -1,6 +1,3 @@
-#ifndef _GNU_SOURCE
-    #define _GNU_SOURCE
-#endif
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -67,7 +64,7 @@ void __reset_sys(void) {
         dog_stop_server_tasks();
         dog_u_history();
         dog_ptr_command_init = 0;
-        wgconfig.dog_sel_stat = 0;
+        dogconfig.dog_sel_stat = 0;
         sigint_handler = 0;
 }
 
@@ -142,15 +139,15 @@ void __debug_main_unit_(int debug_hard,
 #else
                     "Unknown",
 #endif
-                    wgconfig.dog_os_type, wgconfig.dog_ptr_samp,
-                    wgconfig.dog_ptr_omp, wgconfig.dog_is_samp, wgconfig.dog_is_omp,
-                    wgconfig.dog_toml_proj_input, wgconfig.dog_toml_proj_output,
-                    wgconfig.dog_toml_binary, wgconfig.dog_toml_config, wgconfig.dog_toml_logs,
-                    wgconfig.dog_toml_github_tokens,
-                    wgconfig.dog_toml_chatbot_ai,
-                    wgconfig.dog_toml_models_ai,
-                    wgconfig.dog_toml_key_ai,
-                    wgconfig.dog_toml_aio_opt, wgconfig.dog_toml_packages);
+                    dogconfig.dog_os_type, dogconfig.dog_ptr_samp,
+                    dogconfig.dog_ptr_omp, dogconfig.dog_is_samp, dogconfig.dog_is_omp,
+                    dogconfig.dog_toml_proj_input, dogconfig.dog_toml_proj_output,
+                    dogconfig.dog_toml_binary, dogconfig.dog_toml_config, dogconfig.dog_toml_logs,
+                    dogconfig.dog_toml_github_tokens,
+                    dogconfig.dog_toml_chatbot_ai,
+                    dogconfig.dog_toml_models_ai,
+                    dogconfig.dog_toml_key_ai,
+                    dogconfig.dog_toml_aio_opt, dogconfig.dog_toml_packages);
             printf("STDC: %d\n", __STDC__);
             printf("STDC_HOSTED: %d\n", __STDC_HOSTED__);
             printf("BYTE_ORDER: ");
@@ -235,14 +232,14 @@ void __debug_main_unit_(int debug_hard,
 #else
                     "Unknown",
 #endif
-                    wgconfig.dog_os_type, wgconfig.dog_ptr_samp,
-                    wgconfig.dog_ptr_omp, wgconfig.dog_is_samp, wgconfig.dog_is_omp,
-                    wgconfig.dog_toml_proj_input, wgconfig.dog_toml_proj_output,
-                    wgconfig.dog_toml_binary, wgconfig.dog_toml_config, wgconfig.dog_toml_logs,
-                    wgconfig.dog_toml_github_tokens,
-                    wgconfig.dog_toml_chatbot_ai,
-                    wgconfig.dog_toml_models_ai,
-                    wgconfig.dog_toml_key_ai);
+                    dogconfig.dog_os_type, dogconfig.dog_ptr_samp,
+                    dogconfig.dog_ptr_omp, dogconfig.dog_is_samp, dogconfig.dog_is_omp,
+                    dogconfig.dog_toml_proj_input, dogconfig.dog_toml_proj_output,
+                    dogconfig.dog_toml_binary, dogconfig.dog_toml_config, dogconfig.dog_toml_logs,
+                    dogconfig.dog_toml_github_tokens,
+                    dogconfig.dog_toml_chatbot_ai,
+                    dogconfig.dog_toml_models_ai,
+                    dogconfig.dog_toml_key_ai);
         }
 
         fflush(stdout);

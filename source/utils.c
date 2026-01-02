@@ -88,7 +88,7 @@ const size_t
 		__command_len =
 sizeof(__command) / sizeof(__command[0]);
 
-WatchdogConfig wgconfig = {
+WatchdogConfig dogconfig = {
 		.dog_ipawncc = 0,
 		.dog_idepends = 0,
 		.dog_idownload = 0,
@@ -133,19 +133,19 @@ const char* char_fields[] = {
 };
 
 char** field_pointers[] = {
-		&wgconfig.dog_toml_os_type,
-		&wgconfig.dog_toml_binary,
-		&wgconfig.dog_toml_config,
-		&wgconfig.dog_toml_logs,
-		&wgconfig.dog_toml_aio_opt,
-		&wgconfig.dog_toml_root_patterns,
-		&wgconfig.dog_toml_packages,
-		&wgconfig.dog_toml_proj_input,
-		&wgconfig.dog_toml_proj_output,
-		&wgconfig.dog_toml_key_ai,
-		&wgconfig.dog_toml_chatbot_ai,
-		&wgconfig.dog_toml_models_ai,
-		&wgconfig.dog_toml_webhooks
+		&dogconfig.dog_toml_os_type,
+		&dogconfig.dog_toml_binary,
+		&dogconfig.dog_toml_config,
+		&dogconfig.dog_toml_logs,
+		&dogconfig.dog_toml_aio_opt,
+		&dogconfig.dog_toml_root_patterns,
+		&dogconfig.dog_toml_packages,
+		&dogconfig.dog_toml_proj_input,
+		&dogconfig.dog_toml_proj_output,
+		&dogconfig.dog_toml_key_ai,
+		&dogconfig.dog_toml_chatbot_ai,
+		&dogconfig.dog_toml_models_ai,
+		&dogconfig.dog_toml_webhooks
 };
 
 /*
@@ -157,16 +157,16 @@ char** field_pointers[] = {
 void dog_sef_fdir_memset_to_null(void) {
 
 		size_t i, sef_max_entries;
-		sef_max_entries = sizeof(wgconfig.dog_sef_found_list) /
-						  sizeof(wgconfig.dog_sef_found_list[0]);
+		sef_max_entries = sizeof(dogconfig.dog_sef_found_list) /
+						  sizeof(dogconfig.dog_sef_found_list[0]);
 
 		for (i = 0; i < sef_max_entries; i++)
-			wgconfig.dog_sef_found_list[i][0] = '\0';
+			dogconfig.dog_sef_found_list[i][0] = '\0';
 
-		wgconfig.dog_sef_count = RATE_SEF_EMPTY;
+		dogconfig.dog_sef_count = RATE_SEF_EMPTY;
 
-		memset(wgconfig.dog_sef_found_list,
-			RATE_SEF_EMPTY, sizeof(wgconfig.dog_sef_found_list));
+		memset(dogconfig.dog_sef_found_list,
+			RATE_SEF_EMPTY, sizeof(dogconfig.dog_sef_found_list));
 }
 
 #ifdef DOG_LINUX
@@ -724,9 +724,9 @@ void dog_clear_screen(void) {
 
 /* Detects if server is SA-MP or open.mp */
 int dog_server_env(void) {
-		if (strcmp(wgconfig.dog_is_samp, CRC32_TRUE) == 0) {
+		if (strcmp(dogconfig.dog_is_samp, CRC32_TRUE) == 0) {
 				return 1;
-		} else if (strcmp(wgconfig.dog_is_omp, CRC32_TRUE) == 0) {
+		} else if (strcmp(dogconfig.dog_is_omp, CRC32_TRUE) == 0) {
 				return 2;
 		} else {
 				return 1;
@@ -1510,17 +1510,17 @@ static int dog_procure_ignore_dir(const char *entry_name,
 static void dog_add_found_path(const char *path)
 {
 		/* Make sure there's space in found list */
-		if (wgconfig.dog_sef_count < (sizeof(wgconfig.dog_sef_found_list) /
-								     sizeof(wgconfig.dog_sef_found_list[0]))) {
+		if (dogconfig.dog_sef_count < (sizeof(dogconfig.dog_sef_found_list) /
+								     sizeof(dogconfig.dog_sef_found_list[0]))) {
 				/* Copy path to next available slot */
-				strncpy(wgconfig.dog_sef_found_list[wgconfig.dog_sef_count],
+				strncpy(dogconfig.dog_sef_found_list[dogconfig.dog_sef_count],
 					path,
 					MAX_SEF_PATH_SIZE);
 				/* Ensure null termination */
-				wgconfig.dog_sef_found_list \
-					[wgconfig.dog_sef_count] \
+				dogconfig.dog_sef_found_list \
+					[dogconfig.dog_sef_count] \
 					[MAX_SEF_PATH_SIZE - 1] = '\0';
-				++wgconfig.dog_sef_count; /* Increment found counter */
+				++dogconfig.dog_sef_count; /* Increment found counter */
 		}
 }
 
@@ -1686,7 +1686,7 @@ static void dog_check_compiler_options(int *compatibility, int *optimized_lt)
 		/* Run compiler test command */
 		snprintf(command, sizeof(command),
 					"%s -0000000U > .watchdogs/compiler_test.log 2>&1",
-					wgconfig.dog_sef_found_list[0]);
+					dogconfig.dog_sef_found_list[0]);
 		dog_exec_command(command);
 
 		/* Parse log file for compiler characteristics */
@@ -1753,7 +1753,7 @@ static int dog_parse_toml_config(void)
 				toml_datum_t os_val = toml_string_in(general_table, "os");
 				if (os_val.ok) {
 						/* Store OS type from config */
-						wgconfig.dog_toml_os_type = strdup(os_val.u.s);
+						dogconfig.dog_toml_os_type = strdup(os_val.u.s);
 						dog_free(os_val.u.s); /* Free TOML library memory */
 				}
 		}
@@ -2092,10 +2092,10 @@ int dog_toml_configs(void)
 			/* Generate content based on findings */
 			if (find_pawncc)
 				dog_generate_toml_content(toml_file, dog_os_type, find_gamemodes,
-					compatibility, optimized_lt, wgconfig.dog_sef_found_list[1]);
+					compatibility, optimized_lt, dogconfig.dog_sef_found_list[1]);
 			else
 				dog_generate_toml_content(toml_file, dog_os_type, find_gamemodes,
-					compatibility, optimized_lt, wgconfig.dog_sef_found_list[0]);
+					compatibility, optimized_lt, dogconfig.dog_sef_found_list[0]);
 			fclose(toml_file);
 		}
 
@@ -2126,7 +2126,7 @@ int dog_toml_configs(void)
 				toml_datum_t toml_gh_tokens = toml_string_in(dog_toml_depends, "github_tokens");
 				if (toml_gh_tokens.ok)
 				{
-					wgconfig.dog_toml_github_tokens = strdup(toml_gh_tokens.u.s);
+					dogconfig.dog_toml_github_tokens = strdup(toml_gh_tokens.u.s);
 					dog_free(toml_gh_tokens.u.s);
 				}
 
@@ -2165,7 +2165,7 @@ int dog_toml_configs(void)
                     }
 
 free_val:
-					wgconfig.dog_toml_root_patterns = strdup(expect);
+					dogconfig.dog_toml_root_patterns = strdup(expect);
                     dog_free(val.u.s);
                     val.u.s = NULL;
 				}
@@ -2177,19 +2177,19 @@ out:
 		if (dog_toml_compiler) {
 				toml_datum_t input_val = toml_string_in(dog_toml_compiler, "input");
 				if (input_val.ok) {
-					wgconfig.dog_toml_proj_input = strdup(input_val.u.s);
+					dogconfig.dog_toml_proj_input = strdup(input_val.u.s);
 					dog_free(input_val.u.s);
 				}
 				toml_datum_t output_val = toml_string_in(dog_toml_compiler, "output");
 				if (output_val.ok) {
-					wgconfig.dog_toml_proj_output = strdup(output_val.u.s);
+					dogconfig.dog_toml_proj_output = strdup(output_val.u.s);
 					dog_free(output_val.u.s);
 				}
 		}
 
 		/* Handling before setup */
-		wgconfig.dog_toml_aio_opt = strdup("none");
-		wgconfig.dog_toml_packages = strdup("none none none");
+		dogconfig.dog_toml_aio_opt = strdup("none");
+		dogconfig.dog_toml_packages = strdup("none none none");
 
 		/* Extract general section details */
 		toml_table_t *general_table = toml_table_in(dog_toml_config, "general");
@@ -2198,48 +2198,48 @@ out:
 				if (bin_val.ok) {
 					/* Store binary path based on server type */
 					if (samp_user == 1) {
-						wgconfig.dog_is_samp = CRC32_TRUE;
-						wgconfig.dog_ptr_samp = strdup(bin_val.u.s);
+						dogconfig.dog_is_samp = CRC32_TRUE;
+						dogconfig.dog_ptr_samp = strdup(bin_val.u.s);
 					}
 					else if (samp_user == 0) {
-						wgconfig.dog_is_omp = CRC32_TRUE;
-						wgconfig.dog_ptr_omp = strdup(bin_val.u.s);
+						dogconfig.dog_is_omp = CRC32_TRUE;
+						dogconfig.dog_ptr_omp = strdup(bin_val.u.s);
 					}
 					else {
-						wgconfig.dog_is_samp = CRC32_TRUE;
-						wgconfig.dog_ptr_samp = strdup(bin_val.u.s);
+						dogconfig.dog_is_samp = CRC32_TRUE;
+						dogconfig.dog_ptr_samp = strdup(bin_val.u.s);
 					}
-					wgconfig.dog_toml_binary = strdup(bin_val.u.s);
+					dogconfig.dog_toml_binary = strdup(bin_val.u.s);
 					dog_free(bin_val.u.s);
 				}
 				toml_datum_t conf_val = toml_string_in(general_table, "config");
 				if (conf_val.ok) {
-					wgconfig.dog_toml_config = strdup(conf_val.u.s);
+					dogconfig.dog_toml_config = strdup(conf_val.u.s);
 					dog_free(conf_val.u.s);
 				}
 				toml_datum_t logs_val = toml_string_in(general_table, "logs");
 				if (logs_val.ok) {
-					wgconfig.dog_toml_logs = strdup(logs_val.u.s);
+					dogconfig.dog_toml_logs = strdup(logs_val.u.s);
 					dog_free(logs_val.u.s);
 				}
 				toml_datum_t keys_val = toml_string_in(general_table, "keys");
 				if (keys_val.ok) {
-					wgconfig.dog_toml_key_ai = strdup(keys_val.u.s);
+					dogconfig.dog_toml_key_ai = strdup(keys_val.u.s);
 					dog_free(keys_val.u.s);
 				}
 				toml_datum_t chatbot_val = toml_string_in(general_table, "chatbot");
 				if (chatbot_val.ok) {
-					wgconfig.dog_toml_chatbot_ai = strdup(chatbot_val.u.s);
+					dogconfig.dog_toml_chatbot_ai = strdup(chatbot_val.u.s);
 					dog_free(chatbot_val.u.s);
 				}
 				toml_datum_t models_val = toml_string_in(general_table, "models");
 				if (models_val.ok) {
-					wgconfig.dog_toml_models_ai = strdup(models_val.u.s);
+					dogconfig.dog_toml_models_ai = strdup(models_val.u.s);
 					dog_free(models_val.u.s);
 				}
 				toml_datum_t webhooks_val = toml_string_in(general_table, "webhooks");
 				if (webhooks_val.ok) {
-					wgconfig.dog_toml_webhooks = strdup(webhooks_val.u.s);
+					dogconfig.dog_toml_webhooks = strdup(webhooks_val.u.s);
 					dog_free(webhooks_val.u.s);
 				}
 		}

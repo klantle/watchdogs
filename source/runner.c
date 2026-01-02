@@ -102,17 +102,17 @@ void unit_sigint_handler(int sig) {
 
 void dog_stop_server_tasks(void) {
         if (dog_server_env() == 1)
-          dog_kill_process(wgconfig.dog_toml_binary);
+          dog_kill_process(dogconfig.dog_toml_binary);
         else if (dog_server_env() == 2)
-          dog_kill_process(wgconfig.dog_toml_binary);
+          dog_kill_process(dogconfig.dog_toml_binary);
 }
 
 void dog_display_server_logs(int ret) {
         char *log_file = NULL;
         if (dog_server_env() == 1)
-            log_file = wgconfig.dog_toml_logs;
+            log_file = dogconfig.dog_toml_logs;
         else if (dog_server_env() == 2)
-            log_file = wgconfig.dog_toml_logs;
+            log_file = dogconfig.dog_toml_logs;
         dog_printfile(log_file);
         return;
 }
@@ -120,9 +120,9 @@ void dog_display_server_logs(int ret) {
 void dog_server_crash_check(void) {
         FILE *this_proc_file = NULL;
         if (dog_server_env() == 1)
-            this_proc_file = fopen(wgconfig.dog_toml_logs, "rb");
+            this_proc_file = fopen(dogconfig.dog_toml_logs, "rb");
         else
-            this_proc_file = fopen(wgconfig.dog_toml_logs, "rb");
+            this_proc_file = fopen(dogconfig.dog_toml_logs, "rb");
 
         if (this_proc_file == NULL) {
             pr_error(stdout, "log file not found!.");
@@ -197,8 +197,8 @@ void dog_server_crash_check(void) {
                 char *recompiled = readline("Recompiled scripts now? (Auto-fix)");
                 if (recompiled && (recompiled[0] == '\0' || !strcmp(recompiled, "Y") || !strcmp(recompiled, "y"))) {
                     dog_free(recompiled);
-                    pr_color(stdout, FCOLOUR_CYAN, "Please input the pawn file\n\t* (just enter for %s - input E/e to exit):", wgconfig.dog_toml_proj_input);
-                    char *gamemode_compile = readline("Y/n: ");
+                    printf(FCOLOUR_BCYAN "Please input the pawn file\n\t* (enter for %s - input E/e to exit):" FCOLOUR_DEFAULT, dogconfig.dog_toml_proj_input);
+                    char *gamemode_compile = readline(" ");
                     if (gamemode_compile && strlen(gamemode_compile) < 1) {
                         const char *args[] = { NULL, ".", NULL, NULL, NULL, NULL, NULL, NULL, NULL };
                         dog_exec_compiler(args[0], args[1], args[2], args[3], args[4], args[5], args[6], args[7], args[8]);
@@ -651,7 +651,7 @@ static int update_samp_config(const char *gamemode)
 
         char size_config[DOG_PATH_MAX];
         snprintf(size_config, sizeof(size_config),
-                ".watchdogs/%s.bak", wgconfig.dog_toml_config);
+                ".watchdogs/%s.bak", dogconfig.dog_toml_config);
 
         if (path_access(size_config))
                 remove(size_config);
@@ -659,12 +659,12 @@ static int update_samp_config(const char *gamemode)
         if (is_native_windows()) {
             snprintf(command, sizeof(command),
                     "ren %s %s",
-                    wgconfig.dog_toml_config,
+                    dogconfig.dog_toml_config,
                     size_config);
         } else {
             snprintf(command, sizeof(command),
                     "mv -f %s %s",
-                    wgconfig.dog_toml_config,
+                    dogconfig.dog_toml_config,
                     size_config);
         }
 
@@ -691,7 +691,7 @@ static int update_samp_config(const char *gamemode)
                 return -1;
         }
 
-        proc_conf_out = fopen(wgconfig.dog_toml_config, "w+");
+        proc_conf_out = fopen(dogconfig.dog_toml_config, "w+");
         if (!proc_conf_out) {
                 pr_error(stdout,
                     "Failed to write new config");
@@ -727,14 +727,14 @@ void restore_server_config(void) {
 
         char size_config[DOG_PATH_MAX];
         snprintf(size_config, sizeof(size_config),
-                ".watchdogs/%s.bak", wgconfig.dog_toml_config);
+                ".watchdogs/%s.bak", dogconfig.dog_toml_config);
 
         if (path_exists(size_config) == 0)
             goto restore_done;
 
         printf(FCOLOUR_GREEN "warning: " FCOLOUR_DEFAULT
                 "Continue to restore %s -> %s? y/n",
-                size_config, wgconfig.dog_toml_config);
+                size_config, dogconfig.dog_toml_config);
 
         char *restore_confirm = readline(" ");
         if (restore_confirm && strfind(restore_confirm, "Y", true)) {
@@ -752,11 +752,11 @@ void restore_server_config(void) {
         if (is_native_windows()) {
             snprintf(command, sizeof(command),
             "if exist \"%s\" (del /f /q \"%s\" 2>nul",
-            wgconfig.dog_toml_config, wgconfig.dog_toml_config);
+            dogconfig.dog_toml_config, dogconfig.dog_toml_config);
         } else {
             snprintf(command, sizeof(command),
             "rm -rf %s",
-            wgconfig.dog_toml_config);
+            dogconfig.dog_toml_config);
         }
 
         dog_exec_command(command);
@@ -765,12 +765,12 @@ void restore_server_config(void) {
                 snprintf(command, sizeof(command),
                         "ren %s %s",
                         size_config,
-                        wgconfig.dog_toml_config);
+                        dogconfig.dog_toml_config);
         else
                 snprintf(command, sizeof(command),
                         "mv -f %s %s",
                         size_config,
-                        wgconfig.dog_toml_config);
+                        dogconfig.dog_toml_config);
 
         dog_exec_command(command);
 
@@ -782,7 +782,7 @@ void dog_exec_samp_server(const char *gamemode, const char *server_bin)
 {
         __create_logging();
 
-        if (strfind(wgconfig.dog_toml_config, ".json", true))
+        if (strfind(dogconfig.dog_toml_config, ".json", true))
                 return;
 
         int ret = -1;
@@ -847,7 +847,7 @@ back_start:
         if (ret == 0) {
                 end = time(NULL);
 
-                if (!strcmp(wgconfig.dog_os_type, OS_SIGNAL_LINUX)) {
+                if (!strcmp(dogconfig.dog_os_type, OS_SIGNAL_LINUX)) {
                         printf(FCOLOUR_DEFAULT "\n");
                         printf("~ logging...\n");
                         sleep(0x3);
@@ -866,12 +866,12 @@ back_start:
                 if (elapsed <= 4.1 && runner_retry == false) {
                         runner_retry = true;
                         printf("\ttry starting again..");
-                        access_debugging_file = path_access(wgconfig.dog_toml_logs);
+                        access_debugging_file = path_access(dogconfig.dog_toml_logs);
                         if (access_debugging_file)
-                                remove(wgconfig.dog_toml_logs);
-                        access_debugging_file = path_access(wgconfig.dog_toml_logs);
+                                remove(dogconfig.dog_toml_logs);
+                        access_debugging_file = path_access(dogconfig.dog_toml_logs);
                         if (access_debugging_file)
-                                remove(wgconfig.dog_toml_logs);
+                                remove(dogconfig.dog_toml_logs);
                         end = time(NULL);
                         goto back_start;
                 }
@@ -896,7 +896,7 @@ static int update_omp_config(const char *gamemode)
 
         char size_config[DOG_PATH_MAX];
         snprintf(size_config, sizeof(size_config),
-                ".watchdogs/%s.bak", wgconfig.dog_toml_config);
+                ".watchdogs/%s.bak", dogconfig.dog_toml_config);
 
         if (path_access(size_config))
                 remove(size_config);
@@ -904,12 +904,12 @@ static int update_omp_config(const char *gamemode)
         if (is_native_windows()) {
             snprintf(command, sizeof(command),
                 "ren %s %s",
-                wgconfig.dog_toml_config,
+                dogconfig.dog_toml_config,
                 size_config);
         } else {
             snprintf(command, sizeof(command),
                 "mv -f %s %s",
-                wgconfig.dog_toml_config,
+                dogconfig.dog_toml_config,
                 size_config);
         }
 
@@ -994,10 +994,10 @@ static int update_omp_config(const char *gamemode)
         cJSON_AddItemToArray(msj, cJSON_CreateString(gf));
         cJSON_AddItemToObject(pawn, "msj", msj);
 
-        proc_conf_out = fopen(wgconfig.dog_toml_config, "w");
+        proc_conf_out = fopen(dogconfig.dog_toml_config, "w");
         if (!proc_conf_out) {
                 pr_error(stdout,
-                    "Failed to write %s", wgconfig.dog_toml_config);
+                    "Failed to write %s", dogconfig.dog_toml_config);
                 __create_logging();
                 goto runner_end;
         }
@@ -1012,7 +1012,7 @@ static int update_omp_config(const char *gamemode)
 
         if (fputs(printed, proc_conf_out) == EOF) {
                 pr_error(stdout,
-                    "Failed to write to %s", wgconfig.dog_toml_config);
+                    "Failed to write to %s", dogconfig.dog_toml_config);
                 __create_logging();
                 goto runner_end;
         }
@@ -1048,7 +1048,7 @@ void dog_exec_omp_server(const char *gamemode, const char *server_bin)
 {
         __create_logging();
 
-        if (strfind(wgconfig.dog_toml_config, ".cfg", true))
+        if (strfind(dogconfig.dog_toml_config, ".cfg", true))
                 return;
 
         int ret = -1;
@@ -1122,12 +1122,12 @@ back_start:
                 if (elapsed <= 4.1 && runner_retry == false) {
                         runner_retry = true;
                         printf("\ttry starting again..");
-                        access_debugging_file = path_access(wgconfig.dog_toml_logs);
+                        access_debugging_file = path_access(dogconfig.dog_toml_logs);
                         if (access_debugging_file)
-                                remove(wgconfig.dog_toml_logs);
-                        access_debugging_file = path_access(wgconfig.dog_toml_logs);
+                                remove(dogconfig.dog_toml_logs);
+                        access_debugging_file = path_access(dogconfig.dog_toml_logs);
                         if (access_debugging_file)
-                                remove(wgconfig.dog_toml_logs);
+                                remove(dogconfig.dog_toml_logs);
                         end = time(NULL);
                         goto back_start;
                 }

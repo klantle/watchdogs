@@ -55,7 +55,7 @@ char library_options_list(const char *title,const char **items,const char *keys,
 
   while(true) {
     char *input=NULL;
-    printf(FCOLOUR_CYAN ">>>" FCOLOUR_DEFAULT);
+    printf(FCOLOUR_CYAN ">" FCOLOUR_DEFAULT);
     input = readline(" ");
     if(!input)
       continue;
@@ -91,7 +91,7 @@ int pawncc_handle_termux_installation(void)
   char sel=library_options_list("Select PawnCC Version",items,keys,5);
   if(!sel) return 0;
 
-  wgconfig.dog_ipawncc=1;
+  dogconfig.dog_ipawncc=1;
 
   if(sel=='A'||sel=='a') {
     if(path_exists("pawncc-termux-311.zip")) remove("pawncc-termux-311.zip");
@@ -164,7 +164,7 @@ static int pawncc_handle_standard_installation(const char *platform)
   snprintf(filename,sizeof(filename),
            "pawnc-%s-%s.%s",vernums[idx],platform,archive_ext);
 
-  wgconfig.dog_ipawncc=1;
+  dogconfig.dog_ipawncc=1;
   dog_download_file(url,filename);
 
   return 0;
@@ -176,7 +176,7 @@ int dog_install_pawncc(const char *platform)
 
   if(!platform) {
     pr_error(stdout,"Platform parameter is NULL");
-    if(wgconfig.dog_sel_stat==0)
+    if(dogconfig.dog_sel_stat==0)
       return 0;
     return -1;
   }
@@ -185,7 +185,7 @@ int dog_install_pawncc(const char *platform)
     int ret=pawncc_handle_termux_installation();
 
 loop_ipcc:
-    if(ret==-1&&wgconfig.dog_sel_stat!=0)
+    if(ret==-1&&dogconfig.dog_sel_stat!=0)
       goto loop_ipcc;
     else if(ret==0)
       return 0;
@@ -193,7 +193,7 @@ loop_ipcc:
   else {
     int ret=pawncc_handle_standard_installation(platform);
 loop_ipcc2:
-    if(ret==-1&&wgconfig.dog_sel_stat!=0)
+    if(ret==-1&&dogconfig.dog_sel_stat!=0)
       goto loop_ipcc2;
     else if(ret==0)
       return 0;

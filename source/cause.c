@@ -77,7 +77,7 @@ static const char *dog_find_warn_err(const char *line)
     return NULL;
 }
 
-static void compiler_detailed(const char *wgoutput,int debug,
+static void compiler_detailed(const char *dogoutput,int debug,
                        int warning_count,int error_count,const char *compiler_ver,
                        int header_size,int code_size,int data_size,
                        int stack_size,int total_size)
@@ -93,10 +93,10 @@ static void compiler_detailed(const char *wgoutput,int debug,
 
   println(stdout,"-----------------------------");
 
-  int amx_access=path_exists(wgoutput);
+  int amx_access=path_exists(dogoutput);
   if (amx_access&&debug != 0&&error_count<1) {
 
-      unsigned long hash=crypto_djb2_hash_file(wgoutput);
+      unsigned long hash=crypto_djb2_hash_file(dogoutput);
 
       char outbuf[DOG_MAX_PATH];
       int len;
@@ -107,7 +107,7 @@ static void compiler_detailed(const char *wgoutput,int debug,
           "Code (static mem)   : %dB  |  hash (djb2)  : %#lx\n"
           "Data (static mem)   : %dB\n"
           "Stack (dynamic mem)  : %dB\n",
-          wgoutput,
+          dogoutput,
           header_size,
           total_size,
           code_size,
@@ -120,7 +120,7 @@ static void compiler_detailed(const char *wgoutput,int debug,
           fwrite(outbuf, 1, (size_t)len, stdout);
 
       portable_stat_t st;
-      if (portable_stat(wgoutput, &st)==0) {
+      if (portable_stat(dogoutput, &st)==0) {
 
           len=snprintf(outbuf, sizeof outbuf,
               "ino    : %llu   |  File   : %lluB\n"
@@ -161,7 +161,7 @@ static void compiler_detailed(const char *wgoutput,int debug,
   return;
 }
 
-void cause_compiler_expl(const char *log_file,const char *wgoutput,int debug)
+void cause_compiler_expl(const char *log_file,const char *dogoutput,int debug)
 {
   __create_logging();
 
@@ -204,7 +204,10 @@ void cause_compiler_expl(const char *log_file,const char *wgoutput,int debug)
       continue;
     }
 
+    printf(FCOLOUR_BWHITE);
     fwrite(compiler_line,1,strlen(compiler_line),stdout);
+    printf(FCOLOUR_DEFAULT);
+    fflush(stdout);
 
     if(dog_strcase(compiler_line,"warning") != false)
       ++warning_count;
@@ -234,19 +237,20 @@ void cause_compiler_expl(const char *log_file,const char *wgoutput,int debug)
             fprintf(help, "* Linux filesystem is free case-sensitive.\n");
             fprintf(help, "** You need to fix it with renaming any files and folders in gamemodes/ and changing #include name to lowercase only.\n");
             fprintf(help, "like:\n   gamemodes\n   ├── main.pwn\n   └── TEST\n   └── test.inc\n");
-            fprintf(help, "- #include \"TEST.inc\" -> #include \"test.inc\"\n");
+            fprintf(help, "- #include \"TEST.inc\" -> #include \"test.inc\"\n\n");
+            fprintf(help, "first: backup your \"gamemodes\" folder to \"swp_gamemodes\" and copy \"swp_gamemodes\" to \"gamemodes\"\n");
             fprintf(help, "shell (bash) operation:\n");
             fprintf(help, "linux native:\n");
-            fprintf(help, "bash -c 'BASE=\"gamemodes\"; find \"$BASE\" -type f "
+            fprintf(help, "   bash -c 'BASE=\"gamemodes\"; find \"$BASE\" -type f "
                 "\\( -name \"*.pwn\" -o -name \"*.inc\" \\) -exec sed -i -E \"s|(#include[[:space:]]+\\\")([^\\\"]+)(\\\")|\\1\\L\\2\\3|g\" {} "
                 "+ && find \"$BASE\" -depth | while IFS= read -r p; do [ \"$p\" = \"$BASE\" ] && continue; d=$(dirname \"$p\"); b=$(basename \"$p\" | "
                 "tr \"A-Z\" \"a-z\"); [ \"$p\" != \"$d/$b\" ] && mv \"$p\" \"$d/$b\"; done'\n");
             fprintf(help, "termux (android - please change the 'GAMEMODE_FOLDER_NAME' to folder name of your gamemode in downloads/):\n");
-            fprintf(help, "bash -c 'BASE=\"../storage/downloads/GAMEMODE_FOLDER_NAME/gamemodes\"; "
-                "find \"$BASE\" -type f \\( -name \"*.pwn\" -o -name \"*.inc\" \\) "
-                "-exec sed -i -E \"s|(#include[[:space:]]+\\\")([^\\\"]+)(\\\")|\\1\\L\\2\\3|g\" {} "
-                "+ && find \"$BASE\" -depth | while IFS= read -r p; do [ \"$p\" = \"$BASE\" ] && continue; d=$(dirname \"$p\"); "
-                "b=$(basename \"$p\" | tr \"A-Z\" \"a-z\"); [ \"$p\" != \"$d/$b\" ] && mv \"$p\" \"$d/$b\"; done'\n");
+            fprintf(help, "   bash -c 'BASE=\"../storage/downloads/GAMEMODE_FOLDER_NAME/gamemodes\"; "
+              "find \"$BASE\" -type f \\( -name \"*.pwn\" -o -name \"*.inc\" \\) "
+              "-exec sh -c \"for f; do perl -i -pe \\\"s/(#include\\\\\\\\s+\\\\\\\\\\\")([^\\\\\\\\\\\"]+)(\\\\\\\\\\\")/\\\\\\\\$1\\\\\\\\L\\\\\\\\$2\\\\\\\\$3/g\\\" \\\"\\\\\\\\$f\\\"; done\" sh {} + && "
+              "find \"$BASE\" -depth | while IFS= read -r p; do [ -e \\\"$p\\\" ] && d=\\\\$(dirname \\\"$p\\\"); "
+              "b=\\\\$(basename \\\"$p\\\" | tr \\\"A-Z\\\" \\\"a-z\\\"); [ \\\"$p\\\" != \\\"$d/$b\\\" ] && mv \\\"$p\\\" \\\"$d/$b\\\"; done'\n");
             fclose(help);
         }
         continue;
@@ -258,7 +262,7 @@ void cause_compiler_expl(const char *log_file,const char *wgoutput,int debug)
 
   fclose(_log_file);
 
-  compiler_detailed(wgoutput,debug,warning_count,error_count,compiler_ver,header_size,code_size,data_size,stack_size,total_size);
+  compiler_detailed(dogoutput,debug,warning_count,error_count,compiler_ver,header_size,code_size,data_size,stack_size,total_size);
 }
 
 causeExplanation ccs[] =
@@ -398,7 +402,7 @@ causeExplanation ccs[] =
 /* 017 */  /* SEMANTIC ERROR */
 {
     "undefined symbol",
-    "Identifier lookup in the current scope chain failed to find any declaration for this symbol. The compiler traversed: local block scope → function scope → file scope → global scope. Possible causes: typographical error, missing include directive, symbol declared in excluded conditional compilation block, or incorrect namespace/visibility qualifiers."
+    "Identifier lookup in the current scope chain failed to find any declaration for this symbol. The compiler traversed: local block scope -> function scope -> file scope -> global scope. Possible causes: typographical error, missing include directive, symbol declared in excluded conditional compilation block, or incorrect namespace/visibility qualifiers."
 },
 
 /* 018 */  /* SEMANTIC ERROR */

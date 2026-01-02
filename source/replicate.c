@@ -371,7 +371,7 @@ static int package_gh_release_assets(const char *user,const char *repo,
            "%sapi.github.com/repos/%s/%s/releases/tags/%s",
            "https://",user,repo,tag);
 
-  if(!package_http_get_content(api_url,wgconfig.dog_toml_github_tokens,&json_data)) {
+  if(!package_http_get_content(api_url,dogconfig.dog_toml_github_tokens,&json_data)) {
     dog_free(json_data);
     return 0;
   }
@@ -469,7 +469,7 @@ static int package_gh_latest_tag(const char *user,const char *repo,
            "%sapi.github.com/repos/%s/%s/releases/latest",
            "https://",user,repo);
 
-  if(!package_http_get_content(api_url,wgconfig.dog_toml_github_tokens,&json_data))
+  if(!package_http_get_content(api_url,dogconfig.dog_toml_github_tokens,&json_data))
     return 0;
 
   p=strstr(json_data,"\"tag_name\"");
@@ -536,7 +536,7 @@ static int package_handle_repo(const struct _repositories *revolver_repos,char *
                "%s/%s/archive/refs/heads/%s.zip",
                revolver_repos->user,revolver_repos->repo,package_repo_branch[j]);
 
-      if(package_url_checking(put_url,wgconfig.dog_toml_github_tokens)) {
+      if(package_url_checking(put_url,dogconfig.dog_toml_github_tokens)) {
         ret=1;
         if(j==1) {
           printf("Create master branch "
@@ -606,7 +606,7 @@ static int package_handle_repo(const struct _repositories *revolver_repos,char *
                  revolver_repos->repo,
                  package_actual_tag);
 
-        if(package_url_checking(put_url,wgconfig.dog_toml_github_tokens))
+        if(package_url_checking(put_url,dogconfig.dog_toml_github_tokens))
           ret=1;
       }
     }
@@ -619,7 +619,7 @@ static int package_handle_repo(const struct _repositories *revolver_repos,char *
                revolver_repos->repo,
                package_repo_branch[j]);
 
-      if(package_url_checking(put_url,wgconfig.dog_toml_github_tokens)) {
+      if(package_url_checking(put_url,dogconfig.dog_toml_github_tokens)) {
         ret=1;
         if(j==1)
           printf("Create master branch "
@@ -1002,7 +1002,7 @@ static void package_include_prints(const char *package_include)
   if(dog_compiler) {
     toml_datum_t toml_proj_i=toml_string_in(dog_compiler,"input");
     if(toml_proj_i.ok) {
-      wgconfig.dog_toml_proj_input=strdup(toml_proj_i.u.s);
+      dogconfig.dog_toml_proj_input=strdup(toml_proj_i.u.s);
       dog_free(toml_proj_i.u.s);
     }
   }
@@ -1015,37 +1015,30 @@ static void package_include_prints(const char *package_include)
   static const char *expect_add;
 
   if(k==0) {
-    pr_color(
-        stdout, FCOLOUR_YELLOW, "\033[1m====== REPLICATE ======\033[0m\n");
-    pr_info(
-        stdout,FCOLOUR_CYAN "%s " FCOLOUR_DEFAULT "Added into?",_directive);
-    pr_info(
-        stdout,"   Press Enter for: " FCOLOUR_CYAN "%s",wgconfig.dog_toml_proj_input);
-
+    printf(FCOLOUR_BCYAN "Where do you want to install %s? (enter for: %s)" FCOLOUR_DEFAULT,
+      _directive,dogconfig.dog_toml_proj_input);
     fflush(stdout);
-
-    printf(FCOLOUR_CYAN ">>>");
-    char *added = readline(" ");
-    if(added[0]=='\0')
+    char *userinput = readline(" ");
+    if(userinput[0]=='\0')
       {
-        added=strdup(wgconfig.dog_toml_proj_input);
+        userinput=strdup(dogconfig.dog_toml_proj_input);
       }
-    expect_add=strdup(added);
+    expect_add=strdup(userinput);
 
     ++k;
   }
 
-  char size_added[DOG_PATH_MAX]={0};
-  snprintf(size_added,sizeof(size_added),"gamemodes/%s.pwn",expect_add);
+  char size_userinput[DOG_PATH_MAX]={0};
+  snprintf(size_userinput,sizeof(size_userinput),"gamemodes/%s.pwn",expect_add);
 
   if(path_exists(expect_add)==0)
     {
       FILE *creat=NULL;
-      creat=fopen(size_added,"w+");
+      creat=fopen(size_userinput,"w+");
       if(creat) { fclose(creat); }
     }
 
-  expect_add=strdup(size_added);
+  expect_add=strdup(size_userinput);
 
   if(dog_server_env()==1) {
     DENCY_ADD_INCLUDES(expect_add,
@@ -1075,9 +1068,9 @@ void dump_file_type(const char *dump_path,char *dump_pattern,
     println(stdout,"fdir_counts (%d): %d",fdir_counts,found);
   #endif
   if(found) {
-    for(i=REPLICATE_RATE_ZERO;i<wgconfig.dog_sef_count;++i) {
-      package_names=try_get_filename(wgconfig.dog_sef_found_list[i]);
-      basename=try_get_basename(wgconfig.dog_sef_found_list[i]);
+    for(i=REPLICATE_RATE_ZERO;i<dogconfig.dog_sef_count;++i) {
+      package_names=try_get_filename(dogconfig.dog_sef_found_list[i]);
+      basename=try_get_basename(dogconfig.dog_sef_found_list[i]);
 
       basename_lwr=strdup(basename);
       for(int j=REPLICATE_RATE_ZERO;basename_lwr[j];j++)
@@ -1091,11 +1084,11 @@ void dump_file_type(const char *dump_path,char *dump_pattern,
       if (k!=1)
         {
           pr_info(stdout,
-            "Try: " FCOLOUR_CYAN "%s",wgconfig.dog_toml_root_patterns);
+            "Try: " FCOLOUR_CYAN "%s",dogconfig.dog_toml_root_patterns);
           ++k;
         }
 
-      const char* match_root_keywords=wgconfig.dog_toml_root_patterns;
+      const char* match_root_keywords=dogconfig.dog_toml_root_patterns;
       while(*match_root_keywords) {
         while(*match_root_keywords==' ')
           match_root_keywords++;
@@ -1125,75 +1118,75 @@ void dump_file_type(const char *dump_path,char *dump_pattern,
           snprintf(command,sizeof(command),
                    "move "
                    "/Y \"%s\" \"%s\\%s\\\"",
-                   wgconfig.dog_sef_found_list[i],dump_loc,dump_place);
+                   dogconfig.dog_sef_found_list[i],dump_loc,dump_place);
 
           dog_exec_command(command);
         #else
           snprintf(command,sizeof(command),
                    "mv "
                    "-f \"%s\" \"%s/%s/\"",
-                   wgconfig.dog_sef_found_list[i],dump_loc,dump_place);
+                   dogconfig.dog_sef_found_list[i],dump_loc,dump_place);
 
           dog_exec_command(command);
         #endif
         pr_color(stdout,FCOLOUR_CYAN," [M] Plugins %s -> %s - %s\n",
-                 wgconfig.dog_sef_found_list[i],dump_loc,dump_place);
+                 dogconfig.dog_sef_found_list[i],dump_loc,dump_place);
       } else {
         if(rate_has_prefix) {
           #ifdef DOG_WINDOWS
             snprintf(command,sizeof(command),
                      "move "
                      "/Y \"%s\" \"%s\"",
-                     wgconfig.dog_sef_found_list[i],dump_loc);
+                     dogconfig.dog_sef_found_list[i],dump_loc);
 
             dog_exec_command(command);
           #else
             snprintf(command,sizeof(command),
                      "mv "
                      "-f \"%s\" \"%s\"",
-                     wgconfig.dog_sef_found_list[i],dump_loc);
+                     dogconfig.dog_sef_found_list[i],dump_loc);
 
             dog_exec_command(command);
           #endif
           pr_color(stdout,FCOLOUR_CYAN," [M] Plugins %s -> %s\n",
-                   wgconfig.dog_sef_found_list[i],dump_loc);
+                   dogconfig.dog_sef_found_list[i],dump_loc);
         } else {
           if(path_exists("plugins")==1) {
             #ifdef DOG_WINDOWS
               snprintf(command,sizeof(command),
                        "move "
                        "/Y \"%s\" \"%s\\plugins\"",
-                       wgconfig.dog_sef_found_list[i],dump_loc);
+                       dogconfig.dog_sef_found_list[i],dump_loc);
 
               dog_exec_command(command);
 
               pr_color(stdout,FCOLOUR_CYAN," [M] Plugins %s -> %s\\plugins\n",
-                       wgconfig.dog_sef_found_list[i],dump_loc);
+                       dogconfig.dog_sef_found_list[i],dump_loc);
             #else
               snprintf(command,sizeof(command),
                        "mv "
                        "-f \"%s\" \"%s/plugins\"",
-                       wgconfig.dog_sef_found_list[i],dump_loc);
+                       dogconfig.dog_sef_found_list[i],dump_loc);
 
               dog_exec_command(command);
 
               pr_color(stdout,FCOLOUR_CYAN," [M] Plugins %s -> %s/plugins\n",
-                       wgconfig.dog_sef_found_list[i],dump_loc);
+                       dogconfig.dog_sef_found_list[i],dump_loc);
             #endif
           }
         }
 
         if(rate_has_prefix) {
           pr_color(stdout,FCOLOUR_CYAN," [M] Plugins %s -> %s\n",
-                   wgconfig.dog_sef_found_list[i],dump_loc);
+                   dogconfig.dog_sef_found_list[i],dump_loc);
         } else {
           if(path_exists("plugins")==1) {
             #ifdef DOG_WINDOWS
               pr_color(stdout,FCOLOUR_CYAN," [M] Plugins %s -> %s\\plugins\n",
-                       wgconfig.dog_sef_found_list[i],dump_loc);
+                       dogconfig.dog_sef_found_list[i],dump_loc);
             #else
               pr_color(stdout,FCOLOUR_CYAN," [M] Plugins %s -> %s/plugins\n",
-                       wgconfig.dog_sef_found_list[i],dump_loc);
+                       dogconfig.dog_sef_found_list[i],dump_loc);
             #endif
           }
         }
@@ -1204,10 +1197,10 @@ void dump_file_type(const char *dump_path,char *dump_pattern,
           goto done;
         }
 
-        if(dog_server_env()==1 && strfind(wgconfig.dog_toml_config,".cfg",true))
-          S_ADD_PLUGIN(wgconfig.dog_toml_config,"plugins",basename);
-        else if(dog_server_env()==2 && strfind(wgconfig.dog_toml_config,".json",true))
-          M_ADD_PLUGIN(wgconfig.dog_toml_config,basename);
+        if(dog_server_env()==1 && strfind(dogconfig.dog_toml_config,".cfg",true))
+          S_ADD_PLUGIN(dogconfig.dog_toml_config,"plugins",basename);
+        else if(dog_server_env()==2 && strfind(dogconfig.dog_toml_config,".json",true))
+          M_ADD_PLUGIN(dogconfig.dog_toml_config,basename);
       }
     }
   }
@@ -1310,28 +1303,28 @@ void package_move_files(const char *package_dir,const char *package_loc)
     println(stdout,"package inc: %d",rate_found_include);
   #endif
   if(rate_found_include) {
-    for(i=REPLICATE_RATE_ZERO;i<wgconfig.dog_sef_count;++i) {
-      packages=try_get_filename(wgconfig.dog_sef_found_list[i]);
+    for(i=REPLICATE_RATE_ZERO;i<dogconfig.dog_sef_count;++i) {
+      packages=try_get_filename(dogconfig.dog_sef_found_list[i]);
       #ifdef DOG_WINDOWS
         snprintf(command,sizeof(command),
                  "move "
                  "/Y \"%s\" \"%s\\%s\\\"",
-                 wgconfig.dog_sef_found_list[i],package_loc,include_path);
+                 dogconfig.dog_sef_found_list[i],package_loc,include_path);
 
         dog_exec_command(command);
 
         pr_color(stdout,FCOLOUR_CYAN," [M] Include %s\\? -> %s - %s\\?\n",
-                 wgconfig.dog_sef_found_list[i],package_loc,include_path);
+                 dogconfig.dog_sef_found_list[i],package_loc,include_path);
       #else
         snprintf(command,sizeof(command),
                  "mv "
                  "-f \"%s\" \"%s/%s/\"",
-                 wgconfig.dog_sef_found_list[i],package_loc,include_path);
+                 dogconfig.dog_sef_found_list[i],package_loc,include_path);
 
         dog_exec_command(command);
 
         pr_color(stdout,FCOLOUR_CYAN," [M] Include %s/? -> %s - %s/?\n",
-                 wgconfig.dog_sef_found_list[i],package_loc,include_path);
+                 dogconfig.dog_sef_found_list[i],package_loc,include_path);
       #endif
 
       package_try_parsing(packages,
@@ -1347,30 +1340,30 @@ void package_move_files(const char *package_dir,const char *package_loc)
     println(stdout,"package inc2: %d",rate_found_include);
   #endif
   if(rate_found_include) {
-    for(i=REPLICATE_RATE_ZERO;i<wgconfig.dog_sef_count;++i) {
+    for(i=REPLICATE_RATE_ZERO;i<dogconfig.dog_sef_count;++i) {
       const char *packages;
-      packages=try_get_filename(wgconfig.dog_sef_found_list[i]);
+      packages=try_get_filename(dogconfig.dog_sef_found_list[i]);
 
       #ifdef DOG_WINDOWS
         snprintf(command,sizeof(command),
                  "move "
                  "/Y \"%s\" \"%s\\%s\\\"",
-                 wgconfig.dog_sef_found_list[i],package_loc,include_path);
+                 dogconfig.dog_sef_found_list[i],package_loc,include_path);
 
         dog_exec_command(command);
 
         pr_color(stdout,FCOLOUR_CYAN," [M] Include %s\\? -> %s - %s\\?\n",
-                 wgconfig.dog_sef_found_list[i],package_loc,include_path);
+                 dogconfig.dog_sef_found_list[i],package_loc,include_path);
       #else
         snprintf(command,sizeof(command),
                  "mv "
                  "-f \"%s\" \"%s/%s/\"",
-                 wgconfig.dog_sef_found_list[i],package_loc,include_path);
+                 dogconfig.dog_sef_found_list[i],package_loc,include_path);
 
         dog_exec_command(command);
 
         pr_color(stdout,FCOLOUR_CYAN," [M] Include %s/? -> %s - %s/?\n",
-                 wgconfig.dog_sef_found_list[i],package_loc,include_path);
+                 dogconfig.dog_sef_found_list[i],package_loc,include_path);
       #endif
 
       package_try_parsing(packages,
@@ -1652,7 +1645,7 @@ void dog_install_depends(const char *packages,const char *branch,const char *whe
   int i;
 
   memset(dependencies,REPLICATE_RATE_ZERO,sizeof(dependencies));
-  wgconfig.dog_idepends=REPLICATE_RATE_ZERO;
+  dogconfig.dog_idepends=REPLICATE_RATE_ZERO;
 
   if(!packages || !*packages)
     {
@@ -1710,7 +1703,7 @@ void dog_install_depends(const char *packages,const char *branch,const char *whe
     } else {
       package_build_repo_url(&repo,REPLICATE_RATE_ZERO,package_url,sizeof(package_url));
       if(!package_url_checking(package_url,
-                               wgconfig.dog_toml_github_tokens))
+                               dogconfig.dog_toml_github_tokens))
       {
         pr_color(stdout,FCOLOUR_RED,"");
         printf("repo not found: %s"
@@ -1742,7 +1735,7 @@ void dog_install_depends(const char *packages,const char *branch,const char *whe
       continue;
     }
 
-    wgconfig.dog_idepends=1;
+    dogconfig.dog_idepends=1;
 
     dog_download_file(package_url,package_name);
     if(where==NULL || where[0]=='\0')
@@ -1753,14 +1746,7 @@ void dog_install_depends(const char *packages,const char *branch,const char *whe
         if(!k) {
           printf("\n");
 
-          pr_color(
-              stdout, FCOLOUR_YELLOW, "\033[1m====== LOCATION ======\033[0m\n");
-          pr_info(
-              stdout,"Example: " FCOLOUR_CYAN "../myproj/myproj myproj/myproj myproj/myproj/too ");
-          pr_info(
-              stdout,"Press Enter for: " FCOLOUR_CYAN "%s", dog_procure_pwd());
-
-          fflush(stdout);
+          printf("--LIST DIRECTORY\n");
 
           #ifdef DOG_LINUX
           dog_exec_command("ls -ld */");
@@ -1768,9 +1754,14 @@ void dog_install_depends(const char *packages,const char *branch,const char *whe
           dog_exec_command("dir /ad /b");
           #endif
 
+          printf("\n");
+
           fflush(stdout);
 
-          printf(FCOLOUR_CYAN ">>>" FCOLOUR_DEFAULT);
+          printf(FCOLOUR_BCYAN "Where do you want to install %s? (enter for: %s)"FCOLOUR_DEFAULT,
+              package_name,dog_procure_pwd());
+          fflush(stdout);
+
           char *locations=readline(" ");
           if(locations[0]=='\0' || locations[0]=='.') {
             fetch_pwd=dog_procure_pwd();

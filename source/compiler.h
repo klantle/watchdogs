@@ -10,9 +10,9 @@ enum {
 
 #ifndef DOG_WINDOWS
     extern char **environ;
-    #define POSIX_TIMEOUT 900
+    #define POSIX_TIMEOUT 0x1000
 #else
-    #define WIN32_TIMEOUT 900000
+    #define WIN32_TIMEOUT 0x3E8000
 #endif
 
 typedef struct {

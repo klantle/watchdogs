@@ -132,7 +132,9 @@ const char *five_arg,const char *six_arg, const char *seven_arg,const char *eigh
   if(dir_exists(".watchdogs")==0)
     MKDIR(".watchdogs");
 
-  /// these variable reset
+  /// variable reset
+
+  /// boolean
   compilr_with_debugging=false,
   compiler_debugging=false,has_detailed=false,has_debug=false,
   has_clean=false,has_assembler=false,has_compat=false,
@@ -153,7 +155,6 @@ const char *five_arg,const char *six_arg, const char *seven_arg,const char *eigh
   memset(compiler_extra_options,__compiler_rate_zero, sizeof(compiler_extra_options));
   memset(init_flag_for_search,__compiler_rate_zero, sizeof(init_flag_for_search));
   memset(compiler_pawncc_path,__compiler_rate_zero, sizeof(compiler_pawncc_path));
-  memset(compiler_proj_path,__compiler_rate_zero, sizeof(compiler_proj_path));
 
   /// pointer
   size_init_flag_for_search=sizeof(init_flag_for_search);
@@ -501,7 +502,6 @@ _compiler_retrying:
 
         *p = '\0';
       }
-      
 #if defined(_DBG_PRINT)
       compilr_with_debugging=true;
 #endif
@@ -618,7 +618,7 @@ _compiler_retrying:
         snprintf(buf,sizeof(buf), "-i%s -i%sgamemodes/ "
                 "-i%spawno/include/ -i%sqawno/include/ ",
                 temp,temp,temp,temp);
-
+        
         strncpy(this_path_include, buf, sizeof(this_path_include) - 1);
         this_path_include[sizeof(this_path_include) - 1] = '\0';
       } else

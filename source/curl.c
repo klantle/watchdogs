@@ -848,7 +848,7 @@ void dog_apply_pawncc(void)
   if(compile_now[0]=='\0'||compile_now[0]=='Y'||compile_now[0]=='y') {
     dog_free(compile_now);
     pr_color(stdout,FCOLOUR_CYAN,"Please input the pawn file with dot type (.pwn/.p):\n");
-    printf(FCOLOUR_CYAN ">>>");
+    printf(FCOLOUR_CYAN ">>>" FCOLOUR_DEFAULT);
     char *compile_target = readline(" ");
     if (compile_target) {
       const char *argsc[]={NULL,compile_target,NULL,NULL,NULL,NULL,NULL,NULL,NULL};

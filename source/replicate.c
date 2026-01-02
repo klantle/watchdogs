@@ -1770,7 +1770,7 @@ void dog_install_depends(const char *packages,const char *branch,const char *whe
 
           fflush(stdout);
 
-          printf(FCOLOUR_CYAN ">>>");
+          printf(FCOLOUR_CYAN ">>>" FCOLOUR_DEFAULT);
           char *locations=readline(" ");
           if(locations[0]=='\0' || locations[0]=='.') {
             fetch_pwd=dog_procure_pwd();

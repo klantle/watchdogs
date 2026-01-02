@@ -91,18 +91,18 @@ _ptr_command:
   if(unit_pre_command && unit_pre_command[0]!='\0') {
     ptr_command=strdup(unit_pre_command);
     if(strfind(ptr_command,"0000WGDEBUGGINGSERVER",true)==0)
-      printf(FCOLOUR_BLUE ">>>" FCOLOUR_DEFAULT " %s\n",ptr_command);
+      printf("~%s\n",ptr_command);
   } else {
     static int k=0;
     if(k!=1) {
       ++k;
       ptr_command=strdup("dog");
-      printf(FCOLOUR_BLUE ">>>" FCOLOUR_DEFAULT " %s\n",ptr_command);
+      printf("~%s\n",ptr_command);
       goto _reexecute_command;
     }
     while(true) {
         snprintf(ptr_prompt,size_ptr_command,
-                FCOLOUR_BLUE ">>>" FCOLOUR_DEFAULT " ");
+                "~");
         char *input=readline(ptr_prompt);
         if(input==NULL) {
             free(input);

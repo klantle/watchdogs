@@ -55,7 +55,7 @@ char library_options_list(const char *title,const char **items,const char *keys,
 
   while(true) {
     char *input=NULL;
-    printf(FCOLOUR_CYAN ">>>");
+    printf(FCOLOUR_CYAN ">>>" FCOLOUR_DEFAULT);
     input = readline(" ");
     if(!input)
       continue;

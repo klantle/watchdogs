@@ -687,12 +687,12 @@ _compiler_retrying:
             sym=     define constant "sym" with value 0
           */
           /* cross check */
-          pr_info(stdout,"hello, nice day!.\n   We detected that you are compiling in Localhost status.\n"
-                      "   Do you want to target the server for localhost or non-localhost (hosting)?\n"
-                      "   1/enter = localhost | 2/rand = hosting server.");
-          printf(FCOLOUR_CYAN ">>>");
           static int __cross=-1; /* one-time check */
           if (__cross==-1) {
+              pr_info(stdout,"hello, nice day!.\n   We detected that you are compiling in Localhost status.\n"
+                          "   Do you want to target the server for localhost or non-localhost (hosting)?\n"
+                          "   1/enter = localhost | 2/rand = hosting server.");
+              printf(FCOLOUR_CYAN ">>>" FCOLOUR_DEFAULT);
               char *cross=readline(" ");
               if (cross[0] != '\0') {
                   __cross=(strfind(cross,"1",true)==1) ? 1 : 2;
@@ -701,15 +701,22 @@ _compiler_retrying:
                   __cross=1;
               }
           }
-          printf(FCOLOUR_DEFAULT "");
           if (__cross==1) {
+              static int __not = 0;
               snprintf(buf,sizeof(buf), "%s LOCALHOST=1 MYSQL_LOCALHOST=1 SQL_LOCALHOST=1 LOCAL_SERVER=1",
                       wgconfig.dog_toml_aio_opt);
-              pr_info(stdout, "Activating: " FCOLOUR_CYAN "LOCALHOST=1 MYSQL_LOCALHOST=1 SQL_LOCALHOST=1 LOCAL_SERVER=1");
+              if (__not==0) {
+                pr_info(stdout, "Activating: " FCOLOUR_CYAN "LOCALHOST=1 MYSQL_LOCALHOST=1 SQL_LOCALHOST=1 LOCAL_SERVER=1");
+                ++__not;
+              }
           } else {
               snprintf(buf,sizeof(buf), "%s LOCALHOST=0 MYSQL_LOCALHOST=0 SQL_LOCALHOST=0 LOCAL_SERVER=0",
                       wgconfig.dog_toml_aio_opt);
-              pr_info(stdout, "Disable: " FCOLOUR_CYAN "LOCALHOST=0 MYSQL_LOCALHOST=0 SQL_LOCALHOST=0 LOCAL_SERVER=0");
+              static int __not = 0;
+              if (__not==0) {
+                pr_info(stdout, "Disable: " FCOLOUR_CYAN "LOCALHOST=0 MYSQL_LOCALHOST=0 SQL_LOCALHOST=0 LOCAL_SERVER=0");
+                ++__not;
+              }
           }
           dog_free(wgconfig.dog_toml_aio_opt);
           wgconfig.dog_toml_aio_opt=strdup(buf);
@@ -725,9 +732,8 @@ _compiler_retrying:
           printf("   * You run the command without any args.\n"
                 "   * Do you want to compile for " FCOLOUR_GREEN "%s " FCOLOUR_DEFAULT "(just enter), \n"
                 "   * or do you want to compile for something else?\n",wgconfig.dog_toml_proj_input);
-          printf(FCOLOUR_CYAN ">>>");
+          printf(FCOLOUR_CYAN ">>>" FCOLOUR_DEFAULT);
           proj_targets=readline(" ");
-          printf(FCOLOUR_DEFAULT "");
           if(proj_targets && strlen(proj_targets)>0) {
             dog_free(wgconfig.dog_toml_proj_input);
             wgconfig.dog_toml_proj_input=strdup(proj_targets);
@@ -1488,9 +1494,8 @@ compiler_done2:
             if (strfind(buf_log,"error",true)!=false)
               {
                 pr_info(stdout,"compile exit with failed. retrying?");
-                printf(FCOLOUR_CYAN ">>>");
+                printf(FCOLOUR_CYAN ">>>" FCOLOUR_DEFAULT);
                 char *retrying=readline(" ");
-                printf(FCOLOUR_DEFAULT "");
                 if (retrying) {
                   compiler_retrying=true;
                   dog_free(retrying);

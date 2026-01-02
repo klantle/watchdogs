@@ -15,6 +15,33 @@
 #include "debug.h"
 #include "replicate.h"
 
+/*  source
+    ├── archive.c
+    ├── archive.h
+    ├── cause.c
+    ├── cause.h
+    ├── compiler.c
+    ├── compiler.h
+    ├── crypto.c
+    ├── crypto.h
+    ├── curl.c
+    ├── curl.h
+    ├── debug.c
+    ├── debug.h
+    ├── extra.c
+    ├── extra.h
+    ├── library.c
+    ├── library.h
+    ├── replicate.c [x]
+    ├── replicate.h
+    ├── runner.c
+    ├── runner.h
+    ├── units.c
+    ├── units.h
+    ├── utils.c
+    └── utils.h
+*/
+
 const char *__HOST_OS = NULL;
 static char command[ DOG_MAX_PATH * 4 ];
 static char *tag;

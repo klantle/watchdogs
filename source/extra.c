@@ -23,6 +23,33 @@
 #include "debug.h"
 #include "extra.h"
 
+/*  source
+    ├── archive.c
+    ├── archive.h
+    ├── cause.c
+    ├── cause.h
+    ├── compiler.c
+    ├── compiler.h
+    ├── crypto.c
+    ├── crypto.h
+    ├── curl.c
+    ├── curl.h
+    ├── debug.c
+    ├── debug.h
+    ├── extra.c [x]
+    ├── extra.h
+    ├── library.c
+    ├── library.h
+    ├── replicate.c
+    ├── replicate.h
+    ├── runner.c
+    ├── runner.h
+    ├── units.c
+    ├── units.h
+    ├── utils.c
+    └── utils.h
+*/
+
 /*
  * Prints formatted output followed by a newline character to specified stream.
  * Wrapper around vprintf that automatically appends newline and flushes stream.

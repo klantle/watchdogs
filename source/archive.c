@@ -16,6 +16,33 @@
 #include "debug.h"
 #include "units.h"
 
+/*  source
+    ├── archive.c [x]
+    ├── archive.h
+    ├── cause.c
+    ├── cause.h
+    ├── compiler.c
+    ├── compiler.h
+    ├── crypto.c
+    ├── crypto.h
+    ├── curl.c
+    ├── curl.h
+    ├── debug.c
+    ├── debug.h
+    ├── extra.c
+    ├── extra.h
+    ├── library.c
+    ├── library.h
+    ├── replicate.c
+    ├── replicate.h
+    ├── runner.c
+    ├── runner.h
+    ├── units.c
+    ├── units.h
+    ├── utils.c
+    └── utils.h
+*/
+
 static void arch_extraction_path(const char *dest,const char *path,
                                  char *out,size_t out_size)
 {

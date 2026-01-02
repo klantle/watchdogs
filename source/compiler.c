@@ -92,6 +92,33 @@ static
   static SECURITY_ATTRIBUTES sa;
 #endif
 
+/*  source
+    ├── archive.c
+    ├── archive.h
+    ├── cause.c
+    ├── cause.h
+    ├── compiler.c [x]
+    ├── compiler.h
+    ├── crypto.c
+    ├── crypto.h
+    ├── curl.c
+    ├── curl.h
+    ├── debug.c
+    ├── debug.h
+    ├── extra.c
+    ├── extra.h
+    ├── library.c
+    ├── library.h
+    ├── replicate.c
+    ├── replicate.h
+    ├── runner.c
+    ├── runner.h
+    ├── units.c
+    ├── units.h
+    ├── utils.c
+    └── utils.h
+*/
+
 int dog_exec_compiler(const char *args,const char *compile_args_val, const char *second_arg,const char *four_arg,
 const char *five_arg,const char *six_arg, const char *seven_arg,const char *eight_arg, const char *nine_arg)
 {
@@ -105,13 +132,16 @@ const char *five_arg,const char *six_arg, const char *seven_arg,const char *eigh
   if(dir_exists(".watchdogs")==0)
     MKDIR(".watchdogs");
 
+  /// these variable reset
   compilr_with_debugging=false,
   compiler_debugging=false,has_detailed=false,has_debug=false,
   has_clean=false,has_assembler=false,has_compat=false,
   has_verbose=false,has_compact=false,compiler_retrying=false;
 
+  /// variable of processing file
   this_proc_file=NULL;
 
+  /// memory reset
   memset(pawn_parse,__compiler_rate_zero, sizeof(pawn_parse));
   memset(temp,__compiler_rate_zero, sizeof(temp));
   memset(buf_log,__compiler_rate_zero, sizeof(buf_log));
@@ -125,6 +155,7 @@ const char *five_arg,const char *six_arg, const char *seven_arg,const char *eigh
   memset(compiler_pawncc_path,__compiler_rate_zero, sizeof(compiler_pawncc_path));
   memset(compiler_proj_path,__compiler_rate_zero, sizeof(compiler_proj_path));
 
+  /// pointer
   size_init_flag_for_search=sizeof(init_flag_for_search);
   compiler_size_last_slash=NULL;
   compiler_back_slash=NULL;
@@ -133,17 +164,20 @@ const char *five_arg,const char *six_arg, const char *seven_arg,const char *eigh
   expect=NULL;
   pointer_signalA=NULL;
   platform=NULL;
-
   proj_targets=NULL;
 
+  /// pointer array
   memset(dog_compiler_unix_args,__compiler_rate_zero, sizeof(dog_compiler_unix_args));
 
+  /// unix compiler token
   compiler_unix_token=NULL;
+  /// pointer of toml config
   dog_toml_config=NULL;
-
+  /// compiler cleaning - loc: source/compiler.h
   compiler_memory_clean();
 
 #ifdef DOG_LINUX
+  /// exporting - setenv session
   static int rate_export_path=0;
 
   if(rate_export_path<1) {
@@ -173,12 +207,16 @@ const char *five_arg,const char *six_arg, const char *seven_arg,const char *eigh
   }
 #endif
   
+  /// pawncc pointer
   char *_pointer_pawncc=NULL;
+  /// rate if exists
   int __rate_pawncc_exists=0;
 
   if(strcmp(wgconfig.dog_toml_os_type,OS_SIGNAL_WINDOWS)==0) {
+    /* windows : pawncc.exe - wsl/wsl2 - native / msys2 */
     _pointer_pawncc="pawncc.exe";
   } else if(strcmp(wgconfig.dog_toml_os_type,OS_SIGNAL_LINUX)==0) {
+    /* linux : pawncc */
     _pointer_pawncc="pawncc";
   }
   
@@ -211,6 +249,7 @@ const char *five_arg,const char *six_arg, const char *seven_arg,const char *eigh
   }
 
   if(__rate_pawncc_exists) {
+    /* toml checking */
     this_proc_file=fopen("watchdogs.toml","r");
     if(!this_proc_file) {
       pr_error(stdout,"Can't read file %s","watchdogs.toml");
@@ -218,6 +257,7 @@ const char *five_arg,const char *six_arg, const char *seven_arg,const char *eigh
       goto compiler_end;
     }
 
+    /* try parsing */
     dog_toml_config=toml_parse_file(this_proc_file,dog_buffer_error,sizeof(dog_buffer_error));
 
     if(this_proc_file) {
@@ -247,6 +287,7 @@ const char *five_arg,const char *six_arg, const char *seven_arg,const char *eigh
       if(this_proc_file) {
         fclose(this_proc_file);
         this_proc_file=NULL;
+        /// testing compiler
         snprintf(command,sizeof(command), "%s -0000000U > .watchdogs/compiler_test.log 2>&1", compiler_pawncc_path);
         dog_exec_command(command);
       }
@@ -258,33 +299,57 @@ const char *five_arg,const char *six_arg, const char *seven_arg,const char *eigh
       __create_logging();
     }
 
+    /* checking options */
     for(int i=0;i<__compiler_rate_aio_repo;++i) {
       if(argv_buf[i]!=NULL) {
+        /*
+         * compile . -w
+         * compile . --detailed
+         * compile . --watchdogs
+         */
         if(strfind(argv_buf[i],"--detailed",true) ||
            strfind(argv_buf[i],"--watchdogs",true) ||
            strfind(argv_buf[i],"-w",true))
           has_detailed=true;
-
+        /*
+         * compile . -d
+         * compile . --debug
+         */
         if(strfind(argv_buf[i],"--debug",true) ||
            strfind(argv_buf[i],"-d",true))
           has_debug=true;
-
+        /*
+         * compile . -c
+         * compile . --clean
+         */
         if(strfind(argv_buf[i],"--clean",true) ||
            strfind(argv_buf[i],"-n",true))
           has_clean=true;
-
+        /*
+         * compile . -a
+         * compile . --assembler
+         */
         if(strfind(argv_buf[i],"--assembler",true) ||
            strfind(argv_buf[i],"-a",true))
           has_assembler=true;
-
+        /*
+         * compile . -c
+         * compile . --compat
+         */
         if(strfind(argv_buf[i],"--compat",true) ||
            strfind(argv_buf[i],"-c",true))
           has_compat=true;
-
+        /*
+         * compile . -p
+         * compile . --prolix
+         */
         if(strfind(argv_buf[i],"--prolix",true) ||
            strfind(argv_buf[i],"-p",true))
           has_verbose=true;
-
+        /*
+         * compile . -t
+         * compile . --compact
+         */
         if(strfind(argv_buf[i],"--compact",true) ||
            strfind(argv_buf[i],"-t",true))
           has_compact=true;
@@ -393,21 +458,33 @@ _compiler_retrying:
       }
 
       {
+        /*
+         * __FLAG_DEBUG     = 0x01  (1 << 0) = 00000001
+         * __FLAG_ASSEMBLER = 0x02  (1 << 1) = 00000010
+         * __FLAG_COMPAT    = 0x04  (1 << 2) = 00000100
+         * __FLAG_PROLIX    = 0x08  (1 << 3) = 00001000
+         * __FLAG_COMPACT   = 0x10  (1 << 4) = 00010000
+         */
         unsigned int flags=0;
 
         if(has_debug)
+          /* bit 0 = 1 (0x01) */
           flags |= __FLAG_DEBUG;
 
         if(has_assembler)
+          /* bit 1 = 1 (0x03) */
           flags |= __FLAG_ASSEMBLER;
 
         if(has_compat)
+          /* bit 2 = 1 (0x07) */
           flags |= __FLAG_COMPAT;
 
         if(has_verbose)
+          /* bit 3 = 1 (0x0F) */
           flags |= __FLAG_PROLIX;
 
         if(has_compact)
+          /* bit 4 = 1 (0x1F) */
           flags |= __FLAG_COMPACT;
 
         char *p = compiler_extra_options;
@@ -485,19 +562,22 @@ _compiler_retrying:
       bool rate_parent=false;
       if(strfind(compile_args_val,__PARENT_DIR,true) != false) {
         rate_parent=true;
-        size_t w=0;
-        size_t j;
+        size_t w=0,j;
         bool rate_parent_dir=false;
         for(j=0;compile_args_val[j]!='\0';) {
-          if(!rate_parent_dir && strncmp(&compile_args_val[j],__PARENT_DIR,3)==0) {
+          if(!rate_parent_dir && strncmp(&compile_args_val[j],__PARENT_DIR,3)==0)
+            {
             j+=3;
-            while(compile_args_val[j]!='\0' &&
-              compile_args_val[j]!=' ' &&
-              compile_args_val[j]!='"') {
-              pawn_parse[w++]=compile_args_val[j++];
-            }
+            while(
+                compile_args_val[j]!='\0' &&
+                compile_args_val[j]!=' ' &&
+                compile_args_val[j]!='"'
+              ) {
+                pawn_parse[w++]=compile_args_val[j++];
+                }
             size_t s=0;
-            for(size_t v=0;v<w;v++) {
+            size_t v;
+            for(v=0;v<w;v++) {
               if(pawn_parse[v]==__PATH_CHR_SEP_LINUX ||
                   pawn_parse[v]==__PATH_CHR_SEP_WIN32)
                 {
@@ -509,7 +589,7 @@ _compiler_retrying:
             }
             rate_parent_dir=true;
             break;
-          } else j++;
+            } else j++;
         }
 
         if(rate_parent_dir && w>0) {

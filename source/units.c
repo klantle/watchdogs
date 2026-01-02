@@ -1165,42 +1165,36 @@ wanion_retrying:
           int in_code=0;
           while(*p) {
             if(!in_code && strncmp(p,"```",3)==0) {
-              in_code=1;
-              printf("\033[38;5;244m");
-              p+=3;
+                in_code=1;
+                printf("\033[38;5;244m");
+                p+=3;
+                continue;
+            } if(in_code && strncmp(p,"```",3)==0) {
+                in_code=0;
+                printf("\033[0m");
+                p+=3;
+                continue;
+            } if(in_code) {
+                putchar(*p++);
+                continue;
+            } if(strncmp(p,"**",2)==0) {
+                in_bold=!in_bold;
+                printf(in_bold ? "\033[1m" : "\033[0m");
+                p+=2;
+                continue;
+            } if(*p=='_') {
+                in_italic=!in_italic;
+                printf(in_italic ? "\033[3m" : "\033[0m");
+                p++;
+                continue;
+            } if(strncmp(p,"~~",2)==0) {
+                printf("\033[9m");
+                p+=2;
               continue;
-            }
-            if(in_code && strncmp(p,"```",3)==0) {
-              in_code=0;
-              printf("\033[0m");
-              p+=3;
-              continue;
-            }
-            if(in_code) {
-              putchar(*p++);
-              continue;
-            }
-            if(strncmp(p,"**",2)==0) {
-              in_bold=!in_bold;
-              printf(in_bold ? "\033[1m" : "\033[0m");
-              p+=2;
-              continue;
-            }
-            if(*p=='_') {
-              in_italic=!in_italic;
-              printf(in_italic ? "\033[3m" : "\033[0m");
-              p++;
-              continue;
-            }
-            if(strncmp(p,"~~",2)==0) {
-              printf("\033[9m");
-              p+=2;
-              continue;
-            }
-            if(strncmp(p,"==",2)==0) {
-              printf("\033[43m");
-              p+=2;
-              continue;
+            } if(strncmp(p,"==",2)==0) {
+                printf("\033[43m");
+                p+=2;
+                continue;
             }
             if(p==response_text || *(p-1)=='\n') {
               if(*p=='#' || memcmp(p,"##",2)==0 ||
@@ -1211,6 +1205,12 @@ wanion_retrying:
               }
             }
             putchar(*p++);
+            fflush(stdout);
+            #ifdef DOG_LINUX
+            usleep(25000);
+            #else
+            ___usleep(25000);
+            #endif
           }
           printf("\033[0m");
         } else {
@@ -1246,42 +1246,36 @@ wanion_retrying:
                 int in_code=0;
                 while(*p) {
                   if(!in_code && strncmp(p,"```",3)==0) {
-                    in_code=1;
-                    printf("\033[38;5;244m");
-                    p+=3;
-                    continue;
-                  }
-                  if(in_code && strncmp(p,"```",3)==0) {
-                    in_code=0;
-                    printf("\033[0m");
-                    p+=3;
-                    continue;
-                  }
-                  if(in_code) {
-                    putchar(*p++);
-                    continue;
-                  }
-                  if(strncmp(p,"**",2)==0) {
-                    in_bold=!in_bold;
-                    printf(in_bold ? "\033[1m" : "\033[0m");
-                    p+=2;
-                    continue;
-                  }
-                  if(*p=='_') {
-                    in_italic=!in_italic;
-                    printf(in_italic ? "\033[3m" : "\033[0m");
-                    p++;
-                    continue;
-                  }
-                  if(strncmp(p,"~~",2)==0) {
-                    printf("\033[9m");
-                    p+=2;
-                    continue;
-                  }
-                  if(strncmp(p,"==",2)==0) {
-                    printf("\033[43m");
-                    p+=2;
-                    continue;
+                        in_code=1;
+                        printf("\033[38;5;244m");
+                        p+=3;
+                        continue;
+                  } if(in_code && strncmp(p,"```",3)==0) {
+                        in_code=0;
+                        printf("\033[0m");
+                        p+=3;
+                        continue;
+                  } if(in_code) {
+                        putchar(*p++);
+                        continue;
+                  } if(strncmp(p,"**",2)==0) {
+                        in_bold=!in_bold;
+                        printf(in_bold ? "\033[1m" : "\033[0m");
+                        p+=2;
+                        continue;
+                  } if(*p=='_') {
+                        in_italic=!in_italic;
+                        printf(in_italic ? "\033[3m" : "\033[0m");
+                        p++;
+                        continue;
+                  } if(strncmp(p,"~~",2)==0) {
+                        printf("\033[9m");
+                        p+=2;
+                        continue;
+                  } if(strncmp(p,"==",2)==0) {
+                        printf("\033[43m");
+                        p+=2;
+                        continue;
                   }
                   if(p==text->valuestring || *(p-1)=='\n') {
                     if(*p=='#' || memcmp(p,"##",2)==0 ||
@@ -1292,6 +1286,12 @@ wanion_retrying:
                     }
                   }
                   putchar(*p++);
+                  fflush(stdout);
+                  #ifdef DOG_LINUX
+                  usleep(25000);
+                  #else
+                  ___usleep(25000);
+                  #endif
                 }
                 printf("\033[0m");
               } else fprintf(stderr,"No response text found\n");
@@ -1693,6 +1693,8 @@ basic_end:
 
 int main(int argc,char *argv[])
 {
+  setvbuf(stdout, NULL, _IONBF, 0);
+
   __create_unit_logging(0);
 
   if(argc>1) {

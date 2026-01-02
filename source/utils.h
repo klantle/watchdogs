@@ -232,7 +232,7 @@ extern WatchdogConfig wgconfig;
 /* Utility function declarations */
 void dog_sef_fdir_memset_to_null(void);
 
-#ifdef DOG_LINUX /* Pop!_OS, etc. */
+#ifdef DOG_LINUX /* strcpy & strlcat Pop!_OS, etc. */
 #ifndef strlcpy
 size_t strlcpy(char *dst, const char *src, size_t size);
 #endif
@@ -241,6 +241,11 @@ size_t strlcat(char *dst, const char *src, size_t size);
 #endif
 #endif
 #ifdef DOG_WINDOWS
+// Sets resolution of timers used by Sleep() and SetWaitableTimer() to most accurate and lowest values possible supported by system.
+// Same as timeBeginPeriod() but accepts microsecond precision for requested resolution.
+unsigned long setHighestTimerResolution(unsigned long timer_res_us);
+// Suspends the current thread in sleep for time period, in microseconds.
+void ___usleep(__int64 usec);
 #define strlcpy   win_strlcpy
 #define strlcat   win_strlcat
 #define ftruncate win_ftruncate

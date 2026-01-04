@@ -234,7 +234,7 @@ void cause_compiler_expl(const char *log_file,const char *dogoutput,int debug)
         FILE *help = fopen(".watchdogs/help.txt", "w");
         if (help) {
             fprintf(help, "You have checked that the file exists, but lowercase and uppercase letters are an issue in Linux?\n");
-            fprintf(help, "* Linux filesystem is free case-sensitive.\n");
+            fprintf(help, "* Linux filesystem is not free case-sensitive like Windows.\n");
             fprintf(help, "** You need to fix it with renaming any files and folders in gamemodes/ and changing #include name to lowercase only.\n");
             fprintf(help, "like:\n   gamemodes\n   ├── main.pwn\n   └── TEST\n   └── test.inc\n");
             fprintf(help, "- #include \"TEST.inc\" -> #include \"test.inc\"\n\n");

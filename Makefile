@@ -1,3 +1,5 @@
+# Copyright (c) 2026 Watchdogs Team and contributors
+# All rights reserved. under The 2-Clause BSD License See COPYING or https://opensource.org/license/bsd-2-clause
 export LANG   := C.UTF-8
 export LC_ALL := C.UTF-8
 VERSION        = DOG-26.01
@@ -6,7 +8,6 @@ TARGET        ?= watchdogs
 OUTPUT        ?= $(TARGET)
 TARGET_NAME    = Watchdogs
 CC            ?= clang
-STRIP         ?= strip
 CFLAGS         = -O2 -pipe
 LDFLAGS        = -lm -lcurl -lreadline -larchive
 
@@ -25,7 +26,6 @@ CFLAGS = -std=c23 -ggdb3 -Og \
   -DDEBUG
 
 LDFLAGS = -fsanitize=address,undefined -rdynamic
-STRIP = true
 endif
 
 SRCS = \
@@ -46,7 +46,7 @@ SRCS = \
 
 OBJS = $(SRCS:.c=.o)
 
-.PHONY: init strip compress clean linux termux debug termux-debug windows-debug
+.PHONY: init clean linux termux debug termux-debug windows-debug
 
 init:
 	@echo "==> Detecting environment..."
@@ -64,7 +64,6 @@ init:
 			mingw-w64-ucrt-x86_64-curl \
 			mingw-w64-ucrt-x86_64-readline \
 			mingw-w64-ucrt-x86_64-libarchive \
-			mingw-w64-ucrt-x86_64-upx \
 			procps-ng; \
 	elif echo "$$UNAME_S" | grep -qi "Linux" && [ -d "/data/data/com.termux" ]; then \
 		echo "==> Using apt (Termux)"; \
@@ -73,7 +72,7 @@ init:
 		apt -o Dpkg::Use-Pty=0 install -y --no-install-recommends \
 			x11-repo unstable-repo \
 			coreutils binutils procps clang curl \
-			libarchive libandroid-spawn readline upx; \
+			libarchive readline; \
 	elif echo "$$UNAME_S" | grep -qi "Linux"; then \
 		if command -v apt >/dev/null 2>&1; then \
 			echo "==> Using apt (Debian/Ubuntu)"; \
@@ -83,99 +82,122 @@ init:
 			apt -o Dpkg::Use-Pty=0 install -y --no-install-recommends \
 				build-essential curl procps clang lld make binutils \
 				libcurl4-openssl-dev libatomic1 libreadline-dev libarchive-dev \
-				zlib1g-dev upx-ucl upx \
+				zlib1g-dev \
 				libc6:i386 libstdc++6:i386 libcurl4:i386; \
 		elif command -v dnf >/dev/null 2>&1 || command -v dnf5 >/dev/null 2>&1; then \
-    echo "==> Using dnf/dnf5 (Fedora/RHEL)"; \
-		if command -v dnf5 >/dev/null 2>&1; then \
-			DNF_CMD="dnf5"; \
-			echo "==> Detected dnf5 (Fedora 39+)"; \
-			$DNF_CMD install -y 'dnf5-command(group)' 2>/dev/null || true; \
-		else \
-			DNF_CMD="dnf"; \
-			echo "==> Detected dnf (Fedora <= 38)"; \
-		fi; \
-		$$DNF_CMD -y update; \
-		if [ "$$DNF_CMD" = "dnf5" ]; then \
-			echo "==> Installing Development Tools with dnf5"; \
-			$$DNF_CMD -y install '@Development Tools' || \
-			$$DNF_CMD -y install @development-tools; \
-		else \
-			echo "==> Installing Development Tools with dnf"; \
-			$$DNF_CMD -y groupinstall 'Development Tools'; \
-		fi; \
-		echo "==> Installing additional dependencies"; \
-		if $$DNF_CMD list 'curl-devel.i686' >/dev/null 2>&1; then \
-			echo "==> 32-bit packages available, installing both architectures"; \
-			$$DNF_CMD -y install \
-				clang lld libatomic libcxx-devel curl-devel \
-				readline-devel libarchive-devel \
-				zlib-devel binutils upx procps-ng file \
-				glibc-devel.i686 libstdc++-devel.i686 curl-devel.i686; \
-		else \
-			echo "==> 32-bit packages not available, installing only 64-bit"; \
-			$$DNF_CMD -y install \
-				clang lld libatomic libcxx-devel curl-devel \
-				readline-devel libarchive-devel \
-				glibc.i686 libstdc++.i686 zlib-devel binutils upx procps-ng file; \
-		fi; \
-		elif command -v yum >/dev/null 2>&1; then \
-			echo "==> Using yum (Legacy RHEL)"; \
-			yum -y groupinstall "Development Tools" && \
-			yum -y install \
-				clang lld libatomic libcxx-devel curl-devel \
-				readline-devel libarchive-devel \
-				zlib-devel binutils upx procps \
-				libstdc++-devel.i686 curl-devel.i686; \
+			echo "==> Using dnf/dnf5 (Fedora/RHEL/AlmaLinux/Rocky Linux)"; \
+			if [ -f /etc/almalinux-release ] || [ -f /etc/rocky-release ] || [ -f /etc/redhat-release ]; then \
+				echo "==> Detected RHEL-based distribution (AlmaLinux/Rocky Linux/RHEL)"; \
+				dnf -y install epel-release dnf-plugins-core 2>/dev/null || true; \
+				dnf config-manager --set-enabled crb 2>/dev/null || true; \
+			fi; \
+			if command -v dnf5 >/dev/null 2>&1; then \
+				DNF_CMD="dnf5"; \
+				echo "==> Detected dnf5 (Fedora 39+)"; \
+				$$DNF_CMD install -y 'dnf5-command(group)' 2>/dev/null || true; \
+			else \
+				DNF_CMD="dnf"; \
+				echo "==> Detected dnf (Fedora <= 38 / RHEL-based)"; \
+			fi; \
+			$$DNF_CMD -y update; \
+			if [ "$$DNF_CMD" = "dnf5" ]; then \
+				echo "==> Installing Development Tools with dnf5"; \
+				$$DNF_CMD -y install '@Development Tools' || \
+				$$DNF_CMD -y install @development-tools; \
+			else \
+				echo "==> Installing Development Tools with dnf"; \
+				$$DNF_CMD -y groupinstall 'Development Tools'; \
+			fi; \
+			echo "==> Installing additional dependencies"; \
+			$$DNF_CMD -y install libcxx-devel 2>/dev/null || echo "==> libcxx-devel not available, skipping..."; \
+			if $$DNF_CMD list 'curl-devel.i686' >/dev/null 2>&1; then \
+				echo "==> 32-bit packages available, installing both architectures"; \
+				$$DNF_CMD -y install \
+					clang lld libatomic curl-devel \
+					readline-devel libarchive-devel \
+					zlib-devel binutils procps-ng file \
+					glibc-devel.i686 libstdc++-devel.i686; \
+				$$DNF_CMD -y install curl-devel.i686 2>/dev/null || echo "==> curl-devel.i686 not available, skipping..."; \
+			else \
+				echo "==> 32-bit packages not available, installing only 64-bit"; \
+				$$DNF_CMD -y install \
+					clang lld libatomic curl-devel \
+					readline-devel libarchive-devel \
+					zlib-devel binutils procps-ng file \
+					glibc.i686 libstdc++.i686; \
+			fi; \
+			$$DNF_CMD -y install llvm-toolset 2>/dev/null || echo "==> llvm-toolset not available, skipping..."; \
 		elif command -v zypper >/dev/null 2>&1; then \
 			echo "==> Using zypper (openSUSE)"; \
 			zypper --non-interactive refresh && \
 			zypper --non-interactive install -y -t pattern devel_basis && \
+			echo "==> Installing additional dependencies for openSUSE (64-bit only)"; \
 			zypper --non-interactive install -y \
-				curl clang lld libc++-devel libatomic \
-				libcurl-devel readline-devel libarchive-devel \
-				zlib-devel binutils upx procps \
-				libstdc++6-devel-32bit libcurl4-devel-32bit; \
+				curl \
+				clang lld llvm \
+				libc++-devel \
+				libatomic1 \
+				libcurl-devel \
+				readline-devel \
+				libarchive-devel \
+				binutils \
+				procps; \
+			zypper --non-interactive install -y \
+				libX11-6-32bit \
+				libXext6-32bit \
+				libasound2-32bit \
+				libcairo2-32bit \
+				libcurl4-32bit \
+				libfontconfig1-32bit \
+				libfreetype6-32bit \
+				libglib-2_0-0-32bit \
+				libgobject-2_0-0-32bit \
+				libice6-32bit \
+				libjpeg8-32bit \
+				liblcms2-2-32bit \
+				libldap-2_4-2-32bit \
+				libpng16-16-32bit \
+				libsm6-32bit \
+				libstdc++6-32bit \
+				libuuid1-32bit \
+				libwayland-client0-32bit \
+				libwayland-cursor0-32bit \
+				libwayland-egl1-32bit \
+				libxcb1-32bit \
+				libxkbcommon0-32bit \
+				Mesa-libGL1-32bit \
+				Mesa-libEGL1-32bit; \
 		elif command -v pacman >/dev/null 2>&1; then \
 			echo "==> Using pacman (Arch)"; \
-			pacman -Sy --noconfirm && \
+			pacman -Syu --noconfirm && \
 			pacman -S --needed --noconfirm \
-				libatomic base-devel clang lld libc++ readline \
-				curl libarchive zlib binutils upx procps-ng \
+				base-devel \
+				clang lld llvm libc++ \
+				libatomic_ops \
+				readline \
+				curl \
+				libarchive \
+				zlib \
+				binutils \
+				procps-ng \
 				lib32-gcc-libs; \
 		fi; \
 	fi
 
-$(OUTPUT): $(OBJS)
-	$(CC) $(CFLAGS) $(OBJS) -o $(OUTPUT) $(LDFLAGS)
-	@$(MAKE) strip OUTPUT=$(OUTPUT)
-
 %.o: %.c
 	$(CC) $(CFLAGS) -c $< -o $@
-	
-strip:
-	@if [ -f "$(OUTPUT)" ]; then $(STRIP) --strip-all $(OUTPUT) || true; fi
-
-compress:
-	@if [ -f "$(OUTPUT)" ] && command -v upx >/dev/null 2>&1; then upx -v --fast "$(OUTPUT)"; fi
 
 linux: OUTPUT = watchdogs
 linux:
-	$(CC) $(CFLAGS) -D__LINUX__ -D__W_VERSION__=\"$(FULL_VERSION)\" $(SRCS) -o $(OUTPUT) $(LDFLAGS); \
-	$(MAKE) strip OUTPUT=$(OUTPUT); \
-	$(MAKE) compress OUTPUT=$(OUTPUT)
-
+	$(CC) $(CFLAGS) -D__LINUX__ -D__W_VERSION__=\"$(FULL_VERSION)\" $(SRCS) -o $(OUTPUT) $(LDFLAGS)
+	
 termux: OUTPUT = watchdogs.tmux
 termux:
-	$(CC) $(CFLAGS) -D__ANDROID__ -D__W_VERSION__=\"$(FULL_VERSION)\" -fPIE $(SRCS) -o $(OUTPUT) $(LDFLAGS) -landroid-spawn -pie
-	@$(MAKE) strip OUTPUT=$(OUTPUT)
-	@$(MAKE) compress OUTPUT=$(OUTPUT)
+	$(CC) $(CFLAGS) -D__ANDROID__ -D__W_VERSION__=\"$(FULL_VERSION)\" -fPIE $(SRCS) -o $(OUTPUT) $(LDFLAGS) -pie
 
 windows: OUTPUT = watchdogs.win
 windows:
 	$(CC) -D_POSIX_C_SOURCE=200809L $(CFLAGS) $(SRCS) -D__WINDOWS32__ -D__W_VERSION__=\"$(FULL_VERSION)\" -o $(OUTPUT) $(LDFLAGS)
-	@$(MAKE) strip OUTPUT=$(OUTPUT)
-	@$(MAKE) compress OUTPUT=$(OUTPUT)
 
 debug: DEBUG_MODE=1
 debug: OUTPUT = watchdogs.debug
@@ -185,7 +207,7 @@ debug:
 termux-debug: DEBUG_MODE=1
 termux-debug: OUTPUT = watchdogs.debug.tmux
 termux-debug:
-	$(CC) $(CFLAGS) -g -D_DBG_PRINT -D__ANDROID__ -D__W_VERSION__=\"$(FULL_VERSION)\" $(SRCS) -landroid-spawn -o $(OUTPUT) $(LDFLAGS)
+	$(CC) $(CFLAGS) -g -D_DBG_PRINT -D__ANDROID__ -D__W_VERSION__=\"$(FULL_VERSION)\" $(SRCS) -o $(OUTPUT) $(LDFLAGS)
 
 windows-debug: DEBUG_MODE=1
 windows-debug: OUTPUT = watchdogs.debug.win

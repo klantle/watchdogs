@@ -8,7 +8,7 @@ Podman is a drop-in replacement for Docker that doesn't require a daemon and run
 # Install Podman (Ubuntu/Debian)
 sudo apt install podman podman-docker
 
-# Install Podman (RHEL/Fedora/CentOS)
+# Install Podman (RHEL/Fedora)
 sudo dnf install podman podman-docker
 
 # On macOS

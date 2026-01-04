@@ -1,3 +1,5 @@
+// Copyright (c) 2026 Watchdogs Team and contributors
+// All rights reserved. under The 2-Clause BSD License See COPYING or https://opensource.org/license/bsd-2-clause
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -503,33 +505,34 @@ char* dog_masked_text(int reveal, const char *text) {
  */
 void unit_show_help(const char* command) {
     if (strlen(command) == 0) {
-        printf("Usage: help <command> | help title\n\n");
-        printf("Commands:\n");
-        println(stdout,"  exit             exit from watchdogs | Usage: \"exit\" "FCOLOUR_CYAN"; Just type 'exit' and you're outta here!");
-        println(stdout,"  kill             refresh terminal watchdogs | Usage: \"kill\" "FCOLOUR_CYAN"; When things get stuck or buggy, this is your fix!");
-        println(stdout,"  title            set-title terminal watchdogs | Usage: \"title\" | [<args>] "FCOLOUR_CYAN"; Personalize your terminal window title.");
-        println(stdout,"  sha1             generate sha1 hash | Usage: \"sha1\" | [<args>] "FCOLOUR_CYAN"; Get that SHA1 hash for your text.");
-        println(stdout,"  sha256           generate sha256 hash | Usage: \"sha256\" | [<args>] "FCOLOUR_CYAN"; Get that SHA256 hash for your text.");
-        println(stdout,"  crc32            generate crc32 checksum | Usage: \"crc32\" | [<args>] "FCOLOUR_CYAN"; Quick CRC32 checksum generation.");
-        println(stdout,"  djb2             generate djb2 hash file | Usage: \"djb2\" | [<args>] "FCOLOUR_CYAN"; djb2 hashing for your files.");
-        println(stdout,"  config           re-write watchdogs.toml | Usage: \"config\" "FCOLOUR_CYAN"; Reset your config file to default settings.");
-        println(stdout,"  replicate        dependency installer | Usage: \"replicate\" "FCOLOUR_CYAN"; Downloads & Install Our Dependencies.");
-        println(stdout,"  gamemode         download SA-MP gamemode | Usage: \"gamemode\" "FCOLOUR_CYAN"; Grab some SA-MP gamemodes quickly.");
-        println(stdout,"  pawncc           download SA-MP pawncc | Usage: \"pawncc\" "FCOLOUR_CYAN"; Get the Pawn Compiler for SA-MP.");
-        println(stdout,"  debug            debugging & logging server logs | Usage: \"debug\" "FCOLOUR_CYAN"; Keep an eye on your server logs.");
-        println(stdout,"  compile          compile your project | Usage: \"compile\" | [<args>] "FCOLOUR_CYAN"; Turn your code into something runnable!");
-        println(stdout,"  running          running your project | Usage: \"running\" | [<args>] "FCOLOUR_CYAN"; Fire up your project and see it in action.");
-        println(stdout,"  compiles         compile and running your project | Usage: \"compiles\" | [<args>] "FCOLOUR_CYAN"; Two-in-one: compile then run immediately!.");
-        println(stdout,"  stop             stopped server tasks | Usage: \"stop\" "FCOLOUR_CYAN"; Halt everything! Stop your server tasks.");
-        println(stdout,"  restart          re-start server tasks | Usage: \"restart\" "FCOLOUR_CYAN"; Fresh start! Restart your server.");
-        println(stdout,"  wanion           ask to wanion (gemini/groq based) | Usage: \"wanion\" | [<args>] "FCOLOUR_CYAN"; Got questions? Ask Wanion (Gemini/Groq AI powered).");
-        println(stdout,"  tracker          account tracking | Usage: \"tracker\" | [<args>] "FCOLOUR_CYAN"; Track accounts across platforms.");
-        println(stdout,"  compress         create a compressed archive "
-               "| Usage: \"compress <input> <output>\" "FCOLOUR_CYAN"; Generates a compressed file (e.g., .zip/.tar.gz) from the specified source.");
-        println(stdout,"  send             send file to Discord channel via webhook "
-               "| Usage: \"send <file> <webhook_url>\" "FCOLOUR_CYAN"; Uploads a file directly to a Discord channel using a webhook.");
-        return;
-    }
+	    static const char *help_text = 
+	        "Usage: help <command> | help title\n\n"
+	        "Commands:\n"
+	        "  exit             exit from watchdogs | Usage: \"exit\" " FCOLOUR_CYAN "; Just type 'exit' and you're outta here!" FCOLOUR_DEFAULT "\n"
+	        "  kill             refresh terminal watchdogs | Usage: \"kill\" " FCOLOUR_CYAN "; When things get stuck or buggy, this is your fix!" FCOLOUR_DEFAULT "\n"
+	        "  title            set-title terminal watchdogs | Usage: \"title\" | [<args>] " FCOLOUR_CYAN "; Personalize your terminal window title." FCOLOUR_DEFAULT "\n"
+	        "  sha1             generate sha1 hash | Usage: \"sha1\" | [<args>] " FCOLOUR_CYAN "; Get that SHA1 hash for your text." FCOLOUR_DEFAULT "\n"
+	        "  sha256           generate sha256 hash | Usage: \"sha256\" | [<args>] " FCOLOUR_CYAN "; Get that SHA256 hash for your text." FCOLOUR_DEFAULT "\n"
+	        "  crc32            generate crc32 checksum | Usage: \"crc32\" | [<args>] " FCOLOUR_CYAN "; Quick CRC32 checksum generation." FCOLOUR_DEFAULT "\n"
+	        "  djb2             generate djb2 hash file | Usage: \"djb2\" | [<args>] " FCOLOUR_CYAN "; djb2 hashing for your files." FCOLOUR_DEFAULT "\n"
+	        "  config           re-write watchdogs.toml | Usage: \"config\" " FCOLOUR_CYAN "; Reset your config file to default settings." FCOLOUR_DEFAULT "\n"
+	        "  replicate        dependency installer | Usage: \"replicate\" " FCOLOUR_CYAN "; Downloads & Install Our Dependencies." FCOLOUR_DEFAULT "\n"
+	        "  gamemode         download SA-MP gamemode | Usage: \"gamemode\" " FCOLOUR_CYAN "; Grab some SA-MP gamemodes quickly." FCOLOUR_DEFAULT "\n"
+	        "  pawncc           download SA-MP pawncc | Usage: \"pawncc\" " FCOLOUR_CYAN "; Get the Pawn Compiler for SA-MP/open.mp." FCOLOUR_DEFAULT "\n"
+	        "  debug            debugging & logging server logs | Usage: \"debug\" " FCOLOUR_CYAN "; Keep an eye on your server logs." FCOLOUR_DEFAULT "\n"
+	        "  compile          compile your project | Usage: \"compile\" | [<args>] " FCOLOUR_CYAN "; Turn your code into something runnable!" FCOLOUR_DEFAULT "\n"
+	        "  running          running your project | Usage: \"running\" | [<args>] " FCOLOUR_CYAN "; Fire up your project and see it in action." FCOLOUR_DEFAULT "\n"
+	        "  compiles         compile and running your project | Usage: \"compiles\" | [<args>] " FCOLOUR_CYAN "; Two-in-one: compile then run immediately!." FCOLOUR_DEFAULT "\n"
+	        "  stop             stopped server tasks | Usage: \"stop\" " FCOLOUR_CYAN "; Halt everything! Stop your server tasks." FCOLOUR_DEFAULT "\n"
+	        "  restart          re-start server tasks | Usage: \"restart\" " FCOLOUR_CYAN "; Fresh start! Restart your server." FCOLOUR_DEFAULT "\n"
+	        "  wanion           ask to wanion (gemini/groq based) | Usage: \"wanion\" | [<args>] " FCOLOUR_CYAN "; Got questions? Ask Wanion (Gemini/Groq AI powered)." FCOLOUR_DEFAULT "\n"
+	        "  tracker          account tracking | Usage: \"tracker\" | [<args>] " FCOLOUR_CYAN "; Track accounts across platforms." FCOLOUR_DEFAULT "\n"
+	        "  compress         create a compressed archive | Usage: \"compress <input> <output>\" " FCOLOUR_CYAN "; Generates a compressed file (e.g., .zip/.tar.gz) from the specified source." FCOLOUR_DEFAULT "\n"
+	        "  send             send file to Discord channel via webhook | Usage: \"send <file> <webhook_url>\" " FCOLOUR_CYAN "; Uploads a file directly to a Discord channel using a webhook." FCOLOUR_DEFAULT "\n";
+	    
+	    fwrite(help_text, 1, strlen(help_text), stdout);
+	    return;
+	}
     
     if (strcmp(command, "exit") == 0) {
         println(stdout, "exit: exit from watchdogs. | Usage: \"exit\"\n\tJust type 'exit' and you're outta here!");
@@ -552,7 +555,7 @@ void unit_show_help(const char* command) {
     } else if (strcmp(command, "gamemode") == 0) {
         println(stdout, "gamemode: download SA-MP gamemode. | Usage: \"gamemode\"\n\tGrab some SA-MP gamemodes quickly.");
     } else if (strcmp(command, "pawncc") == 0) {
-        println(stdout, "pawncc: download SA-MP pawncc. | Usage: \"pawncc\"\n\tGet the Pawn Compiler for SA-MP.");
+        println(stdout, "pawncc: download SA-MP pawncc. | Usage: \"pawncc\"\n\tGet the Pawn Compiler for SA-MP/open.mp.");
     } else if (strcmp(command, "debug") == 0) {
         println(stdout, "debug: debugging & logging server debug. | Usage: \"debug\"\n\tKeep an eye on your server logs.");
     } else if (strcmp(command, "compile") == 0) {

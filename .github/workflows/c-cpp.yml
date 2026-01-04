@@ -32,7 +32,7 @@ jobs:
         sudo apt-get install -y --no-install-recommends \
           build-essential curl procps clang lld make binutils \
           libcurl4-openssl-dev libatomic1 libreadline-dev libarchive-dev \
-          zlib1g-dev upx-ucl upx \
+          zlib1g-dev \
           libc6:i386 libstdc++6:i386 libcurl4:i386
         sudo apt-get autoremove -y
         sudo apt-get clean
@@ -73,10 +73,6 @@ jobs:
       with:
         fetch-depth: 1
 
-    - name: Setup Docker for Fedora
-      run: |
-        echo "[TASKS] Setting up Fedora build environment in Docker"
-    
     - name: Build using Fedora Docker container
       run: |
         docker run --rm -v $(pwd):/workspace -w /workspace fedora:latest /bin/bash -c "
@@ -102,7 +98,7 @@ jobs:
           \$DNF_CMD -y install \
             clang lld libatomic libcxx-devel curl-devel \
             readline-devel libarchive-devel \
-            zlib-devel upx procps-ng \
+            zlib-devel procps-ng \
             glibc-devel.i686 libstdc++-devel.i686 libcurl-devel.i686
 
           echo '[TASKS - BUILD] RUNNING DEBUG BUILD'
@@ -132,56 +128,142 @@ jobs:
         name: watchdogs-fedora-debug
         path: watchdogs.debug
 
-  build-centos:
-    name: Build on CentOS
+  build-almalinux:
+    name: Build on AlmaLinux
     runs-on: ubuntu-latest
     env:
-      CC: clang
-      CXX: clang++
+      CC: gcc
+      CXX: g++
 
     steps:
     - uses: actions/checkout@v4
       with:
         fetch-depth: 1
 
-    - name: Build using CentOS Docker container
+    - name: Build using AlmaLinux Docker container
       run: |
-        docker run --rm -v $(pwd):/workspace -w /workspace centos:7 /bin/bash -c "
-          echo '[TASKS] Installing dependencies on CentOS 7'
-          yum -y update
-          yum -y groupinstall 'Development Tools'
-          yum -y install epel-release
-          yum -y install \
-            clang lld libatomic libcxx-devel curl-devel \
-            readline-devel libarchive-devel \
-            zlib-devel binutils upx procps \
-            glibc-devel.i686 libstdc++-devel.i686 curl-devel.i686
+        docker run --rm -v $(pwd):/workspace -w /workspace almalinux:9 /bin/bash -c "
+          echo '[TASKS] Installing dependencies on AlmaLinux 9'
+          dnf -y update
+          dnf -y install epel-release dnf-plugins-core
+          dnf config-manager --set-enabled crb
+          dnf -y groupinstall 'Development Tools'
+          dnf -y install \
+            clang lld llvm-toolset libatomic \
+            libcurl-devel \
+            readline-devel \
+            libarchive-devel \
+            zlib-devel \
+            procps-ng \
+            binutils \
+            glibc-devel.i686 glibc-devel.x86_64 \
+            libstdc++-devel.i686 libstdc++-devel.x86_64
+          
+          dnf -y install libcxx-devel 2>/dev/null || echo 'libcxx-devel not available, using default C++ library'
+          
+          echo '[TASKS] Checking installed packages'
+          rpm -qa | grep -E '(curl|readline|archive|zlib|clang|gcc)' | sort
           
           echo '[TASKS - BUILD] RUNNING DEBUG BUILD'
-          make debug
+          make debug || (echo '[ERROR] Build failed, trying with gcc' && CC=gcc CXX=g++ make debug)
           
           echo '[TASKS - BUILD] BUILD FILE DETAILS'
-          file watchdogs.debug
+          file watchdogs.debug 2>/dev/null || echo 'No binary found'
           
-          echo '[TASKS - BUILD] TESTING HELP COMMAND'
-          ./watchdogs.debug help || echo 'Help command test skipped'
-          
-          echo '[TASKS - BUILD] TESTING WATCHDOGS COMMAND'
-          ./watchdogs.debug watchdogs || echo 'Watchdogs command test skipped'
-          
-          echo '[TASKS - BUILD] CHECKING BINARY DEPENDENCIES'
-          ldd watchdogs.debug 2>/dev/null || readelf -d watchdogs.debug | grep NEEDED || true
-          
-          echo '[TASKS - BUILD] ARTIFACT STATISTICS'
-          ls -la watchdogs.debug
-          size watchdogs.debug 2>/dev/null || true
-          
-          echo '[TASKS - BUILD] BUILD COMPLETED SUCCESSFULLY ON CENTOS'
+          if [ -f watchdogs.debug ]; then
+            echo '[TASKS - BUILD] TESTING HELP COMMAND'
+            ./watchdogs.debug help || echo 'Help command test skipped'
+            
+            echo '[TASKS - BUILD] TESTING WATCHDOGS COMMAND'
+            ./watchdogs.debug watchdogs || echo 'Watchdogs command test skipped'
+            
+            echo '[TASKS - BUILD] CHECKING BINARY DEPENDENCIES'
+            ldd watchdogs.debug 2>/dev/null || readelf -d watchdogs.debug | grep NEEDED || true
+            
+            echo '[TASKS - BUILD] ARTIFACT STATISTICS'
+            ls -la watchdogs.debug
+            size watchdogs.debug 2>/dev/null || true
+            
+            echo '[TASKS - BUILD] BUILD COMPLETED SUCCESSFULLY ON ALMALINUX 9'
+          else
+            echo '[ERROR] Build failed completely on AlmaLinux'
+            exit 1
+          fi
         "
     - name: Upload build artifact
+      if: success()
       uses: actions/upload-artifact@v4
       with:
-        name: watchdogs-centos-debug
+        name: watchdogs-almalinux9-debug
+        path: watchdogs.debug
+
+  build-rockylinux:
+    name: Build on Rocky Linux
+    runs-on: ubuntu-latest
+    env:
+      CC: gcc
+      CXX: g++
+
+    steps:
+    - uses: actions/checkout@v4
+      with:
+        fetch-depth: 1
+
+    - name: Build using Rocky Linux Docker container
+      run: |
+        docker run --rm -v $(pwd):/workspace -w /workspace rockylinux:9 /bin/bash -c "
+          echo '[TASKS] Installing dependencies on Rocky Linux 9'
+          dnf -y update
+          dnf -y install epel-release dnf-plugins-core
+          dnf config-manager --set-enabled crb
+          dnf -y groupinstall 'Development Tools'
+          dnf -y install \
+            clang lld llvm-toolset libatomic \
+            libcurl-devel \
+            readline-devel \
+            libarchive-devel \
+            zlib-devel \
+            procps-ng \
+            binutils \
+            glibc-devel.i686 glibc-devel.x86_64 \
+            libstdc++-devel.i686 libstdc++-devel.x86_64
+          
+          dnf -y install libcxx-devel 2>/dev/null || echo 'libcxx-devel not available, using default C++ library'
+          
+          echo '[TASKS] Checking installed packages'
+          rpm -qa | grep -E '(curl|readline|archive|zlib|clang|gcc)' | sort
+          
+          echo '[TASKS - BUILD] RUNNING DEBUG BUILD'
+          make debug || (echo '[ERROR] Build failed, trying with gcc' && CC=gcc CXX=g++ make debug)
+          
+          echo '[TASKS - BUILD] BUILD FILE DETAILS'
+          file watchdogs.debug 2>/dev/null || echo 'No binary found'
+          
+          if [ -f watchdogs.debug ]; then
+            echo '[TASKS - BUILD] TESTING HELP COMMAND'
+            ./watchdogs.debug help || echo 'Help command test skipped'
+            
+            echo '[TASKS - BUILD] TESTING WATCHDOGS COMMAND'
+            ./watchdogs.debug watchdogs || echo 'Watchdogs command test skipped'
+            
+            echo '[TASKS - BUILD] CHECKING BINARY DEPENDENCIES'
+            ldd watchdogs.debug 2>/dev/null || readelf -d watchdogs.debug | grep NEEDED || true
+            
+            echo '[TASKS - BUILD] ARTIFACT STATISTICS'
+            ls -la watchdogs.debug
+            size watchdogs.debug 2>/dev/null || true
+            
+            echo '[TASKS - BUILD] BUILD COMPLETED SUCCESSFULLY ON ROCKY LINUX 9'
+          else
+            echo '[ERROR] Build failed completely on Rocky Linux'
+            exit 1
+          fi
+        "
+    - name: Upload build artifact
+      if: success()
+      uses: actions/upload-artifact@v4
+      with:
+        name: watchdogs-rockylinux9-debug
         path: watchdogs.debug
 
   build-opensuse:
@@ -203,11 +285,16 @@ jobs:
           zypper --non-interactive refresh
           zypper --non-interactive install -y -t pattern devel_basis
           zypper --non-interactive install -y \
-            curl clang lld libc++-devel libatomic \
-            libcurl-devel readline-devel libarchive-devel \
-            zlib-devel binutils upx procps \
-            glibc-devel-32bit libstdc++6-devel-32bit libcurl4-devel-32bit
-          
+            curl \
+            clang lld llvm \
+            libc++-devel \
+            libatomic1 \
+            libcurl-devel \
+            readline-devel \
+            libarchive-devel \
+            binutils \
+            procps
+
           echo '[TASKS - BUILD] RUNNING DEBUG BUILD'
           make debug
           
@@ -253,9 +340,16 @@ jobs:
           echo '[TASKS] Installing dependencies on Arch Linux'
           pacman -Sy --noconfirm
           pacman -S --needed --noconfirm \
-            libatomic base-devel clang lld libc++ readline \
-            curl libarchive zlib binutils upx procps-ng \
-            lib32-glibc lib32-gcc-libs
+            base-devel \
+            clang lld llvm libc++ \
+            libatomic_ops \
+            readline \
+            curl \
+            libarchive \
+            zlib \
+            binutils \
+            procps-ng \
+            lib32-gcc-libs
           
           echo '[TASKS - BUILD] RUNNING DEBUG BUILD'
           make debug
@@ -304,7 +398,7 @@ jobs:
           DEBIAN_FRONTEND=noninteractive apt -o Dpkg::Use-Pty=0 install -y --no-install-recommends \
             x11-repo unstable-repo \
             coreutils binutils procps clang curl \
-            libarchive libandroid-spawn readline upx make
+            libarchive libandroid-spawn readline make
 
           echo '[TASKS - BUILD] RUNNING TERMUX-DEBUG BUILD'
           make termux-debug
@@ -334,14 +428,13 @@ jobs:
       shell: powershell
       run: |
         C:\tools\msys64\usr\bin\bash.exe -lc "pacman -Syu --noconfirm"
-        C:\tools\msys64\usr\bin\bash.exe -lc "pacman -S --needed --noconfirm mingw-w64-ucrt-x86_64-toolchain mingw-w64-ucrt-x86_64-clang mingw-w64-ucrt-x86_64-lld mingw-w64-ucrt-x86_64-libc++ mingw-w64-ucrt-x86_64-curl mingw-w64-ucrt-x86_64-readline mingw-w64-ucrt-x86_64-libarchive mingw-w64-ucrt-x86_64-zlib mingw-w64-ucrt-x86_64-upx mingw-w64-ucrt-x86_64-make mingw-w64-ucrt-x86_64-windows-default-manifest"
+        C:\tools\msys64\usr\bin\bash.exe -lc "pacman -S --needed --noconfirm mingw-w64-ucrt-x86_64-toolchain mingw-w64-ucrt-x86_64-clang mingw-w64-ucrt-x86_64-lld mingw-w64-ucrt-x86_64-libc++ mingw-w64-ucrt-x86_64-curl mingw-w64-ucrt-x86_64-readline mingw-w64-ucrt-x86_64-libarchive mingw-w64-ucrt-x86_64-zlib mingw-w64-ucrt-x86_64-make mingw-w64-ucrt-x86_64-windows-default-manifest"
     
     - name: Build using Makefile
       shell: powershell
       run: |
         $env:Path = "C:\tools\msys64\ucrt64\bin;C:\tools\msys64\usr\bin;$env:Path"
         mingw32-make windows-debug
-        # C:\tools\msys64\usr\bin\bash.exe -c "cd '$PWD' && make windows-debug"
     
     - name: Upload build artifact
       uses: actions/upload-artifact@v4

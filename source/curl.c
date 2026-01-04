@@ -1,3 +1,5 @@
+// Copyright (c) 2026 Watchdogs Team and contributors
+// All rights reserved. under The 2-Clause BSD License See COPYING or https://opensource.org/license/bsd-2-clause
 #include <stdio.h>
 #include <stdlib.h>
 #include <ctype.h>
@@ -162,10 +164,6 @@ static int progress_callback(void *ptr,curl_off_t dltotal,
 
 void buf_init(struct buf *b)
 {
-  if(b->data) {
-    dog_free(b->data);
-    b->data=NULL;
-  }
   b->data=dog_malloc(DOG_MAX_PATH);
   if(!b->data) {
     unit_ret_main(NULL);
@@ -176,8 +174,10 @@ void buf_init(struct buf *b)
 
 void buf_free(struct buf *b)
 {
-  dog_free(b->data);
-  b->data=NULL;
+  if(b->data) {
+    dog_free(b->data);
+    b->data=NULL;
+  }
   b->len=0;
   b->allocated=0;
 }
@@ -228,10 +228,6 @@ size_t write_callbacks(void *ptr,size_t size,size_t nmemb,void *userdata)
 
 void memory_struct_init(struct memory_struct *mem)
 {
-  if(mem->memory) {
-    dog_free(mem->memory);
-    mem->memory=NULL;
-  }
   mem->memory=dog_malloc(DOG_MAX_PATH);
   if(!mem->memory) {
     unit_ret_main(NULL);
@@ -242,8 +238,10 @@ void memory_struct_init(struct memory_struct *mem)
 
 void memory_struct_free(struct memory_struct *mem)
 {
-  dog_free(mem->memory);
-  mem->memory=NULL;
+  if(mem->memory) {
+    free(mem->memory);
+    mem->memory=NULL;
+  }
   mem->size=0;
   mem->allocated=0;
 }

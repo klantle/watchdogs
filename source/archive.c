@@ -1,3 +1,5 @@
+// Copyright (c) 2026 Watchdogs Team and contributors
+// All rights reserved. under The 2-Clause BSD License See COPYING or https://opensource.org/license/bsd-2-clause
 #include <stdio.h>
 #include <stdlib.h>
 #include <stdbool.h>

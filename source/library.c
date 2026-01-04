@@ -1,3 +1,5 @@
+// Copyright (c) 2026 Watchdogs Team and contributors
+// All rights reserved. under The 2-Clause BSD License See COPYING or https://opensource.org/license/bsd-2-clause
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -206,9 +208,27 @@ int dog_install_server(const char *platform)
 {
   __create_logging();
 
-  if(strcmp(platform,"linux")!=0&&strcmp(platform,"windows")!=0) {
+  if(strcmp(platform,"linux")!=0&&strcmp(platform,"windows")!=0&&strcmp(platform,"termux")!=0) {
     pr_error(stdout,"Unsupported platform: %s",platform);
     return -1;
+  }
+
+  if(strcmp(platform,"termux") == 0) {
+    const char *items[]={
+      "OMPTMUX (open.mp termux) v1.5.8.3079",
+    };
+    const char keys[]={'A'};
+
+    char sel=library_options_list("Select Server Version",items,keys,1);
+    if(!sel) return 0;
+
+    dogconfig.dog_ipawncc=1;
+
+    if(sel=='A'||sel=='a') {
+      if(path_exists("omptmux.zip")) remove("omptmux.zip");
+      dog_download_file("https://github.com/novusr/omptmux/releases/download/v1.5.8.3079/open.mp-termux-aarch64.zip","omptmux.zip");
+    }
+    goto done;
   }
 
   const char *items[]={
@@ -405,5 +425,6 @@ int dog_install_server(const char *platform)
     chosen->linux_file:chosen->windows_file;
 
   dog_download_file(url,filename);
+done:
   return 0;
 }

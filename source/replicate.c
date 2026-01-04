@@ -1,3 +1,5 @@
+// Copyright (c) 2026 Watchdogs Team and contributors
+// All rights reserved. under The 2-Clause BSD License See COPYING or https://opensource.org/license/bsd-2-clause
 #include <stdio.h>
 #include <stdlib.h>
 #include <ctype.h>
@@ -58,7 +60,7 @@ static int fdir_counts = REPLICATE_RATE_ZERO;
 
 const char
 *match_windows_lookup_pattern[] = { "windows", "win", "win32", "win32", "msvc", "mingw", NULL },
-*match_linux_lookup_pattern[] = { "linux", "ubuntu", "debian", "cent", "centos", "cent_os", "fedora", "arch", "archlinux", "alphine", "rhel", "redhat", "linuxmint", "mint", NULL },
+*match_linux_lookup_pattern[] = { "linux", "ubuntu", "debian", "cent", "centos", "almalinux", "rockylinux", "cent_os", "fedora", "arch", "archlinux", "alphine", "rhel", "redhat", "linuxmint", "mint", NULL },
 *match_any_lookup_pattern[] = {
 "src", "source", "proj", "project", "server", "_server", "gamemode",
 "gamemodes", "bin", "build", "packages", "resources", "modules",

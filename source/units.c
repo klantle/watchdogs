@@ -1,3 +1,5 @@
+// Copyright (c) 2026 Watchdogs Team and contributors
+// All rights reserved. under The 2-Clause BSD License See COPYING or https://opensource.org/license/bsd-2-clause
 #ifndef _GNU_SOURCE
     #define _GNU_SOURCE
 #endif
@@ -409,6 +411,7 @@ ret_ptr:
     printf("\033[1;33m== Select a Platform ==\033[0m\n");
     printf("  \033[36m[l]\033[0m Linux\n");
     printf("  \033[36m[w]\033[0m Windows\n  ^ \033[90m(Supported for: WSL/WSL2 ; not: Docker or Podman on WSL)\033[0m\n");
+    printf("  \033[36m[t]\033[0m Termux\n");
 
     dogconfig.dog_sel_stat=1;
 
@@ -437,6 +440,21 @@ loop_igm:
 loop_igm2:
       if(ret==-1 && dogconfig.dog_sel_stat!=0)
         goto loop_igm2;
+      else if(ret==0)
+      {
+        if(unit_pre_command && unit_pre_command[0]!='\0')
+          goto unit_done;
+        else
+          goto _ptr_command;
+      }
+    } else if(strfind(platform,"T",true)) {
+      free(ptr_command);
+      ptr_command=NULL;
+      free(platform);
+      int ret=dog_install_server("termux");
+loop_igm3:
+      if(ret==-1 && dogconfig.dog_sel_stat!=0)
+        goto loop_igm3;
       else if(ret==0)
       {
         if(unit_pre_command && unit_pre_command[0]!='\0')
@@ -597,13 +615,6 @@ loop_ipcc3:
   } else if(strncmp(ptr_command,"running",strlen("running"))==0) {
 _runners_:
     dog_stop_server_tasks();
-
-    if(is_termux_env()==1) {
-      pr_warning(stdout,"Currently Termux is not supported..");
-      pr_info(stdout,"Alternative's for Termux:"
-             "\n\tOMP Termux (Beta): https://github.com/novusr/omptmux/releases/tag/v1.5.8.3079"
-             "\n\tSA-MP decompilation (work-in-progress): http://github.com/dashr9230/SA-MP");
-    }
 
     if(!path_access(dogconfig.dog_toml_binary)) {
       pr_error(stdout,"can't locate sa-mp/open.mp binary file!");
@@ -1595,12 +1606,6 @@ send_done:
     cmd_len=strlen(ptr_command)+DOG_PATH_MAX;
     command=dog_malloc(cmd_len);
     if(!command) goto unit_done;
-    if(is_native_windows()) {
-      snprintf(command,cmd_len,
-               "powershell -NoLogo -NoProfile -NonInteractive -Command \"%s\"",
-               ptr_command);
-      goto powershell;
-    }
     if(path_access("/bin/sh")!=0)
       snprintf(command,cmd_len,"/bin/sh -c \"%s\"",ptr_command);
     else if(path_access("~/.bashrc")!=0)

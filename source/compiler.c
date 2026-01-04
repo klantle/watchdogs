@@ -120,8 +120,15 @@ static
     └── utils.h
 */
 
-int dog_exec_compiler(const char *args,const char *compile_args_val, const char *second_arg,const char *four_arg,
-const char *five_arg,const char *six_arg, const char *seven_arg,const char *eight_arg, const char *nine_arg)
+int dog_exec_compiler(const char *args,
+                      const char *compile_args_val,
+                      const char *second_arg,
+                      const char *four_arg,
+                      const char *five_arg,
+                      const char *six_arg,
+                      const char *seven_arg,
+                      const char *eight_arg,
+                      const char *nine_arg)
 {
   io_compilers comp; io_compilers *revolver_compiler=&comp;
 

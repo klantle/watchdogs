@@ -859,143 +859,208 @@ _compiler_retrying:
           CloseHandle(hFile);
         }
 #else
-        int ret_command=0;
-        ret_command=snprintf(compiler_input,sizeof(compiler_input),
-            "%s %s %s%s %s %s %s",
-            compiler_pawncc_path,
-            dogconfig.dog_toml_proj_input,
-            "-o",
-            dogconfig.dog_toml_proj_output,
-            dogconfig.dog_toml_aio_opt,
-            include_aio_path,
-            this_path_include);
-        if (ret_command<0||ret_command>=sizeof(compiler_input)) {
-          pr_error(stdout,"ret_compiler too long!");
+        int ret_command = 0;
+        ret_command = snprintf(compiler_input, sizeof(compiler_input),
+                  "%s %s %s%s %s %s %s",
+                  compiler_pawncc_path,
+                  dogconfig.dog_toml_proj_input,
+                  "-o",
+                  dogconfig.dog_toml_proj_output,
+                  dogconfig.dog_toml_aio_opt,
+                  include_aio_path,
+                  this_path_include);
+        if (ret_command < 0 || ret_command >= sizeof(compiler_input)) {
+          pr_error(stdout, "ret_compiler too long!");
           __create_logging();
           goto compiler_end;
         }
         fflush(stdout);
-        if(compilr_with_debugging==true) {
-           #ifdef DOG_ANDROID
-               println(stdout, "%s", compiler_input);
-           #else
-               dog_console_title(compiler_input);
-           #endif
+        if (compilr_with_debugging == true) {
+          #ifdef DOG_ANDROID
+            println(stdout, "%s", compiler_input);
+          #else
+            dog_console_title(compiler_input);
+          #endif
         }
 
         char multi_compiler_input[sizeof(compiler_input)];
-        strncpy(multi_compiler_input, compiler_input,sizeof(multi_compiler_input) - 1);
+        strncpy(multi_compiler_input, compiler_input, sizeof(multi_compiler_input) - 1);
         multi_compiler_input[sizeof(multi_compiler_input) - 1] = '\0';
 
-        int i=0;
-        char* saveptr=NULL;
-        compiler_unix_token=strtok_r(multi_compiler_input," ", &saveptr);
-        while(compiler_unix_token!=NULL&&i<(DOG_MAX_PATH+255)) {
-            dog_compiler_unix_args[i++]=compiler_unix_token;
-            compiler_unix_token=strtok_r(NULL," ", &saveptr);
+        int i = 0;
+        char* saveptr = NULL;
+        compiler_unix_token = strtok_r(multi_compiler_input, " ", &saveptr);
+        while (compiler_unix_token != NULL && i < (DOG_MAX_PATH + 255)) {
+          dog_compiler_unix_args[i++] = compiler_unix_token;
+          compiler_unix_token = strtok_r(NULL, " ", &saveptr);
         }
-        dog_compiler_unix_args[i]=NULL;
+        dog_compiler_unix_args[i] = NULL;
 
-        posix_spawn_file_actions_t process_file_actions;
-        posix_spawn_file_actions_init(&process_file_actions);
-        int posix_logging_file=open(".watchdogs/compiler.log",O_WRONLY|O_CREAT|O_TRUNC,0644);
-        if(posix_logging_file!=-1) {
-          posix_spawn_file_actions_adddup2(&process_file_actions,
-                  posix_logging_file,
-                  STDOUT_FILENO);
-          posix_spawn_file_actions_adddup2(&process_file_actions,
-                  posix_logging_file,
-                  STDERR_FILENO);
-        }
-
-        posix_spawnattr_t spawn_attr;
-        posix_spawnattr_init(&spawn_attr);
-
-        sigset_t sigmask;
-        sigemptyset(&sigmask);
-        sigaddset(&sigmask, SIGCHLD);
-
-        posix_spawnattr_setsigmask(&spawn_attr, &sigmask);
-
-        sigset_t sigdefault;
-        sigemptyset(&sigdefault);
-        sigaddset(&sigdefault, SIGPIPE);
-        sigaddset(&sigdefault, SIGINT);
-        sigaddset(&sigdefault, SIGTERM);
-
-        posix_spawnattr_setsigdefault(&spawn_attr, &sigdefault);
-
-        short flags = POSIX_SPAWN_SETSIGMASK | POSIX_SPAWN_SETSIGDEF;
-
-        posix_spawnattr_setflags(&spawn_attr, flags);
-
-        pid_t compiler_process_id;
-        int process_spawn_result=posix_spawn(
-          &compiler_process_id,
-          dog_compiler_unix_args[0],
-          &process_file_actions,
-          &spawn_attr,
-          dog_compiler_unix_args,
-          environ
-        );
-        
-        if (posix_logging_file != -1) {
-            close(posix_logging_file);
-        }
-
-        posix_spawnattr_destroy(&spawn_attr);
-        posix_spawn_file_actions_destroy(&process_file_actions);
-
-        if(process_spawn_result==0) {
-          int process_status;
-          int process_timeout_occurred=0;
-          clock_gettime(CLOCK_MONOTONIC,&pre_start);
-          for(int i=0;i<POSIX_TIMEOUT;i++) {
-            int p_result=-1;
-            p_result=waitpid(compiler_process_id,&process_status,WNOHANG);
-            clock_gettime(CLOCK_MONOTONIC,&post_end);
-            if(p_result==0)
-              #ifdef DOG_ANDROID
-              usleep(100000);
-              #else
-              usleep(50000);
-              #endif
-            else if(p_result==compiler_process_id) {
-              break;
-            } else {
-              pr_error(stdout,"waitpid error");
-              __create_logging();
-              break;
+        #ifdef DOG_ANDROID
+          pid_t compiler_process_id = vfork();
+          
+          if (compiler_process_id == 0) {
+            int logging_file = open(".watchdogs/compiler.log", O_WRONLY | O_CREAT | O_TRUNC, 0644);
+            if (logging_file != -1) {
+              dup2(logging_file, STDOUT_FILENO);
+              dup2(logging_file, STDERR_FILENO);
+              close(logging_file);
             }
-            if(i==POSIX_TIMEOUT-1) {
-              kill(compiler_process_id,SIGTERM);
-              sleep(2);
-              kill(compiler_process_id,SIGKILL);
-              pr_error(stdout,
-                      "posix_spawn process execution timeout! (%d seconds)",POSIX_TIMEOUT);
-              __create_logging();
-              waitpid(compiler_process_id,&process_status,0);
-              process_timeout_occurred=1;
-            }
+            
+            execv(dog_compiler_unix_args[0], dog_compiler_unix_args);
+            
+            _exit(127);
           }
-          if(!process_timeout_occurred) {
-            if(WIFEXITED(process_status)) {
-              int proc_exit_code=0;
-              proc_exit_code=WEXITSTATUS(process_status);
-              if(proc_exit_code!=0 && proc_exit_code!=1) {
-                pr_error(stdout,
-                        "compiler process exited with code (%d)",proc_exit_code);
-                __create_logging();
+          else if (compiler_process_id > 0) {
+            int process_status;
+            int process_timeout_occurred = 0;
+            clock_gettime(CLOCK_MONOTONIC, &pre_start);
+            
+            for (int i = 0; i < POSIX_TIMEOUT; i++) {
+              int p_result = waitpid(compiler_process_id, &process_status, WNOHANG);
+              clock_gettime(CLOCK_MONOTONIC, &post_end);
+              
+              if (p_result == 0) {
+                usleep(100000);
               }
-            } else if(WIFSIGNALED(process_status)) {
-              pr_error(stdout,
-                      "compiler process terminated by signal (%d)",WTERMSIG(process_status));
+              else if (p_result == compiler_process_id) {
+                break;
+              }
+              else {
+                pr_error(stdout, "waitpid error");
+                __create_logging();
+                break;
+              }
+              
+              if (i == POSIX_TIMEOUT - 1) {
+                kill(compiler_process_id, SIGTERM);
+                sleep(2);
+                kill(compiler_process_id, SIGKILL);
+                pr_error(stdout,
+                        "process execution timeout! (%d seconds)", POSIX_TIMEOUT);
+                __create_logging();
+                waitpid(compiler_process_id, &process_status, 0);
+                process_timeout_occurred = 1;
+              }
+            }
+            
+            if (!process_timeout_occurred) {
+              if (WIFEXITED(process_status)) {
+                int proc_exit_code = WEXITSTATUS(process_status);
+                if (proc_exit_code != 0 && proc_exit_code != 1) {
+                  pr_error(stdout,
+                          "compiler process exited with code (%d)", proc_exit_code);
+                  __create_logging();
+                }
+              }
+              else if (WIFSIGNALED(process_status)) {
+                pr_error(stdout,
+                        "compiler process terminated by signal (%d)", WTERMSIG(process_status));
+              }
             }
           }
-        } else {
-          pr_error(stdout,"posix_spawn failed: %s",strerror(process_spawn_result));
-          __create_logging();
-        }
+          else {
+            pr_error(stdout, "vfork failed: %s", strerror(errno));
+            __create_logging();
+          }
+        #else
+          posix_spawn_file_actions_t process_file_actions;
+          posix_spawn_file_actions_init(&process_file_actions);
+          int posix_logging_file = open(".watchdogs/compiler.log", O_WRONLY | O_CREAT | O_TRUNC, 0644);
+          if (posix_logging_file != -1) {
+            posix_spawn_file_actions_adddup2(&process_file_actions,
+                    posix_logging_file,
+                    STDOUT_FILENO);
+            posix_spawn_file_actions_adddup2(&process_file_actions,
+                    posix_logging_file,
+                    STDERR_FILENO);
+          }
+
+          posix_spawnattr_t spawn_attr;
+          posix_spawnattr_init(&spawn_attr);
+
+          sigset_t sigmask;
+          sigemptyset(&sigmask);
+          sigaddset(&sigmask, SIGCHLD);
+
+          posix_spawnattr_setsigmask(&spawn_attr, &sigmask);
+
+          sigset_t sigdefault;
+          sigemptyset(&sigdefault);
+          sigaddset(&sigdefault, SIGPIPE);
+          sigaddset(&sigdefault, SIGINT);
+          sigaddset(&sigdefault, SIGTERM);
+
+          posix_spawnattr_setsigdefault(&spawn_attr, &sigdefault);
+
+          short flags = POSIX_SPAWN_SETSIGMASK | POSIX_SPAWN_SETSIGDEF;
+
+          posix_spawnattr_setflags(&spawn_attr, flags);
+
+          pid_t compiler_process_id;
+          int process_spawn_result = posix_spawn(
+            &compiler_process_id,
+            dog_compiler_unix_args[0],
+            &process_file_actions,
+            &spawn_attr,
+            dog_compiler_unix_args,
+            environ
+          );
+          
+          if (posix_logging_file != -1) {
+              close(posix_logging_file);
+          }
+
+          posix_spawnattr_destroy(&spawn_attr);
+          posix_spawn_file_actions_destroy(&process_file_actions);
+
+          if (process_spawn_result == 0) {
+            int process_status;
+            int process_timeout_occurred = 0;
+            clock_gettime(CLOCK_MONOTONIC, &pre_start);
+            for (int i = 0; i < POSIX_TIMEOUT; i++) {
+              int p_result = -1;
+              p_result = waitpid(compiler_process_id, &process_status, WNOHANG);
+              clock_gettime(CLOCK_MONOTONIC, &post_end);
+              if (p_result == 0)
+                usleep(50000);
+              else if (p_result == compiler_process_id) {
+                break;
+              } else {
+                pr_error(stdout, "waitpid error");
+                __create_logging();
+                break;
+              }
+              if (i == POSIX_TIMEOUT - 1) {
+                kill(compiler_process_id, SIGTERM);
+                sleep(2);
+                kill(compiler_process_id, SIGKILL);
+                pr_error(stdout,
+                        "posix_spawn process execution timeout! (%d seconds)", POSIX_TIMEOUT);
+                __create_logging();
+                waitpid(compiler_process_id, &process_status, 0);
+                process_timeout_occurred = 1;
+              }
+            }
+            if (!process_timeout_occurred) {
+              if (WIFEXITED(process_status)) {
+                int proc_exit_code = 0;
+                proc_exit_code = WEXITSTATUS(process_status);
+                if (proc_exit_code != 0 && proc_exit_code != 1) {
+                  pr_error(stdout,
+                          "compiler process exited with code (%d)", proc_exit_code);
+                  __create_logging();
+                }
+              } else if (WIFSIGNALED(process_status)) {
+                pr_error(stdout,
+                        "compiler process terminated by signal (%d)", WTERMSIG(process_status));
+              }
+            }
+          } else {
+            pr_error(stdout, "posix_spawn failed: %s", strerror(process_spawn_result));
+            __create_logging();
+          }
+        #endif
 #endif
         char size_container_output[DOG_PATH_MAX*2];
         snprintf(size_container_output,
@@ -1325,134 +1390,198 @@ compiler_done:
               dogconfig.dog_toml_aio_opt,
               include_aio_path,
               this_path_include);
-          if (ret_command<0||ret_command>=sizeof(compiler_input)) {
-            pr_error(stdout,"ret_compiler too long!");
+          if (ret_command < 0 || ret_command >= sizeof(compiler_input)) {
+            pr_error(stdout, "ret_compiler too long!");
             __create_logging();
             goto compiler_end;
           }
           fflush(stdout);
-          if(compilr_with_debugging==true) {
-             #ifdef DOG_ANDROID
-                 println(stdout, "%s", compiler_input);
-             #else
-                 dog_console_title(compiler_input);
-             #endif
+          if (compilr_with_debugging == true) {
+            #ifdef DOG_ANDROID
+              println(stdout, "%s", compiler_input);
+            #else
+              dog_console_title(compiler_input);
+            #endif
           }
 
           char multi_compiler_input[sizeof(compiler_input)];
-          strncpy(multi_compiler_input, compiler_input,sizeof(multi_compiler_input) - 1);
+          strncpy(multi_compiler_input, compiler_input, sizeof(multi_compiler_input) - 1);
           multi_compiler_input[sizeof(multi_compiler_input) - 1] = '\0';
 
-          int i=0;
-          char* saveptr=NULL;
-          compiler_unix_token=strtok_r(multi_compiler_input," ", &saveptr);
-          while(compiler_unix_token!=NULL&&i<(DOG_MAX_PATH+255)) {
-              dog_compiler_unix_args[i++]=compiler_unix_token;
-              compiler_unix_token=strtok_r(NULL," ", &saveptr);
+          int i = 0;
+          char* saveptr = NULL;
+          compiler_unix_token = strtok_r(multi_compiler_input, " ", &saveptr);
+          while (compiler_unix_token != NULL && i < (DOG_MAX_PATH + 255)) {
+            dog_compiler_unix_args[i++] = compiler_unix_token;
+            compiler_unix_token = strtok_r(NULL, " ", &saveptr);
           }
-          dog_compiler_unix_args[i]=NULL;
+          dog_compiler_unix_args[i] = NULL;
 
-          posix_spawn_file_actions_t process_file_actions;
-          posix_spawn_file_actions_init(&process_file_actions);
-          int posix_logging_file=open(".watchdogs/compiler.log",O_WRONLY|O_CREAT|O_TRUNC,0644);
-          if(posix_logging_file!=-1) {
-            posix_spawn_file_actions_adddup2(&process_file_actions,
-                    posix_logging_file,
-                    STDOUT_FILENO);
-            posix_spawn_file_actions_adddup2(&process_file_actions,
-                    posix_logging_file,
-                    STDERR_FILENO);
-          }
-
-          posix_spawnattr_t spawn_attr;
-          posix_spawnattr_init(&spawn_attr);
-
-          sigset_t sigmask;
-          sigemptyset(&sigmask);
-          sigaddset(&sigmask, SIGCHLD);
-
-          posix_spawnattr_setsigmask(&spawn_attr, &sigmask);
-
-          sigset_t sigdefault;
-          sigemptyset(&sigdefault);
-          sigaddset(&sigdefault, SIGPIPE);
-          sigaddset(&sigdefault, SIGINT);
-          sigaddset(&sigdefault, SIGTERM);
-
-          posix_spawnattr_setsigdefault(&spawn_attr, &sigdefault);
-
-          short flags = POSIX_SPAWN_SETSIGMASK | POSIX_SPAWN_SETSIGDEF;
-
-          posix_spawnattr_setflags(&spawn_attr, flags);
-
-          pid_t compiler_process_id;
-          int process_spawn_result=posix_spawn(
-            &compiler_process_id,
-            dog_compiler_unix_args[0],
-            &process_file_actions,
-            &spawn_attr,
-            dog_compiler_unix_args,
-            environ
-          );
-          
-          if (posix_logging_file != -1) {
-              close(posix_logging_file);
-          }
-
-          posix_spawnattr_destroy(&spawn_attr);
-          posix_spawn_file_actions_destroy(&process_file_actions);
-
-          if(process_spawn_result==0) {
-            int process_status;
-            int process_timeout_occurred=0;
-            clock_gettime(CLOCK_MONOTONIC,&pre_start);
-            for(int i=0;i<POSIX_TIMEOUT;i++) {
-              int p_result=-1;
-              p_result=waitpid(compiler_process_id,&process_status,WNOHANG);
-              clock_gettime(CLOCK_MONOTONIC,&post_end);
-              if(p_result==0)
-                #ifdef DOG_ANDROID
-                usleep(100000);
-                #else
-                usleep(50000);
-                #endif
-              else if(p_result==compiler_process_id) {
-                break;
-              } else {
-                pr_error(stdout,"waitpid error");
-                __create_logging();
-                break;
+          #ifdef DOG_ANDROID
+            pid_t compiler_process_id = vfork();
+            
+            if (compiler_process_id == 0) {
+              int logging_file = open(".watchdogs/compiler.log", O_WRONLY | O_CREAT | O_TRUNC, 0644);
+              if (logging_file != -1) {
+                dup2(logging_file, STDOUT_FILENO);
+                dup2(logging_file, STDERR_FILENO);
+                close(logging_file);
               }
-              if(i==POSIX_TIMEOUT-1) {
-                kill(compiler_process_id,SIGTERM);
-                sleep(2);
-                kill(compiler_process_id,SIGKILL);
-                pr_error(stdout,
-                        "posix_spawn process execution timeout! (%d seconds)",POSIX_TIMEOUT);
-                __create_logging();
-                waitpid(compiler_process_id,&process_status,0);
-                process_timeout_occurred=1;
-              }
+              
+              execv(dog_compiler_unix_args[0], dog_compiler_unix_args);
+              
+              _exit(127);
             }
-            if(!process_timeout_occurred) {
-              if(WIFEXITED(process_status)) {
-                int proc_exit_code=0;
-                proc_exit_code=WEXITSTATUS(process_status);
-                if(proc_exit_code!=0 && proc_exit_code!=1) {
-                  pr_error(stdout,
-                          "compiler process exited with code (%d)",proc_exit_code);
-                  __create_logging();
+            else if (compiler_process_id > 0) {
+              int process_status;
+              int process_timeout_occurred = 0;
+              clock_gettime(CLOCK_MONOTONIC, &pre_start);
+              
+              for (int i = 0; i < POSIX_TIMEOUT; i++) {
+                int p_result = waitpid(compiler_process_id, &process_status, WNOHANG);
+                clock_gettime(CLOCK_MONOTONIC, &post_end);
+                
+                if (p_result == 0) {
+                  usleep(100000);
                 }
-              } else if(WIFSIGNALED(process_status)) {
-                pr_error(stdout,
-                        "compiler process terminated by signal (%d)",WTERMSIG(process_status));
-                __create_logging();
+                else if (p_result == compiler_process_id) {
+                  break;
+                }
+                else {
+                  pr_error(stdout, "waitpid error");
+                  __create_logging();
+                  break;
+                }
+                
+                if (i == POSIX_TIMEOUT - 1) {
+                  kill(compiler_process_id, SIGTERM);
+                  sleep(2);
+                  kill(compiler_process_id, SIGKILL);
+                  pr_error(stdout,
+                          "process execution timeout! (%d seconds)", POSIX_TIMEOUT);
+                  __create_logging();
+                  waitpid(compiler_process_id, &process_status, 0);
+                  process_timeout_occurred = 1;
+                }
+              }
+              
+              if (!process_timeout_occurred) {
+                if (WIFEXITED(process_status)) {
+                  int proc_exit_code = WEXITSTATUS(process_status);
+                  if (proc_exit_code != 0 && proc_exit_code != 1) {
+                    pr_error(stdout,
+                            "compiler process exited with code (%d)", proc_exit_code);
+                    __create_logging();
+                  }
+                }
+                else if (WIFSIGNALED(process_status)) {
+                  pr_error(stdout,
+                          "compiler process terminated by signal (%d)", WTERMSIG(process_status));
+                }
               }
             }
-          } else {
-            pr_error(stdout,"posix_spawn failed: %s",strerror(process_spawn_result));
-            __create_logging();
-          }
+            else {
+              pr_error(stdout, "vfork failed: %s", strerror(errno));
+              __create_logging();
+            }
+          #else
+            posix_spawn_file_actions_t process_file_actions;
+            posix_spawn_file_actions_init(&process_file_actions);
+            int posix_logging_file = open(".watchdogs/compiler.log", O_WRONLY | O_CREAT | O_TRUNC, 0644);
+            if (posix_logging_file != -1) {
+              posix_spawn_file_actions_adddup2(&process_file_actions,
+                      posix_logging_file,
+                      STDOUT_FILENO);
+              posix_spawn_file_actions_adddup2(&process_file_actions,
+                      posix_logging_file,
+                      STDERR_FILENO);
+            }
+
+            posix_spawnattr_t spawn_attr;
+            posix_spawnattr_init(&spawn_attr);
+
+            sigset_t sigmask;
+            sigemptyset(&sigmask);
+            sigaddset(&sigmask, SIGCHLD);
+
+            posix_spawnattr_setsigmask(&spawn_attr, &sigmask);
+
+            sigset_t sigdefault;
+            sigemptyset(&sigdefault);
+            sigaddset(&sigdefault, SIGPIPE);
+            sigaddset(&sigdefault, SIGINT);
+            sigaddset(&sigdefault, SIGTERM);
+
+            posix_spawnattr_setsigdefault(&spawn_attr, &sigdefault);
+
+            short flags = POSIX_SPAWN_SETSIGMASK | POSIX_SPAWN_SETSIGDEF;
+
+            posix_spawnattr_setflags(&spawn_attr, flags);
+
+            pid_t compiler_process_id;
+            int process_spawn_result = posix_spawn(
+              &compiler_process_id,
+              dog_compiler_unix_args[0],
+              &process_file_actions,
+              &spawn_attr,
+              dog_compiler_unix_args,
+              environ
+            );
+            
+            if (posix_logging_file != -1) {
+                close(posix_logging_file);
+            }
+
+            posix_spawnattr_destroy(&spawn_attr);
+            posix_spawn_file_actions_destroy(&process_file_actions);
+
+            if (process_spawn_result == 0) {
+              int process_status;
+              int process_timeout_occurred = 0;
+              clock_gettime(CLOCK_MONOTONIC, &pre_start);
+              for (int i = 0; i < POSIX_TIMEOUT; i++) {
+                int p_result = -1;
+                p_result = waitpid(compiler_process_id, &process_status, WNOHANG);
+                clock_gettime(CLOCK_MONOTONIC, &post_end);
+                if (p_result == 0)
+                  usleep(50000);
+                else if (p_result == compiler_process_id) {
+                  break;
+                } else {
+                  pr_error(stdout, "waitpid error");
+                  __create_logging();
+                  break;
+                }
+                if (i == POSIX_TIMEOUT - 1) {
+                  kill(compiler_process_id, SIGTERM);
+                  sleep(2);
+                  kill(compiler_process_id, SIGKILL);
+                  pr_error(stdout,
+                          "posix_spawn process execution timeout! (%d seconds)", POSIX_TIMEOUT);
+                  __create_logging();
+                  waitpid(compiler_process_id, &process_status, 0);
+                  process_timeout_occurred = 1;
+                }
+              }
+              if (!process_timeout_occurred) {
+                if (WIFEXITED(process_status)) {
+                  int proc_exit_code = 0;
+                  proc_exit_code = WEXITSTATUS(process_status);
+                  if (proc_exit_code != 0 && proc_exit_code != 1) {
+                    pr_error(stdout,
+                            "compiler process exited with code (%d)", proc_exit_code);
+                    __create_logging();
+                  }
+                } else if (WIFSIGNALED(process_status)) {
+                  pr_error(stdout,
+                          "compiler process terminated by signal (%d)", WTERMSIG(process_status));
+                }
+              }
+            } else {
+              pr_error(stdout, "posix_spawn failed: %s", strerror(process_spawn_result));
+              __create_logging();
+            }
+          #endif
 #endif
           if(path_exists(".watchdogs/compiler.log")) {
             printf("\n");

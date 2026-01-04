@@ -73,7 +73,7 @@ init:
 		apt -o Dpkg::Use-Pty=0 install -y --no-install-recommends \
 			x11-repo unstable-repo \
 			coreutils binutils procps clang curl \
-			libarchive libandroid-spawn readline upx; \
+			libarchive readline upx; \
 	elif echo "$$UNAME_S" | grep -qi "Linux"; then \
 		if command -v apt >/dev/null 2>&1; then \
 			echo "==> Using apt (Debian/Ubuntu)"; \

@@ -1,165 +1,145 @@
-// Copyright (c) 2026 Watchdogs Team and contributors
-// All rights reserved. under The 2-Clause BSD License See COPYING or https://opensource.org/license/bsd-2-clause
-#include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
-#include <stdint.h>
-#include <time.h>
-#include <stdarg.h>
-#include <fcntl.h>
-#include "utils.h"
+/*-
+ * Copyright (c) 2026 Watchdogs Team and contributors
+ * All rights reserved. under The 2-Clause BSD License
+ * See COPYING or https://opensource.org/license/bsd-2-clause
+ */
+#include  <stdio.h>
+#include  <stdlib.h>
+#include  <string.h>
+#include  <stdint.h>
+#include  <time.h>
+#include  <stdarg.h>
+#include  <fcntl.h>
 
 #ifdef DOG_WINDOWS
     #define WIN32_LEAN_AND_MEAN
-    #include <windows.h>
-    #include <sys/types.h>
-    #include <sys/stat.h>
+    #include  <windows.h>
+    #include  <sys/types.h>
+    #include  <sys/stat.h>
 #else
-    #include <sys/types.h>
-    #include <sys/stat.h>
-    #include <unistd.h>
-    #include <errno.h>
+    #include  <sys/types.h>
+    #include  <sys/stat.h>
+    #include  <unistd.h>
+    #include  <errno.h>
 #endif
 
-#include "crypto.h"
-#include "debug.h"
-#include "extra.h"
+#include  "utils.h"
+#include  "crypto.h"
+#include  "debug.h"
+#include  "extra.h"
 
-/*  source
-    ├── archive.c
-    ├── archive.h
-    ├── cause.c
-    ├── cause.h
-    ├── compiler.c
-    ├── compiler.h
-    ├── crypto.c
-    ├── crypto.h
-    ├── curl.c
-    ├── curl.h
-    ├── debug.c
-    ├── debug.h
-    ├── extra.c [x]
-    ├── extra.h
-    ├── library.c
-    ├── library.h
-    ├── replicate.c
-    ├── replicate.h
-    ├── runner.c
-    ├── runner.h
-    ├── units.c
-    ├── units.h
-    ├── utils.c
-    └── utils.h
-*/
+void _restore_colour(void) {
 
-/*
- * Prints formatted output followed by a newline character to specified stream.
- * Wrapper around vprintf that automatically appends newline and flushes stream.
- * Uses variable argument lists to support printf-style formatting.
- */
+        fputs(BKG_DEFAULT, stdout);
+        fputs(DOG_COL_RESET, stdout);
+        fputs(DOG_COL_DEFAULT, stdout);
+
+        return;
+}
+
 void println(FILE *stream, const char *format, ...)
 {
         va_list args;  /* Variable argument list handler */
         va_start(args, format);  /* Initialize argument list */
-        printf("%s", FCOLOUR_RESET);  /* Always reset colour */
-        printf("%s", FCOLOUR_DEFAULT);
-        printf("%s", BKG_DEFAULT);
+        
+        _restore_colour();
+
         vfprintf(stream, format, args);   /* Print formatted string with variable arguments */
-        printf("\n");            /* Append newline character */
-        printf("%s", FCOLOUR_RESET);  /* Always reset colour */
-        printf("%s", FCOLOUR_DEFAULT);
-        printf("%s", BKG_DEFAULT);
+        
+        fputs("\n", stdout);            /* Append newline character */
+        
+        _restore_colour();
+
         va_end(args);            /* Clean up argument list */
         fflush(stream);          /* Ensure output is written immediately */
 }
 
-/*
- * Prints colored formatted output to specified stream, then resets to default color.
- * Applies ANSI color code before printing and resets to default color afterwards.
- * Supports variable arguments like printf for flexible formatting.
- */
 void printf_colour(FILE *stream, const char *color, const char *format, ...)
 {
         va_list args;
         va_start(args, format);
-        printf("%s", FCOLOUR_RESET);  /* Always reset colour */
-        printf("%s", FCOLOUR_DEFAULT);
-        printf("%s", BKG_DEFAULT);
+
+        _restore_colour();
+
         printf("%s", color);     /* Apply ANSI color escape sequence */
+        
         vfprintf(stream, format, args);   /* Print formatted content with variable arguments */
-        printf("%s", FCOLOUR_RESET);  /* Always reset colour */
-        printf("%s", FCOLOUR_DEFAULT);
-        printf("%s", BKG_DEFAULT);
+        
+        _restore_colour();
+
         va_end(args);
         fflush(stream);          /* Force immediate output */
 }
 
-/*
- * Prints informational message with "I" prefix and newline.
- * Standardized format for informational messages with automatic newline.
- */
 void printf_info(FILE *stream, const char *format, ...)
 {
         va_list args;
         va_start(args, format);
-        printf("%s", FCOLOUR_RESET);  /* Always reset colour */
-        printf("%s", FCOLOUR_DEFAULT);
-        printf("%s", BKG_DEFAULT);
-        printf("%s", FCOLOUR_YELLOW);
-        printf(">> I");       /* Standard informational prefix */
-        printf("%s", FCOLOUR_RESET);  /* Always reset colour */
-        printf("%s", FCOLOUR_DEFAULT);
-        printf("%s", BKG_DEFAULT);
-        printf(": ");
+        
+        _restore_colour();
+
+        fputs(DOG_COL_YELLOW, stdout);
+
+        fputs(">> I", stdout);       /* Standard informational prefix */
+        
+        _restore_colour();
+
+        fputs(":", stdout);
+
         vfprintf(stream, format, args);   /* Print message content */
-        printf("\n");            /* Ensure line break */
+        
+        fputs("\n", stdout);            /* Ensure line break */
+        
         va_end(args);
+        
         fflush(stream);
 }
 
-/*
- * Prints warning message with "W" prefix and newline.
- * Standardized format for warning messages with automatic newline.
- */
 void printf_warning(FILE *stream, const char *format, ...)
 {
         va_list args;
         va_start(args, format);
-        printf("%s", FCOLOUR_RESET);  /* Always reset colour */
-        printf("%s", FCOLOUR_DEFAULT);
-        printf("%s", BKG_DEFAULT);
-        printf("%s", FCOLOUR_GREEN);
-        printf(">> W");       /* Standard informational prefix */
-        printf("%s", FCOLOUR_RESET);  /* Always reset colour */
-        printf("%s", FCOLOUR_DEFAULT);
-        printf("%s", BKG_DEFAULT);
-        printf(": ");
+        
+        _restore_colour();
+
+        fputs(DOG_COL_GREEN, stdout);
+
+        fputs(">> W", stdout);       /* Standard informational prefix */
+        
+        _restore_colour();
+
+        fputs(":", stdout);
+
         vfprintf(stream, format, args);   /* Print message content */
-        printf("\n");            /* Ensure line break */
+        
+        fputs("\n", stdout);            /* Ensure line break */
+        
         va_end(args);
+        
         fflush(stream);
 }
 
-/*
- * Prints error message with "E" prefix and newline.
- * Standardized format for error messages with automatic newline.
- */
 void printf_error(FILE *stream, const char *format, ...)
 {
         va_list args;
         va_start(args, format);
-        printf("%s", FCOLOUR_RESET);  /* Always reset colour */
-        printf("%s", FCOLOUR_DEFAULT);
-        printf("%s", BKG_DEFAULT);
-        printf("%s", FCOLOUR_RED);
-        printf(">> E");       /* Standard informational prefix */
-        printf("%s", FCOLOUR_RESET);  /* Always reset colour */
-        printf("%s", FCOLOUR_DEFAULT);
-        printf("%s", BKG_DEFAULT);
-        printf(": ");
+        
+        _restore_colour();
+
+        fputs(DOG_COL_RED, stdout);
+
+        fputs(">> E", stdout);       /* Standard informational prefix */
+        
+        _restore_colour();
+
+        fputs(":", stdout);
+
         vfprintf(stream, format, args);   /* Print message content */
-        printf("\n");            /* Ensure line break */
+        
+        fputs("\n", stdout);            /* Ensure line break */
+        
         va_end(args);
+        
         fflush(stream);
 }
 

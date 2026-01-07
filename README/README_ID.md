@@ -1,212 +1,323 @@
-# Watchdogs
-
 ## Linux
 
-- [x] GNU/wget
-```yml
-wget -O install.sh https://github.com/gskeleton/watchdogs/raw/refs/heads/main/__linux.sh && chmod +x install.sh && ./install.sh
+* GNU/wget
+
+```yaml
+wget -O install.sh https://github.com/gskeleton/watchdogs/raw/refs/heads/main/__gnu_linux.sh && chmod +x install.sh && ./install.sh
 ```
-- [x] cURL
-```yml
-curl -L -o install.sh https://github.com/gskeleton/watchdogs/raw/refs/heads/main/__linux.sh && chmod +x install.sh && ./install.sh
+
+* cURL
+
+```yaml
+curl -L -o install.sh https://github.com/gskeleton/watchdogs/raw/refs/heads/main/__gnu_linux.sh && chmod +x install.sh && ./install.sh
 ```
+
+---
 
 ## Termux
 
-> Sangat disarankan menggunakan distribusi Termux langsung dari GitHub, bukan dari Google Play Store, untuk memastikan kompatibilitas dengan fitur Termux terbaru dan menikmati kebebasan yang ditawarkan di luar Play Store. https://github.com/termux/termux-app/releases
-> Cukup taruh perintah ini ke terminal dan jalankan.
+1. **Unduh Termux dari GitHub**
 
-- [x] GNU/wget
-```yml
-wget -O install.sh https://github.com/gskeleton/watchdogs/raw/refs/heads/main/__termux.sh && chmod +x install.sh && ./install.sh
-```
-- [x] cURL
-```yml
+   * Android 7 ke atas:
+     [https://github.com/termux/termux-app/releases/download/v0.119.0-beta.3/termux-app_v0.119.0-beta.3+apt-android-7-github-debug_universal.apk](https://github.com/termux/termux-app/releases/download/v0.119.0-beta.3/termux-app_v0.119.0-beta.3+apt-android-7-github-debug_universal.apk)
+   * Android 5/6:
+     [https://github.com/termux/termux-app/releases/download/v0.119.0-beta.3/termux-app_v0.119.0-beta.3+apt-android-5-github-debug_universal.apk](https://github.com/termux/termux-app/releases/download/v0.119.0-beta.3/termux-app_v0.119.0-beta.3+apt-android-5-github-debug_universal.apk)
+
+2. **Install file .apk yang sudah diunduh lalu jalankan Termux.**
+
+3. **Pertama kali, jalankan perintah berikut di Termux:**
+
+```yaml
 curl -L -o install.sh https://github.com/gskeleton/watchdogs/raw/refs/heads/main/__termux.sh && chmod +x install.sh && ./install.sh
 ```
 
+4. **Jika muncul prompt seperti berikut (simulasi):**
+
+```yaml
+Enter the path you want to switch to location in storage/downloads
+  ^ contoh: my_folder my_project my_server
+  ^ nama folder untuk instalasi; jika belum ada, tidak masalah
+  ^ tekan Enter jika ingin meng-install watchdogs di home (disarankan)
+```
+
+> **Tekan Enter tanpa mengetik apa pun.**
+> Jika ada pertanyaan lain (misalnya pemilihan mirror Termux), pilih yang paling atas atau **tekan Enter saja**.
+
+5. **Indikasi Watchdogs berhasil terpasang:**
+
+```diff
+  \/%#z.       \/.%#z./       ,z#%\/
+   \X##k      /X#####X\      d##X/
+    \888\    /888/ \888\    /888/
+     `v88;  ;88v'   `v88;  ;88v'
+       \77xx77/       \77xx77/
+        `::::'         `::::'
+Type "help" for more information.
+> 
+```
+
+> **Gunakan perintah `pawncc` untuk menyiapkan compiler (simulasi):**
+
+```yaml
+> pawncc
+== Select a Platform ==
+  [l] Linux
+  [w] Windows
+  [t] Termux
+==> t # pilih t [termux]
+== Select PawnCC Version ==
+  A) Pawncc 3.10.11
+  B) Pawncc 3.10.10
+  C) Pawncc 3.10.9
+  D) Pawncc 3.10.8
+  E) Pawncc 3.10.7
+> a # pilih versi compiler
+* Try Downloading ? * Enable HTTP debugging? (y/n): n
+ Try Extracting ? archive file...
+==> Remove archive ?? (y/n) > n # opsional - hapus arsip nanti
+==> Apply pawncc?
+   answer (y/n) > y # pasang pawncc ke root (folder pawno)
+>> I:moved without sudo: '?' -> '?'
+>> I:moved without sudo: '?' -> '?'
+>> I:Congratulations! - Done.
+```
+
+> Jika melihat simbol `>` berwarna cyan/abu-abu/biru (tampilan bisa berbeda), **cukup tekan Enter** kecuali diminta jawaban tertentu (misalnya apply pawncc = yes).
+
+> Untuk langkah kompilasi, pelajari:
+> [https://github.com/gskeleton/watchdogs/blob/main/README/README_ID.md#usage-guide](https://github.com/gskeleton/watchdogs/blob/main/README/README_ID.md#usage-guide)
+
+---
+
 ## Native
 
-> Untuk Build Windows? Gunakan MSYS2 yang Direkomendasikan (pacman -S make && make && make windows)
+> **Build untuk Windows?** Gunakan **MSYS2** (disarankan).
 
-1. Instal Visual C++ Redistributable Runtimes All-in-One terlebih dahulu (diperlukan untuk pawncc)
-- Kunjungi https://www.techpowerup.com/download/visual-c-redistributable-runtime-package-all-in-one/
-- Klik "Download"
-- Ekstrak arsipnya
-- Jalankan saja "install_all.bat".
-2. Buka Command Prompt Windows, Jalankan:
-```yml
+1. **Install Visual C++ Redistributable Runtimes (wajib untuk pawncc)**
+
+   * Kunjungi: [https://www.techpowerup.com/download/visual-c-redistributable-runtime-package-all-in-one/](https://www.techpowerup.com/download/visual-c-redistributable-runtime-package-all-in-one/)
+   * Klik **Download**
+   * Ekstrak arsip
+   * Jalankan `install_all.bat`
+
+2. **Buka Command Prompt Windows, jalankan:**
+
+```yaml
 powershell -Command "Invoke-WebRequest 'https://raw.githubusercontent.com/gskeleton/watchdogs/refs/heads/main/__win.cmd' -OutFile 'install.cmd'; .\install.cmd"
 ```
 
-## Referensi Perintah Make
+---
+
+## Make Command Reference
 
 ```yaml
-make                # Instal pustaka dan build
+make                # Install library dan build
 make linux          # Build untuk Linux
 make windows        # Build untuk Windows
 make termux         # Build untuk Termux
-make clean          # Bersihkan artefak build
+make clean          # Bersihkan hasil build
 make debug          # Build dengan mode debug (Linux)
 make debug-termux   # Build dengan mode debug (Termux)
 make windows-debug  # Build dengan mode debug (Windows)
 ```
 
+---
+
 ## GNU Debugger (GDB)
 
 ```yaml
-# Langkah 1 - Mulai debugger (GDB) dengan program Anda
-# Pilih eksekutabel yang benar sesuai platform Anda:
+# Langkah 1 - Jalankan debugger (GDB) dengan program
+# Pilih executable sesuai platform:
 gdb ./watchdogs.debug        # Untuk Linux
-gdb ./watchdogs.debug.tmux   # Untuk Termux (Android - Termux)
-gdb ./watchdogs.debug.win    # Untuk Windows (jika menggunakan GDB di Windows)
+gdb ./watchdogs.debug.tmux   # Untuk Termux (Android)
+gdb ./watchdogs.debug.win    # Untuk Windows (jika pakai GDB)
 
 # Langkah 2 - Jalankan program di dalam GDB
-# Ini memulai program di bawah kendali debugger.
-run                           # Ketik saja 'run' dan tekan Enter
+# Program dijalankan di bawah kontrol debugger
+run                           # ketik 'run' lalu Enter
 
 # Langkah 3 - Menangani crash atau interupsi
-# Jika program crash (misal: segmentation fault) atau Anda menghentikannya secara manual (Ctrl+C),
+# Jika program crash (misalnya segmentation fault) atau dihentikan manual (Ctrl+C),
 # GDB akan menghentikan eksekusi dan menampilkan prompt.
 
-# Langkah 4 - Periksa status program dengan backtrace
-# Backtrace menunjukkan stack panggilan fungsi pada titik crash.
-bt           # Backtrace dasar (menunjukkan nama fungsi)
-bt full      # Backtrace lengkap (menunjukkan nama fungsi, variabel, dan argumen)
+# Langkah 4 - Cek status program dengan backtrace
+# Backtrace menampilkan urutan pemanggilan fungsi saat crash.
+bt           # Backtrace dasar (nama fungsi)
+bt full      # Backtrace lengkap (fungsi, variabel, argumen)
 ```
 
-## Alias Perintah
+---
 
-Default (jika di direktori root):
+## Command Alias
+
+**Default (jika berada di root directory):**
+
 ```yaml
 echo "alias watchdogs='./watchdogs'" >> ~/.bashrc
 source ~/.bashrc
 ```
 
-Dan jalankan aliasnya:
-```yml
+**Menjalankan alias:**
+
+```yaml
 watchdogs
 ```
 
-## Panduan Penggunaan
+---
 
-## Perintah Kompilasi
+## Compilation Commands – With Parent Directory in Termux
 
-> Kompilasi `server.pwn`:
 ```yaml
-# Kompilasi Default
+compile ../storage/downloads/_GAMEMODE_FOLDER_NAME_/gamemodes/_PAWN_FILE_NAME_.pwn
+```
+
+**Contoh:**
+Saya punya folder gamemode bernama `parent` di Downloads (via ZArchiver), dan file utama `pain.pwn` berada di dalam `gamemodes/`.
+Maka path yang digunakan adalah:
+
+```yaml
+compile ../storage/downloads/parent/pain.pwn
+```
+
+---
+
+## Compilation Commands – General
+
+> **Compile `server.pwn`:**
+
+```yaml
+# Kompilasi default
 compile .
 ```
-> Kompilasi dengan jalur file spesifik
-```yml
-compile server.pwn
-compile path/ke/server.pwn
-```
-> Kompilasi dengan lokasi induk - jalur include otomatis
+
+> **Compile dengan path spesifik**
+
 ```yaml
-compile ../path/ke/project/server.pwn
-# -: -i/path/ke/path/pawno -i/path/ke/path/qawno -i/path/ke/path/gamemodes
+compile server.pwn
+compile path/to/server.pwn
 ```
 
-## Manajemen Server
+> **Compile dengan parent location (include path otomatis)**
 
-* **Algoritma**
+```yaml
+compile ../path/to/project/server.pwn
+# -: -i/path/to/path/pawno -i/path/to/path/qawno -i/path/to/path/gamemodes
 ```
---------------------     --------------------------
-|                  |     |                        |
+
+---
+
+## Server Management
+
+* **Algorithm**
+
+```diff
+--------------------     --------------------------                -
+|                  |     |                        |                -
 |       ARGS       | --> |        FILTERING       |                -
-|                  |     |                        |
---------------------     --------------------------
+|                  |     |                        |                -
+--------------------     --------------------------                -
                                      |
                                      v
----------------------    --------------------------
-|                   |    |                        |
+---------------------    --------------------------                -
+|                   |    |                        |                -
 |  LOGGING OUTPUT   |    |   EXIST FILE VALIDATE  |                -
-|                   |    |                        |
----------------------    --------------------------
+|                   |    |                        |                -
+---------------------    --------------------------                -
          ^                           |
          |                           v
---------------------     --------------------------
-|                  |     |                        |
+--------------------     --------------------------                -
+|                  |     |                        |                -
 |  RUNNING BINARY  | <-- |     EDITING CONFIG     |                -
-|                  |     |    if args not null    |
---------------------     --------------------------
+|                  |     |    if args is exist    |                -
+--------------------     --------------------------                -
 ```
 
-**Mulai server dengan gamemode default:**
+**Menjalankan server dengan gamemode default:**
+
 ```yaml
 running .
 ```
 
-**Mulai server dengan gamemode spesifik:**
+**Menjalankan server dengan gamemode tertentu:**
+
 ```yaml
 running server
 ```
 
-**Kompilasi dan mulai dalam satu perintah:**
+**Compile dan jalankan sekaligus:**
+
 ```yaml
 compiles
 ```
 
-**Kompilasi dan mulai dengan jalur spesifik:**
-```yml
+**Compile dan jalankan dengan path tertentu:**
+
+```yaml
 compiles server
 ```
 
-## Manajemen Dependensi
+---
 
-* **Algoritma**
-```
---------------------     --------------------------
-|                  |     |                        |
+## Dependency Management
+
+```diff
+--------------------     --------------------------                -
+|                  |     |                        |                -
 |     BASE URL     | --> |      URL CHECKING      |                -
-|                  |     |                        |
---------------------     --------------------------
+|                  |     |                        |                -
+--------------------     --------------------------                -
                                     |
                                     v
----------------------    --------------------------
-|                   |    |                        |
+---------------------    --------------------------                -
+|                   |    |                        |                -
 |     APPLYING      |    |  PATTERNS - FILTERING  |                -
-|                   |    |                        |
----------------------    --------------------------
+|                   |    |                        |                -
+---------------------    --------------------------                -
          ^                          |
          |                          v
---------------------     --------------------------
-|                  |     |                        |
+--------------------     --------------------------                -
+|                  |     |                        |                -
 |  FILES CHECKING  | <-- |       INSTALLING       |                -
-|                  |     |                        |
---------------------     --------------------------
+|                  |     |                        |                -
+--------------------     --------------------------                -
 ```
 
-**Instal dependensi dari `watchdogs.toml`:**
+**Install dependency dari `watchdogs.toml`:**
+
 ```yaml
 replicate .
 ```
 
-**Instal repositori spesifik:**
+**Install repository tertentu:**
+
 ```yaml
 replicate repo/user
 ```
 
-**Instal versi spesifik (tags):**
+**Install versi tertentu (tag):**
+
 ```yaml
 replicate repo/user?v1.1
 ```
-- Otomatis terbaru
+
+* **Otomatis versi terbaru**
+
 ```yaml
 replicate repo/user?newer
 ```
 
-**Instal branch spesifik:**
+**Install branch tertentu:**
+
 ```yaml
 replicate repo/user --branch master
 ```
 
-**Instal lokasi spesifik:**
+**Install ke lokasi tertentu:**
+
 ```yaml
 # root
 replicate repo/user --save .
-# spesifik
+# lokasi spesifik
 replicate repo/user --save ../parent/myproj
-replicate repo/user --save myfol/myproj
+replicate repo/user --save myfolder/myproj
 ```

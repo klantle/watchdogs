@@ -12,8 +12,7 @@ ls -a "download"
 echo
 
 echo "Enter the path you want to switch to location in download:"
-echo "  ^ example: my_folder"
-echo "  ^ a folder name for install; the folder doesn't exist?, don't worry.."
+echo "  ^ example: my_folder my_project my_server"
 
 read -r -p "> " TARGET_DIR
 

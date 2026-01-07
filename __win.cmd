@@ -11,10 +11,8 @@ if %errorLevel% neq 0 (
 dir "%USERPROFILE%\Downloads"
 
 echo.
-echo Enter the path you want to switch to:
-echo "Enter the path you want to switch to location in %USERPROFILE%\Downloads:"
-echo  ^^ example: my_folder
-echo  ^^ a folder name for install; the folder doesn't exist?, don't worry..
+echo Enter the path you want to switch to location in %USERPROFILE%\Downloads:
+echo  ^^ example: my_folder my_project my_server
 set /p TARGET_DIR=Path:
 
 if not exist "%USERPROFILE%\Downloads\%TARGET_DIR%" (
@@ -44,14 +42,14 @@ echo.
 
 powershell -Command "Invoke-WebRequest -Uri 'https://github.com/gskeleton/watchdogs/releases/download/DOG-260101-1.1/watchdogs.win' -OutFile 'watchdogs.win'"
 
-if exist "watch" (
-    rmdir /s /q "watch"
+if exist "dog" (
+    rmdir /s /q "dog"
 )
 
 powershell -NoProfile -Command "Invoke-WebRequest 'https://github.com/gskeleton/libdog/archive/refs/heads/main.zip' -OutFile 'main.zip'"
-powershell -NoProfile -Command "Expand-Archive 'main.zip' -DestinationPath 'watch' -Force"
+powershell -NoProfile -Command "Expand-Archive 'main.zip' -DestinationPath 'dog' -Force"
 
-cd /d watch\libdog-main || exit /b 1
+cd /d dog\libdog-main || exit /b 1
 
 if exist "C:\libdog" (
     rmdir /s /q "C:\libdog"
@@ -63,7 +61,7 @@ move /Y "windows-native.cmd" "..\..\"
 cd /d "%USERPROFILE%\Downloads\%TARGET_DIR%"
 
 del /q "main.zip"
-rmdir /s /q "watch"
+rmdir /s /q "dog"
 
 .\windows-native.cmd
 

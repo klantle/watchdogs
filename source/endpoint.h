@@ -1,5 +1,5 @@
-#ifndef RUNNER_H
-#define RUNNER_H
+#ifndef ENDPOINT_H
+#define ENDPOINT_H
 
 #ifdef DOG_WINDOWS
 /*
@@ -30,12 +30,14 @@ static inline int _sigaction_stub(int sig, const struct sigaction *act, struct s
 }
 #endif
 #endif
+
 extern int sigint_handler;
+
 void unit_sigint_handler(int sig);
 void dog_stop_server_tasks(void);
-void dog_display_server_logs(int ret);
 void dog_server_crash_check(void);
 void restore_server_config(void);
+
 void dog_exec_samp_server(const char *gamemode_arg, const char *server_bin);
 void dog_exec_omp_server(const char *gamemode_arg, const char *server_bin);
 

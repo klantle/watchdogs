@@ -6,26 +6,26 @@
 #include <time.h>
 
 // Foreground Colors (Standard)
-#define FCOLOUR_BLACK      "\033[0;30m"
-#define FCOLOUR_RED        "\033[0;31m"
-#define FCOLOUR_GREEN      "\033[0;32m"
-#define FCOLOUR_YELLOW     "\033[0;33m"
-#define FCOLOUR_BLUE       "\033[94m"
-#define FCOLOUR_MAGENTA    "\033[0;35m"
-#define FCOLOUR_CYAN       "\033[0;36m"
-#define FCOLOUR_WHITE      "\033[0;37m"
+#define DOG_COL_BLACK      "\033[0;30m"
+#define DOG_COL_RED        "\033[0;31m"
+#define DOG_COL_GREEN      "\033[0;32m"
+#define DOG_COL_YELLOW     "\033[0;33m"
+#define DOG_COL_BLUE       "\033[94m"
+#define DOG_COL_MAGENTA    "\033[0;35m"
+#define DOG_COL_CYAN       "\033[0;36m"
+#define DOG_COL_WHITE      "\033[0;37m"
 
 // Foreground Colors (Bright)
-#define FCOLOUR_BBLACK     "\033[1;30m"
-#define FCOLOUR_BRED       "\033[1;31m"
-#define FCOLOUR_BGREEN     "\033[1;32m"
-#define FCOLOUR_BYELLOW    "\033[1;33m"
-#define FCOLOUR_BBLUE      "\033[1;34m"
-#define FCOLOUR_BMAGENTA   "\033[1;35m"
-#define FCOLOUR_BCYAN      "\033[1;36m"
-#define FCOLOUR_BWHITE     "\033[1;37m"
-#define FCOLOUR_B_MAGENTA  "\033[1;35m"
-#define FCOLOUR_B_BLUE     "\033[1;94m"
+#define DOG_COL_BBLACK     "\033[1;30m"
+#define DOG_COL_BRED       "\033[1;31m"
+#define DOG_COL_BGREEN     "\033[1;32m"
+#define DOG_COL_BYELLOW    "\033[1;33m"
+#define DOG_COL_BBLUE      "\033[1;34m"
+#define DOG_COL_BMAGENTA   "\033[1;35m"
+#define DOG_COL_BCYAN      "\033[1;36m"
+#define DOG_COL_BWHITE     "\033[1;37m"
+#define DOG_COL_B_MAGENTA  "\033[1;35m"
+#define DOG_COL_B_BLUE     "\033[1;94m"
 
 // Background Colors
 #define BKG_BLACK      "\033[40m"
@@ -48,16 +48,16 @@
 #define BKG_BWHITE     "\033[107m"
 
 // Styles
-#define FCOLOUR_BOLD       "\033[1m"
-#define FCOLOUR_DIM        "\033[2m"
-#define FCOLOUR_UNDERLINE  "\033[4m"
-#define FCOLOUR_BLINK      "\033[5m"
-#define FCOLOUR_REVERSE    "\033[7m"
-#define FCOLOUR_HIDDEN     "\033[8m"
+#define DOG_COL_BOLD       "\033[1m"
+#define DOG_COL_DIM        "\033[2m"
+#define DOG_COL_UNDERLINE  "\033[4m"
+#define DOG_COL_BLINK      "\033[5m"
+#define DOG_COL_REVERSE    "\033[7m"
+#define DOG_COL_HIDDEN     "\033[8m"
 
 // Reset / Default
-#define FCOLOUR_RESET      "\033[0m"
-#define FCOLOUR_DEFAULT    "\033[39m"
+#define DOG_COL_RESET      "\033[0m"
+#define DOG_COL_DEFAULT    "\033[39m"
 #define BKG_DEFAULT    "\033[49m"
 
 /* Mode bits we will populate (subset of POSIX) */

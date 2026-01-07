@@ -83,18 +83,18 @@ jobs:
             echo '[TASKS] Using dnf (Fedora <= 38)'
             DNF_CMD='dnf'
           fi
-          
+
           echo '[TASKS] Installing dependencies on Fedora'
-          
+
           \$DNF_CMD -y update
           \$DNF_CMD -y install @development-tools make file binutils readline
-          
+
           if [[ \"\$DNF_CMD\" == \"dnf5\" ]]; then
             \$DNF_CMD -y install '@Development Tools'
           else
             \$DNF_CMD -y groupinstall 'Development Tools'
           fi
-          
+
           \$DNF_CMD -y install \
             clang lld libatomic libcxx-devel curl-devel \
             readline-devel libarchive-devel \
@@ -103,23 +103,23 @@ jobs:
 
           echo '[TASKS - BUILD] RUNNING DEBUG BUILD'
           make debug
-          
+
           echo '[TASKS - BUILD] BUILD FILE DETAILS'
           file watchdogs.debug
-          
+
           echo '[TASKS - BUILD] TESTING HELP COMMAND'
           ./watchdogs.debug help || echo 'Help command test skipped'
-          
+
           echo '[TASKS - BUILD] TESTING WATCHDOGS COMMAND'
           ./watchdogs.debug watchdogs || echo 'Watchdogs command test skipped'
-          
+
           echo '[TASKS - BUILD] CHECKING BINARY DEPENDENCIES'
           ldd watchdogs.debug 2>/dev/null || readelf -d watchdogs.debug | grep NEEDED || true
-          
+
           echo '[TASKS - BUILD] ARTIFACT STATISTICS'
           ls -la watchdogs.debug
           size watchdogs.debug 2>/dev/null || true
-          
+
           echo '[TASKS - BUILD] BUILD COMPLETED SUCCESSFULLY ON FEDORA'
         "
     - name: Upload build artifact
@@ -158,32 +158,32 @@ jobs:
             binutils \
             glibc-devel.i686 glibc-devel.x86_64 \
             libstdc++-devel.i686 libstdc++-devel.x86_64
-          
+
           dnf -y install libcxx-devel 2>/dev/null || echo 'libcxx-devel not available, using default C++ library'
-          
+
           echo '[TASKS] Checking installed packages'
           rpm -qa | grep -E '(curl|readline|archive|zlib|clang|gcc)' | sort
-          
+
           echo '[TASKS - BUILD] RUNNING DEBUG BUILD'
           make debug || (echo '[ERROR] Build failed, trying with gcc' && CC=gcc CXX=g++ make debug)
-          
+
           echo '[TASKS - BUILD] BUILD FILE DETAILS'
           file watchdogs.debug 2>/dev/null || echo 'No binary found'
-          
+
           if [ -f watchdogs.debug ]; then
             echo '[TASKS - BUILD] TESTING HELP COMMAND'
             ./watchdogs.debug help || echo 'Help command test skipped'
-            
+
             echo '[TASKS - BUILD] TESTING WATCHDOGS COMMAND'
             ./watchdogs.debug watchdogs || echo 'Watchdogs command test skipped'
-            
+
             echo '[TASKS - BUILD] CHECKING BINARY DEPENDENCIES'
             ldd watchdogs.debug 2>/dev/null || readelf -d watchdogs.debug | grep NEEDED || true
-            
+
             echo '[TASKS - BUILD] ARTIFACT STATISTICS'
             ls -la watchdogs.debug
             size watchdogs.debug 2>/dev/null || true
-            
+
             echo '[TASKS - BUILD] BUILD COMPLETED SUCCESSFULLY ON ALMALINUX 9'
           else
             echo '[ERROR] Build failed completely on AlmaLinux'
@@ -227,32 +227,32 @@ jobs:
             binutils \
             glibc-devel.i686 glibc-devel.x86_64 \
             libstdc++-devel.i686 libstdc++-devel.x86_64
-          
+
           dnf -y install libcxx-devel 2>/dev/null || echo 'libcxx-devel not available, using default C++ library'
-          
+
           echo '[TASKS] Checking installed packages'
           rpm -qa | grep -E '(curl|readline|archive|zlib|clang|gcc)' | sort
-          
+
           echo '[TASKS - BUILD] RUNNING DEBUG BUILD'
           make debug || (echo '[ERROR] Build failed, trying with gcc' && CC=gcc CXX=g++ make debug)
-          
+
           echo '[TASKS - BUILD] BUILD FILE DETAILS'
           file watchdogs.debug 2>/dev/null || echo 'No binary found'
-          
+
           if [ -f watchdogs.debug ]; then
             echo '[TASKS - BUILD] TESTING HELP COMMAND'
             ./watchdogs.debug help || echo 'Help command test skipped'
-            
+
             echo '[TASKS - BUILD] TESTING WATCHDOGS COMMAND'
             ./watchdogs.debug watchdogs || echo 'Watchdogs command test skipped'
-            
+
             echo '[TASKS - BUILD] CHECKING BINARY DEPENDENCIES'
             ldd watchdogs.debug 2>/dev/null || readelf -d watchdogs.debug | grep NEEDED || true
-            
+
             echo '[TASKS - BUILD] ARTIFACT STATISTICS'
             ls -la watchdogs.debug
             size watchdogs.debug 2>/dev/null || true
-            
+
             echo '[TASKS - BUILD] BUILD COMPLETED SUCCESSFULLY ON ROCKY LINUX 9'
           else
             echo '[ERROR] Build failed completely on Rocky Linux'
@@ -297,23 +297,23 @@ jobs:
 
           echo '[TASKS - BUILD] RUNNING DEBUG BUILD'
           make debug
-          
+
           echo '[TASKS - BUILD] BUILD FILE DETAILS'
           file watchdogs.debug
-          
+
           echo '[TASKS - BUILD] TESTING HELP COMMAND'
           ./watchdogs.debug help || echo 'Help command test skipped'
-          
+
           echo '[TASKS - BUILD] TESTING WATCHDOGS COMMAND'
           ./watchdogs.debug watchdogs || echo 'Watchdogs command test skipped'
-          
+
           echo '[TASKS - BUILD] CHECKING BINARY DEPENDENCIES'
           ldd watchdogs.debug 2>/dev/null || readelf -d watchdogs.debug | grep NEEDED || true
-          
+
           echo '[TASKS - BUILD] ARTIFACT STATISTICS'
           ls -la watchdogs.debug
           size watchdogs.debug 2>/dev/null || true
-          
+
           echo '[TASKS - BUILD] BUILD COMPLETED SUCCESSFULLY ON OPENSUSE'
         "
     - name: Upload build artifact
@@ -350,26 +350,26 @@ jobs:
             binutils \
             procps-ng \
             lib32-gcc-libs
-          
+
           echo '[TASKS - BUILD] RUNNING DEBUG BUILD'
           make debug
-          
+
           echo '[TASKS - BUILD] BUILD FILE DETAILS'
           file watchdogs.debug
-          
+
           echo '[TASKS - BUILD] TESTING HELP COMMAND'
           ./watchdogs.debug help || echo 'Help command test skipped'
-          
+
           echo '[TASKS - BUILD] TESTING WATCHDOGS COMMAND'
           ./watchdogs.debug watchdogs || echo 'Watchdogs command test skipped'
-          
+
           echo '[TASKS - BUILD] CHECKING BINARY DEPENDENCIES'
           ldd watchdogs.debug 2>/dev/null || readelf -d watchdogs.debug | grep NEEDED || true
-          
+
           echo '[TASKS - BUILD] ARTIFACT STATISTICS'
           ls -la watchdogs.debug
           size watchdogs.debug 2>/dev/null || true
-          
+
           echo '[TASKS - BUILD] BUILD COMPLETED SUCCESSFULLY ON ARCH LINUX'
         "
     - name: Upload build artifact
@@ -396,13 +396,12 @@ jobs:
           echo '[TASKS] Installing dependencies in Termux'
           apt -o Acquire::Queue-Mode=access -o Acquire::Retries=3 update -y
           DEBIAN_FRONTEND=noninteractive apt -o Dpkg::Use-Pty=0 install -y --no-install-recommends \
-            x11-repo unstable-repo \
-            coreutils binutils procps clang curl \
+            unstable-repo coreutils binutils procps clang curl \
             libarchive libandroid-spawn readline make
 
           echo '[TASKS - BUILD] RUNNING TERMUX-DEBUG BUILD'
           make termux-debug
-          
+
           echo '[TASKS - BUILD] BUILD COMPLETED FOR TERMUX'
         "
     - name: Upload build artifact
@@ -414,7 +413,7 @@ jobs:
   build-windows:
     name: Build on Windows
     runs-on: windows-latest
-    
+
     steps:
     - uses: actions/checkout@v4
 
@@ -429,13 +428,13 @@ jobs:
       run: |
         C:\tools\msys64\usr\bin\bash.exe -lc "pacman -Syu --noconfirm"
         C:\tools\msys64\usr\bin\bash.exe -lc "pacman -S --needed --noconfirm mingw-w64-ucrt-x86_64-toolchain mingw-w64-ucrt-x86_64-clang mingw-w64-ucrt-x86_64-lld mingw-w64-ucrt-x86_64-libc++ mingw-w64-ucrt-x86_64-curl mingw-w64-ucrt-x86_64-readline mingw-w64-ucrt-x86_64-libarchive mingw-w64-ucrt-x86_64-zlib mingw-w64-ucrt-x86_64-make mingw-w64-ucrt-x86_64-windows-default-manifest"
-    
+
     - name: Build using Makefile
       shell: powershell
       run: |
         $env:Path = "C:\tools\msys64\ucrt64\bin;C:\tools\msys64\usr\bin;$env:Path"
         mingw32-make windows-debug
-    
+
     - name: Upload build artifact
       uses: actions/upload-artifact@v4
       with:

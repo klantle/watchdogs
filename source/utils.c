@@ -1,2478 +1,2592 @@
-// Copyright (c) 2026 Watchdogs Team and contributors
-// All rights reserved. under The 2-Clause BSD License See COPYING or https://opensource.org/license/bsd-2-clause
-#include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
-#include <stdarg.h>
-#include <stdbool.h>
-#include <ctype.h>
-#include <math.h>
-#include <time.h>
-#include <ftw.h>
-#include <errno.h>
-#include <fcntl.h>
-#include <dirent.h>
-#include <limits.h>
-#include <stddef.h>
-#include <libgen.h>
-#include <inttypes.h>
-#include <sys/file.h>
-#include <sys/stat.h>
-#include <curl/curl.h>
-#include <sys/types.h>
-
-#include "utils.h"
-
-/*  source
-    ├── archive.c
-    ├── archive.h
-    ├── cause.c
-    ├── cause.h
-    ├── compiler.c
-    ├── compiler.h
-    ├── crypto.c
-    ├── crypto.h
-    ├── curl.c
-    ├── curl.h
-    ├── debug.c
-    ├── debug.h
-    ├── extra.c
-    ├── extra.h
-    ├── library.c
-    ├── library.h
-    ├── replicate.c
-    ├── replicate.h
-    ├── runner.c
-    ├── runner.h
-    ├── units.c
-    ├── units.h
-    ├── utils.c [x]
-    └── utils.h
-*/
+/*-
+ * Copyright (c) 2026 Watchdogs Team and contributors
+ * All rights reserved. under The 2-Clause BSD License
+ * See COPYING or https://opensource.org/license/bsd-2-clause
+ */
+#include  <stdio.h>
+#include  <stdlib.h>
+#include  <string.h>
+#include  <stdbool.h>
+#include  <ctype.h>
+#include  <errno.h>
+#include  <fcntl.h>
+#include  <dirent.h>
+#include  <limits.h>
+#include  <libgen.h>
+#include  <sys/stat.h>
+#include  <sys/types.h>
 
 #ifdef DOG_LINUX
-	#include <termios.h>
+#include  <termios.h>
 #endif
 #if defined(DOG_ANDROID)
-ssize_t sendfile(int out_fd,
-		int in_fd, off_t *offset, size_t count) {
+ssize_t
+sendfile(int out_fd, int in_fd, off_t *offset, size_t count)
+{
+	char	 buf[DOG_MORE_MAX_PATH];
+	size_t	 left = count;
 
-		char buf[8192];
-		size_t left = count;
-		while (left > 0) {
-			ssize_t n = read(in_fd, buf, sizeof(buf));
-			if (n <= 0) return n;
-			write(out_fd, buf, n);
-			left -= n;
-		}
-		return count;
+	while (left > 0) {
+		ssize_t	 n = read(in_fd, buf, sizeof(buf));
+
+		if (n <= 0)
+			return (n);
+		int w = write(out_fd, buf, n);
+		if (w) {;} else {;}
+		left -= n;
+	}
+	return (count);
 }
 #elif !defined(DOG_ANDROID) && defined(DOG_LINUX)
-	#include <sys/sendfile.h>
-    #include <sys/wait.h>
+#include  <sys/sendfile.h>
+#include  <sys/wait.h>
 #endif
 
-#include "extra.h"
-#include "units.h"
-#include "library.h"
-#include "crypto.h"
-#include "debug.h"
+#include  "extra.h"
+#include  "units.h"
+#include  "library.h"
+#include  "crypto.h"
+#include  "debug.h"
+#include  "compiler.h"
+#include  "utils.h"
 
-const char* __command[] = {
-		"help", "exit", "kill", "title",
-		"sha1", "sha256", "crc32", "djb2", "config",
-		"replicate", "gamemode", "pawncc", "debug",
-		"compile", "running", "compiles", "stop", "restart",
-		"wanion", "tracker", "compress", "send"
+const char	*__command[] = {
+	"help", "exit", "sha1", "sha256", "crc32", "djb2", "config",
+	"replicate", "gamemode", "pawncc", "debug",
+	"compile", "running", "compiles", "stop", "restart",
+	"tracker", "compress", "send"
 };
 
-const size_t
-		__command_len =
-sizeof(__command) / sizeof(__command[0]);
+const size_t	 __command_len = sizeof(__command) / sizeof(__command[0]);
 
-WatchdogConfig dogconfig = {
-		.dog_ipawncc = 0,
-		.dog_idepends = 0,
-		.dog_idownload = 0,
-		.dog_os_type = CRC32_FALSE,
-		.dog_sel_stat = 0,
-		.dog_is_samp = CRC32_FALSE,
-		.dog_is_omp = CRC32_FALSE,
-		.dog_ptr_samp = NULL,
-		.dog_ptr_omp = NULL,
-		.dog_compiler_stat = 0,
-		.dog_sef_count = RATE_SEF_EMPTY,
-		.dog_sef_found_list = { { RATE_SEF_EMPTY } },
-		.dog_toml_os_type = NULL,
-		.dog_toml_binary = NULL,
-		.dog_toml_config = NULL,
-		.dog_toml_logs = NULL,
-		.dog_toml_aio_opt = NULL,
-		.dog_toml_root_patterns = NULL,
-		.dog_toml_packages = NULL,
-		.dog_toml_proj_input = NULL,
-		.dog_toml_proj_output = NULL,
-		.dog_toml_key_ai = NULL,
-		.dog_toml_chatbot_ai = NULL,
-		.dog_toml_models_ai = NULL,
-		.dog_toml_webhooks = NULL
+WatchdogConfig	 dogconfig = {
+	.dog_garbage_access = { DOG_GARBAGE_ZERO },
+	.dog_os_type = CRC32_FALSE,
+	.dog_is_samp = CRC32_FALSE,
+	.dog_is_omp = CRC32_FALSE,
+	.dog_ptr_samp = NULL,
+	.dog_ptr_omp = NULL,
+	.dog_sef_count = RATE_SEF_EMPTY,
+	.dog_sef_found_list = { { RATE_SEF_EMPTY } },
+	.dog_toml_os_type = NULL,
+	.dog_toml_binary = NULL,
+	.dog_toml_config = NULL,
+	.dog_toml_logs = NULL,
+	.dog_toml_aio_opt = NULL,
+	.dog_toml_root_patterns = NULL,
+	.dog_toml_packages = NULL,
+	.dog_toml_proj_input = NULL,
+	.dog_toml_proj_output = NULL,
+	.dog_toml_webhooks = NULL
 };
 
-const char* char_fields[] = {
-		"dog_toml_os_type",
-		"dog_toml_binary",
-		"dog_toml_config",
-		"dog_toml_logs",
-		"dog_toml_aio_opt",
-		"dog_toml_root_patterns",
-		"dog_toml_packages",
-		"dog_toml_proj_input",
-		"dog_toml_proj_output",
-		"dog_toml_key_ai",
-		"dog_toml_chatbot_ai",
-		"dog_toml_models_ai",
-		"dog_toml_webhooks"
+const char	*char_fields[] = {
+	"dog_toml_os_type",
+	"dog_toml_binary",
+	"dog_toml_config",
+	"dog_toml_logs",
+	"dog_toml_aio_opt",
+	"dog_toml_root_patterns",
+	"dog_toml_packages",
+	"dog_toml_proj_input",
+	"dog_toml_proj_output",
+	"dog_toml_webhooks"
 };
 
-char** field_pointers[] = {
-		&dogconfig.dog_toml_os_type,
-		&dogconfig.dog_toml_binary,
-		&dogconfig.dog_toml_config,
-		&dogconfig.dog_toml_logs,
-		&dogconfig.dog_toml_aio_opt,
-		&dogconfig.dog_toml_root_patterns,
-		&dogconfig.dog_toml_packages,
-		&dogconfig.dog_toml_proj_input,
-		&dogconfig.dog_toml_proj_output,
-		&dogconfig.dog_toml_key_ai,
-		&dogconfig.dog_toml_chatbot_ai,
-		&dogconfig.dog_toml_models_ai,
-		&dogconfig.dog_toml_webhooks
+char		**field_pointers[] = {
+	&dogconfig.dog_toml_os_type,
+	&dogconfig.dog_toml_binary,
+	&dogconfig.dog_toml_config,
+	&dogconfig.dog_toml_logs,
+	&dogconfig.dog_toml_aio_opt,
+	&dogconfig.dog_toml_root_patterns,
+	&dogconfig.dog_toml_packages,
+	&dogconfig.dog_toml_proj_input,
+	&dogconfig.dog_toml_proj_output,
+	&dogconfig.dog_toml_webhooks
 };
 
-/*
- * Resets the SEF (Source File) directory search results by clearing the found list
- * and resetting the count to an empty state. Iterates through all entries in the
- * found list array and sets each first character to null terminator to empty strings,
- * then sets the global counter to empty value and fills the entire array with empty markers.
- */
-void dog_sef_fdir_memset_to_null(void) {
+void
+dog_sef_restore(void)
+{
+	size_t	 i, sef_max_entries;
 
-		size_t i, sef_max_entries;
-		sef_max_entries = sizeof(dogconfig.dog_sef_found_list) /
-						  sizeof(dogconfig.dog_sef_found_list[0]);
+	sef_max_entries = sizeof(dogconfig.dog_sef_found_list) /
+	    sizeof(dogconfig.dog_sef_found_list[0]);
 
-		for (i = 0; i < sef_max_entries; i++)
-			dogconfig.dog_sef_found_list[i][0] = '\0';
+	for (i = 0; i < sef_max_entries; i++)
+		dogconfig.dog_sef_found_list[i][0] = '\0';
 
-		dogconfig.dog_sef_count = RATE_SEF_EMPTY;
-
-		memset(dogconfig.dog_sef_found_list,
-			RATE_SEF_EMPTY, sizeof(dogconfig.dog_sef_found_list));
+	dogconfig.dog_sef_count = RATE_SEF_EMPTY;
+	memset(dogconfig.dog_sef_found_list, RATE_SEF_EMPTY,
+	    sizeof(dogconfig.dog_sef_found_list));
 }
 
 #ifdef DOG_LINUX
 #ifndef strlcpy
-size_t strlcpy(char *dst, const char *src, size_t size)
+size_t
+strlcpy(char *dst, const char *src, size_t size)
 {
-		size_t src_len = strlen(src);
+	size_t	 src_len = strlen(src);
 
-		if (size) {
-			size_t copy_len = (src_len >= size) ? size - 1 : src_len;
-			memcpy(dst, src, copy_len);
-			dst[copy_len] = '\0';
-		}
-
-		return src_len;
+	if (size) {
+		size_t	 copy_len = (src_len >= size) ? size - 1 : src_len;
+		memcpy(dst, src, copy_len);
+		dst[copy_len] = '\0';
+	}
+	return (src_len);
 }
 #endif
 #ifndef strlcat
-size_t strlcat(char *dst, const char *src, size_t size)
+size_t
+strlcat(char *dst, const char *src, size_t size)
 {
-		size_t dst_len = strlen(dst);
-		size_t src_len = strlen(src);
+	size_t	 dst_len = strlen(dst);
+	size_t	 src_len = strlen(src);
 
-		if (dst_len < size) {
-			size_t copy_len = size - dst_len - 1;
-			if (copy_len > src_len)
-				copy_len = src_len;
-			memcpy(dst + dst_len, src, copy_len);
-			dst[dst_len + copy_len] = '\0';
-		}
+	if (dst_len < size) {
+		size_t	 copy_len = size - dst_len - 1;
 
-		return dst_len + src_len;
-}
-#endif
-#endif
-
-#ifdef DOG_WINDOWS
-
-/*
- * usleep() for Windows
- * copyright(c) https://gist.github.com/GoaLitiuM/aff9fbfa4294fa6c1680
- */
-unsigned long currentResolution = 0;
-unsigned long setHighestTimerResolution(unsigned long timer_res_us)
-{
-	    unsigned long timer_current_res = ULONG_MAX;
-	    const HINSTANCE ntdll = LoadLibrary("NTDLL.dll");
-	    if (ntdll != NULL)
-	        {
-		        typedef long(NTAPI* pNtSetTimerResolution)(unsigned long RequestedResolution, BOOLEAN Set, unsigned long* ActualResolution);
-
-		        pNtSetTimerResolution NtSetTimerResolution = (pNtSetTimerResolution) GetProcAddress(ntdll, "NtSetTimerResolution");
-		        if (NtSetTimerResolution != NULL)
-		            {
-			        // bounds are validated and set to the highest allowed resolution
-			        NtSetTimerResolution(timer_res_us, TRUE, &timer_current_res);
-		            }
-		        // we can decrement the internal reference count by one
-		        // and NTDLL.DLL still remains loaded in the process
-		        FreeLibrary(ntdll);
-	        }
-
-	    return timer_current_res;
-}
-
-void ___usleep(__int64 usec)
-{
-	    HANDLE timer;
-	    LARGE_INTEGER period;
-
-    	if (currentResolution == 0)
-		    currentResolution = setHighestTimerResolution(1);
-
-	    // negative values are for relative time
-	    period.QuadPart = -(10*usec);
-	    timer = CreateWaitableTimer(NULL, TRUE, NULL);
-	    SetWaitableTimer(timer, &period, 0, NULL, NULL, 0);
-	    WaitForSingleObject(timer, INFINITE);
-        CloseHandle(timer);
-}
-
-size_t win_strlcpy(char *dst, const char *src, size_t size)
-{
-	    size_t len = strlen(src);
-	    if (size > 0) {
-	        size_t copy = (len >= size) ? size - 1 : len;
-	        memcpy(dst, src, copy);
-	        dst[copy] = 0;
-	    }
-	    return len;
-}
-
-size_t win_strlcat(char *dst, const char *src, size_t size)
-{
-	    size_t dlen = strlen(dst);
-	    size_t slen = strlen(src);
-	    if (dlen < size) {
-	        size_t space = size - dlen - 1;
-	        size_t copy = (slen > space) ? space : slen;
-	        memcpy(dst + dlen, src, copy);
-	        dst[dlen + copy] = 0;
-	        return dlen + slen;
-	    }
-	    return size + slen;
-}
-
-/*
- * Windows implementation of ftruncate - truncates a file to specified length
- * using Windows file handles. Converts FILE pointer to Windows HANDLE,
- * sets file pointer to specified length, and sets end of file at that position.
- */
-int win_ftruncate(FILE *file, long length) {
-
-	    /* Get Windows file handle from C file descriptor */
-	    HANDLE hFile = (HANDLE)_get_osfhandle(_fileno(file));
-	    if (hFile == INVALID_HANDLE_VALUE)
-	        return -1;
-
-	    LARGE_INTEGER li;
-	    li.QuadPart = length; /* Set 64-bit length value */
-
-	    /* Move file pointer to specified position */
-	    if (SetFilePointerEx(hFile, li, NULL, FILE_BEGIN) == 0)
-	        return -1;
-	    /* Truncate file at current position */
-	    if (SetEndOfFile(hFile) == 0)
-	        return -1;
-
-	    return 0; /* Success */
-}
-#endif
-
-/**
- * Allocate memory with error checking.
- * If allocation fails, prints an error message and returns NULL.
- */
-void* dog_malloc(size_t size) {
-
-		void* ptr = malloc(size);
-		if (!ptr) {
-			fprintf(stderr, "malloc failed: %zu bytes\n", size);
-			return NULL;
-		}
-		return ptr;
-}
-
-/**
- * Allocate and zero-initialize memory with error checking.
- * If allocation fails, prints an error message and returns NULL.
- */
-void* dog_calloc(size_t count, size_t size) {
-
-		void* ptr = calloc(count, size);
-		if (!ptr) {
-			fprintf(stderr,
-					"calloc failed: %zu elements x %zu bytes\n", count, size);
-			return NULL;
-		}
-		return ptr;
-}
-
-/**
- * Reallocate memory with error checking. If ptr is NULL, behaves like malloc.
- * If reallocation fails, prints an error message and returns NULL.
- * Note: Original pointer is NOT freed on failure to allow cleanup by caller.
- */
-void* dog_realloc(void* ptr, size_t size) {
-
-		void* new_ptr = (ptr ? realloc(ptr, size) : malloc(size));
-		if (!new_ptr) {
-			fprintf(stderr, "realloc failed: %zu bytes\n", size);
-			return NULL;
-		}
-		return new_ptr;
-}
-
-/**
- * Safely free memory. Checks if pointer is not NULL before freeing
- * to avoid double-free issues.
- */
-void dog_free(void* ptr) {
-
-		if (ptr) {
-			free(ptr);
-			/* Note: Unlike the macro version, this doesn't set pointer to NULL.
-			* Caller is responsible for setting pointer to NULL after calling:
-			*   dog_free(ptr);
-			*   ptr = NULL;
-			*/
-		}
-}
-
-/**
- * Convert Windows path separators to Linux path separators in-place.
- * Replaces all backslashes ('\') with forward slashes ('/').
- */
-void path_sym_convert(char *path) {
-		char *pos;
-		for (pos = path; *pos; pos++) {
-			if (*pos == __PATH_CHR_SEP_WIN32)
-				*pos = __PATH_CHR_SEP_LINUX;
-		}
-}
-
-/**
- * Extract the filename (including extension) from a path.
- * Returns a pointer to the character after the last path separator,
- * or the beginning of the string if no separator is found.
- */
-const char *try_get_filename(const char *path) {
-		const char *__name = PATH_SEPARATOR(path);
-		return __name ? __name + 1 : path;
-}
-
-/**
- * Extract the basename (filename without directory) from a path.
- * This appears to be functionally identical to try_get_filename().
- * Returns a pointer to the character after the last path separator,
- * or the beginning of the string if no separator is found.
- */
-const char *try_get_basename(const char *path) {
-		const char *p = PATH_SEPARATOR(path);
-		return p ? p + 1 : path;
-}
-
-/*
- * Retrieves current working directory with caching mechanism. Returns a static buffer
- * containing the working directory, initializing it on first call. Uses OS-specific
- * methods: GetCurrentDirectoryA on Windows or readlink on /proc/self/cwd on Linux.
- * Result is cached for subsequent calls.
- */
-char *dog_procure_pwd(void) {
-
-	static char dog_work_dir[DOG_PATH_MAX]; /* Static buffer for caching working directory */
-		/* Initialize buffer only if empty (first call) */
-		if (dog_work_dir[0] == '\0') {
-#ifdef DOG_WINDOWS
-			DWORD size_len;
-			/* Windows: Get current directory using WinAPI */
-			size_len = GetCurrentDirectoryA(sizeof(dog_work_dir), dog_work_dir);
-			if (size_len == 0 || size_len >= sizeof(dog_work_dir))
-				dog_work_dir[0] = '\0'; /* Error or buffer too small */
-#else
-			ssize_t size_len;
-			/* Linux: Read symbolic link of current directory from proc filesystem */
-			size_len = readlink("/proc/self/cwd", dog_work_dir, sizeof(dog_work_dir) - 1);
-			if (size_len < 0)
-				dog_work_dir[0] = '\0'; /* Readlink failed */
-			else
-				dog_work_dir[size_len] = '\0'; /* Null-terminate the result */
-#endif
-    	}
-    	return dog_work_dir; /* Return cached working directory */
-}
-
-/*
- * Creates a masked version of text where characters beyond reveal count are replaced
- * with '?'. Allocates new string, copies first 'reveal' characters unchanged,
- * masks remaining characters with question marks. Handles edge cases like negative
- * reveal values and NULL input.
- */
-char* dog_masked_text(int reveal, const char *text) {
-
-	    if (!text) /* Handle NULL input */
-	    	return NULL;
-
-	    int len = (int)strlen(text);
-	    /* Clamp reveal value between 0 and text length */
-	    if (reveal < 0)
-	    	reveal = 0;
-	    if (reveal > len)
-	    	reveal = len;
-
-	    char *masked;
-	    /* Allocate memory for masked string plus null terminator */
-	    masked = dog_malloc((size_t)len + 1);
-	    if (!masked) {
-	    		unit_ret_main(NULL);
-	    }
-
-	    /* Copy visible characters if any should be revealed */
-	    if (reveal > 0)
-	        memcpy(masked, text, (size_t)reveal);
-
-	    /* Mask remaining characters with question marks */
-	    for (int i = reveal; i < len; ++i)
-	        masked[i] = '?';
-
-	    masked[len] = '\0'; /* Null-terminate the masked string */
-	    return masked;
-}
-
-/*
- * Creates directory and all necessary parent directories recursively.
- * Processes path character by character, creating each directory component
- * as it encounters path separators. Handles trailing slashes and ensures
- * all intermediate directories exist.
- */
- int dog_mkdir(const char *path) {
-     char tmp[PATH_MAX];
-     char *p;
-     size_t len;
-
-     if (!path || !*path)
-         return -1;
-
-     snprintf(tmp, sizeof(tmp), "%s", path);
-     len = strlen(tmp);
-
-     if (len > 1 && tmp[len - 1] == '/')
-         tmp[len - 1] = '\0';
-
-     for (p = tmp + 1; *p; p++) {
-         if (*p == '/') {
-             *p = '\0';
-             if (MKDIR(tmp) != 0 && errno != EEXIST) {
-                 perror("mkdir");
-                 return -1;
-             }
-             *p = '/';
-         }
-     }
-
-     if (MKDIR(tmp) != 0 && errno != EEXIST) {
-         perror("mkdir");
-         return -1;
-     }
-
-     return 0;
-}
-
-/*
- * Watchdogs Units Help
- */
-void unit_show_help(const char* command) {
-    if (strlen(command) == 0) {
-	    static const char *help_text = 
-	        "Usage: help <command> | help title\n\n"
-	        "Commands:\n"
-	        "  exit             exit from watchdogs | Usage: \"exit\" " FCOLOUR_CYAN "; Just type 'exit' and you're outta here!" FCOLOUR_DEFAULT "\n"
-	        "  kill             refresh terminal watchdogs | Usage: \"kill\" " FCOLOUR_CYAN "; When things get stuck or buggy, this is your fix!" FCOLOUR_DEFAULT "\n"
-	        "  title            set-title terminal watchdogs | Usage: \"title\" | [<args>] " FCOLOUR_CYAN "; Personalize your terminal window title." FCOLOUR_DEFAULT "\n"
-	        "  sha1             generate sha1 hash | Usage: \"sha1\" | [<args>] " FCOLOUR_CYAN "; Get that SHA1 hash for your text." FCOLOUR_DEFAULT "\n"
-	        "  sha256           generate sha256 hash | Usage: \"sha256\" | [<args>] " FCOLOUR_CYAN "; Get that SHA256 hash for your text." FCOLOUR_DEFAULT "\n"
-	        "  crc32            generate crc32 checksum | Usage: \"crc32\" | [<args>] " FCOLOUR_CYAN "; Quick CRC32 checksum generation." FCOLOUR_DEFAULT "\n"
-	        "  djb2             generate djb2 hash file | Usage: \"djb2\" | [<args>] " FCOLOUR_CYAN "; djb2 hashing for your files." FCOLOUR_DEFAULT "\n"
-	        "  config           re-write watchdogs.toml | Usage: \"config\" " FCOLOUR_CYAN "; Reset your config file to default settings." FCOLOUR_DEFAULT "\n"
-	        "  replicate        dependency installer | Usage: \"replicate\" " FCOLOUR_CYAN "; Downloads & Install Our Dependencies." FCOLOUR_DEFAULT "\n"
-	        "  gamemode         download SA-MP gamemode | Usage: \"gamemode\" " FCOLOUR_CYAN "; Grab some SA-MP gamemodes quickly." FCOLOUR_DEFAULT "\n"
-	        "  pawncc           download SA-MP pawncc | Usage: \"pawncc\" " FCOLOUR_CYAN "; Get the Pawn Compiler for SA-MP/open.mp." FCOLOUR_DEFAULT "\n"
-	        "  debug            debugging & logging server logs | Usage: \"debug\" " FCOLOUR_CYAN "; Keep an eye on your server logs." FCOLOUR_DEFAULT "\n"
-	        "  compile          compile your project | Usage: \"compile\" | [<args>] " FCOLOUR_CYAN "; Turn your code into something runnable!" FCOLOUR_DEFAULT "\n"
-	        "  running          running your project | Usage: \"running\" | [<args>] " FCOLOUR_CYAN "; Fire up your project and see it in action." FCOLOUR_DEFAULT "\n"
-	        "  compiles         compile and running your project | Usage: \"compiles\" | [<args>] " FCOLOUR_CYAN "; Two-in-one: compile then run immediately!." FCOLOUR_DEFAULT "\n"
-	        "  stop             stopped server tasks | Usage: \"stop\" " FCOLOUR_CYAN "; Halt everything! Stop your server tasks." FCOLOUR_DEFAULT "\n"
-	        "  restart          re-start server tasks | Usage: \"restart\" " FCOLOUR_CYAN "; Fresh start! Restart your server." FCOLOUR_DEFAULT "\n"
-	        "  wanion           ask to wanion (gemini/groq based) | Usage: \"wanion\" | [<args>] " FCOLOUR_CYAN "; Got questions? Ask Wanion (Gemini/Groq AI powered)." FCOLOUR_DEFAULT "\n"
-	        "  tracker          account tracking | Usage: \"tracker\" | [<args>] " FCOLOUR_CYAN "; Track accounts across platforms." FCOLOUR_DEFAULT "\n"
-	        "  compress         create a compressed archive | Usage: \"compress <input> <output>\" " FCOLOUR_CYAN "; Generates a compressed file (e.g., .zip/.tar.gz) from the specified source." FCOLOUR_DEFAULT "\n"
-	        "  send             send file to Discord channel via webhook | Usage: \"send <file> <webhook_url>\" " FCOLOUR_CYAN "; Uploads a file directly to a Discord channel using a webhook." FCOLOUR_DEFAULT "\n";
-	    
-	    fwrite(help_text, 1, strlen(help_text), stdout);
-	    return;
+		if (copy_len > src_len)
+			copy_len = src_len;
+		memcpy(dst + dst_len, src, copy_len);
+		dst[dst_len + copy_len] = '\0';
 	}
-    
-    if (strcmp(command, "exit") == 0) {
-        println(stdout, "exit: exit from watchdogs. | Usage: \"exit\"\n\tJust type 'exit' and you're outta here!");
-    } else if (strcmp(command, "kill") == 0) {
-        println(stdout, "kill: refresh terminal watchdogs. | Usage: \"kill\"\n\tWhen things get stuck or buggy, this is your fix!");
-    } else if (strcmp(command, "title") == 0) {
-        println(stdout, "title: set-title terminal watchdogs. | Usage: \"title\" | [<args>]\n\tPersonalize your terminal window title.");
-    } else if (strcmp(command, "sha1") == 0) {
-        println(stdout, "sha1: generate sha1. | Usage: \"sha1\" | [<args>]\n\tGet that SHA1 hash for your text.");
-    } else if (strcmp(command, "sha256") == 0) {
-        println(stdout, "sha256: generate sha256. | Usage: \"sha256\" | [<args>]\n\tGet that SHA256 hash for your text.");
-    } else if (strcmp(command, "crc32") == 0) {
-        println(stdout, "crc32: generate crc32. | Usage: \"crc32\" | [<args>]\n\tQuick CRC32 checksum generation.");
-    } else if (strcmp(command, "djb2") == 0) {
-        println(stdout, "djb2: generate djb2 hash file. | Usage: \"djb2\" | [<args>]\n\tdjb2 hashing for your files.");
-    } else if (strcmp(command, "config") == 0) {
-        println(stdout, "config: re-write watchdogs.toml. | Usage: \"config\"\n\tReset your config file to default settings.");
-    } else if (strcmp(command, "replicate") == 0) {
-        println(stdout, "replicate: dependency installer. | Usage: \"replicate\"\n\tDownloads & Install Our Dependencies.");
-    } else if (strcmp(command, "gamemode") == 0) {
-        println(stdout, "gamemode: download SA-MP gamemode. | Usage: \"gamemode\"\n\tGrab some SA-MP gamemodes quickly.");
-    } else if (strcmp(command, "pawncc") == 0) {
-        println(stdout, "pawncc: download SA-MP pawncc. | Usage: \"pawncc\"\n\tGet the Pawn Compiler for SA-MP/open.mp.");
-    } else if (strcmp(command, "debug") == 0) {
-        println(stdout, "debug: debugging & logging server debug. | Usage: \"debug\"\n\tKeep an eye on your server logs.");
-    } else if (strcmp(command, "compile") == 0) {
-        println(stdout, "compile: compile your project. | Usage: \"compile\" | [<args>]\n\tTurn your code into something runnable!");
-    } else if (strcmp(command, "running") == 0) {
-        println(stdout, "running: running your project. | Usage: \"running\" | [<args>]\n\tFire up your project and see it in action.");
-    } else if (strcmp(command, "compiles") == 0) {
-        println(stdout, "compiles: compile and running your project. | Usage: \"compiles\" | [<args>]\n\tTwo-in-one: compile then run immediately!");
-    } else if (strcmp(command, "stop") == 0) {
-        println(stdout, "stop: stopped server task. | Usage: \"stop\"\n\tHalt everything! Stop your server tasks.");
-    } else if (strcmp(command, "restart") == 0) {
-        println(stdout, "restart: re-start server task. | Usage: \"restart\"\n\tFresh start! Restart your server.");
-    } else if (strcmp(command, "wanion") == 0) {
-        println(stdout, "wanion: ask to wanion. | Usage: \"wanion\" | [<args>] | gemini based\n\tGot questions? Ask Wanion (Gemini/Groq AI powered).");
-    } else if (strcmp(command, "tracker") == 0) {
-        println(stdout, "tracker: account tracking. | Usage: \"tracker\" | [<args>]\n\tTrack accounts across platforms.");
-    } else if (strcmp(command, "compress") == 0) {
-        println(stdout, "compress: create a compressed archive from a file or folder. | "
-               "Usage: \"compress <input> <output>\"\n\tGenerates a compressed file (e.g., .zip/.tar.gz) from the specified source.");
-    } else if (strcmp(command, "send") == 0) {
-        println(stdout, "send: send file to Discord channel via webhook. | "
-               "Usage: \"send <file> <webhook_url>\"\n\tUploads a file directly to a Discord channel using a webhook.");
-    } else {
-        printf("help can't found for: '");
-        pr_color(stdout, FCOLOUR_YELLOW, "%s", command);
-        printf("'\n     Oops! That command doesn't exist. Try 'help' to see available commands.\n");
-    }
+	return (dst_len + src_len);
+}
+#endif
+#endif
+
+#ifdef DOG_WINDOWS
+size_t
+win_strlcpy(char *dst, const char *src, size_t size)
+{
+	size_t	 len = strlen(src);
+
+	if (size > 0) {
+		size_t	 copy = (len >= size) ? size - 1 : len;
+
+		memcpy(dst, src, copy);
+		dst[copy] = 0;
+	}
+	return (len);
+}
+
+size_t
+win_strlcat(char *dst, const char *src, size_t size)
+{
+	size_t	 dlen = strlen(dst);
+	size_t	 slen = strlen(src);
+
+	if (dlen < size) {
+		size_t	 space = size - dlen - 1;
+		size_t	 copy = (slen > space) ? space : slen;
+
+		memcpy(dst + dlen, src, copy);
+		dst[dlen + copy] = 0;
+		return (dlen + slen);
+	}
+	return (size + slen);
+}
+
+int
+win_ftruncate(FILE *file, long length)
+{
+	HANDLE		 hFile;
+	LARGE_INTEGER	 li;
+
+	hFile = (HANDLE)_get_osfhandle(_fileno(file));
+	if (hFile == INVALID_HANDLE_VALUE)
+		return (-1);
+
+	li.QuadPart = length;
+	if (SetFilePointerEx(hFile, li, NULL, FILE_BEGIN) == 0)
+		return (-1);
+	if (SetEndOfFile(hFile) == 0)
+		return (-1);
+
+	return (0);
+}
+#endif
+
+void *
+dog_malloc(size_t size)
+{
+	void	*ptr = malloc(size);
+
+	if (!ptr) {
+		fprintf(stderr, "malloc failed: %zu bytes\n", size);
+		minimal_debugging();
+		return (NULL);
+	}
+	return (ptr);
+}
+
+void *
+dog_calloc(size_t count, size_t size)
+{
+	void	*ptr = calloc(count, size);
+
+	if (!ptr) {
+		fprintf(stderr,
+		    "calloc failed: %zu elements x %zu bytes\n", count, size);
+		minimal_debugging();
+		return (NULL);
+	}
+	return (ptr);
+}
+
+void *
+dog_realloc(void *ptr, size_t size)
+{
+	void	*new_ptr = (ptr ? realloc(ptr, size) : malloc(size));
+
+	if (!new_ptr) {
+		fprintf(stderr, "realloc failed: %zu bytes\n", size);
+		minimal_debugging();
+		return (NULL);
+	}
+	return (new_ptr);
+}
+
+void
+dog_free(void *ptr)
+{
+	if (ptr)
+		free(ptr);
+}
+
+void
+path_sym_convert(char *path)
+{
+	char	*pos;
+
+	for (pos = path; *pos; pos++) {
+		if (*pos == __PATH_CHR_SEP_WIN32)
+			*pos = __PATH_CHR_SEP_LINUX;
+	}
+}
+
+const char *
+try_get_filename(const char *path)
+{
+	const char	*__name = PATH_SEPARATOR(path);
+
+	return (__name ? __name + 1 : path);
+}
+
+const char *
+try_get_basename(const char *path)
+{
+	const char	*p = PATH_SEPARATOR(path);
+
+	return (p ? p + 1 : path);
+}
+
+char *
+dog_procure_pwd(void)
+{
+	static char	 dog_work_dir[DOG_PATH_MAX];
+
+	if (dog_work_dir[0] == '\0') {
+#ifdef DOG_WINDOWS
+		DWORD	 size_len;
+
+		size_len = GetCurrentDirectoryA(sizeof(dog_work_dir),
+		    dog_work_dir);
+		if (size_len == 0 || size_len >= sizeof(dog_work_dir))
+			dog_work_dir[0] = '\0';
+#else
+		if (getcwd(dog_work_dir, sizeof(dog_work_dir)) == NULL) {
+				dog_work_dir[0] = '\0';
+		}
+#endif
+	}
+	return (dog_work_dir);
+}
+
+char *
+dog_masked_text(int reveal, const char *text)
+{
+	char	*masked;
+	int	 len, i;
+
+	if (!text)
+		return (NULL);
+
+	len = (int)strlen(text);
+	if (reveal < 0)
+		reveal = 0;
+	if (reveal > len)
+		reveal = len;
+
+	masked = dog_malloc((size_t)len + 1);
+	if (!masked)
+		unit_ret_main(NULL);
+
+	if (reveal > 0)
+		memcpy(masked, text, (size_t)reveal);
+
+	for (i = reveal; i < len; ++i)
+		masked[i] = '?';
+
+	masked[len] = '\0';
+	return (masked);
+}
+
+int
+dog_mkdir(const char *path)
+{
+	char	 tmp[PATH_MAX];
+	char	*p;
+	size_t	 len;
+
+	if (!path || !*path)
+		return (-1);
+
+	snprintf(tmp, sizeof(tmp), "%s", path);
+	len = strlen(tmp);
+
+	if (len > 1 && tmp[len - 1] == '/')
+		tmp[len - 1] = '\0';
+
+	for (p = tmp + 1; *p; p++) {
+		if (*p == '/') {
+			*p = '\0';
+			if (MKDIR(tmp) != 0 && errno != EEXIST) {
+				perror("mkdir");
+				return (-1);
+			}
+			*p = '/';
+		}
+	}
+
+	if (MKDIR(tmp) != 0 && errno != EEXIST) {
+		perror("mkdir");
+		return (-1);
+	}
+
+	return (0);
+}
+
+void
+unit_show_dog(void) {
+
+	printf("\n                         \\/%%#z.      \\/.%%#z./    /,z#%%\\/\n");
+	printf("                         \\X##k      /X#####X\\   /d##X/\n");
+	printf("                         \\888\\   /888/ \\888\\   /888/\n");
+	printf("                        `v88;  ;88v'   `v88;  ;88v'\n");
+	printf("                         \\77xx77/       \\77xx77/\n");
+	printf("                        `::::'         `::::'\n\n");
+	fflush(stdout);
+	println(stdout, "---------------------------------------------------------------------------------------------");
+	println(stdout, "                                            -----------------------------------------        ");
+	println(stdout, "      ;printf(\"Hello, World\")               |  plugin installer                     |        ");
+	println(stdout, "                                            v          v                            |        ");
+	println(stdout, "pawncc | compile | gamemode | running | compiles | replicate | restart | stop       |        ");
+	println(stdout, "  ^        ^          ^          ^ -----------------------       ^         ^        v        ");
+	println(stdout, "  -------  ---------   ------------------                |       |         | compile n run  ");
+	println(stdout, "        v          |                    |                |       v         --------          ");
+	println(stdout, " install compiler  v                    v                v  restart server        |          ");
+	println(stdout, "               compile gamemode  install gamemode  running server             stop server    ");
+	println(stdout, "---------------------------------------------------------------------------------------------");
+	println(stdout, "Use \"help\" for more.");
+}
+
+void
+compiler_show_tip(void) {
+
+	printf(DOG_COL_YELLOW "Options:\n" DOG_COL_DEFAULT);
+
+	printf(
+	"  %s-w%s, %s--watchdogs%s   Show detailed output         - compile detail\n",
+	DOG_COL_CYAN, DOG_COL_DEFAULT,
+	DOG_COL_CYAN, DOG_COL_DEFAULT);
+
+	printf(
+	"  %s-d%s, %s--debug%s       Enable debug level 2         - full debugging\n",
+	DOG_COL_CYAN, DOG_COL_DEFAULT,
+	DOG_COL_CYAN, DOG_COL_DEFAULT);
+
+	printf(
+	"  %s-p%s, %s--prolix%s      Verbose mode                 - processing detail\n",
+	DOG_COL_CYAN, DOG_COL_DEFAULT,
+	DOG_COL_CYAN, DOG_COL_DEFAULT);
+
+	printf(
+	"  %s-a%s, %s--assembler%s   Generate assembler file      - assembler ouput\n",
+	DOG_COL_CYAN, DOG_COL_DEFAULT,
+	DOG_COL_CYAN, DOG_COL_DEFAULT);
+
+	printf(
+	"  %s-s%s, %s--compact%s     Compact encoding compression - resize output\n",
+	DOG_COL_CYAN, DOG_COL_DEFAULT,
+	DOG_COL_CYAN, DOG_COL_DEFAULT);
+
+	printf(
+	"  %s-c%s, %s--compat%s      Compatibility mode           - path sep compat\n",
+	DOG_COL_CYAN, DOG_COL_DEFAULT,
+	DOG_COL_CYAN, DOG_COL_DEFAULT);
+
+	printf(
+	"  %s-f%s, %s--fast%s        Fast compile-sime            - no optimize\n",
+	DOG_COL_CYAN, DOG_COL_DEFAULT,
+	DOG_COL_CYAN, DOG_COL_DEFAULT);
+
+	printf(
+	"  %s-n%s, %s--clean%s       Remove '.amx' after compile  - remover output\n",
+	DOG_COL_CYAN, DOG_COL_DEFAULT,
+	DOG_COL_CYAN, DOG_COL_DEFAULT);
+}
+
+void
+unit_show_help(const char *command)
+{
+	if (strlen(command) == 0) {
+	static const char *help_text =
+	"Usage: help <command> | help sha1\n\n"
+	"Commands:\n"
+	"  exit             exit from watchdogs | "
+	"Usage: \"exit\" " DOG_COL_CYAN "; Just type 'exit' and you're outta here!" DOG_COL_DEFAULT "\n"
+	"  sha1             generate sha1 hash | "
+	"Usage: \"sha1\" | [<args>] " DOG_COL_CYAN "; Get that SHA1 hash for your text." DOG_COL_DEFAULT "\n"
+	"  sha256           generate sha256 hash | "
+	"Usage: \"sha256\" | [<args>] " DOG_COL_CYAN "; Get that SHA256 hash for your text." DOG_COL_DEFAULT "\n"
+	"  crc32            generate crc32 checksum | "
+	"Usage: \"crc32\" | [<args>] " DOG_COL_CYAN "; Quick CRC32 checksum generation." DOG_COL_DEFAULT "\n"
+	"  djb2             generate djb2 hash file | "
+	"Usage: \"djb2\" | [<args>] " DOG_COL_CYAN "; djb2 hashing for your files." DOG_COL_DEFAULT "\n"
+	"  config           re-write watchdogs.toml | "
+	"Usage: \"config\" " DOG_COL_CYAN "; Reset your config file to default settings." DOG_COL_DEFAULT "\n"
+	"  replicate        dependency installer | "
+	"Usage: \"replicate\" " DOG_COL_CYAN "; Downloads & Install Our Dependencies." DOG_COL_DEFAULT "\n"
+	"  gamemode         download SA-MP gamemode | "
+	"Usage: \"gamemode\" " DOG_COL_CYAN "; Grab some SA-MP gamemodes quickly." DOG_COL_DEFAULT "\n"
+	"  pawncc           download SA-MP pawncc | "
+	"Usage: \"pawncc\" " DOG_COL_CYAN "; Get the Pawn Compiler for SA-MP/open.mp." DOG_COL_DEFAULT "\n"
+	"  debug            debugging & logging server logs | "
+	"Usage: \"debug\" " DOG_COL_CYAN "; Keep an eye on your server logs." DOG_COL_DEFAULT "\n"
+	"  compile          compile your project | "
+	"Usage: \"compile\" | [<args>] " DOG_COL_CYAN "; Turn your code into something runnable!" DOG_COL_DEFAULT "\n"
+	"  running          running your project | "
+	"Usage: \"running\" | [<args>] " DOG_COL_CYAN "; Fire up your project and see it in action." DOG_COL_DEFAULT "\n"
+	"  compiles         compile and running your project | "
+	"Usage: \"compiles\" | [<args>] " DOG_COL_CYAN "; Two-in-one: compile then run immediately!." DOG_COL_DEFAULT "\n"
+	"  stop             stopped server tasks | "
+	"Usage: \"stop\" " DOG_COL_CYAN "; Halt everything! Stop your server tasks." DOG_COL_DEFAULT "\n"
+	"  restart          re-start server tasks | "
+	"Usage: \"restart\" " DOG_COL_CYAN "; Fresh start! Restart your server." DOG_COL_DEFAULT "\n"
+	"  tracker          account tracking | "
+	"Usage: \"tracker\" | [<args>] " DOG_COL_CYAN "; Track accounts across platforms." DOG_COL_DEFAULT "\n"
+	"  compress         create a compressed archive | "
+	"Usage: \"compress <input> <output>\" " DOG_COL_CYAN "; Generates a compressed file (e.g., .zip/.tar.gz) from the specified source." DOG_COL_DEFAULT "\n"
+	"  send             send file to Discord channel via webhook | "
+	"Usage: \"send <files>\" " DOG_COL_CYAN "; Uploads a file directly to a Discord channel using a webhook." DOG_COL_DEFAULT "\n";
+
+	fwrite(help_text, 1, strlen(help_text), stdout);
+	return;
+	}
+
+	if (strcmp(command, "exit") == 0) {
+		println(stdout, "exit: exit from watchdogs. | Usage: \"exit\"\n\tJust type 'exit' and you're outta here!");
+	} else if (strcmp(command, "sha1") == 0) {
+		println(stdout, "sha1: generate sha1. | Usage: \"sha1\" | [<args>]\n\tGet that SHA1 hash for your text.");
+	} else if (strcmp(command, "sha256") == 0) {
+		println(stdout, "sha256: generate sha256. | Usage: \"sha256\" | [<args>]\n\tGet that SHA256 hash for your text.");
+	} else if (strcmp(command, "crc32") == 0) {
+		println(stdout, "crc32: generate crc32. | Usage: \"crc32\" | [<args>]\n\tQuick CRC32 checksum generation.");
+	} else if (strcmp(command, "djb2") == 0) {
+		println(stdout, "djb2: generate djb2 hash file. | Usage: \"djb2\" | [<args>]\n\tdjb2 hashing for your files.");
+	} else if (strcmp(command, "config") == 0) {
+		println(stdout, "config: re-write watchdogs.toml. | Usage: \"config\"\n\tReset your config file to default settings.");
+	} else if (strcmp(command, "replicate") == 0) {
+		println(stdout, "replicate: dependency installer. | Usage: \"replicate\"\n\tDownloads & Install Our Dependencies.");
+	} else if (strcmp(command, "gamemode") == 0) {
+		println(stdout, "gamemode: download SA-MP gamemode. | Usage: \"gamemode\"\n\tGrab some SA-MP gamemodes quickly.");
+	} else if (strcmp(command, "pawncc") == 0) {
+		println(stdout, "pawncc: download SA-MP pawncc. | Usage: \"pawncc\"\n\tGet the Pawn Compiler for SA-MP/open.mp.");
+	} else if (strcmp(command, "debug") == 0) {
+		println(stdout, "debug: debugging & logging server debug. | Usage: \"debug\"\n\tKeep an eye on your server logs.");
+	} else if (strcmp(command, "compile") == 0) {
+		println(stdout, "compile: compile your project. | Usage: \"compile\" | [<args>]\n\tTurn your code into something runnable!");
+	} else if (strcmp(command, "running") == 0) {
+		println(stdout, "running: running your project. | Usage: \"running\" | [<args>]\n\tFire up your project and see it in action.");
+	} else if (strcmp(command, "compiles") == 0) {
+		println(stdout, "compiles: compile and running your project. | Usage: \"compiles\" | [<args>]\n\tTwo-in-one: compile then run immediately!");
+	} else if (strcmp(command, "stop") == 0) {
+		println(stdout, "stop: stopped server task. | Usage: \"stop\"\n\tHalt everything! Stop your server tasks.");
+	} else if (strcmp(command, "restart") == 0) {
+		println(stdout, "restart: re-start server task. | Usage: \"restart\"\n\tFresh start! Restart your server.");
+	} else if (strcmp(command, "tracker") == 0) {
+		println(stdout, "tracker: account tracking. | Usage: \"tracker\" | [<args>]\n\tTrack accounts across platforms.");
+	} else if (strcmp(command, "compress") == 0) {
+		println(stdout, "compress: create a compressed archive from a file or folder. | "
+		    "Usage: \"compress <input> <output>\"\n\tGenerates a compressed file (e.g., .zip/.tar.gz) from the specified source.");
+	} else if (strcmp(command, "send") == 0) {
+		println(stdout, "send: send file to Discord channel via webhook. | "
+		    "Usage: \"send <files>\"\n\tUploads a file directly to a Discord channel using a webhook.");
+	} else {
+		printf("help can't found for: '");
+		pr_color(stdout, DOG_COL_YELLOW, "%s", command);
+		printf("'\n     Oops! That command doesn't exist. Try 'help' to see available commands.\n");
+	}
 	return;
 }
 
-/*
- * Escapes special JSON characters in source string for safe JSON embedding.
- * Processes source character by character, replacing control characters and
- * quotes with their JSON escape sequences. Ensures destination buffer doesn't overflow.
- */
-void dog_escaping_json(char *dest, const char *src, size_t dest_size) {
+void
+dog_escaping_json(char *dest, const char *src, size_t dest_size)
+{
+	char		*ptr = dest;
+	const char	*replacement;
+	size_t		 remaining = dest_size, needed;
 
-	    if (dest_size == 0) return; /* No space in destination */
+	if (dest_size == 0)
+		return;
 
-	    char *ptr = dest;
-	    size_t remaining = dest_size; /* Track remaining buffer space */
+	while (*src && remaining > 1) {
+		needed = 1;
+		replacement = NULL;
 
-	    while (*src && remaining > 1) {
-	        size_t needed = 1; /* Default: one character needed */
-	        const char *replacement = NULL; /* Escape sequence if needed */
+		switch (*src) {
+		case '\"': replacement = "\\\""; needed = 2; break;
+		case '\\': replacement = "\\\\"; needed = 2; break;
+		case '\b': replacement = "\\b"; needed = 2; break;
+		case '\f': replacement = "\\f"; needed = 2; break;
+		case '\n': replacement = "\\n"; needed = 2; break;
+		case '\r': replacement = "\\r"; needed = 2; break;
+		case '\t': replacement = "\\t"; needed = 2; break;
+		default:
+			*ptr++ = *src++;
+			remaining--;
+			continue;
+		}
 
-	        /* Check for characters that need escaping in JSON */
-	        switch (*src) {
-	            case '\"': replacement = "\\\""; needed = 2; break;
-	            case '\\': replacement = "\\\\"; needed = 2; break;
-	            case '\b': replacement = "\\b"; needed = 2; break;
-	            case '\f': replacement = "\\f"; needed = 2; break;
-	            case '\n': replacement = "\\n"; needed = 2; break;
-	            case '\r': replacement = "\\r"; needed = 2; break;
-	            case '\t': replacement = "\\t"; needed = 2; break;
-	            default:
-	                /* Regular character, copy as-is */
-	                *ptr++ = *src++;
-	                remaining--;
-	                continue;
-	        }
+		if (needed >= remaining)
+			break;
 
-	        /* Make sure escape sequence fits in remaining buffer */
-	        if (needed >= remaining) break;
+		if (replacement) {
+			memcpy(ptr, replacement, needed);
+			ptr += needed;
+			remaining -= needed;
+		}
+		src++;
+	}
 
-	        if (replacement) {
-	            /* Copy escape sequence to destination */
-	            memcpy(ptr, replacement, needed);
-	            ptr += needed;
-	            remaining -= needed;
-	        }
-	        src++; /* Move to next source character */
-	    }
-
-	    *ptr = '\0'; /* Null-terminate the escaped string */
+	*ptr = '\0';
 }
 
-/*
- * Executes a system command with platform-specific assembly preamble and safety checks.
- * Includes assembly instructions for Android and Linux to clear registers before execution.
- * Validates command length and prevents buffer overflow in command construction.
- */
-int dog_exec_command(const char *reg_command) {
+int dog_exec_command(char *const argv[])
+{
+    char size_command[DOG_MAX_PATH] = {0};
+    char *p;
+    int high_acces_command = 0, ret;
 
-		/* Handle empty command case */
-		if (reg_command[0] == '\0')
-	    		return -1;
+    if (argv == NULL || argv[0] == NULL)
+        return (-1);
 
-    		/* Validate command length to prevent buffer overflow */
-		if (strlen(reg_command) >= DOG_MAX_PATH || strlen(reg_command) <= 0) {
-			pr_warning(stdout, "lengt over size detected! from dog_exec_command(\"%s\")", reg_command);
-			return -1;
-		}
+	size_command[0] = '\0';
+    for (int i = 0; argv[i] != NULL; i++) {
+        for (p = argv[i]; *p; p++) {
+            if (*p == ';' || *p == '`' || *p == '$' ||
+				*p == '(' || *p == ')' || *p == '\n')
+                return (-1);
+        }
+        if (i > 0) {
+            strncat(size_command, " ", sizeof(size_command) - strlen(size_command) - 1);
+        }
+        strncat(size_command, argv[i], sizeof(size_command) - strlen(size_command) - 1);
+    }
 
-		char
-			size_command[ DOG_MAX_PATH ] = { 0 }
-			; /* Buffer for safe command storage */
+    size_t cmd_len = strlen(size_command);
+    if (cmd_len >= DOG_MAX_PATH - 1) {
+        pr_warning(stdout,
+            "length over size detected!");
+		minimal_debugging();
+        return (-1);
+    }
 
-		/* Copy command to safe buffer with size limitation */
-		snprintf(size_command, sizeof(size_command),
-					"%s",
-					reg_command);
+    if (strfind(size_command, "sudo", true) ||
+		strfind(size_command, "run0", true) ||
+		strfind(size_command, "su", true) ||
+		strfind(size_command, "pkexec", true) ||
+		strfind(size_command, "chmod 777", true) ||
+		strfind(size_command, "chown", true) ||
+		strfind(size_command, "rm -rf /", true) ||
+		strfind(size_command, "dd if=", true) ||
+		strfind(size_command, "mount", true) ||
+		strfind(size_command, "systemctl", true) ||
+		strfind(size_command, "init", true) ||
+		strfind(size_command, "reboot", true) ||
+		strfind(size_command, "shutdown", true))
+	{
+		high_acces_command = 1;
+	}
 
-		/* Handling exploit potent */
-		for (char *p = size_command; *p; p++) {
-			 /* arbitrary potent */
-			if (*p == ';' || *p == '`' || *p == '$') {
-				return -1;
-			}
-		}
+	if (strfind(size_command, "rm -rf/", true) ||
+        strfind(size_command, "rm -rf /", true)) {
+        return (-1);
+    }
 
-		/* sudo validate */
-		int high_acces_command = 0;
-		if (strfind(size_command, "sudo", true) ||
-			strfind(size_command, "run0", true)) {
-			high_acces_command = 1;
-		}
-		if (strfind(size_command, "echo", true) ||
-		    strfind(size_command, "printf", true) ||
-				strfind(size_command, ">", true) ||
-				strfind(size_command, ">>", true) ||
-				strfind(size_command, "/dev/null", true)) {
-			goto skip;
-		}
-		if (dog_ptr_command_init) {
-			--dog_ptr_command_init;
-			goto skip;
-		}
+	if (high_acces_command == 1) {
+        if (dogconfig.dog_garbage_access[DOG_GARBAGE_CMD_WARN] == DOG_GARBAGE_ZERO)
+		{
+            printf("\n");
+            printf("\t=== HIGH ACCESS SECURITY WARNING ===\n");
+            printf("\tYou are about to run commands with ROOT privileges!\n");
+            printf("\tThis can DAMAGE your system if used incorrectly.\n");
+            printf("\t* Always verify commands before pressing Enter...\n");
+            printf("\t===========================================\n");
+			printf("\t[ %s ]", size_command);
+            printf("\n");
+			dogconfig.dog_garbage_access[DOG_GARBAGE_CMD_WARN] = DOG_GARBAGE_TRUE;
+        }
+    }
 
-		if (high_acces_command == 1) {
-			/* sudo notice */
-			static int k = 0;
-			if (k != 1) {
-				k = 1;
-				printf("\n");
-				printf("\t=== HIGH ACCESS SECURITY WARNING ===\n");
-				printf("\tYou are about to run commands with ROOT privileges!\n");
-				printf("\tThis can DAMAGE your system if used incorrectly.\n");
-				printf("\t* Always verify commands before pressing Enter...\n");
-				printf("\t===========================================\n");
-				printf("\n");
-			}
-		}
-
-		int ret = -1;
+    ret = -1;
 skip:
-		/* Execute command using system() call */
-		ret = system(size_command);
-		return ret;
+    ret = system(size_command);
+    return (ret);
 }
 
-/*
- * Clear Console Screen.
- * Windows & Linux
- * Windows: cls (cmd.exe based)
- * Linux: clear (bash/zsh based)
- */
-void dog_clear_screen(void) {
-
-		/* Make sure user in Windows */
-		if (is_native_windows()) {
-			dog_exec_command("cls");
-		} else {
-			/* if not */
-			dog_exec_command("clear");
-		}
-		return; /* back */
-}
-
-/* Detects if server is SA-MP or open.mp */
-int dog_server_env(void) {
-		if (strcmp(dogconfig.dog_is_samp, CRC32_TRUE) == 0) {
-				return 1;
-		} else if (strcmp(dogconfig.dog_is_omp, CRC32_TRUE) == 0) {
-				return 2;
-		} else {
-				return 1;
-		}
-}
-
-/*
- * Detects if running in Pterodactyl game server panel environment.
- * Checks for presence of Pterodactyl-specific directories, files, and environment variables.
- * Returns true if any Pterodactyl indicator is found.
- */
-int is_pterodactyl_env(void)
+void
+dog_clear_screen(void)
 {
-		int is_ptero = 0;
-		/* Check for Pterodactyl directories, files, and environment variables */
-		if (path_exists("/etc/pterodactyl") ||
-			path_exists("/var/lib/pterodactyl") ||
-			path_exists("/var/lib/pterodactyl/volumes") ||
-			path_exists("/srv/daemon/config/core.json") ||
-			getenv("PTERODACTYL_SERVER_UUID") != NULL ||
-			getenv("PTERODACTYL_NODE_ID") != NULL ||
-			getenv("PTERODACTYL_ALLOC_ID") != NULL ||
-			getenv("PTERODACTYL_SERVER_EXTERNAL_ID") != NULL)
-		{
-			is_ptero = 1; /* Pterodactyl environment detected */
-		}
+#ifdef DOG_WINDOWS
+    HANDLE hOut = GetStdHandle(STD_OUTPUT_HANDLE);
+    CONSOLE_SCREEN_BUFFER_INFO csbi;
+    DWORD count;
+    DWORD cellCount;
+    COORD home = {0, 0};
 
-		return is_ptero;
-}
+    if (hOut == INVALID_HANDLE_VALUE)
+        return;
 
-/*
- * Detects if running in Termux Android environment.
- * Checks for Termux-specific library directories on Linux platforms.
- * Uses compile-time platform detection and directory existence checks.
- */
-int is_termux_env(void)
-{
-		int is_termux = 0;
-#if defined(DOG_ANDROID)
-		is_termux = 1; /* Assume Termux on Linux for this configuration */
-		return is_termux;
+    if (!GetConsoleScreenBufferInfo(hOut, &csbi))
+        return;
+
+    cellCount = csbi.dwSize.X * csbi.dwSize.Y;
+
+    FillConsoleOutputCharacterA(hOut, ' ', cellCount, home, &count);
+    FillConsoleOutputAttribute(hOut, csbi.wAttributes, cellCount, home, &count);
+    SetConsoleCursorPosition(hOut, home);
+#else
+    const char seq[] = "\033[2J\033[H";
+    int w = write(STDOUT_FILENO, seq, sizeof(seq) - 1);
+	if (w) {;} else {;}
 #endif
-		/* Check for Termux library directories */
-		if (path_exists("/data/data/com.termux/files/usr/local/lib/") == 1 ||
-			path_exists("/data/data/com.termux/files/usr/lib/") == 1 ||
-			path_exists("/data/data/com.termux/arm64/usr/lib") == 1 ||
-			path_exists("/data/data/com.termux/arm32/usr/lib") == 1 ||
-			path_exists("/data/data/com.termux/amd32/usr/lib") == 1 ||
-			path_exists("/data/data/com.termux/amd64/usr/lib") == 1)
-		{
-			is_termux = 1; /* Termux environment detected */
-		}
-
-		return is_termux;
 }
 
-/*
- * Determines if running on native Windows (not MSYS2/Cygwin).
- * Checks for MSYSTEM environment variable which indicates MSYS2 environment.
- * Returns true for native Windows, false for MSYS2 or non-Windows platforms.
- */
-int is_native_windows(void)
+int
+dog_server_env(void)
+{
+	if (strcmp(dogconfig.dog_is_samp, CRC32_TRUE) == 0) {
+		return (1);
+	} else if (strcmp(dogconfig.dog_is_omp, CRC32_TRUE) == 0) {
+		return (2);
+	} else {
+		return (1);
+	}
+}
+
+int
+is_termux_env(void)
+{
+	int	 is_termux = 0;
+#if defined(DOG_ANDROID)
+	is_termux = 1;
+	return (is_termux);
+#endif
+
+	if (path_exists("/data/data/com.termux/files/usr/local/lib/") == 1 ||
+	    path_exists("/data/data/com.termux/files/usr/lib/") == 1 ||
+	    path_exists("/data/data/com.termux/arm64/usr/lib") == 1 ||
+	    path_exists("/data/data/com.termux/arm32/usr/lib") == 1 ||
+	    path_exists("/data/data/com.termux/amd32/usr/lib") == 1 ||
+	    path_exists("/data/data/com.termux/amd64/usr/lib") == 1)
+	{
+		is_termux = 1;
+	}
+
+	return (is_termux);
+}
+
+int
+is_native_windows(void)
 {
 #if defined(DOG_LINUX) || defined(DOG_ANDROID)
-		return 0; /* Not Windows at all */
+	return (0);
 #endif
-		char* msys2_env;
-		msys2_env = getenv("MSYSTEM"); /* MSYS2 sets this environment variable */
-		if (msys2_env)
-			return 0; /* MSYS2 environment, not native Windows */
-		else
-			return 1; /* Native Windows environment */
+	char	*msys2_env;
+
+	msys2_env = getenv("MSYSTEM");
+	if (msys2_env)
+		return (0);
+	else
+		return (1);
 }
 
-/*
- * Prints file contents to standard output with platform-specific optimizations.
- * On Windows: uses simple read/write loop. On Unix: uses pread for efficient
- * reading at offsets, handles large files with buffer chunks.
- */
-void dog_printfile(const char *path) {
-
+void
+dog_printfile(const char *path)
+{
 #ifdef DOG_WINDOWS
-	    /* Windows implementation: simple sequential read */
-	    int fd = open(path, O_RDONLY);
-	    if (fd < 0) return;
+	int	 fd;
+	char	 buf[(1 << 20) + 1];
+	ssize_t	 n, w;
 
-	    static char buf[(1 << 20) + 1]; /* 1MB buffer */
-	    for (;;) {
-	        ssize_t n = read(fd, buf, sizeof(buf) - 1);
-	        if (n <= 0) break; /* EOF or error */
-
-	        buf[n] = '\0'; /* Null-terminate for safety */
-
-	        /* Write entire chunk to stdout */
-	        ssize_t w = 0;
-	        while (w < n) {
-	            ssize_t k = write(STDOUT_FILENO, buf + w, n - w);
-	            if (k <= 0) { close(fd); return; } /* Write error */
-	            w += k;
-	        }
-	    }
-
-	    close(fd);
-#else
-	    /* Unix implementation: efficient pread with file size knowledge */
-	    int fd = open(path, O_RDONLY);
-	    if (fd < 0) return;
-
-	    off_t off = 0;
-	    struct stat st;
-	    if (fstat(fd, &st) < 0) { close(fd); return; } /* Get file size */
-
-	    static char buf[(1 << 20) + 1]; /* 1MB buffer */
-	    while (off < st.st_size) {
-	        /* Calculate read size based on remaining file */
-	        ssize_t to_read;
-			to_read = (st.st_size - off) < (sizeof(buf) - 1) ? (st.st_size - off) : (sizeof(buf) - 1);
-	        ssize_t n = pread(fd, buf, to_read, off); /* Read at specific offset */
-	        if (n <= 0) break;
-	        off += n;
-
-	        buf[n] = '\0';
-
-	        /* Write chunk to stdout */
-	        ssize_t w = 0;
-	        while (w < n) {
-	            ssize_t k = write(STDOUT_FILENO, buf + w, n - w);
-	            if (k <= 0) { close(fd); return; }
-	            w += k;
-	        }
-	    }
-
-	    close(fd);
-#endif
+	fd = open(path, O_RDONLY);
+	if (fd < 0)
 		return;
-}
 
-/*
- * Sets console window title for better user experience.
- * On Windows: uses SetConsoleTitleA API. On Unix: uses ANSI escape sequences
- * if output is a terminal. Falls back to default title if none provided.
- */
-int dog_console_title(const char *title)
-{
-#ifdef DOG_ANDROID
-		return 0;
-#endif
-		const char *new_title;
-		/* Use provided title or default release string */
-		if (!title)
-				new_title = watchdogs_release;
-		else
-				new_title = title;
-#ifdef DOG_WINDOWS
-		SetConsoleTitleA(new_title); /* Windows API call */
-#else
-	    /* Unix: Use ANSI escape sequence only if stdout is a terminal */
-	    if (isatty(STDOUT_FILENO))
-	        	printf("\033]0;%s\007", new_title);
-#endif
-		return 0;
-}
+	for (;;) {
+		n = read(fd, buf, sizeof(buf) - 1);
+		if (n <= 0)
+			break;
 
-/*
- * Strips filename extensions and optionally directory components.
- * Removes everything after the last dot if no directory separator found,
- * otherwise copies full path. Handles both forward and backward slashes
- * for cross-platform compatibility.
- */
-void dog_strip_dot_fns(char *dst, size_t dst_sz, const char *src)
-{
-		char *slash, *dot;
-		size_t len;
+		buf[n] = '\0';
+		w = 0;
+		while (w < n) {
+			ssize_t	 k = write(STDOUT_FILENO, buf + w, n - w);
 
-		if (!dst || dst_sz == 0 || !src)
+			if (k <= 0) {
+				close(fd);
 				return;
+			}
+			w += k;
+		}
+	}
 
-		/* Find first directory separator */
-		slash = strchr(src, __PATH_CHR_SEP_LINUX);
-#ifdef DOG_WINDOWS
-		/* Windows: also check for backslash separator */
-		if (!slash)
-				slash = strchr(src, __PATH_CHR_SEP_WIN32);
+	close(fd);
+#else
+	int		 fd;
+	struct stat	 st;
+	off_t		 off = 0;
+	char		 buf[(1 << 20) + 1];
+	ssize_t		 to_read, n, w;
+
+	fd = open(path, O_RDONLY);
+	if (fd < 0)
+		return;
+
+	if (fstat(fd, &st) < 0) {
+		close(fd);
+		return;
+	}
+
+	while (off < st.st_size) {
+		to_read = (st.st_size - off) < (sizeof(buf) - 1) ?
+		    (st.st_size - off) : (sizeof(buf) - 1);
+		n = pread(fd, buf, to_read, off);
+		if (n <= 0)
+			break;
+		off += n;
+
+		buf[n] = '\0';
+		w = 0;
+		while (w < n) {
+			ssize_t	 k = write(STDOUT_FILENO, buf + w, n - w);
+
+			if (k <= 0) {
+				close(fd);
+				return;
+			}
+			w += k;
+		}
+	}
+
+	close(fd);
+#endif
+	return;
+}
+
+int
+dog_console_title(const char *title)
+{
+	const char	*new_title;
+#ifdef DOG_ANDROID
+	return (0);
 #endif
 
-		/* If no directory separator found, strip extension */
-		if (!slash) {
-				dot = strchr(src, '.'); /* Find first dot */
-				if (dot) {
-						len = (size_t)(dot - src); /* Length up to dot */
-						if (len >= dst_sz)
-								len = dst_sz - 1; /* Respect buffer size */
-						memcpy(dst, src, len);
-						dst[len] = '\0';
-						return;
-				}
-		}
+	if (!title)
+		new_title = watchdogs_release;
+	else
+		new_title = title;
 
-		/* Otherwise copy full string */
-		snprintf(dst, dst_sz, "%s", src);
-}
-
-/*
- * Case-insensitive substring search using bitwise OR with 32 for case conversion.
- * Iterates through text, comparing each position with pattern using case-insensitive
- * bitwise comparison (ASCII letters only). Returns true if pattern found anywhere in text.
- */
-bool
-dog_strcase(const char *text, const char *pattern) {
-
-		const char *p;
-		for (p = text; *p; p++) {
-		    const char *a = p, *b = pattern;
-		    /* Compare characters case-insensitively using bitwise OR with 32 */
-		    while (*a && *b && (((*a | 32) == (*b | 32)))) {
-		          a++;
-		          b++;
-	      	}
-		    if (!*b) return true; /* Pattern fully matched */
-		}
-		return false; /* Pattern not found */
-}
-
-/*
- * Checks if string ends with specified suffix with optional case-insensitive comparison.
- * Compares the end of str with suffix, considering length differences.
- * Supports both case-sensitive and case-insensitive matching modes.
- */
-bool strend(const char *str, const char *suffix, bool nocase) {
-
-		if (!str || !suffix) return false;
-
-		size_t lenstr = strlen(str);
-		size_t lensuf = strlen(suffix);
-
-		if (lensuf > lenstr) return false; /* Suffix longer than string */
-
-		const char *p = str + (lenstr - lensuf); /* Pointer to end of string */
-
-		/* Compare using appropriate case sensitivity */
-		return nocase
-			? strncasecmp(p, suffix, lensuf) == 0
-			: memcmp(p, suffix, lensuf) == 0;
-}
-
-/*
- * Finds a substring inside a text with optional case-insensitive search.
- * Implements a simple linear scan comparing characters one-by-one.
- * Handles empty pattern (always matches), NULL pointers, and both
- * case-sensitive and case-insensitive modes.
- */
-bool strfind(const char *text, const char *pattern, bool nocase)
-{
-		if (!text || !pattern)
-			return false;
-
-		size_t m = strlen(pattern);
-		if (m == 0)
-			return true; /* Empty pattern always matches */
-
-		const char *p = text;
-
-		while (*p) {
-			/* Compare first character */
-			char c1 = *p;
-			char c2 = *pattern;
-
-			if (nocase) {
-				c1 = tolower((unsigned char)c1);
-				c2 = tolower((unsigned char)c2);
-			}
-
-			if (c1 == c2) {
-				/* First character matches — check full pattern */
-				if (nocase) {
-					if (strncasecmp(p, pattern, m) == 0)
-						return true;
-				} else {
-					if (memcmp(p, pattern, m) == 0)
-						return true;
-				}
-			}
-
-			p++; /* Continue scanning text */
-		}
-
-		return false;
-}
-
-/* Pure function attribute indicates no side effects and depends only on parameters */
-__PURE__
-/*
- * Replaces all occurrences of old_sub with new_sub in source string.
- * Allocates new string with appropriate size, counts occurrences to calculate
- * result length, performs replacement, and returns newly allocated string.
- * Returns NULL on invalid input or allocation failure.
- */
-char* strreplace(const char *source, const char *old_sub, const char *new_sub) {
-
-	    if (!source || !old_sub || !new_sub) return NULL;
-
-	    size_t source_len = strlen(source);
-	    size_t old_sub_len = strlen(old_sub);
-	    size_t new_sub_len = strlen(new_sub);
-
-	    /* Calculate result length by counting replacements */
-	    size_t result_len = source_len;
-	    const char *pos = source;
-	    while ((pos = strstr(pos, old_sub)) != NULL) {
-	        result_len += new_sub_len - old_sub_len; /* Adjust for length difference */
-	        pos += old_sub_len; /* Skip past found substring */
-	    }
-
-	    /* Allocate memory for result string */
-	    char *result = dog_malloc(result_len + 1);
-	    if (!result)
-	    		unit_ret_main(NULL);
-
-	    /* Perform replacement copy */
-	    size_t i = 0, j = 0;
-	    while (source[i]) {
-	        if (strncmp(&source[i], old_sub, old_sub_len) == 0) {
-	            /* Copy replacement substring */
-	            strncpy(&result[j], new_sub, new_sub_len);
-	            i += old_sub_len;
-	            j += new_sub_len;
-	        } else {
-	            /* Copy unchanged character */
-	            result[j++] = source[i++];
-	        }
-	    }
-
-	    result[j] = '\0'; /* Null-terminate result */
-	    return result;
-}
-
-/*
- * Escapes double quotes in source string by prefixing them with backslash.
- * Processes source character by character, adding escape character before quotes,
- * ensuring destination buffer doesn't overflow. Non-quote characters copied as-is.
- */
-void dog_escape_quotes(char *dest, size_t size, const char *src)
-{
-		size_t i, j;
-
-		if (!dest ||
-			size == 0 ||
-			!src)
-			return;
-
-		/* Process each source character */
-		for (i = 0,
-			j = 0;
-			src[i] != '\0' &&
-			j + 1 < size;
-			i++) {
-				if (src[i] == '"') {
-						/* Make sure space for escape sequence */
-						if (j + 2 >= size)
-								break;
-						dest[j++] = __PATH_CHR_SEP_WIN32; /* Backslash */
-						dest[j++] = '"'; /* Quote */
-				} else
-						dest[j++] = src[i]; /* Regular character */
-		}
-		dest[j] = '\0'; /* Null-terminate result */
-}
-
-/*
- * Constructs full path by combining directory and entry name with proper separator.
- * Handles edge cases like trailing separators in directory and leading separators
- * in entry name. Ensures no duplicate separators and null-terminates result.
- */
-void __set_path_sep(char *out, size_t out_sz,
-					const char *open_dir, const char *entry_name)
-{
-	    if (!out || out_sz == 0 || !open_dir || !entry_name) return;
-
-	    size_t dir_len;
-	    int dir_has_sep, has_led_sep;
-	    size_t entry_len = strlen(entry_name);
-
-		dir_len = strlen(open_dir);
-		/* Make sure directory ends with separator */
-		dir_has_sep = (dir_len > 0 &&
-					   IS_PATH_SEP(open_dir[dir_len - 1]));
-		/* Make sure entry starts with separator */
-		has_led_sep = IS_PATH_SEP(entry_name[0]);
-
-	    /* Calculate maximum needed buffer size */
-	    size_t max_needed = dir_len + entry_len + 2;
-
-	    if (max_needed >= out_sz) {
-	        out[0] = '\0'; /* Buffer too small */
-	        return;
-	    }
-
-		/* Combine based on separator presence */
-		if (dir_has_sep) {
-				if (has_led_sep)
-					/* Directory has sep, entry has sep: remove one */
-					snprintf(out, out_sz, "%s" "%s", open_dir, entry_name + 1);
-				else snprintf(out, out_sz, "%s" "%s", open_dir, entry_name);
-		} else {
-				if (has_led_sep)
-					/* No sep in open_dir, sep in entry: use as-is */
-					snprintf(out, out_sz, "%s" "%s", open_dir, entry_name);
-				else
-					/* No seps: add separator between */
-					snprintf(out, out_sz, "%s" "%s" "%s", open_dir, __PATH_SEP, entry_name);
-		}
-
-		out[out_sz - 1] = '\0'; /* Ensure null termination */
-}
-
-/* Pure function: depends only on parameters, no side effects */
-__PURE__
-/*
- * Calculates Levenshtein edit distance between two strings for command suggestion.
- * Implements optimized Wagner-Fischer algorithm with early termination and
- * case-insensitive comparison. Uses dynamic programming with two rows to save memory.
- * Returns INT_MAX if strings are too different for efficiency.
- */
-static int __command_suggest(const char *s1, const char *s2) {
-
-	    int len1 = strlen(s1);
-	    int len2 = strlen(s2);
-	    if (len2 > 128) return INT_MAX; /* Reject very long strings */
-
-	    /* Allocate two rows for dynamic programming on stack */
-	    uint16_t *buf1 = alloca((len2 + 1) * sizeof(uint16_t));
-	    uint16_t *buf2 = alloca((len2 + 1) * sizeof(uint16_t));
-	    uint16_t *prev = buf1;
-	    uint16_t *curr = buf2;
-
-	    /* Initialize first row (empty string to s2) */
-	    for (int j = 0; j <= len2; j++) prev[j] = j;
-
-	    /* Compute edit distance row by row */
-	    for (int i = 1; i <= len1; i++) {
-	        curr[0] = i; /* First column: s1[0..i] to empty string */
-	        char c1 = tolower((unsigned char)s1[i - 1]); /* Case-insensitive */
-	        int min_row = INT_MAX; /* Track minimum in row for early termination */
-
-	        for (int j = 1; j <= len2; j++) {
-	            char c2 = tolower((unsigned char)s2[j - 1]);
-	            int cost = (c1 == c2) ? 0 : 1; /* Same character cost 0, else 1 */
-	            int del = prev[j] + 1;        /* Deletion cost */
-	            int ins = curr[j - 1] + 1;    /* Insertion cost */
-	            int sub = prev[j - 1] + cost; /* Substitution cost */
-	            int val = ((del) < (ins) ? ((del) < (sub) ? \
-					(del) : (sub)) : ((ins) < (sub) ? (ins) : (sub))); /* Minimum of three operations */
-	            curr[j] = val;
-	            if (val < min_row) min_row = val; /* Update row minimum */
-	        }
-
-	        /* Early termination if already too different */
-	        if (min_row > 6)
-	            return min_row + (len1 - i); /* Approximate remaining cost */
-
-	        /* Swap rows for next iteration */
-	        uint16_t *tmp = prev;
-	        prev = curr;
-	        curr = tmp;
-	    }
-
-	    return prev[len2]; /* Final edit distance */
-}
-
-/*
- * Finds the closest matching command from a list using edit distance algorithm.
- * Iterates through command list, calculates distance to each, keeps the best match.
- * Returns the closest command and optionally outputs the distance score.
- */
-const char *dog_find_near_command(const char *command, const char *commands[],
-								 size_t num_cmds, int *out_distance)
-{
-	    int best_distance = INT_MAX;
-	    const char *best_cmd = NULL;
-
-	    /* Test each command in list */
-	    for (size_t i = 0; i < num_cmds; i++) {
-	        int dist = __command_suggest(command, commands[i]);
-	        if (dist < best_distance) {
-	            best_distance = dist;
-	            best_cmd = commands[i];
-	            if (best_distance == 0)
-	            	break; /* Perfect match found, stop searching */
-	        }
-	    }
-
-	    if (out_distance)
-	        *out_distance = best_distance; /* Output distance if requested */
-
-	    return best_cmd;
-}
-
-/*
- * Detects operating system with container and WSL awareness.
- * Uses compile-time defines and runtime checks for Docker/Podman - Container and WSL environments.
- * Returns static string "windows", "linux", or "unknown" with container detection.
- */
-int is_running_in_container() {
-		if (path_access("/.dockerenv")) {
-			return 1;
-		}
-		if (path_access("/run/.containerenv")) {
-			return 1;
-		}
-		
-		FILE *fp = fopen("/proc/1/cgroup", "r");
-		if (fp) {
-			char line[DOG_MAX_PATH];
-			while (fgets(line, sizeof(line), fp)) {
-				if (strstr(line, "/docker/") || 
-					strstr(line, "/podman/") || 
-					strstr(line, "/containerd/") ||
-					strstr(line, "kubepods")) {
-					fclose(fp);
-					return 1;
-				}
-			}
-			fclose(fp);
-		}
-		
-		return 0;
-}
-
-const char *dog_procure_os(void)
-{
-    	static char os[64] = "unknown"; /* Static buffer for OS string */
 #ifdef DOG_WINDOWS
-    	strncpy(os, "windows", sizeof(os));
+	SetConsoleTitleA(new_title);
+#else
+	if (isatty(STDOUT_FILENO))
+		printf("\033]0;%s\007", new_title);
+#endif
+	return (0);
+}
+
+void
+dog_strip_dot_fns(char *dst, size_t dst_sz, const char *src)
+{
+	char	*slash, *dot;
+	size_t	 len;
+
+	if (!dst || dst_sz == 0 || !src)
+		return;
+
+	slash = strchr(src, __PATH_CHR_SEP_LINUX);
+#ifdef DOG_WINDOWS
+	if (!slash)
+		slash = strchr(src, __PATH_CHR_SEP_WIN32);
+#endif
+
+	if (!slash) {
+		dot = strchr(src, '.');
+		if (dot) {
+			len = (size_t)(dot - src);
+			if (len >= dst_sz)
+				len = dst_sz - 1;
+			memcpy(dst, src, len);
+			dst[len] = '\0';
+			return;
+		}
+	}
+
+	snprintf(dst, dst_sz, "%s", src);
+}
+
+bool
+dog_strcase(const char *text, const char *pattern)
+{
+	const char	*p, *a, *b;
+
+	for (p = text; *p; p++) {
+		a = p;
+		b = pattern;
+		while (*a && *b && (((*a | 32) == (*b | 32)))) {
+			a++;
+			b++;
+		}
+		if (!*b)
+			return (true);
+	}
+	return (false);
+}
+
+bool
+strend(const char *str, const char *suffix, bool nocase)
+{
+	size_t	 lenstr, lensuf;
+	const char *p;
+
+	if (!str || !suffix)
+		return (false);
+
+	lenstr = strlen(str);
+	lensuf = strlen(suffix);
+
+	if (lensuf > lenstr)
+		return (false);
+
+	p = str + (lenstr - lensuf);
+	return (nocase ?
+	    strncasecmp(p, suffix, lensuf) == 0 :
+	    memcmp(p, suffix, lensuf) == 0);
+}
+
+bool
+strfind(const char *text, const char *pattern, bool nocase)
+{
+	size_t	 m;
+	const char *p;
+	char	 c1, c2;
+
+	if (!text || !pattern)
+		return (false);
+
+	m = strlen(pattern);
+	if (m == 0)
+		return (true);
+
+	p = text;
+	while (*p) {
+		c1 = *p;
+		c2 = *pattern;
+
+		if (nocase) {
+			c1 = tolower((unsigned char)c1);
+			c2 = tolower((unsigned char)c2);
+		}
+
+		if (c1 == c2) {
+			if (nocase) {
+				if (strncasecmp(p, pattern, m) == 0)
+					return (true);
+			} else {
+				if (memcmp(p, pattern, m) == 0)
+					return (true);
+			}
+		}
+		p++;
+	}
+
+	return (false);
+}
+
+__PURE__
+char *
+strreplace(const char *source, const char *old_sub, const char *new_sub)
+{
+	char		*result;
+	const char	*pos;
+	size_t		 source_len, old_sub_len, new_sub_len, result_len;
+	size_t		 i = 0, j = 0;
+
+	if (!source || !old_sub || !new_sub)
+		return (NULL);
+
+	source_len = strlen(source);
+	old_sub_len = strlen(old_sub);
+	new_sub_len = strlen(new_sub);
+
+	result_len = source_len;
+	pos = source;
+	while ((pos = strstr(pos, old_sub)) != NULL) {
+		result_len += new_sub_len - old_sub_len;
+		pos += old_sub_len;
+	}
+
+	result = dog_malloc(result_len + 1);
+	if (!result)
+		unit_ret_main(NULL);
+
+	while (source[i]) {
+		if (strncmp(&source[i], old_sub, old_sub_len) == 0) {
+			strncpy(&result[j], new_sub, new_sub_len);
+			i += old_sub_len;
+			j += new_sub_len;
+		} else {
+			result[j++] = source[i++];
+		}
+	}
+
+	result[j] = '\0';
+	return (result);
+}
+
+void
+dog_escape_quotes(char *dest, size_t size, const char *src)
+{
+	size_t	 i, j;
+
+	if (!dest || size == 0 || !src)
+		return;
+
+	for (i = 0, j = 0; src[i] != '\0' && j + 1 < size; i++) {
+		if (src[i] == '"') {
+			if (j + 2 >= size)
+				break;
+			dest[j++] = __PATH_CHR_SEP_WIN32;
+			dest[j++] = '"';
+		} else
+			dest[j++] = src[i];
+	}
+	dest[j] = '\0';
+}
+
+void
+__set_path_sep(char *out, size_t out_sz, const char *open_dir,
+    const char *entry_name)
+{
+	size_t	 dir_len, entry_len, max_needed;
+	int	 dir_has_sep, has_led_sep;
+
+	if (!out || out_sz == 0 || !open_dir || !entry_name)
+		return;
+
+	dir_len = strlen(open_dir);
+	dir_has_sep = (dir_len > 0 && IS_PATH_SEP(open_dir[dir_len - 1]));
+	has_led_sep = IS_PATH_SEP(entry_name[0]);
+	entry_len = strlen(entry_name);
+	max_needed = dir_len + entry_len + 2;
+
+	if (max_needed >= out_sz) {
+		out[0] = '\0';
+		return;
+	}
+
+	if (dir_has_sep) {
+		if (has_led_sep)
+			snprintf(out, out_sz, "%s%s", open_dir, entry_name + 1);
+		else
+			snprintf(out, out_sz, "%s%s", open_dir, entry_name);
+	} else {
+		if (has_led_sep)
+			snprintf(out, out_sz, "%s%s", open_dir, entry_name);
+		else
+			snprintf(out, out_sz, "%s%s%s", open_dir, __PATH_SEP,
+			    entry_name);
+	}
+
+	out[out_sz - 1] = '\0';
+}
+
+__PURE__
+static int
+__command_suggest(const char *s1, const char *s2)
+{
+	int	 len1, len2, i, j;
+	uint16_t*buf1, *buf2, *prev, *curr, *tmp;
+	char	 c1, c2;
+	int	 cost, del, ins, sub, val, min_row;
+
+	len1 = strlen(s1);
+	len2 = strlen(s2);
+	if (len2 > 128)
+		return (INT_MAX);
+
+	buf1 = alloca((len2 + 1) * sizeof(uint16_t));
+	buf2 = alloca((len2 + 1) * sizeof(uint16_t));
+	prev = buf1;
+	curr = buf2;
+
+	for (j = 0; j <= len2; j++)
+		prev[j] = j;
+
+	for (i = 1; i <= len1; i++) {
+		curr[0] = i;
+		c1 = tolower((unsigned char)s1[i - 1]);
+		min_row = INT_MAX;
+
+		for (j = 1; j <= len2; j++) {
+			c2 = tolower((unsigned char)s2[j - 1]);
+			cost = (c1 == c2) ? 0 : 1;
+			del = prev[j] + 1;
+			ins = curr[j - 1] + 1;
+			sub = prev[j - 1] + cost;
+			val = ((del) < (ins) ? ((del) < (sub) ? (del) :
+			    (sub)) : ((ins) < (sub) ? (ins) : (sub)));
+			curr[j] = val;
+			if (val < min_row)
+				min_row = val;
+		}
+
+		if (min_row > 6)
+			return (min_row + (len1 - i));
+
+		tmp = prev;
+		prev = curr;
+		curr = tmp;
+	}
+
+	return (prev[len2]);
+}
+
+const char *
+dog_find_near_command(const char *command, const char *commands[],
+    size_t num_cmds, int *out_distance)
+{
+	int		 best_distance = INT_MAX;
+	const char	*best_cmd = NULL;
+	size_t		 i;
+
+	for (i = 0; i < num_cmds; i++) {
+		int	 dist = __command_suggest(command, commands[i]);
+
+		if (dist < best_distance) {
+			best_distance = dist;
+			best_cmd = commands[i];
+			if (best_distance == 0)
+				break;
+		}
+	}
+
+	if (out_distance)
+		*out_distance = best_distance;
+
+	return (best_cmd);
+}
+
+int
+is_running_in_container(void)
+{
+	FILE	*fp;
+	char	 line[DOG_MAX_PATH];
+
+	if (path_access("/.dockerenv"))
+		return (1);
+	if (path_access("/run/.containerenv"))
+		return (1);
+
+	fp = fopen("/proc/1/cgroup", "r");
+	if (fp) {
+		while (fgets(line, sizeof(line), fp)) {
+			if (strstr(line, "/docker/") ||
+			    strstr(line, "/podman/") ||
+			    strstr(line, "/containerd/") ||
+			    strstr(line, "kubepods")) {
+				fclose(fp);
+				return (1);
+			}
+		}
+		fclose(fp);
+	}
+
+	return (0);
+}
+
+const char *
+dog_procure_os(void)
+{
+	static char	 os[64] = "unknown";
+
+#ifdef DOG_WINDOWS
+	strncpy(os, "windows", sizeof(os));
 #endif
 #ifdef DOG_LINUX
-    	strncpy(os, "linux", sizeof(os));
+	strncpy(os, "linux", sizeof(os));
 #endif
-		/* Container detection: check for Docker/Podman - Container environment file */
-		if (is_running_in_container())
-			strncpy(os, "linux", sizeof(os));
-		/* WSL detection: check for WSL environment variables */
-		else if (getenv("WSL_INTEROP") ||
-				 getenv("WSL_DISTRO_NAME"))
-		{
-				strncpy(os, "windows", sizeof(os));
-		}
 
-		os[sizeof(os)-1] = '\0'; /* Ensure null termination */
-		return os;
+	if (is_running_in_container())
+		strncpy(os, "linux", sizeof(os));
+	else if (path_access("/proc/sys/fs/binfmt_misc/WSLInterop") == 1)
+		strncpy(os, "windows", sizeof(os));
+
+	os[sizeof(os)-1] = '\0';
+	return (os);
 }
 
-/*
- * Checks if directory exists using stat system call.
- * Returns 1 if path exists and is a directory, 0 otherwise.
- */
-int dir_exists(const char *path)
+int
+dir_exists(const char *path)
 {
-	    struct stat st;
-	    if (stat(path, &st) == 0 && S_ISDIR(st.st_mode))
-	        return 1; /* Directory exists */
-	    return 0; /* Doesn't exist or not a directory */
+	struct stat	 st;
+
+	if (stat(path, &st) == 0 && S_ISDIR(st.st_mode))
+		return (1);
+	return (0);
 }
 
-/*
- * Checks if any filesystem object exists at given path.
- * Returns 1 if stat succeeds (file, directory, symlink, etc.), 0 otherwise.
- */
-int path_exists(const char *path)
+int
+path_exists(const char *path)
 {
-	    struct stat st;
-	    if (stat(path, &st) == 0)
-	        return 1; /* Something exists at path */
-	    return 0; /* Nothing exists or error */
+	struct stat	 st;
+
+	if (stat(path, &st) == 0)
+		return (1);
+	return (0);
 }
 
-/*
- * Checks if directory is writable by current user.
- * Uses access() system call with W_OK flag to test write permissions.
- */
-int dir_writable(const char *path)
+int
+dir_writable(const char *path)
 {
-	    if (access(path, W_OK) == 0)
-	        return 1; /* Directory is writable */
-	    return 0; /* Not writable or doesn't exist */
+	if (access(path, W_OK) == 0)
+		return (1);
+	return (0);
 }
 
-/*
- * Checks if path is accessible (exists) using access() system call.
- * Simple existence check without distinguishing file types.
- */
-int path_access(const char *path)
+int
+path_access(const char *path)
 {
-	    if (access(path, F_OK) == 0)
-	        return 1; /* Path exists */
-	    return 0; /* Path doesn't exist */
+	if (access(path, F_OK) == 0)
+		return (1);
+	return (0);
 }
 
-/*
- * Checks if path refers to a regular file (not directory, symlink, etc.).
- * Uses stat to get file metadata and checks S_ISREG macro.
- */
-int file_regular(const char *path)
+int
+file_regular(const char *path)
 {
-		struct stat st;
+	struct stat	 st;
 
-		if (stat(path, &st) != 0)
-				return 0; /* stat failed */
-
-		return S_ISREG(st.st_mode); /* True if regular file */
+	if (stat(path, &st) != 0)
+		return (0);
+	return (S_ISREG(st.st_mode));
 }
 
-/*
- * Checks if two paths refer to the same underlying file (hard link detection).
- * Compares inode numbers and device IDs from stat structure for identity.
- */
-int file_same_file(const char *a, const char *b)
+int
+file_same_file(const char *a, const char *b)
 {
-		struct stat sa, sb;
+	struct stat	 sa, sb;
 
-		if (stat(a, &sa) != 0)
-				return 0; /* Can't stat first file */
-		if (stat(b, &sb) != 0)
-				return 0; /* Can't stat second file */
+	if (stat(a, &sa) != 0)
+		return (0);
+	if (stat(b, &sb) != 0)
+		return (0);
 
-		/* Same file if same inode on same device */
-		return (sa.st_ino == sb.st_ino &&
-				sa.st_dev == sb.st_dev);
+	return (sa.st_ino == sb.st_ino && sa.st_dev == sb.st_dev);
 }
 
-/* Pure function: no side effects, depends only on parameters */
 __PURE__
-/*
- * Extracts parent directory path from full file path.
- * Uses dirname() function to get directory component, copies to output buffer.
- * Handles buffer size limits and ensures null termination.
- */
-int ensure_parent_dir(char *out_parent, size_t n, const char *dest)
+int
+ensure_parent_dir(char *out_parent, size_t n, const char *dest)
 {
-		char tmp[DOG_PATH_MAX];
-		char *parent;
+	char	 tmp[DOG_PATH_MAX];
+	char	*parent;
 
-		/* Make sure destination path fits in temporary buffer */
-		if (strlen(dest) >= sizeof(tmp))
-				return -1;
+	if (strlen(dest) >= sizeof(tmp))
+		return (-1);
 
-		/* Copy to temporary buffer for dirname modification */
-		strncpy(tmp, dest, sizeof(tmp));
-		tmp[sizeof(tmp)-1] = '\0';
+	strncpy(tmp, dest, sizeof(tmp));
+	tmp[sizeof(tmp)-1] = '\0';
+	parent = dirname(tmp);
+	if (!parent)
+		return (-1);
 
-		/* Extract parent directory */
-		parent = dirname(tmp);
-		if (!parent)
-				return -1; /* dirname failed */
-
-		/* Copy result to output buffer */
-		strncpy(out_parent, parent, n);
-		out_parent[n-1] = '\0'; /* Ensure null termination */
-
-		return 0; /* Success */
+	strncpy(out_parent, parent, n);
+	out_parent[n-1] = '\0';
+	return (0);
 }
 
-/*
- * Kills process by name using platform-specific kill commands.
- * On Unix: uses pkill with SIGTERM. On Windows: uses taskkill.exe.
- * Constructs and executes appropriate system command.
- */
-int dog_kill_process(const char *process) {
+int
+dog_kill_process(const char *process)
+{
+    if (!process)
+        return (-1);
 
-        if (!process)
-        	return -1; /* Invalid input */
-        char reg_command[DOG_PATH_MAX];
-#ifndef DOG_WINDOWS
+#ifdef DOG_WINDOWS
+    STARTUPINFOA _STARTUPINFO;
+    PROCESS_INFORMATION _PROCESS_INFO;
+    SECURITY_ATTRIBUTES _ATTRIBUTES;
+    char command[DOG_PATH_MAX * 2];
+
+    _ZERO_MEM_WIN32(&_STARTUPINFO, sizeof(_STARTUPINFO));
+    _ZERO_MEM_WIN32(&_PROCESS_INFO, sizeof(_PROCESS_INFO));
+    _ZERO_MEM_WIN32(&_ATTRIBUTES, sizeof(_ATTRIBUTES));
+
+    _STARTUPINFO.cb = sizeof(_STARTUPINFO);
+
+    snprintf(
+        command,
+        sizeof(command),
+        "C:\\Windows\\System32\\taskkill.exe /F /IM \"%s\"",
+        process
+    );
+
+    if (!CreateProcessA(
+		NULL,
+		command,
+		NULL,
+		NULL,
+		FALSE,
+		CREATE_NO_WINDOW,
+		NULL,
+		NULL,
+		&_STARTUPINFO,
+		&_PROCESS_INFO))
+        return (-1);
+
+    WaitForSingleObject(_PROCESS_INFO.hProcess, INFINITE);
+    CloseHandle(_PROCESS_INFO.hProcess);
+    CloseHandle(_PROCESS_INFO.hThread);
+
+    return (0);
+
+#else
+
 #if !defined(DOG_ANDROID) && defined(DOG_LINUX)
-        /* Unix: pkill command with signal termination */
-        snprintf(reg_command, sizeof(reg_command),
-                "pkill -SIGTERM \"%s\" > /dev/null", process);
+    pid_t pid;
+    pid = fork();
+    if (pid == 0) {
+        execlp("pkill", "pkill", "-SIGTERM", process, NULL);
+        _exit(127);
+    }
+    if (pid < 0)
+        return (-1);
+    waitpid(pid, NULL, 0);
+    return (0);
 #else
-        /* Android: kill command with pgrep */
-        snprintf(reg_command, sizeof(reg_command),
-        				"kill -TERM $(pgrep -f \"%s\") > /dev/null 2>&1", process);
+    pid_t pid;
+    pid = fork();
+    if (pid == 0) {
+        execlp("pgrep", "pgrep", "-f", process, NULL);
+        _exit(127);
+    }
+    if (pid < 0)
+        return (-1);
+    waitpid(pid, NULL, 0);
+    return (0);
 #endif
-#else
-				/* Windows: taskkill command with quiet mode */
-				snprintf(reg_command, sizeof(reg_command),
-				        "cmd.exe /C \"C:\\Windows\\System32\\taskkill.exe /F /IM \"%s\" >nul 2>&1\"",
-				        process);
+
 #endif
-        return dog_exec_command(reg_command); /* Execute kill command */
 }
 
-/*
- * Matches filename against pattern with '*' and '?' wildcard support.
- * Fully portable, no OS-specific dependencies.
- */
 int
 dog_match_wildcard(const char *str, const char *pat)
 {
-		const char *s = str;
-		const char *p = pat;
-		const char *star = NULL;
-		const char *ss = NULL;
+	const char	*s = str;
+	const char	*p = pat;
+	const char	*star = NULL;
+	const char	*ss = NULL;
 
-		while (*s) {
-			if (*p == '?' || *p == *s) {
-				/* Characters match or pattern has '?': consume both */
-				s++;
-				p++;
-			}
-			else if (*p == '*') {
-				/* Record position of '*' and the position in str */
-				star = p++;
-				ss = s;
-			}
-			else if (star) {
-				/* Mismatch: backtrack to last '*' and match one more char */
-				p = star + 1;
-				s = ++ss;
-			}
-			else {
-				/* No '*' to fallback to: mismatch */
-				return 0;
-			}
-		}
-
-		/* Skip trailing '*' in pattern */
-		while (*p == '*')
+	while (*s) {
+		if (*p == '?' || *p == *s) {
+			s++;
 			p++;
+		} else if (*p == '*') {
+			star = p++;
+			ss = s;
+		} else if (star) {
+			p = star + 1;
+			s = ++ss;
+		} else {
+			return (0);
+		}
+	}
 
-		return (*p == '\0');
+	while (*p == '*')
+		p++;
+
+	return (*p == '\0');
 }
 
-/*
- * Matches filename against pattern, optimizing for no-wildcard case.
- * If pattern has no '*' or '?', performs fast exact comparison.
- * Otherwise, uses wildcard matching function.
- */
 static int
 dog_match_filename(const char *entry_name, const char *pattern)
 {
-		/* No wildcard: do fast exact compare */
-		if (!strchr(pattern, '*') && !strchr(pattern, '?'))
-			return strcmp(entry_name, pattern) == 0;
+	if (!strchr(pattern, '*') && !strchr(pattern, '?'))
+		return (strcmp(entry_name, pattern) == 0);
 
-		/* With wildcard */
-		return dog_match_wildcard(entry_name, pattern);
+	return (dog_match_wildcard(entry_name, pattern));
 }
 
-/*
- * Identifies special directory entries "." and "..".
- * Returns true if entry name is exactly "." or "..".
- */
-int dog_dot_or_dotdot(const char *entry_name)
+int
+dog_dot_or_dotdot(const char *entry_name)
 {
-		return (entry_name[0] == '.' &&
-		       (entry_name[1] == '\0' ||
-			   (entry_name[1] == '.' && entry_name[2] == '\0')));
+	return (entry_name[0] == '.' &&
+	    (entry_name[1] == '\0' ||
+	    (entry_name[1] == '.' && entry_name[2] == '\0')));
 }
 
-/*
- * Checks if directory should be ignored during search.
- * Compares entry name with ignore directory using case-insensitive
- * comparison on Windows, case-sensitive on Unix.
- */
-static int dog_procure_ignore_dir(const char *entry_name,
-								const char *ignore_dir)
+static int
+dog_procure_ignore_dir(const char *entry_name, const char *ignore_dir)
 {
-		if (!ignore_dir)
-				return 0; /* No directory to ignore */
+	if (!ignore_dir)
+		return (0);
 #ifdef DOG_WINDOWS
-		return (_stricmp(entry_name, ignore_dir) == 0); /* Case-insensitive */
+	return (_stricmp(entry_name, ignore_dir) == 0);
 #else
-		return (strcmp(entry_name, ignore_dir) == 0); /* Case-sensitive */
+	return (strcmp(entry_name, ignore_dir) == 0);
 #endif
 }
 
-/*
- * Adds found file path to global search results list.
- * Copies path to next available slot in found list array,
- * updates count, and ensures null termination.
- */
-static void dog_add_found_path(const char *path)
+static void
+dog_add_found_path(const char *path)
 {
-		/* Make sure there's space in found list */
-		if (dogconfig.dog_sef_count < (sizeof(dogconfig.dog_sef_found_list) /
-								     sizeof(dogconfig.dog_sef_found_list[0]))) {
-				/* Copy path to next available slot */
-				strncpy(dogconfig.dog_sef_found_list[dogconfig.dog_sef_count],
-					path,
-					MAX_SEF_PATH_SIZE);
-				/* Ensure null termination */
-				dogconfig.dog_sef_found_list \
-					[dogconfig.dog_sef_count] \
-					[MAX_SEF_PATH_SIZE - 1] = '\0';
-				++dogconfig.dog_sef_count; /* Increment found counter */
-		}
+	if (dogconfig.dog_sef_count < (sizeof(dogconfig.dog_sef_found_list) /
+	    sizeof(dogconfig.dog_sef_found_list[0]))) {
+		strncpy(dogconfig.dog_sef_found_list[dogconfig.dog_sef_count],
+		    path, MAX_SEF_PATH_SIZE);
+		dogconfig.dog_sef_found_list[dogconfig.dog_sef_count]
+		    [MAX_SEF_PATH_SIZE - 1] = '\0';
+		++dogconfig.dog_sef_count;
+	}
 }
 
-/*
- * Recursively searches for files matching pattern in directory tree.
- * Platform-independent implementation with Windows FindFirstFile/FindNextFile
- * and Unix opendir/readdir. Skips special directories, handles symlinks,
- * and collects matching files in global list.
- */
-int dog_sef_fdir(const char *sef_path, const char *sef_name, const char *ignore_dir)
+int
+dog_sef_fdir(const char *sef_path, const char *sef_name, const char *ignore_dir)
 {
-		char
-			size_path[MAX_SEF_PATH_SIZE]; /* Buffer for full paths */
+	char		 size_path[MAX_SEF_PATH_SIZE];
+
 #ifdef DOG_WINDOWS
-		/* Windows implementation using FindFirstFile API */
-		HANDLE find_handle;
-		char sp[DOG_MAX_PATH * 2];
-		const char *entry_name;
-		WIN32_FIND_DATA find_data;
+	HANDLE		 find_handle;
+	char		 sp[DOG_MAX_PATH * 2];
+	const char	*entry_name;
+	WIN32_FIND_DATA	 find_data;
 
-		/* Construct search pattern with wildcard */
-		if (sef_path[strlen(sef_path) - 1] == __PATH_CHR_SEP_WIN32) {
-			snprintf(sp,
-				sizeof(sp), "%s*", sef_path);
-		} else {
-			snprintf(sp,
-				sizeof(sp), "%s" "%s*", sef_path, __PATH_STR_SEP_WIN32);
-		}
+	if (sef_path[strlen(sef_path) - 1] == __PATH_CHR_SEP_WIN32) {
+		snprintf(sp, sizeof(sp), "%s*", sef_path);
+	} else {
+		snprintf(sp, sizeof(sp), "%s%s*", sef_path,
+		    __PATH_STR_SEP_WIN32);
+	}
 
-		find_handle = FindFirstFile(sp, &find_data);
-		if (find_handle == INVALID_HANDLE_VALUE)
-			return 0; /* No files or error */
+	find_handle = FindFirstFile(sp, &find_data);
+	if (find_handle == INVALID_HANDLE_VALUE)
+		return (0);
 
-		do {
-			entry_name = find_data.cFileName;
-			if (dog_dot_or_dotdot(entry_name))
-				continue; /* Skip "." and ".." */
+	do {
+		entry_name = find_data.cFileName;
+		if (dog_dot_or_dotdot(entry_name))
+			continue;
 
-			__set_path_sep(size_path, sizeof(size_path), sef_path, entry_name);
+		__set_path_sep(size_path, sizeof(size_path), sef_path,
+		    entry_name);
 
-			if (find_data.dwFileAttributes &
-				FILE_ATTRIBUTE_DIRECTORY) /* Directory */
-			{
-				if (dog_procure_ignore_dir(entry_name, ignore_dir))
-					continue; /* Skip ignored directory */
-
-				/* Recursively search subdirectory */
-				if (dog_sef_fdir(size_path, sef_name, ignore_dir)) {
-					FindClose(find_handle);
-					return 1; /* Found in subdirectory */
-				}
-			} else { /* Regular file */
-				if (dog_match_filename(entry_name, sef_name)) {
-					dog_add_found_path(size_path); /* Add to results */
-					FindClose(find_handle);
-					return 1; /* Found matching file */
-				}
-			}
-		} while (FindNextFile(find_handle, &find_data)); /* Continue enumeration */
-
-		FindClose(find_handle);
-#else
-		/* POSIX implementation using opendir/readdir */
-		DIR *open_dir;
-		struct dirent *item;
-		struct stat statbuf;
-		const char *entry_name;
-		int is_dir, is_reg;
-
-		open_dir = opendir(sef_path);
-		if (!open_dir) {
-			/* Cannot open directory */
-			return 0;
-		}
-
-		while ((item = readdir(open_dir)) != NULL) {
-			entry_name = item->d_name;
-
-			if (dog_dot_or_dotdot(entry_name))
+		if (find_data.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY) {
+			if (dog_procure_ignore_dir(entry_name, ignore_dir))
 				continue;
 
-			__set_path_sep(size_path,
-				sizeof(size_path), sef_path, entry_name);
-
-			/* Always use stat() because d_type is not reliable on all filesystems */
-			if (stat(size_path, &statbuf) == -1) {
-				/* Try lstat() if stat() fails */
-				if (lstat(size_path, &statbuf) == -1)
-					continue;
+			if (dog_sef_fdir(size_path, sef_name, ignore_dir)) {
+				FindClose(find_handle);
+				return (1);
 			}
-
-			is_dir = S_ISDIR(statbuf.st_mode);
-			is_reg = S_ISREG(statbuf.st_mode);
-
-			if (is_dir) {
-				if (dog_procure_ignore_dir(entry_name, ignore_dir))
-					continue;
-
-				/* Avoid infinite recursion with symbolic links */
-				if (S_ISLNK(statbuf.st_mode)) {
-					/* Option: follow or skip symlink */
-					/* continue; Skip symlink */
-				}
-
-				if (dog_sef_fdir(size_path, sef_name, ignore_dir)) {
-					closedir(open_dir);
-					return 1;
-				}
-			} else if (is_reg) {
-				if (dog_match_filename(entry_name, sef_name)) {
-					dog_add_found_path(size_path);
-					closedir(open_dir);
-					return 1;
-				}
+		} else {
+			if (dog_match_filename(entry_name, sef_name)) {
+				dog_add_found_path(size_path);
+				FindClose(find_handle);
+				return (1);
 			}
-			/* Skip other types (FIFO, socket, device, etc.) */
+		}
+	} while (FindNextFile(find_handle, &find_data));
+
+	FindClose(find_handle);
+#else
+	DIR		*open_dir;
+	struct dirent	*item;
+	struct stat	 statbuf;
+	const char	*entry_name;
+	int		 is_dir, is_reg;
+
+	open_dir = opendir(sef_path);
+	if (!open_dir)
+		return (0);
+
+	while ((item = readdir(open_dir)) != NULL) {
+		entry_name = item->d_name;
+
+		if (dog_dot_or_dotdot(entry_name))
+			continue;
+
+		__set_path_sep(size_path, sizeof(size_path), sef_path,
+		    entry_name);
+
+		if (stat(size_path, &statbuf) == -1) {
+			if (lstat(size_path, &statbuf) == -1)
+				continue;
 		}
 
-		closedir(open_dir);
+		is_dir = S_ISDIR(statbuf.st_mode);
+		is_reg = S_ISREG(statbuf.st_mode);
+
+		if (is_dir) {
+			if (dog_procure_ignore_dir(entry_name, ignore_dir))
+				continue;
+
+			if (S_ISLNK(statbuf.st_mode)) {
+				/* Option: follow or skip symlink */
+				/* continue; Skip symlink */
+			}
+
+			if (dog_sef_fdir(size_path, sef_name, ignore_dir)) {
+				closedir(open_dir);
+				return (1);
+			}
+		} else if (is_reg) {
+			if (dog_match_filename(entry_name, sef_name)) {
+				dog_add_found_path(size_path);
+				closedir(open_dir);
+				return (1);
+			}
+		}
+	}
+
+	closedir(open_dir);
 #endif
 
-		return 0; /* Not found in this directory */
+	return (0);
 }
 
-/*
- * Adds directory path to TOML file array with proper comma formatting.
- * Manages comma placement between array elements for valid TOML syntax.
- * Tracks first element to avoid leading comma.
- */
 static void
 __toml_add_directory_path(FILE *toml_file, int *first, const char *path)
 {
-		/* Add comma before element if not first */
-		if (!*first)
-				fprintf(toml_file, ",\n   ");
-		else {
-				fprintf(toml_file, "\n   "); /* First element formatting */
-				*first = 0; /* No longer first */
-		}
+	if (!*first)
+		fprintf(toml_file, ",\n   ");
+	else {
+		fprintf(toml_file, "\n   ");
+		*first = 0;
+	}
 
-		fprintf(toml_file, "\"%s\"", path); /* Write quoted path */
+	fprintf(toml_file, "\"%s\"", path);
 }
 
-/*
- * Tests compiler executable to detect supported options and version.
- * Runs compiler with test command, captures output to log file,
- * parses for specific flags and version strings to determine capabilities.
- */
-static void dog_check_compiler_options(int *compatibility, int *optimized_lt)
+static void
+dog_check_compiler_options(int *compatibility, int *optimized_lt)
 {
-		char command[DOG_PATH_MAX * 2];
-		FILE *this_proc_fileile;
-		char log_line[1024];
+	char	 command[DOG_PATH_MAX * 2];
+	FILE	*this_proc_fileile;
+	char	 log_line[1024];
+	int	 found_Z = 0, found_ver = 0;
 
-		/* Ensure test directory exists */
-        if (dir_exists(".watchdogs") == 0)
-            MKDIR(".watchdogs");
+	if (dir_exists(".watchdogs") == 0)
+		MKDIR(".watchdogs");
 
-		/* Clean up previous test log */
-		if (path_access(".watchdogs/compiler_test.log"))
-			remove(".watchdogs/compiler_test.log");
+	if (path_access(".watchdogs/compiler_test.log"))
+		remove(".watchdogs/compiler_test.log");
 
-		/* Run compiler test command */
-		snprintf(command, sizeof(command),
-					"%s -0000000U > .watchdogs/compiler_test.log 2>&1",
-					dogconfig.dog_sef_found_list[0]);
-		dog_exec_command(command);
+	#ifdef DOG_WINDOWS
+	PROCESS_INFORMATION _PROCESS_INFO;
+	STARTUPINFO _STARTUPINFO;
+	SECURITY_ATTRIBUTES _ATTRIBUTES;
+	HANDLE hFile;
+	_ZERO_MEM_WIN32(&_STARTUPINFO, sizeof(_STARTUPINFO));
+	_ZERO_MEM_WIN32(&_PROCESS_INFO, sizeof(_PROCESS_INFO));
+	_ZERO_MEM_WIN32(&_ATTRIBUTES, sizeof(_ATTRIBUTES));
 
-		/* Parse log file for compiler characteristics */
-		int found_Z = 0, found_ver = 0;
-		this_proc_fileile = fopen(".watchdogs/compiler_test.log", "r");
+	_ATTRIBUTES.nLength = sizeof(_ATTRIBUTES);
+	_ATTRIBUTES.bInheritHandle = TRUE;
 
-		if (this_proc_fileile) {
-			while (fgets(log_line, sizeof(log_line), this_proc_fileile) != NULL) {
-				if (!found_Z && strfind(log_line, "-Z", true))
-					found_Z = 1; /* Compiler supports -Z option */
-				if (!found_ver && strfind(log_line, "3.10.11", true))
-					found_ver = 1; /* Specific compiler version */
+	hFile = CreateFileA(
+		".watchdogs\\compiler_test.log",
+		GENERIC_WRITE,
+		FILE_SHARE_WRITE,
+		&_ATTRIBUTES,
+		CREATE_ALWAYS,
+		FILE_ATTRIBUTE_NORMAL,
+		NULL
+	);
+
+	if (hFile != INVALID_HANDLE_VALUE) {
+		_STARTUPINFO.cb = sizeof(_STARTUPINFO);
+		_STARTUPINFO.dwFlags = STARTF_USESTDHANDLES;
+		_STARTUPINFO.hStdOutput = hFile;
+		_STARTUPINFO.hStdError = hFile;
+
+		snprintf(
+			command,
+			sizeof(command),
+			"\"%s\" -N00000000:FF000000 -F000000=FF000000",
+			dogconfig.dog_sef_found_list[0]
+		);
+
+		if (CreateProcessA(
+		NULL,
+		command,
+		NULL,
+		NULL,
+		TRUE,
+		0,
+		NULL,
+		NULL,
+		&_STARTUPINFO,
+		&_PROCESS_INFO))
+		{
+			WaitForSingleObject(_PROCESS_INFO.hProcess, INFINITE);
+			CloseHandle(_PROCESS_INFO.hProcess);
+			CloseHandle(_PROCESS_INFO.hThread);
+		}
+
+		CloseHandle(hFile);
+	}
+	#else
+	pid_t pid;
+	int fd;
+
+	fd = open(".watchdogs/compiler_test.log",
+			O_CREAT | O_WRONLY | O_TRUNC,
+			0644);
+
+	if (fd >= 0) {
+		pid = fork();
+		if (pid == 0) {
+			dup2(fd, STDOUT_FILENO);
+			dup2(fd, STDERR_FILENO);
+			close(fd);
+
+			char *argv[] = {
+				dogconfig.dog_sef_found_list[0],
+				"-N00000000:FF000000",
+				"-F000000=FF000000",
+				NULL
+			};
+
+			execv(dogconfig.dog_sef_found_list[0], argv);
+			_exit(127);
+		}
+
+		close(fd);
+		waitpid(pid, NULL, 0);
+	}
+	#endif
+
+	this_proc_fileile = fopen(".watchdogs/compiler_test.log", "r");
+	if (this_proc_fileile) {
+		while (fgets(log_line, sizeof(log_line),
+		    this_proc_fileile) != NULL) {
+			if (!found_Z && strfind(log_line, "-Z", true))
+				found_Z = 1;
+			if (!found_ver && strfind(log_line, "3.10.11", true))
+				found_ver = 1;
+			if (strfind(log_line, "error while loading shared libraries:", true) ||
+				strfind(log_line, "required file not found", true)) {
+				dog_printfile(
+					".watchdogs/compiler_test.log");
 			}
-
-			/* Set flags based on findings */
-			if (found_Z)
-				*compatibility = 1; /* Has compatibility mode */
-			if (found_ver)
-				*optimized_lt = 1; /* Has optimized version */
-
-			fclose(this_proc_fileile);
-		} else {
-			pr_error(stdout, "Failed to open .watchdogs/compiler_test.log");
-			__create_logging();
 		}
 
-		/* Clean up test log file */
-		if (path_access(".watchdogs/compiler_test.log"))
-				remove(".watchdogs/compiler_test.log");
-}
+		if (found_Z)
+			*compatibility = 1;
+		if (found_ver)
+			*optimized_lt = 1;
 
-/*
- * Parses watchdogs.toml configuration file using TOML library.
- * Extracts general settings, particularly OS type, and stores in global config.
- * Returns 1 on success, 0 on parse error or file not found.
- */
-static int dog_parse_toml_config(void)
-{
-		FILE *this_proc_fileile;
-        char dog_buffer_error[DOG_PATH_MAX];
-		toml_table_t *dog_toml_config;
-		toml_table_t *general_table;
-
-		this_proc_fileile = fopen("watchdogs.toml", "r");
-		if (!this_proc_fileile) {
-				pr_error(stdout, "Cannot read file %s", "watchdogs.toml");
-                __create_logging();
-				return 0;
-		}
-
-		/* Parse TOML file */
-		dog_toml_config = toml_parse_file(this_proc_fileile, dog_buffer_error, sizeof(dog_buffer_error));
 		fclose(this_proc_fileile);
+	} else {
+		pr_error(stdout, "Failed to open .watchdogs/compiler_test.log");
+		minimal_debugging();
+	}
 
-		if (!dog_toml_config) {
-				pr_error(stdout, "Parsing TOML: %s", dog_buffer_error);
-				__create_logging();
-				return 0;
-		}
-
-		/* Extract general section */
-		general_table = toml_table_in(dog_toml_config, "general");
-		if (general_table) {
-				toml_datum_t os_val = toml_string_in(general_table, "os");
-				if (os_val.ok) {
-						/* Store OS type from config */
-						dogconfig.dog_toml_os_type = strdup(os_val.u.s);
-						dog_free(os_val.u.s); /* Free TOML library memory */
-				}
-		}
-
-		toml_free(dog_toml_config); /* Free TOML parse tree */
-		return 1; /* Success */
+	if (path_access(".watchdogs/compiler_test.log"))
+		remove(".watchdogs/compiler_test.log");
 }
 
-/*
- * Searches for Pawn Compiler executable based on OS type and server environment.
- * Checks different directory locations depending on server type (SA-MP vs open.mp).
- * Returns search result from recursive directory search.
- */
-static int dog_find_compiler(const char *dog_os_type)
+static int
+dog_parse_toml_config(void)
 {
-		int is_windows = (strcmp(dog_os_type, "windows") == 0);
-		const char *compiler_name = is_windows ? "pawncc.exe" : "pawncc";
+	FILE		*this_proc_fileile;
+	char		 dog_buffer_error[DOG_PATH_MAX];
+	toml_table_t	*dog_toml_config;
+	toml_table_t	*general_table;
 
-		/* Search based on server environment type */
-		if (dog_server_env() == 1) { /* SA-MP */
-				return dog_sef_fdir("pawno", compiler_name, NULL);
-		} else if (dog_server_env() == 2) { /* open.mp */
-				return dog_sef_fdir("qawno", compiler_name, NULL);
-		} else { /* Default */
-				return dog_sef_fdir("pawno", compiler_name, NULL);
+	this_proc_fileile = fopen("watchdogs.toml", "r");
+	if (!this_proc_fileile) {
+		pr_error(stdout, "Cannot read file %s", "watchdogs.toml");
+		minimal_debugging();
+		return (0);
+	}
+
+	dog_toml_config = toml_parse_file(this_proc_fileile, dog_buffer_error,
+	    sizeof(dog_buffer_error));
+	fclose(this_proc_fileile);
+
+	if (!dog_toml_config) {
+		pr_error(stdout, "Parsing TOML: %s", dog_buffer_error);
+		minimal_debugging();
+		return (0);
+	}
+
+	general_table = toml_table_in(dog_toml_config, "general");
+	if (general_table) {
+		toml_datum_t	 os_val = toml_string_in(general_table, "os");
+
+		if (os_val.ok) {
+			dogconfig.dog_toml_os_type = strdup(os_val.u.s);
+			dog_free(os_val.u.s);
 		}
+	}
+
+	toml_free(dog_toml_config);
+	return (1);
 }
 
-/* Unused function - marked with unused attribute to suppress warnings */
+static int
+dog_find_compiler(const char *dog_os_type)
+{
+	int		 is_windows = (strcmp(dog_os_type, "windows") == 0);
+	const char	*compiler_name = is_windows ? "pawncc.exe" : "pawncc";
+
+	if (dog_server_env() == 1)
+		return (dog_sef_fdir("pawno", compiler_name, NULL));
+	else if (dog_server_env() == 2)
+		return (dog_sef_fdir("qawno", compiler_name, NULL));
+	else
+		return (dog_sef_fdir("pawno", compiler_name, NULL));
+}
+
 __attribute__((unused))
-/*
- * Recursively adds all subdirectories from base path to TOML file.
- * Platform-independent implementation that enumerates directories
- * and writes their paths to TOML array format.
- */
-static void __toml_base_subdirs(const char *base_path,
-								FILE *toml_file, int *first)
+static void
+__toml_base_subdirs(const char *base_path, FILE *toml_file, int *first)
 {
 #ifdef DOG_WINDOWS
-		/* Windows directory enumeration */
-		WIN32_FIND_DATAA find_data;
-		HANDLE find_handle;
-		char sp[DOG_MAX_PATH], fp[DOG_MAX_PATH * 2];
-		snprintf(sp, sizeof(sp),
-			"%s" "%s*", base_path, __PATH_STR_SEP_WIN32);
+	WIN32_FIND_DATAA	 find_data;
+	HANDLE			 find_handle;
+	char			 sp[DOG_MAX_PATH], fp[DOG_MAX_PATH * 2];
 
-		find_handle = FindFirstFileA(sp, &find_data);
-		if (find_handle == INVALID_HANDLE_VALUE)
-				return; /* No files or error */
-		do {
-			if (find_data.dwFileAttributes &
-					FILE_ATTRIBUTE_DIRECTORY) { /* Directory */
-				if (dog_dot_or_dotdot(find_data.cFileName))
-					continue; /* Skip "." and ".." */
+	snprintf(sp, sizeof(sp), "%s%s*", base_path, __PATH_STR_SEP_WIN32);
+	find_handle = FindFirstFileA(sp, &find_data);
+	if (find_handle == INVALID_HANDLE_VALUE)
+		return;
 
-				/* Skip directory with same name as last component of base path */
-				if (strrchr(base_path, __PATH_CHR_SEP_WIN32) &&
-					strcmp(strrchr(base_path, __PATH_CHR_SEP_WIN32) + 1,
-							find_data.cFileName) == 0)
-					continue;
+	do {
+		if (find_data.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY) {
+			if (dog_dot_or_dotdot(find_data.cFileName))
+				continue;
 
-				/* Construct full subdirectory path */
-				snprintf(fp, sizeof(fp), "%s" "%s" "%s",
-							base_path, __PATH_STR_SEP_LINUX, find_data.cFileName);
+			if (strrchr(base_path, __PATH_CHR_SEP_WIN32) &&
+			    strcmp(strrchr(base_path, __PATH_CHR_SEP_WIN32) + 1,
+			    find_data.cFileName) == 0)
+				continue;
 
-				__toml_add_directory_path(toml_file, first, fp); /* Add to TOML */
-				__toml_base_subdirs(fp, toml_file, first); /* Recurse */
-			}
-		} while (FindNextFileA(find_handle, &find_data) != 0); /* Continue */
+			snprintf(fp, sizeof(fp), "%s%s%s",
+			    base_path, __PATH_STR_SEP_LINUX,
+			    find_data.cFileName);
 
-		FindClose(find_handle);
-#else
-		/* Unix directory enumeration */
-		DIR *open_dir;
-		struct dirent *item;
-		char fp[DOG_MAX_PATH * 4];
-
-		open_dir = opendir(base_path);
-		if (!open_dir)
-			return;
-
-		while ((item = readdir(open_dir)) != NULL) {
-			if (item->d_type == DT_DIR) { /* Directory entry */
-				if (dog_dot_or_dotdot(item->d_name))
-					continue;
-
-				/* Skip directory with same name as last component */
-				if (strrchr(base_path, __PATH_CHR_SEP_LINUX) &&
-					strcmp(strrchr(base_path, __PATH_CHR_SEP_LINUX) + 1,
-							item->d_name) == 0)
-					continue;
-
-				snprintf(fp, sizeof(fp), "%s" "%s" "%s",
-							base_path, __PATH_STR_SEP_LINUX, item->d_name);
-
-				__toml_add_directory_path(toml_file, first, fp);
-				__toml_base_subdirs(fp, toml_file, first); /* Recurse */
-			}
+			__toml_add_directory_path(toml_file, first, fp);
+			__toml_base_subdirs(fp, toml_file, first);
 		}
+	} while (FindNextFileA(find_handle, &find_data) != 0);
 
-		closedir(open_dir);
+	FindClose(find_handle);
+#else
+	DIR		*open_dir;
+	struct dirent	*item;
+	char		 fp[DOG_MAX_PATH * 4];
+
+	open_dir = opendir(base_path);
+	if (!open_dir)
+		return;
+
+	while ((item = readdir(open_dir)) != NULL) {
+		if (item->d_type == DT_DIR) {
+			if (dog_dot_or_dotdot(item->d_name))
+				continue;
+
+			if (strrchr(base_path, __PATH_CHR_SEP_LINUX) &&
+			    strcmp(strrchr(base_path, __PATH_CHR_SEP_LINUX) + 1,
+			    item->d_name) == 0)
+				continue;
+
+			snprintf(fp, sizeof(fp), "%s%s%s",
+			    base_path, __PATH_STR_SEP_LINUX, item->d_name);
+
+			__toml_add_directory_path(toml_file, first, fp);
+			__toml_base_subdirs(fp, toml_file, first);
+		}
+	}
+
+	closedir(open_dir);
 #endif
 }
 
-/*
- * Adds compiler path to TOML file if path exists and is accessible.
- * Manages comma formatting for array elements in TOML syntax.
- */
-int dog_add_compiler_path(FILE *file, const char *path, int *first_item)
+int
+dog_add_compiler_path(FILE *file, const char *path, int *first_item)
 {
-		if (path_access(path)) { /* Make sure path exists */
-				if (!*first_item)
-						fprintf(file, ","); /* Add comma before element */
-				fprintf(file, "\n      \"%s\"", path); /* Write quoted path */
-				//*first_item = 0; /* Commented out: would mark as not first */
-				//__toml_base_subdirs(path, file, first_item); /* Commented: recursive add */
-		} else {
-				return 2; /* Path doesn't exist */
-		}
-		return 1; /* Success */
+	if (path_access(path)) {
+		if (!*first_item)
+			fprintf(file, ",");
+		fprintf(file, "\n      \"%s\"", path);
+	} else {
+		return (2);
+	}
+	return (1);
 }
 
-/*
- * Adds standard include paths to TOML configuration based on server environment.
- * Includes gamemodes directory and compiler-specific include directories.
- */
-int dog_add_include_paths(FILE *file, int *first_item)
+int
+dog_add_include_paths(FILE *file, int *first_item)
 {
-		/* Add gamemodes directory if it exists */
-		int ret = -1;
-		if (path_access("gamemodes")) {
-				ret = 1;
-				if (!*first_item)
-						fprintf(file, ",");
-				fprintf(file, "\n      \"gamemodes/\"");
-				*first_item = 0; /* Mark as not first anymore */
-				//__toml_base_subdirs("gamemodes", file, first_item); /* Commented */
-		}
+	int	 ret = -1, ret2 = -1;
 
-		/* Add compiler include directory based on server type */
-		int ret2 = -1;
-		if (dog_server_env() == 1) /* SA-MP */
-				ret2 = dog_add_compiler_path(file, "pawno/include/", first_item);
-		else if (dog_server_env() == 2) /* open.mp */
-				ret2 = dog_add_compiler_path(file, "qawno/include/", first_item);
-		else /* Default */
-				ret2 = dog_add_compiler_path(file, "pawno/include/", first_item);
+	if (path_access("gamemodes")) {
+		ret = 1;
+		if (!*first_item)
+			fprintf(file, ",");
+		fprintf(file, "\n      \"gamemodes/\"");
+		*first_item = 0;
+	}
 
-		if (ret != 1 && ret2 != 1)
-			return 2;
+	if (dog_server_env() == 1)
+		ret2 = dog_add_compiler_path(file, "pawno/include/", first_item);
+	else if (dog_server_env() == 2)
+		ret2 = dog_add_compiler_path(file, "qawno/include/", first_item);
+	else
+		ret2 = dog_add_compiler_path(file, "pawno/include/", first_item);
 
-		return 1; /* Success */
+	if (ret != 1 && ret2 != 1)
+		return (2);
+
+	return (1);
 }
 
-/* Static variable to cache server type detection result */
-static int samp_user = -1; /* -1 = not determined, 0 = open.mp, 1 = SA-MP */
-/*
- * Generates complete TOML configuration file content based on detected environment.
- * Creates [general], [compiler], and [dependencies] sections with appropriate values
- * for OS type, compiler options, paths, and dependencies.
- */
-static void dog_generate_toml_content(FILE *file, const char *dog_os_type,
-							         int has_gamemodes, int compatible,
-							         int optimized_lt, char *sef_path)
-{
-		int first_item = 1;
-		/* Process sef_path: remove extension and normalize separators */
-		if (sef_path[0]) {
-			char *extension = strrchr(sef_path, '.');
-			if (extension)
-					*extension = '\0'; /* Remove file extension */
-		}
-		/* Convert Windows backslashes to forward slashes */
-		char *p;
-		for (p = sef_path; *p; p++) {
-				if (*p == __PATH_CHR_SEP_WIN32)
-					*p = __PATH_CHR_SEP_LINUX;
-		}
+static int	samp_user = -1;
 
-		/* Write [general] section */
-		int is_container = 0;
-		/* Container detection: check for Docker/Podman - Container environment file */
-		if (is_running_in_container())
-			is_container = 1;
-		/* WSL detection: check for WSL environment variables */
-		else if (getenv("WSL_INTEROP") ||
-				 getenv("WSL_DISTRO_NAME"))
+static void
+dog_generate_toml_content(FILE *file, const char *dog_os_type,
+    int has_gamemodes, int compatible, int optimized_lt, char *sef_path)
+{
+	char	*p;
+	int	 first_item = 1, is_container = 0;
+
+	if (sef_path[0]) {
+		char	*extension = strrchr(sef_path, '.');
+
+		if (extension)
+			*extension = '\0';
+	}
+
+	for (p = sef_path; *p; p++) {
+		if (*p == __PATH_CHR_SEP_WIN32)
+			*p = __PATH_CHR_SEP_LINUX;
+	}
+
+	if (is_running_in_container())
+		is_container = 1;
+	else if (getenv("WSL_INTEROP") || getenv("WSL_DISTRO_NAME"))
+		is_container = -1;
+
+	fprintf(file, "[general]\n");
+	fprintf(file, "   os = \"%s\" # os - windows (wsl/wsl2 supported); linux\n",
+	    dog_os_type);
+
+	if (strcmp(dog_os_type, "windows") == 0 && is_container == -1) {
+		if (dogconfig.dog_garbage_access[DOG_GARBAGE_WSL_ENV] == DOG_GARBAGE_ZERO)
 		{
-				is_container = -1;
+			pr_info(stdout,
+			    "We've detected that you are running Watchdogs in WSL without Docker/Podman - Container.\n"
+			    "\tTherefore, we have selected the Windows Ecosystem for Watchdogs,"
+			    "\n\tand you can change it in watchdogs.toml.");
+			dogconfig.dog_garbage_access[DOG_GARBAGE_WSL_ENV] = DOG_GARBAGE_TRUE;
 		}
-		fprintf(file, "[general]\n");
-		fprintf(file, "   os = \"%s\" # operating system - windows ; linux\n", dog_os_type);
-		if (strcmp(dog_os_type, "windows") == 0 && is_container == -1) {
-			static int k = 0;
-			if (k != 1) {
-				k = 1;
-				pr_info(stdout, "We've detected that you are running Watchdogs in WSL without Docker/Podman - Container.\n"
-					"\tTherefore, we have selected the Windows Ecosystem for Watchdogs,"
-					"\n\tand you can change it in watchdogs.toml.");
-			}
-		}
+	}
 
-		/* Set binary and config paths based on server type */
-		if (samp_user == 0) { /* open.mp */
-			if (!strcmp(dog_os_type, "windows")) {
-				fprintf(file, "   binary = \"%s\" # open.mp binary files\n", "omp-server.exe");
-			} else if (!strcmp(dog_os_type, "linux")) {
-				fprintf(file, "   binary = \"%s\" # open.mp binary files\n", "omp-server");
-			}
-			fprintf(file, "   config = \"%s\" # open.mp config files\n", "config.json");
-			fprintf(file, "   logs = \"%s\" # open.mp log files\n", "log.txt");
-		} else { /* SA-MP */
-			if (!strcmp(dog_os_type, "windows")) {
-				fprintf(file, "   binary = \"%s\" # sa-mp binary files\n", "samp-server.exe");
-			} else if (!strcmp(dog_os_type, "linux")) {
-				fprintf(file, "   binary = \"%s\" # sa-mp binary files\n", "samp-server.exe");
-			}
-			fprintf(file, "   config = \"%s\" # sa-mp config files\n", "server.cfg");
-			fprintf(file, "   logs = \"%s\" # sa-mp log files\n", "server_log.txt");
+	if (samp_user == 0) {
+		if (!strcmp(dog_os_type, "windows")) {
+			fprintf(file, "   binary = \"%s\" # open.mp binary files\n",
+			    "omp-server.exe");
+		} else if (!strcmp(dog_os_type, "linux")) {
+			fprintf(file, "   binary = \"%s\" # open.mp binary files\n",
+			    "omp-server");
 		}
-		/* AI and chatbot settings */
-		fprintf(file, "   keys = \"API_KEY\" # groq/gemini key\n");
-		fprintf(file, "   chatbot = \"gemini\" # ai chat groq ; gemini\n");
-		fprintf(file, "   models = \"gemini-2.5-pro\" # chatbot model\n");
-		fprintf(file, "   webhooks = \"DO_HERE\" # discord webhooks\n");
-
-		/* Write [compiler] section */
-		fprintf(file, "[compiler]\n");
-
-		/* Termux Settings */
-		if (is_termux_env())
-			{
-				fprintf(file, "   option = [\"-d3\", \"-;+\", \"-(+\"] # compiler options\n");
-				goto _tmux;
-			}
-		/* Set compiler options based on detected capabilities */
-		if (compatible && optimized_lt) {
-				fprintf(file, "   option = [\"-Z+\", \"-d2\", \"-O2\", \"-;+\", \"-(+\"] # compiler options\n");
-		} else if (compatible) {
-				fprintf(file, "   option = [\"-Z+\", \"-d2\", \"-;+\", \"-(+\"] # compiler options\n");
-		} else {
-				fprintf(file, "   option = [\"-d3\", \"-;+\", \"-(+\"] # compiler options\n");
+		fprintf(file, "   config = \"%s\" # open.mp config files\n",
+		    "config.json");
+		fprintf(file, "   logs = \"%s\" # open.mp log files\n",
+		    "log.txt");
+	} else {
+		if (!strcmp(dog_os_type, "windows")) {
+			fprintf(file, "   binary = \"%s\" # sa-mp binary files\n",
+			    "samp-server.exe");
+		} else if (!strcmp(dog_os_type, "linux")) {
+			fprintf(file, "   binary = \"%s\" # sa-mp binary files\n",
+			    "samp-server.exe");
 		}
+		fprintf(file, "   config = \"%s\" # sa-mp config files\n",
+		    "server.cfg");
+		fprintf(file, "   logs = \"%s\" # sa-mp log files\n",
+		    "server_log.txt");
+	}
+
+	fprintf(file, "   webhooks = \"DO_HERE\" # discord webhooks\n");
+	fprintf(file, "[compiler]\n");
+
+	if (compatible && optimized_lt) {
+		fprintf(file,
+		    "   option = [\"-Z:+\", \"-d:2\", \"-O:2\", \"-;+\", \"-(+\"] # compiler options\n");
+	} else if (compatible) {
+		fprintf(file,
+		    "   option = [\"-Z:+\", \"-d:2\", \"-;+\", \"-(+\"] # compiler options\n");
+	} else {
+		fprintf(file,
+		    "   option = [\"-d:3\", \"-;+\", \"-(+\"] # compiler options\n");
+	}
+
 _tmux:
+	fprintf(file, "   includes = [");
+	int	 ret = dog_add_include_paths(file, &first_item);
 
-		/* Include paths array */
-		fprintf(file, "   includes = [");
-		int ret = dog_add_include_paths(file, &first_item); /* Add actual paths */
-		if (ret != 1) fprintf(file, "]\n");
-		else {
-			fprintf(file, "\n   ] # include paths\n");
-		}
+	if (ret != 1)
+		fprintf(file, "]\n");
+	else
+		fprintf(file, "\n   ] # include paths\n");
 
-		/* Input and output file paths */
-		if (has_gamemodes && sef_path[0]) {
-				/* Use found gamemode file */
-				fprintf(file, "   input = \"%s.pwn\" # project input\n", sef_path);
-				fprintf(file, "   output = \"%s.amx\" # project output\n", sef_path);
+	if (has_gamemodes && sef_path[0]) {
+		fprintf(file, "   input = \"%s.pwn\" # project input\n",
+		    sef_path);
+		fprintf(file, "   output = \"%s.amx\" # project output\n",
+		    sef_path);
+	} else {
+		if (path_exists("cache/server.p") == 1) {
+			fprintf(file,
+			    "   input = \"cache/server.p\" # project input\n");
+			fprintf(file,
+			    "   output = \"cache/server.amx\" # project output\n");
 		} else {
-				/* Default bare gamemode */
-				fprintf(file, "   input = \"gamemodes/bare.pwn\" # project input\n");
-				fprintf(file, "   output = \"gamemodes/bare.amx\" # project output\n");
+			fprintf(file,
+			    "   input = \"gamemodes/bare.pwn\" # project input\n");
+			fprintf(file,
+			    "   output = \"gamemodes/bare.amx\" # project output\n");
 		}
+	}
 
-		/* Write [dependencies] section */
-		fprintf(file, "[dependencies]\n");
-		fprintf(file, "   github_tokens = \"DO_HERE\" # github tokens\n");
-		fprintf(file, "   root_patterns = [\"lib\", \"log\", \"root\", "
-			"\"amx\", \"static\", \"dynamic\", \"cfg\", \"config\", \"json\", \"msvcrt\", \"msvcr\", \"msvcp\", \"ucrtbase\"] # root pattern\n");
-		/* Dependency repositories */
-		fprintf(file, "   packages = [\n"
-			"      \"Y-Less/sscanf?newer\",\n"
-			"      \"samp-incognito/samp-streamer-plugin?newer\"\n"
-			"   ] # package list");
-		fprintf(file, "\n");
+	fprintf(file, "[dependencies]\n");
+	fprintf(file, "   github_tokens = \"DO_HERE\" # github tokens\n");
+	fprintf(file,
+	    "   root_patterns = [\"lib\", \"log\", \"root\", "
+	    "\"amx\", \"static\", \"dynamic\", \"cfg\", \"config\", \"json\", \"msvcrt\", \"msvcr\", \"msvcp\", \"ucrtbase\"] # root pattern\n");
+	fprintf(file, "   packages = [\n"
+	    "      \"Y-Less/sscanf?newer\",\n"
+	    "      \"samp-incognito/samp-streamer-plugin?newer\"\n"
+	    "   ] # package list");
+	fprintf(file, "\n");
 }
 
-/*
- * Main TOML configuration management function orchestrates detection,
- * generation, and parsing of watchdogs.toml file.
- * Detects server type, finds compiler, checks capabilities, creates or updates
- * configuration, and loads settings into global configuration structure.
- */
-int dog_toml_configs(void)
+int
+dog_toml_configs(void)
 {
-		int find_pawncc = 0, find_gamemodes = 0;
-		int compatibility = 0, optimized_lt = 0;
+	int		 find_pawncc = 0, find_gamemodes = 0;
+	int		 compatibility = 0, optimized_lt = 0;
+	const char	*dog_os_type;
+	FILE		*toml_file;
+	char		 dog_buffer_error[DOG_PATH_MAX];
+	toml_table_t	*dog_toml_config;
+	toml_table_t	*dog_toml_depends, *dog_toml_compiler, *general_table;
+	toml_array_t	*dog_toml_root_patterns;
+	toml_datum_t	 toml_gh_tokens, input_val, output_val;
+	toml_datum_t	 bin_val, conf_val, logs_val, webhooks_val;
+	size_t		 arr_sz, i;
+	char		*expect = NULL;
+	char         multi_buf[DOG_MAX_PATH * 4] = { __compiler_rate_zero };
+	char iflag[3]          = { __compiler_rate_zero };
+	size_t siflag          = sizeof(iflag);
+	compilr_with_debugging = false;
+	compiler_debugging     = false;
+	memset(all_include_paths,
+	__compiler_rate_zero, sizeof(all_include_paths));
+	dog_free(dogconfig.dog_toml_aio_opt);
+	dogconfig.dog_toml_aio_opt = NULL;
+	memset(all_include_paths,__compiler_rate_zero, sizeof(all_include_paths));
 
-		const char *dog_os_type;
-		FILE *toml_file;
+	dog_os_type = dog_procure_os();
 
-		dog_os_type = dog_procure_os(); /* Detect OS */
+	if (dir_exists("qawno") && dir_exists("components"))
+		samp_user = 0;
+	else if (dir_exists("pawno") && path_access("server.cfg"))
+		samp_user = 1;
+	else {
+		;
+	}
 
-		/* Determine server type by checking directories and files */
-		if (dir_exists("qawno") &&
-			dir_exists("components"))
-			samp_user = 0; /* open.mp */
-		else if (dir_exists("pawno") &&
-			path_access("server.cfg"))
-			samp_user = 1; /* SA-MP */
-		else {
-				;
+	find_pawncc = dog_find_compiler(dog_os_type);
+	if (!find_pawncc) {
+		if (strcmp(dog_os_type, "windows") == 0)
+			find_pawncc = dog_sef_fdir(".", "pawncc.exe", NULL);
+		else
+			find_pawncc = dog_sef_fdir(".", "pawncc", NULL);
+	}
+
+	find_gamemodes = dog_sef_fdir("gamemodes/", "*.pwn", NULL);
+	toml_file = fopen("watchdogs.toml", "r");
+	if (toml_file) {
+		fclose(toml_file);
+	} else {
+		if (find_pawncc)
+			dog_check_compiler_options(&compatibility, &optimized_lt);
+
+		toml_file = fopen("watchdogs.toml", "w");
+		if (!toml_file) {
+			pr_error(stdout, "Failed to create watchdogs.toml");
+			println(stdout, "   Permission?? - verify first.");
+			minimal_debugging();
+			exit(1);
 		}
 
-		/* Search for Pawn Compiler */
-		find_pawncc = dog_find_compiler(dog_os_type);
-		if (!find_pawncc) {
-			/* Fallback: search in current directory */
-			if (strcmp(dog_os_type, "windows") == 0)
-					find_pawncc = dog_sef_fdir(".", "pawncc.exe", NULL);
-			else
-					find_pawncc = dog_sef_fdir(".", "pawncc", NULL);
+		if (find_pawncc)
+			dog_generate_toml_content(toml_file, dog_os_type,
+			    find_gamemodes, compatibility, optimized_lt,
+			    dogconfig.dog_sef_found_list[1]);
+		else
+			dog_generate_toml_content(toml_file, dog_os_type,
+			    find_gamemodes, compatibility, optimized_lt,
+			    dogconfig.dog_sef_found_list[0]);
+		fclose(toml_file);
+	}
+
+	if (!dog_parse_toml_config()) {
+		pr_error(stdout, "Failed to parse TOML configuration");
+		minimal_debugging();
+		return (1);
+	}
+
+	FILE	*this_proc_file = fopen("watchdogs.toml", "r");
+	dog_toml_config = toml_parse_file(this_proc_file, dog_buffer_error,
+	    sizeof(dog_buffer_error));
+	if (this_proc_file)
+		fclose(this_proc_file);
+
+	if (!dog_toml_config) {
+		pr_error(stdout, "failed to parse the watchdogs.toml...: %s",
+		    dog_buffer_error);
+		minimal_debugging();
+		unit_ret_main(NULL);
+	}
+
+	dog_toml_depends = toml_table_in(dog_toml_config, "dependencies");
+	if (dog_toml_depends) {
+		toml_gh_tokens = toml_string_in(dog_toml_depends,
+		    "github_tokens");
+		if (toml_gh_tokens.ok) {
+			dogconfig.dog_toml_github_tokens =
+			    strdup(toml_gh_tokens.u.s);
+			dog_free(toml_gh_tokens.u.s);
 		}
 
-		/* Search for gamemode source files */
-		find_gamemodes = dog_sef_fdir("gamemodes/", "*.pwn", NULL);
+		dog_toml_root_patterns = toml_array_in(dog_toml_depends,
+		    "root_patterns");
+		if (dog_toml_root_patterns) {
+			arr_sz = toml_array_nelem(dog_toml_root_patterns);
+			for (i = 0; i < arr_sz; i++) {
+				toml_datum_t	 val;
 
-		/* Make sure TOML file already exists */
-		toml_file = fopen("watchdogs.toml", "r");
-		if (toml_file) {
-			fclose(toml_file); /* File exists, will parse later */
-		} else {
-			/* Create new TOML file */
-			/* Test compiler capabilities if found */
-			if (find_pawncc) {
-				dog_check_compiler_options(&compatibility, &optimized_lt);
-			}
+				val = toml_string_at(dog_toml_root_patterns, i);
+				if (!val.ok)
+					continue;
 
-			toml_file = fopen("watchdogs.toml", "w");
-			if (!toml_file) {
-					pr_error(stdout, "Failed to create watchdogs.toml");
-                	__create_logging();
-					return 1;
-			}
+				if (!expect) {
+					expect = dog_realloc(NULL,
+					    strlen(val.u.s) + 1);
+					if (!expect)
+						goto free_val;
 
-			/* Generate content based on findings */
-			if (find_pawncc)
-				dog_generate_toml_content(toml_file, dog_os_type, find_gamemodes,
-					compatibility, optimized_lt, dogconfig.dog_sef_found_list[1]);
-			else
-				dog_generate_toml_content(toml_file, dog_os_type, find_gamemodes,
-					compatibility, optimized_lt, dogconfig.dog_sef_found_list[0]);
-			fclose(toml_file);
-		}
+					snprintf(expect, strlen(val.u.s) + 1,
+					    "%s", val.u.s);
+				} else {
+					char	*tmp;
+					size_t	 old_len = strlen(expect);
+					size_t	 new_len = old_len +
+					    strlen(val.u.s) + 2;
 
-		/* Parse the TOML file */
-		if (!dog_parse_toml_config()) {
-				pr_error(stdout, "Failed to parse TOML configuration");
-                __create_logging();
-				return 1;
-		}
+					tmp = dog_realloc(expect, new_len);
+					if (!tmp)
+						goto free_val;
 
-		/* Re-parse for additional configuration extraction */
-		char dog_buffer_error[DOG_PATH_MAX];
-		toml_table_t *dog_toml_config;
-		toml_table_t *dog_toml_compiler;
-		FILE *this_proc_file = fopen("watchdogs.toml", "r");
-		dog_toml_config = toml_parse_file(this_proc_file, dog_buffer_error, sizeof(dog_buffer_error));
-		if (this_proc_file) fclose(this_proc_file);
-
-		if (!dog_toml_config) {
-			pr_error(stdout, "failed to parse the watchdogs.toml...: %s", dog_buffer_error);
-			__create_logging();
-			unit_ret_main(NULL); /* Error handling */
-		}
-
-		/* Extract dependencies section */
-		toml_table_t *dog_toml_depends = toml_table_in(dog_toml_config, "dependencies");
-		if (dog_toml_depends) {
-				toml_datum_t toml_gh_tokens = toml_string_in(dog_toml_depends, "github_tokens");
-				if (toml_gh_tokens.ok)
-				{
-					dogconfig.dog_toml_github_tokens = strdup(toml_gh_tokens.u.s);
-					dog_free(toml_gh_tokens.u.s);
+					expect = tmp;
+					snprintf(expect + old_len,
+					    new_len - old_len, " %s",
+					    val.u.s);
 				}
-
-                size_t arr_sz, i;
-                char *expect = NULL;
-
-                toml_array_t *dog_toml_root_patterns = toml_array_in(dog_toml_depends, "root_patterns");
-                if (!dog_toml_root_patterns)
-                    goto out;
-
-                arr_sz = toml_array_nelem(dog_toml_root_patterns);
-                for (i = 0; i < arr_sz; i++) {
-                    toml_datum_t val;
-
-                    val = toml_string_at(dog_toml_root_patterns, i);
-                    if (!val.ok)
-                            continue;
-
-                    if (!expect) {
-                            expect = dog_realloc(NULL, strlen(val.u.s) + 1);
-                            if (!expect)
-                                    goto free_val;
-
-                            snprintf(expect, strlen(val.u.s) + 1, "%s", val.u.s);
-                    } else {
-                            char *tmp;
-                            size_t old_len = strlen(expect);
-                            size_t new_len = old_len + strlen(val.u.s) + 2;
-
-                            tmp = dog_realloc(expect, new_len);
-                            if (!tmp)
-                                    goto free_val;
-
-                            expect = tmp;
-                            snprintf(expect + old_len, new_len - old_len, " %s", val.u.s);
-                    }
 
 free_val:
-					dogconfig.dog_toml_root_patterns = strdup(expect);
-                    dog_free(val.u.s);
-                    val.u.s = NULL;
-				}
+				dogconfig.dog_toml_root_patterns =
+				    strdup(expect);
+				dog_free(val.u.s);
+				val.u.s = NULL;
+			}
 		}
+	}
 
 out:
-		/* Extract compiler section */
-		dog_toml_compiler = toml_table_in(dog_toml_config, "compiler");
-		if (dog_toml_compiler) {
-				toml_datum_t input_val = toml_string_in(dog_toml_compiler, "input");
-				if (input_val.ok) {
-					dogconfig.dog_toml_proj_input = strdup(input_val.u.s);
-					dog_free(input_val.u.s);
-				}
-				toml_datum_t output_val = toml_string_in(dog_toml_compiler, "output");
-				if (output_val.ok) {
-					dogconfig.dog_toml_proj_output = strdup(output_val.u.s);
-					dog_free(output_val.u.s);
-				}
-		}
+	dog_toml_compiler = toml_table_in(dog_toml_config, "compiler");
+	if (dog_toml_compiler) {
+		toml_array_t *toml_include_path = toml_array_in(
+			dog_toml_compiler, "includes");
+		if (toml_include_path) {
+			int toml_array_size;
+			toml_array_size =
+				toml_array_nelem(toml_include_path);
 
-		/* Handling before setup */
-		dogconfig.dog_toml_aio_opt = strdup("none");
-		dogconfig.dog_toml_packages = strdup("none none none");
-
-		/* Extract general section details */
-		toml_table_t *general_table = toml_table_in(dog_toml_config, "general");
-		if (general_table) {
-				toml_datum_t bin_val = toml_string_in(general_table, "binary");
-				if (bin_val.ok) {
-					/* Store binary path based on server type */
-					if (samp_user == 1) {
-						dogconfig.dog_is_samp = CRC32_TRUE;
-						dogconfig.dog_ptr_samp = strdup(bin_val.u.s);
+			for (int i = 0; i < toml_array_size; i++) {
+				toml_datum_t path_val = toml_string_at(
+					toml_include_path, i);
+				if (path_val.ok) {
+					char size_path_val[
+						DOG_PATH_MAX + 26];
+					dog_strip_dot_fns(size_path_val,
+						sizeof(size_path_val),
+						path_val.u.s);
+					if (size_path_val[0] == '\0') {
+						dog_free(path_val.u.s);
+						continue;
 					}
-					else if (samp_user == 0) {
-						dogconfig.dog_is_omp = CRC32_TRUE;
-						dogconfig.dog_ptr_omp = strdup(bin_val.u.s);
+					if (i > 0) {
+						size_t cur =
+							strlen(
+							all_include_paths);
+						if (cur <
+							sizeof(
+							all_include_paths) -
+							1) {
+							snprintf(
+								all_include_paths +
+								cur,
+								sizeof(
+								all_include_paths) -
+								cur,
+								" ");
+						}
 					}
-					else {
-						dogconfig.dog_is_samp = CRC32_TRUE;
-						dogconfig.dog_ptr_samp = strdup(bin_val.u.s);
+					size_t cur = strlen(
+						all_include_paths);
+					if (cur <
+						sizeof(all_include_paths) -
+						1) {
+						snprintf(
+							all_include_paths +
+							cur,
+							sizeof(
+							all_include_paths) -
+							cur,
+							"-i=%s ",
+							size_path_val);
 					}
-					dogconfig.dog_toml_binary = strdup(bin_val.u.s);
-					dog_free(bin_val.u.s);
+					dog_free(path_val.u.s);
 				}
-				toml_datum_t conf_val = toml_string_in(general_table, "config");
-				if (conf_val.ok) {
-					dogconfig.dog_toml_config = strdup(conf_val.u.s);
-					dog_free(conf_val.u.s);
-				}
-				toml_datum_t logs_val = toml_string_in(general_table, "logs");
-				if (logs_val.ok) {
-					dogconfig.dog_toml_logs = strdup(logs_val.u.s);
-					dog_free(logs_val.u.s);
-				}
-				toml_datum_t keys_val = toml_string_in(general_table, "keys");
-				if (keys_val.ok) {
-					dogconfig.dog_toml_key_ai = strdup(keys_val.u.s);
-					dog_free(keys_val.u.s);
-				}
-				toml_datum_t chatbot_val = toml_string_in(general_table, "chatbot");
-				if (chatbot_val.ok) {
-					dogconfig.dog_toml_chatbot_ai = strdup(chatbot_val.u.s);
-					dog_free(chatbot_val.u.s);
-				}
-				toml_datum_t models_val = toml_string_in(general_table, "models");
-				if (models_val.ok) {
-					dogconfig.dog_toml_models_ai = strdup(models_val.u.s);
-					dog_free(models_val.u.s);
-				}
-				toml_datum_t webhooks_val = toml_string_in(general_table, "webhooks");
-				if (webhooks_val.ok) {
-					dogconfig.dog_toml_webhooks = strdup(webhooks_val.u.s);
-					dog_free(webhooks_val.u.s);
-				}
-		}
-
-		toml_free(dog_toml_config); /* Free parse tree */
-
-		/* Null - CRC32 False detecting */
-		for (size_t i = 0; i < sizeof(char_fields) / sizeof(char_fields[0]); i++) {
-    		char* field_value = *(field_pointers[i]);
-    		const char* field_name = char_fields[i];
-			if (field_value == NULL ||
-				strcmp(field_value, CRC32_FALSE) == 0)
-			{
-				pr_warning(stdout, "toml key null/crc32 false (%s) detected in key: %s",
-					CRC32_FALSE, field_name);
 			}
 		}
 
-		return 0; /* Success */
+		toml_array_t *option_arr = toml_array_in(dog_toml_compiler,
+			"option");
+		if (option_arr) {
+			expect = NULL;
+
+			size_t toml_array_size;
+			toml_array_size = toml_array_nelem(option_arr);
+
+			for (size_t i = 0; i < toml_array_size; i++) {
+				toml_datum_t toml_option_value;
+				toml_option_value = toml_string_at(
+					option_arr, i);
+				if (!toml_option_value.ok)
+					continue;
+
+				if (strlen(toml_option_value.u.s) >= 2) {
+					snprintf(iflag,
+						siflag,
+						"%.2s",
+						toml_option_value.u.s);
+				} else {
+					strncpy(iflag,
+						toml_option_value.u.s,
+						siflag -
+						1);
+				}
+
+				char *_compiler_options =
+					toml_option_value.u.s;
+				while (*_compiler_options &&
+					isspace(*_compiler_options))
+					++_compiler_options;
+
+				if (*_compiler_options != '-') {
+					pr_color(stdout, DOG_COL_GREEN,
+						"[COMPILER]: " DOG_COL_CYAN
+						"\"%s\" " DOG_COL_DEFAULT
+						"is not valid compiler flag!",
+						toml_option_value.u.s);
+					sleep(2);
+					printf("\n");
+					dog_printfile(
+						".watchdogs/compiler_test.log");
+					dog_free(toml_option_value.u.s);
+				}
+
+				if (strfind(toml_option_value.u.s,
+					"-d", true) || has_debug > 0)
+					compiler_debugging = true;
+
+				size_t old_len = expect ? strlen(expect) :
+					0;
+				size_t new_len = old_len +
+					strlen(toml_option_value.u.s) + 2;
+
+				char *tmp = dog_realloc(expect, new_len);
+				if (!tmp) {
+					dog_free(expect);
+					dog_free(toml_option_value.u.s);
+					expect = NULL;
+					break;
+				}
+
+				expect = tmp;
+
+				if (!old_len)
+					snprintf(expect, new_len, "%s",
+						toml_option_value.u.s);
+				else
+					snprintf(expect + old_len,
+						new_len - old_len, " %s",
+						toml_option_value.u.s);
+
+				dog_free(toml_option_value.u.s);
+				toml_option_value.u.s = NULL;
+			}
+
+			if (expect) {
+				dog_free(dogconfig.dog_toml_aio_opt);
+				dogconfig.dog_toml_aio_opt = expect;
+				expect = NULL;
+			} else {
+				dog_free(dogconfig.dog_toml_aio_opt);
+				dogconfig.dog_toml_aio_opt = strdup("");
+				if (!dogconfig.dog_toml_aio_opt) {
+					pr_error(stdout,
+						"Memory allocation failed");
+				}
+			}
+		}
+
+		input_val = toml_string_in(dog_toml_compiler, "input");
+		if (input_val.ok) {
+			dogconfig.dog_toml_proj_input = strdup(input_val.u.s);
+			dog_free(input_val.u.s);
+		}
+		output_val = toml_string_in(dog_toml_compiler, "output");
+		if (output_val.ok) {
+			dogconfig.dog_toml_proj_output = strdup(output_val.u.s);
+			dog_free(output_val.u.s);
+		}
+	}
+
+	dogconfig.dog_toml_packages = strdup("none none none");
+
+	general_table = toml_table_in(dog_toml_config, "general");
+	if (general_table) {
+		bin_val = toml_string_in(general_table, "binary");
+		if (bin_val.ok) {
+			if (samp_user == 1) {
+				dogconfig.dog_is_samp = CRC32_TRUE;
+				dogconfig.dog_ptr_samp = strdup(bin_val.u.s);
+			} else if (samp_user == 0) {
+				dogconfig.dog_is_omp = CRC32_TRUE;
+				dogconfig.dog_ptr_omp = strdup(bin_val.u.s);
+			} else {
+				dogconfig.dog_is_samp = CRC32_TRUE;
+				dogconfig.dog_ptr_samp = strdup(bin_val.u.s);
+			}
+			dogconfig.dog_toml_binary = strdup(bin_val.u.s);
+			dog_free(bin_val.u.s);
+		}
+		conf_val = toml_string_in(general_table, "config");
+		if (conf_val.ok) {
+			dogconfig.dog_toml_config = strdup(conf_val.u.s);
+			dog_free(conf_val.u.s);
+		}
+		logs_val = toml_string_in(general_table, "logs");
+		if (logs_val.ok) {
+			dogconfig.dog_toml_logs = strdup(logs_val.u.s);
+			dog_free(logs_val.u.s);
+		}
+		webhooks_val = toml_string_in(general_table, "webhooks");
+		if (webhooks_val.ok) {
+			dogconfig.dog_toml_webhooks = strdup(webhooks_val.u.s);
+			dog_free(webhooks_val.u.s);
+		}
+	}
+
+	toml_free(dog_toml_config);
+
+	for (size_t i = 0; i < sizeof(char_fields) / sizeof(char_fields[0]);
+	    i++) {
+		char		*field_value = *(field_pointers[i]);
+		const char	*field_name = char_fields[i];
+
+		if (field_value == NULL ||
+		    strcmp(field_value, CRC32_FALSE) == 0) {
+			pr_warning(stdout,
+			    "toml key null/crc32 false (%s) detected in key: %s",
+			    CRC32_FALSE, field_name);
+		}
+	}
+
+	return (0);
 }
 
-/*
- * Attempts to move file without sudo/administrator privileges.
- * Constructs platform-appropriate move command and executes it.
- * Returns command execution result.
- */
-static int _try_mv_without_sudo(const char *src, const char *dest) {
+static int _try_mv_without_sudo(const char *src, const char *dest)
+{
+    if (!src || !dest)
+        return (-1);
 
-	    char size_mv[DOG_PATH_MAX];
-	    /* Platform-specific move commands */
-	    if (is_native_windows())
-	        snprintf(size_mv, sizeof(size_mv),
-				"move /Y \"%s\" \"%s\"", src, dest);
-	    else
-	        snprintf(size_mv, sizeof(size_mv),
-				"mv -f %s %s", src, dest);
-	    int ret = dog_exec_command(size_mv);
-	    return ret;
+#ifdef DOG_WINDOWS
+    char command[DOG_PATH_MAX * 2];
+    PROCESS_INFORMATION _PROCESS_INFO;
+    STARTUPINFO _STARTUPINFO;
+    DWORD exit_code = 0;
+
+    memset(&_STARTUPINFO, 0, sizeof(_STARTUPINFO));
+    _STARTUPINFO.cb = sizeof(_STARTUPINFO);
+    memset(&_PROCESS_INFO, 0, sizeof(_PROCESS_INFO));
+
+    snprintf(command, sizeof(command), "move /Y \"%s\" \"%s\"", src, dest);
+
+    if (!
+		CreateProcess(NULL, command, NULL, NULL, FALSE, 0, NULL, NULL, &_STARTUPINFO, &_PROCESS_INFO)) {
+        return (-1);
+    }
+
+    WaitForSingleObject(_PROCESS_INFO.hProcess, INFINITE);
+    GetExitCodeProcess(_PROCESS_INFO.hProcess, &exit_code);
+
+    CloseHandle(_PROCESS_INFO.hProcess);
+    CloseHandle(_PROCESS_INFO.hThread);
+
+    return (int)exit_code;
+#else
+    pid_t pid = fork();
+    if (pid == 0) {
+        execlp("mv", "mv", "-f", src, dest, NULL);
+        _exit(127);
+    }
+    if (pid < 0)
+        return (-1);
+    waitpid(pid, NULL, 0);
+    return (0);
+#endif
 }
 
-/*
- * Moves file with sudo/administrator privileges.
- * Constructs move command with sudo prefix on Unix, regular move on Windows.
- * Returns command execution result.
- */
-static int __mv_with_sudo(const char *src, const char *dest) {
+static int __mv_with_sudo(const char *src, const char *dest)
+{
+    if (!src || !dest)
+        return (-1);
 
-	    char size_mv[DOG_PATH_MAX];
-	    if (is_native_windows())
-	        snprintf(size_mv, sizeof(size_mv),
-				"move /Y \"%s \"%s\"", src, dest);
-	    else
-	        snprintf(size_mv, sizeof(size_mv),
-				"sudo mv -f %s %s", src, dest);
-	    int ret = dog_exec_command(size_mv);
-	    return ret;
+#ifdef DOG_WINDOWS
+    char command[DOG_PATH_MAX * 2];
+    PROCESS_INFORMATION _PROCESS_INFO;
+    STARTUPINFO _STARTUPINFO;
+    DWORD exit_code = 0;
+
+    memset(&_STARTUPINFO, 0, sizeof(_STARTUPINFO));
+    _STARTUPINFO.cb = sizeof(_STARTUPINFO);
+    memset(&_PROCESS_INFO, 0, sizeof(_PROCESS_INFO));
+
+    snprintf(command, sizeof(command), "move /Y \"%s\" \"%s\"", src, dest);
+
+    if (!
+		CreateProcess(NULL, command, NULL, NULL, FALSE, 0, NULL, NULL, &_STARTUPINFO, &_PROCESS_INFO)) {
+        return (-1);
+    }
+
+    WaitForSingleObject(_PROCESS_INFO.hProcess, INFINITE);
+    GetExitCodeProcess(_PROCESS_INFO.hProcess, &exit_code);
+
+    CloseHandle(_PROCESS_INFO.hProcess);
+    CloseHandle(_PROCESS_INFO.hThread);
+
+    return (int)exit_code;
+#else
+    pid_t pid = fork();
+    if (pid == 0) {
+        execlp("sudo", "sudo", "mv", "-f", src, dest, NULL);
+        _exit(127);
+    }
+    if (pid < 0)
+        return (-1);
+    waitpid(pid, NULL, 0);
+    return (0);
+#endif
 }
 
-/*
- * Attempts to copy file without sudo/administrator privileges.
- * Uses xcopy on Windows, cp on Unix with force flag.
- * Returns command execution result.
- */
-static int _try_cp_without_sudo(const char *src, const char *dest) {
+static int _try_cp_without_sudo(const char *src, const char *dest)
+{
+    if (!src || !dest)
+        return (-1);
 
-	    char size_cp[DOG_PATH_MAX];
-	    if (is_native_windows())
-	        snprintf(size_cp, sizeof(size_cp),
-				"xcopy /Y \"%s\" \"%s\"", src, dest);
-	    else
-	        snprintf(size_cp, sizeof(size_cp),
-				"cp -f %s %s", src, dest);
-	    int ret = dog_exec_command(size_cp);
-	    return ret;
+#ifdef DOG_WINDOWS
+    char command[DOG_PATH_MAX * 2];
+    PROCESS_INFORMATION _PROCESS_INFO;
+    STARTUPINFO _STARTUPINFO;
+    DWORD exit_code = 0;
+
+    memset(&_STARTUPINFO, 0, sizeof(_STARTUPINFO));
+    _STARTUPINFO.cb = sizeof(_STARTUPINFO);
+    memset(&_PROCESS_INFO, 0, sizeof(_PROCESS_INFO));
+
+    snprintf(command, sizeof(command), "xcopy /Y \"%s\" \"%s\"", src, dest);
+
+    if (!
+		CreateProcess(NULL, command, NULL, NULL, FALSE, 0, NULL, NULL, &_STARTUPINFO, &_PROCESS_INFO)) {
+        return (-1);
+    }
+
+    WaitForSingleObject(_PROCESS_INFO.hProcess, INFINITE);
+    GetExitCodeProcess(_PROCESS_INFO.hProcess, &exit_code);
+
+    CloseHandle(_PROCESS_INFO.hProcess);
+    CloseHandle(_PROCESS_INFO.hThread);
+
+    return (int)exit_code;
+#else
+    pid_t pid = fork();
+    if (pid == 0) {
+        execlp("cp", "cp", "-f", src, dest, NULL);
+        _exit(127);
+    }
+    if (pid < 0)
+        return (-1);
+    waitpid(pid, NULL, 0);
+    return (0);
+#endif
 }
 
-/*
- * Copies file with sudo/administrator privileges.
- * Adds sudo prefix to copy command on Unix systems.
- * Returns command execution result.
- */
-static int __cp_with_sudo(const char *src, const char *dest) {
+static int __cp_with_sudo(const char *src, const char *dest)
+{
+    if (!src || !dest)
+        return (-1);
 
-	    char size_cp[DOG_PATH_MAX];
-	    if (is_native_windows())
-	        snprintf(size_cp, sizeof(size_cp),
-				"xcopy /Y \"%s\" \"%s\"", src, dest);
-	    else
-	        snprintf(size_cp, sizeof(size_cp),
-				"sudo cp -f %s %s", src, dest);
-	    int ret = dog_exec_command(size_cp);
-	    return ret;
+#ifdef DOG_WINDOWS
+    char command[DOG_PATH_MAX * 2];
+    PROCESS_INFORMATION _PROCESS_INFO;
+    STARTUPINFO _STARTUPINFO;
+    DWORD exit_code = 0;
+
+    memset(&_STARTUPINFO, 0, sizeof(_STARTUPINFO));
+    _STARTUPINFO.cb = sizeof(_STARTUPINFO);
+    memset(&_PROCESS_INFO, 0, sizeof(_PROCESS_INFO));
+
+    snprintf(command, sizeof(command), "xcopy /Y \"%s\" \"%s\"", src, dest);
+
+    if (!
+		CreateProcess(NULL, command, NULL, NULL, FALSE, 0, NULL, NULL, &_STARTUPINFO, &_PROCESS_INFO)) {
+        return (-1);
+    }
+
+    WaitForSingleObject(_PROCESS_INFO.hProcess, INFINITE);
+    GetExitCodeProcess(_PROCESS_INFO.hProcess, &exit_code);
+
+    CloseHandle(_PROCESS_INFO.hProcess);
+    CloseHandle(_PROCESS_INFO.hThread);
+
+    return (int)exit_code;
+#else
+    pid_t pid = fork();
+    if (pid == 0) {
+        execlp("sudo", "sudo", "cp", "-f", src, dest, NULL);
+        _exit(127);
+    }
+    if (pid < 0)
+        return (-1);
+    waitpid(pid, NULL, 0);
+    return (0);
+#endif
 }
 
-/*
- * Validates file operation safety preconditions before move/copy.
- * Performs comprehensive checks: null pointers, path lengths, existence,
- * file types, same-file detection, parent directory validation.
- * Returns 1 if all checks pass, logs errors otherwise.
- */
-static int __dog_sef_safety(const char *c_src, const char *c_dest) {
+static int
+__dog_sef_safety(const char *c_src, const char *c_dest)
+{
+	char		 parent[DOG_PATH_MAX];
+	struct stat	 st;
 
-		char parent[DOG_PATH_MAX];
-		struct stat st;
 #if defined(_DBG_PRINT)
-		if (!c_src || !c_dest)
-				pr_error(stdout, "src or dest is null");
-		if (!*c_src || !*c_dest)
-				pr_error(stdout, "src or dest empty");
-		/* Path length validation */
-		if (strlen(c_src) >= DOG_PATH_MAX || strlen(c_dest) >= DOG_PATH_MAX)
-				pr_error(stdout, "path too long");
-		/* Source existence and type */
-		if (!path_exists(c_src))
-				pr_error(stdout, "source does not exist: %s", c_src);
-		if (!file_regular(c_src))
-				pr_error(stdout, "source is not a regular file: %s", c_src);
-		/* Same file detection */
-		if (path_exists(c_dest) && file_same_file(c_src, c_dest))
-				pr_info(stdout, "source and dest are the same file: %s", c_src);
-		/* Parent directory validation */
-		if (ensure_parent_dir(parent, sizeof(parent), c_dest))
-				pr_error(stdout, "cannot determine parent open_dir of dest");
-		if (stat(parent, &st))
-				pr_error(stdout, "destination open_dir does not exist: %s", parent);
-		if (!S_ISDIR(st.st_mode))
-				pr_error(stdout, "destination parent is not a open_dir: %s", parent);
+	if (!c_src || !c_dest)
+		pr_error(stdout, "src or dest is null");
+	if (!*c_src || !*c_dest)
+		pr_error(stdout, "src or dest empty");
+	if (strlen(c_src) >= DOG_PATH_MAX || strlen(c_dest) >= DOG_PATH_MAX)
+		pr_error(stdout, "path too long");
+	if (!path_exists(c_src))
+		pr_error(stdout, "source does not exist: %s", c_src);
+	if (!file_regular(c_src))
+		pr_error(stdout, "source is not a regular file: %s", c_src);
+	if (path_exists(c_dest) && file_same_file(c_src, c_dest))
+		pr_info(stdout, "source and dest are the same file: %s", c_src);
+	if (ensure_parent_dir(parent, sizeof(parent), c_dest))
+		pr_error(stdout, "cannot determine parent open_dir of dest");
+	if (stat(parent, &st))
+		pr_error(stdout, "destination open_dir does not exist: %s",
+		    parent);
+	if (!S_ISDIR(st.st_mode))
+		pr_error(stdout, "destination parent is not a open_dir: %s",
+		    parent);
 #endif
 
-		return 1;
+	return (1);
 }
 
-/*
- * Sets executable permissions on destination file after move/copy operation.
- * Uses platform-specific chmod functions: CHMOD on Windows, chmod on Unix.
- * Logs warnings if permission setting fails (debug builds only).
- */
-static void __dog_sef_set_permissions(const char *c_dest)
+static void
+__dog_sef_set_permissions(const char *c_dest)
 {
-		if (CHMOD_FULL(c_dest)) {
-			pr_warning(stdout, "chmod failed: %s (errno=%d %s)",
-					c_dest, errno, strerror(errno));
-		}
-		return;
+	if (CHMOD_FULL(c_dest)) {
+		pr_warning(stdout, "chmod failed: %s (errno=%d %s)",
+		    c_dest, errno, strerror(errno));
+	}
+	return;
 }
 
-/*
- * Smart file moving with automatic privilege escalation fallback.
- * Performs safety checks, attempts move without sudo first,
- * falls back to sudo if needed and available. Sets permissions after move.
- */
-int dog_sef_wmv(const char *c_src, const char *c_dest)
+int
+dog_sef_wmv(const char *c_src, const char *c_dest)
 {
-		int ret, mv_ret;
+	int	 ret, mv_ret;
 
-		ret = __dog_sef_safety(c_src, c_dest);
-		if (ret != 1)
-				return 1;
+	ret = __dog_sef_safety(c_src, c_dest);
+	if (ret != 1)
+		return (1);
 
-		static int is_not_superuser = 1;
+	static int	 is_not_superuser = 1;
 #ifdef DOG_LINUX
-		static int su_check = 1;
-		if (su_check != 1) { goto skip; }
-		su_check = dog_exec_command("sudo echo none > /dev/null 2>&1");
-		if (su_check < 1) {
-			--is_not_superuser;
-        	}
+	static int	 su_check = 1;
+
+	if (su_check != 1)
+		goto skip;
+
+	pid_t pid;
+	int fd;
+
+	fd = open("/dev/null", O_WRONLY);
+	if (fd >= 0) {
+		pid = fork();
+		if (pid == 0) {
+			dup2(fd, STDOUT_FILENO);
+			dup2(fd, STDERR_FILENO);
+			close(fd);
+			execlp("sudo", "sudo", "-n", "true", NULL);
+			_exit(127);
+		}
+		close(fd);
+		if (pid > 0 && waitpid(pid, &su_check, 0) > 0 && WIFEXITED(su_check))
+			su_check = WEXITSTATUS(su_check);
+		else
+			su_check = -1;
+	}
+
+	if (su_check < 1)
+		--is_not_superuser;
 #endif
 skip:
-		if (is_not_superuser == 1) {
-			mv_ret = _try_mv_without_sudo(c_src, c_dest);
-
-			if (!mv_ret) {
-					__dog_sef_set_permissions(c_dest);
-					pr_info(stdout, "moved without sudo: '%s' -> '%s'", c_src, c_dest);
-					return 0;
-			}
-		} else {
-			mv_ret = __mv_with_sudo(c_src, c_dest);
-
-			if (!mv_ret) {
-					__dog_sef_set_permissions(c_dest);
-					pr_info(stdout, "moved with sudo: '%s' -> '%s'", c_src, c_dest);
-					return 0;
-			}
+	if (is_not_superuser == 1) {
+		mv_ret = _try_mv_without_sudo(c_src, c_dest);
+		if (!mv_ret) {
+			__dog_sef_set_permissions(c_dest);
+			pr_info(stdout, "moved without sudo: '%s' -> '%s'",
+			    c_src, c_dest);
+			return (0);
 		}
+	} else {
+		mv_ret = __mv_with_sudo(c_src, c_dest);
+		if (!mv_ret) {
+			__dog_sef_set_permissions(c_dest);
+			pr_info(stdout, "moved with sudo: '%s' -> '%s'",
+			    c_src, c_dest);
+			return (0);
+		}
+	}
 
-		return 1;
+	return (1);
 }
 
-/*
- * Smart file copying with automatic privilege escalation fallback.
- * Similar to dog_sef_wmv but for copy operations. Validates safety,
- * tries without sudo first, falls back to sudo if needed.
- */
-int dog_sef_wcopy(const char *c_src, const char *c_dest)
+int
+dog_sef_wcopy(const char *c_src, const char *c_dest)
 {
-		int ret, cp_ret;
+	int	 ret, cp_ret;
 
-		ret = __dog_sef_safety(c_src, c_dest);
-		if (ret != 1)
-				return 1;
+	ret = __dog_sef_safety(c_src, c_dest);
+	if (ret != 1)
+		return (1);
 
-		static int is_not_superuser = 1;
+	static int	 is_not_superuser = 1;
 #ifdef DOG_LINUX
-		static int su_check = 1;
-		if (su_check != 1) { goto skip; }
-		su_check = dog_exec_command("sudo echo none > /dev/null 2>&1");
-		if (su_check < 1) {
-			--is_not_superuser;
+	static int	 su_check = 1;
+
+	if (su_check != 1)
+		goto skip;
+
+	pid_t pid;
+	int fd;
+
+	fd = open("/dev/null", O_WRONLY);
+	if (fd >= 0) {
+		pid = fork();
+		if (pid == 0) {
+			dup2(fd, STDOUT_FILENO);
+			dup2(fd, STDERR_FILENO);
+			close(fd);
+			execlp("sudo", "sudo", "-n", "true", NULL);
+			_exit(127);
 		}
+		close(fd);
+		if (pid > 0 && waitpid(pid, &su_check, 0) > 0 && WIFEXITED(su_check))
+			su_check = WEXITSTATUS(su_check);
+		else
+			su_check = -1;
+	}
+
+	if (su_check < 1)
+		--is_not_superuser;
 #endif
 skip:
-		if (is_not_superuser == 1) {
-			cp_ret = _try_cp_without_sudo(c_src, c_dest);
-
-			if (!cp_ret) {
-					__dog_sef_set_permissions(c_dest);
-					pr_info(stdout, "copying without sudo: '%s' -> '%s'", c_src, c_dest);
-					return 0;
-			}
-		} else {
-			cp_ret = __cp_with_sudo(c_src, c_dest);
-
-			if (!cp_ret) {
-					__dog_sef_set_permissions(c_dest);
-					pr_info(stdout, "copying with sudo: '%s' -> '%s'", c_src, c_dest);
-					return 0;
-			}
+	if (is_not_superuser == 1) {
+		cp_ret = _try_cp_without_sudo(c_src, c_dest);
+		if (!cp_ret) {
+			__dog_sef_set_permissions(c_dest);
+			pr_info(stdout, "copying without sudo: '%s' -> '%s'",
+			    c_src, c_dest);
+			return (0);
 		}
+	} else {
+		cp_ret = __cp_with_sudo(c_src, c_dest);
+		if (!cp_ret) {
+			__dog_sef_set_permissions(c_dest);
+			pr_info(stdout, "copying with sudo: '%s' -> '%s'",
+			    c_src, c_dest);
+			return (0);
+		}
+	}
 
-		return 1;
+	return (1);
 }

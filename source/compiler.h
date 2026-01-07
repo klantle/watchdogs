@@ -1,12 +1,26 @@
 #ifndef COMPILER_H
 #define COMPILER_H
 
+#include <stdbool.h>
+
 #include "utils.h"
 
 enum {
     __compiler_rate_zero = 0,
     __compiler_rate_aio_repo = 7
 };
+
+#define LINUX_LIB_PATH "/usr/local/lib"
+#define LINUX_LIB32_PATH "/usr/local/lib32"
+#define TMUX_LIB_PATH "/data/data/com.termux/files/usr/lib"
+#define TMUX_LIB_LOC_PATH "/data/data/com.termux/files/usr/local/lib"
+#define TMUX_LIB_ARM64_PATH "/data/data/com.termux/arm64/usr/lib"
+#define TMUX_LIB_ARM32_PATH "/data/data/com.termux/arm32/usr/lib"
+#define TMUX_LIB_AMD64_PATH "/data/data/com.termux/amd64/usr/lib"
+#define TMUX_LIB_AMD32_PATH "/data/data/com.termux/amd32/usr/lib"
+
+#define COMPILER_WHITESPACE " "
+#define COMPILER_PLACEHOLDER_STRING "%s"
 
 #ifndef DOG_WINDOWS
     extern char **environ;
@@ -16,19 +30,20 @@ enum {
 #endif
 
 typedef struct {
-    char container_output[DOG_PATH_MAX];
-    char compiler_direct_path[DOG_PATH_MAX];
-    char compiler_size_file_name[DOG_PATH_MAX];
+    char container_output        [DOG_PATH_MAX];
+    char compiler_direct_path    [DOG_PATH_MAX];
+    char compiler_size_file_name [DOG_PATH_MAX];
     char compiler_size_input_path[DOG_PATH_MAX];
-    char compiler_size_temp[DOG_PATH_MAX];
+    char compiler_size_temp      [DOG_PATH_MAX];
 } io_compilers;
 
 typedef enum {
-    __FLAG_DEBUG     = 1 << 0,
-    __FLAG_ASSEMBLER = 1 << 1,
-    __FLAG_COMPAT    = 1 << 2,
-    __FLAG_PROLIX    = 1 << 3,
-    __FLAG_COMPACT   = 1 << 4
+    BIT_FLAG_DEBUG     = 1 << 0,
+    BIT_FLAG_ASSEMBLER = 1 << 1,
+    BIT_FLAG_COMPAT    = 1 << 2,
+    BIT_FLAG_PROLIX    = 1 << 3,
+    BIT_FLAG_COMPACT   = 1 << 4,
+    BIT_FLAG_TIME      = 1 << 5
 } CompilerFlags;
 
 typedef struct {
@@ -39,26 +54,10 @@ typedef struct {
 
 extern const CompilerOption object_opt[];
 
-#define compiler_memory_clean() \
-do { \
-    dog_sef_fdir_memset_to_null(); \
-    memset(dog_compiler_sys.container_output, __compiler_rate_zero, sizeof(dog_compiler_sys.container_output)); \
-    memset(dog_compiler_sys.compiler_direct_path, __compiler_rate_zero, sizeof(dog_compiler_sys.compiler_direct_path)); \
-    memset(dog_compiler_sys.compiler_size_file_name, __compiler_rate_zero, sizeof(dog_compiler_sys.compiler_size_file_name)); \
-    memset(dog_compiler_sys.compiler_size_input_path, __compiler_rate_zero, sizeof(dog_compiler_sys.compiler_size_input_path)); \
-    memset(dog_compiler_sys.compiler_size_temp, __compiler_rate_zero, sizeof(dog_compiler_sys.compiler_size_temp)); \
-} while(0)
-
-/* Debug flag specific error/warning messages */
-#define OPTION_FLAG_DEBUG_OUT_OF_BOUNDS    "Debug flag index %zu out of bounds"
-#define OPTION_FLAG_DEBUG_NULL_FLAG        "NULL debug flag at index %zu"
-#define OPTION_FLAG_DEBUG_LONG_FLAG        "Long debug flag at index %zu, length exceeds maximum"
-#define OPTION_FLAG_DEBUG_EXCESSIVE_REMOVALS "Excessive flag removals for '%s', possible infinite loop"
-#define OPTION_FLAG_DEBUG_BUFFER_OVERFLOW  "Buffer overflow detected during flag removal"
-
-/* Optional: For general debug operations */
-#define OPTION_FLAG_DEBUG_EMPTY_FLAG       "Empty debug flag encountered"
-#define OPTION_FLAG_DEBUG_FLAG_NOT_FOUND   "Debug flag '%s' not found in configuration"
+extern char all_include_paths[DOG_PATH_MAX * 2];
+extern bool compilr_with_debugging;
+extern bool compiler_debugging;
+extern bool has_debug;
 
 int
 dog_exec_compiler(const char *arg,
@@ -69,6 +68,7 @@ dog_exec_compiler(const char *arg,
 				const char *six_arg,
 				const char *seven_arg,
 				const char *eight_arg,
-				const char *nine_arg);
+				const char *nine_arg,
+                const char *ten_arg);
 
 #endif

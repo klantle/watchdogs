@@ -1,0 +1,20 @@
+[general]
+   os = "windows" # os - windows (wsl/wsl2 supported); linux
+   binary = "samp-server.exe" # sa-mp binary files
+   config = "server.cfg" # sa-mp config files
+   logs = "server_log.txt" # sa-mp log files
+   webhooks = "DO_HERE" # discord webhooks
+
+[compiler]
+   option = ["-d:3", "-;+", "-(+"] # compiler options
+   includes = []
+   input = "cache/server.p" # project input
+   output = "cache/server.amx" # project output
+   
+[dependencies]
+   github_tokens = "DO_HERE" # github tokens
+   root_patterns = ["lib", "log", "root", "amx", "static", "dynamic", "cfg", "config", "json", "msvcrt", "msvcr", "msvcp", "ucrtbase"] # root pattern
+   packages = [
+      "Y-Less/sscanf?newer",
+      "samp-incognito/samp-streamer-plugin?newer"
+   ] # package list

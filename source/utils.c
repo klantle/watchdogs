@@ -1948,7 +1948,7 @@ static void dog_generate_toml_content(FILE *file, const char *dog_os_type,
 				is_container = -1;
 		}
 		fprintf(file, "[general]\n");
-		fprintf(file, "   os = \"%s\"\n", dog_os_type);
+		fprintf(file, "   os = \"%s\" # operating system - windows ; linux\n", dog_os_type);
 		if (strcmp(dog_os_type, "windows") == 0 && is_container == -1) {
 			static int k = 0;
 			if (k != 1) {
@@ -1962,26 +1962,26 @@ static void dog_generate_toml_content(FILE *file, const char *dog_os_type,
 		/* Set binary and config paths based on server type */
 		if (samp_user == 0) { /* open.mp */
 			if (!strcmp(dog_os_type, "windows")) {
-				fprintf(file, "   binary = \"%s\"\n", "omp-server.exe");
+				fprintf(file, "   binary = \"%s\" # open.mp binary files\n", "omp-server.exe");
 			} else if (!strcmp(dog_os_type, "linux")) {
-				fprintf(file, "   binary = \"%s\"\n", "omp-server");
+				fprintf(file, "   binary = \"%s\" # open.mp binary files\n", "omp-server");
 			}
-			fprintf(file, "   config = \"%s\"\n", "config.json");
-			fprintf(file, "   logs = \"%s\"\n", "log.txt");
+			fprintf(file, "   config = \"%s\" # open.mp config files\n", "config.json");
+			fprintf(file, "   logs = \"%s\" # open.mp log files\n", "log.txt");
 		} else { /* SA-MP */
 			if (!strcmp(dog_os_type, "windows")) {
-				fprintf(file, "   binary = \"%s\"\n", "samp-server.exe");
+				fprintf(file, "   binary = \"%s\" # sa-mp binary files\n", "samp-server.exe");
 			} else if (!strcmp(dog_os_type, "linux")) {
-				fprintf(file, "   binary = \"%s\"\n", "samp-server.exe");
+				fprintf(file, "   binary = \"%s\" # sa-mp binary files\n", "samp-server.exe");
 			}
-			fprintf(file, "   config = \"%s\"\n", "server.cfg");
-			fprintf(file, "   logs = \"%s\"\n", "server_log.txt");
+			fprintf(file, "   config = \"%s\" # sa-mp config files\n", "server.cfg");
+			fprintf(file, "   logs = \"%s\" # sa-mp log files\n", "server_log.txt");
 		}
 		/* AI and chatbot settings */
-		fprintf(file, "   keys = \"API_KEY\"\n");
-		fprintf(file, "   chatbot = \"gemini\"\n");
-		fprintf(file, "   models = \"gemini-2.5-pro\"\n");
-		fprintf(file, "   webhooks = \"DO_HERE\"\n");
+		fprintf(file, "   keys = \"API_KEY\" # groq/gemini key\n");
+		fprintf(file, "   chatbot = \"gemini\" # ai chat groq ; gemini\n");
+		fprintf(file, "   models = \"gemini-2.5-pro\" # chatbot model\n");
+		fprintf(file, "   webhooks = \"DO_HERE\" # discord webhooks\n");
 
 		/* Write [compiler] section */
 		fprintf(file, "[compiler]\n");
@@ -1989,16 +1989,16 @@ static void dog_generate_toml_content(FILE *file, const char *dog_os_type,
 		/* Termux Settings */
 		if (is_termux_env())
 			{
-				fprintf(file, "   option = [\"-d3\", \"-;+\", \"-(+\"]\n");
+				fprintf(file, "   option = [\"-d3\", \"-;+\", \"-(+\"] # compiler options\n");
 				goto _tmux;
 			}
 		/* Set compiler options based on detected capabilities */
 		if (compatible && optimized_lt) {
-				fprintf(file, "   option = [\"-Z+\", \"-d2\", \"-O2\", \"-;+\", \"-(+\"]\n");
+				fprintf(file, "   option = [\"-Z+\", \"-d2\", \"-O2\", \"-;+\", \"-(+\"] # compiler options\n");
 		} else if (compatible) {
-				fprintf(file, "   option = [\"-Z+\", \"-d2\", \"-;+\", \"-(+\"]\n");
+				fprintf(file, "   option = [\"-Z+\", \"-d2\", \"-;+\", \"-(+\"] # compiler options\n");
 		} else {
-				fprintf(file, "   option = [\"-d3\", \"-;+\", \"-(+\"]\n");
+				fprintf(file, "   option = [\"-d3\", \"-;+\", \"-(+\"] # compiler options\n");
 		}
 _tmux:
 
@@ -2007,30 +2007,30 @@ _tmux:
 		int ret = dog_add_include_paths(file, &first_item); /* Add actual paths */
 		if (ret != 1) fprintf(file, "]\n");
 		else {
-			fprintf(file, "\n   ]\n");
+			fprintf(file, "\n   ] # include paths\n");
 		}
 
 		/* Input and output file paths */
 		if (has_gamemodes && sef_path[0]) {
 				/* Use found gamemode file */
-				fprintf(file, "   input = \"%s.pwn\"\n", sef_path);
-				fprintf(file, "   output = \"%s.amx\"\n", sef_path);
+				fprintf(file, "   input = \"%s.pwn\" # project input\n", sef_path);
+				fprintf(file, "   output = \"%s.amx\" # project output\n", sef_path);
 		} else {
 				/* Default bare gamemode */
-				fprintf(file, "   input = \"gamemodes/bare.pwn\"\n");
-				fprintf(file, "   output = \"gamemodes/bare.amx\"\n");
+				fprintf(file, "   input = \"gamemodes/bare.pwn\" # project input\n");
+				fprintf(file, "   output = \"gamemodes/bare.amx\" # project output\n");
 		}
 
 		/* Write [dependencies] section */
 		fprintf(file, "[dependencies]\n");
-		fprintf(file, "   github_tokens = \"DO_HERE\"\n");
+		fprintf(file, "   github_tokens = \"DO_HERE\" # github tokens\n");
 		fprintf(file, "   root_patterns = [\"lib\", \"log\", \"root\", "
-			"\"amx\", \"static\", \"dynamic\", \"cfg\", \"config\", \"json\", \"msvcrt\", \"msvcr\", \"msvcp\", \"ucrtbase\"]\n");
+			"\"amx\", \"static\", \"dynamic\", \"cfg\", \"config\", \"json\", \"msvcrt\", \"msvcr\", \"msvcp\", \"ucrtbase\"] # root pattern\n");
 		/* Dependency repositories */
 		fprintf(file, "   packages = [\n"
 			"      \"Y-Less/sscanf?newer\",\n"
 			"      \"samp-incognito/samp-streamer-plugin?newer\"\n"
-			"   ]");
+			"   ] # package list");
 		fprintf(file, "\n");
 }
 

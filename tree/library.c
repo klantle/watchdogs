@@ -1,5 +1,8 @@
-// Copyright (c) 2026 Watchdogs Team and contributors
-// All rights reserved. under The 2-Clause BSD License See COPYING or https://opensource.org/license/bsd-2-clause
+/*-
+ * Copyright (c) 2026 Watchdogs Team and contributors
+ * All rights reserved. under The 2-Clause BSD License
+ * See COPYING or https://opensource.org/license/bsd-2-clause
+ */
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -10,39 +13,11 @@
 
 #include "extra.h"
 #include "utils.h"
-
 #include "units.h"
 #include "archive.h"
 #include "curl.h"
 #include "debug.h"
 #include "library.h"
-
-/*  source
-    ├── archive.c
-    ├── archive.h
-    ├── cause.c
-    ├── cause.h
-    ├── compiler.c
-    ├── compiler.h
-    ├── crypto.c
-    ├── crypto.h
-    ├── curl.c
-    ├── curl.h
-    ├── debug.c
-    ├── debug.h
-    ├── extra.c
-    ├── extra.h
-    ├── library.c [x]
-    ├── library.h
-    ├── replicate.c
-    ├── replicate.h
-    ├── runner.c
-    ├── runner.h
-    ├── units.c
-    ├── units.h
-    ├── utils.c
-    └── utils.h
-*/
 
 static
 char library_options_list(const char *title,const char **items,const char *keys,int counts)
@@ -174,7 +149,7 @@ static int pawncc_handle_standard_installation(const char *platform)
 
 int dog_install_pawncc(const char *platform)
 {
-  __create_logging();
+  minimal_debugging();
 
   if(!platform) {
     pr_error(stdout,"Platform parameter is NULL");
@@ -206,7 +181,7 @@ loop_ipcc2:
 
 int dog_install_server(const char *platform)
 {
-  __create_logging();
+  minimal_debugging();
 
   if(strcmp(platform,"linux")!=0&&strcmp(platform,"windows")!=0&&strcmp(platform,"termux")!=0) {
     pr_error(stdout,"Unsupported platform: %s",platform);

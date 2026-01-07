@@ -60,6 +60,15 @@
 #define __PATH_STR_SEP_LINUX "/"
 #define __PATH_STR_SEP_WIN32 "\\"
 
+/* Symbol to run programs */
+#ifdef DOG_LINUX
+/* Posix */
+#define SYM_PROG "./" /* ./name */
+#else
+/* MS-DOS */
+#define SYM_PROG ".\\" /* .\name */
+#endif
+
 /* Platform-specific includes & defines */
 #ifdef DOG_WINDOWS
 #if __has_include(<io.h>)
@@ -76,6 +85,9 @@
 #endif
 #if __has_include(<strings.h>)
 #include <strings.h>
+#endif
+#if __has_include(<shellapi.h>)
+#include <shellapi.h>
 #endif
 #define __PATH_SEP __PATH_STR_SEP_WIN32
 #define IS_PATH_SEP(c) \
@@ -208,7 +220,8 @@ typedef struct {
     int    dog_compiler_stat;
     size_t dog_sef_count;
     char   dog_sef_found_list \
-        [MAX_SEF_ENTRIES] [MAX_SEF_PATH_SIZE];
+        [MAX_SEF_ENTRIES] \
+        [MAX_SEF_PATH_SIZE];
     char * dog_toml_os_type;
     char * dog_toml_binary;
     char * dog_toml_config;
@@ -219,16 +232,13 @@ typedef struct {
     char * dog_toml_proj_input;
     char * dog_toml_proj_output;
     char * dog_toml_github_tokens;
-    char * dog_toml_key_ai;
-    char * dog_toml_chatbot_ai;
-    char * dog_toml_models_ai;
     char * dog_toml_webhooks;
 } WatchdogConfig;
 
 extern WatchdogConfig dogconfig;
 
 /* Utility function declarations */
-void dog_sef_fdir_memset_to_null(void);
+void dog_sef_restore(void);
 
 #ifdef DOG_LINUX /* strcpy & strlcat Pop!_OS, etc. */
 #ifndef strlcpy
@@ -239,11 +249,6 @@ size_t strlcat(char *dst, const char *src, size_t size);
 #endif
 #endif
 #ifdef DOG_WINDOWS
-// Sets resolution of timers used by Sleep() and SetWaitableTimer() to most accurate and lowest values possible supported by system.
-// Same as timeBeginPeriod() but accepts microsecond precision for requested resolution.
-unsigned long setHighestTimerResolution(unsigned long timer_res_us);
-// Suspends the current thread in sleep for time period, in microseconds.
-void ___usleep(__int64 usec);
 #define strlcpy   win_strlcpy
 #define strlcat   win_strlcat
 #define ftruncate win_ftruncate
@@ -271,10 +276,12 @@ char *dog_procure_pwd(void);
 char* dog_masked_text(int reveal, const char *text);
 int dog_mkdir(const char *path);
 void dog_escaping_json(char *dest, const char *src, size_t dest_size);
-int dog_exec_command(const char *cmd);
+int dog_exec_command(char *const argv[]);
 void dog_clear_screen(void);
 
 int dog_server_env(void);
+
+int is_running_in_container(void);
 int is_pterodactyl_env(void);
 int is_termux_env(void);
 int is_native_windows(void);

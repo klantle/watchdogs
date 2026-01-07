@@ -1,4 +1,4 @@
-<h1 style="text-align:center;">Watchdogs</h1>
+# Watchdogs
 
 ## Linux
 
@@ -13,33 +13,78 @@ curl -L -o install.sh https://github.com/gskeleton/watchdogs/raw/refs/heads/main
 
 ## Termux
 
-> We highly recommend using the Termux distribution directly from GitHub instead of the Google Play Store to ensure compatibility with the latest Termux features and to enjoy the freedom offered outside the Play Store. https://github.com/termux/termux-app/releases
-> Just drag this into your terminal and run it.
-
-- [x] GNU/wget
-```yml
-wget -O install.sh https://github.com/gskeleton/watchdogs/raw/refs/heads/main/__termux.sh && chmod +x install.sh && ./install.sh
-```
-- [x] cURL
+1. Download Termux from GitHub<br>
+\- Android 7 and above:<br>
+https://github.com/termux/termux-app/releases/download/v0.119.0-beta.3/termux-app_v0.119.0-beta.3+apt-android-7-github-debug_universal.apk<br>
+\- Android 5/6:<br>
+https://github.com/termux/termux-app/releases/download/v0.119.0-beta.3/termux-app_v0.119.0-beta.3+apt-android-5-github-debug_universal.apk
+2. Install the downloaded .apk file and run Termux.
+3. First, run the following command in the installed Termux:
 ```yml
 curl -L -o install.sh https://github.com/gskeleton/watchdogs/raw/refs/heads/main/__termux.sh && chmod +x install.sh && ./install.sh
 ```
+4. If you encounter a prompt like the following (Simulation):
+```yml
+Enter the path you want to switch to location in storage/downloads
+  ^ example my_folder my_project my_server
+  ^ a folder name for install; the folder doesn't exist?, don't worry..
+  ^ enter if you want install the watchdogs in home (recommended)..
+```
+\> Press Enter without entering anything. If there are any other questions, such as Termux mirror selection, choose the top one or all (just press Enter).
+5. An indication that Watchdogs has been successfully installed, as follows:
+```yml
+  \/%#z.       \/.%#z./       ,z#%\/
+   \X##k      /X#####X\      d##X/
+    \888\    /888/ \888\    /888/
+     `v88;  ;88v'   `v88;  ;88v'
+       \77xx77/       \77xx77/
+        `::::'         `::::'
+Type "help" for more information.
+~
+```
+\> Use the `pawncc` command to prepare the compilation tool (Simulation):
+```yml
+~ pawncc # run
+== Select a Platform ==
+  [l] Linux
+  [w] Windows
+  [t] Termux
+==> t # select t [termux]
+== Select PawnCC Version ==
+  A) Pawncc 3.10.11
+  B) Pawncc 3.10.10
+  C) Pawncc 3.10.9
+  D) Pawncc 3.10.8
+  E) Pawncc 3.10.7
+> a # select compiler version
+* Try Downloading ? * Enable HTTP debugging? (y/n): n
+** Downloading... 100% Done! % successful: 417290 bytes to ?
+ Try Extracting ? archive file...
+==> Remove archive ?? (y/n) > n # optional - delete the archive later
+==> Apply pawncc?
+   answer (y/n) > y # apply pawncc to root - install it into the pawno/ folder; just press Enter or enter y and press Enter
+> I: moved without sudo: '?' -> '?'
+> I: moved without sudo: '?' -> '?'
+> I: Congratulations! - Done.
+```
+\> If you see the `>` symbol in cyan/gray/blue (visuals may vary), you can just press Enter without entering anything. Except when required, such as apply pawncc? yes.<br>
+\> For compilation steps, please study: https://github.com/gskeleton/watchdogs/blob/main/README/README_ID.md#usage-guide
 
 ## Native
 
-> For Windows Build? Use MSYS2 Recommended (pacman -S make && make && make windows)
+> To Build for Windows? Use the Recommended MSYS2 (pacman -S make && make && make windows)
 
-1. Installing Visual C++ Redistributable Runtimes All-in-One first (needed for pawncc)
-- Go to https://www.techpowerup.com/download/visual-c-redistributable-runtime-package-all-in-one/
-- Click the "Download"
-- Extract the Archive
-- Just run the "install_all.bat".
+1. First, install Visual C++ Redistributable Runtimes All-in-One (required for pawncc)
+- Visit https://www.techpowerup.com/download/visual-c-redistributable-runtime-package-all-in-one/
+- Click "Download"
+- Extract the archive
+- Just run "install_all.bat".
 2. Open Windows Command Prompt, Run:
 ```yml
 powershell -Command "Invoke-WebRequest 'https://raw.githubusercontent.com/gskeleton/watchdogs/refs/heads/main/__win.cmd' -OutFile 'install.cmd'; .\install.cmd"
 ```
 
-## Make Commands Reference
+## Make Command Reference
 
 ```yaml
 make                # Install libraries and build
@@ -56,26 +101,26 @@ make windows-debug  # Build with debug mode (Windows)
 
 ```yaml
 # Step 1 - Start the debugger (GDB) with your program
-# Choose the correct executable depending on your platform:
+# Choose the correct executable for your platform:
 gdb ./watchdogs.debug        # For Linux
 gdb ./watchdogs.debug.tmux   # For Termux (Android - Termux)
 gdb ./watchdogs.debug.win    # For Windows (if using GDB on Windows)
 
 # Step 2 - Run the program inside GDB
 # This starts the program under the debugger's control.
-run                           # Simply type 'run' and press Enter
+run                           # Just type 'run' and press Enter
 
 # Step 3 - Handling crashes or interruptions
-# If the program crashes (e.g., segmentation fault) or you manually interrupt it (Ctrl+C),
-# GDB will pause execution and show a prompt.
+# If the program crashes (e.g., segmentation fault) or you manually stop it (Ctrl+C),
+# GDB will halt execution and display the prompt.
 
-# Step 4 - Inspect the state of the program with a backtrace
-# A backtrace shows the function call stack at the point of the crash.
+# Step 4 - Check program status with backtrace
+# Backtrace shows the function call stack at the crash point.
 bt           # Basic backtrace (shows function names)
 bt full      # Full backtrace (shows function names, variables, and arguments)
 ```
 
-## Command Aliases
+## Command Alias
 
 Default (if in root directory):
 ```yaml
@@ -90,11 +135,22 @@ watchdogs
 
 ## Usage Guide
 
-## Compilation Commands
+## Compilation Commands - With Parent Directory in Termux
+
+```yml
+~ compile ../storage/downloads/_GAMEMODE_FOLDER_NAME_/gamemodes/_PAWN_FILE_NAME_.pwn
+```
+Example: I have a gamemode folder named "parent" in ZArchiver located precisely in Downloads, and I have the main project file like "pain.pwn" which is inside gamemodes/ within the "parent" folder located in Downloads.
+So, I will make the "parent" folder the location after Downloads and "pain.pwn" after gamemodes.
+```yml
+~ compile ../storage/downloads/parent/pain.pwn
+```
+
+## Compilation Commands - General
 
 > Compile `server.pwn`:
 ```yaml
-# Default Compile
+# Default Compilation
 compile .
 ```
 > Compile with specific file path
@@ -102,7 +158,7 @@ compile .
 compile server.pwn
 compile path/to/server.pwn
 ```
-> Compile with parent location - auto include path
+> Compile with parent location - automatic include path
 ```yaml
 compile ../path/to/project/server.pwn
 # -: -i/path/to/path/pawno -i/path/to/path/qawno -i/path/to/path/gamemodes
@@ -133,12 +189,12 @@ compile ../path/to/project/server.pwn
 --------------------     --------------------------
 ```
 
-**Start server with default gamemode:**
+**Start the server with default gamemode:**
 ```yaml
 running .
 ```
 
-**Start server with specific gamemode:**
+**Start the server with a specific gamemode:**
 ```yaml
 running server
 ```
@@ -148,7 +204,7 @@ running server
 compiles
 ```
 
-**Compile and start with specific path:**
+**Compile and start with a specific path:**
 ```yml
 compiles server
 ```
@@ -183,32 +239,30 @@ compiles server
 replicate .
 ```
 
-**Install specific repository:**
+**Install a specific repository:**
 ```yaml
 replicate repo/user
 ```
 
-**Install specific version (tags):**
+**Install a specific version (tags):**
 ```yaml
 replicate repo/user?v1.1
 ```
-- Auto-latest
+- Automatically the latest
 ```yaml
 replicate repo/user?newer
 ```
 
-**Install specific branch:**
+**Install a specific branch:**
 ```yaml
 replicate repo/user --branch master
 ```
 
-**Install specific location:**
+**Install to a specific location:**
 ```yaml
 # root
 replicate repo/user --save .
 # specific
 replicate repo/user --save ../parent/myproj
-replicate repo/user --save myfol/myproj
+replicate repo/user --save myfolder/myproj
 ```
-
-

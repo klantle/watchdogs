@@ -1,5 +1,8 @@
-// Copyright (c) 2026 Watchdogs Team and contributors
-// All rights reserved. under The 2-Clause BSD License See COPYING or https://opensource.org/license/bsd-2-clause
+/*-
+ * Copyright (c) 2026 Watchdogs Team and contributors
+ * All rights reserved. under The 2-Clause BSD License
+ * See COPYING or https://opensource.org/license/bsd-2-clause
+ */
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -13,33 +16,6 @@
 #include "crypto.h"
 #include "debug.h"
 #include "cause.h"
-
-/*  source
-    ├── archive.c
-    ├── archive.h
-    ├── cause.c [x]
-    ├── cause.h
-    ├── compiler.c
-    ├── compiler.h
-    ├── crypto.c
-    ├── crypto.h
-    ├── curl.c
-    ├── curl.h
-    ├── debug.c
-    ├── debug.h
-    ├── extra.c
-    ├── extra.h
-    ├── library.c
-    ├── library.h
-    ├── replicate.c
-    ├── replicate.h
-    ├── runner.c
-    ├── runner.h
-    ├── units.c
-    ├── units.h
-    ├── utils.c
-    └── utils.h
-*/
 
 static
   int
@@ -56,17 +32,17 @@ static const char *dog_find_warn_err(const char *line)
 {
     if (!line || !*line)
         return NULL;
-    
+
     size_t line_len = strlen(line);
     if (line_len == 0 || line_len > DOG_MAX_PATH) {
         return NULL;
     }
-    
+
     for (int cindex = 0; ccs[cindex].cs_t != NULL; ++cindex) {
         if (ccs[cindex].cs_t == NULL || ccs[cindex].cs_i == NULL) {
             continue;
         }
-        
+
         const char *found = strstr(line, ccs[cindex].cs_t);
         if (found != NULL) {
             size_t pattern_len = strlen(ccs[cindex].cs_t);
@@ -84,88 +60,91 @@ static void compiler_detailed(const char *dogoutput,int debug,
                        int header_size,int code_size,int data_size,
                        int stack_size,int total_size)
 {
-  if (error_count<1)
-  println(stdout,
-          "Compile Complete! - success. | " FCOLOUR_CYAN "%d pass (warning) " FCOLOUR_DEFAULT "| " FCOLOUR_BLUE "%d fail (error)",
-          warning_count,error_count);
-  else
-  println(stdout,
-          "Compile Complete! - failed. | " FCOLOUR_CYAN "%d pass (warning) " FCOLOUR_DEFAULT "| " FCOLOUR_BLUE "%d fail (error)",
-          warning_count,error_count);
+    char outbuf[DOG_MAX_PATH];
+    int len;
+    
+    if (error_count<1) {
+        len = snprintf(outbuf, sizeof outbuf,
+            "Compile Complete - OK! | " FCOLOUR_CYAN "%d pass (warning) " FCOLOUR_DEFAULT "| " FCOLOUR_BLUE "%d fail (error)\n",
+            warning_count,error_count);
+    } else {
+        len = snprintf(outbuf, sizeof outbuf,
+            "Compile Complete - Fail :( | " FCOLOUR_CYAN "%d pass (warning) " FCOLOUR_DEFAULT "| " FCOLOUR_BLUE "%d fail (error)\n",
+            warning_count,error_count);
+    }
+    
+    if (len > 0)
+        fwrite(outbuf, 1, (size_t)len, stdout);
+    
+    fwrite("-----------------------------\n", 1, 30, stdout);
 
-  println(stdout,"-----------------------------");
+    int amx_access=path_exists(dogoutput);
+    if (amx_access&&debug != 0&&error_count<1) {
 
-  int amx_access=path_exists(dogoutput);
-  if (amx_access&&debug != 0&&error_count<1) {
+        unsigned long hash=crypto_djb2_hash_file(dogoutput);
 
-      unsigned long hash=crypto_djb2_hash_file(dogoutput);
+        len = snprintf(outbuf, sizeof outbuf,
+            "Output path: %s\n"
+            "Header : %dB  |  Total        : %dB\n"
+            "Code (static mem)   : %dB  |  hash (djb2)  : %#lx\n"
+            "Data (static mem)   : %dB\n"
+            "Stack (automatic)   : %dB\n",
+            dogoutput,
+            header_size,
+            total_size,
+            code_size,
+            hash,
+            data_size,
+            stack_size
+        );
 
-      char outbuf[DOG_MAX_PATH];
-      int len;
+        if (len > 0)
+            fwrite(outbuf, 1, (size_t)len, stdout);
 
-      len=snprintf(outbuf, sizeof outbuf,
-          "Output path: %s\n"
-          "Header : %dB  |  Total        : %dB\n"
-          "Code (static mem)   : %dB  |  hash (djb2)  : %#lx\n"
-          "Data (static mem)   : %dB\n"
-          "Stack (dynamic mem)  : %dB\n",
-          dogoutput,
-          header_size,
-          total_size,
-          code_size,
-          hash,
-          data_size,
-          stack_size
-      );
+        portable_stat_t st;
+        if (portable_stat(dogoutput, &st)==0) {
 
-      if (len > 0)
-          fwrite(outbuf, 1, (size_t)len, stdout);
+            len=snprintf(outbuf, sizeof outbuf,
+                "ino    : %llu   |  File   : %lluB\n"
+                "dev    : %llu\n"
+                "read   : %s   |  write  : %s\n"
+                "execute: %s   |  mode   : %020o\n"
+                "atime  : %llu\n"
+                "mtime  : %llu\n"
+                "ctime  : %llu\n",
+                (unsigned long long)st.st_ino,
+                (unsigned long long)st.st_size,
+                (unsigned long long)st.st_dev,
+                (st.st_mode & S_IRUSR) ? "Y" : "N",
+                (st.st_mode & S_IWUSR) ? "Y" : "N",
+                (st.st_mode & S_IXUSR) ? "Y" : "N",
+                st.st_mode,
+                (unsigned long long)st.st_latime,
+                (unsigned long long)st.st_lmtime,
+                (unsigned long long)st.st_mctime
+            );
 
-      portable_stat_t st;
-      if (portable_stat(dogoutput, &st)==0) {
+            if (len > 0)
+                fwrite(outbuf, 1, (size_t)len, stdout);
+        }
+    }
 
-          len=snprintf(outbuf, sizeof outbuf,
-              "ino    : %llu   |  File   : %lluB\n"
-              "dev    : %llu\n"
-              "read   : %s   |  write  : %s\n"
-              "execute: %s   |  mode   : %020o\n"
-              "atime  : %llu\n"
-              "mtime  : %llu\n"
-              "ctime  : %llu\n",
-              (unsigned long long)st.st_ino,
-              (unsigned long long)st.st_size,
-              (unsigned long long)st.st_dev,
-              (st.st_mode & S_IRUSR) ? "Y" : "N",
-              (st.st_mode & S_IWUSR) ? "Y" : "N",
-              (st.st_mode & S_IXUSR) ? "Y" : "N",
-              st.st_mode,
-              (unsigned long long)st.st_latime,
-              (unsigned long long)st.st_lmtime,
-              (unsigned long long)st.st_mctime
-          );
+    fwrite("\n", 1, 1, stdout);
 
-          if (len > 0)
-              fwrite(outbuf, 1, (size_t)len, stdout);
-      }
-  }
-
-  fwrite("\n", 1, 1, stdout);
-
-  {
-      char outbuf[512];
-      int len=snprintf(outbuf, sizeof outbuf,
-          "* Pawn Compiler %s - Copyright (c) 1997-2006, ITB CompuPhase\n",
-          compiler_ver
-      );
-      if (len > 0)
-          fwrite(outbuf, 1, (size_t)len, stdout);
-  }
-  return;
+    len = snprintf(outbuf, sizeof outbuf,
+        "* Pawn Compiler %s - Copyright (c) 1997-2006, ITB CompuPhase\n",
+        compiler_ver
+    );
+    
+    if (len > 0)
+        fwrite(outbuf, 1, (size_t)len, stdout);
+        
+    return;
 }
 
 void cause_compiler_expl(const char *log_file,const char *dogoutput,int debug)
 {
-  __create_logging();
+  minimal_debugging();
 
   FILE *_log_file=fopen(log_file,"r");
   if(!_log_file)
@@ -235,24 +214,36 @@ void cause_compiler_expl(const char *log_file,const char *dogoutput,int debug)
             remove(".watchdogs/help.txt");
         FILE *help = fopen(".watchdogs/help.txt", "w");
         if (help) {
-            fprintf(help, "You have checked that the file exists, but lowercase and uppercase letters are an issue in Linux?\n");
-            fprintf(help, "* Linux filesystem is not free case-sensitive like Windows.\n");
-            fprintf(help, "** You need to fix it with renaming any files and folders in gamemodes/ and changing #include name to lowercase only.\n");
-            fprintf(help, "like:\n   gamemodes\n   ├── main.pwn\n   └── TEST\n   └── test.inc\n");
-            fprintf(help, "- #include \"TEST.inc\" -> #include \"test.inc\"\n\n");
-            fprintf(help, "first: backup your \"gamemodes\" folder to \"swp_gamemodes\" and copy \"swp_gamemodes\" to \"gamemodes\"\n");
-            fprintf(help, "shell (bash) operation:\n");
-            fprintf(help, "linux native:\n");
-            fprintf(help, "   bash -c 'BASE=\"gamemodes\"; find \"$BASE\" -type f "
+            fprintf(help,
+                "You have checked that the file exists, but lowercase and uppercase letters are an issue in Linux?\n");
+            fprintf(help,
+                "* Linux filesystem is not free case-sensitive like Windows.\n");
+            fprintf(help,
+                "** You need to fix it with renaming any files and folders in gamemodes/ and changing #include name to lowercase only.\n");
+            fprintf(help,
+                "like:\n   gamemodes\n   ├── main.pwn\n   └── TEST\n   └── test.inc\n");
+            fprintf(help,
+                "- #include \"TEST.inc\" -> #include \"test.inc\"\n\n");
+            fprintf(help,
+                "first: backup your \"gamemodes\" folder to \"swp_gamemodes\" and copy \"swp_gamemodes\" to \"gamemodes\"\n");
+            fprintf(help,
+                "shell (bash) operation:\n");
+            fprintf(help,
+                "linux native:\n");
+            fprintf(help,
+                "   bash -c 'BASE=\"gamemodes\"; find \"$BASE\" -type f "
                 "\\( -name \"*.pwn\" -o -name \"*.inc\" \\) -exec sed -i -E \"s|(#include[[:space:]]+\\\")([^\\\"]+)(\\\")|\\1\\L\\2\\3|g\" {} "
                 "+ && find \"$BASE\" -depth | while IFS= read -r p; do [ \"$p\" = \"$BASE\" ] && continue; d=$(dirname \"$p\"); b=$(basename \"$p\" | "
                 "tr \"A-Z\" \"a-z\"); [ \"$p\" != \"$d/$b\" ] && mv \"$p\" \"$d/$b\"; done'\n");
-            fprintf(help, "termux (android - please change the 'GAMEMODE_FOLDER_NAME' to folder name of your gamemode in downloads/):\n");
-            fprintf(help, "   bash -c 'BASE=\"../storage/downloads/GAMEMODE_FOLDER_NAME/gamemodes\"; "
-              "find \"$BASE\" -type f \\( -name \"*.pwn\" -o -name \"*.inc\" \\) "
-              "-exec sh -c \"for f; do perl -i -pe \\\"s/(#include\\\\\\\\s+\\\\\\\\\\\")([^\\\\\\\\\\\"]+)(\\\\\\\\\\\")/\\\\\\\\$1\\\\\\\\L\\\\\\\\$2\\\\\\\\$3/g\\\" \\\"\\\\\\\\$f\\\"; done\" sh {} + && "
-              "find \"$BASE\" -depth | while IFS= read -r p; do [ -e \\\"$p\\\" ] && d=\\\\$(dirname \\\"$p\\\"); "
-              "b=\\\\$(basename \\\"$p\\\" | tr \\\"A-Z\\\" \\\"a-z\\\"); [ \\\"$p\\\" != \\\"$d/$b\\\" ] && mv \\\"$p\\\" \\\"$d/$b\\\"; done'\n");
+            fprintf(help,
+                "termux (android - please change the 'GAMEMODE_FOLDER_NAME' to folder name of your gamemode in downloads/):\n");
+            fprintf(help,
+                "   bash -c 'BASE=\"../storage/downloads/GAMEMODE_FOLDER_NAME/gamemodes\"; "
+                "find \"$BASE\" -type f \\( -name \"*.pwn\" -o -name \"*.inc\" \\) "
+                "-exec sh -c \"for f; do perl -i -pe \\\"s/(#include\\\\\\\\s+\\\\\\\\\\\")"
+                "([^\\\\\\\\\\\"]+)(\\\\\\\\\\\")/\\\\\\\\$1\\\\\\\\L\\\\\\\\$2\\\\\\\\$3/g\\\" \\\"\\\\\\\\$f\\\"; done\" sh {} + && "
+                "find \"$BASE\" -depth | while IFS= read -r p; do [ -e \\\"$p\\\" ] && d=\\\\$(dirname \\\"$p\\\"); "
+                "b=\\\\$(basename \\\"$p\\\" | tr \\\"A-Z\\\" \\\"a-z\\\"); [ \\\"$p\\\" != \\\"$d/$b\\\" ] && mv \\\"$p\\\" \\\"$d/$b\\\"; done'\n");
             fclose(help);
         }
         continue;
@@ -680,7 +671,7 @@ causeExplanation ccs[] =
 /* 108 */  /* FATAL ERROR */
 {
     "codepage mapping file not found",
-    "Character set conversion mapping file specified via `-C` option missing or unreadable. The compiler needs this file for non-ASCII source character processing. Verify file exists in compiler directory or specified path."
+    "Character set conversion mapping file specified via `-c` option missing or unreadable. The compiler needs this file for non-ASCII source character processing. Verify file exists in compiler directory or specified path."
 },
 
 /* 109 */  /* FATAL ERROR */

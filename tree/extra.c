@@ -1,5 +1,8 @@
-// Copyright (c) 2026 Watchdogs Team and contributors
-// All rights reserved. under The 2-Clause BSD License See COPYING or https://opensource.org/license/bsd-2-clause
+/*-
+ * Copyright (c) 2026 Watchdogs Team and contributors
+ * All rights reserved. under The 2-Clause BSD License
+ * See COPYING or https://opensource.org/license/bsd-2-clause
+ */
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -25,33 +28,6 @@
 #include "debug.h"
 #include "extra.h"
 
-/*  source
-    ├── archive.c
-    ├── archive.h
-    ├── cause.c
-    ├── cause.h
-    ├── compiler.c
-    ├── compiler.h
-    ├── crypto.c
-    ├── crypto.h
-    ├── curl.c
-    ├── curl.h
-    ├── debug.c
-    ├── debug.h
-    ├── extra.c [x]
-    ├── extra.h
-    ├── library.c
-    ├── library.h
-    ├── replicate.c
-    ├── replicate.h
-    ├── runner.c
-    ├── runner.h
-    ├── units.c
-    ├── units.h
-    ├── utils.c
-    └── utils.h
-*/
-
 /*
  * Prints formatted output followed by a newline character to specified stream.
  * Wrapper around vprintf that automatically appends newline and flushes stream.
@@ -61,14 +37,14 @@ void println(FILE *stream, const char *format, ...)
 {
         va_list args;  /* Variable argument list handler */
         va_start(args, format);  /* Initialize argument list */
-        printf("%s", FCOLOUR_RESET);  /* Always reset colour */
-        printf("%s", FCOLOUR_DEFAULT);
         printf("%s", BKG_DEFAULT);
+        printf("%s", FCOLOUR_RESET);
+        printf("%s", FCOLOUR_DEFAULT);
         vfprintf(stream, format, args);   /* Print formatted string with variable arguments */
         printf("\n");            /* Append newline character */
-        printf("%s", FCOLOUR_RESET);  /* Always reset colour */
-        printf("%s", FCOLOUR_DEFAULT);
         printf("%s", BKG_DEFAULT);
+        printf("%s", FCOLOUR_RESET);
+        printf("%s", FCOLOUR_DEFAULT);
         va_end(args);            /* Clean up argument list */
         fflush(stream);          /* Ensure output is written immediately */
 }
@@ -82,14 +58,14 @@ void printf_colour(FILE *stream, const char *color, const char *format, ...)
 {
         va_list args;
         va_start(args, format);
-        printf("%s", FCOLOUR_RESET);  /* Always reset colour */
-        printf("%s", FCOLOUR_DEFAULT);
         printf("%s", BKG_DEFAULT);
+        printf("%s", FCOLOUR_RESET);
+        printf("%s", FCOLOUR_DEFAULT);
         printf("%s", color);     /* Apply ANSI color escape sequence */
         vfprintf(stream, format, args);   /* Print formatted content with variable arguments */
-        printf("%s", FCOLOUR_RESET);  /* Always reset colour */
-        printf("%s", FCOLOUR_DEFAULT);
         printf("%s", BKG_DEFAULT);
+        printf("%s", FCOLOUR_RESET);
+        printf("%s", FCOLOUR_DEFAULT);
         va_end(args);
         fflush(stream);          /* Force immediate output */
 }
@@ -102,14 +78,14 @@ void printf_info(FILE *stream, const char *format, ...)
 {
         va_list args;
         va_start(args, format);
-        printf("%s", FCOLOUR_RESET);  /* Always reset colour */
-        printf("%s", FCOLOUR_DEFAULT);
         printf("%s", BKG_DEFAULT);
-        printf("%s", FCOLOUR_YELLOW);
+        printf("%s", FCOLOUR_RESET);
+        printf("%s", FCOLOUR_DEFAULT);
+        printf(FCOLOUR_YELLOW);
         printf(">> I");       /* Standard informational prefix */
-        printf("%s", FCOLOUR_RESET);  /* Always reset colour */
-        printf("%s", FCOLOUR_DEFAULT);
         printf("%s", BKG_DEFAULT);
+        printf("%s", FCOLOUR_RESET);
+        printf("%s", FCOLOUR_DEFAULT);
         printf(": ");
         vfprintf(stream, format, args);   /* Print message content */
         printf("\n");            /* Ensure line break */
@@ -125,14 +101,14 @@ void printf_warning(FILE *stream, const char *format, ...)
 {
         va_list args;
         va_start(args, format);
-        printf("%s", FCOLOUR_RESET);  /* Always reset colour */
-        printf("%s", FCOLOUR_DEFAULT);
         printf("%s", BKG_DEFAULT);
-        printf("%s", FCOLOUR_GREEN);
+        printf("%s", FCOLOUR_RESET);
+        printf("%s", FCOLOUR_DEFAULT);
+        printf(FCOLOUR_GREEN);
         printf(">> W");       /* Standard informational prefix */
-        printf("%s", FCOLOUR_RESET);  /* Always reset colour */
-        printf("%s", FCOLOUR_DEFAULT);
         printf("%s", BKG_DEFAULT);
+        printf("%s", FCOLOUR_RESET);
+        printf("%s", FCOLOUR_DEFAULT);
         printf(": ");
         vfprintf(stream, format, args);   /* Print message content */
         printf("\n");            /* Ensure line break */
@@ -148,14 +124,14 @@ void printf_error(FILE *stream, const char *format, ...)
 {
         va_list args;
         va_start(args, format);
-        printf("%s", FCOLOUR_RESET);  /* Always reset colour */
-        printf("%s", FCOLOUR_DEFAULT);
         printf("%s", BKG_DEFAULT);
-        printf("%s", FCOLOUR_RED);
+        printf("%s", FCOLOUR_RESET);
+        printf("%s", FCOLOUR_DEFAULT);
+        printf(FCOLOUR_RED);
         printf(">> E");       /* Standard informational prefix */
-        printf("%s", FCOLOUR_RESET);  /* Always reset colour */
-        printf("%s", FCOLOUR_DEFAULT);
         printf("%s", BKG_DEFAULT);
+        printf("%s", FCOLOUR_RESET);
+        printf("%s", FCOLOUR_DEFAULT);
         printf(": ");
         vfprintf(stream, format, args);   /* Print message content */
         printf("\n");            /* Ensure line break */

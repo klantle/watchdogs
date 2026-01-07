@@ -1,5 +1,8 @@
-// Copyright (c) 2026 Watchdogs Team and contributors
-// All rights reserved. under The 2-Clause BSD License See COPYING or https://opensource.org/license/bsd-2-clause
+/*-
+ * Copyright (c) 2026 Watchdogs Team and contributors
+ * All rights reserved. under The 2-Clause BSD License
+ * See COPYING or https://opensource.org/license/bsd-2-clause
+ */
 #include <stdio.h>
 #include <stdlib.h>
 #include <stdbool.h>
@@ -17,33 +20,6 @@
 #include "curl.h"
 #include "debug.h"
 #include "units.h"
-
-/*  source
-    ├── archive.c [x]
-    ├── archive.h
-    ├── cause.c
-    ├── cause.h
-    ├── compiler.c
-    ├── compiler.h
-    ├── crypto.c
-    ├── crypto.h
-    ├── curl.c
-    ├── curl.h
-    ├── debug.c
-    ├── debug.h
-    ├── extra.c
-    ├── extra.h
-    ├── library.c
-    ├── library.h
-    ├── replicate.c
-    ├── replicate.h
-    ├── runner.c
-    ├── runner.h
-    ├── units.c
-    ├── units.h
-    ├── utils.c
-    └── utils.h
-*/
 
 static void arch_extraction_path(const char *dest,const char *path,
                                  char *out,size_t out_size)
@@ -651,14 +627,16 @@ void dog_extract_archive(const char *filename,const char *dir)
            " Try Extracting %s archive file...\n",filename);
   fflush(stdout);
 
+  char *cache_folder = "cache";
+
   if(strend(filename,".tar.gz",true)) {
     if(dogconfig.dog_idownload==1) {
-      if(dir_exists("scripts")!=0) {
-        dog_extract_tar(filename,"scripts");
+      if(dir_exists(cache_folder)!=0) {
+        dog_extract_tar(filename,"cache");
       }
       else {
-        MKDIR("scripts");
-        dog_extract_tar(filename,"scripts");
+        MKDIR(cache_folder);
+        dog_extract_tar(filename,"cache");
       }
     }
     else {
@@ -667,12 +645,12 @@ void dog_extract_archive(const char *filename,const char *dir)
   }
   else if(strend(filename,".tar",true)) {
     if(dogconfig.dog_idownload==1) {
-      if(dir_exists("scripts")!=0) {
-        dog_extract_tar(filename,"scripts");
+      if(dir_exists(cache_folder)!=0) {
+        dog_extract_tar(filename,"cache");
       }
       else {
-        MKDIR("scripts");
-        dog_extract_tar(filename,"scripts");
+        MKDIR(cache_folder);
+        dog_extract_tar(filename,"cache");
       }
     }
     else {
@@ -681,12 +659,12 @@ void dog_extract_archive(const char *filename,const char *dir)
   }
   else if(strend(filename,".zip",true)) {
     if(dogconfig.dog_idownload==1) {
-      if(dir_exists("scripts")!=0) {
-        dog_extract_zip(filename,"scripts");
+      if(dir_exists(cache_folder)!=0) {
+        dog_extract_zip(filename,"cache");
       }
       else {
-        MKDIR("scripts");
-        dog_extract_zip(filename,"scripts");
+        MKDIR(cache_folder);
+        dog_extract_zip(filename,"cache");
       }
     }
     else {

@@ -1,7 +1,3 @@
-# Copyright (c) 2026 Watchdogs Team and contributors
-# All rights reserved. under The 2-Clause BSD License See COPYING or https://opensource.org/license/bsd-2-clause
-export LANG   := C.UTF-8
-export LC_ALL := C.UTF-8
 VERSION        = DOG-26.01
 FULL_VERSION   = DOG-260101
 TARGET        ?= watchdogs
@@ -29,18 +25,18 @@ LDFLAGS = -fsanitize=address,undefined -rdynamic
 endif
 
 SRCS = \
-	source/extra.c \
-	source/debug.c \
-	source/curl.c \
-	source/units.c \
-	source/utils.c \
-	source/replicate.c \
-	source/cause.c \
-	source/compiler.c \
-	source/archive.c \
-	source/library.c \
-	source/runner.c \
-	source/crypto.c \
+	tree/extra.c \
+	tree/debug.c \
+	tree/curl.c \
+	tree/units.c \
+	tree/utils.c \
+	tree/replicate.c \
+	tree/cause.c \
+	tree/compiler.c \
+	tree/archive.c \
+	tree/library.c \
+	tree/endpoint.c \
+	tree/crypto.c \
 	include/tomlc/toml.c \
 	include/cJSON/cJSON.c
 
@@ -57,10 +53,10 @@ init:
 		pacman -S --needed --noconfirm \
 			curl \
 			base-devel \
+			mingw-w64-ucrt-x86_64-libc++ \
 			mingw-w64-ucrt-x86_64-clang \
 			mingw-w64-ucrt-x86_64-gcc \
 			mingw-w64-ucrt-x86_64-lld \
-			mingw-w64-ucrt-x86_64-libc++ \
 			mingw-w64-ucrt-x86_64-curl \
 			mingw-w64-ucrt-x86_64-readline \
 			mingw-w64-ucrt-x86_64-libarchive \
@@ -141,32 +137,8 @@ init:
 				readline-devel \
 				libarchive-devel \
 				binutils \
-				procps; \
-			zypper --non-interactive install -y \
-				libX11-6-32bit \
-				libXext6-32bit \
-				libasound2-32bit \
-				libcairo2-32bit \
-				libcurl4-32bit \
-				libfontconfig1-32bit \
-				libfreetype6-32bit \
-				libglib-2_0-0-32bit \
-				libgobject-2_0-0-32bit \
-				libice6-32bit \
-				libjpeg8-32bit \
-				liblcms2-2-32bit \
-				libldap-2_4-2-32bit \
-				libpng16-16-32bit \
-				libsm6-32bit \
-				libstdc++6-32bit \
-				libuuid1-32bit \
-				libwayland-client0-32bit \
-				libwayland-cursor0-32bit \
-				libwayland-egl1-32bit \
-				libxcb1-32bit \
-				libxkbcommon0-32bit \
-				Mesa-libGL1-32bit \
-				Mesa-libEGL1-32bit; \
+				procps \
+				libstdc++6-32bit; \
 		elif command -v pacman >/dev/null 2>&1; then \
 			echo "==> Using pacman (Arch)"; \
 			pacman -Syu --noconfirm && \
@@ -190,14 +162,14 @@ init:
 linux: OUTPUT = watchdogs
 linux:
 	$(CC) $(CFLAGS) -D__LINUX__ -D__W_VERSION__=\"$(FULL_VERSION)\" $(SRCS) -o $(OUTPUT) $(LDFLAGS)
-	
+
 termux: OUTPUT = watchdogs.tmux
 termux:
 	$(CC) $(CFLAGS) -D__ANDROID__ -D__W_VERSION__=\"$(FULL_VERSION)\" -fPIE $(SRCS) -o $(OUTPUT) $(LDFLAGS) -pie
 
 windows: OUTPUT = watchdogs.win
 windows:
-	$(CC) -D_POSIX_C_SOURCE=200809L $(CFLAGS) $(SRCS) -D__WINDOWS32__ -D__W_VERSION__=\"$(FULL_VERSION)\" -o $(OUTPUT) $(LDFLAGS)
+	$(CC) -lshell32 -D_POSIX_C_SOURCE=200809L $(CFLAGS) $(SRCS) -D__WINDOWS32__ -D__W_VERSION__=\"$(FULL_VERSION)\" -o $(OUTPUT) $(LDFLAGS)
 
 debug: DEBUG_MODE=1
 debug: OUTPUT = watchdogs.debug
@@ -212,7 +184,7 @@ termux-debug:
 windows-debug: DEBUG_MODE=1
 windows-debug: OUTPUT = watchdogs.debug.win
 windows-debug:
-	$(CC) -D_POSIX_C_SOURCE=200809L $(CFLAGS) -g -D_DBG_PRINT -D__WINDOWS32__ -D__W_VERSION__=\"$(FULL_VERSION)\" $(SRCS) -o $(OUTPUT) $(LDFLAGS)
+	$(CC) -lshell32 -D_POSIX_C_SOURCE=200809L $(CFLAGS) -g -D_DBG_PRINT -D__WINDOWS32__ -D__W_VERSION__=\"$(FULL_VERSION)\" $(SRCS) -o $(OUTPUT) $(LDFLAGS)
 
 clean:
 	rm -rf $(OBJS) $(OUTPUT) watchdogs watchdogs.win watchdogs.tmux \

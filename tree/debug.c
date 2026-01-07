@@ -1,92 +1,76 @@
-// Copyright (c) 2026 Watchdogs Team and contributors
-// All rights reserved. under The 2-Clause BSD License See COPYING or https://opensource.org/license/bsd-2-clause
+/*-
+ * Copyright (c) 2026 Watchdogs Team and contributors
+ * All rights reserved. under The 2-Clause BSD License
+ * See COPYING or https://opensource.org/license/bsd-2-clause
+ */
 #include <stdio.h>
 #include <stdlib.h>
-#include <string.h>
-#include <stdarg.h>
-#include <stdbool.h>
-#include <limits.h>
-#include <dirent.h>
 #include <time.h>
-#include <ftw.h>
-#include <fcntl.h>
-#include <math.h>
-#include <locale.h>
-#include <sys/file.h>
 #include <sys/stat.h>
 #include <sys/types.h>
 #include <signal.h>
-#include <curl/curl.h>
 
 #include "extra.h"
-#include "runner.h"
+#include "endpoint.h"
 #include "utils.h"
 #include "units.h"
 #include "debug.h"
 
-/*  source
-    ├── archive.c
-    ├── archive.h
-    ├── cause.c
-    ├── cause.h
-    ├── compiler.c
-    ├── compiler.h
-    ├── crypto.c
-    ├── crypto.h
-    ├── curl.c
-    ├── curl.h
-    ├── debug.c [x]
-    ├── debug.h
-    ├── extra.c
-    ├── extra.h
-    ├── library.c
-    ├── library.h
-    ├── replicate.c
-    ├── replicate.h
-    ├── runner.c
-    ├── runner.h
-    ├── units.c
-    ├── units.h
-    ├── utils.c
-    └── utils.h
-*/
-
-void __reset_sys(void) {
+void unit_restore(void) {
 
         if (dir_exists(".watchdogs") == 0)
             MKDIR(".watchdogs");
 
-        if (path_access(".watchdogs/crashdetect")) {
+        if (path_access(".watchdogs/crashdetect"))
             remove(".watchdogs/crashdetect");
-        }
-        setlocale(LC_ALL, "en_US.UTF-8");
+
         signal(SIGINT, SIG_DFL);
-        dog_sef_fdir_memset_to_null();
+
+        dog_sef_restore();
         dog_toml_configs();
         dog_stop_server_tasks();
         dog_u_history();
-        dog_ptr_command_init = 0;
-        dogconfig.dog_sel_stat = 0;
+        
         sigint_handler = 0;
 }
 
-void __debug_main_unit_(int debug_hard,
+void _unit_debugger(int debug_hard,
             const char *function,
             const char *pretty_function,
             const char *file, int line) {
 
-        __reset_sys();
+        {
+          static int clean = 0;
+          if (!clean) {
+              dog_console_title(NULL);
+              clear_history();
+              ++clean;
+          }
+        }
+
+        unit_restore();
 
 #ifdef DOG_WINDOWS
         {
-            static int k = 0;
-            if ( k != 1 ) {
-              HANDLE hOut = GetStdHandle(STD_OUTPUT_HANDLE);
-              DWORD dwMode = 0;
-              GetConsoleMode(hOut, &dwMode);
-              dwMode |= ENABLE_VIRTUAL_TERMINAL_PROCESSING;
-              SetConsoleMode(hOut, dwMode);
-              ++k;
+            static int enabled = 0;
+            if (enabled == 0) {
+
+                HANDLE hOut = GetStdHandle(STD_OUTPUT_HANDLE);
+                if (hOut == INVALID_HANDLE_VALUE) return;
+
+                DWORD dwMode = 0;
+                if (!GetConsoleMode(hOut, &dwMode)) {
+                    return;
+                }
+
+                dwMode |= ENABLE_VIRTUAL_TERMINAL_PROCESSING;
+                dwMode |= ENABLE_PROCESSED_OUTPUT;
+
+                if (!SetConsoleMode(hOut, dwMode)) {
+                    return;
+                }
+
+                enabled = 1;
             }
         }
 #endif
@@ -118,9 +102,6 @@ void __debug_main_unit_(int debug_hard,
                 "toml configs: %s | "
                 "toml logs: %s | "
                 "toml github tokens: %s | "
-                "toml chatbot: %s | "
-                "toml ai models: %s | "
-                "toml ai key: %s | "
                 "toml aio opt: %s | "
                 "toml aio packages: %s]\n",
                     function, pretty_function,
@@ -145,11 +126,7 @@ void __debug_main_unit_(int debug_hard,
                     dogconfig.dog_ptr_omp, dogconfig.dog_is_samp, dogconfig.dog_is_omp,
                     dogconfig.dog_toml_proj_input, dogconfig.dog_toml_proj_output,
                     dogconfig.dog_toml_binary, dogconfig.dog_toml_config, dogconfig.dog_toml_logs,
-                    dogconfig.dog_toml_github_tokens,
-                    dogconfig.dog_toml_chatbot_ai,
-                    dogconfig.dog_toml_models_ai,
-                    dogconfig.dog_toml_key_ai,
-                    dogconfig.dog_toml_aio_opt, dogconfig.dog_toml_packages);
+                    dogconfig.dog_toml_github_tokens, dogconfig.dog_toml_aio_opt, dogconfig.dog_toml_packages);
             printf("STDC: %d\n", __STDC__);
             printf("STDC_HOSTED: %d\n", __STDC_HOSTED__);
             printf("BYTE_ORDER: ");
@@ -212,10 +189,7 @@ void __debug_main_unit_(int debug_hard,
                 "toml binary: %s | "
                 "toml configs: %s | "
                 "toml logs: %s | "
-                "toml github tokens: %s | "
-                "toml chatbot: %s | "
-                "toml ai models: %s | "
-                "toml ai key: %s\n]",
+                "toml github tokens: %s]\n",
                     function, pretty_function,
                     line, file,
                     __DATE__, __TIME__,
@@ -238,10 +212,7 @@ void __debug_main_unit_(int debug_hard,
                     dogconfig.dog_ptr_omp, dogconfig.dog_is_samp, dogconfig.dog_is_omp,
                     dogconfig.dog_toml_proj_input, dogconfig.dog_toml_proj_output,
                     dogconfig.dog_toml_binary, dogconfig.dog_toml_config, dogconfig.dog_toml_logs,
-                    dogconfig.dog_toml_github_tokens,
-                    dogconfig.dog_toml_chatbot_ai,
-                    dogconfig.dog_toml_models_ai,
-                    dogconfig.dog_toml_key_ai);
+                    dogconfig.dog_toml_github_tokens);
         }
 
         fflush(stdout);
@@ -253,7 +224,7 @@ void __debug_main_unit_(int debug_hard,
 //
 **************************************************************************/
 
-void __debug_function_(const char *function,
+void _minimal_debugger(const char *function,
             const char *pretty_function,
             const char *file, int line) {
 

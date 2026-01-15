@@ -39,6 +39,8 @@ cd /d "%USERPROFILE%\Downloads\%TARGET_DIR%" || (
 
 echo Now in: %CD%
 echo.
+echo Downloading...
+echo.
 
 powershell -Command "Invoke-WebRequest -Uri 'https://github.com/gskeleton/watchdogs/releases/download/DOG-260101-1.2/watchdogs.win' -OutFile 'watchdogs.win'"
 
@@ -62,6 +64,8 @@ cd /d "%USERPROFILE%\Downloads\%TARGET_DIR%"
 
 del /q "main.zip"
 rmdir /s /q "dog"
+
+cls
 
 .\windows-native.cmd
 

@@ -4,72 +4,62 @@
  * See COPYING or https://opensource.org/license/bsd-2-clause
  */
 
-/*
- * System headers for core functionality:
- * - Standard I/O (stdio), memory allocation (stdlib), string operations (string)
- * - Boolean types (stdbool), system types (sys/types), file statistics (sys/stat)
- * - Time functions (time), signal handling (signal)
- */
-#include  <stdio.h>
-#include  <stdlib.h>
-#include  <string.h>
-#include  <stdbool.h>
-#include  <sys/types.h>
-#include  <sys/stat.h>
-#include  <time.h>
-#include  <signal.h>
-
 /* Project-specific headers organized by functionality */
-#include  "units.h"        /* Unit management functions */
-#include  "extra.h"        /* Additional utilities */
-#include  "utils.h"        /* General-purpose utilities */
-#include  "crypto.h"       /* Cryptographic functions (CRC-32, etc.) */
-#include  "replicate.h"    /* Replication/backup functionality */
-#include  "compiler.h"     /* PAWN compiler integration */
-#include  "debug.h"        /* Debugging utilities */
-#include  "endpoint.h"     /* Network/endpoint communication */
+#include "units.h"        /* Unit management functions */
+#include "utils.h"        /* General-purpose utilities */
+#include "crypto.h"       /* Cryptographic functions (CRC-32, etc.) */
+#include "replicate.h"    /* Replication/backup functionality */
+#include "compiler.h"     /* PAWN compiler integration */
+#include "debug.h"        /* Debugging utilities */
+#include "endpoint.h"     /* Network/endpoint communication */
 
 /* Global variables for state management */
 
 /* Signal handler flag - tracks SIGINT (Ctrl+C) state */
-int               sigint_handler   = 0;
+int                      sigint_handler = 0;
 
 /* Buffer variables for various operations */
-static char       line[0x400];                  /* Line buffer for reading files */
-static char       size_gamemode[DOG_PATH_MAX * 0x2]; /* Buffer for gamemode configuration */
-static char       command[DOG_MAX_PATH + DOG_PATH_MAX * 2]; /* Command buffer for process execution */
+static char              sbuf[0x400];                  /* Line buffer for reading files */
+static char              size_gamemode[DOG_PATH_MAX * 0x2]; /* Buffer for gamemode configuration */
+static char              command[DOG_MAX_PATH + DOG_PATH_MAX * 2]; /* Command buffer for process execution */
+static char              sputs[DOG_PATH_MAX + 0x1A];   /* Buffer for formatted gamemode name */
+static char              size_config[DOG_PATH_MAX];    /* Backup file path buffer */
 
 /* JSON/CJSON related pointers */
-static char      *cJSON_Data = NULL;           /* Raw JSON data */
-static char      *printed = NULL;              /* Formatted JSON output */
-static char      *sampvoice_port = NULL;       /* SampVoice plugin port string */
+static char             *cJSON_Data = NULL;            /* Raw JSON data */
+static char             *printed = NULL;               /* Formatted JSON output */
+static char             *sampvoice_port = NULL;        /* SampVoice plugin port string */
 
 /* Rate limiting and state tracking counters */
-static int        rate_sampvoice_server = 0;   /* SampVoice rate limiter */
-static int        rate_problem_stat = 0;       /* Problem detection rate limiter */
-static int        server_crashdetect = 0;      /* Crash detection counter */
-static int        server_rcon_pass = 0;        /* RCON password error counter */
+static int               rate_sampvoice_server = 0;    /* SampVoice rate limiter */
+static int               rate_problem_stat = 0;        /* Problem detection rate limiter */
+static int               server_crashdetect = 0;       /* Crash detection counter */
+static int               server_rcon_pass = 0;         /* RCON password error counter */
 
 /* File handles for configuration processing */
-static FILE      *proc_conf_in = NULL;         /* Input configuration file */
-static FILE      *proc_conf_out = NULL;        /* Output configuration file */
+static FILE             *proc_conf_in = NULL;          /* Input configuration file */
+static FILE             *proc_conf_out = NULL;         /* Output configuration file */
 
 /* cJSON objects for JSON configuration parsing */
-static cJSON     *root = NULL;                 /* Root JSON object */
-static cJSON     *pawn = NULL;                 /* "pawn" section of JSON */
-static cJSON     *msj = NULL;                  /* "msj" (gamemode script) array */
+static cJSON            *root = NULL;                  /* Root JSON object */
+static cJSON            *pawn = NULL;                  /* "pawn" section of JSON */
+static cJSON            *msj = NULL;                   /* "msj" (gamemode script) array */
 
 /*
- * Function: try_cleanup_server
- * Purpose: Clean up server state and resources to ensure clean restart
- * Process: Resets all global variables, stops server tasks, restores config
- * Returns: void
+ * try_cleanup_server:
+ *     Clean up server state and resources to ensure clean restart.
+ *     Resets all global variables, stops server tasks, restores config.
  */
-void try_cleanup_server(void) {
+
+void
+try_cleanup_server(void)
+{
         /* Clear all string buffers to prevent stale data */
-        memset(line, 0, sizeof(line));
+        memset(sbuf, 0, sizeof(sbuf));
         memset(size_gamemode, 0, sizeof(size_gamemode));
         memset(command, 0, sizeof(command));
+        memset(sputs, 0, sizeof(sputs));
+        memset(size_config, 0, sizeof(size_config));
 
         /* Decrement rate-limiting counters if active */
         if (rate_sampvoice_server)
@@ -108,63 +98,58 @@ void try_cleanup_server(void) {
 void dog_server_crash_check(void);
 
 /*
- * Function: unit_sigint_handler
- * Purpose: Handle SIGINT (Ctrl+C) signal gracefully
- * Process: Cleans up server state, creates crash detection marker
- * Parameters:
- *   sig - Signal number (should be SIGINT)
- * Returns: void
+ * unit_sigint_handler:
+ *     Handle SIGINT (Ctrl+C) signal gracefully.
+ *     Cleans up server state, creates crash detection marker.
+ *     Parameters:
+ *         sig - Signal number (should be SIGINT)
  */
-void unit_sigint_handler(int sig) {
+
+void
+unit_sigint_handler(int sig __UNUSED__)
+{
         /* Clean up server state first */
         try_cleanup_server();
 
         /* Record the time when signal was received */
         struct timespec stop_all_timer;
         clock_gettime(CLOCK_MONOTONIC, &stop_all_timer);
-
-        /* Create crash detection marker file to indicate abnormal termination */
-        FILE *crashdetect_file = NULL;
-        crashdetect_file = fopen(".watchdogs/crashdetect", "w");
-
-        if (crashdetect_file != NULL)
-            fclose(crashdetect_file);
 }
 
 /*
- * Function: dog_stop_server_tasks
- * Purpose: Stop running server processes based on environment
- * Process: Checks server environment type and kills appropriate process
- * Returns: void
+ * dog_stop_server_tasks:
+ *     Stop running server process.
  */
-void dog_stop_server_tasks(void) {
-        /* Kill server binary based on environment type */
-        if (dog_server_env() == 1)      /* SA-MP environment */
-            dog_kill_process(dogconfig.dog_toml_binary);
-        else if (dog_server_env() == 2) /* open.mp environment */
-            dog_kill_process(dogconfig.dog_toml_binary);
+
+void
+dog_stop_server_tasks(void)
+{
+        int ret = 0;
+        ret = dog_kill_process(dogconfig.dog_toml_server_binary);
+        if (ret) {
+            /* retrying */
+            dog_kill_process(dogconfig.dog_toml_server_binary);
+        }
 }
 
 /*
- * Function: update_samp_config (static)
- * Purpose: Update SA-MP server configuration with new gamemode
- * Process:
- *   1. Creates backup of existing config
- *   2. Opens backup for reading
- *   3. Writes new config with updated gamemode0 line
- *   4. Preserves all other configuration lines
- * Parameters:
- *   g - New gamemode name (without .amx extension)
- * Returns:
- *   1 on success, -1 on failure
+ * update_samp_config:
+ *     Update SA-MP server configuration with new gamemode.
+ *     Creates backup of existing config, opens backup for reading,
+ *     writes new config with updated gamemode0 buffer, preserves all
+ *     other configuration lines.
+ *     Parameters:
+ *         g - New gamemode name (without .amx extension)
+ *     Returns:
+ *         1 on success, -1 on failure
  */
-static int update_samp_config(const char *g) {
-        char puts[DOG_PATH_MAX + 0x1A];        /* Buffer for formatted gamemode name */
-        char size_config[DOG_PATH_MAX];        /* Backup file path buffer */
 
+static int
+update_samp_config(const char *g)
+{
         /* Create backup file path: .watchdogs/<config>.bak */
         snprintf(size_config, sizeof(size_config),
-                ".watchdogs/%s.bak", dogconfig.dog_toml_config);
+            ".watchdogs/%s.bak", dogconfig.dog_toml_server_config);
 
         /* Remove existing backup if it exists */
         if (path_access(size_config))
@@ -174,7 +159,7 @@ static int update_samp_config(const char *g) {
 #ifdef DOG_WINDOWS
         /* Windows: Use MoveFileExA with flags for atomic operation */
         if (!MoveFileExA(
-                dogconfig.dog_toml_config,
+                dogconfig.dog_toml_server_config,
                 size_config,
                 MOVEFILE_REPLACE_EXISTING | MOVEFILE_COPY_ALLOWED)) {
             pr_error(stdout, "Failed to create backup file");
@@ -183,15 +168,15 @@ static int update_samp_config(const char *g) {
         }
 #else
         /* Unix/Linux: Use fork+exec for mv command */
-        pid_t pid = fork();
-        if (pid == 0) {
+        pid_t process_id = fork();
+        if (process_id == 0) {
             execlp("mv", "mv", "-f",
-                dogconfig.dog_toml_config,
+                dogconfig.dog_toml_server_config,
                 size_config,
                 NULL);
             _exit(127);
         }
-        if (pid < 0 || waitpid(pid, NULL, 0) < 0) {
+        if (process_id < 0 || waitpid(process_id, NULL, 0) < 0) {
             pr_error(stdout, "Failed to create backup file");
             minimal_debugging();
             return -1;
@@ -212,7 +197,7 @@ static int update_samp_config(const char *g) {
                 return -1;
         }
 
-        /* Convert file descriptor to FILE* for line-based reading */
+        /* Convert file descriptor to FILE* for buffer-based reading */
         proc_conf_in = fdopen(fd, "r");
         if (!proc_conf_in) {
                 close(fd);
@@ -220,7 +205,7 @@ static int update_samp_config(const char *g) {
         }
 
         /* Open destination config file for writing */
-        proc_conf_out = fopen(dogconfig.dog_toml_config, "w+");
+        proc_conf_out = fopen(dogconfig.dog_toml_server_config, "w+");
         if (!proc_conf_out) {
                 pr_error(stdout, "Failed to write new config");
                 minimal_debugging();
@@ -229,23 +214,23 @@ static int update_samp_config(const char *g) {
         }
 
         /* Prepare gamemode name by removing extension if present */
-        snprintf(puts, sizeof(puts), "%s", g);
-        char *e = strrchr(puts, '.');
+        snprintf(sputs, sizeof(sputs), "%s", g);
+        char *e = strrchr(sputs, '.');
         if (e) *e = '\0';  /* Remove file extension */
-        g = puts;
+        g = sputs;
 
-        /* Process config file line by line */
-        while (fgets(line, sizeof(line), proc_conf_in)) {
-            /* Look for gamemode0 line to replace */
-            if (strfind(line, "gamemode0", true)) {
-                /* Create new gamemode0 line with updated gamemode */
+        /* Process config file buffer by buffer */
+        while (fgets(sbuf, sizeof(sbuf), proc_conf_in)) {
+            /* Look for gamemode0 buffer to replace */
+            if (strfind(sbuf, "gamemode0", true)) {
+                /* Create new gamemode0 buffer with updated gamemode */
                 snprintf(size_gamemode, sizeof(size_gamemode),
-                        "gamemode0 %s\n", puts);
+                    "gamemode0 %s\n", sputs);
                 fputs(size_gamemode, proc_conf_out);
                 continue;
             }
             /* Copy all other lines unchanged */
-            fputs(line, proc_conf_out);
+            fputs(sbuf, proc_conf_out);
         }
 
         /* Cleanup file handles */
@@ -256,19 +241,18 @@ static int update_samp_config(const char *g) {
 }
 
 /*
- * Function: restore_server_config
- * Purpose: Restore server configuration from backup file
- * Process:
- *   1. Checks if backup exists
- *   2. Prompts user for confirmation
- *   3. Replaces current config with backup
- *   4. Platform-specific file operations
- * Returns: void
+ * restore_server_config:
+ *     Restore server configuration from backup file.
+ *     Checks if backup exists, prompts user for confirmation,
+ *     replaces current config with backup, using platform-specific
+ *     file operations.
  */
-void restore_server_config(void) {
-        char size_config[DOG_PATH_MAX];
+
+void
+restore_server_config(void)
+{
         snprintf(size_config, sizeof(size_config),
-                ".watchdogs/%s.bak", dogconfig.dog_toml_config);
+            ".watchdogs/%s.bak", dogconfig.dog_toml_server_config);
 
         /* Check if backup file exists */
         if (path_exists(size_config) == 0)
@@ -276,15 +260,15 @@ void restore_server_config(void) {
 
         /* Prompt user for confirmation */
         printf(DOG_COL_GREEN "warning: " DOG_COL_DEFAULT
-                "Continue to restore %s -> %s? y/n",
-                size_config, dogconfig.dog_toml_config);
+            "Continue to restore %s -> %s? y/n",
+            size_config, dogconfig.dog_toml_server_config);
 
         char *restore_confirm = readline(" ");
-        if (restore_confirm && strfind(restore_confirm, "Y", true)) {
+        if (restore_confirm[0] != '\0' || strfind(restore_confirm, "Y", true)) {
                 ;  /* User confirmed, continue with restore */
         } else {
                 dog_free(restore_confirm);
-                unit_ret_main(NULL);  /* Exit if user declines */
+                return;
         }
 
         dog_free(restore_confirm);
@@ -295,25 +279,25 @@ void restore_server_config(void) {
 
         /* Platform-specific file deletion for current config */
 #ifdef DOG_WINDOWS
-            DWORD attr = GetFileAttributesA(dogconfig.dog_toml_config);
+            DWORD attr = GetFileAttributesA(dogconfig.dog_toml_server_config);
             if (attr != INVALID_FILE_ATTRIBUTES &&
                 !(attr & FILE_ATTRIBUTE_DIRECTORY)) {
-                DeleteFileA(dogconfig.dog_toml_config);
+                DeleteFileA(dogconfig.dog_toml_server_config);
             }
 #else
-            unlink(dogconfig.dog_toml_config);
+            unlink(dogconfig.dog_toml_server_config);
 #endif
 
         /* Platform-specific file moving to restore from backup */
 #ifdef DOG_WINDOWS
             if (!MoveFileExA(
                     size_config,
-                    dogconfig.dog_toml_config,
+                    dogconfig.dog_toml_server_config,
                     MOVEFILE_REPLACE_EXISTING | MOVEFILE_COPY_ALLOWED)) {
                 return;
             }
 #else
-            if (rename(size_config, dogconfig.dog_toml_config) != 0) {
+            if (rename(size_config, dogconfig.dog_toml_server_config) != 0) {
                 return;
             }
 #endif
@@ -323,44 +307,42 @@ restore_done:
 }
 
 /*
- * Function: dog_exec_samp_server
- * Purpose: Execute SA-MP server with specified gamemode
- * Process:
- *   1. Validates configuration and gamemode file
- *   2. Updates server configuration
- *   3. Sets up signal handlers
- *   4. Executes server binary with platform-specific methods
- *   5. Handles retry logic on failure
- * Parameters:
- *   g - Gamemode name
- *   server_bin - Server binary executable name
- * Returns: void
+ * dog_exec_samp_server:
+ *     Execute SA-MP server with specified gamemode.
+ *     Validates configuration and gamemode file, updates server
+ *     configuration, sets up signal handlers, executes server binary
+ *     with platform-specific methods, handles retry logic on failure.
+ *     Parameters:
+ *         g - Gamemode name
+ *         server_bin - Server binary executable name
  */
-void dog_exec_samp_server(const char *g, const char *server_bin) {
+
+void
+dog_exec_samp_server(char *g, const char *server_bin)
+{
         minimal_debugging();  /* Log minimal debug info */
 
         /* Validate configuration file type */
-        if (strfind(dogconfig.dog_toml_config, ".json", true))
+        if (strfind(dogconfig.dog_toml_server_config, ".json", true))
                 return;  /* JSON configs not supported for SA-MP */
 
         int ret = -1;  /* Process execution result */
 
         /* Prepare gamemode name with .amx extension */
-        char puts[0x100];
         char *e = strrchr(g, '.');
         if (e) {
                 size_t len = e - g;
-                snprintf(puts, sizeof(puts), "%.*s.amx", (int)len, g);
+                snprintf(sputs, sizeof(sputs), "%.*s.amx", (int)len, g);
         } else {
-                snprintf(puts, sizeof(puts), "%s.amx", g);
+                snprintf(sputs, sizeof(sputs), "%s.amx", g);
         }
-        g = puts;
+        g = sputs;
 
         /* Restore system error handling */
-        dog_sef_restore();
+        dog_sef_path_revert();
 
         /* Verify gamemode file exists */
-        if (dog_sef_fdir(".", g, NULL) == 0) {
+        if (path_exists(g) == 0) {
                 printf("Cannot locate g: ");
                 pr_color(stdout, DOG_COL_CYAN, "%s\n", g);
                 pr_info(stdout, "Check first, Compile first.");
@@ -384,7 +366,7 @@ void dog_exec_samp_server(const char *g, const char *server_bin) {
         }
 
         /* Timing variables for performance tracking and retry logic */
-        time_t start, end;
+        time_t start = 0, end = 0;
         double elp;
         bool rty = false;  /* Retry flag */
         int _access = -1;
@@ -396,11 +378,11 @@ back_start:  /* Retry label for failed startup attempts */
         /* Platform-specific process execution */
 #ifdef DOG_WINDOWS
         /* Windows: CreateProcess API for process creation */
-        STARTUPINFOA _STARTUPINFO;
+        STARTUPINFOA        _STARTUPINFO;
         PROCESS_INFORMATION _PROCESS_INFO;
 
-        _ZERO_MEM_WIN32(&_STARTUPINFO, sizeof(_STARTUPINFO));
-        _ZERO_MEM_WIN32(&_PROCESS_INFO, sizeof(_PROCESS_INFO));
+        ZeroMemory(&_STARTUPINFO, sizeof(_STARTUPINFO));
+        ZeroMemory(&_PROCESS_INFO, sizeof(_PROCESS_INFO));
 
         _STARTUPINFO.cb = sizeof(_STARTUPINFO);
         _STARTUPINFO.dwFlags = STARTF_USESTDHANDLES;
@@ -409,7 +391,7 @@ back_start:  /* Retry label for failed startup attempts */
         _STARTUPINFO.hStdError  = GetStdHandle(STD_ERROR_HANDLE);
         _STARTUPINFO.hStdInput  = GetStdHandle(STD_INPUT_HANDLE);
 
-        snprintf(command, sizeof(command), "%s%s", SYM_PROG, server_bin);
+        snprintf(command, sizeof(command), "%s%s", _PATH_STR_EXEC, server_bin);
 
         if (!CreateProcessA(
             NULL,command,NULL,NULL,TRUE,0,NULL,NULL,
@@ -427,11 +409,10 @@ back_start:  /* Retry label for failed startup attempts */
         }
 #else
         /* Unix/Linux: fork+exec with pipe redirection for output capture */
-        pid_t pid;
-        CHMOD_FULL(server_bin);  /* Ensure binary is executable */
+        pid_t process_id;
+        __set_default_access(server_bin);  /* Ensure binary is executable */
 
-        char cmd[DOG_PATH_MAX + 26];
-        snprintf(cmd, sizeof(cmd), "%s/%s", dog_procure_pwd(), server_bin);
+        snprintf(command, sizeof(command), "%s/%s", dog_procure_pwd(), server_bin);
 
         /* Create pipes for stdout and stderr redirection */
         int stdout_pipe[2];
@@ -442,8 +423,8 @@ back_start:  /* Retry label for failed startup attempts */
             return;
         }
 
-        pid = fork();
-        if (pid == 0) {  /* Child process */
+        process_id = fork();
+        if (process_id == 0) {  /* Child process */
             close(stdout_pipe[0]);
             close(stderr_pipe[0]);
 
@@ -453,25 +434,24 @@ back_start:  /* Retry label for failed startup attempts */
             close(stdout_pipe[1]);
             close(stderr_pipe[1]);
 
-            char *argv[] = { "/bin/sh", "-c", (char *)cmd, NULL };
-            execv("/bin/sh", argv);
-            _exit(127);  /* execv failed */
-        } else if (pid > 0) {  /* Parent process */
+            execl("/bin/sh", "sh", "-c", command, (char *)NULL);
+            _exit(127);  /* execl failed */
+        } else if (process_id > 0) {  /* Parent process */
             close(stdout_pipe[1]);
             close(stderr_pipe[1]);
 
-            /* Read and display child process output */
-            char buffer[DOG_MAX_PATH];
             ssize_t br;
 
-            while ((br = read(stdout_pipe[0], buffer, sizeof(buffer)-1)) > 0) {
-                buffer[br] = '\0';
-                printf("%s", buffer);
+            while ((br = read(stdout_pipe[0],
+                sbuf, sizeof(sbuf)-1)) > 0) {
+                sbuf[br] = '\0';
+                printf("%s", sbuf);
             }
 
-            while ((br = read(stderr_pipe[0], buffer, sizeof(buffer)-1)) > 0) {
-                buffer[br] = '\0';
-                printf("%s", buffer);
+            while ((br = read(stderr_pipe[0],
+                sbuf, sizeof(sbuf)-1)) > 0) {
+                sbuf[br] = '\0';
+                printf("%s", sbuf);
             }
 
             close(stdout_pipe[0]);
@@ -479,7 +459,7 @@ back_start:  /* Retry label for failed startup attempts */
 
             /* Wait for child process to complete */
             int status;
-            waitpid(pid, &status, 0);
+            waitpid(process_id, &status, 0);
 
             if (WIFEXITED(status)) {
                 int exit_code = WEXITSTATUS(status);
@@ -508,13 +488,13 @@ back_start:  /* Retry label for failed startup attempts */
                     printf("\ttry starting again..");
 
                     /* Clean up log files before retry */
-                    _access = path_access(dogconfig.dog_toml_logs);
+                    _access = path_access(dogconfig.dog_toml_server_logs);
                     if (_access)
-                            remove(dogconfig.dog_toml_logs);
+                            remove(dogconfig.dog_toml_server_logs);
 
-                    _access = path_access(dogconfig.dog_toml_logs);
+                    _access = path_access(dogconfig.dog_toml_server_logs);
                     if (_access)
-                            remove(dogconfig.dog_toml_logs);
+                            remove(dogconfig.dog_toml_server_logs);
 
                     end = time(NULL);
                     goto back_start;  /* Retry startup */
@@ -532,28 +512,27 @@ back_start:  /* Retry label for failed startup attempts */
 }
 
 /*
- * Function: update_omp_config (static)
- * Purpose: Update open.mp JSON configuration with new gamemode
- * Process:
- *   1. Creates backup of existing JSON config
- *   2. Parses JSON structure
- *   3. Updates "pawn"/"msj" array with new gamemode
- *   4. Writes updated JSON back to config file
- * Parameters:
- *   g - New gamemode name (without .amx extension)
- * Returns:
- *   0 on success, -1 on failure
+ * update_omp_config:
+ *     Update open.mp JSON configuration with new gamemode.
+ *     Creates backup of existing JSON config, parses JSON structure,
+ *     updates "pawn"/"msj" array with new gamemode, writes updated
+ *     JSON back to config file.
+ *     Parameters:
+ *         g - New gamemode name (without .amx extension)
+ *     Returns:
+ *         0 on success, -1 on failure
  */
-static int update_omp_config(const char *g) {
+
+static int
+update_omp_config(const char *g)
+{
         struct stat st;  /* File statistics */
         char   gf[DOG_PATH_MAX + 0x1A];  /* Buffer for gamemode name */
-        char   puts[DOG_PATH_MAX + 0x1A]; /* Formatted gamemode name */
         int    ret = -1;
 
         /* Create backup file path */
-        char size_config[DOG_PATH_MAX];
         snprintf(size_config, sizeof(size_config),
-                ".watchdogs/%s.bak", dogconfig.dog_toml_config);
+            ".watchdogs/%s.bak", dogconfig.dog_toml_server_config);
 
         /* Remove existing backup */
         if (path_access(size_config))
@@ -562,7 +541,7 @@ static int update_omp_config(const char *g) {
         /* Platform-specific backup creation */
 #ifdef DOG_WINDOWS
             if (!MoveFileExA(
-                    dogconfig.dog_toml_config,
+                    dogconfig.dog_toml_server_config,
                     size_config,
                     MOVEFILE_REPLACE_EXISTING | MOVEFILE_COPY_ALLOWED)) {
                 pr_error(stdout, "Failed to create backup file");
@@ -570,15 +549,15 @@ static int update_omp_config(const char *g) {
                 return -1;
             }
 #else
-            pid_t pid = fork();
-            if (pid == 0) {
+            pid_t process_id = fork();
+            if (process_id == 0) {
                 execlp("mv", "mv", "-f",
-                    dogconfig.dog_toml_config,
+                    dogconfig.dog_toml_server_config,
                     size_config,
                     NULL);
                 _exit(127);
             }
-            if (pid < 0 || waitpid(pid, NULL, 0) < 0) {
+            if (process_id < 0 || waitpid(process_id, NULL, 0) < 0) {
                 pr_error(stdout, "Failed to create backup file");
                 minimal_debugging();
                 return -1;
@@ -655,23 +634,23 @@ static int update_omp_config(const char *g) {
         }
 
         /* Prepare gamemode name (remove extension) */
-        snprintf(puts, sizeof(puts), "%s", g);
-        char *e = strrchr(puts, '.');
+        snprintf(sputs, sizeof(sputs), "%s", g);
+        char *e = strrchr(sputs, '.');
         if (e) *e = '\0';
 
         /* Remove existing "msj" array and create new one */
         cJSON_DeleteItemFromObject(pawn, "msj");
 
         msj = cJSON_CreateArray();
-        snprintf(gf, sizeof(gf), "%s", puts);
+        snprintf(gf, sizeof(gf), "%s", sputs);
         cJSON_AddItemToArray(msj, cJSON_CreateString(gf));
         cJSON_AddItemToObject(pawn, "msj", msj);
 
         /* Open output file for writing updated JSON */
-        proc_conf_out = fopen(dogconfig.dog_toml_config, "w");
+        proc_conf_out = fopen(dogconfig.dog_toml_server_config, "w");
         if (!proc_conf_out) {
                 pr_error(stdout,
-                    "Failed to write %s", dogconfig.dog_toml_config);
+                    "Failed to write %s", dogconfig.dog_toml_server_config);
                 minimal_debugging();
                 goto endpoint_end;
         }
@@ -688,7 +667,7 @@ static int update_omp_config(const char *g) {
         /* Write JSON to output file */
         if (fputs(printed, proc_conf_out) == EOF) {
                 pr_error(stdout,
-                    "Failed to write to %s", dogconfig.dog_toml_config);
+                    "Failed to write to %s", dogconfig.dog_toml_server_config);
                 minimal_debugging();
                 goto endpoint_end;
         }
@@ -721,42 +700,51 @@ endpoint_kill:
         return ret;
 }
 
-/* Wrapper function for open.mp config restoration */
-void restore_omp_config(void) { restore_server_config(); }
+/*
+ * restore_omp_config:
+ *     Wrapper function for open.mp config restoration.
+ */
+
+void
+restore_omp_config(void)
+{
+        restore_server_config();
+}
 
 /*
- * Function: dog_exec_omp_server
- * Purpose: Execute open.mp server with specified gamemode
- * Process: Similar to SA-MP version but for open.mp JSON config format
- * Parameters:
- *   g - Gamemode name
- *   server_bin - Server binary executable name
- * Returns: void
+ * dog_exec_omp_server:
+ *     Execute open.mp server with specified gamemode.
+ *     Similar to SA-MP version but for open.mp JSON config format.
+ *     Parameters:
+ *         g - Gamemode name
+ *         server_bin - Server binary executable name
  */
-void dog_exec_omp_server(const char *g, const char *server_bin) {
+
+void
+dog_exec_omp_server(char *g, const char *server_bin)
+{
         minimal_debugging();
 
         /* Validate config file type */
-        if (strfind(dogconfig.dog_toml_config, ".cfg", true))
+        if (strfind(dogconfig.dog_toml_server_config, ".cfg", true))
                 return;  /* .cfg files not supported for open.mp */
 
         int ret = -1;
 
         /* Prepare gamemode name with .amx extension */
-        char puts[0x100];
         char *e = strrchr(g, '.');
         if (e) {
             size_t len = e - g;
-            snprintf(puts, sizeof(puts), "%.*s.amx", (int)len, g);
+            snprintf(sputs, sizeof(sputs), "%.*s.amx", (int)len, g);
         } else {
-            snprintf(puts, sizeof(puts), "%s.amx", g);
+            snprintf(sputs, sizeof(sputs), "%s.amx", g);
         }
-        g = puts;
+        g = sputs;
 
-        dog_sef_restore();
+        dog_sef_path_revert();
 
         /* Verify gamemode exists */
-        if (dog_sef_fdir(".", g, NULL) == 0) {
+        if (path_exists(g) == 0) {
                 printf("Cannot locate g: ");
                 pr_color(stdout, DOG_COL_CYAN, "%s\n", g);
                 pr_info(stdout, "Check first, Compile first.");
@@ -780,7 +768,7 @@ void dog_exec_omp_server(const char *g, const char *server_bin) {
         }
 
         /* Timing and retry variables */
-        time_t start, end;
+        time_t start = 0, end = 0;
         double elp;
         bool rty = false;
         int _access = -1;
@@ -791,11 +779,11 @@ back_start:  /* Retry label */
 
         /* Platform-specific process execution (same as SA-MP version) */
 #ifdef DOG_WINDOWS
-            STARTUPINFOA _STARTUPINFO;
+            STARTUPINFOA        _STARTUPINFO;
             PROCESS_INFORMATION _PROCESS_INFO;
 
-            _ZERO_MEM_WIN32(&_STARTUPINFO, sizeof(_STARTUPINFO));
-            _ZERO_MEM_WIN32(&_PROCESS_INFO, sizeof(_PROCESS_INFO));
+            ZeroMemory(&_STARTUPINFO, sizeof(_STARTUPINFO));
+            ZeroMemory(&_PROCESS_INFO, sizeof(_PROCESS_INFO));
 
             _STARTUPINFO.cb = sizeof(_STARTUPINFO);
             _STARTUPINFO.dwFlags = STARTF_USESTDHANDLES;
@@ -805,7 +793,7 @@ back_start:  /* Retry label */
             _STARTUPINFO.hStdInput  = GetStdHandle(STD_INPUT_HANDLE);
 
             snprintf(command, sizeof(command),
-                "%s%s", SYM_PROG, server_bin);
+                "%s%s", _PATH_STR_EXEC, server_bin);
 
             if (!CreateProcessA(
                 NULL,command,NULL,NULL,TRUE,0,NULL,NULL,
@@ -822,12 +810,11 @@ back_start:  /* Retry label */
                 ret = 0;
             }
 #else
-            pid_t pid;
+            pid_t process_id;
 
-            CHMOD_FULL(server_bin);
+            __set_default_access(server_bin);
 
-            char cmd[DOG_PATH_MAX + 26];
-            snprintf(cmd, sizeof(cmd), "%s/%s",
+            snprintf(command, sizeof(command), "%s/%s",
                 dog_procure_pwd(), server_bin);
 
             int stdout_pipe[2];
@@ -838,8 +825,8 @@ back_start:  /* Retry label */
                 return;
             }
 
-            pid = fork();
-            if (pid == 0) {
+            process_id = fork();
+            if (process_id == 0) {
                 close(stdout_pipe[0]);
                 close(stderr_pipe[0]);
 
@@ -852,33 +839,34 @@ back_start:  /* Retry label */
                 char *argv[] = {
                     "/bin/sh",
                     "-c",
-                    (char *)cmd,
+                    (char *)command,
                     NULL
                 };
-                execv("/bin/sh", argv);
+                execl("/bin/sh", "sh", "-c", command, (char *)NULL);
                 _exit(127);
-            } else if (pid > 0) {
+            } else if (process_id > 0) {
                 close(stdout_pipe[1]);
                 close(stderr_pipe[1]);
 
-                char buffer[DOG_MAX_PATH];
                 ssize_t br;
 
-                while ((br = read(stdout_pipe[0], buffer, sizeof(buffer)-1)) > 0) {
-                    buffer[br] = '\0';
-                    printf("%s", buffer);
+                while ((br = read(stdout_pipe[0],
+                    sbuf, sizeof(sbuf)-1)) > 0) {
+                    sbuf[br] = '\0';
+                    printf("%s", sbuf);
                 }
 
-                while ((br = read(stderr_pipe[0], buffer, sizeof(buffer)-1)) > 0) {
-                    buffer[br] = '\0';
-                    printf("%s", buffer);
+                while ((br = read(stderr_pipe[0],
+                    sbuf, sizeof(sbuf)-1)) > 0) {
+                    sbuf[br] = '\0';
+                    printf("%s", sbuf);
                 }
 
                 close(stdout_pipe[0]);
                 close(stderr_pipe[0]);
 
                 int status;
-                waitpid(pid, &status, 0);
+                waitpid(process_id, &status, 0);
 
                 if (WIFEXITED(status)) {
                     int exit_code = WEXITSTATUS(status);
@@ -902,12 +890,12 @@ back_start:  /* Retry label */
                 if (elp <= 4.1 && rty == false) {
                     rty = true;
                     printf("\ttry starting again..");
-                    _access = path_access(dogconfig.dog_toml_logs);
+                    _access = path_access(dogconfig.dog_toml_server_logs);
                     if (_access)
-                            remove(dogconfig.dog_toml_logs);
-                    _access = path_access(dogconfig.dog_toml_logs);
+                            remove(dogconfig.dog_toml_server_logs);
+                    _access = path_access(dogconfig.dog_toml_server_logs);
                     if (_access)
-                            remove(dogconfig.dog_toml_logs);
+                            remove(dogconfig.dog_toml_server_logs);
                     end = time(NULL);
                     goto back_start;
                 }
@@ -922,26 +910,28 @@ back_start:  /* Retry label */
 }
 
 /*
- * Function: dog_server_crash_check
- * Purpose: Analyze server logs for errors, warnings, and crash patterns
- * Process:
- *   1. Opens server log file
- *   2. Scans line by line for known error patterns
- *   3. Provides diagnostic information and auto-fix suggestions
- *   4. Handles specific issues like RCON password, plugin conflicts
- * Returns: void
+ * dog_server_crash_check:
+ *     Analyze server logs for errors, warnings, and crash patterns.
+ *     Opens server log file, scans buffer by buffer for known error
+ *     patterns, provides diagnostic information and auto-fix
+ *     suggestions, handles specific issues like RCON password, plugin
+ *     conflicts.
  */
-void dog_server_crash_check(void) {
-        int   size_l;  /* Output size tracker */
+
+void
+dog_server_crash_check(void)
+{
+        int n;  /* snprintf return value */
+        size_t  size_l;  /* Output size tracker */
         FILE *this_proc_file = NULL;  /* Log file handle */
         char  out[DOG_MAX_PATH + 26]; /* Output buffer */
         char  buf[DOG_MAX_PATH * 4];  /* Line buffer for log reading */
 
         /* Open appropriate log file based on server environment */
-        if (dog_server_env() == 1)  /* SA-MP */
-            this_proc_file = fopen(dogconfig.dog_toml_logs, "rb");
+        if (fetch_server_env() == 1)  /* SA-MP */
+            this_proc_file = fopen(dogconfig.dog_toml_server_logs, "rb");
         else  /* open.mp */
-            this_proc_file = fopen(dogconfig.dog_toml_logs, "rb");
+            this_proc_file = fopen(dogconfig.dog_toml_server_logs, "rb");
 
         if (this_proc_file == NULL) {
             pr_error(stdout, "log file not found!.");
@@ -960,17 +950,19 @@ void dog_server_crash_check(void) {
         }
 
         /* Print separator for log analysis output */
-        size_l = snprintf(out, sizeof(out),
+        n = snprintf(out, sizeof(out),
             "====================================================================\n");
+        size_l = (n < 0) ? 0 : (size_t)n;
         fwrite(out, 1, size_l, stdout);
         fflush(stdout);
 
-        /* Process log file line by line */
+        /* Process log file buffer by buffer */
         while (fgets(buf, sizeof(buf), this_proc_file)) {
             /* Pattern 1: Filterscript loading errors */
             if (strfind(buf, "Unable to load filterscript", true)) {
-                size_l = snprintf(out, sizeof(out),
+                n = snprintf(out, sizeof(out),
                     "@ Unable to load filterscript detected - Please recompile our filterscripts.\n\t");
+                size_l = (n < 0) ? 0 : (size_t)n;
                 fwrite(out, 1, size_l, stdout);
                 pr_color(stdout, DOG_COL_BLUE, "%s", buf);
                 fflush(stdout);
@@ -978,8 +970,9 @@ void dog_server_crash_check(void) {
 
             /* Pattern 2: Invalid index/entry point errors */
             if (strfind(buf, "Invalid index parameter (bad entry point)", true)) {
-                size_l = snprintf(out, sizeof(out),
+                n = snprintf(out, sizeof(out),
                     "@ Invalid index parameter (bad entry point) detected - You're forget " DOG_COL_CYAN "'main'" DOG_COL_DEFAULT "?\n\t");
+                size_l = (n < 0) ? 0 : (size_t)n;
                 fwrite(out, 1, size_l, stdout);
                 pr_color(stdout, DOG_COL_BLUE, "%s", buf);
                 fflush(stdout);
@@ -988,20 +981,23 @@ void dog_server_crash_check(void) {
             /* Pattern 3: Runtime errors (most common crash cause) */
             if (strfind(buf, "run time error", true) || strfind(buf, "Run time error", true)) {
                 rate_problem_stat = 1;  /* Flag that we found a problem */
-                size_l = snprintf(out, sizeof(out), "@ Runtime error detected\n\t");
+                n = snprintf(out, sizeof(out), "@ Runtime error detected\n\t");
+                size_l = (n < 0) ? 0 : (size_t)n;
                 fwrite(out, 1, size_l, stdout);
                 pr_color(stdout, DOG_COL_BLUE, "%s", buf);
                 fflush(stdout);
 
                 /* Specific runtime error subtypes */
                 if (strfind(buf, "division by zero", true)) {
-                    size_l = snprintf(out, sizeof(out), "@ Division by zero error found\n\t");
+                    n = snprintf(out, sizeof(out), "@ Division by zero error found\n\t");
+                    size_l = (n < 0) ? 0 : (size_t)n;
                     fwrite(out, 1, size_l, stdout);
                     pr_color(stdout, DOG_COL_BLUE, "%s", buf);
                     fflush(stdout);
                 }
                 if (strfind(buf, "invalid index", true)) {
-                    size_l = snprintf(out, sizeof(out), "@ Invalid index error found\n\t");
+                    n = snprintf(out, sizeof(out), "@ Invalid index error found\n\t");
+                    size_l = (n < 0) ? 0 : (size_t)n;
                     fwrite(out, 1, size_l, stdout);
                     pr_color(stdout, DOG_COL_BLUE, "%s", buf);
                     fflush(stdout);
@@ -1010,7 +1006,8 @@ void dog_server_crash_check(void) {
 
             /* Pattern 4: Outdated include files requiring recompilation */
             if (strfind(buf, "The script might need to be recompiled with the latest include file.", true)) {
-                size_l = snprintf(out, sizeof(out), "@ Needed for recompiled\n\t");
+                n = snprintf(out, sizeof(out), "@ Needed for recompiled\n\t");
+                size_l = (n < 0) ? 0 : (size_t)n;
                 fwrite(out, 1, size_l, stdout);
                 pr_color(stdout, DOG_COL_BLUE, "%s", buf);
                 fflush(stdout);
@@ -1039,16 +1036,18 @@ void dog_server_crash_check(void) {
 
             /* Pattern 5: Filesystem errors (common in WSL environments) */
             if (strfind(buf, "terminate called after throwing an instance of 'ghc::filesystem::filesystem_error", true)) {
-                size_l = snprintf(out, sizeof(out), "@ Filesystem C++ Error Detected\n\t");
+                n = snprintf(out, sizeof(out), "@ Filesystem C++ Error Detected\n\t");
+                size_l = (n < 0) ? 0 : (size_t)n;
                 fwrite(out, 1, size_l, stdout);
                 pr_color(stdout, DOG_COL_BLUE, "%s", buf);
                 fflush(stdout);
-                size_l = snprintf(out, sizeof(out),
+                n = snprintf(out, sizeof(out),
                     "\tAre you currently using the WSL ecosystem?\n"
                     "\tYou need to move the open.mp server folder from the /mnt area (your Windows directory) to \"~\" (your WSL HOME).\n"
                     "\tThis is because open.mp C++ filesystem cannot properly read directories inside the /mnt area,\n"
                     "\twhich isn't part of the directory model targeted by the Linux build.\n"
                     "\t* You must run it outside the /mnt area.\n");
+                size_l = (n < 0) ? 0 : (size_t)n;
                 fwrite(out, 1, size_l, stdout);
                 fflush(stdout);
             }
@@ -1068,28 +1067,34 @@ void dog_server_crash_check(void) {
 
             /* Pattern 7: Missing gamemode files */
             if (strfind(buf, "I couldn't load any gamemode scripts.", true)) {
-                size_l = snprintf(out, sizeof(out), "@ Can't found gamemode detected\n\t");
+                n = snprintf(out, sizeof(out), "@ Can't found gamemode detected\n\t");
+                size_l = (n < 0) ? 0 : (size_t)n;
                 fwrite(out, 1, size_l, stdout);
                 pr_color(stdout, DOG_COL_BLUE, "%s", buf);
                 fflush(stdout);
-                size_l = snprintf(out, sizeof(out),
+                n = snprintf(out, sizeof(out),
                     "\tYou need to ensure that the name specified "
                     "in the configuration file matches the one in the gamemodes/ folder,\n"
-                    "\tand that the .amx file exists. For example, if server.cfg contains gamemode0 main,\n"
+                    "\tand that the .amx file exists. For example, "
+                    "if server.cfg contains " DOG_COL_CYAN "gamemode0" DOG_COL_DEFAULT" main 1 or config.json" DOG_COL_CYAN " pawn.main_scripts [\"main 1\"].\n"
+                    DOG_COL_DEFAULT
                     "\tthen main.amx must be present in the gamemodes/ directory\n");
+                size_l = (n < 0) ? 0 : (size_t)n;
                 fwrite(out, 1, size_l, stdout);
                 fflush(stdout);
             }
 
             /* Pattern 8: Memory address references (potential crashes) */
             if (strfind(buf, "0x", true)) {
-                size_l = snprintf(out, sizeof(out), "@ Hexadecimal address found\n\t");
+                n = snprintf(out, sizeof(out), "@ Hexadecimal address found\n\t");
+                size_l = (n < 0) ? 0 : (size_t)n;
                 fwrite(out, 1, size_l, stdout);
                 pr_color(stdout, DOG_COL_BLUE, "%s", buf);
                 fflush(stdout);
             }
             if (strfind(buf, "address", true) || strfind(buf, "Address", true)) {
-                size_l = snprintf(out, sizeof(out), "@ Memory address reference found\n\t");
+                n = snprintf(out, sizeof(out), "@ Memory address reference found\n\t");
+                size_l = (n < 0) ? 0 : (size_t)n;
                 fwrite(out, 1, size_l, stdout);
                 pr_color(stdout, DOG_COL_BLUE, "%s", buf);
                 fflush(stdout);
@@ -1099,32 +1104,37 @@ void dog_server_crash_check(void) {
             if (rate_problem_stat) {
                 if (strfind(buf, "[debug]", true) || strfind(buf, "crashdetect", true)) {
                     ++server_crashdetect;
-                    size_l = snprintf(out, sizeof(out), "@ Crashdetect: Crashdetect debug information found\n\t");
+                    n = snprintf(out, sizeof(out), "@ Crashdetect: Crashdetect debug information found\n\t");
+                    size_l = (n < 0) ? 0 : (size_t)n;
                     fwrite(out, 1, size_l, stdout);
                     pr_color(stdout, DOG_COL_BLUE, "%s", buf);
                     fflush(stdout);
 
                     /* Crashdetect-specific patterns */
                     if (strfind(buf, "AMX backtrace", true)) {
-                        size_l = snprintf(out, sizeof(out), "@ Crashdetect: AMX backtrace detected in crash log\n\t");
+                        n = snprintf(out, sizeof(out), "@ Crashdetect: AMX backtrace detected in crash log\n\t");
+                        size_l = (n < 0) ? 0 : (size_t)n;
                         fwrite(out, 1, size_l, stdout);
                         pr_color(stdout, DOG_COL_BLUE, "%s", buf);
                         fflush(stdout);
                     }
                     if (strfind(buf, "native stack trace", true)) {
-                        size_l = snprintf(out, sizeof(out), "@ Crashdetect: Native stack trace detected\n\t");
+                        n = snprintf(out, sizeof(out), "@ Crashdetect: Native stack trace detected\n\t");
+                        size_l = (n < 0) ? 0 : (size_t)n;
                         fwrite(out, 1, size_l, stdout);
                         pr_color(stdout, DOG_COL_BLUE, "%s", buf);
                         fflush(stdout);
                     }
                     if (strfind(buf, "heap", true)) {
-                        size_l = snprintf(out, sizeof(out), "@ Crashdetect: Heap-related issue mentioned\n\t");
+                        n = snprintf(out, sizeof(out), "@ Crashdetect: Heap-related issue mentioned\n\t");
+                        size_l = (n < 0) ? 0 : (size_t)n;
                         fwrite(out, 1, size_l, stdout);
                         pr_color(stdout, DOG_COL_BLUE, "%s", buf);
                         fflush(stdout);
                     }
                     if (strfind(buf, "[debug]", true)) {
-                        size_l = snprintf(out, sizeof(out), "@ Crashdetect: Debug Detected\n\t");
+                        n = snprintf(out, sizeof(out), "@ Crashdetect: Debug Detected\n\t");
+                        size_l = (n < 0) ? 0 : (size_t)n;
                         fwrite(out, 1, size_l, stdout);
                         pr_color(stdout, DOG_COL_BLUE, "%s", buf);
                         fflush(stdout);
@@ -1132,7 +1142,8 @@ void dog_server_crash_check(void) {
 
                     /* Native backtrace with plugin conflict detection */
                     if (strfind(buf, "Native backtrace", true)) {
-                        size_l = snprintf(out, sizeof(out), "@ Crashdetect: Native backtrace detected\n\t");
+                        n = snprintf(out, sizeof(out), "@ Crashdetect: Native backtrace detected\n\t");
+                        size_l = (n < 0) ? 0 : (size_t)n;
                         fwrite(out, 1, size_l, stdout);
                         pr_color(stdout, DOG_COL_BLUE, "%s", buf);
                         fflush(stdout);
@@ -1140,11 +1151,12 @@ void dog_server_crash_check(void) {
                         /* Detect SampVoice and Pawn.Raknet plugin conflicts */
                         if (strfind(buf, "sampvoice", true)) {
                             if(strfind(buf, "pawnraknet", true)) {
-                                size_l = snprintf(out, sizeof(out), "@ Crashdetect: Crash potent detected\n\t");
+                                n = snprintf(out, sizeof(out), "@ Crashdetect: Crash potent detected\n\t");
+                                size_l = (n < 0) ? 0 : (size_t)n;
                                 fwrite(out, 1, size_l, stdout);
                                 pr_color(stdout, DOG_COL_BLUE, "%s", buf);
                                 fflush(stdout);
-                                size_l = snprintf(out, sizeof(out),
+                                n = snprintf(out, sizeof(out),
                                     "\tWe have detected a crash and identified two plugins as potential causes,\n"
                                     "\tnamely SampVoice and Pawn.Raknet.\n"
                                     "\tAre you using SampVoice version 3.1?\n"
@@ -1152,6 +1164,7 @@ void dog_server_crash_check(void) {
                                     "\tor you can remove either Sampvoice or Pawn.Raknet to avoid a potential crash.\n"
                                     "\tYou can review the changes between versions 3.0 and 3.1 to understand and analyze the possible reason for the crash\n"
                                     "\ton here: https://github.com/CyberMor/sampvoice/compare/v3.0-alpha...v3.1\n");
+                                size_l = (n < 0) ? 0 : (size_t)n;
                                 fwrite(out, 1, size_l, stdout);
                                 fflush(stdout);
 
@@ -1170,31 +1183,36 @@ void dog_server_crash_check(void) {
 
                 /* Memory-related error patterns */
                 if (strfind(buf, "stack", true)) {
-                    size_l = snprintf(out, sizeof(out), "@ Stack-related issue detected\n\t");
+                    n = snprintf(out, sizeof(out), "@ Stack-related issue detected\n\t");
+                    size_l = (n < 0) ? 0 : (size_t)n;
                     fwrite(out, 1, size_l, stdout);
                     pr_color(stdout, DOG_COL_BLUE, "%s", buf);
                     fflush(stdout);
                 }
                 if (strfind(buf, "memory", true)) {
-                    size_l = snprintf(out, sizeof(out), "@ Memory-related issue detected\n\t");
+                    n = snprintf(out, sizeof(out), "@ Memory-related issue detected\n\t");
+                    size_l = (n < 0) ? 0 : (size_t)n;
                     fwrite(out, 1, size_l, stdout);
                     pr_color(stdout, DOG_COL_BLUE, "%s", buf);
                     fflush(stdout);
                 }
                 if (strfind(buf, "access violation", true)) {
-                    size_l = snprintf(out, sizeof(out), "@ Access violation detected\n\t");
+                    n = snprintf(out, sizeof(out), "@ Access violation detected\n\t");
+                    size_l = (n < 0) ? 0 : (size_t)n;
                     fwrite(out, 1, size_l, stdout);
                     pr_color(stdout, DOG_COL_BLUE, "%s", buf);
                     fflush(stdout);
                 }
                 if (strfind(buf, "buffer overrun", true) || strfind(buf, "buffer overflow", true)) {
-                    size_l = snprintf(out, sizeof(out), "@ Buffer overflow detected\n\t");
+                    n = snprintf(out, sizeof(out), "@ Buffer overflow detected\n\t");
+                    size_l = (n < 0) ? 0 : (size_t)n;
                     fwrite(out, 1, size_l, stdout);
                     pr_color(stdout, DOG_COL_BLUE, "%s", buf);
                     fflush(stdout);
                 }
                 if (strfind(buf, "null pointer", true)) {
-                    size_l = snprintf(out, sizeof(out), "@ Null pointer exception detected\n\t");
+                    n = snprintf(out, sizeof(out), "@ Null pointer exception detected\n\t");
+                    size_l = (n < 0) ? 0 : (size_t)n;
                     fwrite(out, 1, size_l, stdout);
                     pr_color(stdout, DOG_COL_BLUE, "%s", buf);
                     fflush(stdout);
@@ -1204,11 +1222,12 @@ void dog_server_crash_check(void) {
             /* Pattern 10: Array out-of-bounds errors with example fix */
             if (strfind(buf, "out of bounds", true) ||
                 strfind(buf, "out-of-bounds", true)) {
-                size_l = snprintf(out, sizeof(out), "@ out-of-bounds detected\n\t");
+                n = snprintf(out, sizeof(out), "@ out-of-bounds detected\n\t");
+                size_l = (n < 0) ? 0 : (size_t)n;
                 fwrite(out, 1, size_l, stdout);
                 pr_color(stdout, DOG_COL_BLUE, "%s", buf);
                 fflush(stdout);
-                size_l = snprintf(out, sizeof(out),
+                n = snprintf(out, sizeof(out),
                     "\tnew array[3];\n"
                     "\tmain() {\n"
                     "\t  for (new i = 0; i < 4; i++) < potent 4 of 3\n"
@@ -1217,36 +1236,40 @@ void dog_server_crash_check(void) {
                     "\t                      * instead of manual indexing..\n"
                     "\t     array[i] = 0;\n"
                     "\t}\n");
+                size_l = (n < 0) ? 0 : (size_t)n;
                 fwrite(out, 1, size_l, stdout);
                 fflush(stdout);
             }
 
             /* Pattern 11: RCON password security warning (SA-MP specific) */
-            if (dog_server_env() == 1) {
+            if (fetch_server_env() == 1) {
                 if (strfind(buf, "Your password must be changed from the default password", true)) {
                     ++server_rcon_pass;
                 }
             }
 
-            /* Pattern 12: Missing gamemode0 configuration line */
-            if (strfind(buf, "It needs a gamemode0 line", true)) {
-                size_l = snprintf(out, sizeof(out), "@ Critical message found\n\t");
+            /* Pattern 12: Missing gamemode0 configuration buffer */
+            if (strfind(buf, "It needs a gamemode0 buffer", true)) {
+                n = snprintf(out, sizeof(out), "@ Critical message found\n\t");
+                size_l = (n < 0) ? 0 : (size_t)n;
                 fwrite(out, 1, size_l, stdout);
                 pr_color(stdout, DOG_COL_BLUE, "%s", buf);
                 fflush(stdout);
-                size_l = snprintf(out, sizeof(out),
+                n = snprintf(out, sizeof(out),
                     "\tYou need to ensure that the file name (.amx),\n"
                     "\tin your server.cfg under the parameter (gamemode0),\n"
                     "\tactually exists as a .amx file in the gamemodes/ folder.\n"
                     "\tIf there's only a file with the corresponding name but it's only a single .pwn file,\n"
                     "\tyou need to compile it.\n");
+                size_l = (n < 0) ? 0 : (size_t)n;
                 fwrite(out, 1, size_l, stdout);
                 fflush(stdout);
             }
 
             /* Pattern 13: Generic warning messages */
             if (strfind(buf, "warning", true) || strfind(buf, "Warning", true)) {
-                size_l = snprintf(out, sizeof(out), "@ Warning message found\n\t");
+                n = snprintf(out, sizeof(out), "@ Warning message found\n\t");
+                size_l = (n < 0) ? 0 : (size_t)n;
                 fwrite(out, 1, size_l, stdout);
                 pr_color(stdout, DOG_COL_BLUE, "%s", buf);
                 fflush(stdout);
@@ -1254,7 +1277,8 @@ void dog_server_crash_check(void) {
 
             /* Pattern 14: Failure messages */
             if (strfind(buf, "failed", true) || strfind(buf, "Failed", true)) {
-                size_l = snprintf(out, sizeof(out), "@ Failure or Failed message detected\n\t");
+                n = snprintf(out, sizeof(out), "@ Failure or Failed message detected\n\t");
+                size_l = (n < 0) ? 0 : (size_t)n;
                 fwrite(out, 1, size_l, stdout);
                 pr_color(stdout, DOG_COL_BLUE, "%s", buf);
                 fflush(stdout);
@@ -1262,7 +1286,8 @@ void dog_server_crash_check(void) {
 
             /* Pattern 15: Timeout events */
             if (strfind(buf, "timeout", true) || strfind(buf, "Timeout", true)) {
-                size_l = snprintf(out, sizeof(out), "@ Timeout event detected\n\t");
+                n = snprintf(out, sizeof(out), "@ Timeout event detected\n\t");
+                size_l = (n < 0) ? 0 : (size_t)n;
                 fwrite(out, 1, size_l, stdout);
                 pr_color(stdout, DOG_COL_BLUE, "%s", buf);
                 fflush(stdout);
@@ -1271,32 +1296,36 @@ void dog_server_crash_check(void) {
             /* Pattern 16: Plugin-related issues */
             if (strfind(buf, "plugin", true) || strfind(buf, "Plugin", true)) {
                 if (strfind(buf, "failed to load", true) || strfind(buf, "Failed.", true)) {
-                    size_l = snprintf(out, sizeof(out), "@ Plugin load failure or failed detected\n\t");
+                    n = snprintf(out, sizeof(out), "@ Plugin load failure or failed detected\n\t");
+                    size_l = (n < 0) ? 0 : (size_t)n;
                     fwrite(out, 1, size_l, stdout);
                     pr_color(stdout, DOG_COL_BLUE, "%s", buf);
                     fflush(stdout);
-                    size_l = snprintf(out, sizeof(out),
+                    n = snprintf(out, sizeof(out),
                         "\tIf you need to reinstall a plugin that failed, you can use the command:\n"
                         "\t\tinstall user/repo:tags\n"
                         "\tExample:\n"
                         "\t\tinstall Y-Less/sscanf?newer\n"
                         "\tYou can also recheck the username shown on the failed plugin using the command:\n"
                         "\t\ttracker name\n");
+                    size_l = (n < 0) ? 0 : (size_t)n;
                     fwrite(out, 1, size_l, stdout);
                     fflush(stdout);
                 }
                 if (strfind(buf, "unloaded", true)) {
-                    size_l = snprintf(out, sizeof(out), "@ Plugin unloaded detected\n\t");
+                    n = snprintf(out, sizeof(out), "@ Plugin unloaded detected\n\t");
+                    size_l = (n < 0) ? 0 : (size_t)n;
                     fwrite(out, 1, size_l, stdout);
                     pr_color(stdout, DOG_COL_BLUE, "%s", buf);
                     fflush(stdout);
-                    size_l = snprintf(out, sizeof(out),
+                    n = snprintf(out, sizeof(out),
                         "\tLOADED (Active/In Use):\n"
                         "\t  - Plugin is running, all features are available.\n"
                         "\t  - Utilizing system memory and CPU (e.g., running background threads).\n"
                         "\tUNLOADED (Deactivated/Inactive):\n"
                         "\t  - Plugin has been shut down and removed from memory.\n"
                         "\t  - Features are no longer available; system resources (memory/CPU) are released.\n");
+                    size_l = (n < 0) ? 0 : (size_t)n;
                     fwrite(out, 1, size_l, stdout);
                     fflush(stdout);
                 }
@@ -1305,13 +1334,15 @@ void dog_server_crash_check(void) {
             /* Pattern 17: Database/MySQL connection issues */
             if (strfind(buf, "database", true) || strfind(buf, "mysql", true)) {
                 if (strfind(buf, "connection failed", true) || strfind(buf, "can't connect", true)) {
-                    size_l = snprintf(out, sizeof(out), "@ Database connection failure detected\n\t");
+                    n = snprintf(out, sizeof(out), "@ Database connection failure detected\n\t");
+                    size_l = (n < 0) ? 0 : (size_t)n;
                     fwrite(out, 1, size_l, stdout);
                     pr_color(stdout, DOG_COL_BLUE, "%s", buf);
                     fflush(stdout);
                 }
                 if (strfind(buf, "error", true) || strfind(buf, "failed", true)) {
-                    size_l = snprintf(out, sizeof(out), "@ Error or Failed database | mysql found\n\t");
+                    n = snprintf(out, sizeof(out), "@ Error or Failed database | mysql found\n\t");
+                    size_l = (n < 0) ? 0 : (size_t)n;
                     fwrite(out, 1, size_l, stdout);
                     pr_color(stdout, DOG_COL_BLUE, "%s", buf);
                     fflush(stdout);
@@ -1320,7 +1351,8 @@ void dog_server_crash_check(void) {
 
             /* Pattern 18: Memory allocation failures */
             if (strfind(buf, "out of memory", true) || strfind(buf, "memory allocation", true)) {
-                size_l = snprintf(out, sizeof(out), "@ Memory allocation failure detected\n\t");
+                n = snprintf(out, sizeof(out), "@ Memory allocation failure detected\n\t");
+                size_l = (n < 0) ? 0 : (size_t)n;
                 fwrite(out, 1, size_l, stdout);
                 pr_color(stdout, DOG_COL_BLUE, "%s", buf);
                 fflush(stdout);
@@ -1329,7 +1361,8 @@ void dog_server_crash_check(void) {
             /* Pattern 19: Memory management function references */
             if (strfind(buf, "malloc", true) || strfind(buf, "free", true) ||
                 strfind(buf, "realloc", true) || strfind(buf, "calloc", true)) {
-                size_l = snprintf(out, sizeof(out), "@ Memory management function referenced\n\t");
+                n = snprintf(out, sizeof(out), "@ Memory management function referenced\n\t");
+                size_l = (n < 0) ? 0 : (size_t)n;
                 fwrite(out, 1, size_l, stdout);
                 pr_color(stdout, DOG_COL_BLUE, "%s", buf);
                 fflush(stdout);
@@ -1365,13 +1398,15 @@ void dog_server_crash_check(void) {
 
             /* Compare configured port with actual running port */
             if (sampvoice_port && strcmp(_p_sampvoice_port, sampvoice_port) != 0) {
-                size_l = snprintf(out, sizeof(out), "@ SampVoice Port\n\t");
+                n = snprintf(out, sizeof(out), "@ SampVoice Port\n\t");
+                size_l = (n < 0) ? 0 : (size_t)n;
                 pr_color(stdout, DOG_COL_BLUE, "in server.cfg: %s in server logs: %s", _p_sampvoice_port, sampvoice_port);
                 fwrite(out, 1, size_l, stdout);
-                size_l = snprintf(out, sizeof(out),
+                n = snprintf(out, sizeof(out),
                     "\tWe have detected a mismatch between the sampvoice port in server.cfg\n"
                     "\tand the one loaded in the server log!\n"
                     "\t* Please make sure you have correctly set the port in server.cfg.\n");
+                size_l = (n < 0) ? 0 : (size_t)n;
                 fwrite(out, 1, size_l, stdout);
                 fflush(stdout);
             }
@@ -1380,8 +1415,9 @@ void dog_server_crash_check(void) {
 skip:
         /* RCON password auto-fix for default password vulnerability */
         if (server_rcon_pass) {
-            size_l = snprintf(out, sizeof(out),
+            n = snprintf(out, sizeof(out),
               "@ Rcon Pass Error found\n\t* Error: Your password must be changed from the default password..\n");
+            size_l = (n < 0) ? 0 : (size_t)n;
             fwrite(out, 1, size_l, stdout);
             fflush(stdout);
 
@@ -1422,20 +1458,13 @@ skip:
                     strncpy(server_n_content, serv_f_cent, pos - serv_f_cent);
                     server_n_content[pos - serv_f_cent] = '\0';
 
-                    /* Generate secure password using CRC-32 of random number */
-                    static int init_crc32 = 0;
-                    if (init_crc32 != 1) {
-                            crypto_crc32_init_table();
-                            init_crc32 = 1;
-                    }
-
                     srand((unsigned int)time(NULL) ^ rand());
                     int rand7 = rand() % 10000000;
                     char size_rand7[DOG_PATH_MAX];
-                    snprintf(size_rand7, sizeof(size_rand7), "%d", rand7);
+                    n = snprintf(size_rand7, sizeof(size_rand7), "%d", rand7);
                     crc32_generate = crypto_generate_crc32(size_rand7, sizeof(size_rand7) - 1);
 
-                    /* Format new password line */
+                    /* Format new password buffer */
                     char crc_str[14 + 11 + 1];
                     sprintf(crc_str, "rcon_password %08X", crc32_generate);
 
@@ -1450,21 +1479,24 @@ skip:
                       if (write_f) {
                               fwrite(server_n_content, 1, strlen(server_n_content), write_f);
                               fclose(write_f);
-                              size_l = snprintf(out, sizeof(out), "done! * server.cfg - rcon_password from changeme to %08X.\n", crc32_generate);
+                              n = snprintf(out, sizeof(out), "done! * server.cfg - rcon_password from changeme to %08X.\n", crc32_generate);
+                              size_l = (n < 0) ? 0 : (size_t)n;
                               fwrite(out, 1, size_l, stdout);
                               fflush(stdout);
                       } else {
-                              size_l = snprintf(out, sizeof(out), "Error: Cannot write to server.cfg\n");
+                              n = snprintf(out, sizeof(out), "Error: Cannot write to server.cfg\n");
+                              size_l = (n < 0) ? 0 : (size_t)n;
                               fwrite(out, 1, size_l, stdout);
                               fflush(stdout);
                       }
                       dog_free(server_n_content);
                   } else {
-                      size_l = snprintf(out, sizeof(out),
+                      n = snprintf(out, sizeof(out),
                               "-Replacement failed!\n"
                               " It is not known what the primary cause is."
                               " A reasonable explanation"
                               " is that it occurs when server.cfg does not contain the rcon_password parameter.\n");
+                      size_l = (n < 0) ? 0 : (size_t)n;
                       fwrite(out, 1, size_l, stdout);
                       fflush(stdout);
                   }
@@ -1477,8 +1509,9 @@ skip:
 
 dog_skip_fixed:
         /* Print closing separator */
-        size_l = snprintf(out, sizeof(out),
+        n = snprintf(out, sizeof(out),
               "====================================================================\n");
+        size_l = (n < 0) ? 0 : (size_t)n;
         fwrite(out, 1, size_l, stdout);
         fflush(stdout);
 
@@ -1490,9 +1523,10 @@ dog_skip_fixed:
 
         /* Offer to install crashdetect plugin if crashes detected but plugin missing */
         if (rate_problem_stat == 1 && server_crashdetect < 1) {
-              size_l = snprintf(out, sizeof(out), "INFO: crash found! "
+              n = snprintf(out, sizeof(out), "INFO: crash found! "
                      "and crashdetect not found.. "
                      "install crashdetect now? (Auto-fix) ");
+              size_l = (n < 0) ? 0 : (size_t)n;
               fwrite(out, 1, size_l, stdout);
               fflush(stdout);
 
@@ -1502,11 +1536,10 @@ dog_skip_fixed:
                   dog_free(confirm);
                   dog_install_depends("Y-Less/samp-plugin-crashdetect?newer", "master", NULL);
               } else {
-                  if (confirm) dog_free(confirm);
-                  int _dog_crash_ck = path_access(".watchdogs/crashdetect");
-                  if (_dog_crash_ck)
-                    remove(".watchdogs/crashdetect");
+                  dog_free(confirm);
                   return;
               }
         }
+
+        return;
 }

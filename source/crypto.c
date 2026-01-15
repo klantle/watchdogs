@@ -3,10 +3,6 @@
  * All rights reserved. under The 2-Clause BSD License
  * See COPYING or https://opensource.org/license/bsd-2-clause
  */
-#include  <stdio.h>
-#include  <stdlib.h>
-#include  <string.h>
-#include  <stdint.h>
 
 #include  "utils.h"
 #include  "crypto.h"
@@ -107,7 +103,7 @@ void charset_random(char *buffer, size_t size) {
 static uint32_t crc32_table[DOG_PATH_MAX];
 
 /* Initialize CRC-32 lookup table using polynomial 0xEDB88320 */
-void crypto_crc32_init_table() {
+void crypto_crc32_init_table(void) {
       uint32_t poly = 0xEDB88320;
       /* Generate table for all possible byte values (0-255) */
       for (uint32_t i = 0; i < 256; i++) {
@@ -491,7 +487,7 @@ static uint32_t crypto_simple_rand(void) {
 }
 
 /* Generate random bytes using simple PRNG */
-static void crypto_simple_rand_bytes(uint8_t *buf, size_t len) {
+void crypto_simple_rand_bytes(uint8_t *buf, size_t len) {
       size_t i;
       for (i = 0; i < len; i++) {
             buf[i] = crypto_simple_rand() & 0xff;
@@ -546,7 +542,7 @@ static void crypto_hmac_sha256(const uint8_t *key, size_t key_len,
 /* Placeholder AES encryption function - currently just copies input */
 void crypto_aes_encrypt(const uint8_t in[AES_BLOCK_SIZE],
                   uint8_t out[AES_BLOCK_SIZE],
-                  const AES_KEY *key) {
+                  const AES_KEY *key __UNUSED__) {
       memcpy(out, in, AES_BLOCK_SIZE);
 }
 
@@ -674,7 +670,7 @@ unsigned char *crypto_base64_decode(const char *input, int *out_len)
 
 /* PBKDF2 key derivation function using HMAC-SHA256 */
 int crypto_derive_key_pbkdf2(const char *passphrase, const unsigned char *salt,
-                               int salt_len, unsigned char *key, int key_len)
+                               long salt_len, unsigned char *key, int key_len)
 {
       const int iterations = 100000; /* Number of iterations for key stretching */
       uint8_t u[SHA256_DIGEST_SIZE]; /* HMAC output */
@@ -759,7 +755,7 @@ int crypto_encrypt_with_password(const unsigned char *plain, int plaintext_len,
 /* Password-based decryption (placeholder - currently just extracts data without actual decryption) */
 int crypto_decrypt_with_password(const unsigned char *in_blob, int in_blob_len,
                                      const char *passphrase, unsigned char **out_plain,
-                                     int *out_plain_len)
+                                     long *out_plain_len)
 {
       const int salt_len = 16;
       const int iv_len = 16;

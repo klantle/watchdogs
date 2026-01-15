@@ -3,21 +3,16 @@
  * All rights reserved. under The 2-Clause BSD License
  * See COPYING or https://opensource.org/license/bsd-2-clause
  */
-#include  <stdio.h>
-#include  <stdlib.h>
-#include  <string.h>
-#include  <stdbool.h>
-#include  <sys/stat.h>
-#include  <unistd.h>
-#include  <stddef.h>
 
-#include  "extra.h"
 #include  "utils.h"
 #include  "units.h"
 #include  "archive.h"
 #include  "curl.h"
 #include  "debug.h"
 #include  "library.h"
+
+bool
+	installing_pawncc = false;
 
 static char
 library_options_list(const char *title, const char **items,
@@ -73,8 +68,7 @@ pawncc_handle_termux_installation(void)
 	if (!sel)
 		return (0);
 
-	dogconfig.dog_garbage_access[DOG_GARBAGE_IN_INSTALLING_PAWNC] =
-	    DOG_GARBAGE_TRUE;
+	installing_pawncc = true;
 
 	if (sel == 'A' || sel == 'a') {
 		if (path_exists("pawncc-termux-311.zip"))
@@ -175,8 +169,7 @@ pawncc_handle_standard_installation(const char *platform)
 	snprintf(filename, sizeof(filename),
 	    "pawnc-%s-%s.%s", vernums[idx], platform, archive_ext);
 
-	dogconfig.dog_garbage_access[DOG_GARBAGE_IN_INSTALLING_PAWNC] =
-	    DOG_GARBAGE_TRUE;
+	installing_pawncc = true;
 
 	dog_download_file(url, filename);
 
@@ -188,8 +181,8 @@ dog_install_pawncc(const char *platform)
 {
 	minimal_debugging();
 
-	int	 stat_false =
-	    !dogconfig.dog_garbage_access[DOG_GARBAGE_SELECTION_STAT];
+	bool	 stat_false
+	    = !unit_selection_stat;
 
 	if (!platform) {
 		pr_error(stdout, "Platform parameter is NULL");
@@ -246,7 +239,8 @@ dog_install_server(const char *platform)
 			if (path_exists("omptmux.zip"))
 				remove("omptmux.zip");
 			dog_download_file(
-			    "https://github.com/novusr/omptmux/releases/download/v1.5.8.3079/open.mp-termux-aarch64.zip",
+			    "https://github.com/novusr/omptmux/"
+			    "releases/download/v1.5.8.3079/open.mp-termux-aarch64.zip",
 			    "omptmux.zip");
 		}
 		goto done;

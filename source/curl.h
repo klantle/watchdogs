@@ -1,7 +1,13 @@
+/*-
+ * Copyright (c) 2026 Watchdogs Team and contributors
+ * All rights reserved. under The 2-Clause BSD License
+ * See COPYING or https://opensource.org/license/bsd-2-clause
+ */
+
 #ifndef CURL_H
 #define CURL_H
 
-#include <curl/curl.h>
+#include "utils.h"
 
 struct buf {
 	    char *data;
@@ -65,6 +71,8 @@ static const SocialSite social_site_list[MAX_NUM_SITES] = {
 { NULL, NULL }
 };
 
+extern bool compiling_gamemode;
+
 void curl_verify_cacert_pem(CURL *curl);
 
 void buf_init(struct buf *b);
@@ -74,9 +82,6 @@ size_t write_callbacks(void *ptr, size_t size, size_t nmemb, void *userdata);
 void memory_struct_init(struct memory_struct *mem);
 void memory_struct_free(struct memory_struct *mem);
 size_t write_memory_callback(void *contents, size_t size, size_t nmemb, void *userp);
-
-int package_url_checking(const char *url, const char *github_token);
-int package_http_get_content(const char *url, const char *github_token, char **out_html);
 
 void tracker_discrepancy(const char *base,
                          char variations[][MAX_USERNAME_LEN],

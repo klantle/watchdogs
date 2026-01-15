@@ -1,3 +1,9 @@
+/*-
+ * Copyright (c) 2026 Watchdogs Team and contributors
+ * All rights reserved. under The 2-Clause BSD License
+ * See COPYING or https://opensource.org/license/bsd-2-clause
+ */
+
 #ifndef ENDPOINT_H
 #define ENDPOINT_H
 
@@ -38,7 +44,7 @@ void dog_stop_server_tasks(void);
 void dog_server_crash_check(void);
 void restore_server_config(void);
 
-void dog_exec_samp_server(const char *gamemode_arg, const char *server_bin);
-void dog_exec_omp_server(const char *gamemode_arg, const char *server_bin);
+void dog_exec_samp_server(char *gamemode_arg, const char *server_bin);
+void dog_exec_omp_server(char *gamemode_arg, const char *server_bin);
 
 #endif

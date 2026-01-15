@@ -3,18 +3,7 @@
  * All rights reserved. under The 2-Clause BSD License
  * See COPYING or https://opensource.org/license/bsd-2-clause
  */
-#include  <stdio.h>
-#include  <stdlib.h>
-#include  <stdbool.h>
-#include  <string.h>
-#include  <fcntl.h>
-#include  <sys/stat.h>
-#include  <errno.h>
 
-#include  <archive.h>
-#include  <archive_entry.h>
-
-#include  "extra.h"
 #include  "utils.h"
 #include  "archive.h"
 #include  "curl.h"
@@ -36,7 +25,7 @@ arch_extraction_path(const char *dest, const char *path,
 			snprintf(out, out_size, "%s", path);
 		} else {
 			snprintf(out, out_size, "%s" "%s" "%s",
-			    dest, __PATH_STR_SEP_LINUX, path);
+			    dest, _PATH_STR_SEP_POSIX, path);
 		}
 	}
 }
@@ -80,12 +69,10 @@ compress_to_archive(const char *archive_path,
 {
 	struct archive	*archive;
 	struct archive_entry *entry;
-	struct stat	 st;
 	char		 buffer[DOG_MORE_MAX_PATH];
-	int		 len;
+	size_t		 len;
 	int		 fd;
 	int		 ret = 0;
-	int		 archive_fd;
 	struct stat	 fd_stat;
 
 	archive = archive_write_new();
@@ -156,7 +143,7 @@ compress_to_archive(const char *archive_path,
 			continue;
 		}
 
-		if (!S_ISREG(fd_stat.st_mode)) {
+		if (!file_regular(archive_path)) {
 			if (S_ISDIR(fd_stat.st_mode)) {
 				close(fd);
 				ret = -2;
@@ -257,14 +244,14 @@ dog_path_recursive(struct archive *archive, const char *root, const char *path)
 	char			 full_path[DOG_MAX_PATH * 2];
 	int			 fd = -1;
 	struct stat		 fd_stat;
-	ssize_t			 read_len;
+	size_t			 read_len;
 	char			 buffer[DOG_MORE_MAX_PATH];
 	DIR			*dirp = NULL;
 	struct dirent		*dent;
 	char			 child_path[DOG_MAX_PATH];
 
 	snprintf(full_path, sizeof(full_path),
-	    "%s" "%s" "%s", root, __PATH_STR_SEP_LINUX, path);
+	    "%s" "%s" "%s", root, _PATH_STR_SEP_POSIX, path);
 
 #ifdef DOG_WINDOWS
 	if (stat(full_path, &path_stat) != 0) {
@@ -316,7 +303,7 @@ dog_path_recursive(struct archive *archive, const char *root, const char *path)
 			return (-1);
 		}
 
-		if (!S_ISREG(fd_stat.st_mode)) {
+		if (!file_regular(full_path)) {
 			pr_warning(stdout, "the %s is not a regular file!..",
 			    full_path);
 			minimal_debugging();
@@ -327,7 +314,7 @@ dog_path_recursive(struct archive *archive, const char *root, const char *path)
 		if (path_stat.st_ino != fd_stat.st_ino ||
 		    path_stat.st_dev != fd_stat.st_dev) {
 			pr_warning(stdout,
-			    "the %s changes during processing..: %s",
+			    "the %s changes during processing..",
 			    full_path);
 			minimal_debugging();
 			close(fd);
@@ -417,7 +404,7 @@ dog_path_recursive(struct archive *archive, const char *root, const char *path)
 
 			snprintf(child_path, sizeof(child_path),
 			    "%s" "%s" "%s",
-			    path, __PATH_STR_SEP_LINUX, dent->d_name);
+			    path, _PATH_STR_SEP_POSIX, dent->d_name);
 
 			if (dog_path_recursive(archive, root, child_path) != 0) {
 				closedir(dirp);
@@ -547,10 +534,10 @@ dog_extract_tar(const char *tar_path, const char *entry_dest)
 #endif
 		if (entry_dest != NULL && strlen(entry_dest) > 0) {
 			char	 entry_new_path[1024];
-			dog_mkdir(entry_dest);
+			dog_mkdir_recursive(entry_dest);
 			snprintf(entry_new_path, sizeof(entry_new_path),
 			    "%s" "%s" "%s", entry_dest,
-			    __PATH_STR_SEP_LINUX, entry_path);
+			    _PATH_STR_SEP_POSIX, entry_path);
 			archive_entry_set_pathname(entry, entry_new_path);
 		}
 
@@ -715,7 +702,7 @@ destroy_arch_dir(const char *filename)
         SHFILEOPSTRUCTA op;
         char path[DOG_PATH_MAX];
 
-        _ZERO_MEM_WIN32(&op, sizeof(op));
+        ZeroMemory(&op, sizeof(op));
         snprintf(path, sizeof(path), "%s%c%c", filename, '\0', '\0');
 
         op.wFunc = FO_DELETE;
@@ -738,7 +725,8 @@ destroy_arch_dir(const char *filename)
         }
         waitpid(pid, NULL, 0);
     } else {
-        unlink(filename);
+        int fd = open(filename, O_RDWR);
+		unlink(filename);
     }
 #endif
 }
@@ -753,58 +741,17 @@ dog_extract_archive(const char *filename, const char *dir)
 	    " Try Extracting %s archive file...\n", filename);
 	fflush(stdout);
 
-	char	*cache_folder = "cache";
+	char	*gkeep_folder = ".gitkeep";
 
 	if (strend(filename, ".tar.gz", true)) {
-		if (dogconfig.dog_garbage_access[DOG_GARBAGE_IN_INSTALLING] ==
-		    DOG_GARBAGE_TRUE)
-		{
-			if (dir_exists(cache_folder) != 0) {
-				dog_extract_tar(filename, "cache");
-			} else {
-				MKDIR(cache_folder);
-				dog_extract_tar(filename, "cache");
-			}
-		} else {
-			dog_extract_tar(filename, dir);
-		}
+		dog_extract_tar(filename, dir);
 	} else if (strend(filename, ".tar", true)) {
-		if (dogconfig.dog_garbage_access[DOG_GARBAGE_IN_INSTALLING] ==
-		    DOG_GARBAGE_TRUE)
-		{
-			if (dir_exists(cache_folder) != 0) {
-				dog_extract_tar(filename, "cache");
-			} else {
-				MKDIR(cache_folder);
-				dog_extract_tar(filename, "cache");
-			}
-		} else {
-			dog_extract_tar(filename, dir);
-		}
+		dog_extract_tar(filename, dir);
 	} else if (strend(filename, ".zip", true)) {
-		if (dogconfig.dog_garbage_access[DOG_GARBAGE_IN_INSTALLING] ==
-		    DOG_GARBAGE_TRUE)
-		{
-			if (dir_exists(cache_folder) != 0) {
-				dog_extract_tar(filename, "cache");
-			}
-			if (dir_exists(cache_folder) != 0) {
-				dog_extract_zip(filename, "cache");
-			} else {
-				MKDIR(cache_folder);
-				dog_extract_zip(filename, "cache");
-			}
-		} else {
-			dog_extract_zip(filename, dir);
-		}
+		dog_extract_zip(filename, dir);
 	} else {
 		pr_info(stdout, "unknown archive: %s\n", filename);
 	}
-
-	if (dogconfig.dog_garbage_access[DOG_GARBAGE_IN_INSTALLING] ==
-	    DOG_GARBAGE_TRUE)
-		dogconfig.dog_garbage_access[DOG_GARBAGE_IN_INSTALLING] =
-		    DOG_GARBAGE_ZERO;
 
 	return;
 }

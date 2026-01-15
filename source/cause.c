@@ -3,28 +3,13 @@
  * All rights reserved. under The 2-Clause BSD License
  * See COPYING or https://opensource.org/license/bsd-2-clause
  */
-#include  <stdio.h>
-#include  <stdlib.h>
-#include  <string.h>
-#include  <stdbool.h>
-#include  <unistd.h>
-#include  <limits.h>
 
 #include  "utils.h"
 #include  "units.h"
-#include  "extra.h"
 #include  "crypto.h"
 #include  "debug.h"
+#include  "replicate.h"
 #include  "cause.h"
-
-static
-  int
-  warning_count=0,error_count=0,header_size=0,code_size=0,data_size=0,
-  stack_size=0,total_size=0;
-static
-  char
-  compiler_line[DOG_MAX_PATH]={0},
-  compiler_ver[64]={0};
 
 extern causeExplanation ccs[];
 
@@ -34,210 +19,195 @@ static const char *dog_find_warn_err(const char *line)
         return NULL;
 
     size_t line_len = strlen(line);
-    if (line_len == 0 || line_len > DOG_MAX_PATH) {
+    if (line_len == 0 || line_len > DOG_MAX_PATH)
         return NULL;
-    }
 
     for (int cindex = 0; ccs[cindex].cs_t != NULL; ++cindex) {
-        if (ccs[cindex].cs_t == NULL || ccs[cindex].cs_i == NULL) {
+        if (!ccs[cindex].cs_t || !ccs[cindex].cs_i)
             continue;
-        }
 
         const char *found = strstr(line, ccs[cindex].cs_t);
-        if (found != NULL) {
+        if (found) {
             size_t pattern_len = strlen(ccs[cindex].cs_t);
-            if ((size_t)(found - line) + pattern_len <= line_len) {
+            if ((size_t)(found - line) + pattern_len <= line_len)
                 return ccs[cindex].cs_i;
-            }
         }
     }
-
     return NULL;
 }
 
-static void compiler_detailed(const char *dog_output,int debug,
-                       int warning_count,int error_count,const char *compiler_ver,
-                       int header_size,int code_size,int data_size,
-                       int stack_size,int total_size)
+static void compiler_detailed(const char *dog_output, int debug,
+                              int warning_count, int error_count, const char *compiler_ver,
+                              int header_size, int code_size, int data_size,
+                              int stack_size, int total_size)
 {
     char outbuf[DOG_MAX_PATH];
     int len;
-    
-    if (error_count<1&&header_size>=1&&total_size>=1) {
-        len = snprintf(outbuf, sizeof outbuf,
-            "Compilation Complete - OK! | " DOG_COL_CYAN "%d pass (warning) " DOG_COL_DEFAULT "| " DOG_COL_BLUE "%d fail (error)\n",
-            warning_count,error_count);
+
+    if (error_count < 1) {
+        len = snprintf(outbuf, sizeof(outbuf),
+                       "Compilation Complete - OK! | " DOG_COL_CYAN "%d pass (warning) " DOG_COL_DEFAULT
+                       "| " DOG_COL_BLUE "%d fail (error)\n",
+                       warning_count, error_count);
     } else {
-        len = snprintf(outbuf, sizeof outbuf,
-            "Compilation Complete - Fail :( | " DOG_COL_CYAN "%d pass (warning) " DOG_COL_DEFAULT "| " DOG_COL_BLUE "%d fail (error)\n",
-            warning_count,error_count);
+        len = snprintf(outbuf, sizeof(outbuf),
+                       "Compilation Complete - Fail :( | " DOG_COL_CYAN "%d pass (warning) " DOG_COL_DEFAULT
+                       "| " DOG_COL_BLUE "%d fail (error)\n",
+                       warning_count, error_count);
     }
-    
+
     if (len > 0)
-        fwrite(outbuf, 1, (size_t)len, stdout);
-    
-    fwrite("-----------------------------\n", 1, 30, stdout);
+        printf("%.*s", len, outbuf);
 
-    int amx_access=path_exists(dog_output);
-    if (amx_access&&debug!=0&&error_count<1&&header_size>=1&&total_size>=1) {
+    printf("-----------------------------\n");
 
-        CHMOD_FULL(dog_output);
-        
-        unsigned long hash=crypto_djb2_hash_file(dog_output);
+    if (path_exists(dog_output) && debug && error_count < 1 && header_size >= 1 && total_size >= 1) {
+        __set_default_access(dog_output);
+        unsigned long hash = crypto_djb2_hash_file(dog_output);
 
-        len = snprintf(outbuf, sizeof outbuf,
-            "Output: %s\n"
-            "Header : %dB  |  Total        : %dB\n"
-            "Code (static mem)   : %dB  |  hash (djb2)  : %#lx\n"
-            "Data (static mem)   : %dB\n"
-            "Stack (automatic)   : %dB\n",
-            dog_output,
-            header_size,
-            total_size,
-            code_size,
-            hash,
-            data_size,
-            stack_size
-        );
-
+        len = snprintf(outbuf, sizeof(outbuf),
+                       "Output: %s\nHeader : %dB  |  Total        : %dB\n"
+                       "Code (static mem)   : %dB  |  hash (djb2)  : %#lx\n"
+                       "Data (static mem)   : %dB\nStack (automatic)   : %dB\n",
+                       dog_output,
+                       header_size,
+                       total_size,
+                       code_size,
+                       hash,
+                       data_size,
+                       stack_size);
         if (len > 0)
-            fwrite(outbuf, 1, (size_t)len, stdout);
+            printf("%.*s", len, outbuf);
 
-        portable_stat_t st;
-        if (portable_stat(dog_output, &st)==0) {
-
-            len=snprintf(outbuf, sizeof outbuf,
-                "ino    : %llu   |  File   : %lluB\n"
-                "dev    : %llu\n"
-                "read   : %s   |  write  : %s\n"
-                "execute: %s   |  mode   : %020o\n"
-                "atime  : %llu\n"
-                "mtime  : %llu\n"
-                "ctime  : %llu\n",
-                (unsigned long long)st.st_ino,
-                (unsigned long long)st.st_size,
-                (unsigned long long)st.st_dev,
-                (st.st_mode & S_IRUSR) ? "Y" : "N",
-                (st.st_mode & S_IWUSR) ? "Y" : "N",
-                (st.st_mode & S_IXUSR) ? "Y" : "N",
-                st.st_mode,
-                (unsigned long long)st.st_latime,
-                (unsigned long long)st.st_lmtime,
-                (unsigned long long)st.st_mctime
-            );
-
+        dog_portable_stat_t st;
+        if (dog_portable_stat(dog_output, &st) == 0) {
+            len = snprintf(outbuf, sizeof(outbuf),
+                           "ino    : %llu   |  file   : %lluB\n"
+                           "dev    : %llu\n"
+                           "read   : %s   |  write  : %s\n"
+                           "execute: %s   |  mode   : %020o\n"
+                           "atime  : %llu\nmtime  : %llu\nctime  : %llu\n",
+                           (unsigned long long)st.st_ino,
+                           (unsigned long long)st.st_size,
+                           (unsigned long long)st.st_dev,
+                           (st.st_mode & S_IRUSR) ? "Y" : "N",
+                           (st.st_mode & S_IWUSR) ? "Y" : "N",
+                           (st.st_mode & S_IXUSR) ? "Y" : "N",
+                           st.st_mode,
+                           (unsigned long long)st.st_latime,
+                           (unsigned long long)st.st_lmtime,
+                           (unsigned long long)st.st_mctime);
             if (len > 0)
-                fwrite(outbuf, 1, (size_t)len, stdout);
+                printf("%.*s", len, outbuf);
         }
     }
 
-    fwrite("\n", 1, 1, stdout);
+    printf("\n");
 
-    len = snprintf(outbuf, sizeof outbuf,
-        "** Pawn Compiler %s - Copyright (c) 1997-2006, ITB CompuPhase\n",
-        compiler_ver
-    );
-    
+    len = snprintf(outbuf, sizeof(outbuf),
+                   "** Pawn Compiler %s - Copyright (c) 1997-2006, ITB CompuPhase\n",
+                   compiler_ver);
     if (len > 0)
-        fwrite(outbuf, 1, (size_t)len, stdout);
-        
-    return;
+        printf("%.*s", len, outbuf);
+
+    print_restore_color();
 }
 
-void cause_compiler_expl(const char *log_file,const char *dog_output,int debug)
+void cause_compiler_expl(const char *log_file, const char *dog_output, int debug)
 {
-  minimal_debugging();
+    minimal_debugging();
 
-  FILE *_log_file=fopen(log_file,"r");
-  if(!_log_file)
-    return;
+    FILE *_log_file = fopen(log_file, "r");
+    if (!_log_file)
+        return;
 
-  warning_count=0,error_count=0,
-  header_size=0,code_size=0,data_size=0,
-  stack_size=0,total_size=0;
+    long warning_count = 0, error_count = 0;
+    int header_size = 0, code_size = 0, data_size = 0, stack_size = 0, total_size = 0;
+    char compiler_line[DOG_MORE_MAX_PATH] = {0}, compiler_ver[64] = {0};
 
-  memset(compiler_line, 0, sizeof(compiler_line));
-  memset(compiler_ver, 0, sizeof(compiler_ver));
+    while (fgets(compiler_line, sizeof(compiler_line), _log_file)) {
 
-  while(fgets(compiler_line,sizeof(compiler_line),_log_file)) {
-    if(dog_strcase(compiler_line,"Warnings.") ||
-       dog_strcase(compiler_line,"Warning.") ||
-       dog_strcase(compiler_line,"Errors.") ||
-       dog_strcase(compiler_line,"Error."))
-      continue;
+        if (dog_strcase(compiler_line, "Warnings.") ||
+            dog_strcase(compiler_line, "Warning.") ||
+            dog_strcase(compiler_line, "Errors.") ||
+            dog_strcase(compiler_line, "Error."))
+            continue;
 
-    if(dog_strcase(compiler_line,"Header size:")) {
-      header_size=strtol(strchr(compiler_line,':')+1,NULL,10);
-      continue;
-    } else if(dog_strcase(compiler_line,"Code size:")) {
-      code_size=strtol(strchr(compiler_line,':')+1,NULL,10);
-      continue;
-    } else if(dog_strcase(compiler_line,"Data size:")) {
-      data_size=strtol(strchr(compiler_line,':')+1,NULL,10);
-      continue;
-    } else if(dog_strcase(compiler_line,"Stack/heap size:")) {
-      stack_size=strtol(strchr(compiler_line,':')+1,NULL,10);
-      continue;
-    } else if(dog_strcase(compiler_line,"Total requirements:")) {
-      total_size=strtol(strchr(compiler_line,':')+1,NULL,10);
-      continue;
-    } else if(dog_strcase(compiler_line,"Pawn Compiler ")) {
-      const char *p=strstr(compiler_line,"Pawn Compiler ");
-      if(p) sscanf(p,"Pawn Compiler %63s",compiler_ver);
-      continue;
+        if (dog_strcase(compiler_line, "Header size:")) {
+            header_size = strtol(strchr(compiler_line, ':') + 1, NULL, 10);
+            continue;
+        } else if (dog_strcase(compiler_line, "Code size:")) {
+            code_size = strtol(strchr(compiler_line, ':') + 1, NULL, 10);
+            continue;
+        } else if (dog_strcase(compiler_line, "Data size:")) {
+            data_size = strtol(strchr(compiler_line, ':') + 1, NULL, 10);
+            continue;
+        } else if (dog_strcase(compiler_line, "Stack/heap size:")) {
+            stack_size = strtol(strchr(compiler_line, ':') + 1, NULL, 10);
+            continue;
+        } else if (dog_strcase(compiler_line, "Total requirements:")) {
+            total_size = strtol(strchr(compiler_line, ':') + 1, NULL, 10);
+            continue;
+        } else if (dog_strcase(compiler_line, "Pawn Compiler ")) {
+            const char *p = strstr(compiler_line, "Pawn Compiler ");
+            if (p)
+                sscanf(p, "Pawn Compiler %63s", compiler_ver);
+            continue;
+        }
+
+        printf(DOG_COL_BWHITE "%s" DOG_COL_DEFAULT, compiler_line);
+        fflush(stdout);
+
+        if (dog_strcase(compiler_line, "warning"))
+            ++warning_count;
+        if (dog_strcase(compiler_line, "error"))
+            ++error_count;
+
+        const char *description = dog_find_warn_err(compiler_line);
+        if (description) {
+            const char *found = NULL;
+            int column = 0;
+            for (int i = 0; ccs[i].cs_t; ++i) {
+                if ((found = strstr(compiler_line, ccs[i].cs_t))) {
+                    column = found - compiler_line;
+                    break;
+                }
+            }
+            for (int i = 0; i < column; ++i)
+                putchar(' ');
+
+#ifdef DOG_LINUX
+            if (strfind(description, "file doesn't exist, insufficient permissions", true) == 1) {
+                pr_color(stdout, DOG_COL_CYAN, "^ %s" DOG_COL_YELLOW " See " DOG_COL_CYAN
+                                               ".watchdogs/help.txt | cat .watchdogs/help.txt\n",
+                         description);
+                if (path_exists(".watchdogs/help.txt") == 1)
+                    remove(".watchdogs/help.txt");
+                FILE *help = fopen(".watchdogs/help.txt", "w");
+                if (help) {
+                    fprintf(help, HELP_PICK1);
+                    fprintf(help, HELP_PICK2);
+                    fprintf(help, HELP_PICK3);
+                    fprintf(help, HELP_PICK4);
+                    fprintf(help, HELP_PICK5);
+                    fprintf(help, HELP_PICK6);
+                    fprintf(help, HELP_PICK8);
+                    fprintf(help, HELP_PICK9);
+                    fprintf(help, HELP_PICK01);
+                    fprintf(help, HELP_PICK02);
+                    fclose(help);
+                }
+                continue;
+            }
+#endif
+            pr_color(stdout, DOG_COL_CYAN, "^ %s \n", description);
+        }
     }
 
-    printf(DOG_COL_BWHITE);
-    fwrite(compiler_line,1,strlen(compiler_line),stdout);
-    printf(DOG_COL_DEFAULT);
-    fflush(stdout);
-
-    if(dog_strcase(compiler_line,"warning") != false)
-      ++warning_count;
-    if(dog_strcase(compiler_line,"error") != false)
-      ++error_count;
-
-    const char *description=dog_find_warn_err(compiler_line);
-    if(description) {
-      const char *found=NULL;
-      int column=0;
-      for(int i=0;ccs[i].cs_t;++i) {
-        if((found=strstr(compiler_line,ccs[i].cs_t))) {
-          column=found-compiler_line;
-          break;
-        }
-      }
-      for(int i=0;i<column;i++)
-        putchar(' ');
-      #ifdef DOG_LINUX
-      if (strfind(description,"file doesn't exist, insufficient permissions",true) == 1) {
-        pr_color(stdout,DOG_COL_CYAN,"^ %s" DOG_COL_YELLOW " See " DOG_COL_CYAN ".watchdogs/help.txt | cat .watchdogs/help.txt\n",description);
-        if (path_exists(".watchdogs/help.txt") == 1)
-            remove(".watchdogs/help.txt");
-        FILE *help = fopen(".watchdogs/help.txt", "w");
-        if (help) {
-            fprintf(help,HELP_PICK1);
-            fprintf(help,HELP_PICK2);
-            fprintf(help,HELP_PICK3);
-            fprintf(help,HELP_PICK4);
-            fprintf(help,HELP_PICK5);
-            fprintf(help,HELP_PICK6);
-            fprintf(help,HELP_PICK8);
-            fprintf(help,HELP_PICK9);
-            fprintf(help,HELP_PICK01);
-            fprintf(help,HELP_PICK02);
-            fclose(help);
-        }
-        continue;
-      }
-      #endif
-      pr_color(stdout,DOG_COL_CYAN,"^ %s \n",description);
-    }
-  }
-
-  fclose(_log_file);
-
-  compiler_detailed(dog_output,debug,warning_count,error_count,compiler_ver,header_size,code_size,data_size,stack_size,total_size);
+    fclose(_log_file);
+    compiler_detailed(dog_output, debug, warning_count, error_count,
+                      compiler_ver, header_size, code_size,
+                      data_size, stack_size, total_size);
 }
 
 causeExplanation ccs[] =

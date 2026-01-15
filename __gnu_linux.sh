@@ -7,7 +7,12 @@ if [ ! -d "download" ]; then
   mkdir "download"
 fi
 
-ls -a "download"
+
+if command -v tree >/dev/null 2>&1; then
+  tree "download"
+else
+  la -a "download"
+fi
 
 echo
 
@@ -31,7 +36,11 @@ echo
 rand=$(date +%s%N | tail -c 7)
 
 if ! command -v git >/dev/null 2>&1; then
-  echo "git not found! install first.."
+  echo "* git not found! install first.."
+  echo "** apt? apt install git"
+  echo "** dnf? dng install git"
+  echo "** pacman? pacman -S git"
+  echo "** zypper? zypper install git"
   exit
 fi
 
@@ -44,11 +53,13 @@ else
 fi
 
 if ! command -v make >/dev/null 2>&1; then
-  echo "make not found! install first.."
+  echo "* make not found! install first.."
+  echo "** apt? apt install make"
+  echo "** dnf? dng install make"
+  echo "** pacman? pacman -S make"
+  echo "** zypper? zypper install make"
   exit
 fi
-
-make
 
 if [ ! -f "/etc/ssl/certs/cacert.pem" ]; then
   if command -v sudo >/dev/null 2>&1; then
@@ -60,6 +71,4 @@ if [ ! -f "/etc/ssl/certs/cacert.pem" ]; then
   fi
 fi
 
-make linux
-chmod +x watchdogs &&
-./watchdogs
+make && make linux && chmod +x watchdogs && && clear && ./watchdogs

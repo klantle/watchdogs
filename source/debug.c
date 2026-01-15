@@ -4,27 +4,12 @@
  * See COPYING or https://opensource.org/license/bsd-2-clause
  */
 
-/* 
- * System header includes - essential C library headers for:
- * - I/O operations (stdio.h)
- * - Memory management and utility functions (stdlib.h)
- * - Time functions (time.h)
- * - File system status operations (sys/stat.h)
- * - Data types (sys/types.h)
- * - Signal handling (signal.h)
- */
-#include  <stdio.h>
-#include  <stdlib.h>
-#include  <time.h>
-#include  <sys/stat.h>
-#include  <sys/types.h>
-#include  <signal.h>
-
 /* Project-specific header includes for modular functionality */
-#include  "extra.h"      /* Additional utility functions */
 #include  "endpoint.h"   /* Network/communication endpoint handling */
 #include  "utils.h"      /* General utility functions */
 #include  "units.h"      /* Unit-related functionality */
+#include  "crypto.h"     /* For CRC32 init */
+#include  "compiler.h"   /* compiler_is_err */
 #include  "debug.h"      /* Debugging utilities and macros */
 
 /*
@@ -39,55 +24,52 @@
  * Returns: void
  */
 void unit_restore(void) {
+
         /* Create .watchdogs directory if it doesn't exist */
         if (dir_exists(".watchdogs") == 0)
             MKDIR(".watchdogs");
-
-        /* Remove crash detection file if it exists */
-        if (path_access(".watchdogs/crashdetect"))
-            remove(".watchdogs/crashdetect");
 
         /* Reset SIGINT (Ctrl+C) to default behavior */
         signal(SIGINT, SIG_DFL);
 
         /* Initialize system components in specific order */
-        dog_sef_restore();           /* Restore system error handling */
-        dog_toml_configs();          /* Load TOML configuration files */
+        dog_sef_path_revert();           /* Restore system error handling */
+        dog_configure_toml();          /* Load TOML configuration files */
         dog_stop_server_tasks();     /* Stop any running server tasks */
-        dog_history_init();          /* Initialize command history */
         
         /* Reset garbage */
         sigint_handler = 0;
-        dogconfig.dog_garbage_access[DOG_GARBAGE_SELECTION_STAT] = DOG_GARBAGE_ZERO;
+        compiler_is_err
+            = false;
+        unit_selection_stat
+            = false;
 }
 
 /*
  * Function: _unit_debugger
  * Purpose: Comprehensive debug information logger with two verbosity levels
  * Parameters:
- *   debug_hard - Verbosity level: 0 (normal) or 1 (detailed)
+ *   hard_debug - Verbosity level: 0 (normal) or 1 (detailed)
  *   function - Name of the calling function
- *   pretty_function - Demangled/pretty function name
  *   file - Source file name
  *   line - Line number in source file
  * Returns: void
  */
-void _unit_debugger(int debug_hard,
+void _unit_debugger(int hard_debug,
             const char *function,
-            const char *pretty_function,
             const char *file, int line) {
 
         /*
          * First-time initialization section
          */
-        if (dogconfig.dog_garbage_access[DOG_GARBAGE_UNIT] == DOG_GARBAGE_ZERO)
-        {
+        static bool unit_initial = false;
+        if (!unit_initial) {
+            unit_initial = true;
+
             /* Initialize console and clear history */
             dog_console_title(NULL);
-            dog_history_clear();
-            
-            /* Set garbage to true|1 */
-            dogconfig.dog_garbage_access[DOG_GARBAGE_UNIT] = DOG_GARBAGE_TRUE;
+            clear_history();
+            crypto_crc32_init_table();
                 
 #ifdef DOG_WINDOWS
             /* Windows-specific console initialization for ANSI escape codes */
@@ -117,11 +99,10 @@ void _unit_debugger(int debug_hard,
         return;
 #endif
 
-        /* Detailed debug output (debug_hard == 1) */
-        if (debug_hard == 1) {
+        /* Detailed debug output (hard_debug == 1) */
+        if (hard_debug == 1) {
             pr_color(stdout, DOG_COL_YELLOW, "-DEBUGGER ");
             printf("[function: %s | "
-                "pretty function: %s | "
                 "line: %d | "
                 "file: %s | "
                 "date: %s | "
@@ -144,7 +125,7 @@ void _unit_debugger(int debug_hard,
                 "toml github tokens: %s | "
                 "toml aio opt: %s | "
                 "toml aio packages: %s]\n",
-                    function, pretty_function,
+                    function,
                     line, file,
                     __DATE__, __TIME__,
                     __TIMESTAMP__,
@@ -165,8 +146,8 @@ void _unit_debugger(int debug_hard,
                     dogconfig.dog_os_type, dogconfig.dog_ptr_samp,
                     dogconfig.dog_ptr_omp, dogconfig.dog_is_samp, dogconfig.dog_is_omp,
                     dogconfig.dog_toml_proj_input, dogconfig.dog_toml_proj_output,
-                    dogconfig.dog_toml_binary, dogconfig.dog_toml_config, dogconfig.dog_toml_logs,
-                    dogconfig.dog_toml_github_tokens, dogconfig.dog_toml_aio_opt, dogconfig.dog_toml_packages);
+                    dogconfig.dog_toml_server_binary, dogconfig.dog_toml_server_config, dogconfig.dog_toml_server_logs,
+                    dogconfig.dog_toml_github_tokens, dogconfig.dog_toml_all_flags, dogconfig.dog_toml_packages);
                     
             /* Additional system information for detailed debugging */
             printf("STDC: %d\n", __STDC__);                     /* C standard compliance */
@@ -219,11 +200,10 @@ void _unit_debugger(int debug_hard,
             printf("FMA: Supported\n");
 #endif
             
-        } else if (debug_hard == 0) {
+        } else if (hard_debug == 0) {
             /* Normal debug output - less verbose than detailed mode */
             pr_color(stdout, DOG_COL_YELLOW, "-DEBUGGER ");
             printf("[function: %s | "
-                "pretty function: %s | "
                 "line: %d | "
                 "file: %s | "
                 "date: %s | "
@@ -244,7 +224,7 @@ void _unit_debugger(int debug_hard,
                 "toml configs: %s | "
                 "toml logs: %s | "
                 "toml github tokens: %s]\n",
-                    function, pretty_function,
+                    function,
                     line, file,
                     __DATE__, __TIME__,
                     __TIMESTAMP__,
@@ -265,7 +245,7 @@ void _unit_debugger(int debug_hard,
                     dogconfig.dog_os_type, dogconfig.dog_ptr_samp,
                     dogconfig.dog_ptr_omp, dogconfig.dog_is_samp, dogconfig.dog_is_omp,
                     dogconfig.dog_toml_proj_input, dogconfig.dog_toml_proj_output,
-                    dogconfig.dog_toml_binary, dogconfig.dog_toml_config, dogconfig.dog_toml_logs,
+                    dogconfig.dog_toml_server_binary, dogconfig.dog_toml_server_config, dogconfig.dog_toml_server_logs,
                     dogconfig.dog_toml_github_tokens);
         }
 
@@ -280,13 +260,11 @@ void _unit_debugger(int debug_hard,
  * Purpose: Lightweight debug information logger with basic system info
  * Parameters:
  *   function - Name of the calling function
- *   pretty_function - Demangled/pretty function name
  *   file - Source file name
  *   line - Line number in source file
  * Returns: void
  */
 void _minimal_debugger(const char *function,
-            const char *pretty_function,
             const char *file, int line) {
 
 #if ! defined (_DBG_PRINT)
@@ -297,7 +275,6 @@ void _minimal_debugger(const char *function,
         /* Print minimal debug information with colored output */
         pr_color(stdout, DOG_COL_YELLOW, "-DEBUGGER ");
         printf("[function: %s | "
-                   "pretty function: %s | "
                    "line: %d | "
                    "file: %s | "
                    "date: %s | "
@@ -307,7 +284,7 @@ void _minimal_debugger(const char *function,
                    "C version: %s | "
                    "compiler version: %d | "
                    "architecture: %s]\n",
-                function, pretty_function,
+                function,
                 line, file,
                 __DATE__, __TIME__,
                 __TIMESTAMP__,

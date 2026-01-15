@@ -1,36 +1,20 @@
+/*-
+ * Copyright (c) 2026 Watchdogs Team and contributors
+ * All rights reserved. under The 2-Clause BSD License
+ * See COPYING or https://opensource.org/license/bsd-2-clause
+ */
+
 #ifndef COMPILER_H
 #define COMPILER_H
 
-#include <stdbool.h>
-
 #include "utils.h"
 
-enum {
-    __compiler_rate_zero = 0,
-    __compiler_rate_aio_repo = 7
-};
-
-#define LINUX_LIB_PATH "/usr/local/lib"
-#define LINUX_LIB32_PATH "/usr/local/lib32"
-#define TMUX_LIB_PATH "/data/data/com.termux/files/usr/lib"
-#define TMUX_LIB_LOC_PATH "/data/data/com.termux/files/usr/local/lib"
-#define TMUX_LIB_ARM64_PATH "/data/data/com.termux/arm64/usr/lib"
-#define TMUX_LIB_ARM32_PATH "/data/data/com.termux/arm32/usr/lib"
-#define TMUX_LIB_AMD64_PATH "/data/data/com.termux/amd64/usr/lib"
-#define TMUX_LIB_AMD32_PATH "/data/data/com.termux/amd32/usr/lib"
-
-#define COMPILER_WHITESPACE " "
-#define COMPILER_PLACEHOLDER_STRING "%s"
-
 #ifndef DOG_WINDOWS
-    extern char **environ;
-    #define POSIX_TIMEOUT 0x1000
-#else
-    #define WIN32_TIMEOUT 0x3E8000
+extern char **environ;
 #endif
 
 typedef struct {
-    char container_output        [DOG_PATH_MAX];
+    char *container_output                     ;
     char compiler_direct_path    [DOG_PATH_MAX];
     char compiler_size_file_name [DOG_PATH_MAX];
     char compiler_size_input_path[DOG_PATH_MAX];
@@ -52,12 +36,19 @@ typedef struct {
     size_t len;
 } CompilerOption;
 
+typedef struct {
+    const char *full_name;
+    const char *short_name;
+    bool *flag_ptr;
+} OptionMap;
+
 extern const CompilerOption object_opt[];
 
-extern char all_include_paths[DOG_PATH_MAX * 2];
-extern bool compilr_with_debugging;
-extern bool compiler_debugging;
-extern bool has_debug;
+extern bool compiler_is_err;
+extern bool compiler_installing_stdlib;
+extern char *compiler_full_includes;
+extern bool compiler_have_debug_flag;
+extern bool compiler_dog_flag_debug;
 
 int
 dog_exec_compiler(const char *arg,

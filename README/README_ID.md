@@ -1,4 +1,6 @@
-## Linux
+![watchdogs](https://raw.githubusercontent.com/gskeleton/dogdog/refs/heads/main/image.png)
+
+## GNU/Linux
 
 * GNU/wget
 
@@ -10,6 +12,12 @@ wget -O install.sh https://github.com/gskeleton/watchdogs/raw/refs/heads/main/__
 
 ```yaml
 curl -L -o install.sh https://github.com/gskeleton/watchdogs/raw/refs/heads/main/__gnu_linux.sh && chmod +x install.sh && ./install.sh
+```
+
+* aria2
+
+```yaml
+aria2c -o install.sh https://github.com/gskeleton/watchdogs/raw/refs/heads/main/__gnu_linux.sh && chmod +x install.sh && ./install.sh
 ```
 
 ---
@@ -27,34 +35,29 @@ curl -L -o install.sh https://github.com/gskeleton/watchdogs/raw/refs/heads/main
 
 3. **Pertama kali, jalankan perintah berikut di Termux:**
 
-```yaml
-curl -L -o install.sh https://github.com/gskeleton/watchdogs/raw/refs/heads/main/__termux.sh && chmod +x install.sh && ./install.sh
-```
-
-4. **Jika muncul prompt seperti berikut (simulasi):**
+* GNU/wget
 
 ```yaml
-Enter the path you want to switch to location in storage/downloads
-  ^ contoh: my_folder my_project my_server
-  ^ nama folder untuk instalasi; jika belum ada, tidak masalah
-  ^ tekan Enter jika ingin meng-install watchdogs di home (disarankan)
+apt update && apt upgrade && apt install wget && wget -O install.sh https://github.com/gskeleton/watchdogs/raw/refs/heads/main/__termux.sh && chmod +x install.sh && ./install.sh
 ```
 
-> **Tekan Enter tanpa mengetik apa pun.**
+* cURL
+
+```yaml
+apt update && apt upgrade && apt install curl && curl -L -o install.sh https://github.com/gskeleton/watchdogs/raw/refs/heads/main/__termux.sh && chmod +x install.sh && ./install.sh
+```
+
+* aria2
+
+```yaml
+apt update && apt upgrade && apt install aria2 && aria2c -o install.sh https://github.com/gskeleton/watchdogs/raw/refs/heads/main/__termux.sh && chmod +x install.sh && ./install.sh
+```
+
 > Jika ada pertanyaan lain (misalnya pemilihan mirror Termux), pilih yang paling atas atau **tekan Enter saja**.
 
-5. **Indikasi Watchdogs berhasil terpasang:**
+4. **Indikasi Watchdogs berhasil terpasang:**
 
-```diff
-  \/%#z.       \/.%#z./       ,z#%\/
-   \X##k      /X#####X\      d##X/
-    \888\    /888/ \888\    /888/
-     `v88;  ;88v'   `v88;  ;88v'
-       \77xx77/       \77xx77/
-        `::::'         `::::'
-Type "help" for more information.
-> 
-```
+![watchdogs](https://raw.githubusercontent.com/gskeleton/dogdog/refs/heads/main/indicate.png)
 
 > **Gunakan perintah `pawncc` untuk menyiapkan compiler (simulasi):**
 
@@ -82,14 +85,17 @@ Type "help" for more information.
 >> I:Congratulations! - Done.
 ```
 
-> Jika melihat simbol `>` berwarna cyan/abu-abu/biru (tampilan bisa berbeda), **cukup tekan Enter** kecuali diminta jawaban tertentu (misalnya apply pawncc = yes).
+---
 
-> Untuk langkah kompilasi, pelajari:
-> [https://github.com/gskeleton/watchdogs/blob/main/README/README_ID.md#usage-guide](https://github.com/gskeleton/watchdogs/blob/main/README/README_ID.md#usage-guide)
+![watchdogs](https://raw.githubusercontent.com/gskeleton/dogdog/refs/heads/main/pawncc_install.png)
+
+> Jika melihat simbol `?` (-openssl.cnf (Y/I/N/O/D/Z [default=N] ?), **cukup tekan Enter** kecuali diminta jawaban tertentu (misalnya apply pawncc = yes).
+
+> Untuk langkah kompilasi, pelajari: [here](#compilation-commands--with-parent-directory-in-termux)
 
 ---
 
-## Native
+## Windows Native
 
 > **Build untuk Windows?** Gunakan **MSYS2** (disarankan).
 
@@ -103,7 +109,7 @@ Type "help" for more information.
 2. **Buka Command Prompt Windows, jalankan:**
 
 ```yaml
-powershell -Command "Invoke-WebRequest 'https://raw.githubusercontent.com/gskeleton/watchdogs/refs/heads/main/__win.cmd' -OutFile 'install.cmd'; .\install.cmd"
+powershell -Command "Invoke-WebRequest 'https://raw.githubusercontent.com/gskeleton/watchdogs/refs/heads/main/__windows.cmd' -OutFile 'install.cmd'; .\install.cmd"
 ```
 
 ---
@@ -148,6 +154,14 @@ bt full      # Backtrace lengkap (fungsi, variabel, argumen)
 
 ---
 
+## Executing with Args
+
+```yaml
+./watchdogs command
+./watchdogs command args
+./watchdogs help compile
+```
+
 ## Command Alias
 
 **Default (jika berada di root directory):**
@@ -164,6 +178,23 @@ watchdogs
 ```
 
 ---
+
+## Compilation
+
+> Kamu tidak membutuhkan pemasangan Watchdogs di folder GameMode secara khusus atau di area C: Watchdogs bukan tools umum yang menggunakan interaksi semacam itu. Kamu hanya perlu memastikan folder berisi binary watchdogs.XX seperti watchdogs.win atau juga watchdogs.tmux berada di folder yang ada di Downloads dan disela sela itu folder proyek'mu berada di folder yang ada di Downloads juga.
+```yml
+# gambaran seperti berikut:
+Downloads
+├── dog
+│   ├── watchdogs
+└── myproj
+    └── gamemodes
+        └── proj.p
+        # ^ maka kamu bisa menjalankan watchdogs yang ada pada folder dog/
+        # ^ dan kamu hanya perlu mengkompilasinya dengan simbol parent seperti berikut
+        # ^ compile ../myproj/gamemodes/proj.p
+        # ^ lokasi ini hanya gambaran.
+```
 
 ## Compilation Commands – With Parent Directory in Termux
 
@@ -188,6 +219,7 @@ compile ../storage/downloads/parent/pain.pwn
 ```yaml
 # Kompilasi default
 compile .
+compile.
 ```
 
 > **Compile dengan path spesifik**
@@ -201,7 +233,7 @@ compile path/to/server.pwn
 
 ```yaml
 compile ../path/to/project/server.pwn
-# -: -i/path/to/path/pawno -i/path/to/path/qawno -i/path/to/path/gamemodes
+# otomatis: -i/path/to/path/pawno -i/path/to/path/qawno -i/path/to/path/gamemodes
 ```
 
 ---
@@ -210,7 +242,7 @@ compile ../path/to/project/server.pwn
 
 * **Algorithm**
 
-```diff
+```
 --------------------     --------------------------                -
 |                  |     |                        |                -
 |       ARGS       | --> |        FILTERING       |                -
@@ -236,6 +268,7 @@ compile ../path/to/project/server.pwn
 
 ```yaml
 running .
+running.
 ```
 
 **Menjalankan server dengan gamemode tertentu:**
@@ -247,7 +280,8 @@ running server
 **Compile dan jalankan sekaligus:**
 
 ```yaml
-compiles
+compiles .
+compiles.
 ```
 
 **Compile dan jalankan dengan path tertentu:**
@@ -260,7 +294,7 @@ compiles server
 
 ## Dependency Management
 
-```diff
+```
 --------------------     --------------------------                -
 |                  |     |                        |                -
 |     BASE URL     | --> |      URL CHECKING      |                -
@@ -286,6 +320,7 @@ compiles server
 
 ```yaml
 replicate .
+replicate.
 ```
 
 **Install repository tertentu:**

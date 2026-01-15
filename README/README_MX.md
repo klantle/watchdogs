@@ -1,4 +1,6 @@
-## Linux
+![watchdogs](https://raw.githubusercontent.com/gskeleton/dogdog/refs/heads/main/image.png)
+
+## GNU/Linux
 
 * GNU/wget
 
@@ -12,145 +14,157 @@ wget -O install.sh https://github.com/gskeleton/watchdogs/raw/refs/heads/main/__
 curl -L -o install.sh https://github.com/gskeleton/watchdogs/raw/refs/heads/main/__gnu_linux.sh && chmod +x install.sh && ./install.sh
 ```
 
+* aria2
+
+```yaml
+aria2c -o install.sh https://github.com/gskeleton/watchdogs/raw/refs/heads/main/__gnu_linux.sh && chmod +x install.sh && ./install.sh
+```
+
 ---
 
 ## Termux
 
 1. **Descarga Termux desde GitHub**
 
-   * Android 7 o superior:
+   * Android 7 y superior:
      [https://github.com/termux/termux-app/releases/download/v0.119.0-beta.3/termux-app_v0.119.0-beta.3+apt-android-7-github-debug_universal.apk](https://github.com/termux/termux-app/releases/download/v0.119.0-beta.3/termux-app_v0.119.0-beta.3+apt-android-7-github-debug_universal.apk)
    * Android 5/6:
      [https://github.com/termux/termux-app/releases/download/v0.119.0-beta.3/termux-app_v0.119.0-beta.3+apt-android-5-github-debug_universal.apk](https://github.com/termux/termux-app/releases/download/v0.119.0-beta.3/termux-app_v0.119.0-beta.3+apt-android-5-github-debug_universal.apk)
 
-2. **Instala el archivo .apk descargado y ejecuta Termux.**
+2. **Instala el archivo .apk descargado y luego ejecuta Termux.**
 
-3. **Primero, ejecuta el siguiente comando en Termux:**
+3. **La primera vez, ejecuta el siguiente comando en Termux:**
 
-```yaml
-curl -L -o install.sh https://github.com/gskeleton/watchdogs/raw/refs/heads/main/__termux.sh && chmod +x install.sh && ./install.sh
-```
-
-4. **Si aparece un prompt como el siguiente (simulación):**
+* GNU/wget
 
 ```yaml
-Enter the path you want to switch to location in storage/downloads
-  ^ ejemplo: my_folder my_project my_server
-  ^ nombre de carpeta para la instalación; si no existe, no hay problema
-  ^ presiona Enter si deseas instalar watchdogs en home (recomendado)
+apt update && apt upgrade && apt install wget && wget -O install.sh https://github.com/gskeleton/watchdogs/raw/refs/heads/main/__termux.sh && chmod +x install.sh && ./install.sh
 ```
 
-> **Presiona Enter sin escribir nada.**
-> Si aparecen otras preguntas (como selección de mirror de Termux), elige la primera opción o **solo presiona Enter**.
+* cURL
 
-5. **Indicador de que Watchdogs se instaló correctamente:**
-
-```diff
-  \/%#z.       \/.%#z./       ,z#%\/
-   \X##k      /X#####X\      d##X/
-    \888\    /888/ \888\    /888/
-     `v88;  ;88v'   `v88;  ;88v'
-       \77xx77/       \77xx77/
-        `::::'         `::::'
-Type "help" for more information.
-> 
+```yaml
+apt update && apt upgrade && apt install curl && curl -L -o install.sh https://github.com/gskeleton/watchdogs/raw/refs/heads/main/__termux.sh && chmod +x install.sh && ./install.sh
 ```
 
-> **Usa el comando `pawncc` para preparar el compilador (simulación):**
+* aria2
+
+```yaml
+apt update && apt upgrade && apt install aria2 && aria2c -o install.sh https://github.com/gskeleton/watchdogs/raw/refs/heads/main/__termux.sh && chmod +x install.sh && ./install.sh
+```
+
+> Si hay otras preguntas (ej. selección de mirror de Termux), elige el de arriba o **solo presiona Enter**.
+
+4. **Indicación de que Watchdogs se instaló con éxito:**
+
+![watchdogs](https://raw.githubusercontent.com/gskeleton/dogdog/refs/heads/main/indicate.png)
+
+> **Usa el comando `pawncc` para configurar el compilador (simulación):**
 
 ```yaml
 > pawncc
-== Select a Platform ==
+== Selecciona una Plataforma ==
   [l] Linux
   [w] Windows
   [t] Termux
-==> t # selecciona t [termux]
-== Select PawnCC Version ==
+==> t # elige t [termux]
+== Selecciona Versión de PawnCC ==
   A) Pawncc 3.10.11
   B) Pawncc 3.10.10
   C) Pawncc 3.10.9
   D) Pawncc 3.10.8
   E) Pawncc 3.10.7
-> a # selecciona la versión del compilador
-* Try Downloading ? * Enable HTTP debugging? (y/n): n
- Try Extracting ? archive file...
-==> Remove archive ?? (y/n) > n # opcional - eliminar el archivo más tarde
-==> Apply pawncc?
-   answer (y/n) > y # aplicar pawncc al root (instalar en la carpeta pawno)
->> I:moved without sudo: '?' -> '?'
->> I:moved without sudo: '?' -> '?'
->> I:Congratulations! - Done.
+> a # elige versión del compilador
+* ¿Intentar Descargar? * ¿Activar depuración HTTP? (s/n): n
+ ¿Intentar Extraer? archivo...
+==> ¿Eliminar archivo comprimido?? (s/n) > n # opcional - eliminar archivo después
+==> ¿Aplicar pawncc?
+   respuesta (s/n) > s # instalar pawncc en la raíz (carpeta pawno)
+>> I:movido sin sudo: '?' -> '?'
+>> I:movido sin sudo: '?' -> '?'
+>> I:¡Felicidades! - Listo.
 ```
-
-> Si ves el símbolo `>` en color cyan/gris/azul (puede variar según el tema), **simplemente presiona Enter**, excepto cuando se solicite una respuesta específica (por ejemplo: apply pawncc = yes).
-
-> Para los pasos de compilación, revisa:
-> [https://github.com/gskeleton/watchdogs/blob/main/README/README_ID.md#usage-guide](https://github.com/gskeleton/watchdogs/blob/main/README/README_ID.md#usage-guide)
 
 ---
 
-## Native
+![watchdogs](https://raw.githubusercontent.com/gskeleton/dogdog/refs/heads/main/pawncc_install.png)
 
-> **¿Compilar para Windows?** Usa **MSYS2** (recomendado).
+> Si ves el símbolo `?` (-openssl.cnf (Y/I/N/O/D/Z [default=N] ?), **solo presiona Enter** a menos que se solicite una respuesta específica (ej. apply pawncc = yes).
+
+> Para los pasos de compilación, aprende: [here](#compilation-commands--with-parent-directory-in-termux)
+
+---
+
+## Windows Nativo
+
+> **¿Construir para Windows?** Usa **MSYS2** (recomendado).
 
 1. **Instala Visual C++ Redistributable Runtimes (obligatorio para pawncc)**
 
    * Visita: [https://www.techpowerup.com/download/visual-c-redistributable-runtime-package-all-in-one/](https://www.techpowerup.com/download/visual-c-redistributable-runtime-package-all-in-one/)
    * Haz clic en **Download**
-   * Extrae el archivo
+   * Extrae el archivo comprimido
    * Ejecuta `install_all.bat`
 
-2. **Abre el Command Prompt de Windows y ejecuta:**
+2. **Abre el Símbolo del sistema de Windows, ejecuta:**
 
 ```yaml
-powershell -Command "Invoke-WebRequest 'https://raw.githubusercontent.com/gskeleton/watchdogs/refs/heads/main/__win.cmd' -OutFile 'install.cmd'; .\install.cmd"
+powershell -Command "Invoke-WebRequest 'https://raw.githubusercontent.com/gskeleton/watchdogs/refs/heads/main/__windows.cmd' -OutFile 'install.cmd'; .\install.cmd"
 ```
 
 ---
 
-## Make Command Reference
+## Referencia de Comandos Make
 
 ```yaml
-make                # Instalar librerías y compilar
-make linux          # Compilar para Linux
-make windows        # Compilar para Windows
-make termux         # Compilar para Termux
-make clean          # Limpiar archivos de compilación
-make debug          # Compilar en modo debug (Linux)
-make debug-termux   # Compilar en modo debug (Termux)
-make windows-debug  # Compilar en modo debug (Windows)
+make                # Instalar biblioteca y construir
+make linux          # Construir para Linux
+make windows        # Construir para Windows
+make termux         # Construir para Termux
+make clean          # Limpiar resultados de construcción
+make debug          # Construir con modo depuración (Linux)
+make debug-termux   # Construir con modo depuración (Termux)
+make windows-debug  # Construir con modo depuración (Windows)
 ```
 
 ---
 
-## GNU Debugger (GDB)
+## Depurador GNU (GDB)
 
 ```yaml
-# Paso 1 - Iniciar el depurador (GDB) con el programa
-# Elige el ejecutable correcto según la plataforma:
+# Paso 1 - Ejecuta el depurador (GDB) con el programa
+# Elige el ejecutable según la plataforma:
 gdb ./watchdogs.debug        # Para Linux
 gdb ./watchdogs.debug.tmux   # Para Termux (Android)
 gdb ./watchdogs.debug.win    # Para Windows (si usas GDB)
 
-# Paso 2 - Ejecutar el programa dentro de GDB
-# El programa se ejecuta bajo el control del depurador
-run                           # escribe 'run' y presiona Enter
+# Paso 2 - Ejecuta el programa dentro de GDB
+# El programa se ejecuta bajo control del depurador
+run                           # escribe 'run' luego Enter
 
-# Paso 3 - Manejo de crashes o interrupciones
-# Si el programa falla (por ejemplo, segmentation fault) o se detiene manualmente (Ctrl+C),
-# GDB detendrá la ejecución y mostrará el prompt.
+# Paso 3 - Manejar caídas o interrupciones
+# Si el programa se cae (ej. segmentation fault) o se detiene manualmente (Ctrl+C),
+# GDB detendrá la ejecución y mostrará un mensaje.
 
-# Paso 4 - Revisar el estado del programa con backtrace
-# Backtrace muestra la pila de llamadas en el punto del fallo.
+# Paso 4 - Revisa el estado del programa con backtrace
+# Backtrace muestra la secuencia de llamadas de funciones al momento del fallo.
 bt           # Backtrace básico (nombres de funciones)
-bt full      # Backtrace completo (funciones, variables y argumentos)
+bt full      # Backtrace completo (funciones, variables, argumentos)
 ```
 
 ---
 
-## Command Alias
+## Ejecución con argumentos
 
-**Por defecto (si estás en el directorio root):**
+```yaml
+./watchdogs command
+./watchdogs command args
+./watchdogs help compile
+```
+
+## Alias de Comandos
+
+**Por defecto (si estás en el directorio raíz):**
 
 ```yaml
 echo "alias watchdogs='./watchdogs'" >> ~/.bashrc
@@ -165,15 +179,32 @@ watchdogs
 
 ---
 
-## Compilation Commands – With Parent Directory in Termux
+## Compilación
+
+> No necesitas instalar Watchdogs específicamente en la carpeta GameMode o en el área C:; Watchdogs no es una herramienta general que use ese tipo de interacción. Solo necesitas asegurarte de que la carpeta que contiene el binario watchdogs.XX como watchdogs.win o watchdogs.tmux esté en una carpeta dentro de Downloads, y tu carpeta de proyecto también esté en una carpeta dentro de Downloads.
+```yml
+# ilustración como sigue:
+Downloads
+├── dog
+│   ├── watchdogs
+└── myproj
+    └── gamemodes
+        └── proj.p
+        # ^ entonces puedes ejecutar el watchdogs que está en la carpeta dog/
+        # ^ y solo necesitas compilarlo usando el símbolo de directorio padre como sigue
+        # ^ compile ../myproj/gamemodes/proj.p
+        # ^ esta ubicación es solo una ilustración.
+```
+
+## Comandos de Compilación – Con Directorio Padre en Termux
 
 ```yaml
-compile ../storage/downloads/_GAMEMODE_FOLDER_NAME_/gamemodes/_PAWN_FILE_NAME_.pwn
+compile ../storage/downloads/_NOMBRE_CARPETA_GAMEMODE_/gamemodes/_NOMBRE_ARCHIVO_PAWN_.pwn
 ```
 
 **Ejemplo:**
-Tengo una carpeta de gamemode llamada `parent` en Downloads (usando ZArchiver), y el archivo principal `pain.pwn` está dentro de `gamemodes/`.
-Entonces el path que se usa es:
+Tengo una carpeta de gamemode llamada `parent` en Downloads (vía ZArchiver), y el archivo principal `pain.pwn` está dentro de `gamemodes/`.
+Entonces la ruta usada es:
 
 ```yaml
 compile ../storage/downloads/parent/pain.pwn
@@ -181,13 +212,14 @@ compile ../storage/downloads/parent/pain.pwn
 
 ---
 
-## Compilation Commands – General
+## Comandos de Compilación – Generales
 
 > **Compilar `server.pwn`:**
 
 ```yaml
 # Compilación por defecto
 compile .
+compile.
 ```
 
 > **Compilar con una ruta específica**
@@ -197,57 +229,59 @@ compile server.pwn
 compile path/to/server.pwn
 ```
 
-> **Compilar con ubicación padre (include path automático)**
+> **Compilar con ubicación padre (ruta de include automática)**
 
 ```yaml
 compile ../path/to/project/server.pwn
-# -: -i/path/to/path/pawno -i/path/to/path/qawno -i/path/to/path/gamemodes
+# automáticamente: -i/path/to/path/pawno -i/path/to/path/qawno -i/path/to/path/gamemodes
 ```
 
 ---
 
-## Server Management
+## Gestión del Servidor
 
-* **Algorithm**
+* **Algoritmo**
 
-```diff
+```
 --------------------     --------------------------                -
 |                  |     |                        |                -
-|       ARGS       | --> |        FILTERING       |                -
+|       ARGUMENTOS | --> |        FILTRADO        |                -
 |                  |     |                        |                -
 --------------------     --------------------------                -
                                      |
                                      v
 ---------------------    --------------------------                -
 |                   |    |                        |                -
-|  LOGGING OUTPUT   |    |   EXIST FILE VALIDATE  |                -
-|                   |    |                        |                -
+|  REGISTRO SALIDA  |    |  VALIDAR ARCHIVO       |                -
+|                   |    |      EXISTENTE         |                -
 ---------------------    --------------------------                -
          ^                           |
          |                           v
 --------------------     --------------------------                -
 |                  |     |                        |                -
-|  RUNNING BINARY  | <-- |     EDITING CONFIG     |                -
-|                  |     |    if args is exist    |                -
+|  EJECUTAR BINARIO| <-- |  EDITAR CONFIGURACIÓN  |                -
+|                  |     |   si existen argumentos|                -
 --------------------     --------------------------                -
 ```
 
-**Iniciar el servidor con el gamemode por defecto:**
+**Ejecutar el servidor con el gamemode por defecto:**
 
 ```yaml
 running .
+running.
 ```
 
-**Iniciar el servidor con un gamemode específico:**
+**Ejecutar el servidor con un gamemode específico:**
 
 ```yaml
 running server
 ```
 
-**Compilar y ejecutar en un solo comando:**
+**Compilar y ejecutar al mismo tiempo:**
 
 ```yaml
-compiles
+compiles .
+compiles.
 ```
 
 **Compilar y ejecutar con una ruta específica:**
@@ -258,36 +292,35 @@ compiles server
 
 ---
 
-## Dependency Management
+## Gestión de Dependencias
 
-* **Algorithm**
-
-```diff
+```
 --------------------     --------------------------                -
 |                  |     |                        |                -
-|     BASE URL     | --> |      URL CHECKING      |                -
+|   URL BASE       | --> |      VERIFICAR URL     |                -
 |                  |     |                        |                -
 --------------------     --------------------------                -
                                     |
                                     v
 ---------------------    --------------------------                -
 |                   |    |                        |                -
-|     APPLYING      |    |  PATTERNS - FILTERING  |                -
+|    APLICANDO      |    |  PATRONES - FILTRADO   |                -
 |                   |    |                        |                -
 ---------------------    --------------------------                -
          ^                          |
          |                          v
 --------------------     --------------------------                -
 |                  |     |                        |                -
-|  FILES CHECKING  | <-- |       INSTALLING       |                -
+|  VERIFICAR ARCHIVOS| <-- |       INSTALANDO      |                -
 |                  |     |                        |                -
 --------------------     --------------------------                -
 ```
 
-**Instalar dependencias desde `watchdogs.toml`:**
+**Instalar dependencia desde `watchdogs.toml`:**
 
 ```yaml
 replicate .
+replicate.
 ```
 
 **Instalar un repositorio específico:**
@@ -296,19 +329,19 @@ replicate .
 replicate repo/user
 ```
 
-**Instalar una versión específica (tags):**
+**Instalar una versión específica (etiqueta):**
 
 ```yaml
 replicate repo/user?v1.1
 ```
 
-* **Automáticamente la versión más reciente**
+* **Versión más reciente automática**
 
 ```yaml
 replicate repo/user?newer
 ```
 
-**Instalar una branch específica:**
+**Instalar una rama específica:**
 
 ```yaml
 replicate repo/user --branch master
@@ -317,7 +350,7 @@ replicate repo/user --branch master
 **Instalar en una ubicación específica:**
 
 ```yaml
-# root
+# raíz
 replicate repo/user --save .
 # ubicación específica
 replicate repo/user --save ../parent/myproj

@@ -3,21 +3,7 @@
  * All rights reserved. under The 2-Clause BSD License
  * See COPYING or https://opensource.org/license/bsd-2-clause
  */
-#include  <stdio.h>
-#include  <stdlib.h>
-#include  <ctype.h>
-#include  <string.h>
-#include  <errno.h>
-#include  <inttypes.h>
-#include  <sys/stat.h>
 
-#ifdef DOG_LINUX
-#include  <sys/wait.h>
-#endif
-
-#include  <curl/curl.h>
-
-#include  "extra.h"
 #include  "utils.h"
 #include  "crypto.h"
 #include  "archive.h"
@@ -25,39 +11,43 @@
 #include  "compiler.h"
 #include  "units.h"
 #include  "debug.h"
+#include  "library.h"
 #include  "curl.h"
 
-static char *pawncc_dir_source = NULL;
-static char command[DOG_MAX_PATH];
+static char
+	*pawncc_dir_source = NULL;
+static bool
+	 cacert_notice = false;
+bool
+	compiling_gamemode = false;
 
 void
-curl_verify_cacert_pem(CURL *curl)
+	curl_verify_cacert_pem(CURL *curl)
 {
-	int platform = 0;
-#ifdef DOG_ANDROID
-	platform = 1;
-#elif defined(DOG_LINUX)
-	platform = 2;
-#elif defined(DOG_WINDOWS)
-	platform = 3;
-#endif
-	static int cacert_notice = 0;
+	int platform_specific = 0;
+	#ifdef DOG_ANDROID
+		platform_specific = 1;
+	#elif defined(DOG_LINUX)
+		platform_specific = 2;
+	#elif defined(DOG_WINDOWS)
+		platform_specific = 3;
+	#endif
 
-	if (platform == 3) {
+	if (platform_specific == 3) {
 		if (path_access("cacert.pem") != 0)
 			curl_easy_setopt(curl, CURLOPT_CAINFO, "cacert.pem");
 		else if (access("C:/libdog/cacert.pem", F_OK) == 0)
 			curl_easy_setopt(curl, CURLOPT_CAINFO,
 			    "C:/libdog/cacert.pem");
 		else {
-			if (cacert_notice != 1) {
+			if (cacert_notice != true) {
 				pr_color(stdout, DOG_COL_GREEN,
 				    "cURL: can't locate cacert.pem - "
 				    "SSL verification may fail.\n");
-				cacert_notice = 1;
+				cacert_notice = true;
 			}
 		}
-	} else if (platform == 1) {
+	} else if (platform_specific == 1) {
 		const char *prefix = getenv("PREFIX");
 		if (!prefix || prefix[0] == '\0') {
 			prefix = "/data/data/com.termux/files/usr";
@@ -79,18 +69,18 @@ curl_verify_cacert_pem(CURL *curl)
 			    "cURL: can't locate cacert.pem - "
 			    "SSL verification may fail.\n");
 		}
-	} else if (platform == 2) {
+	} else if (platform_specific == 2) {
 		if (access("cacert.pem", F_OK) == 0)
 			curl_easy_setopt(curl, CURLOPT_CAINFO, "cacert.pem");
 		else if (access("/etc/ssl/certs/cacert.pem", F_OK) == 0)
 			curl_easy_setopt(curl, CURLOPT_CAINFO,
 			    "/etc/ssl/certs/cacert.pem");
 		else {
-			if (cacert_notice != 1) {
+			if (cacert_notice != true) {
 				pr_color(stdout, DOG_COL_GREEN,
 				    "cURL: can't locate cacert.pem - "
 				    "SSL verification may fail.\n");
-				cacert_notice = 1;
+				cacert_notice = true;
 			}
 		}
 	}
@@ -149,6 +139,12 @@ write_callbacks(void *ptr, size_t size, size_t nmemb, void *userdata)
 			    " Realloc failed for %zu bytes\n",
 			    new_alloc);
 #endif
+			if (b->data) {
+				dog_free(b->data);
+				b->data = NULL;
+				b->allocated = 0;
+				b->len = 0;
+			}
 			return 0;
 		}
 
@@ -221,129 +217,6 @@ write_memory_callback(void *contents, size_t size, size_t nmemb, void *userp)
 	mem->memory[mem->size] = '\0';
 
 	return realsize;
-}
-
-int
-package_url_checking(const char *url, const char *github_token)
-{
-	CURL *curl = curl_easy_init();
-	if (!curl)
-		return 0;
-
-	CURLcode res;
-	long response_code = 0;
-	struct curl_slist *headers = NULL;
-	char dog_buffer_error[CURL_ERROR_SIZE] = { 0 };
-
-	printf("\tCreate & Checking URL: %s...\t\t[All good]\n", url);
-
-	if (strfind(dogconfig.dog_toml_github_tokens, "DO_HERE", true) ||
-	    dogconfig.dog_toml_github_tokens == NULL ||
-	    strlen(dogconfig.dog_toml_github_tokens) < 1) {
-		pr_color(stdout, DOG_COL_GREEN,
-		    "Can't read Github token.. skipping\n");
-	} else {
-		char auth_header[512];
-		snprintf(auth_header, sizeof(auth_header),
-		    "Authorization: token %s", github_token);
-		headers = curl_slist_append(headers, auth_header);
-	}
-
-	headers = curl_slist_append(headers, "User-Agent: watchdogs/1.0");
-	headers = curl_slist_append(headers,
-	    "Accept: application/vnd.github.v3+json");
-
-	curl_easy_setopt(curl, CURLOPT_HTTPHEADER, headers);
-	curl_easy_setopt(curl, CURLOPT_URL, url);
-	curl_easy_setopt(curl, CURLOPT_NOBODY, 1L);
-	curl_easy_setopt(curl, CURLOPT_FOLLOWLOCATION, 1L);
-	curl_easy_setopt(curl, CURLOPT_TIMEOUT, 30L);
-
-	printf("   Try Connecting... ");
-	fflush(stdout);
-
-	res = curl_easy_perform(curl);
-	curl_easy_getinfo(curl, CURLINFO_RESPONSE_CODE, &response_code);
-
-	curl_easy_setopt(curl, CURLOPT_ERRORBUFFER, dog_buffer_error);
-
-	curl_verify_cacert_pem(curl);
-
-	fflush(stdout);
-
-	res = curl_easy_perform(curl);
-	curl_easy_getinfo(curl, CURLINFO_RESPONSE_CODE, &response_code);
-
-	if (response_code == DOG_CURL_RESPONSE_OK &&
-	    strlen(dog_buffer_error) == 0) {
-		printf("cURL result: %s\t\t[All good]\n",
-		    curl_easy_strerror(res));
-		printf("Response code: %ld\t\t[All good]\n", response_code);
-	} else {
-		if (strlen(dog_buffer_error) > 0) {
-			printf("Error: %s\t\t[Fail]\n", dog_buffer_error);
-			minimal_debugging();
-		} else {
-			printf("cURL result: %s\t\t[Fail]\n",
-			    curl_easy_strerror(res));
-			minimal_debugging();
-		}
-	}
-
-	curl_easy_cleanup(curl);
-	curl_slist_free_all(headers);
-
-	return (response_code >= 200 && response_code < 300);
-}
-
-int
-package_http_get_content(const char *url, const char *github_token,
-    char **out_html)
-{
-	CURL *curl;
-	CURLcode res;
-	struct curl_slist *headers = NULL;
-	struct memory_struct buffer = { 0 };
-
-	curl = curl_easy_init();
-	if (!curl)
-		return 0;
-
-	if (github_token && strlen(github_token) > 0 &&
-	    !strfind(github_token, "DO_HERE", true)) {
-		char auth_header[512];
-		snprintf(auth_header, sizeof(auth_header),
-		    "Authorization: token %s", github_token);
-		headers = curl_slist_append(headers, auth_header);
-	}
-
-	headers = curl_slist_append(headers, "User-Agent: watchdogs/1.0");
-	curl_easy_setopt(curl, CURLOPT_HTTPHEADER, headers);
-
-	curl_easy_setopt(curl, CURLOPT_URL, url);
-
-	memory_struct_init(&buffer);
-	curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, write_memory_callback);
-	curl_easy_setopt(curl, CURLOPT_WRITEDATA, (void *)&buffer);
-
-	curl_easy_setopt(curl, CURLOPT_FOLLOWLOCATION, 1L);
-	curl_easy_setopt(curl, CURLOPT_CONNECTTIMEOUT, 15L);
-	curl_easy_setopt(curl, CURLOPT_TIMEOUT, 60L);
-
-	curl_verify_cacert_pem(curl);
-
-	res = curl_easy_perform(curl);
-	curl_easy_cleanup(curl);
-	curl_slist_free_all(headers);
-
-	if (res != CURLE_OK || buffer.size == 0) {
-		memory_struct_free(&buffer);
-		return 0;
-	}
-
-	*out_html = buffer.memory;
-
-	return 1;
 }
 
 const char *__track_suffixes[] = {
@@ -486,39 +359,39 @@ find_compiler_tools(int *found_pawncc_exe, int *found_pawncc,
 {
 	const char *ignore_dir = NULL;
 
-	*found_pawncc_exe = dog_sef_fdir(pawncc_dir_source, "pawncc.exe",
+	*found_pawncc_exe = dog_find_path(pawncc_dir_source, "pawncc.exe",
 	    ignore_dir);
-	*found_pawncc = dog_sef_fdir(pawncc_dir_source, "pawncc", ignore_dir);
-	*found_pawndisasm_exe = dog_sef_fdir(pawncc_dir_source,
+	*found_pawncc = dog_find_path(pawncc_dir_source, "pawncc", ignore_dir);
+	*found_pawndisasm_exe = dog_find_path(pawncc_dir_source,
 	    "pawndisasm.exe", ignore_dir);
-	*found_pawndisasm = dog_sef_fdir(pawncc_dir_source, "pawndisasm",
+	*found_pawndisasm = dog_find_path(pawncc_dir_source, "pawndisasm",
 	    ignore_dir);
-	*found_PAWNC_DLL = dog_sef_fdir(pawncc_dir_source, "PAWNC.dll",
+	*found_PAWNC_DLL = dog_find_path(pawncc_dir_source, "PAWNC.dll",
 	    ignore_dir);
-	*found_pawnc_dll = dog_sef_fdir(pawncc_dir_source, "pawnc.dll",
+	*found_pawnc_dll = dog_find_path(pawncc_dir_source, "pawnc.dll",
 	    ignore_dir);
 
 	if (*found_pawncc_exe < 1 && *found_pawncc < 1) {
-		*found_pawncc_exe = dog_sef_fdir(".", "pawncc.exe",
+		*found_pawncc_exe = dog_find_path(".", "pawncc.exe",
 		    ignore_dir);
-		*found_pawncc = dog_sef_fdir(".", "pawncc", ignore_dir);
-		*found_PAWNC_DLL = dog_sef_fdir(".", "PAWNC.dll", ignore_dir);
-		*found_pawnc_dll = dog_sef_fdir(".", "pawnc.dll", ignore_dir);
-		*found_pawndisasm_exe = dog_sef_fdir(".", "pawndisasm.exe",
+		*found_pawncc = dog_find_path(".", "pawncc", ignore_dir);
+		*found_PAWNC_DLL = dog_find_path(".", "PAWNC.dll", ignore_dir);
+		*found_pawnc_dll = dog_find_path(".", "pawnc.dll", ignore_dir);
+		*found_pawndisasm_exe = dog_find_path(".", "pawndisasm.exe",
 		    ignore_dir);
-		*found_pawndisasm = dog_sef_fdir(".", "pawndisasm", ignore_dir);
+		*found_pawndisasm = dog_find_path(".", "pawndisasm", ignore_dir);
 	}
 	if (*found_pawncc_exe < 1 && *found_pawncc < 1) {
-		*found_pawncc_exe = dog_sef_fdir("bin/", "pawncc.exe",
+		*found_pawncc_exe = dog_find_path("bin/", "pawncc.exe",
 		    ignore_dir);
-		*found_pawncc = dog_sef_fdir("bin/", "pawncc", ignore_dir);
-		*found_PAWNC_DLL = dog_sef_fdir("bin/", "PAWNC.dll",
+		*found_pawncc = dog_find_path("bin/", "pawncc", ignore_dir);
+		*found_PAWNC_DLL = dog_find_path("bin/", "PAWNC.dll",
 		    ignore_dir);
-		*found_pawnc_dll = dog_sef_fdir("bin/", "pawnc.dll",
+		*found_pawnc_dll = dog_find_path("bin/", "pawnc.dll",
 		    ignore_dir);
-		*found_pawndisasm_exe = dog_sef_fdir("bin/", "pawndisasm.exe",
+		*found_pawndisasm_exe = dog_find_path("bin/", "pawndisasm.exe",
 		    ignore_dir);
-		*found_pawndisasm = dog_sef_fdir("bin/", "pawndisasm",
+		*found_pawndisasm = dog_find_path("bin/", "pawndisasm",
 		    ignore_dir);
 	}
 }
@@ -546,90 +419,37 @@ copy_compiler_tool(const char *src_path, const char *tool_name,
 {
 	char dest_path[DOG_PATH_MAX];
 
-	CHMOD_FULL(src_path);
-
 	snprintf(dest_path, sizeof(dest_path),
-	    "%s" "%s" "%s", dest_dir, __PATH_STR_SEP_LINUX, tool_name);
+	    "%s" "%s" "%s", dest_dir, _PATH_STR_SEP_POSIX, tool_name);
 
 	dog_sef_wmv(src_path, dest_path);
 }
 
-static void
-update_library_environment(const char *lib_path)
-{
-	const char *home_dir = getenv("HOME");
-	if (!home_dir) {
-		fprintf(stderr, "Error: HOME environment variable not set\n");
-		return;
-	}
-
-	const char *shell_rc = NULL;
-	char shell_path[DOG_PATH_MAX];
-
-	char *shell = getenv("SHELL");
-	if (shell) {
-		if (strfind(shell, "zsh", true)) {
-			shell_rc = ".zshrc";
-		} else if (strfind(shell, "bash", true)) {
-			shell_rc = ".bashrc";
-		}
-	}
-
-	if (!shell_rc) {
-		snprintf(shell_path, sizeof(shell_path), "%s/.zshrc", home_dir);
-		if (access(shell_path, F_OK) == 0) {
-			shell_rc = ".zshrc";
-		} else {
-			shell_rc = ".bashrc";
-		}
-	}
-
-	char shell_file[DOG_PATH_MAX * 2];
-	snprintf(shell_file, sizeof(shell_file),
-	    "%s" "%s" "%s", home_dir, __PATH_STR_SEP_LINUX, shell_rc);
-
-	if (path_access(shell_file) == 0 && strfind(shell_file, "bash", true)) {
-		FILE *fp = fopen(shell_file, "w");
-		if (fp) {
-			fclose(fp);
-#ifdef DOG_WINDOWS
-			chmod(shell_file, 0644);
-#endif
-		} else {
-			;
-		}
-	}
-}
-
-static int
-setup_linux_library(void)
+static int setup_linux_library(void)
 {
 #ifdef DOG_WINDOWS
 	return 0;
 #endif
-	const char *selected_path = NULL;
-	char libpawnc_src[DOG_PATH_MAX];
-	char dest_path[DOG_PATH_MAX];
-	int i, found_lib;
+	const char *libpawnc_path = NULL;
+	char        libpawnc_src[DOG_PATH_MAX];
+	char        dest_path[DOG_PATH_MAX];
+	char        _hexdump[sizeof(libpawnc_src) + 28];
+	int         i, found_lib;
 
-	const char *rate_each_any_path[] = {
+	const char *free_usr_path[] = {
     LINUX_LIB_PATH, LINUX_LIB32_PATH, TMUX_LIB_PATH,
     TMUX_LIB_LOC_PATH, TMUX_LIB_ARM64_PATH, TMUX_LIB_ARM32_PATH,
     TMUX_LIB_AMD64_PATH, TMUX_LIB_AMD32_PATH
 	};
-	size_t size_rate_each_any_path = sizeof(rate_each_any_path),
-	    size_rate_each_any_path_zero = sizeof(rate_each_any_path[0]);
+	size_t s_free_usr_path = sizeof(free_usr_path),
+	    s_free_usr_path_zero = sizeof(free_usr_path[0]);
 
-	if (!strcmp(dogconfig.dog_toml_os_type, OS_SIGNAL_WINDOWS) ||
-	    !strcmp(dogconfig.dog_toml_os_type, OS_SIGNAL_UNKNOWN))
-		return 0;
-
-	found_lib = dog_sef_fdir(pawncc_dir_source, "libpawnc.so", NULL);
+	found_lib = dog_find_path(pawncc_dir_source, "libpawnc.so", NULL);
 
 	if (found_lib < 1) {
-		found_lib = dog_sef_fdir(".", "libpawnc.so", NULL);
+		found_lib = dog_find_path(".", "libpawnc.so", NULL);
 		if (found_lib < 1)
-			found_lib = dog_sef_fdir("lib/", "libpawnc.so", NULL);
+			found_lib = dog_find_path("lib/", "libpawnc.so", NULL);
 	}
 
 	for (i = 0; i < dogconfig.dog_sef_count; i++) {
@@ -643,24 +463,58 @@ setup_linux_library(void)
 		}
 	}
 
-	for (i = 0;
-	    i < size_rate_each_any_path / size_rate_each_any_path_zero;
-	    i++) if (path_exists(rate_each_any_path[i])) {
-		selected_path = rate_each_any_path[i];
-		break;
+	for (i = 0; i < s_free_usr_path / s_free_usr_path_zero; i++) {
+		if (path_exists(free_usr_path[i])) {
+			libpawnc_path = free_usr_path[i];
+			break;
+		}
 	}
-
-	if (!selected_path) {
-		fprintf(stderr, "No valid library path found!\n");
+	
+	if (!libpawnc_path) {
 		return -1;
 	}
 
 	snprintf(dest_path, sizeof(dest_path),
-	    "%s/libpawnc.so", selected_path);
+	    "%s/libpawnc.so", libpawnc_path);
 
-	dog_sef_wmv(libpawnc_src, dest_path);
+    if (path_exists(libpawnc_src))
+    {
+        int hexdump = 404;
+        {
+            char *argv[] = {
+        		"sh",
+        		"-c",
+        		"'hexdump",
+				"-n",
+				"1",
+				"watchdogs.toml",
+				">",
+				"/dev/null",
+				"2>&1'",
+        		NULL
+        	};
+            hexdump = dog_exec_command(argv);
+        }
+        if (!hexdump) {
+            pr_info(stdout,
+            	"Fetching %s binary hex..", libpawnc_src);
+            snprintf(_hexdump, sizeof(_hexdump),
+				"'hexdump -C -n 128 %s'", libpawnc_src);
+            char *argv[] = {
+				"sh",
+				"-c",
+				_hexdump,
+				NULL
+			};
+            int not_fail = -2;
+			not_fail = dog_exec_command(argv);
+            if (!not_fail) {
+                pr_info(stdout, "Success..");
+            }
+        }
+    }
 
-	update_library_environment(selected_path);
+    dog_sef_wmv(libpawnc_src, dest_path);
 
 	return 0;
 }
@@ -683,7 +537,7 @@ dog_apply_pawncc(void)
 
 	int i;
 
-	dog_sef_restore();
+	dog_sef_path_revert();
 
 	find_compiler_tools(&found_pawncc_exe, &found_pawncc,
 	    &found_pawndisasm_exe, &found_pawndisasm,
@@ -697,6 +551,8 @@ dog_apply_pawncc(void)
 			free(pawncc_dir_source);
 			pawncc_dir_source = NULL;
 		}
+		free(pawncc_dir_source);
+		pawncc_dir_source = NULL;
 		goto apply_done;
 	}
 
@@ -706,10 +562,10 @@ dog_apply_pawncc(void)
 			continue;
 		if (strstr(item, "pawncc.exe")) {
 			char *size_last_slash = strrchr(item,
-			    __PATH_CHR_SEP_LINUX);
+			    _PATH_CHR_SEP_POSIX);
 			if (!size_last_slash)
 				size_last_slash = strrchr(item,
-				    __PATH_CHR_SEP_WIN32);
+				    _PATH_CHR_SEP_WIN32);
 			if (size_last_slash &&
 			    strstr(size_last_slash + 1, "pawncc.exe")) {
 				strncpy(pawncc_exe_src, item,
@@ -718,10 +574,10 @@ dog_apply_pawncc(void)
 		}
 		if (strstr(item, "pawncc")) {
 			char *size_last_slash = strrchr(item,
-			    __PATH_CHR_SEP_LINUX);
+			    _PATH_CHR_SEP_POSIX);
 			if (!size_last_slash)
 				size_last_slash = strrchr(item,
-				    __PATH_CHR_SEP_WIN32);
+				    _PATH_CHR_SEP_WIN32);
 			if (size_last_slash &&
 			    strstr(size_last_slash + 1, "pawncc")) {
 				strncpy(pawncc_src, item, sizeof(pawncc_src));
@@ -729,10 +585,10 @@ dog_apply_pawncc(void)
 		}
 		if (strstr(item, "pawndisasm.exe")) {
 			char *size_last_slash = strrchr(item,
-			    __PATH_CHR_SEP_LINUX);
+			    _PATH_CHR_SEP_POSIX);
 			if (!size_last_slash)
 				size_last_slash = strrchr(item,
-				    __PATH_CHR_SEP_WIN32);
+				    _PATH_CHR_SEP_WIN32);
 			if (size_last_slash &&
 			    strstr(size_last_slash + 1, "pawndisasm.exe")) {
 				strncpy(pawndisasm_exe_src, item,
@@ -741,10 +597,10 @@ dog_apply_pawncc(void)
 		}
 		if (strstr(item, "pawndisasm")) {
 			char *size_last_slash = strrchr(item,
-			    __PATH_CHR_SEP_LINUX);
+			    _PATH_CHR_SEP_POSIX);
 			if (!size_last_slash)
 				size_last_slash = strrchr(item,
-				    __PATH_CHR_SEP_WIN32);
+				    _PATH_CHR_SEP_WIN32);
 			if (size_last_slash &&
 			    strstr(size_last_slash + 1, "pawndisasm")) {
 				strncpy(pawndisasm_src, item,
@@ -753,10 +609,10 @@ dog_apply_pawncc(void)
 		}
 		if (strstr(item, "pawnc.dll")) {
 			char *size_last_slash = strrchr(item,
-			    __PATH_CHR_SEP_LINUX);
+			    _PATH_CHR_SEP_POSIX);
 			if (!size_last_slash)
 				size_last_slash = strrchr(item,
-				    __PATH_CHR_SEP_WIN32);
+				    _PATH_CHR_SEP_WIN32);
 			if (size_last_slash &&
 			    strstr(size_last_slash + 1, "pawnc.dll")) {
 				strncpy(pawnc_dll_src, item,
@@ -765,10 +621,10 @@ dog_apply_pawncc(void)
 		}
 		if (strstr(item, "PAWNC.dll")) {
 			char *size_last_slash = strrchr(item,
-			    __PATH_CHR_SEP_LINUX);
+			    _PATH_CHR_SEP_POSIX);
 			if (!size_last_slash)
 				size_last_slash = strrchr(item,
-				    __PATH_CHR_SEP_WIN32);
+				    _PATH_CHR_SEP_WIN32);
 			if (size_last_slash &&
 			    strstr(size_last_slash + 1, "PAWNC.dll")) {
 				strncpy(PAWNC_DLL_src, item,
@@ -797,13 +653,14 @@ dog_apply_pawncc(void)
 		copy_compiler_tool(pawnc_dll_src, "pawnc.dll", dest_dir);
 
 	setup_linux_library();
+	
 	#ifdef DOG_WINDOWS
 		DWORD attr = GetFileAttributesA(pawncc_dir_source);
 		if (attr != INVALID_FILE_ATTRIBUTES && (attr & FILE_ATTRIBUTE_DIRECTORY)) {
 			SHFILEOPSTRUCTA op;
 			char path[DOG_PATH_MAX];
 
-			_ZERO_MEM_WIN32(&op, sizeof(op));
+			ZeroMemory(&op, sizeof(op));
 			snprintf(path, sizeof(path), "%s%c%c", pawncc_dir_source, '\0', '\0');
 
 			op.wFunc = FO_DELETE;
@@ -838,14 +695,12 @@ dog_apply_pawncc(void)
 		pawncc_dir_source = NULL;
 	}
 
-	sleep(1);
-	
 	printf(DOG_COL_BCYAN "Compile now? y/n: " DOG_COL_DEFAULT);
 	char *compile_now = readline(" ");
 	if (compile_now[0] == '\0' || compile_now[0] == 'Y' ||
 	    compile_now[0] == 'y') {
 		dog_free(compile_now);
-		dogconfig.dog_garbage_access[DOG_GARBAGE_CURL_COMPILER_TESTING] = DOG_GARBAGE_TRUE;
+		compiling_gamemode = 1;
 	}
 
 apply_done:
@@ -855,8 +710,8 @@ apply_done:
 static int
 prompt_apply_pawncc(void)
 {
-	dogconfig.dog_garbage_access[DOG_GARBAGE_IN_INSTALLING_PAWNC] = DOG_GARBAGE_ZERO;
-	
+	installing_pawncc = true;
+
 	printf("\x1b[32m==> Apply pawncc?\x1b[0m\n");
 	char *confirm = readline("   answer (y/n): ");
 
@@ -920,8 +775,8 @@ parsing_filename(char *filename)
 		if (*p == '?' || *p == '*' ||
 		    *p == '<' || *p == '>' ||
 		    *p == '|' || *p == ':' ||
-		    *p == '"' || *p == __PATH_CHR_SEP_WIN32 ||
-		    *p == __PATH_CHR_SEP_LINUX) {
+		    *p == '"' || *p == _PATH_CHR_SEP_WIN32 ||
+		    *p == _PATH_CHR_SEP_POSIX) {
 			*p = '_';
 		}
 	}
@@ -970,7 +825,7 @@ dog_download_file(const char *url, const char *output_filename)
 
 	char final_filename[DOG_PATH_MAX];
 	if (strstr(clean_filename, "://") || strstr(clean_filename, "http")) {
-		const char *url_filename = strrchr(url, __PATH_CHR_SEP_LINUX);
+		const char *url_filename = strrchr(url, _PATH_CHR_SEP_POSIX);
 		if (url_filename) {
 			char *url_query_pos = strchr(url_filename, '?');
 			if (url_query_pos) {
@@ -1014,8 +869,7 @@ dog_download_file(const char *url, const char *output_filename)
 
 		struct curl_slist *headers = NULL;
 
-		if (dogconfig.dog_garbage_access[DOG_GARBAGE_IN_INSTALLING_PACKAGE] == DOG_GARBAGE_TRUE)
-		{
+		if (installing_package) {
 			if (!dogconfig.dog_toml_github_tokens ||
 			    strfind(dogconfig.dog_toml_github_tokens,
 			    "DO_HERE", true) ||
@@ -1045,7 +899,9 @@ dog_download_file(const char *url, const char *output_filename)
 		curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION,
 		    write_memory_callback);
 
-		struct buf download_buffer = { NULL, 0, 0 };
+		struct buf download_buffer;
+		buf_init(&download_buffer);
+
 		curl_easy_setopt(curl, CURLOPT_WRITEDATA, &download_buffer);
 
 		curl_easy_setopt(curl, CURLOPT_ACCEPT_ENCODING, "gzip");
@@ -1060,7 +916,7 @@ dog_download_file(const char *url, const char *output_filename)
 		curl_easy_setopt(curl, CURLOPT_NOPROGRESS, 0L);
 
 		static int create_debugging = 0;
-		static int always_create_debugging = 0;
+		static int rate_create_debugging = 0;
 
 		if (create_debugging == 0) {
 			create_debugging = 1;
@@ -1069,20 +925,20 @@ dog_download_file(const char *url, const char *output_filename)
 			char *debug_http = readline("(y/n): ");
 			if (debug_http[0] == '\0' || debug_http[0] == 'Y' ||
 			    debug_http[0] == 'y') {
-				always_create_debugging = 1;
+				rate_create_debugging = 1;
 			}
 			dog_free(debug_http);
 		}
 
-		if (always_create_debugging) {
+		curl_easy_setopt(curl, CURLOPT_XFERINFOFUNCTION, NULL);
+		curl_easy_setopt(curl, CURLOPT_XFERINFODATA, NULL);
+
+		if (rate_create_debugging) {
 			curl_easy_setopt(curl, CURLOPT_VERBOSE, 1L);
 			curl_easy_setopt(curl, CURLOPT_DEBUGFUNCTION,
 			    debug_callback);
 			curl_easy_setopt(curl, CURLOPT_DEBUGDATA, NULL);
 		}
-
-		curl_easy_setopt(curl, CURLOPT_XFERINFOFUNCTION, NULL);
-		curl_easy_setopt(curl, CURLOPT_XFERINFODATA, NULL);
 
 		curl_verify_cacert_pem(curl);
 
@@ -1159,8 +1015,7 @@ dog_download_file(const char *url, const char *output_filename)
 				dog_extract_archive(final_filename,
 				    size_filename);
 
-				if (dogconfig.dog_garbage_access[DOG_GARBAGE_IN_INSTALLING_PACKAGE] == DOG_GARBAGE_TRUE)
-				{
+				if (installing_package) {
 					static int remove_archive = 0;
 					if (remove_archive == 0) {
 						pr_color(stdout, DOG_COL_CYAN,
@@ -1206,7 +1061,7 @@ dog_download_file(const char *url, const char *output_filename)
 					dog_free(confirm);
 				}
 
-    			if (dogconfig.dog_garbage_access[DOG_GARBAGE_IN_INSTALLING_PAWNC] == DOG_GARBAGE_TRUE && prompt_apply_pawncc() == 1)
+    			if (installing_pawncc && prompt_apply_pawncc() == 1)
 				{
 					pawncc_dir_source = strdup(
 					    size_filename);
@@ -1215,10 +1070,8 @@ dog_download_file(const char *url, const char *output_filename)
 
 				return 0;
 			}
-		}
-
-		if (download_buffer.data) {
-			dog_free(download_buffer.data);
+		} else {
+			buf_free(&download_buffer);
 		}
 
 		pr_color(stdout, DOG_COL_YELLOW,

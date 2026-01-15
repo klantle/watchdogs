@@ -1,3 +1,9 @@
+/*-
+ * Copyright (c) 2026 Watchdogs Team and contributors
+ * All rights reserved. under The 2-Clause BSD License
+ * See COPYING or https://opensource.org/license/bsd-2-clause
+ */
+
 #ifndef CAUSE
 #define CAUSE
 
@@ -156,7 +162,7 @@ typedef struct {
 #define COMPILER_DT_SEL0000215 "Expression statement computes a value but doesn't produce side effects or store result. Examples: `a + b;` or `func();` where func returns value ignored. This often indicates: missing assignment, incorrect function call, or leftover debug expression. The side-effect analyzer detected pure expression without observable effect."
 #define COMPILER_DT_SEL0000217 "Inconsistent whitespace usage (spaces vs tabs, or varying indentation levels) detected. While syntactically irrelevant, inconsistent indentation impairs readability and may indicate structural misunderstandings. The lexer tracks column positions and detects abrupt indentation changes."
 #define COMPILER_DT_SEL0000234 "Function marked with deprecated attribute via `forward deprecated:` or similar. Usage triggers warning but compiles. Deprecation suggests: API evolution, security concerns, performance issues, or planned removal. Consult documentation for replacement API."
-#define COMPILER_DT_SEL0000013 "Translation unit lacks valid program entry point. Required: `main()` function or designated public function based on target environment. The linker/loader cannot determine startup address. Some environments allow alternative entry points via compiler options or specific pragmas."
+#define COMPILER_DT_SEL0000013 "Translation unit lacks valid program entry point. Required: `main(){}` function or designated public function based on target environment. The linker/loader cannot determine startup address. Some environments allow alternative entry points via compiler options or specific pragmas."
 #define COMPILER_DT_SEL0000021 "Redeclaration of identifier in same scope violates one-definition rule. Each identifier in a given namespace must have unique declaration (except for overloading, which Pawn doesn't support). The symbol table insertion failed due to duplicate key in current scope."
 #define COMPILER_DT_SEL0000028_2 "Bracket operator applied to non-array type, or subscript expression has wrong type. Left operand must have array or pointer type, subscript must be integer expression. The type checker validates subscript expressions during expression evaluation."
 #define COMPILER_DT_SEL0000033 "Array identifier used in value context without subscript. In most expressions, arrays decay to pointer to first element, but certain contexts require explicit element access. This prevents accidental pointer decay when element access was intended."

@@ -104,6 +104,7 @@ static bool  has_compat = false;
 static bool  has_prolix = false;
 static bool  has_compact = false;
 static bool  has_time = false;
+static bool  rate_compiler_log_is_fail = false;
 
 char           all_include_paths[DOG_PATH_MAX * 2] = { __compiler_rate_zero };
 
@@ -154,6 +155,7 @@ refresh_compiler ( void )  {
 	has_compat               =                false;
 	has_prolix               =                false;
 	has_compact              =                false;
+	rate_compiler_log_is_fail=                false;
 	compiler_retrying        =                false;
 
 	/* variable of processing file */
@@ -458,10 +460,10 @@ _skip_path:
 
 _compiler_retrying:
 		if (compiler_retrying) {
-			has_compat = true;
-			has_compact = true;
-			has_time = true;
-			has_detailed = true;
+		has_compat = true;
+		has_compact = true;
+		has_time = true;
+		has_detailed = true;
 		}
 
 		{
@@ -1007,6 +1009,8 @@ _compiler_retrying:
 						dup2(logging_file,
 							STDERR_FILENO);
 						close(logging_file);
+					} else {
+						rate_compiler_log_is_fail = true;
 					}
 
 					execv(dog_compiler_unix_args[0],
@@ -1109,6 +1113,8 @@ _compiler_retrying:
 						dup2(logging_file,
 							STDERR_FILENO);
 						close(logging_file);
+					} else {
+						rate_compiler_log_is_fail = true;
 					}
 
 					execv(dog_compiler_unix_args[0],
@@ -1211,6 +1217,10 @@ _compiler_retrying:
 					&process_file_actions,
 					posix_logging_file,
 					STDERR_FILENO);
+		    posix_spawn_file_actions_addclose(&process_file_actions,
+		        posix_logging_file);
+			} else {
+				rate_compiler_log_is_fail = true;
 			}
 
 			posix_spawnattr_t spawn_attr;
@@ -1348,7 +1358,8 @@ _compiler_retrying:
 						ca, cb);
 					goto compiler_done;
 				} else if (has_clean) {
-					dog_printfile(
+					if (rate_compiler_log_is_fail == false)
+						dog_printfile(
 						".watchdogs/compiler.log");
 					if (path_exists(ca)) {
 						remove(ca);
@@ -1356,7 +1367,9 @@ _compiler_retrying:
 					goto compiler_done;
 				}
 
-				dog_printfile(".watchdogs/compiler.log");
+				if (rate_compiler_log_is_fail == false)
+					dog_printfile(
+						".watchdogs/compiler.log");
 
 				char log_line[DOG_MAX_PATH * 4];
 				this_proc_file = fopen(
@@ -1948,6 +1961,8 @@ compiler_done:
 							dup2(logging_file,
 								STDERR_FILENO);
 							close(logging_file);
+						} else {
+							rate_compiler_log_is_fail = true;
 						}
 
 						execv(dog_compiler_unix_args[0],
@@ -2050,6 +2065,8 @@ compiler_done:
 							dup2(logging_file,
 								STDERR_FILENO);
 							close(logging_file);
+						} else {
+							rate_compiler_log_is_fail = true;
 						}
 
 						execv(dog_compiler_unix_args[0],
@@ -2153,6 +2170,10 @@ compiler_done:
 						&process_file_actions,
 						posix_logging_file,
 						STDERR_FILENO);
+			    posix_spawn_file_actions_addclose(&process_file_actions,
+			        posix_logging_file);
+				} else {
+					rate_compiler_log_is_fail = true;
 				}
 
 				posix_spawnattr_t spawn_attr;
@@ -2299,7 +2320,8 @@ compiler_done:
 							ca, cb);
 						goto compiler_done2;
 					} else if (has_clean) {
-						dog_printfile(
+						if (rate_compiler_log_is_fail == false)
+							dog_printfile(
 							".watchdogs/compiler.log");
 						if (path_exists(ca)) {
 							remove(ca);
@@ -2307,8 +2329,9 @@ compiler_done:
 						goto compiler_done2;
 					}
 
-					dog_printfile(
-						".watchdogs/compiler.log");
+					if (rate_compiler_log_is_fail == false)
+						dog_printfile(
+							".watchdogs/compiler.log");
 
 					char log_line[DOG_MAX_PATH * 4];
 					this_proc_file = fopen(

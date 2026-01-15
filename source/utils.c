@@ -1837,7 +1837,7 @@ dog_generate_toml_content(FILE *file, const char *dog_os_type,
 			    "samp-server.exe");
 		} else if (!strcmp(dog_os_type, "linux")) {
 			fprintf(file, "   binary = \"%s\" # sa-mp binary files\n",
-			    "samp-server.exe");
+			    "samp03svr");
 		}
 		fprintf(file, "   config = \"%s\" # sa-mp config files\n",
 		    "server.cfg");

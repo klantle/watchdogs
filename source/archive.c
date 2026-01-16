@@ -327,7 +327,7 @@ dog_path_recursive(struct archive *archive, const char *root, const char *path)
 		if (path_stat.st_ino != fd_stat.st_ino ||
 		    path_stat.st_dev != fd_stat.st_dev) {
 			pr_warning(stdout,
-			    "the %s changes during processing..: %s",
+			    "the %s changes during processing..",
 			    full_path);
 			minimal_debugging();
 			close(fd);

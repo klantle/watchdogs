@@ -104,6 +104,7 @@ static bool  has_compat = false;
 static bool  has_prolix = false;
 static bool  has_compact = false;
 static bool  has_time = false;
+static bool  no_have_options = false;
 static bool  rate_compiler_log_is_fail = false;
 
 char           all_include_paths[DOG_PATH_MAX * 2] = { __compiler_rate_zero };
@@ -155,6 +156,7 @@ refresh_compiler ( void )  {
 	has_compat               =                false;
 	has_prolix               =                false;
 	has_compact              =                false;
+	no_have_options          =                false;
 	rate_compiler_log_is_fail=                false;
 	compiler_retrying        =                false;
 
@@ -401,62 +403,39 @@ _skip_path:
 		/* checking options */
 		for (int i = 0; i < __compiler_rate_aio_repo; ++i) {
 			if (argv_buf[i] != NULL) {
-				/*
-				 * compile . -w
-				 * compile . --detailed
-				 * compile . --watchdogs
-				 */
 				if (strfind(argv_buf[i], "--detailed", true) ||
 				    strfind(argv_buf[i], "--watchdogs", true) ||
 				    strfind(argv_buf[i], "-w", true))
 					has_detailed = true;
-				/*
-				 * compile . -d
-				 * compile . --debug
-				 */
 				if (strfind(argv_buf[i], "--debug", true) ||
 				    strfind(argv_buf[i], "-d", true))
 					has_debug = true;
-				/*
-				 * compile . -c
-				 * compile . --clean
-				 */
 				if (strfind(argv_buf[i], "--clean", true) ||
 				    strfind(argv_buf[i], "-n", true))
 					has_clean = true;
-				/*
-				 * compile . -a
-				 * compile . --assembler
-				 */
 				if (strfind(argv_buf[i], "--assembler", true) ||
 				    strfind(argv_buf[i], "-a", true))
 					has_assembler = true;
-				/*
-				 * compile . -c
-				 * compile . --compat
-				 */
 				if (strfind(argv_buf[i], "--compat", true) ||
 				    strfind(argv_buf[i], "-c", true))
 					has_compat = true;
-				/*
-				 * compile . -p
-				 * compile . --prolix
-				 */
-				if (strfind(argv_buf[i], "--prolix", true) ||
-				    strfind(argv_buf[i], "-p", true))
-					has_prolix = true;
-				/*
-				 * compile . -s
-				 * compile . --compact
-				 */
 				if (strfind(argv_buf[i], "--compact", true) ||
 				    strfind(argv_buf[i], "-s", true))
 					has_compact = true;
+				if (strfind(argv_buf[i], "--prolix", true) ||
+				    strfind(argv_buf[i], "-p", true))
+					has_prolix = true;
+				if (strfind(argv_buf[i], "--fast", true) ||
+				    strfind(argv_buf[i], "-f", true))
+					has_time = true;
 			}
-			if (strfind(argv_buf[i], "--fast", true) ||
-			    strfind(argv_buf[i], "-f", true))
-				has_time = true;
 		}
+
+		if (!has_detailed && !has_debug && !has_clean &&
+				!has_assembler && !has_compat && !has_prolix && !has_compact)
+			{
+				no_have_options = true;
+			}
 
 _compiler_retrying:
 		if (compiler_retrying) {
@@ -641,7 +620,7 @@ _compiler_retrying:
 		}
 
 		static int rate_flag_notice = 0;
-		if (!rate_flag_notice) {
+		if (!rate_flag_notice && no_have_options) {
 			printf("\n");
 			compiler_show_tip();
 			printf("\n");

@@ -6,25 +6,14 @@
 #include  <stdio.h>
 #include  <stdlib.h>
 #include  <string.h>
-#include  <stdbool.h>
 #include  <unistd.h>
 #include  <limits.h>
 
 #include  "utils.h"
 #include  "units.h"
-#include  "extra.h"
 #include  "crypto.h"
 #include  "debug.h"
 #include  "cause.h"
-
-static
-  int
-  warning_count=0,error_count=0,header_size=0,code_size=0,data_size=0,
-  stack_size=0,total_size=0;
-static
-  char
-  compiler_line[DOG_MAX_PATH]={0},
-  compiler_ver[64]={0};
 
 extern causeExplanation ccs[];
 
@@ -62,7 +51,7 @@ static void compiler_detailed(const char *dog_output,int debug,
 {
     char outbuf[DOG_MAX_PATH];
     int len;
-    
+
     if (error_count<1&&header_size>=1&&total_size>=1) {
         len = snprintf(outbuf, sizeof outbuf,
             "Compilation Complete - OK! | " DOG_COL_CYAN "%d pass (warning) " DOG_COL_DEFAULT "| " DOG_COL_BLUE "%d fail (error)\n",
@@ -72,17 +61,17 @@ static void compiler_detailed(const char *dog_output,int debug,
             "Compilation Complete - Fail :( | " DOG_COL_CYAN "%d pass (warning) " DOG_COL_DEFAULT "| " DOG_COL_BLUE "%d fail (error)\n",
             warning_count,error_count);
     }
-    
+
     if (len > 0)
         fwrite(outbuf, 1, (size_t)len, stdout);
-    
+
     fwrite("-----------------------------\n", 1, 30, stdout);
 
     int amx_access=path_exists(dog_output);
     if (amx_access&&debug!=0&&error_count<1&&header_size>=1&&total_size>=1) {
 
-        CHMOD_FULL(dog_output);
-        
+        set_default_access(dog_output);
+
         unsigned long hash=crypto_djb2_hash_file(dog_output);
 
         len = snprintf(outbuf, sizeof outbuf,
@@ -103,11 +92,11 @@ static void compiler_detailed(const char *dog_output,int debug,
         if (len > 0)
             fwrite(outbuf, 1, (size_t)len, stdout);
 
-        portable_stat_t st;
-        if (portable_stat(dog_output, &st)==0) {
+        dog_portable_stat_t st;
+        if (dog_portable_stat(dog_output, &st)==0) {
 
             len=snprintf(outbuf, sizeof outbuf,
-                "ino    : %llu   |  File   : %lluB\n"
+                "ino    : %llu   |  file   : %lluB\n"
                 "dev    : %llu\n"
                 "read   : %s   |  write  : %s\n"
                 "execute: %s   |  mode   : %020o\n"
@@ -137,10 +126,10 @@ static void compiler_detailed(const char *dog_output,int debug,
         "** Pawn Compiler %s - Copyright (c) 1997-2006, ITB CompuPhase\n",
         compiler_ver
     );
-    
+
     if (len > 0)
         fwrite(outbuf, 1, (size_t)len, stdout);
-        
+
     return;
 }
 
@@ -152,12 +141,12 @@ void cause_compiler_expl(const char *log_file,const char *dog_output,int debug)
   if(!_log_file)
     return;
 
-  warning_count=0,error_count=0,
-  header_size=0,code_size=0,data_size=0,
-  stack_size=0,total_size=0;
-
-  memset(compiler_line, 0, sizeof(compiler_line));
-  memset(compiler_ver, 0, sizeof(compiler_ver));
+  long
+      warning_count=0,error_count=0,header_size=0,code_size=0,data_size=0,
+      stack_size=0,total_size=0;
+  char
+      compiler_line[DOG_MORE_MAX_PATH]={0},
+      compiler_ver[64]={0};
 
   while(fgets(compiler_line,sizeof(compiler_line),_log_file)) {
     if(dog_strcase(compiler_line,"Warnings.") ||

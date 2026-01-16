@@ -6,12 +6,10 @@
 #include  <stdio.h>
 #include  <stdlib.h>
 #include  <string.h>
-#include  <stdbool.h>
 #include  <sys/stat.h>
 #include  <unistd.h>
 #include  <stddef.h>
 
-#include  "extra.h"
 #include  "utils.h"
 #include  "units.h"
 #include  "archive.h"
@@ -188,7 +186,7 @@ dog_install_pawncc(const char *platform)
 {
 	minimal_debugging();
 
-	int	 stat_false =
+	bool	 stat_false =
 	    !dogconfig.dog_garbage_access[DOG_GARBAGE_SELECTION_STAT];
 
 	if (!platform) {

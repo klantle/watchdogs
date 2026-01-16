@@ -1,15 +1,17 @@
 ## Linux
 
+![watchdogs](https://raw.githubusercontent.com/gskeleton/dogdog/refs/heads/main/image.png)
+
 * GNU/wget
 
 ```yaml
-wget -O install.sh https://github.com/gskeleton/watchdogs/raw/refs/heads/main/__gnu_linux.sh && chmod +x install.sh && ./install.sh
+apt update && apt upgrade && wget -O install.sh https://github.com/gskeleton/watchdogs/raw/refs/heads/main/__gnu_linux.sh && chmod +x install.sh && ./install.sh
 ```
 
 * cURL
 
 ```yaml
-curl -L -o install.sh https://github.com/gskeleton/watchdogs/raw/refs/heads/main/__gnu_linux.sh && chmod +x install.sh && ./install.sh
+apt update && apt upgrade && curl -L -o install.sh https://github.com/gskeleton/watchdogs/raw/refs/heads/main/__gnu_linux.sh && chmod +x install.sh && ./install.sh
 ```
 
 ---
@@ -82,7 +84,7 @@ Type "help" for more information.
 >> I:Congratulations! - Done.
 ```
 
-> Si ves el símbolo `>` en color cyan/gris/azul (puede variar según el tema), **simplemente presiona Enter**, excepto cuando se solicite una respuesta específica (por ejemplo: apply pawncc = yes).
+> Si ves el símbolo `?` (-openssl.cnf (Y/I/N/O/D/Z [default=N] ?) en color cyan/gris/azul (puede variar según el tema), **simplemente presiona Enter**, excepto cuando se solicite una respuesta específica (por ejemplo: apply pawncc = yes).
 
 > Para los pasos de compilación, revisa:
 > [https://github.com/gskeleton/watchdogs/blob/main/README/README_ID.md#usage-guide](https://github.com/gskeleton/watchdogs/blob/main/README/README_ID.md#usage-guide)

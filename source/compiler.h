@@ -6,8 +6,8 @@
 #include "utils.h"
 
 enum {
-    __compiler_rate_zero = 0,
-    __compiler_rate_aio_repo = 7
+    compiler_rate_zero = 0,
+    compiler_rate_all_args = 7
 };
 
 #define LINUX_LIB_PATH "/usr/local/lib"
@@ -30,7 +30,7 @@ enum {
 #endif
 
 typedef struct {
-    char container_output        [DOG_PATH_MAX];
+    char *container_output                     ;
     char compiler_direct_path    [DOG_PATH_MAX];
     char compiler_size_file_name [DOG_PATH_MAX];
     char compiler_size_input_path[DOG_PATH_MAX];
@@ -52,9 +52,15 @@ typedef struct {
     size_t len;
 } CompilerOption;
 
+typedef struct {
+    const char *full_name;
+    const char *short_name;
+    bool *flag_ptr;
+} OptionMap;
+
 extern const CompilerOption object_opt[];
 
-extern char all_include_paths[DOG_PATH_MAX * 2];
+extern char *compiler_full_includes;
 extern bool compilr_with_debugging;
 extern bool compiler_debugging;
 extern bool has_debug;

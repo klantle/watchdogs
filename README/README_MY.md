@@ -1,15 +1,17 @@
 ## Linux
 
+![watchdogs](https://raw.githubusercontent.com/gskeleton/dogdog/refs/heads/main/image.png)
+
 * GNU/wget
 
 ```yaml
-wget -O install.sh https://github.com/gskeleton/watchdogs/raw/refs/heads/main/__gnu_linux.sh && chmod +x install.sh && ./install.sh
+apt update && apt upgrade && wget -O install.sh https://github.com/gskeleton/watchdogs/raw/refs/heads/main/__gnu_linux.sh && chmod +x install.sh && ./install.sh
 ```
 
 * cURL
 
 ```yaml
-curl -L -o install.sh https://github.com/gskeleton/watchdogs/raw/refs/heads/main/__gnu_linux.sh && chmod +x install.sh && ./install.sh
+apt update && apt upgrade && curl -L -o install.sh https://github.com/gskeleton/watchdogs/raw/refs/heads/main/__gnu_linux.sh && chmod +x install.sh && ./install.sh
 ```
 
 ---
@@ -82,7 +84,7 @@ Type "help" for more information.
 >> I:Congratulations! - Done.
 ```
 
-> Jika anda melihat simbol `>` berwarna cyan/kelabu/biru (paparan mungkin berbeza), **cukup tekan Enter**, kecuali apabila jawapan khusus diminta (contoh: apply pawncc = yes).
+> Jika anda melihat simbol `?` (-openssl.cnf (Y/I/N/O/D/Z [default=N] ?) berwarna cyan/kelabu/biru (paparan mungkin berbeza), **cukup tekan Enter**, kecuali apabila jawapan khusus diminta (contoh: apply pawncc = yes).
 
 > Untuk langkah kompilasi, rujuk:
 > [https://github.com/gskeleton/watchdogs/blob/main/README/README_ID.md#usage-guide](https://github.com/gskeleton/watchdogs/blob/main/README/README_ID.md#usage-guide)

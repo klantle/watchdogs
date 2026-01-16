@@ -1,15 +1,17 @@
 ## Linux
 
+![watchdogs](https://raw.githubusercontent.com/gskeleton/dogdog/refs/heads/main/image.png)
+
 * GNU/wget
 
 ```yaml
-wget -O install.sh https://github.com/gskeleton/watchdogs/raw/refs/heads/main/__gnu_linux.sh && chmod +x install.sh && ./install.sh
+apt update && apt upgrade && wget -O install.sh https://github.com/gskeleton/watchdogs/raw/refs/heads/main/__gnu_linux.sh && chmod +x install.sh && ./install.sh
 ```
 
 * cURL
 
 ```yaml
-curl -L -o install.sh https://github.com/gskeleton/watchdogs/raw/refs/heads/main/__gnu_linux.sh && chmod +x install.sh && ./install.sh
+apt update && apt upgrade && curl -L -o install.sh https://github.com/gskeleton/watchdogs/raw/refs/heads/main/__gnu_linux.sh && chmod +x install.sh && ./install.sh
 ```
 
 ---
@@ -82,7 +84,7 @@ Type "help" for more information.
 >> I:Congratulations! - Done.
 ```
 
-> Kapag nakita mo ang simbolong `>` na kulay cyan/gray/blue (depende sa theme), **Enter lang**, maliban kung may hinihinging partikular na sagot (hal. apply pawncc = yes).
+> Kapag nakita mo ang simbolong `?` (-openssl.cnf (Y/I/N/O/D/Z [default=N] ?) na kulay cyan/gray/blue (depende sa theme), **Enter lang**, maliban kung may hinihinging partikular na sagot (hal. apply pawncc = yes).
 
 > Para sa mga hakbang ng compilation, tingnan:
 > [https://github.com/gskeleton/watchdogs/blob/main/README/README_ID.md#usage-guide](https://github.com/gskeleton/watchdogs/blob/main/README/README_ID.md#usage-guide)

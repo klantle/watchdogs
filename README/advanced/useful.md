@@ -44,6 +44,7 @@
 - Cursor: https://cursor.com/
 - Zed: https://zed.dev/
 - Notepad++: https://notepad-plus-plus.org/
+- Geany: https://www.geany.org/
 - Xed Editor (Android): https://github.com/Xed-Editor/Xed-Editor
 
 ## Tools

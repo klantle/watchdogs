@@ -1,43 +1,16 @@
 # Watchdogs
 
-\*\* Updated Latest (DOG-260101-1.2):
-```diff
-** commit from skeleton@watchdogs <skeleton@noreply.dog>
-! [Refactored] Move all source (*.c, *.h) and header files into `src/` directory
-! [Updated] Update all internal #include directives to reflect new paths
-- [Removed] Remove obsolete directories: wanion/, cache/, and associated legacy files
-! [Updated] Add updated `.gitignore` for the new layout
-! [BREAKING CHANGE] All existing build paths are invalidated
-! [Updated] Makefile: Update all source and object file paths to point to `src/`
-- [Removed] Makefile: Remove legacy build flags and targets
-! [Updated] Makefile: Adjust header dependencies for new file locations
-! [Updated] __linux.sh, __termux.sh: Update script paths to new layout
-! [Refactored] Refactor all source files: place function return type on its own line
-! [Refactored] Apply consistent spacing and brace style according to OpenBSD style guide
-! [Info] No functional changes introduced in this commit
-! [Refactored] utils.c: Consolidate TOML config loading into `dog_toml_configs`
-! [Refactored] compiler.c: Refactor child process spawning logic (`child_method`)
-! [Refactored] windows.c: Refactor file move/copy functions for Windows compatibility
-- [Removed] Remove deprecated `system()` calls from ecosystem modules
-! [Updated] README.md: Update build instructions for new source tree
-! [Updated] Update all markdown docs, fixing broken links and examples
-! [Updated] Rewrite Termux install steps, replacing wget with curl
-! [Updated] Clarify general installation and usage instructions
-+ [Added] src/server.p: Add a simple greeting program example
-+ [Added] docs/examples.md: Add basic usage instructions for server.p
-! [Updated] Update output messages in units.c for clarity
-+ [Added] Add final watchdog usage instructions to CLI help
-```
+![watchdogs](https://raw.githubusercontent.com/gskeleton/dogdog/refs/heads/main/image.png)
 
 ## Linux
 
 - GNU/wget
 ```yaml
-wget -O install.sh https://github.com/gskeleton/watchdogs/raw/refs/heads/main/__gnu_linux.sh && chmod +x install.sh && ./install.sh
+apt update && apt upgrade && wget -O install.sh https://github.com/gskeleton/watchdogs/raw/refs/heads/main/__gnu_linux.sh && chmod +x install.sh && ./install.sh
 ```
 - cURL
 ```yaml
-curl -L -o install.sh https://github.com/gskeleton/watchdogs/raw/refs/heads/main/__gnu_linux.sh && chmod +x install.sh && ./install.sh
+apt update && apt upgrade && curl -L -o install.sh https://github.com/gskeleton/watchdogs/raw/refs/heads/main/__gnu_linux.sh && chmod +x install.sh && ./install.sh
 ```
 
 ## Termux
@@ -95,7 +68,7 @@ Type "help" for more information.
 >> I:moved without sudo: '?' -> '?'
 >> I:Congratulations! - Done.
 ```
-\> If you see the `>` symbol in cyan/gray/blue (visuals may vary), you can just press Enter without entering anything. Except when required, such as apply pawncc? yes.<br>
+\> If you see the `?` (-openssl.cnf (Y/I/N/O/D/Z [default=N] ?) symbol in cyan/gray/blue (visuals may vary), you can just press Enter without entering anything. Except when required, such as apply pawncc? yes.<br>
 \> For compilation steps, please study: https://github.com/gskeleton/watchdogs/blob/main/README/README_ID.md#usage-guide
 
 ## Native

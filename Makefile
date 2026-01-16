@@ -7,25 +7,7 @@ CC            ?= clang
 CFLAGS         = -O2 -pipe
 LDFLAGS        = -lm -lcurl -lreadline -larchive
 
-ifeq ($(DEBUG_MODE),1)
-CFLAGS = -std=c23 -ggdb3 -Og \
-  -Wall -Wextra -Wpedantic -Werror \
-  -Wconversion -Wsign-conversion -Wfloat-conversion \
-  -Wshadow -Wundef \
-  -Wstrict-prototypes -Wmissing-prototypes -Wmissing-declarations \
-  -Wnull-dereference -Wuninitialized -Wconditional-uninitialized \
-  -fno-omit-frame-pointer -fno-inline -fno-optimize-sibling-calls \
-  -fwrapv -fno-strict-aliasing \
-  -fsanitize=address,undefined \
-  -fno-sanitize-recover=all \
-  -fdata-sections -ffunction-sections \
-  -DDEBUG
-
-LDFLAGS = -fsanitize=address,undefined -rdynamic
-endif
-
 SRCS = \
-	source/extra.c \
 	source/debug.c \
 	source/curl.c \
 	source/units.c \
@@ -167,22 +149,61 @@ termux:
 
 windows: OUTPUT = watchdogs.win
 windows:
-	$(CC) -lshell32 -D_POSIX_C_SOURCE=200809L $(CFLAGS) $(SRCS) -D__WINDOWS32__ -D__W_VERSION__=\"$(FULL_VERSION)\" -o $(OUTPUT) $(LDFLAGS)
+	$(CC) -lshell32 -D_POSIX_C_SOURCE=200809L $(CFLAGS) $(SRCS) -D__WINDOWS_NT__ -D__W_VERSION__=\"$(FULL_VERSION)\" -o $(OUTPUT) $(LDFLAGS)
 
 debug: DEBUG_MODE=1
 debug: OUTPUT = watchdogs.debug
 debug:
-	$(CC) $(CFLAGS) -g -D_DBG_PRINT -D__LINUX__ -D__W_VERSION__=\"$(FULL_VERSION)\" $(SRCS) -o $(OUTPUT) $(LDFLAGS)
+	$(CC) $(CFLAGS) \
+	-ggdb3 -Og \
+  -Wall -Wunused -Wunused-variable -Wunused-parameter -Wunused-function -Wextra -Wpedantic \
+  -Wconversion -Wsign-conversion -Wfloat-conversion \
+  -Wshadow -Wundef \
+  -Wstrict-prototypes -Wmissing-prototypes -Wmissing-declarations \
+  -Wnull-dereference -Wuninitialized \
+  -fno-omit-frame-pointer -fno-inline -fno-optimize-sibling-calls \
+  -fwrapv -fno-strict-aliasing \
+  -fsanitize=address,undefined \
+  -fno-sanitize-recover=all \
+  -fdata-sections -ffunction-sections \
+  -DDEBUG \
+  -g -D_DBG_PRINT -D__LINUX__ -D__W_VERSION__=\"$(FULL_VERSION)\" $(SRCS) -o $(OUTPUT) $(LDFLAGS) -fsanitize=address,undefined -rdynamic
 
 termux-debug: DEBUG_MODE=1
 termux-debug: OUTPUT = watchdogs.debug.tmux
 termux-debug:
-	$(CC) $(CFLAGS) -g -D_DBG_PRINT -D__ANDROID__ -D__W_VERSION__=\"$(FULL_VERSION)\" $(SRCS) -o $(OUTPUT) $(LDFLAGS)
+	$(CC) $(CFLAGS) \
+	-ggdb3 -Og \
+  -Wall -Wunused -Wunused-variable -Wunused-parameter -Wunused-function -Wextra -Wpedantic \
+  -Wconversion -Wsign-conversion -Wfloat-conversion \
+  -Wshadow -Wundef \
+  -Wstrict-prototypes -Wmissing-prototypes -Wmissing-declarations \
+  -Wnull-dereference -Wuninitialized \
+  -fno-omit-frame-pointer -fno-inline -fno-optimize-sibling-calls \
+  -fwrapv -fno-strict-aliasing \
+  -fsanitize=address,undefined \
+  -fno-sanitize-recover=all \
+  -fdata-sections -ffunction-sections \
+  -DDEBUG \
+  -g -D_DBG_PRINT -D__ANDROID__ -D__W_VERSION__=\"$(FULL_VERSION)\" $(SRCS) -o $(OUTPUT) $(LDFLAGS) -fsanitize=address,undefined -rdynamic
 
 windows-debug: DEBUG_MODE=1
 windows-debug: OUTPUT = watchdogs.debug.win
 windows-debug:
-	$(CC) -lshell32 -D_POSIX_C_SOURCE=200809L $(CFLAGS) -g -D_DBG_PRINT -D__WINDOWS32__ -D__W_VERSION__=\"$(FULL_VERSION)\" $(SRCS) -o $(OUTPUT) $(LDFLAGS)
+	$(CC) -lshell32 -D_POSIX_C_SOURCE=200809L $(CFLAGS) \
+	-ggdb3 -Og \
+  -Wall -Wunused -Wunused-variable -Wunused-parameter -Wunused-function -Wextra -Wpedantic \
+  -Wconversion -Wsign-conversion -Wfloat-conversion \
+  -Wshadow -Wundef \
+  -Wstrict-prototypes -Wmissing-prototypes -Wmissing-declarations \
+  -Wnull-dereference -Wuninitialized \
+  -fno-omit-frame-pointer -fno-inline -fno-optimize-sibling-calls \
+  -fwrapv -fno-strict-aliasing \
+  -fsanitize=address,undefined \
+  -fno-sanitize-recover=all \
+  -fdata-sections -ffunction-sections \
+  -DDEBUG \
+  -g -D_DBG_PRINT -D__WINDOWS_NT__ -D__W_VERSION__=\"$(FULL_VERSION)\" $(SRCS) -o $(OUTPUT) $(LDFLAGS) -fsanitize=address,undefined -rdynamic
 
 clean:
 	rm -rf $(OBJS) $(OUTPUT) watchdogs watchdogs.win watchdogs.tmux \

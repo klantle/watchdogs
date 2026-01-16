@@ -10,7 +10,6 @@
 #include  <stdio.h>
 #include  <stdlib.h>
 #include  <string.h>
-#include  <stdbool.h>
 #include  <limits.h>
 #include  <time.h>
 #include  <sys/stat.h>
@@ -18,7 +17,6 @@
 #include  <signal.h>
 #include  <curl/curl.h>
 
-#include  "extra.h"
 #include  "utils.h"
 #include  "crypto.h"
 #include  "library.h"
@@ -38,7 +36,7 @@
 
 const char *watchdogs_release = WATCHDOGS_RELEASE;
 
-static struct timespec cmd_start;
+static struct timespec cmd_start = { 0 };
 static struct timespec cmd_end = { 0 };
 static double command_dur;
 
@@ -46,12 +44,16 @@ int
 __command__(char *unit_pre_command)
 {
 	unit_debugging(1);
+	
+	memset(&cmd_start, 0, sizeof(cmd_start));
+	memset(&cmd_end, 0, sizeof(cmd_end));
+
 	if (dogconfig.dog_garbage_access[DOG_GARBAGE_CURL_COMPILER_TESTING] == DOG_GARBAGE_TRUE)
 	{
 		printf(DOG_COL_BCYAN
 			"Please input the pawn file with dot type (.pwn/.p):\n"
 			DOG_COL_DEFAULT);
-		char *compile_target = readline(" ");
+		char *compile_target = readline(" > ");
 		if (compile_target) {
 			const char *argsc[] = { NULL, compile_target, "-w",
 				NULL, NULL, NULL, NULL, NULL, NULL, NULL };
@@ -121,7 +123,7 @@ _ptr_command:
 	}
 
 	command_similar = dog_find_near_command(ptr_command,
-	    __command, __command_len, &dist);
+	    unit_command_list, unit_command_len, &dist);
 
 _reexecute_command:
 	unit_debugging(0);
@@ -171,7 +173,7 @@ _reexecute_command:
 		if (*args == '\0') {
 			println(stdout, "Usage: sha256 [<words>]");
 		} else {
-			unsigned char digest[32];
+            unsigned char digest[32];
 
 			if (crypto_generate_sha256_hash(args, digest) != 1) {
 				goto unit_done;
@@ -191,12 +193,6 @@ _reexecute_command:
 		if (*args == '\0') {
 			println(stdout, "Usage: crc32 [<words>]");
 		} else {
-			static int init_crc32 = 0;
-			if (init_crc32 != 1) {
-				crypto_crc32_init_table();
-				init_crc32 = 1;
-			}
-
 			uint32_t crc32_generate;
 			crc32_generate = crypto_generate_crc32(args,
 			    strlen(args));
@@ -219,12 +215,14 @@ _reexecute_command:
 			println(stdout, "Usage: djb2 [<file>]");
 		} else {
 			if (path_exists(args) == 0) {
-				pr_error(stdout,
+				pr_warning(stdout,
 				    "djb2: " DOG_COL_CYAN "%s"
 				    " - No such file or directory", args);
 				goto unit_done;
 			}
+			
 			unsigned long djb2_generate;
+
 			djb2_generate = crypto_djb2_hash_file(args);
 
 			if (djb2_generate) {
@@ -298,14 +296,14 @@ _reexecute_command:
 				dog_install_depends(args, "main", NULL);
 		} else {
 			char errbuf[DOG_PATH_MAX];
-			toml_table_t *dog_toml_config;
+			toml_table_t *dog_toml_server_config;
 			FILE *this_proc_file = fopen("watchdogs.toml", "r");
-			dog_toml_config = toml_parse_file(this_proc_file,
+			dog_toml_server_config = toml_parse_file(this_proc_file,
 			    errbuf, sizeof(errbuf));
 			if (this_proc_file)
 				fclose(this_proc_file);
 
-			if (!dog_toml_config) {
+			if (!dog_toml_server_config) {
 				pr_error(stdout,
 				    "failed to parse the watchdogs.toml...: %s",
 				    errbuf);
@@ -317,8 +315,8 @@ _reexecute_command:
 			size_t arr_sz, i;
 			char *expect = NULL;
 
-			dog_depends = toml_table_in(dog_toml_config,
-			    "dependencies");
+			dog_depends = toml_table_in(dog_toml_server_config,
+			    TOML_TABLE_DEPENDENCIES);
 			if (!dog_depends)
 				goto out;
 
@@ -350,8 +348,10 @@ _reexecute_command:
 					    strlen(val.u.s) + 2;
 
 					tmp = dog_realloc(expect, new_len);
-					if (!tmp)
+					if (!tmp) {
+						dog_free(expect);
 						goto free_val;
+					}
 
 					expect = tmp;
 					snprintf(expect + old_len,
@@ -390,7 +390,7 @@ free_val:
 				dog_install_depends(dogconfig.dog_toml_packages,
 				    "main", NULL);
 out:
-			toml_free(dog_toml_config);
+			toml_free(dog_toml_server_config);
 		}
 
 		goto unit_done;
@@ -405,7 +405,7 @@ ret_ptr:
 		printf("  \033[36m[t]\033[0m Termux\n");
 
 		dogconfig.dog_garbage_access[DOG_GARBAGE_SELECTION_STAT] = DOG_GARBAGE_TRUE;
-		int stat_true = dogconfig.dog_garbage_access[DOG_GARBAGE_SELECTION_STAT];
+		bool stat_true = dogconfig.dog_garbage_access[DOG_GARBAGE_SELECTION_STAT];
 
 		char *platform = readline("==> ");
 
@@ -466,7 +466,6 @@ loop_igm3:
 			pr_error(stdout,
 			    "Invalid platform selection. Input 'E/e' to exit");
 			free(platform);
-			platform = NULL;
 			goto ret_ptr;
 		}
 
@@ -482,7 +481,7 @@ ret_ptr2:
 		printf("  \033[36m[t]\033[0m Termux\n");
 
 		dogconfig.dog_garbage_access[DOG_GARBAGE_SELECTION_STAT] = DOG_GARBAGE_TRUE;
-		int stat_true = dogconfig.dog_garbage_access[DOG_GARBAGE_SELECTION_STAT];
+		bool stat_true = dogconfig.dog_garbage_access[DOG_GARBAGE_SELECTION_STAT];
 
 		char *platform = readline("==> ");
 
@@ -543,7 +542,6 @@ loop_ipcc3:
 			pr_error(stdout,
 			    "Invalid platform selection. Input 'E/e' to exit");
 			free(platform);
-			platform = NULL;
 			goto ret_ptr2;
 		}
 
@@ -600,27 +598,27 @@ loop_ipcc3:
 _endpoints_:
 		dog_stop_server_tasks();
 
-		if (!path_access(dogconfig.dog_toml_binary)) {
+		if (!path_access(dogconfig.dog_toml_server_binary)) {
 			pr_error(stdout,
 			    "can't locate sa-mp/open.mp binary file!");
 			goto unit_done;
 		}
-		if (!path_access(dogconfig.dog_toml_config)) {
+		if (!path_access(dogconfig.dog_toml_server_config)) {
 			pr_warning(stdout,
 			    "can't locate %s - config file!",
-			    dogconfig.dog_toml_config);
+			    dogconfig.dog_toml_server_config);
 			goto unit_done;
 		}
 
 		if (dir_exists(".watchdogs") == 0)
 			MKDIR(".watchdogs");
 
-		int access_debugging_file = path_access(dogconfig.dog_toml_logs);
+		int access_debugging_file = path_access(dogconfig.dog_toml_server_logs);
 		if (access_debugging_file)
-			remove(dogconfig.dog_toml_logs);
-		access_debugging_file = path_access(dogconfig.dog_toml_logs);
+			remove(dogconfig.dog_toml_server_logs);
+		access_debugging_file = path_access(dogconfig.dog_toml_server_logs);
 		if (access_debugging_file)
-			remove(dogconfig.dog_toml_logs);
+			remove(dogconfig.dog_toml_server_logs);
 
 		size_t cmd_len = 7;
 		char *args = ptr_command + cmd_len;
@@ -638,7 +636,7 @@ _endpoints_:
 		size_t needed = snprintf(NULL, 0, "Watchdogs | "
 		    "@ running | " "args: %s | "
 		    "config: %s | " "CTRL + C to stop. | \"debug\" for debugging",
-		    size_arg1, dogconfig.dog_toml_config) + 1;
+		    size_arg1, dogconfig.dog_toml_server_config) + 1;
 		char *title_running_info = dog_malloc(needed);
 		if (!title_running_info) {
 			goto unit_done;
@@ -650,7 +648,7 @@ _endpoints_:
 		    "config: %s | "
 		    "CTRL + C to stop. | \"debug\" for debugging",
 		    size_arg1,
-		    dogconfig.dog_toml_config);
+		    dogconfig.dog_toml_server_config);
 		if (title_running_info) {
 #ifdef DOG_ANDROID
 			println(stdout, "%s", title_running_info);
@@ -661,10 +659,10 @@ _endpoints_:
 			title_running_info = NULL;
 		}
 
-		int _dog_config_acces = path_access(dogconfig.dog_toml_config);
+		int _dog_config_acces = path_access(dogconfig.dog_toml_server_config);
 		if (!_dog_config_acces) {
 			pr_error(stdout, "%s not found!",
-			    dogconfig.dog_toml_config);
+			    dogconfig.dog_toml_server_config);
 			goto unit_done;
 		}
 
@@ -674,11 +672,11 @@ _endpoints_:
 		struct sigaction sa;
 
 		if (path_access("announce"))
-			CHMOD_FULL("announce");
+			set_default_access("announce");
 
 		int rate_endpoint_failed = -1;
 
-		if (dog_server_env() == 1) {
+		if (fetch_server_env() == 1) {
 			if (args2 == NULL ||
 			    (args2[0] == '.' && args2[1] == '\0')) {
 start_main:
@@ -691,7 +689,7 @@ start_main:
 					exit(EXIT_FAILURE);
 				}
 
-				time_t start, end;
+				time_t start = 0, end = 0;
 				double elapsed;
 				int ret_serv = 0;
 				back_start:
@@ -716,7 +714,7 @@ start_main:
 					_STARTUPINFO.hStdInput  = GetStdHandle(STD_INPUT_HANDLE);
 
 					snprintf(command, sizeof(command),
-						"%s%s", SYM_PROG, dogconfig.dog_toml_binary);
+						"%s%s", _relative_path_exec, dogconfig.dog_toml_server_binary);
 
 					if (!CreateProcessA(
 						NULL,command,NULL,NULL,TRUE,0,NULL,NULL,
@@ -737,11 +735,11 @@ start_main:
 				{
 					pid_t pid;
 
-					CHMOD_FULL(dogconfig.dog_toml_binary);
+					set_default_access(dogconfig.dog_toml_server_binary);
 
 					char cmd[DOG_PATH_MAX + 26];
 					snprintf(cmd, sizeof(cmd), "%s/%s",
-						dog_procure_pwd(), dogconfig.dog_toml_binary);
+						dog_procure_pwd(), dogconfig.dog_toml_server_binary);
 
 					int stdout_pipe[2];
 					int stderr_pipe[2];
@@ -820,16 +818,16 @@ start_main:
 						printf("\ttry starting again..");
 						access_debugging_file =
 						    path_access(
-						    dogconfig.dog_toml_logs);
+						    dogconfig.dog_toml_server_logs);
 						if (access_debugging_file)
 							remove(
-							    dogconfig.dog_toml_logs);
+							    dogconfig.dog_toml_server_logs);
 						access_debugging_file =
 						    path_access(
-						    dogconfig.dog_toml_logs);
+						    dogconfig.dog_toml_server_logs);
 						if (access_debugging_file)
 							remove(
-							    dogconfig.dog_toml_logs);
+							    dogconfig.dog_toml_server_logs);
 						end = time(NULL);
 						goto back_start;
 					}
@@ -862,7 +860,7 @@ server_done:
 					goto start_main;
 				}
 				dog_exec_samp_server(args2,
-				    dogconfig.dog_toml_binary);
+				    dogconfig.dog_toml_server_binary);
 				restore_server_config();
 				printf("\x1b[32m==> create debugging runner?\x1b[0m\n");
 				char *debug_endpoint = readline(
@@ -880,7 +878,7 @@ server_done:
 				if (debug_endpoint)
 					free(debug_endpoint);
 			}
-		} else if (dog_server_env() == 2) {
+		} else if (fetch_server_env() == 2) {
 			if (args2 == NULL ||
 			    (args2[0] == '.' && args2[1] == '\0')) {
 start_main2:
@@ -893,7 +891,7 @@ start_main2:
 					exit(EXIT_FAILURE);
 				}
 
-				time_t start, end;
+				time_t start = 0, end = 0;
 				double elapsed;
 				int ret_serv = 0;
 				back_start2:
@@ -918,7 +916,7 @@ start_main2:
 					_STARTUPINFO.hStdInput  = GetStdHandle(STD_INPUT_HANDLE);
 
 					snprintf(command, sizeof(command),
-						"%s%s", SYM_PROG, dogconfig.dog_toml_binary);
+						"%s%s", _relative_path_exec, dogconfig.dog_toml_server_binary);
 
 					if (!CreateProcessA(
 						NULL,command,NULL,NULL,TRUE,0,NULL,NULL,
@@ -939,11 +937,11 @@ start_main2:
 				{
 					pid_t pid;
 
-					CHMOD_FULL(dogconfig.dog_toml_binary);
+					set_default_access(dogconfig.dog_toml_server_binary);
 
 					char cmd[DOG_PATH_MAX + 26];
 					snprintf(cmd, sizeof(cmd), "%s/%s",
-						dog_procure_pwd(), dogconfig.dog_toml_binary);
+						dog_procure_pwd(), dogconfig.dog_toml_server_binary);
 
 					int stdout_pipe[2];
 					int stderr_pipe[2];
@@ -1020,16 +1018,16 @@ start_main2:
 						printf("\ttry starting again..");
 						access_debugging_file =
 						    path_access(
-						    dogconfig.dog_toml_logs);
+						    dogconfig.dog_toml_server_logs);
 						if (access_debugging_file)
 							remove(
-							    dogconfig.dog_toml_logs);
+							    dogconfig.dog_toml_server_logs);
 						access_debugging_file =
 						    path_access(
-						    dogconfig.dog_toml_logs);
+						    dogconfig.dog_toml_server_logs);
 						if (access_debugging_file)
 							remove(
-							    dogconfig.dog_toml_logs);
+							    dogconfig.dog_toml_server_logs);
 						end = time(NULL);
 						goto back_start2;
 					}
@@ -1088,7 +1086,7 @@ server_done2:
 			printf("\n  \033[1mInstall now?\033[0m  [\033[32mY\033[0m/\033[31mn\033[0m]: ");
 
 			dogconfig.dog_garbage_access[DOG_GARBAGE_SELECTION_STAT] = DOG_GARBAGE_TRUE;
-			int stat_true = dogconfig.dog_garbage_access[DOG_GARBAGE_SELECTION_STAT];
+			bool stat_true = dogconfig.dog_garbage_access[DOG_GARBAGE_SELECTION_STAT];
 
 			char *pointer_signalA;
 ret_ptr3:
@@ -1334,19 +1332,19 @@ n_loop_igm2:
 			}
 
 			char *filename = args;
-			if (strrchr(args, __PATH_CHR_SEP_LINUX) &&
-			    strrchr(args, __PATH_CHR_SEP_WIN32)) {
+			if (strrchr(args, _PATH_CHR_SEP_POSIX) &&
+			    strrchr(args, _PATH_CHR_SEP_WIN32)) {
 				filename = (strrchr(args,
-				    __PATH_CHR_SEP_LINUX) >
-				    strrchr(args, __PATH_CHR_SEP_WIN32)) ?
-				    strrchr(args, __PATH_CHR_SEP_LINUX) + 1 :
-				    strrchr(args, __PATH_CHR_SEP_WIN32) + 1;
-			} else if (strrchr(args, __PATH_CHR_SEP_LINUX)) {
+				    _PATH_CHR_SEP_POSIX) >
+				    strrchr(args, _PATH_CHR_SEP_WIN32)) ?
+				    strrchr(args, _PATH_CHR_SEP_POSIX) + 1 :
+				    strrchr(args, _PATH_CHR_SEP_WIN32) + 1;
+			} else if (strrchr(args, _PATH_CHR_SEP_POSIX)) {
 				filename = strrchr(args,
-				    __PATH_CHR_SEP_LINUX) + 1;
-			} else if (strrchr(args, __PATH_CHR_SEP_WIN32)) {
+				    _PATH_CHR_SEP_POSIX) + 1;
+			} else if (strrchr(args, _PATH_CHR_SEP_WIN32)) {
 				filename = strrchr(args,
-				    __PATH_CHR_SEP_WIN32) + 1;
+				    _PATH_CHR_SEP_WIN32) + 1;
 			} else {
 				;
 			}
@@ -1385,8 +1383,8 @@ n_loop_igm2:
 					tm.tm_hour, tm.tm_min, tm.tm_sec);
 				}
 
-				portable_stat_t st;
-				if (portable_stat(filename, &st) == 0) {
+				dog_portable_stat_t st;
+				if (dog_portable_stat(filename, &st) == 0) {
 					char *content_data = dog_malloc(
 					    DOG_MAX_PATH);
 					if (content_data) {
@@ -1476,18 +1474,39 @@ send_done:
 			    ptr_command);
 		else
 			snprintf(command, cmd_len, "%s", ptr_command);
-		char *argv[] = { command, NULL };
-powershell:
+		
+		char *argv[32];
+		int argc = 0;
+		char *p = strtok(command, " ");
+		while (p != NULL &&
+			   argc < sizeof(argv) - 1) {
+			argv[argc++] = p;
+			p = strtok(NULL, " ");
+		}
+		argv[argc] = NULL;
 		ret = dog_exec_command(argv);
+
 		if (ret)
 			dog_console_title("Watchdogs | @ command not found");
+		
 		dog_free(command);
 		command = NULL;
+
 		if (strcmp(ptr_command, "clear") == 0 ||
 		    strcmp(ptr_command, "cls") == 0)
+		{
+			if (ptr_command) {
+				free(ptr_command);
+				ptr_command = NULL;
+			}
 			return -2;
-		else
+		} else {
+			if (ptr_command) {
+				free(ptr_command);
+				ptr_command = NULL;
+			}
 			return -1;
+		}
 	}
 
 unit_done:
@@ -1518,8 +1537,8 @@ unit_ret_main(void *unit_pre_command)
 		if (ret == 3) {
 			return;
 		}
-		command_dur = (cmd_end.tv_sec - cmd_start.tv_sec) +
-		    (cmd_end.tv_nsec - cmd_start.tv_nsec) / 1e9;
+		command_dur = ((double)(cmd_end.tv_sec - cmd_start.tv_sec)) +
+                      ((double)(cmd_end.tv_nsec - cmd_start.tv_nsec)) / 1e9;
 		pr_color(stdout,
 		    DOG_COL_CYAN,
 		    " <I> (interactive) Finished at %.3fs\n",
@@ -1531,8 +1550,8 @@ loop_main:
 	ret = __command__(NULL);
 	if (ret == -1) {
 		clock_gettime(CLOCK_MONOTONIC, &cmd_end);
-		command_dur = (cmd_end.tv_sec - cmd_start.tv_sec) +
-		    (cmd_end.tv_nsec - cmd_start.tv_nsec) / 1e9;
+		command_dur = ((double)(cmd_end.tv_sec - cmd_start.tv_sec)) +
+                      ((double)(cmd_end.tv_nsec - cmd_start.tv_nsec)) / 1e9;
 		pr_color(stdout,
 		    DOG_COL_CYAN,
 		    " <I> (interactive) Finished at %.3fs\n",
@@ -1554,8 +1573,8 @@ loop_main:
 basic_end:
 
 	clock_gettime(CLOCK_MONOTONIC, &cmd_end);
-	command_dur = (cmd_end.tv_sec - cmd_start.tv_sec) +
-	    (cmd_end.tv_nsec - cmd_start.tv_nsec) / 1e9;
+	command_dur = ((double)(cmd_end.tv_sec - cmd_start.tv_sec)) +
+                  ((double)(cmd_end.tv_nsec - cmd_start.tv_nsec)) / 1e9;
 
 	pr_color(stdout,
 	    DOG_COL_CYAN,

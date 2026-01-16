@@ -118,7 +118,8 @@ A quick list of the most common options. See the sections below for full details
 
 ### -Z[+/-]
 **Compatibility Mode**: Run in SA-MP compatibility mode. CRITICAL for SA-MP scripts.
-**DEFAULT**: `-Z-` (off). Use `-Z+` for SA-MP.
+**DEFAULT**: `-Z-` (off). Use `-Z+` for SA-MP.<br>
+**For what?**: What is meant by compatibility here is support for Path Separators. For example, if you compile a script on Windows OS, you need `-Z+` because the forward slash `/` path separator is not directly supported in `#include "name/too.pwn"` — it will throw "cannot read from file" even if the file exists. Conversely, if you compile on Linux, the path separator is naturally supported.
 
 ### -\
 **Use backslash ('\')** as the escape character (like C, C++, Java).
@@ -128,14 +129,45 @@ A quick list of the most common options. See the sections below for full details
 
 ### -;[+/-]
 **Semicolon Requirement**: With `-;+`, every statement must end with a semicolon. With `-;-`, a semicolon is optional if the statement is the last one on a line.
-**DEFAULT**: `-;-` (optional)
+**DEFAULT**: `-;-` (optional)<br>
+**Sample:**
+```c
+#include "a_samp"
+
+main() {
+  printf("Hello, World")
+                /*      ^ none ; pawno/pawncc xx.pwn -oxx.amx -;- */
+  printf("Hello, World");
+                /*      ^ have ; pawno/pawncc xx.pwn -oxx.amx -;+ */
+}
+```
 
 ### -([+/-]
 **Parentheses Requirement**: With `-(+`, parentheses are required for function invocation. With `-(-`, they are optional in some contexts.
-**DEFAULT**: `-(-` (optional)
+**DEFAULT**: `-(-` (optional)<br>
+**For what?**: As in, what is the meaning of the explanation for the flag above.<br>
+```c
+#include "a_samp"
+
+main() {
+  printf "Hello, World!"; // if you try to call a function or something similar without '()',
+                         // and if -(+ (active) then you cannot perform an operation like that.
+}
+```
 
 ### sym=val
-**Define Constant**: Define a constant "sym" with the numeric value "val". The value is optional (`sym=` defines it as 0).
+**Define Constant**: Define a constant "sym" with the numeric value "val". The value is optional (`sym=` defines it as 0).<br>
+**Sample:**
+```c
+#if mydef == 1
+  // pawno/pawncc xx.pwn -oxx.amx mydef=1
+  //...
+#else
+  // pawno/pawncc xx.pwn -oxx.amx mydef=0
+  // pawno/pawncc xx.pwn -oxx.amx
+  //...
+#endif
+```
 
 ### @filename
 **Response File**: Read additional command-line options from the specified text file. Useful for long commands.

@@ -43,7 +43,7 @@ uint32_t sigma2(uint32_t x);
 
 void charset_random(char *buffer, size_t size);
 
-void crypto_crc32_init_table();
+void crypto_crc32_init_table(void);
 
 uint32_t crypto_generate_crc32(const void *data, size_t length);
 
@@ -63,14 +63,14 @@ char *crypto_base64_encode(const unsigned char *input, int len);
 unsigned char *crypto_base64_decode(const char *input, int *out_len);
 
 int crypto_derive_key_pbkdf2(const char *passphrase, const unsigned char *salt,
-                      int salt_len, unsigned char *key, int key_len);
+                      long salt_len, unsigned char *key, int key_len);
 
 int crypto_encrypt_with_password(const unsigned char *plaintext, int plaintext_len,
                          const char *passphrase, unsigned char **out_blob,
                          int *out_blob_len);
 int crypto_decrypt_with_password(const unsigned char *in_blob, int in_blob_len,
                          const char *passphrase, unsigned char **out_plain,
-                         int *out_plain_len);
+                         long *out_plain_len);
 
 void crypto_aes_encrypt(const uint8_t in[AES_BLOCK_SIZE],
                  uint8_t out[AES_BLOCK_SIZE],

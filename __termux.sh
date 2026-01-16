@@ -35,8 +35,8 @@ pkg update -y
 pkg install -y curl make git
 
 if [ ! -f "$HOME/cacert.pem" ]; then
-  curl -L -o "$HOME/cacert.pem" \
-    "https://github.com/gskeleton/libdog/raw/refs/heads/main/libdog/cacert.pem"
+  wget -O $HOME/cacert.pem \
+    https://github.com/gskeleton/libdog/raw/refs/heads/main/libdog/cacert.pem
 fi
 
 rand=$(date +%s%N | tail -c 7)

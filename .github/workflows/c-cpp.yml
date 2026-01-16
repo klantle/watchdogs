@@ -397,7 +397,7 @@ jobs:
           apt -o Acquire::Queue-Mode=access -o Acquire::Retries=3 update -y
           DEBIAN_FRONTEND=noninteractive apt -o Dpkg::Use-Pty=0 install -y --no-install-recommends \
             unstable-repo coreutils binutils procps clang curl \
-            libarchive libandroid-spawn readline make
+            libarchive readline make
 
           echo '[TASKS - BUILD] RUNNING TERMUX-DEBUG BUILD'
           make termux-debug

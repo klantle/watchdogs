@@ -479,7 +479,7 @@ static int setup_linux_library(void)
 
     if (path_exists(libpawnc_src))
     {
-        int hexdump = 404;
+        int na_hexdump = 404;
         {
             char *argv[] = {
         		"sh",
@@ -493,9 +493,9 @@ static int setup_linux_library(void)
 				"2>&1'",
         		NULL
         	};
-            hexdump = dog_exec_command(argv);
+            na_hexdump = dog_exec_command(argv);
         }
-        if (!hexdump) {
+        if (!na_hexdump) {
             pr_info(stdout,
             	"Fetching %s binary hex..", libpawnc_src);
             snprintf(_hexdump, sizeof(_hexdump),
@@ -695,13 +695,7 @@ dog_apply_pawncc(void)
 		pawncc_dir_source = NULL;
 	}
 
-	printf(DOG_COL_BCYAN "Compile now? y/n: " DOG_COL_DEFAULT);
-	char *compile_now = readline(" ");
-	if (compile_now[0] == '\0' || compile_now[0] == 'Y' ||
-	    compile_now[0] == 'y') {
-		dog_free(compile_now);
-		compiling_gamemode = 1;
-	}
+	compiling_gamemode = true;
 
 apply_done:
 	unit_ret_main(NULL);
@@ -915,20 +909,7 @@ dog_download_file(const char *url, const char *output_filename)
 		curl_easy_setopt(curl, CURLOPT_SSL_VERIFYHOST, 2L);
 		curl_easy_setopt(curl, CURLOPT_NOPROGRESS, 0L);
 
-		static int create_debugging = 0;
-		static int rate_create_debugging = 0;
-
-		if (create_debugging == 0) {
-			create_debugging = 1;
-			pr_color(stdout, DOG_COL_CYAN,
-			    " * Enable HTTP debugging? ");
-			char *debug_http = readline("(y/n): ");
-			if (debug_http[0] == '\0' || debug_http[0] == 'Y' ||
-			    debug_http[0] == 'y') {
-				rate_create_debugging = 1;
-			}
-			dog_free(debug_http);
-		}
+		static bool rate_create_debugging = true;
 
 		curl_easy_setopt(curl, CURLOPT_XFERINFOFUNCTION, NULL);
 		curl_easy_setopt(curl, CURLOPT_XFERINFODATA, NULL);
@@ -1044,21 +1025,29 @@ dog_download_file(const char *url, const char *output_filename)
 						}
 					}
 				} else {
-					pr_color(stdout, DOG_COL_CYAN,
-					    "==> Remove archive %s? ",
-					    final_filename);
-					char *confirm = readline("(y/n): ");
-
-					if (confirm[0] == '\0' ||
-					    confirm[0] == 'Y' ||
-					    confirm[0] == 'y') {
+					if (installing_pawncc) {
 						if (path_exists(
 						    final_filename) == 1) {
 							destroy_arch_dir(
 							    final_filename);
 						}
+					} else {
+						pr_color(stdout, DOG_COL_CYAN,
+							"==> Remove archive %s? ",
+							final_filename);
+						char *confirm = readline("(y/n): ");
+
+						if (confirm[0] == '\0' ||
+							confirm[0] == 'Y' ||
+							confirm[0] == 'y') {
+							if (path_exists(
+								final_filename) == 1) {
+								destroy_arch_dir(
+									final_filename);
+							}
+						}
+						dog_free(confirm);
 					}
-					dog_free(confirm);
 				}
 
     			if (installing_pawncc && prompt_apply_pawncc() == 1)

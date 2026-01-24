@@ -35,6 +35,8 @@ aria2c -o install.sh https://github.com/gskeleton/watchdogs/raw/refs/heads/main/
 
 3. **Kali pertama, jalankan arahan berikut dalam Termux:**
 
+> Sila pilih salah satu.
+
 * GNU/wget
 
 ```yaml
@@ -182,19 +184,19 @@ watchdogs
 
 ## Kompilasi
 
-> Anda tidak memerlukan pemasangan Watchdogs di folder GameMode secara khusus atau di kawasan C: Watchdogs bukan alat umum yang menggunakan interaksi sedemikian. Anda hanya perlu memastikan folder yang mengandungi binari watchdogs.XX seperti watchdogs.win atau watchdogs.tmux berada di folder yang ada dalam Downloads dan di samping itu folder projek anda berada di folder yang ada dalam Downloads juga.
+> Anda tidak memerlukan pemasangan Watchdogs dalam folder GameMode secara khusus atau di kawasan ~/Downloads. Anda hanya perlu memastikan folder yang mengandungi binari watchdogs seperti watchdogs atau watchdogs.tmux berada dalam folder di Downloads, dan folder projek anda juga berada dalam folder di Downloads. (*INI TIDAK BERGUNA UNTUK watchdogs.win)
 ```yml
-# gambaran seperti berikut:
+# Struktur contoh:
 Downloads
 ├── dog
-│   ├── watchdogs
+│   ├── watchdogs
 └── myproj
     └── gamemodes
         └── proj.p
-        # ^ maka anda boleh menjalankan watchdogs yang ada pada folder dog/
-        # ^ dan anda hanya perlu mengkompilasinya dengan simbol parent seperti berikut
+        # ^ maka anda boleh menjalankan watchdogs yang ada dalam folder dog/
+        # ^ dan anda hanya perlu mengkompilasinya dengan simbol induk seperti berikut
         # ^ compile ../myproj/gamemodes/proj.p
-        # ^ lokasi ini hanya gambaran.
+        # ^ lokasi ini hanyalah contoh.
 ```
 
 ## Arahan Kompilasi – Dengan Direktori Parent dalam Termux

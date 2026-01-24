@@ -38,6 +38,7 @@
 
 # include  <io.h>
 # include  <windows.h>
+# include  <process.h>
 # include  <direct.h>
 # include  <strings.h>
 # include  <shellapi.h>

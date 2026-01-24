@@ -8,9 +8,7 @@
 #define DEPENDENCY_H
 
 #define MAX_DEPENDS (102)
-#define REPLICATE_RATE_ZERO 0
-#define BUILD_PATTERNS(...) { __VA_ARGS__, NULL }
-#define WITH_CODENAME(codename) codename
+#define ASSERT_PATTERN(...) { __VA_ARGS__, NULL }
 
 enum {
     host_size = 32,

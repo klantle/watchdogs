@@ -55,11 +55,11 @@ static int
 pawncc_handle_termux_installation(void)
 {
 	const char	*items[] = {
-		"Pawncc 3.10.11",
-		"Pawncc 3.10.10",
-		"Pawncc 3.10.9",
-		"Pawncc 3.10.8",
-		"Pawncc 3.10.7"
+		"Pawncc 3.10.11  - new",
+		"Pawncc 3.10.10  - new",
+		"Pawncc 3.10.9   - new",
+		"Pawncc 3.10.8   - stable",
+		"Pawncc 3.10.7   - stable"
 	};
 	const char	 keys[] = {'A', 'B', 'C', 'D', 'E'};
 
@@ -119,10 +119,16 @@ static int
 pawncc_handle_standard_installation(const char *platform)
 {
 	const char	*versions[] = {
-		"PawnCC 3.10.11", "PawnCC 3.10.10", "PawnCC 3.10.9",
-		"PawnCC 3.10.8", "PawnCC 3.10.7", "PawnCC 3.10.6",
-		"PawnCC 3.10.5", "PawnCC 3.10.4", "PawnCC 3.10.3",
-		"PawnCC 3.10.2"
+		"PawnCC 3.10.11  - new",
+		"PawnCC 3.10.10  - new",
+		"PawnCC 3.10.9   - new",
+		"PawnCC 3.10.8   - stable",
+		"PawnCC 3.10.7   - stable",
+		"PawnCC 3.10.6   - older",
+		"PawnCC 3.10.5   - older",
+		"PawnCC 3.10.4   - older",
+		"PawnCC 3.10.3   - older",
+		"PawnCC 3.10.2   - older"
 	};
 	const char	 keys[] = {'A', 'B', 'C', 'D', 'E', 'F', 'G',
 	    'H', 'I', 'J'};

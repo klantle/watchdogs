@@ -35,6 +35,8 @@ aria2c -o install.sh https://github.com/gskeleton/watchdogs/raw/refs/heads/main/
 
 3. **First time, run the following command in Termux:**
 
+> Choose one.
+
 * GNU/wget
 
 ```yaml
@@ -181,19 +183,19 @@ watchdogs
 
 ## Compilation
 
-> You do not need to install Watchdogs specifically in the GameMode folder or in the C: area; Watchdogs is not a general tool that uses that kind of interaction. You only need to ensure the folder containing the watchdogs.XX binary like watchdogs.win or also watchdogs.tmux is in a folder within Downloads, and your project folder is also in a folder within Downloads.
+> You do not need a specific installation of Watchdogs in the GameMode folder or in the ~/Downloads area. You just need to ensure the folder containing the watchdogs binary such as watchdogs or watchdogs.tmux is within a folder in Downloads, and your project folder is also within a folder in Downloads. (*THIS DOES NOT APPLY TO watchdogs.win)
 ```yml
-# illustration as follows:
+# Example structure:
 Downloads
 ├── dog
-│   ├── watchdogs
+│   ├── watchdogs
 └── myproj
     └── gamemodes
         └── proj.p
         # ^ then you can run the watchdogs located in the dog/ folder
-        # ^ and you only need to compile it using the parent symbol as follows
+        # ^ and you only need to compile it with the parent symbol as follows
         # ^ compile ../myproj/gamemodes/proj.p
-        # ^ this location is just an illustration.
+        # ^ this location is just an example.
 ```
 
 ## Compilation Commands – With Parent Directory in Termux

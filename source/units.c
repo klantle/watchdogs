@@ -112,29 +112,28 @@ __command__(char *unit_pre_command)
     
     if (compiling_gamemode == true) {
         compiling_gamemode = false;
-        printf(DOG_COL_BCYAN
-            "Please input the pawn file with dot type (.pwn/.p):\n"
-            DOG_COL_DEFAULT);
-        compile_target = readline(" > ");
-        if (compile_target) {
-            const char *argsc[] = { NULL, compile_target, "-w",
-                NULL, NULL, NULL, NULL, NULL, NULL, NULL };
-            dog_exec_compiler(argsc[0], argsc[1], argsc[2],
-                argsc[3], argsc[4], argsc[5], argsc[6], argsc[7],
-                argsc[8], argsc[9]);
-        }
-        dog_free(compile_target);
-        compile_target = NULL;
+        const char *argsc[] = { NULL, NULL, NULL,
+            NULL, NULL, NULL, NULL, NULL, NULL, NULL };
+        dog_exec_compiler(argsc[0], argsc[1], argsc[2],
+            argsc[3], argsc[4], argsc[5], argsc[6], argsc[7],
+            argsc[8], argsc[9]);
     }
     static bool installing_stdlib_warn = false;
     if (compiler_installing_stdlib == true && installing_stdlib_warn == false) {
         installing_stdlib_warn = true;
         printf("\n");
         if (fetch_server_env()==1) {
-            pr_info(stdout,"sa-mp stdlib not found.. installing...");
-            dog_install_depends("gskeleton/samp-stdlib", "main", NULL);
+            pr_info(stdout, "can't found sa-mp stdlib.. installing...");
+            pr_info(stdout, "select version:\n\t1: 0.3.DL-R1 | 2: 0.3.7-R2-1-1");
+            char *version = readline("> ");
+            if (version[0] == '\0' || version[0] == '2') {
+                dog_install_depends("gskeleton/samp-stdlib", "main", NULL);
+            } else {
+                dog_install_depends("gskeleton/samp-stdlib", "0.3.dl", NULL);
+            }
+            dog_free(version);
         } else {
-            pr_info(stdout,"open.mp stdlib not found.. installing..");
+            pr_info(stdout, "can't found open.mp stdlib.. installing..");
             dog_install_depends("openmultiplayer/omp-stdlib", "master", NULL);
         }
         ptr_command = strdup("compile");
@@ -573,7 +572,97 @@ _reexecute_command:
         ret_code = -1;
         goto cleanup;
         
-    } else if (strncmp(ptr_command, "running", strlen("running")) == 0) {
+    } else if (strncmp(ptr_command, "decompile", strlen("decompile")) == 0) {
+        dog_console_title("Watchdogs | @ decompile");
+
+        char *args = ptr_command + strlen("decompile");
+        while (*args == ' ') args++;
+        if (*args == '\0') {
+            println(stdout, "Usage: decompile [<file.amx>]");
+            ret_code = -1;
+            goto cleanup;
+        }
+        if (strfind(args, ".amx", true) == false) {
+            println(stdout, "Usage: decompile [<file.amx>]");
+            ret_code = -1;
+            goto cleanup;
+        }
+
+        char *pawndisasm_ptr = NULL;
+        int   ret_pawndisasm = 0;
+        if (strcmp(dogconfig.dog_toml_os_type, OS_SIGNAL_WINDOWS) == 0) {
+            pawndisasm_ptr = "pawndisasm.exe";
+        } else if (strcmp(dogconfig.dog_toml_os_type, OS_SIGNAL_LINUX) == 0) {
+            pawndisasm_ptr = "pawndisasm";
+        }
+
+        dog_sef_path_revert();
+
+        if (dir_exists("pawno") != 0 && dir_exists("qawno") != 0) {
+            ret_pawndisasm = dog_find_path("pawno", pawndisasm_ptr,
+                NULL);
+            if (ret_pawndisasm) {
+                ;
+            } else {
+                ret_pawndisasm = dog_find_path("qawno",
+                    pawndisasm_ptr, NULL);
+                if (ret_pawndisasm < 1) {
+                    ret_pawndisasm = dog_find_path(".",
+                        pawndisasm_ptr, NULL);
+                }
+            }
+        } else if (dir_exists("pawno") != 0) {
+            ret_pawndisasm = dog_find_path("pawno", pawndisasm_ptr,
+                NULL);
+            if (ret_pawndisasm) {
+                ;
+            } else {
+                ret_pawndisasm = dog_find_path(".",
+                    pawndisasm_ptr, NULL);
+            }
+        } else if (dir_exists("qawno") != 0) {
+            ret_pawndisasm = dog_find_path("qawno", pawndisasm_ptr,
+                NULL);
+            if (ret_pawndisasm) {
+                ;
+            } else {
+                ret_pawndisasm = dog_find_path(".",
+                    pawndisasm_ptr, NULL);
+            }
+        } else {
+            ret_pawndisasm = dog_find_path(".", pawndisasm_ptr,
+                NULL);
+        }
+        if (ret_pawndisasm) {
+            char *args2 = strdup(args);
+            char *dot_amx = strstr(args2, ".amx");
+            if (dot_amx)
+                {
+                    *dot_amx = '\0';
+                }
+            char s_args[DOG_PATH_MAX];
+            snprintf(s_args, sizeof(s_args), "%s.asm", args2);
+            dog_free(args2);
+            char s_argv[DOG_PATH_MAX * 3];
+            #ifdef DOG_LINUX
+            char *executor = "sh -c";
+            #else
+            char *executor = "cmd.exe /C";
+            #endif
+            snprintf(s_argv, sizeof(s_argv),
+                "%s '%s %s %s'", executor, dogconfig.dog_sef_found_list[0], args, s_args);
+            char *argv[] = { s_argv, NULL };
+            int ret = dog_exec_command(argv);
+            if (!ret) println(stdout, "%s", s_args);
+            dog_console_title(s_argv);
+        } else {
+            printf("\033[1;31merror:\033[0m pawndisasm/pawncc (our compiler) not found\n"
+                "  \033[2mhelp:\033[0m install it before continuing\n");
+        }
+        ret_code = -1;
+        goto cleanup;
+
+} else if (strncmp(ptr_command, "running", strlen("running")) == 0) {
         dog_stop_server_tasks();
         
         if (!path_access(dogconfig.dog_toml_server_binary)) {
@@ -703,20 +792,50 @@ _reexecute_command:
                     } else if (pid > 0) {
                         close(stdout_pipe[1]);
                         close(stderr_pipe[1]);
-                        
-                        char buffer[DOG_MAX_PATH];
+
+                        int stdout_fd;
+                        int stderr_fd;
+                        int max_fd;
+                        char buffer[1024];
                         ssize_t br;
                         
-                        while ((br = read(stdout_pipe[0], buffer, sizeof(buffer)-1)) > 0) {
-                            buffer[br] = '\0';
-                            printf("%s", buffer);
-                        }
+                        stdout_fd = stdout_pipe[0];
+                        stderr_fd = stderr_pipe[0];
+                        max_fd = (stdout_fd > stderr_fd ? stdout_fd : stderr_fd) + 1;
                         
-                        while ((br = read(stderr_pipe[0], buffer, sizeof(buffer)-1)) > 0) {
-                            buffer[br] = '\0';
-                            printf("%s", buffer);
+                        fd_set readfds;
+
+                        while (1) {
+                            FD_ZERO(&readfds);
+                            if (stdout_fd >= 0) FD_SET(stdout_fd, &readfds);
+                            if (stderr_fd >= 0) FD_SET(stderr_fd, &readfds);
+
+                            if (select(max_fd, &readfds, NULL, NULL, NULL) < 0) {
+                                perror("select failed");
+                                break;
+                            }
+
+                            if (stdout_fd >= 0 && FD_ISSET(stdout_fd, &readfds)) {
+                                br = read(stdout_fd, buffer, sizeof(buffer)-1);
+                                if (br <= 0) stdout_fd = -1;
+                                else {
+                                    buffer[br] = '\0';
+                                    printf("%s", buffer);
+                                }
+                            }
+
+                            if (stderr_fd >= 0 && FD_ISSET(stderr_fd, &readfds)) {
+                                br = read(stderr_fd, buffer, sizeof(buffer)-1);
+                                if (br <= 0) stderr_fd = -1;
+                                else {
+                                    buffer[br] = '\0';
+                                    fprintf(stderr, "%s", buffer);
+                                }
+                            }
+
+                            if (stdout_fd < 0 && stderr_fd < 0) break;
                         }
-                        
+
                         close(stdout_pipe[0]);
                         close(stderr_pipe[0]);
                         
@@ -831,17 +950,47 @@ _reexecute_command:
                         close(stdout_pipe[1]);
                         close(stderr_pipe[1]);
                         
-                        char buffer[DOG_MAX_PATH];
+                        int stdout_fd;
+                        int stderr_fd;
+                        int max_fd;
+                        char buffer[1024];
                         ssize_t br;
-                        
-                        while ((br = read(stdout_pipe[0], buffer, sizeof(buffer)-1)) > 0) {
-                            buffer[br] = '\0';
-                            printf("%s", buffer);
-                        }
-                        
-                        while ((br = read(stderr_pipe[0], buffer, sizeof(buffer)-1)) > 0) {
-                            buffer[br] = '\0';
-                            printf("%s", buffer);
+
+                        stdout_fd = stdout_pipe[0];
+                        stderr_fd = stderr_pipe[0];
+                        max_fd = (stdout_fd > stderr_fd ? stdout_fd : stderr_fd) + 1;
+
+                        fd_set readfds;
+
+                        while (1) {
+                            FD_ZERO(&readfds);
+                            if (stdout_fd >= 0) FD_SET(stdout_fd, &readfds);
+                            if (stderr_fd >= 0) FD_SET(stderr_fd, &readfds);
+
+                            if (select(max_fd, &readfds, NULL, NULL, NULL) < 0) {
+                                perror("select failed");
+                                break;
+                            }
+
+                            if (stdout_fd >= 0 && FD_ISSET(stdout_fd, &readfds)) {
+                                br = read(stdout_fd, buffer, sizeof(buffer)-1);
+                                if (br <= 0) stdout_fd = -1;
+                                else {
+                                    buffer[br] = '\0';
+                                    printf("%s", buffer);
+                                }
+                            }
+
+                            if (stderr_fd >= 0 && FD_ISSET(stderr_fd, &readfds)) {
+                                br = read(stderr_fd, buffer, sizeof(buffer)-1);
+                                if (br <= 0) stderr_fd = -1;
+                                else {
+                                    buffer[br] = '\0';
+                                    fprintf(stderr, "%s", buffer);
+                                }
+                            }
+
+                            if (stdout_fd < 0 && stderr_fd < 0) break;
                         }
                         
                         close(stdout_pipe[0]);

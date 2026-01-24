@@ -440,18 +440,47 @@ back_start:  /* Retry label for failed startup attempts */
             close(stdout_pipe[1]);
             close(stderr_pipe[1]);
 
+            int stdout_fd;
+            int stderr_fd;
+            int max_fd;
+            char buffer[1024];
             ssize_t br;
+            
+            stdout_fd = stdout_pipe[0];
+            stderr_fd = stderr_pipe[0];
+            max_fd = (stdout_fd > stderr_fd ? stdout_fd : stderr_fd) + 1;
+            
+            fd_set readfds;
 
-            while ((br = read(stdout_pipe[0],
-                sbuf, sizeof(sbuf)-1)) > 0) {
-                sbuf[br] = '\0';
-                printf("%s", sbuf);
-            }
+            while (1) {
+                FD_ZERO(&readfds);
+                if (stdout_fd >= 0) FD_SET(stdout_fd, &readfds);
+                if (stderr_fd >= 0) FD_SET(stderr_fd, &readfds);
 
-            while ((br = read(stderr_pipe[0],
-                sbuf, sizeof(sbuf)-1)) > 0) {
-                sbuf[br] = '\0';
-                printf("%s", sbuf);
+                if (select(max_fd, &readfds, NULL, NULL, NULL) < 0) {
+                    perror("select failed");
+                    break;
+                }
+
+                if (stdout_fd >= 0 && FD_ISSET(stdout_fd, &readfds)) {
+                    br = read(stdout_fd, buffer, sizeof(buffer)-1);
+                    if (br <= 0) stdout_fd = -1;
+                    else {
+                        buffer[br] = '\0';
+                        printf("%s", buffer);
+                    }
+                }
+
+                if (stderr_fd >= 0 && FD_ISSET(stderr_fd, &readfds)) {
+                    br = read(stderr_fd, buffer, sizeof(buffer)-1);
+                    if (br <= 0) stderr_fd = -1;
+                    else {
+                        buffer[br] = '\0';
+                        fprintf(stderr, "%s", buffer);
+                    }
+                }
+
+                if (stdout_fd < 0 && stderr_fd < 0) break;
             }
 
             close(stdout_pipe[0]);
@@ -848,18 +877,47 @@ back_start:  /* Retry label */
                 close(stdout_pipe[1]);
                 close(stderr_pipe[1]);
 
+                int stdout_fd;
+                int stderr_fd;
+                int max_fd;
+                char buffer[1024];
                 ssize_t br;
 
-                while ((br = read(stdout_pipe[0],
-                    sbuf, sizeof(sbuf)-1)) > 0) {
-                    sbuf[br] = '\0';
-                    printf("%s", sbuf);
-                }
+                stdout_fd = stdout_pipe[0];
+                stderr_fd = stderr_pipe[0];
+                max_fd = (stdout_fd > stderr_fd ? stdout_fd : stderr_fd) + 1;
 
-                while ((br = read(stderr_pipe[0],
-                    sbuf, sizeof(sbuf)-1)) > 0) {
-                    sbuf[br] = '\0';
-                    printf("%s", sbuf);
+                fd_set readfds;
+
+                while (1) {
+                    FD_ZERO(&readfds);
+                    if (stdout_fd >= 0) FD_SET(stdout_fd, &readfds);
+                    if (stderr_fd >= 0) FD_SET(stderr_fd, &readfds);
+
+                    if (select(max_fd, &readfds, NULL, NULL, NULL) < 0) {
+                        perror("select failed");
+                        break;
+                    }
+
+                    if (stdout_fd >= 0 && FD_ISSET(stdout_fd, &readfds)) {
+                        br = read(stdout_fd, buffer, sizeof(buffer)-1);
+                        if (br <= 0) stdout_fd = -1;
+                        else {
+                            buffer[br] = '\0';
+                            printf("%s", buffer);
+                        }
+                    }
+
+                    if (stderr_fd >= 0 && FD_ISSET(stderr_fd, &readfds)) {
+                        br = read(stderr_fd, buffer, sizeof(buffer)-1);
+                        if (br <= 0) stderr_fd = -1;
+                        else {
+                            buffer[br] = '\0';
+                            fprintf(stderr, "%s", buffer);
+                        }
+                    }
+
+                    if (stdout_fd < 0 && stderr_fd < 0) break;
                 }
 
                 close(stdout_pipe[0]);
@@ -925,7 +983,7 @@ dog_server_crash_check(void)
         size_t  size_l;  /* Output size tracker */
         FILE *this_proc_file = NULL;  /* Log file handle */
         char  out[DOG_MAX_PATH + 26]; /* Output buffer */
-        char  buf[DOG_MAX_PATH * 4];  /* Line buffer for log reading */
+        char  buf[DOG_MAX_PATH];  /* Line buffer for log reading */
 
         /* Open appropriate log file based on server environment */
         if (fetch_server_env() == 1)  /* SA-MP */

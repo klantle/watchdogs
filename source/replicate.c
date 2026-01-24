@@ -16,7 +16,7 @@ bool             installing_package = 0;
 const  char		*opr = NULL;
 static char		 json_item[DOG_PATH_MAX];
 static char      command[DOG_MAX_PATH * 4];
-static int		 fdir_counts = REPLICATE_RATE_ZERO;
+static int		 fdir_counts = 0;
 #ifdef DOG_WINDOWS
 static const char *separator = _PATH_STR_SEP_WIN32;
 #else
@@ -24,15 +24,15 @@ static const char *separator = _PATH_STR_SEP_POSIX;
 #endif
 
 const char		*match_windows_lookup_pattern[] =
-	BUILD_PATTERNS("windows", "win", "win32", "win32", "msvc", "mingw");
+	ASSERT_PATTERN("windows", "win", "win32", "win32", "msvc", "mingw");
 
 const char		*match_linux_lookup_pattern[] =
-	BUILD_PATTERNS("linux", "ubuntu", "debian", "cent", "centos",
+	ASSERT_PATTERN("linux", "ubuntu", "debian", "cent", "centos",
 	    "almalinux", "rockylinux", "cent_os", "fedora", "arch",
 	    "archlinux", "alphine", "rhel", "redhat", "linuxmint", "mint");
 
 const char		*match_any_lookup_pattern[] =
-	BUILD_PATTERNS("src", "source", "proj", "project", "server",
+	ASSERT_PATTERN("src", "source", "proj", "project", "server",
 	    "_server", "gamemode", "gamemodes", "bin", "build", "packages",
 	    "resources", "modules", "plugins", "addons", "extensions",
 	    "scripts", "system", "core", "runtime", "libs", "include",
@@ -54,7 +54,7 @@ this_os_archive(const char *filename)
 	strncpy(size_host_os, opr, sizeof(size_host_os) - 1);
 	size_host_os[sizeof(size_host_os) - 1] = '\0';
 
-	for (int i = REPLICATE_RATE_ZERO; size_host_os[i]; i++)
+	for (int i = 0; size_host_os[i]; i++)
 		size_host_os[i] = tolower(size_host_os[i]);
 
 	if (strfind(size_host_os, "win", true))
@@ -68,10 +68,10 @@ this_os_archive(const char *filename)
 	strncpy(filename_lwr, filename, sizeof(filename_lwr) - 1);
 	filename_lwr[sizeof(filename_lwr) - 1] = '\0';
 
-	for (int i = REPLICATE_RATE_ZERO; filename_lwr[i]; i++)
+	for (int i = 0; filename_lwr[i]; i++)
 		filename_lwr[i] = tolower(filename_lwr[i]);
 
-	for (k = REPLICATE_RATE_ZERO; lookup_pattern[k] != NULL; ++k) {
+	for (k = 0; lookup_pattern[k] != NULL; ++k) {
 		if (strfind(filename_lwr, lookup_pattern[k], true))
 			return (1);
 	}
@@ -83,9 +83,9 @@ int
 this_more_archive(const char *filename)
 {
 	int	 k;
-	int	 ret = REPLICATE_RATE_ZERO;
+	int	 ret = 0;
 
-	for (k = REPLICATE_RATE_ZERO; match_any_lookup_pattern[k] != NULL; ++k) {
+	for (k = 0; match_any_lookup_pattern[k] != NULL; ++k) {
 		if (strfind(filename, match_any_lookup_pattern[k], true)) {
 			ret = 1;
 			break;
@@ -108,11 +108,11 @@ try_build_os_asseets(char **assets, int count, const char *os_pattern)
 	else
 		return (NULL);
 
-	for (i = REPLICATE_RATE_ZERO; i < count; i++) {
+	for (i = 0; i < count; i++) {
 		const char	*asset = assets[i];
 		int		 p;
 
-		for (p = REPLICATE_RATE_ZERO; lookup_pattern[p]; p++) {
+		for (p = 0; lookup_pattern[p]; p++) {
 			if (!strfind(asset, lookup_pattern[p], true))
 				continue;
 
@@ -136,11 +136,11 @@ try_server_assets(char **assets, int count, const char *os_pattern)
 	else
 		return (NULL);
 
-	for (i = REPLICATE_RATE_ZERO; i < count; i++) {
+	for (i = 0; i < count; i++) {
 		const char	*asset = assets[i];
 		int		 p;
 
-		for (p = REPLICATE_RATE_ZERO; match_any_lookup_pattern[p]; p++) {
+		for (p = 0; match_any_lookup_pattern[p]; p++) {
 			if (strfind(asset, match_any_lookup_pattern[p], true))
 				break;
 		}
@@ -148,7 +148,7 @@ try_server_assets(char **assets, int count, const char *os_pattern)
 		if (!match_any_lookup_pattern[p])
 			continue;
 
-		for (p = REPLICATE_RATE_ZERO; os_patterns[p]; p++) {
+		for (p = 0; os_patterns[p]; p++) {
 			if (strfind(asset, os_patterns[p], true))
 				return (strdup(asset));
 		}
@@ -162,21 +162,21 @@ try_generic_assets(char **assets, int count)
 {
 	int	i;
 
-	for (i = REPLICATE_RATE_ZERO; i < count; i++) {
+	for (i = 0; i < count; i++) {
 		const char	*asset = assets[i];
 		int		 p;
 
-		for (p = REPLICATE_RATE_ZERO; match_any_lookup_pattern[p]; p++) {
+		for (p = 0; match_any_lookup_pattern[p]; p++) {
 			if (strfind(asset, match_any_lookup_pattern[p], true))
 				return (strdup(asset));
 		}
 	}
 
-	for (i = REPLICATE_RATE_ZERO; i < count; i++) {
+	for (i = 0; i < count; i++) {
 		const char	*asset = assets[i];
 		int		 p;
 
-		for (p = REPLICATE_RATE_ZERO; match_windows_lookup_pattern[p]; p++) {
+		for (p = 0; match_windows_lookup_pattern[p]; p++) {
 			if (strfind(asset, match_windows_lookup_pattern[p], true))
 				break;
 		}
@@ -184,7 +184,7 @@ try_generic_assets(char **assets, int count)
 		if (match_windows_lookup_pattern[p])
 			continue;
 
-		for (p = REPLICATE_RATE_ZERO; match_linux_lookup_pattern[p]; p++) {
+		for (p = 0; match_linux_lookup_pattern[p]; p++) {
 			if (strfind(asset, match_linux_lookup_pattern[p], true))
 				break;
 		}
@@ -205,7 +205,7 @@ package_fetching_assets(char **package_assets, int counts, const char *pf_os)
 	char		 size_host_os[32] = {0};
 	const char	*opr = NULL;
 
-	if (counts == REPLICATE_RATE_ZERO)
+	if (counts == 0)
 		return (NULL);
 	if (counts == 1)
 		return (strdup(package_assets[0]));
@@ -222,7 +222,7 @@ package_fetching_assets(char **package_assets, int counts, const char *pf_os)
 
 	if (opr) {
 		strncpy(size_host_os, opr, sizeof(size_host_os) - 1);
-		for (int j = REPLICATE_RATE_ZERO; size_host_os[j]; j++)
+		for (int j = 0; size_host_os[j]; j++)
 			size_host_os[j] = tolower(size_host_os[j]);
 	}
 
@@ -251,7 +251,7 @@ package_url_checking(const char *url, const char *github_token)
 	struct curl_slist *headers = NULL;
 	char dog_buffer_error[CURL_ERROR_SIZE] = { 0 };
 
-	printf("\tCreate & Checking URL: %s...\t\t[All good]\n", url);
+	printf("\tCreate & Checking URL: %s...\t\t[V]\n", url);
 
 	if (strfind(dogconfig.dog_toml_github_tokens, "DO_HERE", true) ||
 	    dogconfig.dog_toml_github_tokens == NULL ||
@@ -292,15 +292,15 @@ package_url_checking(const char *url, const char *github_token)
 
 	if (response_code == DOG_CURL_RESPONSE_OK &&
 	    strlen(dog_buffer_error) == 0) {
-		printf("cURL result: %s\t\t[All good]\n",
+		printf("cURL result: %s\t\t[V]\n",
 		    curl_easy_strerror(res));
-		printf("Response code: %ld\t\t[All good]\n", response_code);
+		printf("Response code: %ld\t\t[V]\n", response_code);
 	} else {
 		if (strlen(dog_buffer_error) > 0) {
-			printf("Error: %s\t\t[Fail]\n", dog_buffer_error);
+			printf("Error: %s\t\t[X]\n", dog_buffer_error);
 			minimal_debugging();
 		} else {
-			printf("cURL result: %s\t\t[Fail]\n",
+			printf("cURL result: %s\t\t[X]\n",
 			    curl_easy_strerror(res));
 			minimal_debugging();
 		}
@@ -456,7 +456,7 @@ package_gh_release_assets(const char *user, const char *repo, char *_tag,
 	char		 api_url[DOG_PATH_MAX * 2];
 	char		*json_data = NULL;
 	const char	*p;
-	int		 url_count = REPLICATE_RATE_ZERO;
+	int		 url_count = 0;
 
 	snprintf(api_url, sizeof(api_url),
 	    "%sapi.github.com/repos/%s/%s/releases/tags/%s",
@@ -515,16 +515,16 @@ package_build_repo_url(const struct _repositories *ctx,
 		strncpy(tag_access, ctx->tag,
 		    sizeof(tag_access) - 1);
 
-		if (strcmp(tag_access, "newer") == REPLICATE_RATE_ZERO) {
+		if (strcmp(tag_access, "newer") == 0) {
 			if (strcmp(ctx->host, "github") ==
-			    REPLICATE_RATE_ZERO && !rate_tag_page)
+			    0 && !rate_tag_page)
 				strcpy(tag_access, "latest");
 		}
 	}
 
 	if (
 		strcmp(ctx->host, "github")
-		== REPLICATE_RATE_ZERO)
+		== 0)
 	{
 		if (rate_tag_page && tag_access[0]) {
 			if (!strcmp(tag_access, "latest")) {
@@ -563,7 +563,7 @@ package_gh_latest_tag(const char *_user, const char *_repo, char *out_tag,
 	char		 api_url[DOG_PATH_MAX * 2];
 	char		*json_data = NULL;
 	const char	*p;
-	int		 ret = REPLICATE_RATE_ZERO;
+	int		 ret = 0;
 
 	snprintf(api_url, sizeof(api_url),
 	    "%sapi.github.com/repos/%s/%s/releases/latest",
@@ -644,7 +644,7 @@ package_handle_repo(const struct _repositories *kevlar_repos, char *put_url,
 		    put_size, branch));
 
 	if (kevlar_repos->tag[0] &&
-	    strcmp(kevlar_repos->tag, "newer") == REPLICATE_RATE_ZERO) {
+	    strcmp(kevlar_repos->tag, "newer") == 0) {
 		if (package_gh_latest_tag(kevlar_repos->user,
 		    kevlar_repos->repo, tag_access,
 		    sizeof(tag_access))) {
@@ -657,7 +657,7 @@ package_handle_repo(const struct _repositories *kevlar_repos, char *put_url,
 		} else {
 			pr_error(stdout,
 			    "Failed to get latest tag for %s/%s,"
-			    "Falling back to main branch\t\t[Fail]",
+			    "Falling back to main branch\t\t[X]",
 			    kevlar_repos->user, kevlar_repos->repo);
 			minimal_debugging();
 			use_fallback_branch = 1;
@@ -668,7 +668,7 @@ package_handle_repo(const struct _repositories *kevlar_repos, char *put_url,
 	}
 
 	if (use_fallback_branch) {
-		for (j = REPLICATE_RATE_ZERO; j < 3 && !ret; j++) {
+		for (j = 0; j < 3 && !ret; j++) {
 			snprintf(put_url, put_size,
 			    "https://github.com/%s/%s/archive/refs/heads/%s.zip",
 			    kevlar_repos->user, kevlar_repos->repo,
@@ -719,14 +719,14 @@ package_handle_repo(const struct _repositories *kevlar_repos, char *put_url,
 
 				pr_info(stdout,
 				    "Trying to install Archive:\n   "
-				    DOG_COL_YELLOW "\033[1m > \033[0m"
+				    DOG_COL_YELLOW "\033[1m @ \033[0m"
 				    DOG_COL_CYAN "%s\t\t" DOG_COL_YELLOW "[V]\n",
 				    package_best_asset);
 
 				dog_free(package_best_asset);
 			}
 
-			for (j = REPLICATE_RATE_ZERO; j < asset_counts; j++)
+			for (j = 0; j < asset_counts; j++)
 				dog_free(package_assets[j]);
 		}
 
@@ -736,7 +736,7 @@ package_handle_repo(const struct _repositories *kevlar_repos, char *put_url,
 				"https://github.com/%s/%s/archive/refs/tags/%s.zip"
 			};
 
-			for (j = REPLICATE_RATE_ZERO; j < 2 && !ret; j++) {
+			for (j = 0; j < 2 && !ret; j++) {
 				snprintf(put_url, put_size,
 				    package_arch_format[j],
 				    kevlar_repos->user,
@@ -749,7 +749,7 @@ package_handle_repo(const struct _repositories *kevlar_repos, char *put_url,
 			}
 		}
 	} else {
-		for (j = REPLICATE_RATE_ZERO; j < 2 && !ret; j++) {
+		for (j = 0; j < 2 && !ret; j++) {
 			snprintf(put_url, put_size,
 			    "%s%s/%s/archive/refs/heads/%s.zip",
 			    "https://github.com/",
@@ -815,7 +815,7 @@ package_implementation_samp_conf(const char *config_file, const char *fw_line,
 	if (fetch_server_env() != 1)
 		return;
 
-	if (dir_exists(".watchdogs") == REPLICATE_RATE_ZERO)
+	if (dir_exists(".watchdogs") == 0)
 		MKDIR(".watchdogs");
 
 	pr_color(stdout, DOG_COL_GREEN,
@@ -829,7 +829,7 @@ package_implementation_samp_conf(const char *config_file, const char *fw_line,
 		tr_ln_has_tx = 0;
 
 		while (fgets(ctr_line, sizeof(ctr_line), ctr_file)) {
-			ctr_line[strcspn(ctr_line, "\n")] = REPLICATE_RATE_ZERO;
+			ctr_line[strcspn(ctr_line, "\n")] = 0;
 			if (strstr(ctr_line, plugin_name) != NULL)
 				t_exist = 1;
 			if (strstr(ctr_line, fw_line) != NULL) {
@@ -850,7 +850,7 @@ package_implementation_samp_conf(const char *config_file, const char *fw_line,
 				char	clean_line[DOG_PATH_MAX];
 				strcpy(clean_line, ctr_line);
 				clean_line[strcspn(clean_line, "\n")] =
-				    REPLICATE_RATE_ZERO;
+				    0;
 
 				if (strstr(clean_line, fw_line) != NULL &&
 				    strstr(clean_line, plugin_name) == NULL) {
@@ -906,9 +906,9 @@ package_implementation_omp_conf(const char *config_name,
 	if (!ctr_file) {
 		s_root = cJSON_CreateObject();
 	} else {
-		fseek(ctr_file, REPLICATE_RATE_ZERO, SEEK_END);
+		fseek(ctr_file, 0, SEEK_END);
 		fle_size = ftell(ctr_file);
-		fseek(ctr_file, REPLICATE_RATE_ZERO, SEEK_SET);
+		fseek(ctr_file, 0, SEEK_SET);
 
 		buffer = (char *)dog_malloc(fle_size + 1);
 		if (!buffer) {
@@ -996,16 +996,16 @@ package_add_include(const char *modes, char *package_name,
 	size_t	 bytes_read;
 	int	 len;
 
-	if (path_exists(modes) == REPLICATE_RATE_ZERO)
+	if (path_exists(modes) == 0)
 		return;
 
 	m_file = fopen(modes, "rb");
 	if (!m_file)
 		return;
 
-	fseek(m_file, REPLICATE_RATE_ZERO, SEEK_END);
+	fseek(m_file, 0, SEEK_END);
 	fle_size = ftell(m_file);
-	fseek(m_file, REPLICATE_RATE_ZERO, SEEK_SET);
+	fseek(m_file, 0, SEEK_SET);
 
 	ct_modes = dog_malloc(fle_size + 2);
 	if (!ct_modes) {
@@ -1242,17 +1242,17 @@ dump_file_type(const char *dump_path, char *dump_pattern,
 #endif
 
     if (found) {
-        for (i = REPLICATE_RATE_ZERO; i < dogconfig.dog_sef_count; ++i) {
+        for (i = 0; i < dogconfig.dog_sef_count; ++i) {
             package_names = fetch_filename(
                 dogconfig.dog_sef_found_list[i]);
             basename = fetch_basename(
                 dogconfig.dog_sef_found_list[i]);
 
             basename_lwr = strdup(basename);
-            for (int j = REPLICATE_RATE_ZERO; basename_lwr[j]; j++)
+            for (int j = 0; basename_lwr[j]; j++)
                 basename_lwr[j] = tolower(basename_lwr[j]);
 
-            rate_has_prefix = REPLICATE_RATE_ZERO;
+            rate_has_prefix = 0;
 
             match_root_keywords = dogconfig.dog_toml_root_patterns;
             while (*match_root_keywords) {
@@ -1267,7 +1267,7 @@ dump_file_type(const char *dump_path, char *dump_pattern,
                     size_t keyword_len = end - match_root_keywords;
                     if (strncmp(basename_lwr,
                         match_root_keywords,
-                        keyword_len) == REPLICATE_RATE_ZERO)
+                        keyword_len) == 0)
                     {
                         ++rate_has_prefix;
                         break;
@@ -1288,7 +1288,7 @@ dump_file_type(const char *dump_path, char *dump_pattern,
                 char dir_part[DOG_PATH_MAX];
                 snprintf(dir_part, sizeof(dir_part), "%s%s%s",
                          dump_loc, separator, dump_place);
-                if (dir_exists(dir_part) == REPLICATE_RATE_ZERO) {
+                if (dir_exists(dir_part) == 0) {
                     dog_mkdir_recursive(dir_part);
                 }
             } else if (rate_has_prefix) {
@@ -1301,7 +1301,7 @@ dump_file_type(const char *dump_path, char *dump_pattern,
                 char plugins_dir[DOG_PATH_MAX];
                 snprintf(plugins_dir, sizeof(plugins_dir), "%s%s",
                          dump_loc, separator);
-                if (dir_exists(plugins_dir) == REPLICATE_RATE_ZERO) {
+                if (dir_exists(plugins_dir) == 0) {
                     dog_mkdir_recursive(plugins_dir);
                 }
             }
@@ -1386,12 +1386,11 @@ package_cjson_additem(cJSON *p1, int p2, cJSON *p3)
 
 void package_move_files(const char *package_dir, const char *package_loc)
 {
-    char        root_dir[DOG_PATH_MAX], src[DOG_PATH_MAX],
-	 		dest[DOG_MAX_PATH * 2], the_path[DOG_PATH_MAX * 2],
+    char    the_path[DOG_PATH_MAX * 2],
 			includes[DOG_PATH_MAX],
 		    plugins[DOG_PATH_MAX], components[DOG_PATH_MAX],
-		    full_path[DOG_MAX_PATH], subdir_path[DOG_PATH_MAX],
-			include_dest[DOG_MAX_PATH], dest_file[DOG_MORE_MAX_PATH];
+		    subdir_path[DOG_PATH_MAX],
+			include_dest[1024], dest_file[1024 * 3];
     const       char *packages;
     char             *src_sep = NULL;
     struct            stat dir_st;
@@ -1420,7 +1419,7 @@ void package_move_files(const char *package_dir, const char *package_loc)
     snprintf(include_dest, sizeof(include_dest), "%s%s%s",
              package_loc, separator, includes);
     
-    if (dir_exists(include_dest) == REPLICATE_RATE_ZERO) {
+    if (dir_exists(include_dest) == 0) {
         dog_mkdir_recursive(include_dest);
     }
 
@@ -1438,21 +1437,21 @@ void package_move_files(const char *package_dir, const char *package_loc)
         snprintf(the_path, sizeof(the_path), "%s%s%s",
                  package_dir, separator, dir_item->d_name);
 
-        if (stat(the_path, &dir_st) != REPLICATE_RATE_ZERO) {
+        if (stat(the_path, &dir_st) != 0) {
             continue;
         }
 
         if (S_ISDIR(dir_st.st_mode)) {
             if (strcmp(dir_item->d_name,
-            		"pawno") == REPLICATE_RATE_ZERO ||
+            		"pawno") == 0 ||
                 strcmp(dir_item->d_name,
-                	"qawno") == REPLICATE_RATE_ZERO ||
+                	"qawno") == 0 ||
                 strcmp(dir_item->d_name,
-                	"include") == REPLICATE_RATE_ZERO ||
+                	"include") == 0 ||
                 strcmp(dir_item->d_name,
-                	"components") == REPLICATE_RATE_ZERO ||
+                	"components") == 0 ||
                 strcmp(dir_item->d_name,
-                	"plugins") == REPLICATE_RATE_ZERO) {
+                	"plugins") == 0) {
                 continue;
             }
             
@@ -1471,7 +1470,7 @@ void package_move_files(const char *package_dir, const char *package_loc)
                 
                 char *ext = NULL;
                 ext = strrchr(subdir_item->d_name, '.');
-                if (!ext || strcmp(ext, ".inc") != REPLICATE_RATE_ZERO) {
+                if (!ext || strcmp(ext, ".inc") != 0) {
                     continue;
                 }
 
@@ -1488,13 +1487,12 @@ void package_move_files(const char *package_dir, const char *package_loc)
 		            snprintf(command, sizeof(command),
 		                    "\"%s\" \"%s\"",
 		                    src_file, dest_file);
-		            char *moving[] = { "move", "/Y", command, ">nul", "2>&1" };
-
+		            char *moving[] = { "move", "/Y", command, ">nul", "2>&1", NULL };
 #else
 		            snprintf(command, sizeof(command),
 		                    "\"%s\" \"%s\"",
 		                    src_file, dest_file);
-		            char *moving[] = { "mv", "-f", command, ">/dev/null", "2>&1" };
+		            char *moving[] = { "mv", "-f", command, ">/dev/null", "2>&1", NULL };
 #endif
             		dog_exec_command(moving);
                 }
@@ -1513,7 +1511,7 @@ void package_move_files(const char *package_dir, const char *package_loc)
 
         char *ext = NULL;
         ext = strrchr(dir_item->d_name, '.');
-        if (!ext || strcmp(ext, ".inc") != REPLICATE_RATE_ZERO) {
+        if (!ext || strcmp(ext, ".inc") != 0) {
             continue;
         }
 
@@ -1551,7 +1549,7 @@ void package_move_files(const char *package_dir, const char *package_loc)
         snprintf(plugins_dest, sizeof(plugins_dest), "%s%splugins",
                  package_loc, separator);
 
-        if (dir_exists(plugins_dest) == REPLICATE_RATE_ZERO) {
+        if (dir_exists(plugins_dest) == 0) {
             dog_mkdir_recursive(plugins_dest);
         }
 
@@ -1599,27 +1597,27 @@ dog_apply_depends(const char *depends_name, const char *depends_location)
 	if (fetch_server_env() == 1) {
 		snprintf(size_depends_location, sizeof(size_depends_location),
 		    "%s/pawno/include", depends_location);
-		if (dir_exists(size_depends_location) == REPLICATE_RATE_ZERO)
+		if (dir_exists(size_depends_location) == 0)
 			dog_mkdir_recursive(size_depends_location);
 
 		snprintf(size_depends_location, sizeof(size_depends_location),
 		    "%s/plugins", depends_location);
-		if (dir_exists(size_depends_location) == REPLICATE_RATE_ZERO)
+		if (dir_exists(size_depends_location) == 0)
 			dog_mkdir_recursive(size_depends_location);
 	} else if (fetch_server_env() == 2) {
 		snprintf(size_depends_location, sizeof(size_depends_location),
 		    "%s/qawno/include", depends_location);
-		if (dir_exists(size_depends_location) == REPLICATE_RATE_ZERO)
+		if (dir_exists(size_depends_location) == 0)
 			dog_mkdir_recursive(size_depends_location);
 
 		snprintf(size_depends_location, sizeof(size_depends_location),
 		    "%s/plugins", depends_location);
-		if (dir_exists(size_depends_location) == REPLICATE_RATE_ZERO)
+		if (dir_exists(size_depends_location) == 0)
 			dog_mkdir_recursive(size_depends_location);
 
 		snprintf(size_depends_location, sizeof(size_depends_location),
 		    "%s/components", depends_location);
-		if (dir_exists(size_depends_location) == REPLICATE_RATE_ZERO)
+		if (dir_exists(size_depends_location) == 0)
 			dog_mkdir_recursive(size_depends_location);
 	}
 
@@ -1642,19 +1640,19 @@ dog_install_depends(const char *packages, const char *branch, const char *where)
 	HANDLE           hFind;
 	char             search[] = "*";
 #endif
-	memset(dependencies, REPLICATE_RATE_ZERO, sizeof(dependencies));
+	memset(dependencies, 0, sizeof(dependencies));
 
 	installing_package = true;
 
 	if (!packages || !*packages) {
 		pr_color(stdout, DOG_COL_RED, "");
-		printf("no valid dependencies to install!\t\t[Fail]\n");
+		printf("no valid dependencies to install!\t\t[X]\n");
 		goto done;
 	}
 
 	if (strlen(packages) >= sizeof(buffer)) {
 		pr_color(stdout, DOG_COL_RED, "");
-		printf("packages too long!\t\t[Fail]\n");
+		printf("packages too long!\t\t[X]\n");
 		goto done;
 	}
 
@@ -1668,14 +1666,14 @@ dog_install_depends(const char *packages, const char *branch, const char *where)
 
 	if (!package_counts) {
 		pr_color(stdout, DOG_COL_RED, "");
-		printf("no valid dependencies to install!\t\t[Fail]\n");
+		printf("no valid dependencies to install!\t\t[X]\n");
 		goto done;
 	}
 
-	for (i = REPLICATE_RATE_ZERO; i < package_counts; i++) {
+	for (i = 0; i < package_counts; i++) {
 		if (!package_parse_repo(dependencies[i], &repo)) {
 			pr_color(stdout, DOG_COL_RED, "");
-			printf("invalid repo format: %s\t\t[Fail]\n",
+			printf("invalid repo format: %s\t\t[X]\n",
 			    dependencies[i]);
 			continue;
 		}
@@ -1684,17 +1682,17 @@ dog_install_depends(const char *packages, const char *branch, const char *where)
 			if (!package_handle_repo(&repo, package_url,
 			    sizeof(package_url), branch)) {
 				pr_color(stdout, DOG_COL_RED, "");
-				printf("repo not found: %s\t\t[Fail]\n",
+				printf("repo not found: %s\t\t[X]\n",
 				    dependencies[i]);
 				continue;
 			}
 		} else {
-			package_build_repo_url(&repo, REPLICATE_RATE_ZERO,
+			package_build_repo_url(&repo, 0,
 			    package_url, sizeof(package_url));
 			if (!package_url_checking(package_url,
 			    dogconfig.dog_toml_github_tokens)) {
 				pr_color(stdout, DOG_COL_RED, "");
-				printf("repo not found: %s\t\t[Fail]\n",
+				printf("repo not found: %s\t\t[X]\n",
 				    dependencies[i]);
 				continue;
 			}
@@ -1718,7 +1716,7 @@ dog_install_depends(const char *packages, const char *branch, const char *where)
 
 		if (!*package_name) {
 			pr_color(stdout, DOG_COL_RED, "");
-			printf("invalid repo name: %s\t\t[Fail]\n",
+			printf("invalid repo name: %s\t\t[X]\n",
 			    package_url);
 			continue;
 		}
@@ -1743,7 +1741,7 @@ dog_install_depends(const char *packages, const char *branch, const char *where)
 				}
 				if (!tree_ret) {
 					char *tree[] = { "tree", NULL };
-					tree_ret = dog_exec_command(tree);
+					dog_exec_command(tree);
 				}
 				else {
 					DIR *d = opendir(".");

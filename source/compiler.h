@@ -44,6 +44,22 @@ typedef struct {
 
 extern const CompilerOption object_opt[];
 
+#ifdef DOG_WINDOWS
+
+/* Thread data structure for _beginthreadex */
+typedef struct {
+	char *compiler_input;
+	STARTUPINFO *startup_info;
+	PROCESS_INFORMATION *process_info;
+	HANDLE hFile;
+	struct timespec *pre_start;
+	struct timespec *post_end;
+	const char *windows_redist_err;
+	const char *windows_redist_err2;
+} compiler_thread_data_t;
+
+#endif
+
 extern bool compiler_is_err;
 extern bool compiler_installing_stdlib;
 extern char *compiler_full_includes;

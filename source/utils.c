@@ -14,7 +14,7 @@
 const char	*unit_command_list[] = {
 	"help", "exit", "sha1", "sha256", "crc32", "djb2", "pbkdf2", "config",
 	"replicate", "gamemode", "pawncc", "debug",
-	"compile", "running", "compiles", "stop", "restart",
+	"compile", "decompile", "running", "compiles", "stop", "restart",
 	"tracker", "compress", "send"
 };
 
@@ -672,12 +672,12 @@ void unit_show_dog(void) {
 		"---------------------------------------------------------------------------------------------\n";
 	#else
 	static const char *dog_ascii =
-		"\n                \\/%%#z.     \\/.%%#z./   /,z#%%\\/\n"
-		"                \\X##k      /X#####X\\   /d##X/\n"
-		"                \\888\\   /888/ \\888\\   /888/\n"
-		"               `v88;  ;88v'   `v88;  ;88v'\n"
-		"                \\77xx77/       \\77xx77/\n"
-		"               `::::'         `::::'\n\n";
+		"\n          \\/%%#z.     \\/.%%#z./   /,z#%%\\/\n"
+		"          \\X##k      /X#####X\\   /d##X/\n"
+		"          \\888\\   /888/ \\888\\   /888/\n"
+		"         `v88;  ;88v'   `v88;  ;88v'\n"
+		"          \\77xx77/       \\77xx77/\n"
+		"         `::::'         `::::'\n\n";
 	#endif
 	fwrite(dog_ascii, 1, strlen(dog_ascii), stdout);
 	print("Use \"help\" for more.\n");
@@ -714,6 +714,8 @@ void unit_show_help(const char *command)
 	"Usage: \"debug\" " DOG_COL_CYAN "; Keep an eye on your server logs." DOG_COL_DEFAULT "\n"
 	"  compile          compile your project | "
 	"Usage: \"compile\" | [<args>] " DOG_COL_CYAN "; Turn your code into something runnable!" DOG_COL_DEFAULT "\n"
+	"  decompile        de-compile your project | "
+	"Usage: \"decompile\" | [<args>] " DOG_COL_CYAN "; De-compile .amx into readable .asm." DOG_COL_DEFAULT "\n"
 	"  running          running your project | "
 	"Usage: \"running\" | [<args>] " DOG_COL_CYAN "; Fire up your project and see it in action." DOG_COL_DEFAULT "\n"
 	"  compiles         compile and running your project | "
@@ -756,6 +758,8 @@ void unit_show_help(const char *command)
 	"Usage: \"debug\" " DOG_COL_CYAN "; Keep an eye on your server logs." DOG_COL_DEFAULT "\n"
 	"  compile : compile your project | "
 	"Usage: \"compile\" | [<args>] " DOG_COL_CYAN "; Turn your code into something runnable!" DOG_COL_DEFAULT "\n"
+	"  decompile : de-compile your project | "
+	"Usage: \"decompile\" | [<args>] " DOG_COL_CYAN "; De-compile .amx into readable .asm." DOG_COL_DEFAULT "\n"
 	"  running : running your project | "
 	"Usage: \"running\" | [<args>] " DOG_COL_CYAN "; Fire up your project and see it in action." DOG_COL_DEFAULT "\n"
 	"  compiles : compile and running your project | "
@@ -791,6 +795,7 @@ void unit_show_help(const char *command)
 		{"pawncc", "pawncc: download SA-MP pawncc. | Usage: \"pawncc\"\n\tGet the Pawn Compiler for SA-MP/open.mp.\n"},
 		{"debug", "debug: debugging & logging server debug. | Usage: \"debug\"\n\tKeep an eye on your server logs.\n"},
 		{"compile", "compile: compile your project. | Usage: \"compile\" | [<args>]\n\tTurn your code into something runnable!\n"},
+		{"decompile", "decompile: decompile your project. | Usage: \"decompile\" | [<args>]\n\tDecompile .amx -> .asm\n"},
 		{"running", "running: running your project. | Usage: \"running\" | [<args>]\n\tFire up your project and see it in action.\n"},
 		{"compiles", "compiles: compile and running your project. | Usage: \"compiles\" | [<args>]\n\tTwo-in-one: compile then run immediately!\n"},
 		{"stop", "stop: stopped server task. | Usage: \"stop\"\n\tHalt everything! Stop your server tasks.\n"},
@@ -824,7 +829,7 @@ void compiler_show_tip(void) {
 		"      Verbose mode                 - processing detail\n"
 		"  " DOG_COL_CYAN "-a" DOG_COL_DEFAULT ", " DOG_COL_CYAN "--assembler" DOG_COL_DEFAULT
 		"   Generate assembler file      - assembler ouput\n"
-		"  " DOG_COL_CYAN "-s" DOG_COL_DEFAULT ", " DOG_COL_CYAN "--compact" DOG_COL_DEFAULT
+		"  " DOG_COL_CYAN "-m" DOG_COL_DEFAULT ", " DOG_COL_CYAN "--compact" DOG_COL_DEFAULT
 		"     Compact encoding compression - resize output\n"
 		"  " DOG_COL_CYAN "-c" DOG_COL_DEFAULT ", " DOG_COL_CYAN "--compat" DOG_COL_DEFAULT
 		"      Compatibility mode           - path sep compat\n"
@@ -843,7 +848,7 @@ void compiler_show_tip(void) {
 		"     Verbose mode                - processing detail\n"
 		"  " DOG_COL_CYAN "-a" DOG_COL_DEFAULT ", " DOG_COL_CYAN "--assembler" DOG_COL_DEFAULT
 		"  Generate assembler file     - assembler ouput\n"
-		"  " DOG_COL_CYAN "-s" DOG_COL_DEFAULT ", " DOG_COL_CYAN "--compact" DOG_COL_DEFAULT
+		"  " DOG_COL_CYAN "-m" DOG_COL_DEFAULT ", " DOG_COL_CYAN "--compact" DOG_COL_DEFAULT
 		"    Compact encoding compression- resize output\n"
 		"  " DOG_COL_CYAN "-c" DOG_COL_DEFAULT ", " DOG_COL_CYAN "--compat" DOG_COL_DEFAULT
 		"     Compatibility mode          - path sep compat\n"
@@ -1191,10 +1196,17 @@ int dog_console_title(const char *title)
 		new_title = title;
 
 #ifdef DOG_WINDOWS
-	SetConsoleTitleA(new_title);
+	int ok = SetConsoleTitleA(new_title);
+	if (!ok) {
+		pr_error(stdout,
+			"windows: SetConsoleTitleA failed.");
+	}
 #else
 	if (isatty(STDOUT_FILENO))
 		printf("\033]0;%s\007", new_title);
+	else
+		pr_error(stdout,
+			"linux: title failed..: is not tty.");
 #endif
 	return (0);
 }

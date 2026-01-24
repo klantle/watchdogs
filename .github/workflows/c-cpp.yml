@@ -426,6 +426,7 @@ jobs:
     - name: Install build dependencies
       shell: powershell
       run: |
+        $env:Path = "C:\tools\msys64\ucrt64\bin;C:\tools\msys64\usr\bin;$env:Path"
         C:\tools\msys64\usr\bin\bash.exe -lc "pacman -Syu --noconfirm"
         C:\tools\msys64\usr\bin\bash.exe -lc "pacman -S --needed --noconfirm mingw-w64-ucrt-x86_64-toolchain mingw-w64-ucrt-x86_64-clang mingw-w64-ucrt-x86_64-lld mingw-w64-ucrt-x86_64-libc++ mingw-w64-ucrt-x86_64-curl mingw-w64-ucrt-x86_64-readline mingw-w64-ucrt-x86_64-libarchive mingw-w64-ucrt-x86_64-zlib mingw-w64-ucrt-x86_64-make mingw-w64-ucrt-x86_64-windows-default-manifest"
 

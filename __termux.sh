@@ -24,9 +24,17 @@ rand=$(date +%s%N | tail -c 7)
 if [ -d "watchdogs" ]; then
   git clone --single-branch --branch main https://github.com/gskeleton/watchdogs "watchdogs_$rand"
   cd "watchdogs_$rand"
+  if ! command -v dog >/dev/null 2>&1; then
+    echo "alias dog='cd $HOME/watchdogs_$rand && ./watchdogs.tmux'" >> ~/.bashrc
+    source ~/.bashrc
+  fi
 else
   git clone --single-branch --branch main https://github.com/gskeleton/watchdogs "watchdogs"
   cd "watchdogs"
+  if ! command -v dog >/dev/null 2>&1; then
+    echo "alias dog='cd $HOME/watchdogs && ./watchdogs.tmux'" >> ~/.bashrc
+    source ~/.bashrc
+  fi
 fi
 
-make && make termux && chmod +x watchdogs.tmux && clear && ./watchdogs.tmux
+make && make termux && chmod +x watchdogs.tmux && clear && echo "Later, please run 'dog' in the terminal like '$ dog.'" && ./watchdogs.tmux

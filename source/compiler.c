@@ -28,6 +28,32 @@ const CompilerOption object_opt[] = {
 };
 
 /*
+ * Command-line flag mapping table.
+ * Maps long and short option names to their corresponding flag variables.
+ */
+static bool    compiler_dog_flag_detailed = false;	/* Detailed output flag */
+bool           compiler_have_debug_flag = false;	/* Debug flag presence indicator */
+static bool    compiler_dog_flag_clean = false;	/* Clean compilation flag */
+static bool    compiler_dog_flag_asm = false;	/* Assembler output flag */
+static bool    compiler_dog_flag_compat = false;	/* Compatibility mode flag */
+static bool    compiler_dog_flag_prolix = false;	/* Verbose output flag */
+static bool    compiler_dog_flag_compact = false;	/* Compact output flag */
+static bool    compiler_dog_flag_fast = false;	/* Fast compilation flag */
+
+static OptionMap compiler_all_flag_map[] = {
+    {"--detailed",       "-w",   &compiler_dog_flag_detailed},
+    {"--watchdogs",      "-w",   &compiler_dog_flag_detailed},
+    {"--debug",          "-d",   &compiler_have_debug_flag},
+    {"--clean",          "-n",   &compiler_dog_flag_clean},
+    {"--assembler",      "-a",   &compiler_dog_flag_asm},
+    {"--compat",         "-c",   &compiler_dog_flag_compat},
+    {"--compact",        "-m",   &compiler_dog_flag_compact},
+    {"--prolix",         "-p",   &compiler_dog_flag_prolix},
+    {"--fast",           "-f",   &compiler_dog_flag_fast},
+    {NULL, NULL, NULL}
+};
+
+/*
  * Timing structures for measuring compilation duration.
  * pre_start and post_end record the start and end times
  * of the compilation process.
@@ -43,16 +69,8 @@ bool           compiler_installing_stdlib = NULL;	/* Flag indicating stdlib inst
 bool           compiler_is_err = false;	/* Global error state flag */
 static int     compiler_retry_stat = 0;	/* Retry attempt counter */
 bool           compiler_input_debug = false;	/* Enable debug output for compiler input */
-bool           compiler_have_debug_flag = false;	/* Debug flag presence indicator */
 static bool    compiler_long_time = false;	/* Flag for long-running compilations */
 bool           compiler_dog_flag_debug = false;	/* Debug mode flag */
-static bool    compiler_dog_flag_detailed = false;	/* Detailed output flag */
-static bool    compiler_dog_flag_clean = false;	/* Clean compilation flag */
-static bool    compiler_dog_flag_asm = false;	/* Assembler output flag */
-static bool    compiler_dog_flag_compat = false;	/* Compatibility mode flag */
-static bool    compiler_dog_flag_prolix = false;	/* Verbose output flag */
-static bool    compiler_dog_flag_compact = false;	/* Compact output flag */
-static bool    compiler_dog_flag_fast = false;	/* Fast compilation flag */
 static bool    compiler_empty_dog_flag = false;	/* No flags specified flag */
 static bool    compiler_unix_file_fail = false;	/* Unix file operation failure flag */
 char          *compiler_full_includes = NULL;	/* Full include path string */
@@ -77,23 +95,6 @@ static         PROCESS_INFORMATION _PROCESS_INFO;	/* Windows process information
 static         STARTUPINFO         _STARTUPINFO;	/* Windows startup information */
 static         SECURITY_ATTRIBUTES _ATTRIBUTES;	/* Windows security attributes */
 #endif
-
-/*
- * Command-line flag mapping table.
- * Maps long and short option names to their corresponding flag variables.
- */
-static OptionMap compiler_all_flag_map[] = {
-    {"--detailed",       "-w",   &compiler_dog_flag_detailed},
-    {"--watchdogs",      "-w",   &compiler_dog_flag_detailed},
-    {"--debug",          "-d",   &compiler_have_debug_flag},
-    {"--clean",          "-n",   &compiler_dog_flag_clean},
-    {"--assembler",      "-a",   &compiler_dog_flag_asm},
-    {"--compat",         "-c",   &compiler_dog_flag_compat},
-    {"--compact",        "-s",   &compiler_dog_flag_compact},
-    {"--prolix",         "-p",   &compiler_dog_flag_prolix},
-    {"--fast",           "-f",   &compiler_dog_flag_fast},
-    {NULL, NULL, NULL}
-};
 
 /*
  * compiler_refresh_data
@@ -234,15 +235,15 @@ void compiler_stage_trying(const char *stage, int ms) {
 		printf("\r\033[2K");
         fflush(stdout);
 		static const char *amx_stage_lines[] = {
-			"   |  D) |  A [/] Processing....................................\n",
-			"   |  O) |  B  '> Preparing the ? Process: vfork [right?].......\n",
-			"   |  G) |  C  '  *  CreateProcess/posix_spawn/fork.............\n",
-			"   |        D  '> Preparing to compile [right?]................|\n",
-			" 0  ?   E   '> Preprocessing [right?].................|\n",
-			" 0  X   F   '> Parsing [right?].......................|\n",
-			" 0  V   G   '> Semantic Analysis [right?].............|\n",
-			" 0  %   H   '> AMX Code Generation [right?]...........|\n",
-			" 1  $   I   '> AMX Output File Generation [right?]....|\n",
+			"   |  D) |  A [$] Processing............................................\n",
+			"   |  O) |  B  '> Preparing the ? Process: vfork [right?]...............\n",
+			"   |  G) |  C  '  *  CreateProcess/_beginthreadex/posix_spawn/fork......\n",
+			"   |        D  '> Preparing to compile [right?].......................|\n",
+			" 0  ?   E   '> Preprocessing [right?].................................|\n",
+			" 0  X   F   '> Parsing [right?].......................................|\n",
+			" 0  V   G   '> Semantic Analysis [right?].............................|\n",
+			" 0  %   H   '> AMX Code Generation [right?]...........................|\n",
+			" 1  $   I   '> AMX Output File Generation [right?]....................|\n",
 			"** Preparing all tasks..\n",
 			NULL
 		};
@@ -309,12 +310,129 @@ void dog_proj_init(char *input_path, char *pawncc_path) {
     fflush(stdout);
 }
 
+#ifdef DOG_WINDOWS
+/* Thread function for fast compilation using _beginthreadex */
+static unsigned __stdcall
+compiler_thread_func(void *arg) {
+	compiler_thread_data_t *data = (compiler_thread_data_t *)arg;
+	BOOL win32_process_success;
+
+	/* Create Windows process for compiler execution */
+	win32_process_success = CreateProcessA(
+		NULL, data->compiler_input,
+		NULL, NULL,
+		TRUE,
+		CREATE_NO_WINDOW |
+		ABOVE_NORMAL_PRIORITY_CLASS |
+		CREATE_BREAKAWAY_FROM_JOB,
+		NULL, NULL,
+		data->startup_info, data->process_info);
+
+	if (data->hFile != INVALID_HANDLE_VALUE) {
+		SetHandleInformation(data->hFile,
+			HANDLE_FLAG_INHERIT, 0);
+	}
+
+	if (win32_process_success == TRUE) {
+		SetThreadPriority(
+			data->process_info->hThread,
+			THREAD_PRIORITY_ABOVE_NORMAL);
+
+		DWORD_PTR procMask, sysMask;
+		GetProcessAffinityMask(
+			GetCurrentProcess(),
+			&procMask, &sysMask);
+		SetProcessAffinityMask(
+			data->process_info->hProcess,
+			procMask & ~1);
+
+		clock_gettime(CLOCK_MONOTONIC,
+			data->pre_start);
+		DWORD waitResult =
+			WaitForSingleObject(
+			data->process_info->hProcess,
+			0x3E8000);
+		if (waitResult == WAIT_TIMEOUT) {
+			TerminateProcess(
+				data->process_info->hProcess, 1);
+			WaitForSingleObject(
+				data->process_info->hProcess,
+				5000);
+		}
+		clock_gettime(CLOCK_MONOTONIC,
+			data->post_end);
+
+		DWORD proc_exit_code;
+		/* Retrieve process exit code for error reporting */
+		GetExitCodeProcess(
+			data->process_info->hProcess,
+			&proc_exit_code);
+#if defined(_DBG_PRINT)
+		pr_info(stdout,
+			"windows process exit with code: %lu",
+			proc_exit_code);
+		if (
+			proc_exit_code ==
+			3221225781)
+		{
+			pr_info(stdout,
+				data->windows_redist_err);
+			printf("%s", data->windows_redist_err2);
+			fflush(stdout);
+		}
+#endif
+		CloseHandle(data->process_info->hThread);
+		CloseHandle(data->process_info->hProcess);
+
+		if (data->startup_info->hStdOutput != NULL &&
+			data->startup_info->hStdOutput != data->hFile)
+			CloseHandle(
+				data->startup_info->hStdOutput);
+		if (data->startup_info->hStdError != NULL &&
+			data->startup_info->hStdError != data->hFile)
+			CloseHandle(
+				data->startup_info->hStdError);
+	} else {
+		DWORD err = GetLastError();
+		pr_error(stdout,
+			"CreateProcess failed! (%lu)",
+			err);
+		if (strfind(strerror(err), "The system cannot find the file specified", true))
+			pr_error(stdout, "^ The compiler executable does not exist.");
+		if (strfind(strerror(err), "Access is denied", true))
+			pr_error(stdout, "^ You do not have permission to execute the compiler executable.");
+		if (strfind(strerror(err), "The directory name is invalid", true))
+			pr_error(stdout, "^ The compiler executable is not a directory.");
+		if (strfind(strerror(err), "The system cannot find the path specified", true))
+			pr_error(stdout, "^ The compiler executable does not exist.");
+		minimal_debugging();
+	}
+
+	return 0;
+}
+#endif
+
 static
 int dog_exec_compiler_process(char *pawncc_path,
 							  char *input_path,
 							  char *output_path) {
 
 	int         result_configure = 0;
+	int         i = 0;
+	char       *unix_pointer_token = NULL;
+	const char *windows_redist_err = "Have you made sure to install "
+									"the Visual CPP (C++) "
+									"Redist All-in-One?";
+	const char *windows_redist_err2 = "   - install first: "
+									"https://www.techpowerup.com/"
+									"download/"
+									"visual-c-redistributable-"
+									"runtime-package-all-in-one"
+									"/"
+									"\n";
+
+	if (compiler_full_includes == NULL)
+		compiler_full_includes = strdup("-ipawno/include -iqawno/include -igamemodes");
 
 	dog_proj_init(pawncc_path, input_path);
 
@@ -398,111 +516,131 @@ int dog_exec_compiler_process(char *pawncc_path,
 		}
 
 		/* Create Windows process for compiler execution */
-		BOOL win32_process_success;
-		win32_process_success = CreateProcessA(
-			NULL, compiler_input,
-			NULL, NULL,
-			TRUE,
-			CREATE_NO_WINDOW |
-			ABOVE_NORMAL_PRIORITY_CLASS |
-			CREATE_BREAKAWAY_FROM_JOB,
-			NULL, NULL,
-			&_STARTUPINFO, &_PROCESS_INFO);
+		if (compiler_dog_flag_fast == true) {
+			/* Use _beginthreadex for fast compilation */
+			compiler_thread_data_t thread_data;
+			HANDLE thread_handle;
+			unsigned thread_id;
 
-		DWORD err = GetLastError();
+			thread_data.compiler_input = compiler_input;
+			thread_data.startup_info = &_STARTUPINFO;
+			thread_data.process_info = &_PROCESS_INFO;
+			thread_data.hFile = hFile;
+			thread_data.pre_start = &pre_start;
+			thread_data.post_end = &post_end;
+			thread_data.windows_redist_err = windows_redist_err;
+			thread_data.windows_redist_err2 = windows_redist_err2;
 
-		if (hFile != INVALID_HANDLE_VALUE) {
-			SetHandleInformation(hFile,
-				HANDLE_FLAG_INHERIT, 0);
-		}
+			thread_handle = (HANDLE)_beginthreadex(
+				NULL,
+				0,
+				compiler_thread_func,
+				&thread_data,
+				0,
+				&thread_id);
 
-		if (win32_process_success == TRUE) {
-			SetThreadPriority(
-				_PROCESS_INFO.hThread,
-				THREAD_PRIORITY_ABOVE_NORMAL);
-
-			DWORD_PTR procMask, sysMask;
-			GetProcessAffinityMask(
-				GetCurrentProcess(),
-				&procMask, &sysMask);
-			SetProcessAffinityMask(
-				_PROCESS_INFO.hProcess,
-				procMask & ~1);
-
-			clock_gettime(CLOCK_MONOTONIC,
-				&pre_start);
-			DWORD waitResult =
-				WaitForSingleObject(
-				_PROCESS_INFO.hProcess,
-				0x3E8000);
-			if (waitResult == WAIT_TIMEOUT) {
-				TerminateProcess(
-					_PROCESS_INFO.hProcess, 1);
-				WaitForSingleObject(
-					_PROCESS_INFO.hProcess,
-					5000);
+			if (thread_handle == NULL) {
+				pr_error(stdout,
+					"_beginthreadex failed!");
+				minimal_debugging();
+			} else {
+				/* Wait for thread to complete */
+				WaitForSingleObject(thread_handle, INFINITE);
+				CloseHandle(thread_handle);
 			}
-			clock_gettime(CLOCK_MONOTONIC,
-				&post_end);
-
-			DWORD proc_exit_code;
-			/* Retrieve process exit code for error reporting */
-			GetExitCodeProcess(
-				_PROCESS_INFO.hProcess,
-				&proc_exit_code);
-#if defined(_DBG_PRINT)
-			pr_info(stdout,
-				"windows process exit with code: %lu",
-				proc_exit_code);
-			if (
-				proc_exit_code ==
-				3221225781)
-			{
-				pr_info(stdout,
-				"Have you made sure to install "
-				"the Visual CPP (C++) Redist All-in-One?");
-				printf(
-					"   - install first: "
-					"https://www.techpowerup.com/"
-					"download/"
-					"visual-c-redistributable-runtime-package-all-in-one"
-					"/"
-				"\n");
-				fflush(stdout);
-			}
-#endif
-			CloseHandle(_PROCESS_INFO.hThread);
-			CloseHandle(_PROCESS_INFO.hProcess);
-
-			if (_STARTUPINFO.hStdOutput != NULL &&
-				_STARTUPINFO.hStdOutput != hFile)
-				CloseHandle(
-					_STARTUPINFO.hStdOutput);
-			if (_STARTUPINFO.hStdError != NULL &&
-				_STARTUPINFO.hStdError != hFile)
-				CloseHandle(
-					_STARTUPINFO.hStdError);
 		} else {
-			pr_error(stdout,
-				"CreateProcess failed! (%lu)",
-				err);
-			if (strfind(strerror(err), "The system cannot find the file specified", true))
-			{
-				pr_error(stdout, "^ The compiler executable does not exist.");
+			/* Standard CreateProcess approach */
+			BOOL win32_process_success;
+			win32_process_success = CreateProcessA(
+				NULL, compiler_input,
+				NULL, NULL,
+				TRUE,
+				CREATE_NO_WINDOW |
+				ABOVE_NORMAL_PRIORITY_CLASS |
+				CREATE_BREAKAWAY_FROM_JOB,
+				NULL, NULL,
+				&_STARTUPINFO, &_PROCESS_INFO);
+
+			DWORD err = GetLastError();
+
+			if (hFile != INVALID_HANDLE_VALUE) {
+				SetHandleInformation(hFile,
+					HANDLE_FLAG_INHERIT, 0);
 			}
-			if (strfind(strerror(err), "Access is denied", true))
-			{
-				pr_error(stdout, "^ You do not have permission to execute the compiler executable.");
+
+			if (win32_process_success == TRUE) {
+				SetThreadPriority(
+					_PROCESS_INFO.hThread,
+					THREAD_PRIORITY_ABOVE_NORMAL);
+
+				DWORD_PTR procMask, sysMask;
+				GetProcessAffinityMask(
+					GetCurrentProcess(),
+					&procMask, &sysMask);
+				SetProcessAffinityMask(
+					_PROCESS_INFO.hProcess,
+					procMask & ~1);
+
+				clock_gettime(CLOCK_MONOTONIC,
+					&pre_start);
+				DWORD waitResult =
+					WaitForSingleObject(
+					_PROCESS_INFO.hProcess,
+					0x3E8000);
+				if (waitResult == WAIT_TIMEOUT) {
+					TerminateProcess(
+						_PROCESS_INFO.hProcess, 1);
+					WaitForSingleObject(
+						_PROCESS_INFO.hProcess,
+						5000);
+				}
+				clock_gettime(CLOCK_MONOTONIC,
+					&post_end);
+
+				DWORD proc_exit_code;
+				/* Retrieve process exit code for error reporting */
+				GetExitCodeProcess(
+					_PROCESS_INFO.hProcess,
+					&proc_exit_code);
+#if defined(_DBG_PRINT)
+				pr_info(stdout,
+					"windows process exit with code: %lu",
+					proc_exit_code);
+				if (
+					proc_exit_code ==
+					3221225781)
+				{
+					pr_info(stdout,
+						windows_redist_err);
+					printf("%s", windows_redist_err2);
+					fflush(stdout);
+				}
+#endif
+				CloseHandle(_PROCESS_INFO.hThread);
+				CloseHandle(_PROCESS_INFO.hProcess);
+
+				if (_STARTUPINFO.hStdOutput != NULL &&
+					_STARTUPINFO.hStdOutput != hFile)
+					CloseHandle(
+						_STARTUPINFO.hStdOutput);
+				if (_STARTUPINFO.hStdError != NULL &&
+					_STARTUPINFO.hStdError != hFile)
+					CloseHandle(
+						_STARTUPINFO.hStdError);
+			} else {
+				pr_error(stdout,
+					"CreateProcess failed! (%lu)",
+					err);
+				if (strfind(strerror(err), "The system cannot find the file specified", true))
+					pr_error(stdout, "^ The compiler executable does not exist.");
+				if (strfind(strerror(err), "Access is denied", true))
+					pr_error(stdout, "^ You do not have permission to execute the compiler executable.");
+				if (strfind(strerror(err), "The directory name is invalid", true))
+					pr_error(stdout, "^ The compiler executable is not a directory.");
+				if (strfind(strerror(err), "The system cannot find the path specified", true))
+					pr_error(stdout, "^ The compiler executable does not exist.");
+				minimal_debugging();
 			}
-			if (strfind(strerror(err), "The directory name is invalid", true))
-			{
-				pr_error(stdout, "^ The compiler executable is not a directory.");
-			}
-			if (strfind(strerror(err), "The system cannot find the path specified", true))
-			{
-				pr_error(stdout, "^ The compiler executable does not exist.");
-			}
-			minimal_debugging();
 		}
 		if (hFile != INVALID_HANDLE_VALUE) {
 			CloseHandle(hFile);
@@ -542,16 +680,14 @@ int dog_exec_compiler_process(char *pawncc_path,
 		}
 
 		/* Tokenize command line into argument array for exec */
-		int i = 0;
-		char *_unix_ptr_token = NULL;
 		compiler_unix_token = strtok_r(
-			compiler_input, " ", &_unix_ptr_token);
+			compiler_input, " ", &unix_pointer_token);
 		while (compiler_unix_token != NULL &&
 			i < (sizeof(dog_compiler_unix_args) + 128)) {
 			dog_compiler_unix_args[i++] =
 				compiler_unix_token;
 			compiler_unix_token = strtok_r(NULL,
-				" ", &_unix_ptr_token);
+				" ", &unix_pointer_token);
 		}
 		dog_compiler_unix_args[i] = NULL;
 
@@ -761,24 +897,13 @@ int dog_exec_compiler_process(char *pawncc_path,
 							pr_error(stdout,
 								"compiler process exited with code (%d)",
 								proc_exit_code);
-							if (getenv("WSL_INTEROP") ||
-								getenv("WSL_DISTRO_NAME") &&
+							if (getenv("WSL_DISTRO_NAME") &&
 								strcmp(dogconfig.dog_toml_os_type,
 									OS_SIGNAL_WINDOWS) == 0 && proc_exit_code == 53)
 							{
 								pr_info(stdout,
-									"Have you made "
-									"sure to install "
-									"the Visual CPP (C++) "
-									"Redist All-in-One?");
-								printf(
-									"   - install first: "
-									"https://www.techpowerup.com/"
-									"download/"
-									"visual-c-redistributable-"
-									"runtime-package-all-in-one"
-									"/"
-								"\n");
+									windows_redist_err);
+								printf("%s", windows_redist_err2);
 								fflush(stdout);
 							}
 							minimal_debugging();
@@ -796,25 +921,15 @@ int dog_exec_compiler_process(char *pawncc_path,
 					"posix_spawn failed: %s",
 					strerror(process_spawn_result));
 				if (strfind(strerror(process_spawn_result), "Exec format error", true)) 
-				{
 					pr_error(stdout, "^ The compiler executable is not compatible with your system.");
-				}
 				if (strfind(strerror(process_spawn_result), "Permission denied", true))
-				{
 					pr_error(stdout, "^ You do not have permission to execute the compiler executable.");
-				}
 				if (strfind(strerror(process_spawn_result), "No such file or directory", true))
-				{
 					pr_error(stdout, "^ The compiler executable does not exist.");
-				}
 				if (strfind(strerror(process_spawn_result), "Not a directory", true))
-				{
 					pr_error(stdout, "^ The compiler executable is not a directory.");
-				}
 				if (strfind(strerror(process_spawn_result), "Is a directory", true))
-				{
 					pr_error(stdout, "^ The compiler executable is a directory.");
-				}
 				minimal_debugging();
 			}
 		#endif
@@ -1182,6 +1297,9 @@ dog_exec_compiler(const char *args, const char *compile_args_val,
 				sizeof(compiler_path_include_buf) - 1);
 			compiler_path_include_buf[
 				sizeof(compiler_path_include_buf) - 1] = '\0';
+		} else {
+			snprintf(compiler_path_include_buf, sizeof(compiler_path_include_buf),
+				"-i=none");
 		}
 
 		/* Show tip message if no flags were specified */
@@ -1225,15 +1343,50 @@ dog_exec_compiler(const char *args, const char *compile_args_val,
 				pr_color(stdout, DOG_COL_YELLOW,
 					DOG_COL_BYELLOW
 					"** COMPILER TARGET\n");
+				int tree_ret = -1;
+				{
+					char *tree[] = { "tree", ">", "/dev/null 2>&1", NULL };
+					tree_ret = dog_exec_command(tree);
+				}
+				if (!tree_ret) {
+					if (path_exists("../storage/downloads") == 1) {
+						char *tree[] = {
+							"tree", "-P", "\"*.p\"", "-P", "\"*.pwn\"", "../storage/downloads", NULL };
+						dog_exec_command(tree);
+					} else {
+						char *tree[] = { "tree", "-P", "\"*.p\"", "-P", "\"*.pwn\"", ".", NULL };
+						dog_exec_command(tree);
+					}
+				} else {
+					#ifdef DOG_LINUX
+					if (path_exists("../storage/downloads") == 1) {
+						char *argv[] = { "ls", "../storage/downloads", "-R", NULL };
+						dog_exec_command(argv);
+					} else {
+						char *argv[] = { "ls", ".", "-R", NULL };
+						dog_exec_command(argv);
+					}
+					#else
+					char *argv[] = { "dir", ".", "-s", NULL };
+					dog_exec_command(argv);
+					#endif
+				}
 				printf(DOG_COL_BCYAN);
 				printf(
 					" * You run the compiler command "
-					"without any args | compile %s | compile mode.pwn |\n"
+					"without any args | compile %s | compile mode.pwn\n"
 					" * Do you want to compile for "
 					DOG_COL_GREEN "%s " DOG_COL_BCYAN
 					"(enter), \n"
 					" * or do you want to compile for something else?\n",
 					compile_args_val, dogconfig.dog_toml_proj_input);
+				printf(
+					" * input likely:\n"
+					"   bare.pwn | grandlarc.pwn | main.pwn | server.p\n"
+					"   ../storage/downloads/dog/gamemodes/main.pwn\n"
+					"   ../storage/downloads/osint/gamemodes/gm.pwn\n"
+				);
+				fflush(stdout);
 				print_restore_color();
 				printf(DOG_COL_CYAN ">"
 					DOG_COL_DEFAULT);
@@ -1579,15 +1732,22 @@ dog_exec_compiler(const char *args, const char *compile_args_val,
 					snprintf(compiler_temp,
 						sizeof(compiler_temp), "%s",
 						dogconfig.dog_sef_found_list[i]);
-					if (compiler_proj_path)
-						{
-							free(compiler_proj_path);
-							compiler_proj_path = NULL;
-						}
-					compiler_proj_path = strdup(compiler_temp);
+					memset(compiler_buf, 0, sizeof(compiler_buf));
+					snprintf(compiler_buf, sizeof(compiler_buf),
+						"%s", compiler_temp);
+						if (compiler_proj_path)
+							{
+								free(compiler_proj_path);
+								compiler_proj_path = NULL;
+							}
+					compiler_proj_path = strdup(compiler_buf);
 				}
 			}
 
+#if defined(_DBG_PRINT)
+			if (compiler_proj_path != NULL)
+				pr_info(stdout, "compiler_proj_path: %s", compiler_proj_path);
+#endif
 			/* Generate output filename and execute compilation */
 			if (path_exists(compiler_proj_path) == 1) {
 				if (compiler_proj_path) {
@@ -1605,11 +1765,6 @@ dog_exec_compiler(const char *args, const char *compile_args_val,
 				if (extension)
 					*extension = '\0';
 				
-				if (ctx->container_output)
-					{
-						free(ctx->container_output);
-						ctx->container_output = NULL;
-					}
 				ctx->container_output = strdup(compiler_temp);
 
 				snprintf(compiler_temp, sizeof(compiler_temp),
@@ -1625,7 +1780,6 @@ dog_exec_compiler(const char *args, const char *compile_args_val,
 				if (_process != 0) {
 					goto compiler_end;
 				}
-
 				if (compiler_proj_path) {
 					free(compiler_proj_path);
 					compiler_proj_path = NULL;

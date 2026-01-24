@@ -35,6 +35,8 @@ aria2c -o install.sh https://github.com/gskeleton/watchdogs/raw/refs/heads/main/
 
 3. **Pertama kali, jalankan perintah berikut di Termux:**
 
+> Pilih salah satu.
+
 * GNU/wget
 
 ```yaml
@@ -181,7 +183,7 @@ watchdogs
 
 ## Compilation
 
-> Kamu tidak membutuhkan pemasangan Watchdogs di folder GameMode secara khusus atau di area C: Watchdogs bukan tools umum yang menggunakan interaksi semacam itu. Kamu hanya perlu memastikan folder berisi binary watchdogs.XX seperti watchdogs.win atau juga watchdogs.tmux berada di folder yang ada di Downloads dan disela sela itu folder proyek'mu berada di folder yang ada di Downloads juga.
+> Kamu tidak membutuhkan pemasangan Watchdogs di folder GameMode secara khusus atau di area ~/Downloads. Kamu hanya perlu memastikan folder berisi binary watchdogs seperti watchdogs atau juga watchdogs.tmux berada di folder yang ada di Downloads dan disela sela itu folder proyek'mu berada di folder yang ada di Downloads juga. (*INI TIDAK BERLAKU UNTUK watchdogs.win)
 ```yml
 # gambaran seperti berikut:
 Downloads

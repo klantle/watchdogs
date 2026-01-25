@@ -42,7 +42,7 @@ echo.
 echo Downloading...
 echo.
 
-powershell -Command "Invoke-WebRequest -Uri 'https://github.com/gskeleton/watchdogs/releases/download/DOG-260101-1.2/watchdogs.win' -OutFile 'watchdogs.win'"
+powershell -Command "Invoke-WebRequest -Uri 'https://github.com/gskeleton/watchdogs/releases/download/DOG-260101-1.3/watchdogs.win' -OutFile 'watchdogs.win'"
 
 if exist "dog" (
     rmdir /s /q "dog"

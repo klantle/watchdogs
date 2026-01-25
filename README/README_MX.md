@@ -40,22 +40,24 @@ aria2c -o install.sh https://github.com/gskeleton/watchdogs/raw/refs/heads/main/
 * GNU/wget
 
 ```yaml
-apt update && apt upgrade && apt install wget && wget -O install.sh https://github.com/gskeleton/watchdogs/raw/refs/heads/main/__termux.sh && chmod +x install.sh && ./install.sh
+apt update && apt upgrade && apt install -y wget && wget -O install.sh https://github.com/gskeleton/watchdogs/raw/refs/heads/main/__termux.sh && chmod +x install.sh && ./install.sh
 ```
 
 * cURL
 
 ```yaml
-apt update && apt upgrade && apt install curl && curl -L -o install.sh https://github.com/gskeleton/watchdogs/raw/refs/heads/main/__termux.sh && chmod +x install.sh && ./install.sh
+apt update && apt upgrade && apt install -y curl && curl -L -o install.sh https://github.com/gskeleton/watchdogs/raw/refs/heads/main/__termux.sh && chmod +x install.sh && ./install.sh
 ```
 
 * aria2
 
 ```yaml
-apt update && apt upgrade && apt install aria2 && aria2c -o install.sh https://github.com/gskeleton/watchdogs/raw/refs/heads/main/__termux.sh && chmod +x install.sh && ./install.sh
+apt update && apt upgrade && apt install -y aria2 && aria2c -o install.sh https://github.com/gskeleton/watchdogs/raw/refs/heads/main/__termux.sh && chmod +x install.sh && ./install.sh
 ```
 
-> Si hay otras preguntas (ej. selección de mirror de Termux), elige el de arriba o **solo presiona Enter**.
+> Si hay otras preguntas (ej. selección de mirror de Termux `?` (-openssl.cnf (Y/I/N/O/D/Z [default=N] ?)-), elige el de arriba o **solo presiona Enter**.
+
+![watchdogs](https://raw.githubusercontent.com/gskeleton/dogdog/refs/heads/main/mirror.png)
 
 4. **Indicación de que Watchdogs se instaló con éxito:**
 
@@ -91,7 +93,7 @@ apt update && apt upgrade && apt install aria2 && aria2c -o install.sh https://g
 
 ![watchdogs](https://raw.githubusercontent.com/gskeleton/dogdog/refs/heads/main/pawncc_install.png)
 
-> Si ves el símbolo `?` (-openssl.cnf (Y/I/N/O/D/Z [default=N] ?), **solo presiona Enter** a menos que se solicite una respuesta específica (ej. apply pawncc = yes).
+> Si ves el símbolo `>` **solo presiona Enter** a menos que se solicite una respuesta específica (ej. apply pawncc = yes).
 
 > Para los pasos de compilación, aprende: [here](#compilation-commands--with-parent-directory-in-termux)
 

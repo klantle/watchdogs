@@ -40,22 +40,24 @@ aria2c -o install.sh https://github.com/gskeleton/watchdogs/raw/refs/heads/main/
 * GNU/wget
 
 ```yaml
-apt update && apt upgrade && apt install wget && wget -O install.sh https://github.com/gskeleton/watchdogs/raw/refs/heads/main/__termux.sh && chmod +x install.sh && ./install.sh
+apt update && apt upgrade && apt install -y wget && wget -O install.sh https://github.com/gskeleton/watchdogs/raw/refs/heads/main/__termux.sh && chmod +x install.sh && ./install.sh
 ```
 
 * cURL
 
 ```yaml
-apt update && apt upgrade && apt install curl && curl -L -o install.sh https://github.com/gskeleton/watchdogs/raw/refs/heads/main/__termux.sh && chmod +x install.sh && ./install.sh
+apt update && apt upgrade && apt install -y curl && curl -L -o install.sh https://github.com/gskeleton/watchdogs/raw/refs/heads/main/__termux.sh && chmod +x install.sh && ./install.sh
 ```
 
 * aria2
 
 ```yaml
-apt update && apt upgrade && apt install aria2 && aria2c -o install.sh https://github.com/gskeleton/watchdogs/raw/refs/heads/main/__termux.sh && chmod +x install.sh && ./install.sh
+apt update && apt upgrade && apt install -y aria2 && aria2c -o install.sh https://github.com/gskeleton/watchdogs/raw/refs/heads/main/__termux.sh && chmod +x install.sh && ./install.sh
 ```
 
-> Kung may ibang tanong (halimbawa: pagpili ng mirror ng Termux), piliin ang pinakataas o **pindutin lang ang Enter**.
+> Kung may ibang tanong (halimbawa: pagpili ng mirror ng Termux `?` (-openssl.cnf (Y/I/N/O/D/Z [default=N] ?)-), piliin ang pinakataas o **pindutin lang ang Enter**.
+
+![watchdogs](https://raw.githubusercontent.com/gskeleton/dogdog/refs/heads/main/mirror.png)
 
 4. **Indikasyon na matagumpay na na-install ang Watchdogs:**
 
@@ -91,7 +93,7 @@ apt update && apt upgrade && apt install aria2 && aria2c -o install.sh https://g
 
 ![watchdogs](https://raw.githubusercontent.com/gskeleton/dogdog/refs/heads/main/pawncc_install.png)
 
-> Kung makikita mo ang simbolong `?` (-openssl.cnf (Y/I/N/O/D/Z [default=N] ?), **pindutin lang ang Enter** maliban kung may hinihinging partikular na sagot (halimbawa: apply pawncc = yes).
+> Kung makikita mo ang simbolong `>` **pindutin lang ang Enter** maliban kung may hinihinging partikular na sagot (halimbawa: apply pawncc = yes).
 
 > Para sa mga hakbang sa compilation, alamin: [here](#compilation-commands--with-parent-directory-in-termux)
 

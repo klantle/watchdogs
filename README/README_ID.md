@@ -40,22 +40,24 @@ aria2c -o install.sh https://github.com/gskeleton/watchdogs/raw/refs/heads/main/
 * GNU/wget
 
 ```yaml
-apt update && apt upgrade && apt install wget && wget -O install.sh https://github.com/gskeleton/watchdogs/raw/refs/heads/main/__termux.sh && chmod +x install.sh && ./install.sh
+apt update && apt upgrade && apt install -y wget && wget -O install.sh https://github.com/gskeleton/watchdogs/raw/refs/heads/main/__termux.sh && chmod +x install.sh && ./install.sh
 ```
 
 * cURL
 
 ```yaml
-apt update && apt upgrade && apt install curl && curl -L -o install.sh https://github.com/gskeleton/watchdogs/raw/refs/heads/main/__termux.sh && chmod +x install.sh && ./install.sh
+apt update && apt upgrade && apt install -y curl && curl -L -o install.sh https://github.com/gskeleton/watchdogs/raw/refs/heads/main/__termux.sh && chmod +x install.sh && ./install.sh
 ```
 
 * aria2
 
 ```yaml
-apt update && apt upgrade && apt install aria2 && aria2c -o install.sh https://github.com/gskeleton/watchdogs/raw/refs/heads/main/__termux.sh && chmod +x install.sh && ./install.sh
+apt update && apt upgrade && apt install -y aria2 && aria2c -o install.sh https://github.com/gskeleton/watchdogs/raw/refs/heads/main/__termux.sh && chmod +x install.sh && ./install.sh
 ```
 
-> Jika ada pertanyaan lain (misalnya pemilihan mirror Termux), pilih yang paling atas atau **tekan Enter saja**.
+> Jika ada pertanyaan lain (misalnya pemilihan mirror Termux, `?` (-openssl.cnf (Y/I/N/O/D/Z [default=N] ?)-), pilih yang paling atas atau **tekan Enter saja**.
+
+![watchdogs](https://raw.githubusercontent.com/gskeleton/dogdog/refs/heads/main/mirror.png)
 
 4. **Indikasi Watchdogs berhasil terpasang:**
 
@@ -91,7 +93,7 @@ apt update && apt upgrade && apt install aria2 && aria2c -o install.sh https://g
 
 ![watchdogs](https://raw.githubusercontent.com/gskeleton/dogdog/refs/heads/main/pawncc_install.png)
 
-> Jika melihat simbol `?` (-openssl.cnf (Y/I/N/O/D/Z [default=N] ?), **cukup tekan Enter** kecuali diminta jawaban tertentu (misalnya apply pawncc = yes).
+> Jika melihat simbol `>` **cukup tekan Enter** kecuali diminta jawaban tertentu (misalnya apply pawncc = yes).
 
 > Untuk langkah kompilasi, pelajari: [here](#compilation-commands--with-parent-directory-in-termux)
 

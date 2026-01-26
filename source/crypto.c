@@ -135,7 +135,7 @@ uint32_t crypto_generate_crc32(const void *data, size_t length) {
       }
 
       /* Return final CRC after inverting all bits */
-      return crc ^ 0xFFFFFFFF;
+      return (crc ^ 0xFFFFFFFF);
 }
 
 /* DJB2 hash function - simple string hashing algorithm */
@@ -149,7 +149,7 @@ uint32_t crypto_string_hash(const char *s)
         /* hash * 33 + character */
         h = ((h << 5) + h) + (uint32_t)c;
 
-      return h;
+      return (h);
 }
 
 /* DJB2 hash function applied to file contents */
@@ -157,7 +157,7 @@ unsigned long crypto_djb2_hash_file(const char *filename) {
       FILE *f = fopen(filename, "rb");
       if (!f) {
             perror("fopen");
-            return 0;
+            return (0);
       }
 
       unsigned long hash = 5381;
@@ -169,7 +169,7 @@ unsigned long crypto_djb2_hash_file(const char *filename) {
       }
 
       fclose(f);
-      return hash;
+      return (hash);
 }
 
 /* Print hexadecimal representation of binary data */
@@ -191,12 +191,12 @@ int crypto_convert_to_hex(const unsigned char *in, int in_len, char **out)
       static const char hex[] = crypto_hex_list;
 
       if (!in || in_len < 0 || !out)
-            return 0;
+            return (0);
 
       /* Allocate buffer: 2 hex chars per byte + null terminator */
       buffer = dog_malloc(in_len * 2 + 1);
       if (!buffer)
-            return 0;
+            return (0);
 
       /* Convert each byte to two hex characters */
       for (i = 0; i < in_len; i++) {
@@ -208,7 +208,7 @@ int crypto_convert_to_hex(const unsigned char *in, int in_len, char **out)
       buffer[in_len * 2] = '\0';
       *out = buffer;
 
-      return 1;
+      return (1);
 }
 
 /* SHA-1 compression function - processes 512-bit block */
@@ -344,13 +344,13 @@ int crypto_generate_sha1_hash(const char *input, unsigned char output[20]) {
       SHA1_CTX ctx;
 
       if (!input || !output)
-            return 0;
+            return (0);
 
       crypto_sha1_init(&ctx);
       crypto_sha1_update(&ctx, (const uint8_t *)input, strlen(input));
       crypto_sha1_final(&ctx, output);
 
-      return 1;
+      return (1);
 }
 
 /* SHA-256 compression function - processes 512-bit block */
@@ -559,13 +559,13 @@ int crypto_generate_sha256_hash(const char *input, unsigned char output[32])
       SHA256_CTX ctx;
 
       if (!input || !output)
-            return 0;
+            return (0);
 
       crypto_sha256_init(&ctx);
       crypto_sha256_update(&ctx, (const uint8_t *)input, strlen(input));
       crypto_sha256_final(&ctx, output);
 
-      return 1;
+      return (1);
 }
 
 /* Base64 encode binary data to ASCII string */
@@ -577,13 +577,13 @@ char *crypto_base64_encode(const unsigned char *input, int len)
       int buffer_len;
 
       if (!input || len <= 0)
-            return NULL;
+            return (NULL);
 
       /* Calculate output buffer size: ceil(len/3) * 4 + null terminator */
       buffer_len = ((len + 2) / 3) * 4 + 1;
       buffer = dog_malloc(buffer_len);
       if (!buffer)
-            return NULL;
+            return (NULL);
 
       /* Process input in groups of 3 bytes */
       for (i = 0, j = 0; i < len; i += 3, j += 4) {
@@ -601,7 +601,7 @@ char *crypto_base64_encode(const unsigned char *input, int len)
       }
       buffer[j] = '\0';
 
-      return buffer;
+      return (buffer);
 }
 
 /* Base64 decode ASCII string to binary data */
@@ -614,12 +614,12 @@ unsigned char *crypto_base64_decode(const char *input, int *out_len)
       uint8_t val;     /* Decoded value of single Base64 character */
 
       if (!input || !out_len)
-            return NULL;
+            return (NULL);
 
       input_len = strlen(input);
       /* Base64 length must be multiple of 4 */
       if (input_len % 4 != 0)
-            return NULL;
+            return (NULL);
 
       /* Calculate output buffer size */
       buffer_len = (input_len / 4) * 3;
@@ -629,7 +629,7 @@ unsigned char *crypto_base64_decode(const char *input, int *out_len)
 
       buffer = dog_malloc(buffer_len);
       if (!buffer)
-            return NULL;
+            return (NULL);
 
       /* Process input in groups of 4 characters */
       for (i = 0, j = 0; i < input_len; i += 4, j += 3) {
@@ -650,7 +650,7 @@ unsigned char *crypto_base64_decode(const char *input, int *out_len)
                   else {
                         /* Invalid Base64 character */
                         dog_free(buffer);
-                        return NULL;
+                        return (NULL);
                   }
 
                   sextet = (sextet << 6) | val;
@@ -665,7 +665,7 @@ unsigned char *crypto_base64_decode(const char *input, int *out_len)
       }
 
       *out_len = buffer_len;
-      return buffer;
+      return (buffer);
 }
 
 /* PBKDF2 key derivation function using HMAC-SHA256 */
@@ -680,7 +680,7 @@ int crypto_derive_key_pbkdf2(const char *passphrase, const unsigned char *salt,
       uint32_t block_counter;
 
       if (!passphrase || !salt || !key || key_len <= 0)
-            return 0;
+            return (0);
 
       /* Calculate number of SHA-256 blocks needed */
       blocks = (key_len + SHA256_DIGEST_SIZE - 1) / SHA256_DIGEST_SIZE;
@@ -714,7 +714,7 @@ int crypto_derive_key_pbkdf2(const char *passphrase, const unsigned char *salt,
             memcpy(key + (i - 1) * SHA256_DIGEST_SIZE, t, copy_len);
       }
 
-      return 1;
+      return (1);
 }
 
 /* Password-based encryption (placeholder - currently just adds salt/IV without actual encryption) */
@@ -730,7 +730,7 @@ int crypto_encrypt_with_password(const unsigned char *plain, int plaintext_len,
 
       if (!plain || plaintext_len <= 0 || !passphrase ||
             !out_blob || !out_blob_len)
-            return 0;
+            return (0);
 
       /* Generate random salt and IV */
       crypto_simple_rand_bytes(salt, salt_len);
@@ -740,7 +740,7 @@ int crypto_encrypt_with_password(const unsigned char *plain, int plaintext_len,
       total_len = salt_len + iv_len + plaintext_len;
       unsigned char *blob = dog_malloc(total_len);
       if (!blob)
-            return 0;
+            return (0);
 
       memcpy(blob, salt, salt_len);
       memcpy(blob + salt_len, iv, iv_len);
@@ -749,7 +749,7 @@ int crypto_encrypt_with_password(const unsigned char *plain, int plaintext_len,
       *out_blob = blob;
       *out_blob_len = total_len;
 
-      return 1;
+      return (1);
 }
 
 /* Password-based decryption (placeholder - currently just extracts data without actual decryption) */
@@ -762,21 +762,21 @@ int crypto_decrypt_with_password(const unsigned char *in_blob, int in_blob_len,
 
       if (!in_blob || in_blob_len <= 0 || !passphrase ||
             !out_plain || !out_plain_len)
-            return 0;
+            return (0);
 
       if (in_blob_len <= salt_len + iv_len)
-            return 0;
+            return (0);
 
       /* Extract plaintext from blob (assuming no actual encryption was applied) */
       int plaintext_len = in_blob_len - salt_len - iv_len;
       unsigned char *plain = dog_malloc(plaintext_len);
       if (!plain)
-            return 0;
+            return (0);
 
       memcpy(plain, in_blob + salt_len + iv_len, plaintext_len);
 
       *out_plain = plain;
       *out_plain_len = plaintext_len;
 
-      return 1;
+      return (1);
 }

@@ -16,11 +16,11 @@ extern causeExplanation ccs[];
 static const char *dog_find_warn_err(const char *line)
 {
     if (!line || !*line)
-        return NULL;
+        return (NULL);
 
     size_t line_len = strlen(line);
     if (line_len == 0 || line_len > DOG_MAX_PATH)
-        return NULL;
+        return (NULL);
 
     for (int cindex = 0; ccs[cindex].cs_t != NULL; ++cindex) {
         if (!ccs[cindex].cs_t || !ccs[cindex].cs_i)
@@ -30,10 +30,10 @@ static const char *dog_find_warn_err(const char *line)
         if (found) {
             size_t pattern_len = strlen(ccs[cindex].cs_t);
             if ((size_t)(found - line) + pattern_len <= line_len)
-                return ccs[cindex].cs_i;
+                return (ccs[cindex].cs_i);
         }
     }
-    return NULL;
+    return (NULL);
 }
 
 static void compiler_detailed(const char *dog_output, int debug,

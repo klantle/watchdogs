@@ -189,6 +189,7 @@ void dog_free(void *ptr)
 		free(ptr);
 		ptr = NULL;
 	}
+	return;
 }
 
 int
@@ -467,7 +468,7 @@ int condition_check(char *path) {
 	if (fd < 0) {
 	    pr_error(stderr, "open failed");
 	    minimal_debugging();
-	    return 1;
+	    return (1);
 	}
 	HANDLE h = (HANDLE)_get_osfhandle(fd);
 	SetHandleInformation(h, HANDLE_FLAG_INHERIT, 0);
@@ -483,7 +484,7 @@ int condition_check(char *path) {
 	if (fd < 0) {
 	    pr_error(stderr, "open failed");
 	    minimal_debugging();
-	    return 1;
+	    return (1);
 	}
 	#endif
 
@@ -491,26 +492,26 @@ int condition_check(char *path) {
 	    pr_error(stderr, "fstat failed");
 	    minimal_debugging();
 	    close(fd);
-	    return 1;
+	    return (1);
 	}
 
 	if (!S_ISREG(st.st_mode)) {
 	    pr_error(stderr, "Not a regular file");
 	    minimal_debugging();
 	    close(fd);
-	    return 1;
+	    return (1);
 	}
 
 	if (!(st.st_mode & S_IXUSR)) {
 	    pr_error(stderr, "File not executable");
 	    minimal_debugging();
 	    close(fd);
-	    return 1;
+	    return (1);
 	}
 
 	close(fd);
 
-    return 0;
+    return (0);
 }
 
 void print_restore_color(void) {
@@ -1726,7 +1727,7 @@ int dog_find_path(const char *sef_path, const char *sef_name, const char *ignore
     struct dirent *entry;
 
     dir = opendir(sef_path);
-    if (!dir) return 0;
+    if (!dir) return (0);
 
     while ((entry = readdir(dir)) != NULL) {
         if (dog_dot_or_dotdot(entry->d_name)) continue;
@@ -1748,13 +1749,13 @@ int dog_find_path(const char *sef_path, const char *sef_name, const char *ignore
             if (dog_procure_ignore_dir(entry->d_name, ignore_dir)) continue;
             if (dog_find_path(size_path, sef_name, ignore_dir)) {
                 closedir(dir);
-                return 1;
+                return (1);
             }
         } else if (is_reg) {
             if (dog_match_filename(entry->d_name, sef_name)) {
                 dog_ensure_found_path(size_path);
                 closedir(dir);
-                return 1;
+                return (1);
             }
         }
     }
@@ -1776,7 +1777,7 @@ _run_command_vfork(char *const argv[])
     pid = vfork();
 
     if (pid < 0)
-        return -1;
+        return (-1);
 
     if (pid == 0) {
         execvp(argv[0], argv);
@@ -1784,12 +1785,12 @@ _run_command_vfork(char *const argv[])
     }
 
     if (waitpid(pid, &status, 0) < 0)
-        return -1;
+        return (-1);
 
     if (WIFEXITED(status))
         return WEXITSTATUS(status);
 
-    return -1;
+    return (-1);
 }
 
 #endif
@@ -1815,7 +1816,7 @@ _run_windows_command(const char *command)
 		&_STARTUPINFO,
 		&_PROCESS_INFO))
     {
-        return -1;
+        return (-1);
     }
 
     WaitForSingleObject(_PROCESS_INFO.hProcess, INFINITE);
@@ -1836,33 +1837,33 @@ validate_src_dest(const char *c_src, const char *c_dest)
     struct stat st;
 
     if (!c_src || !c_dest)
-        return 0;
+        return (0);
 
     if (!*c_src || !*c_dest)
-        return 0;
+        return (0);
 
     if (strlen(c_src) >= DOG_PATH_MAX || strlen(c_dest) >= DOG_PATH_MAX)
-        return 0;
+        return (0);
 
     if (!path_exists(c_src))
-        return 0;
+        return (0);
 
     if (!file_regular(c_src))
-        return 0;
+        return (0);
 
     if (path_exists(c_dest) && file_same_file(c_src, c_dest))
-        return 0;
+        return (0);
 
     if (ensure_parent_dir(parent, sizeof(parent), c_dest))
-        return 0;
+        return (0);
 
     if (stat(parent, &st))
-        return 0;
+        return (0);
 
     if (!S_ISDIR(st.st_mode))
-        return 0;
+        return (0);
 
-    return 1;
+    return (1);
 }
 
 static int
@@ -1882,7 +1883,7 @@ detect_super_mode(void)
     };
 
     if (dog_exec_command(sudo_check) == 0)
-        return 1;
+        return (1);
 
     char *run0_check[] = {
         "sh", "-c",
@@ -1900,7 +1901,7 @@ detect_super_mode(void)
 
 #endif
 
-    return 0;
+    return (0);
 }
 
 static int
@@ -1911,7 +1912,7 @@ _run_file_operation(
     int super_mode)
 {
     if (!src || !dest)
-        return -1;
+        return (-1);
 
 #ifdef DOG_WINDOWS
 
@@ -1955,7 +1956,7 @@ _run_file_operation(
     dog_free(s_src);
     dog_free(s_dest);
 
-    return ret;
+    return (ret);
 
 #else
 
@@ -1997,7 +1998,7 @@ _run_file_operation(
         return _run_command_vfork(argv);
     }
 
-    return -1;
+    return (-1);
 
 #endif
 }
@@ -2006,7 +2007,7 @@ int
 dog_sef_wmv(const char *c_src, const char *c_dest)
 {
     if (!validate_src_dest(c_src, c_dest))
-        return 1;
+        return (1);
 
     int super_mode = detect_super_mode();
 
@@ -2020,18 +2021,18 @@ dog_sef_wmv(const char *c_src, const char *c_dest)
 			pr_info(stdout, "moved (with run0): '%s' -> '%s'", c_src, c_dest);
 		else
 			pr_info(stdout, "moved: '%s' -> '%s'", c_src, c_dest);
-        return 0;
+        return (0);
     }
 
     pr_error(stdout, "failed to move: '%s' -> '%s'", c_src, c_dest);
-    return 1;
+    return (1);
 }
 
 int
 dog_sef_wcopy(const char *c_src, const char *c_dest)
 {
     if (!validate_src_dest(c_src, c_dest))
-        return 1;
+        return (1);
 
     int super_mode = detect_super_mode();
 
@@ -2045,11 +2046,11 @@ dog_sef_wcopy(const char *c_src, const char *c_dest)
 			pr_info(stdout, "copied (with run0): '%s' -> '%s'", c_src, c_dest);
 		else
 			pr_info(stdout, "copied: '%s' -> '%s'", c_src, c_dest);
-        return 0;
+        return (0);
     }
 
     pr_error(stdout, "failed to copy: '%s' -> '%s'", c_src, c_dest);
-    return 1;
+    return (1);
 }
 
 static void

@@ -737,9 +737,9 @@ is_archive_file(const char *filename)
 	if (strend(filename, ".zip", true) ||
 	    strend(filename, ".tar", true) ||
 	    strend(filename, ".tar.gz", true)) {
-		return 1;
+		return (1);
 	}
-	return 0;
+	return (0);
 }
 
 void

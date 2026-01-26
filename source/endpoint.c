@@ -164,7 +164,7 @@ update_samp_config(const char *g)
                 MOVEFILE_REPLACE_EXISTING | MOVEFILE_COPY_ALLOWED)) {
             pr_error(stdout, "Failed to create backup file");
             minimal_debugging();
-            return -1;
+            return (-1);
         }
     #else
         /* Unix/Linux: Use fork+exec for mv command */
@@ -179,7 +179,7 @@ update_samp_config(const char *g)
         if (process_id < 0 || waitpid(process_id, NULL, 0) < 0) {
             pr_error(stdout, "Failed to create backup file");
             minimal_debugging();
-            return -1;
+            return (-1);
         }
     #endif
 
@@ -194,14 +194,14 @@ update_samp_config(const char *g)
         if (fd < 0) {
                 pr_error(stdout, "cannot open backup");
                 minimal_debugging();
-                return -1;
+                return (-1);
         }
 
         /* Convert file descriptor to FILE* for buffer-based reading */
         proc_conf_in = fdopen(fd, "r");
         if (!proc_conf_in) {
                 close(fd);
-                return -1;
+                return (-1);
         }
 
         /* Open destination config file for writing */
@@ -210,7 +210,7 @@ update_samp_config(const char *g)
                 pr_error(stdout, "Failed to write new config");
                 minimal_debugging();
                 fclose(proc_conf_in);
-                return -1;
+                return (-1);
         }
 
         /* Prepare gamemode name by removing extension if present */
@@ -237,7 +237,7 @@ update_samp_config(const char *g)
         fclose(proc_conf_in);
         fclose(proc_conf_out);
 
-        return 1;  /* Success */
+        return (1);  /* Success */
 }
 
 /*
@@ -582,7 +582,7 @@ update_omp_config(const char *g)
                     MOVEFILE_REPLACE_EXISTING | MOVEFILE_COPY_ALLOWED)) {
                 pr_error(stdout, "Failed to create backup file");
                 minimal_debugging();
-                return -1;
+                return (-1);
             }
     #else
             pid_t process_id = fork();
@@ -596,7 +596,7 @@ update_omp_config(const char *g)
             if (process_id < 0 || waitpid(process_id, NULL, 0) < 0) {
                 pr_error(stdout, "Failed to create backup file");
                 minimal_debugging();
-                return -1;
+                return (-1);
             }
     #endif
 

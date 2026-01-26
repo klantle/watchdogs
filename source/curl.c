@@ -114,13 +114,13 @@ write_callbacks(void *ptr, size_t size, size_t nmemb, void *userdata)
 	struct buf *b = userdata;
 
 	if (b->data && ((uintptr_t)b->data & 0x7)) {
-		return 0;
+		return (0);
 	}
 
 	size_t total = size * nmemb;
 
 	if (total > 0xFFFFFFF)
-		return 0;
+		return (0);
 
 	size_t required = b->len + total + 1;
 
@@ -142,7 +142,7 @@ write_callbacks(void *ptr, size_t size, size_t nmemb, void *userdata)
 				b->allocated = 0;
 				b->len = 0;
 			}
-			return 0;
+			return (0);
 		}
 
 		b->data = p;
@@ -153,7 +153,7 @@ write_callbacks(void *ptr, size_t size, size_t nmemb, void *userdata)
 	b->len += total;
 	b->data[b->len] = 0;
 
-	return total;
+	return (total);
 }
 
 void
@@ -185,7 +185,7 @@ write_memory_callback(void *contents, size_t size, size_t nmemb, void *userp)
 	size_t realsize = size * nmemb;
 
 	if (!contents || !mem || realsize > 0x10000000)
-		return 0;
+		return (0);
 
 	size_t required = mem->size + realsize + 1;
 
@@ -203,7 +203,7 @@ write_memory_callback(void *contents, size_t size, size_t nmemb, void *userp)
 			fprintf(stdout,
 			    " Memory exhausted at %zu bytes\n", new_alloc);
 #endif
-			return 0;
+			return (0);
 		}
 		mem->memory = ptr;
 		mem->allocated = new_alloc;
@@ -213,7 +213,7 @@ write_memory_callback(void *contents, size_t size, size_t nmemb, void *userp)
 	mem->size += realsize;
 	mem->memory[mem->size] = '\0';
 
-	return realsize;
+	return (realsize);
 }
 
 const char *__track_suffixes[] = {
@@ -407,7 +407,7 @@ get_compiler_directory(void)
 			dir_path = "pawno";
 	}
 
-	return dir_path;
+	return (dir_path);
 }
 
 static void
@@ -425,7 +425,7 @@ copy_compiler_tool(const char *src_path, const char *tool_name,
 static int setup_linux_library(void)
 {
 	#ifdef DOG_WINDOWS
-	return 0;
+	return (0);
 	#endif
 	const char *libpawnc_path = NULL;
 	char        libpawnc_src[DOG_PATH_MAX];
@@ -468,7 +468,7 @@ static int setup_linux_library(void)
 	}
 	
 	if (!libpawnc_path) {
-		return -1;
+		return (-1);
 	}
 
 	snprintf(dest_path, sizeof(dest_path),
@@ -513,7 +513,7 @@ static int setup_linux_library(void)
 
     dog_sef_wmv(libpawnc_src, dest_path);
 
-	return 0;
+	return (0);
 }
 
 static
@@ -711,12 +711,12 @@ prompt_apply_pawncc(void)
 
 	if (confirm[0] == '\0' || strfind(confirm, "Y", true)) {
 		dog_free(confirm);
-		return 1;
+		return (1);
 	}
 
 	dog_free(confirm);
 
-	return 0;
+	return (0);
 }
 
 static int
@@ -742,7 +742,7 @@ debug_callback(CURL *handle __UNUSED__, curl_infotype type,
 	default:
 		break;
 	}
-	return 0;
+	return (0);
 }
 
 static void
@@ -779,7 +779,7 @@ dog_download_file(const char *url, const char *output_filename)
 	if (!url || !output_filename) {
 		pr_color(stdout, DOG_COL_RED,
 		    "Error: Invalid URL or filename\n");
-		return -1;
+		return (-1);
 	}
 
 	CURLcode res;
@@ -844,7 +844,7 @@ dog_download_file(const char *url, const char *output_filename)
 		if (!curl) {
 			pr_color(stdout, DOG_COL_RED,
 			    "Failed to initialize CURL\n");
-			return -1;
+			return (-1);
 		}
 
 		struct curl_slist *headers = NULL;
@@ -1036,7 +1036,7 @@ dog_download_file(const char *url, const char *output_filename)
 					dog_apply_pawncc();
 				}
 
-				return 0;
+				return (0);
 			}
 		} else {
 			buf_free(&download_buffer);
@@ -1052,5 +1052,5 @@ dog_download_file(const char *url, const char *output_filename)
 	    " Failed to download %s from %s after %d retries\n",
 	    final_filename, url, retry_count);
 
-	return 1;
+	return (1);
 }

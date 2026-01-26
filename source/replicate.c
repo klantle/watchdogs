@@ -238,7 +238,7 @@ package_url_checking(const char *url, const char *github_token)
 {
 	CURL *curl = curl_easy_init();
 	if (!curl)
-		return 0;
+		return (0);
 
 	CURLcode res;
 	long response_code = 0;
@@ -318,7 +318,7 @@ package_http_get_content(const char *url, const char *github_token,
 
 	curl = curl_easy_init();
 	if (!curl)
-		return 0;
+		return (0);
 
 	if (github_token && strlen(github_token) > 0 &&
 	    !strfind(github_token, "DO_HERE", true)) {
@@ -349,12 +349,12 @@ package_http_get_content(const char *url, const char *github_token,
 
 	if (res != CURLE_OK || buffer.size == 0) {
 		memory_struct_free(&buffer);
-		return 0;
+		return (0);
 	}
 
 	*out_html = buffer.memory;
 
-	return 1;
+	return (1);
 }
 
 static int
@@ -486,7 +486,7 @@ package_gh_release_assets(const char *user, const char *repo, char *_tag,
 		        dog_free(out_urls[i]);
 		    }
 		    dog_free(json_data);
-		    return 0;
+		    return (0);
 		}
 
 		strncpy(out_urls[url_count], p, url_len);

@@ -408,7 +408,7 @@ compiler_thread_func(void *arg) {
 		minimal_debugging();
 	}
 
-	return 0;
+	return (0);
 }
 #endif
 
@@ -418,7 +418,7 @@ int dog_exec_compiler_process(char *pawncc_path,
 							  char *output_path) {
 
     if (condition_check(pawncc_path) == 1) {
-        return -2;
+        return (-2);
     }
 
 	int         result_configure = 0;

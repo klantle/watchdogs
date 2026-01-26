@@ -1384,7 +1384,7 @@ cleanup:
     cleanup_local_resources(&ptr_prompt, &ptr_command, &title_running_info, &command,
                            &timestamp, &size_command, &platform, &pointer_signalA,
                            &debug_endpoint, &__args, &compile_target);
-    return ret_code;
+    return (ret_code);
 }
 
 void
@@ -1464,7 +1464,7 @@ main(int argc, char *argv[])
 
         char *unit_size_prompt = dog_malloc(unit_total_len);
         if (!unit_size_prompt)
-            return 0;
+            return (0);
 
         char *ptr = unit_size_prompt;
         for (i = 1; i < argc; ++i) {
@@ -1481,10 +1481,10 @@ main(int argc, char *argv[])
         dog_free(unit_size_prompt);
         unit_size_prompt = NULL;
 
-        return 0;
+        return (0);
     } else {
         unit_ret_main(NULL);
     }
 
-    return 0;
+    return (0);
 }

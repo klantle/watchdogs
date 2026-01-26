@@ -13,7 +13,7 @@
 #include  "replicate.h"
 
 bool             installing_package = 0;
-const  char		*opr = NULL;
+const char		*opr = NULL;
 static char		 json_item[DOG_PATH_MAX];
 static char      command[DOG_MAX_PATH * 4];
 static int		 fdir_counts = 0;
@@ -43,11 +43,6 @@ int
 this_os_archive(const char *filename)
 {
 	int		 k;
-#ifdef DOG_WINDOWS
-	opr = "windows";
-#else
-	opr = "linux";
-#endif
 	char		 size_host_os[DOG_PATH_MAX];
 	char		 filename_lwr[DOG_PATH_MAX];
 	const char	**lookup_pattern = NULL;
@@ -206,7 +201,6 @@ package_fetching_assets(char **package_assets, int counts, const char *pf_os)
 {
 	char		*result = NULL;
 	char		 size_host_os[32] = {0};
-	const char	*opr = NULL;
 
 	if (counts == 0)
 		return (NULL);
@@ -216,11 +210,7 @@ package_fetching_assets(char **package_assets, int counts, const char *pf_os)
 	if (pf_os && pf_os[0]) {
 		opr = pf_os;
 	} else {
-#ifdef DOG_WINDOWS
 		opr = "windows";
-#else
-		opr = "linux";
-#endif
 	}
 
 	if (opr) {
@@ -700,11 +690,18 @@ package_handle_repo(const struct _repositories *kevlar_repos, char *put_url,
 		    package_assets, 10);
 
 		if (asset_counts > 0) {
-		#ifdef DOG_WINDOWS
-			opr = "windows";
-		#else
-			opr = "linux";
-		#endif
+			
+			if (opr == NULL) {
+				pr_info(stdout,
+					"Installing for?\n   Windows (A/a/Enter) : GNU/Linux : (B/b)");
+				char *selecting_os = readline(" > ");
+				if (selecting_os[0] == '\0' || selecting_os[0] == 'A' || selecting_os[0] == 'a') {
+					opr = "windows";
+				} else {
+					opr = "linux";
+				}
+				dog_free(selecting_os);
+			}
 
 			package_best_asset = package_fetching_assets(
 			    package_assets, asset_counts, opr);

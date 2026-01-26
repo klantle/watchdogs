@@ -156,7 +156,7 @@ update_samp_config(const char *g)
                 remove(size_config);
 
         /* Platform-specific file moving for backup creation */
-#ifdef DOG_WINDOWS
+    #ifdef DOG_WINDOWS
         /* Windows: Use MoveFileExA with flags for atomic operation */
         if (!MoveFileExA(
                 dogconfig.dog_toml_server_config,
@@ -166,7 +166,7 @@ update_samp_config(const char *g)
             minimal_debugging();
             return -1;
         }
-#else
+    #else
         /* Unix/Linux: Use fork+exec for mv command */
         pid_t process_id = fork();
         if (process_id == 0) {
@@ -181,15 +181,15 @@ update_samp_config(const char *g)
             minimal_debugging();
             return -1;
         }
-#endif
+    #endif
 
         /* Open backup file for reading with platform-specific flags */
-#ifdef DOG_WINDOWS
+    #ifdef DOG_WINDOWS
         int fd = open(size_config, O_RDONLY);
-#else
+    #else
         /* Unix: Use O_NOFOLLOW to prevent symlink attacks */
         int fd = open(size_config, O_RDONLY | O_NOFOLLOW);
-#endif
+    #endif
 
         if (fd < 0) {
                 pr_error(stdout, "cannot open backup");
@@ -278,29 +278,29 @@ restore_server_config(void)
                 goto restore_done;
 
         /* Platform-specific file deletion for current config */
-#ifdef DOG_WINDOWS
+    #ifdef DOG_WINDOWS
             DWORD attr = GetFileAttributesA(dogconfig.dog_toml_server_config);
             if (attr != INVALID_FILE_ATTRIBUTES &&
                 !(attr & FILE_ATTRIBUTE_DIRECTORY)) {
                 DeleteFileA(dogconfig.dog_toml_server_config);
             }
-#else
+    #else
             unlink(dogconfig.dog_toml_server_config);
-#endif
+    #endif
 
         /* Platform-specific file moving to restore from backup */
-#ifdef DOG_WINDOWS
+    #ifdef DOG_WINDOWS
             if (!MoveFileExA(
                     size_config,
                     dogconfig.dog_toml_server_config,
                     MOVEFILE_REPLACE_EXISTING | MOVEFILE_COPY_ALLOWED)) {
                 return;
             }
-#else
+    #else
             if (rename(size_config, dogconfig.dog_toml_server_config) != 0) {
                 return;
             }
-#endif
+    #endif
 
 restore_done:
         return;
@@ -338,6 +338,13 @@ dog_exec_samp_server(char *g, const char *server_bin)
         }
         g = sputs;
 
+        char *s_server_bin = strdup(server_bin);
+        if (condition_check(s_server_bin) == 1) {
+            dog_free(s_server_bin);
+            return;
+        }
+        dog_free(s_server_bin);
+
         /* Restore system error handling */
         dog_sef_path_revert();
 
@@ -371,12 +378,12 @@ dog_exec_samp_server(char *g, const char *server_bin)
         bool rty = false;  /* Retry flag */
         int _access = -1;
 
-back_start:  /* Retry label for failed startup attempts */
+    back_start:  /* Retry label for failed startup attempts */
         start = time(NULL);
         printf(DOG_COL_BLUE "");  /* Set output color */
 
         /* Platform-specific process execution */
-#ifdef DOG_WINDOWS
+    #ifdef DOG_WINDOWS
         /* Windows: CreateProcess API for process creation */
         STARTUPINFOA        _STARTUPINFO;
         PROCESS_INFORMATION _PROCESS_INFO;
@@ -407,7 +414,7 @@ back_start:  /* Retry label for failed startup attempts */
             CloseHandle(_PROCESS_INFO.hThread);
             ret = 0;  /* Process executed successfully */
         }
-#else
+    #else
         /* Unix/Linux: fork+exec with pipe redirection for output capture */
         pid_t process_id;
         __set_default_access(server_bin);  /* Ensure binary is executable */
@@ -501,7 +508,7 @@ back_start:  /* Retry label for failed startup attempts */
                 ret = -1;  /* Child terminated abnormally */
             }
         }
-#endif
+    #endif
 
         /* Handle execution result */
         if (ret == 0) {
@@ -568,7 +575,7 @@ update_omp_config(const char *g)
                 remove(size_config);
 
         /* Platform-specific backup creation */
-#ifdef DOG_WINDOWS
+    #ifdef DOG_WINDOWS
             if (!MoveFileExA(
                     dogconfig.dog_toml_server_config,
                     size_config,
@@ -577,7 +584,7 @@ update_omp_config(const char *g)
                 minimal_debugging();
                 return -1;
             }
-#else
+    #else
             pid_t process_id = fork();
             if (process_id == 0) {
                 execlp("mv", "mv", "-f",
@@ -591,14 +598,14 @@ update_omp_config(const char *g)
                 minimal_debugging();
                 return -1;
             }
-#endif
+    #endif
 
         /* Open backup file with platform-specific security flags */
-#ifdef DOG_WINDOWS
+    #ifdef DOG_WINDOWS
         int fd = open(size_config, O_RDONLY);
-#else
+    #else
         int fd = open(size_config, O_RDONLY | O_NOFOLLOW);
-#endif
+    #endif
 
         if (fd < 0) {
                 pr_error(stdout, "Failed to open %s", size_config);
@@ -703,10 +710,10 @@ update_omp_config(const char *g)
 
         ret = 0;  /* Success */
 
-endpoint_end:
+    endpoint_end:
         ;  /* Label for cleanup jump */
 
-endpoint_cleanup:
+    endpoint_cleanup:
         /* Cleanup resources in reverse allocation order */
         if (proc_conf_out)
                 fclose(proc_conf_out);
@@ -725,7 +732,7 @@ endpoint_cleanup:
                 cJSON_Data = NULL;
         }
 
-endpoint_kill:
+    endpoint_kill:
         return ret;
 }
 
@@ -770,6 +777,13 @@ dog_exec_omp_server(char *g, const char *server_bin)
         }
         g = sputs;
 
+        char *s_server_bin = strdup(server_bin);
+        if (condition_check(s_server_bin) == 1) {
+            dog_free(s_server_bin);
+            return;
+        }
+        dog_free(s_server_bin);
+
         dog_sef_path_revert();
 
         /* Verify gamemode exists */
@@ -802,12 +816,12 @@ dog_exec_omp_server(char *g, const char *server_bin)
         bool rty = false;
         int _access = -1;
 
-back_start:  /* Retry label */
+    back_start:  /* Retry label */
         start = time(NULL);
         printf(DOG_COL_BLUE "");
 
         /* Platform-specific process execution (same as SA-MP version) */
-#ifdef DOG_WINDOWS
+    #ifdef DOG_WINDOWS
             STARTUPINFOA        _STARTUPINFO;
             PROCESS_INFORMATION _PROCESS_INFO;
 
@@ -838,7 +852,7 @@ back_start:  /* Retry label */
                 CloseHandle(_PROCESS_INFO.hThread);
                 ret = 0;
             }
-#else
+    #else
             pid_t process_id;
 
             __set_default_access(server_bin);
@@ -937,7 +951,7 @@ back_start:  /* Retry label */
                     ret = -1;
                 }
             }
-#endif
+    #endif
 
         /* Handle execution result */
         if (ret != 0) {
@@ -1470,7 +1484,7 @@ dog_server_crash_check(void)
             }
         }
 
-skip:
+    skip:
         /* RCON password auto-fix for default password vulnerability */
         if (server_rcon_pass) {
             n = snprintf(out, sizeof(out),
@@ -1493,7 +1507,7 @@ skip:
 
                   char *serv_f_cent = NULL;
                   serv_f_cent = dog_malloc(server_fle_size + 1);
-                  if (!serv_f_cent) { goto dog_skip_fixed; }
+                  if (!serv_f_cent) { goto skip_fixing; }
 
                   size_t br;
                   br = fread(serv_f_cent, 1, server_fle_size, read_f);
@@ -1509,7 +1523,7 @@ skip:
                     server_n_content = dog_malloc(server_fle_size + 10);
                     if (!server_n_content) {
                         dog_free(serv_f_cent);
-                        goto dog_skip_fixed;
+                        goto skip_fixing;
                     }
 
                     /* Copy content before the password */
@@ -1565,7 +1579,7 @@ skip:
           dog_free(fixed_now);
         }
 
-dog_skip_fixed:
+    skip_fixing:
         /* Print closing separator */
         n = snprintf(out, sizeof(out),
               "====================================================================\n");

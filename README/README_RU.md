@@ -66,32 +66,49 @@ apt update && apt upgrade && apt install -y aria2 && aria2c -o install.sh https:
 > **Используйте команду `pawncc` для настройки компилятора (симуляция):**
 
 ```yaml
-> pawncc
-== Выберите платформу ==
+# pawncc
+== Select a Platform ==
   [l] Linux
   [w] Windows
+  ^ (Supported for: WSL/WSL2 ; not: Docker or Podman on WSL)
   [t] Termux
-==> t # выберите t [termux]
-== Выберите версию PawnCC ==
-  A) Pawncc 3.10.11
-  B) Pawncc 3.10.10
-  C) Pawncc 3.10.9
-  D) Pawncc 3.10.8
-  E) Pawncc 3.10.7
-> a # выберите версию компилятора
-* Попробовать скачать? * Включить отладку HTTP? (y/n): n
- Попробовать извлечь? архивный файл...
-==> Удалить архив?? (y/n) > n # опционально - удалить архив позже
-==> Применить pawncc?
-   ответ (y/n) > y # установить pawncc в корневую папку (папку pawno)
->> I:перемещено без sudo: '?' -> '?'
->> I:перемещено без sudo: '?' -> '?'
->> I:Поздравляем! - Готово.
+==> t
+== Select PawnCC Version ==
+  A) Pawncc 3.10.11  - new
+  B) Pawncc 3.10.10  - new
+  C) Pawncc 3.10.9   - new
+  D) Pawncc 3.10.8   - stable
+  E) Pawncc 3.10.7   - stable
+> e
+<= Recv header:
+100  365k  100  365k    0     0   194k      0  0:00:01  0:00:01 --:--:--  376k
+ % successful: 374172 bytes to pawncc-termux-37.zip
+ Try Extracting pawncc-termux-37.zip archive file...
+@ Hey!: Removing: pawncc-termux-37.zip..
+==> Apply pawncc?
+   answer (y/n): y
+[sudo] password for unix:
+@ Hey!: moved (with sudo): 'pawncc-termux-37/pawncc' -> 'pawno/pawncc'
+@ Hey!: moved (with sudo): 'pawncc-termux-37/pawndisasm' -> 'pawno/pawndisasm'
+@ Hey!: Fetching pawncc-termux-37/libpawnc.so binary hex..
+@ Uh-oh!: 'rm' command detected!
+00000000  7f 45 4c 46 02 01 01 00  00 00 00 00 00 00 00 00  |.ELF............|
+00000010  03 00 b7 00 01 00 00 00  00 00 00 00 00 00 00 00  |................|
+00000020  40 00 00 00 00 00 00 00  08 df 0e 00 00 00 00 00  |@...............|
+00000030  00 00 00 00 40 00 38 00  09 00 40 00 21 00 1f 00  |....@.8...@.!...|
+00000040  06 00 00 00 04 00 00 00  40 00 00 00 00 00 00 00  |........@.......|
+00000050  40 00 00 00 00 00 00 00  40 00 00 00 00 00 00 00  |@.......@.......|
+00000060  f8 01 00 00 00 00 00 00  f8 01 00 00 00 00 00 00  |................|
+00000070  08 00 00 00 00 00 00 00  01 00 00 00 05 00 00 00  |................|
+00000080
+@ Hey!: Success..
+@ Hey!: moved (with sudo): 'pawncc-termux-37/libpawnc.so' -> '/usr/local/lib/libpawnc.so'
+@ Hey!: Congratulations! - Done.
 ```
 
 ---
 
-![watchdogs](https://raw.githubusercontent.com/gskeleton/dogdog/refs/heads/main/pawncc_install.png)
+![watchdogs](https://raw.githubusercontent.com/gskeleton/dogdog/refs/heads/main/pawncc.png)
 
 > Если вы видите символ `>` **просто нажмите Enter**, если не требуется конкретный ответ (например, apply pawncc = yes).
 
@@ -217,6 +234,13 @@ compile ../storage/downloads/parent/pain.pwn
 ---
 
 ## Команды компиляции — Общие
+
+> основное правило
+```yaml
+compile
+```
+
+![watchdogs](https://raw.githubusercontent.com/gskeleton/dogdog/refs/heads/main/compile.png)
 
 > **Скомпилировать `server.pwn`:**
 

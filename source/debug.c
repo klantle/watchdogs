@@ -23,7 +23,7 @@
  * Parameters: None
  * Returns: void
  */
-void unit_restore(void) {
+static void unit_restore(void) {
 
         /* Create .watchdogs directory if it doesn't exist */
         if (dir_exists(".watchdogs") == 0)
@@ -67,11 +67,11 @@ void _unit_debugger(int hard_debug,
             unit_initial = true;
 
             /* Initialize console and clear history */
-            dog_console_title(NULL);
             clear_history();
+            dog_console_title(NULL);
             crypto_crc32_init_table();
                 
-#ifdef DOG_WINDOWS
+            #ifdef DOG_WINDOWS
             /* Windows-specific console initialization for ANSI escape codes */
             HANDLE hOut = GetStdHandle(STD_OUTPUT_HANDLE);
             if (hOut == INVALID_HANDLE_VALUE) return;
@@ -88,7 +88,7 @@ void _unit_debugger(int hard_debug,
             if (!SetConsoleMode(hOut, dwMode)) {
                 return;
             }
-#endif
+            #endif
         }
 
         /* Always restore system to clean state before debugging */
@@ -132,17 +132,17 @@ void _unit_debugger(int hard_debug,
                     __STDC_VERSION__,
                     __VERSION__,
                     __GNUC__,
-#ifdef __x86_64__
+            #ifdef __x86_64__
                     "x86_64",
-#elif defined(__i386__)
+            #elif defined(__i386__)
                     "i386",
-#elif defined(__arm__)
+            #elif defined(__arm__)
                     "ARM",
-#elif defined(__aarch64__)
+            #elif defined(__aarch64__)
                     "ARM64",
-#else
+            #else
                     "Unknown",
-#endif
+            #endif
                     dogconfig.dog_os_type, dogconfig.dog_ptr_samp,
                     dogconfig.dog_ptr_omp, dogconfig.dog_is_samp, dogconfig.dog_is_omp,
                     dogconfig.dog_toml_proj_input, dogconfig.dog_toml_proj_output,
@@ -155,17 +155,17 @@ void _unit_debugger(int hard_debug,
             
             /* Endianness detection */
             printf("BYTE_ORDER: ");
-#ifdef __BYTE_ORDER__
-#if __BYTE_ORDER__ == __ORDER_LITTLE_ENDIAN__
+        #ifdef __BYTE_ORDER__
+        #if __BYTE_ORDER__ == __ORDER_LITTLE_ENDIAN__
             printf("Little Endian\n");
-#elif __BYTE_ORDER__ == __ORDER_BIG_ENDIAN__
+        #elif __BYTE_ORDER__ == __ORDER_BIG_ENDIAN__
             printf("Big Endian\n");
-#else
+        #else
             printf("Unknown\n");
-#endif
-#else
+        #endif
+        #else
             printf("Not defined\n");
-#endif
+        #endif
             
             /* Data type sizes for platform portability debugging */
             printf("SIZE_OF_PTR: %zu bytes\n", sizeof(void*));
@@ -173,32 +173,32 @@ void _unit_debugger(int hard_debug,
             printf("SIZE_OF_LONG: %zu bytes\n", sizeof(long));
             
             /* Data model detection (32-bit vs 64-bit) */
-#ifdef __LP64__
+        #ifdef __LP64__
             printf("DATA_MODEL: LP64\n");
-#elif defined(__ILP32__)
+        #elif defined(__ILP32__)
             printf("DATA_MODEL: ILP32\n");
-#endif
+        #endif
             
             /* Compiler version information */
-#ifdef __GNUC__
+        #ifdef __GNUC__
             printf("GNUC: %d.%d.%d\n", __GNUC__, __GNUC_MINOR__, __GNUC_PATCHLEVEL__);
-#endif
+        #endif
 
-#ifdef __clang__
+        #ifdef __clang__
             printf("CLANG: %d.%d.%d\n", __clang_major__, __clang_minor__, __clang_patchlevel__);
-#endif
+        #endif
             
             /* CPU instruction set support detection */
             printf("OS: ");
-#ifdef __SSE__
+        #ifdef __SSE__
             printf("SSE: Supported\n");
-#endif
-#ifdef __AVX__
+        #endif
+        #ifdef __AVX__
             printf("AVX: Supported\n");
-#endif
-#ifdef __FMA__
+        #endif
+        #ifdef __FMA__
             printf("FMA: Supported\n");
-#endif
+        #endif
             
         } else if (hard_debug == 0) {
             /* Normal debug output - less verbose than detailed mode */
@@ -231,17 +231,17 @@ void _unit_debugger(int hard_debug,
                     __STDC_VERSION__,
                     __VERSION__,
                     __GNUC__,
-#ifdef __x86_64__
+            #ifdef __x86_64__
                     "x86_64",
-#elif defined(__i386__)
+            #elif defined(__i386__)
                     "i386",
-#elif defined(__arm__)
+            #elif defined(__arm__)
                     "ARM",
-#elif defined(__aarch64__)
+            #elif defined(__aarch64__)
                     "ARM64",
-#else
+            #else
                     "Unknown",
-#endif
+            #endif
                     dogconfig.dog_os_type, dogconfig.dog_ptr_samp,
                     dogconfig.dog_ptr_omp, dogconfig.dog_is_samp, dogconfig.dog_is_omp,
                     dogconfig.dog_toml_proj_input, dogconfig.dog_toml_proj_output,
@@ -291,17 +291,17 @@ void _minimal_debugger(const char *function,
                 __STDC_VERSION__,
                 __VERSION__,
                 __GNUC__,
-#ifdef __x86_64__
+        #ifdef __x86_64__
                 "x86_64");
-#elif defined(__i386__)
+        #elif defined(__i386__)
                 "i386");
-#elif defined(__arm__)
+        #elif defined(__arm__)
                 "ARM");
-#elif defined(__aarch64__)
+        #elif defined(__aarch64__)
                 "ARM64");
-#else
+        #else
                 "Unknown");
-#endif
+        #endif
 
         /* Ensure output is flushed to console */
         fflush(stdout);

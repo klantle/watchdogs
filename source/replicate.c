@@ -38,6 +38,7 @@ const char		*match_any_lookup_pattern[] =
 	    "scripts", "system", "core", "runtime", "libs", "include",
 	    "deps", "dependencies");
 
+static
 int
 this_os_archive(const char *filename)
 {
@@ -79,6 +80,7 @@ this_os_archive(const char *filename)
 	return (0);
 }
 
+static
 int
 this_more_archive(const char *filename)
 {
@@ -198,6 +200,7 @@ try_generic_assets(char **assets, int count)
 	return (strdup(assets[0]));
 }
 
+static
 char *
 package_fetching_assets(char **package_assets, int counts, const char *pf_os)
 {
@@ -239,6 +242,7 @@ package_fetching_assets(char **package_assets, int counts, const char *pf_os)
 	return (try_generic_assets(package_assets, counts));
 }
 
+static
 int
 package_url_checking(const char *url, const char *github_token)
 {
@@ -312,6 +316,7 @@ package_url_checking(const char *url, const char *github_token)
 	return (response_code >= 200 && response_code < 300);
 }
 
+static
 int
 package_http_get_content(const char *url, const char *github_token,
     char **out_html)
@@ -695,11 +700,11 @@ package_handle_repo(const struct _repositories *kevlar_repos, char *put_url,
 		    package_assets, 10);
 
 		if (asset_counts > 0) {
-#ifdef DOG_WINDOWS
+		#ifdef DOG_WINDOWS
 			opr = "windows";
-#else
+		#else
 			opr = "linux";
-#endif
+		#endif
 
 			package_best_asset = package_fetching_assets(
 			    package_assets, asset_counts, opr);
@@ -771,6 +776,7 @@ package_handle_repo(const struct _repositories *kevlar_repos, char *put_url,
 	return (ret);
 }
 
+static
 int
 package_try_parsing(const char *raw_file_path, const char *raw_json_path)
 {
@@ -795,6 +801,7 @@ done:
 	return (1);
 }
 
+static
 void
 package_implementation_samp_conf(const char *config_file, const char *fw_line,
     const char *plugin_name)
@@ -883,6 +890,7 @@ package_implementation_samp_conf(const char *config_file, const char *fw_line,
 #define S_ADD_PLUGIN(config_file, fw_line, plugin_name) \
 	package_implementation_samp_conf(config_file, fw_line, plugin_name)
 
+static
 void
 package_implementation_omp_conf(const char *config_name,
     const char *package_name)
@@ -984,6 +992,7 @@ package_implementation_omp_conf(const char *config_name,
 
 #define M_ADD_PLUGIN(x, y) package_implementation_omp_conf(x, y)
 
+static
 void
 package_add_include(const char *modes, char *package_name,
     char *package_following)
@@ -1223,13 +1232,14 @@ package_include_prints(const char *package_include)
 	}
 }
 
+static
 void
 dump_file_type(const char *dump_path, char *dump_pattern,
     char *dump_exclude, char *dump_loc, char *dump_place, int dump_root)
 {
     const char  *package_names, *basename,
     			*match_root_keywords;
-    char         dest_path[DOG_PATH_MAX];
+    char         dest_path[DOG_PATH_MAX * 2];
     char        *basename_lwr;
     int          i, found, rate_has_prefix;
 
@@ -1298,16 +1308,16 @@ dump_file_type(const char *dump_path, char *dump_pattern,
                 snprintf(dest_path, sizeof(dest_path), "%s%s%s%s",
                          dump_loc, separator, separator, package_names);
 
-                char plugins_dir[DOG_PATH_MAX];
-                snprintf(plugins_dir, sizeof(plugins_dir), "%s%s",
+                char plugin_dir[DOG_PATH_MAX * 2];
+                snprintf(plugin_dir, sizeof(plugin_dir), "%s%s",
                          dump_loc, separator);
-                if (dir_exists(plugins_dir) == 0) {
-                    dog_mkdir_recursive(plugins_dir);
+                if (dir_exists(plugin_dir) == 0) {
+                    dog_mkdir_recursive(plugin_dir);
                 }
             }
 
             int move_success = 0;
-#ifdef DOG_WINDOWS
+		#ifdef DOG_WINDOWS
             if (MoveFileExA(dogconfig.dog_sef_found_list[i], dest_path,
                            MOVEFILE_REPLACE_EXISTING | MOVEFILE_COPY_ALLOWED)) {
                 move_success = 1;
@@ -1318,7 +1328,7 @@ dump_file_type(const char *dump_path, char *dump_pattern,
                 char *argv[] = { "copy", "/Y", command, NULL };
                 move_success = dog_exec_command(argv);
             }
-#else
+		#else
             if (rename(dogconfig.dog_sef_found_list[i], dest_path) == 0) {
                 move_success = 1;
             } else {
@@ -1333,7 +1343,7 @@ dump_file_type(const char *dump_path, char *dump_pattern,
                 waitpid(pid, NULL, 0);
                 move_success = 1;
             }
-#endif
+		#endif
             if (move_success) {
                 if (dump_place[0] != '\0') {
                     pr_color(stdout, DOG_COL_CYAN,
@@ -1376,6 +1386,7 @@ done:
     return;
 }
 
+static
 void
 package_cjson_additem(cJSON *p1, int p2, cJSON *p3)
 {
@@ -1384,6 +1395,7 @@ package_cjson_additem(cJSON *p1, int p2, cJSON *p3)
 		    cJSON_CreateString(cJSON_GetArrayItem(p1, p2)->valuestring));
 }
 
+static
 void package_move_files(const char *package_dir, const char *package_loc)
 {
     char    the_path[DOG_PATH_MAX * 2],
@@ -1399,15 +1411,15 @@ void package_move_files(const char *package_dir, const char *package_loc)
     DIR              *open_dir;
     DIR              *subdir;
     
-#ifdef DOG_WINDOWS
-    snprintf(plugins, sizeof(plugins), "%s\\plugins", package_dir);
-    snprintf(components, sizeof(components), "%s\\components", package_dir);
-    snprintf(includes, sizeof(includes), "pawno\\include");
-#else
-    snprintf(plugins, sizeof(plugins), "%s/plugins", package_dir);
-    snprintf(components, sizeof(components), "%s/components", package_dir);
-    snprintf(includes, sizeof(includes), "pawno/include");
-#endif
+	#ifdef DOG_WINDOWS
+	    snprintf(plugins, sizeof(plugins), "%s\\plugins", package_dir);
+	    snprintf(components, sizeof(components), "%s\\components", package_dir);
+	    snprintf(includes, sizeof(includes), "pawno\\include");
+	#else
+	    snprintf(plugins, sizeof(plugins), "%s/plugins", package_dir);
+	    snprintf(components, sizeof(components), "%s/components", package_dir);
+	    snprintf(includes, sizeof(includes), "pawno/include");
+	#endif
 
     int _ret = fetch_server_env();
     if (_ret == 1) {
@@ -1483,17 +1495,17 @@ void package_move_files(const char *package_dir, const char *package_loc)
                          include_dest, separator, subdir_item->d_name);
                 
                 if (rename(src_file, dest_file) != 0) {
-#ifdef DOG_WINDOWS
+#	ifdef DOG_WINDOWS
 		            snprintf(command, sizeof(command),
 		                    "\"%s\" \"%s\"",
 		                    src_file, dest_file);
 		            char *moving[] = { "move", "/Y", command, ">nul", "2>&1", NULL };
-#else
+	#else
 		            snprintf(command, sizeof(command),
 		                    "\"%s\" \"%s\"",
 		                    src_file, dest_file);
 		            char *moving[] = { "mv", "-f", command, ">/dev/null", "2>&1", NULL };
-#endif
+	#endif
             		dog_exec_command(moving);
                 }
                 
@@ -1519,18 +1531,18 @@ void package_move_files(const char *package_dir, const char *package_loc)
                  include_dest, separator, dir_item->d_name);
         
         if (rename(the_path, dest_file) != 0) {
-#ifdef DOG_WINDOWS
+	#ifdef DOG_WINDOWS
             snprintf(command, sizeof(command),
                     "\"%s\" \"%s\"",
                     the_path, dest_file);
             char *moving[] = { "move", "/Y", command, ">nul", "2>&1" };
 
-#else
+	#else
             snprintf(command, sizeof(command),
                     "\"%s\" \"%s\"",
                     the_path, dest_file);
             char *moving[] = { "mv", "-f", command, ">/dev/null", "2>&1" };
-#endif
+	#endif
             dog_exec_command(moving);
         }
         
@@ -1545,18 +1557,18 @@ void package_move_files(const char *package_dir, const char *package_loc)
     closedir(open_dir);
 
     if (dir_exists(plugins)) {
-        char plugins_dest[DOG_PATH_MAX];
-        snprintf(plugins_dest, sizeof(plugins_dest), "%s%splugins",
+        char plugin_dest[DOG_PATH_MAX];
+        snprintf(plugin_dest, sizeof(plugin_dest), "%s%splugins",
                  package_loc, separator);
 
-        if (dir_exists(plugins_dest) == 0) {
-            dog_mkdir_recursive(plugins_dest);
+        if (dir_exists(plugin_dest) == 0) {
+            dog_mkdir_recursive(plugin_dest);
         }
 
 #ifdef DOG_WINDOWS
-        dump_file_type(plugins, "*.dll", NULL, plugins_dest, "", 0);
+        dump_file_type(plugins, "*.dll", NULL, plugin_dest, "", 0);
 #else
-        dump_file_type(plugins, "*.so", NULL, plugins_dest, "", 0);
+        dump_file_type(plugins, "*.so", NULL, plugin_dest, "", 0);
 #endif
     }
 
@@ -1566,6 +1578,7 @@ void package_move_files(const char *package_dir, const char *package_loc)
     return;
 }
 
+static
 void
 dog_apply_depends(const char *depends_name, const char *depends_location)
 {

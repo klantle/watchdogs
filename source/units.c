@@ -85,6 +85,7 @@ cleanup_local_resources(char **ptr_prompt, char **ptr_command,
     }
 }
 
+static
 int
 __command__(char *unit_pre_command)
 {
@@ -145,8 +146,7 @@ __command__(char *unit_pre_command)
         ret_code = -1;
         goto cleanup;
     }
-
-_ptr_command:
+    
     if (ptr_command) {
         free(ptr_command);
         ptr_command = NULL;
@@ -407,7 +407,7 @@ _reexecute_command:
                 toml_array_t *dog_toml_packages = toml_array_in(dog_depends, "packages");
                 if (dog_toml_packages) {
                     size_t arr_sz = toml_array_nelem(dog_toml_packages);
-                    for (size_t i = 0; i < arr_sz; i++) {
+                    for (int i = 0; i < arr_sz; i++) {
                         toml_datum_t val = toml_string_at(dog_toml_packages, i);
                         if (!val.ok) continue;
                         
@@ -634,6 +634,12 @@ _reexecute_command:
                 NULL);
         }
         if (ret_pawndisasm) {
+
+            if (condition_check(dogconfig.dog_sef_found_list[0]) == 1) {
+                ret_code = -1;
+                goto cleanup;
+            }
+
             char *args2 = strdup(args);
             char *dot_amx = strstr(args2, ".amx");
             if (dot_amx)
@@ -645,9 +651,9 @@ _reexecute_command:
             dog_free(args2);
             char s_argv[DOG_PATH_MAX * 3];
             #ifdef DOG_LINUX
-            char *executor = "sh -c";
+                char *executor = "sh -c";
             #else
-            char *executor = "cmd.exe /C";
+                char *executor = "cmd.exe /C";
             #endif
             snprintf(s_argv, sizeof(s_argv),
                 "%s '%s %s %s'", executor, dogconfig.dog_sef_found_list[0], args, s_args);
@@ -696,11 +702,11 @@ _reexecute_command:
                 "Watchdogs | @ running | args: %s | config: %s | CTRL + C to stop. | \"debug\" for debugging",
                 size_arg1, dogconfig.dog_toml_server_config);
         
-#ifdef DOG_ANDROID
+    #ifdef DOG_ANDROID
         println(stdout, "%s", title_running_info);
-#else
+    #else
         dog_console_title(title_running_info);
-#endif
+    #endif
         
         free(title_running_info);
         title_running_info = NULL;
@@ -733,7 +739,7 @@ _reexecute_command:
                     exit(EXIT_FAILURE);
                 }
                 
-#ifdef DOG_WINDOWS
+        #ifdef DOG_WINDOWS
                 {
                     STARTUPINFOA        _STARTUPINFO;
                     PROCESS_INFORMATION _PROCESS_INFO;
@@ -760,13 +766,18 @@ _reexecute_command:
                         rate_endpoint_failed = 0;
                     }
                 }
-#else
+        #else
                 {
                     pid_t pid;
                     __set_default_access(dogconfig.dog_toml_server_binary);
                     
                     snprintf(command, DOG_PATH_MAX, "%s/%s", dog_procure_pwd(), dogconfig.dog_toml_server_binary);
                     
+                    if (condition_check(command) == 1) {
+                        ret_code = -1;
+                        goto cleanup;
+                    }
+
                     int stdout_pipe[2];
                     int stderr_pipe[2];
                     
@@ -850,7 +861,7 @@ _reexecute_command:
                         }
                     }
                 }
-#endif
+        #endif
                 
                 if (rate_endpoint_failed != 0) {
                     printf(DOG_COL_DEFAULT "\n");
@@ -890,7 +901,7 @@ _reexecute_command:
                     exit(EXIT_FAILURE);
                 }
                 
-#ifdef DOG_WINDOWS
+        #ifdef DOG_WINDOWS
                 {
                     STARTUPINFOA        _STARTUPINFO;
                     PROCESS_INFORMATION _PROCESS_INFO;
@@ -917,13 +928,18 @@ _reexecute_command:
                         rate_endpoint_failed = 0;
                     }
                 }
-#else
+        #else
                 {
                     pid_t pid;
                     __set_default_access(dogconfig.dog_toml_server_binary);
                     
-                    snprintf(command, DOG_PATH_MAX, "%s/%s", dog_procure_pwd(), dogconfig.dog_toml_server_binary);
-                    
+                    snprintf(command, DOG_PATH_MAX, "%s/%s", dog_procure_pwd(), dogconfig.dog_toml_server_binary);\
+
+                    if (condition_check(command) == 1) {
+                        ret_code = -1;
+                        goto cleanup;
+                    }
+
                     int stdout_pipe[2];
                     int stderr_pipe[2];
                     
@@ -1007,7 +1023,7 @@ _reexecute_command:
                         }
                     }
                 }
-#endif
+        #endif
                 
                 if (rate_endpoint_failed != 0) {
                     printf(DOG_COL_DEFAULT "\n");

@@ -114,9 +114,6 @@ write_callbacks(void *ptr, size_t size, size_t nmemb, void *userdata)
 	struct buf *b = userdata;
 
 	if (b->data && ((uintptr_t)b->data & 0x7)) {
-		fprintf(stderr,
-		    " Buffer pointer corrupted: %p\n",
-		    b->data);
 		return 0;
 	}
 
@@ -427,9 +424,9 @@ copy_compiler_tool(const char *src_path, const char *tool_name,
 
 static int setup_linux_library(void)
 {
-#ifdef DOG_WINDOWS
+	#ifdef DOG_WINDOWS
 	return 0;
-#endif
+	#endif
 	const char *libpawnc_path = NULL;
 	char        libpawnc_src[DOG_PATH_MAX];
 	char        dest_path[DOG_PATH_MAX];
@@ -519,6 +516,7 @@ static int setup_linux_library(void)
 	return 0;
 }
 
+static
 void
 dog_apply_pawncc(void)
 {
@@ -718,18 +716,6 @@ prompt_apply_pawncc(void)
 
 	dog_free(confirm);
 
-done:
-	return 0;
-}
-
-int
-is_archive_file(const char *filename)
-{
-	if (strend(filename, ".zip", true) ||
-	    strend(filename, ".tar", true) ||
-	    strend(filename, ".tar.gz", true)) {
-		return 1;
-	}
 	return 0;
 }
 
@@ -969,13 +955,6 @@ dog_download_file(const char *url, const char *output_filename)
 				    (intmax_t)file_stat.st_size,
 				    final_filename);
 				fflush(stdout);
-
-				if (!is_archive_file(final_filename)) {
-					pr_color(stdout, DOG_COL_YELLOW,
-					    "Warning: File %s is not an archive\n",
-					    final_filename);
-					return 1;
-				}
 
 				char size_filename[DOG_PATH_MAX];
 				snprintf(size_filename, sizeof(size_filename),

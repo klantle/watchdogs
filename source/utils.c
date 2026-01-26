@@ -457,6 +457,62 @@ int dog_mkdir_recursive(const char *path)
 	return (0);
 }
 
+int condition_check(char *path) {
+	
+	int fd;
+	struct stat st;
+
+	#ifdef DOG_WINDOWS
+	fd = open(path, O_RDONLY | O_BINARY);
+	if (fd < 0) {
+	    pr_error(stderr, "open failed");
+	    minimal_debugging();
+	    return 1;
+	}
+	HANDLE h = (HANDLE)_get_osfhandle(fd);
+	SetHandleInformation(h, HANDLE_FLAG_INHERIT, 0);
+	#else
+	fd = open(path, O_RDONLY
+	#ifdef O_NOFOLLOW
+	    | O_NOFOLLOW
+	#endif
+	#ifdef O_CLOEXEC
+	    | O_CLOEXEC
+	#endif
+	);
+	if (fd < 0) {
+	    pr_error(stderr, "open failed");
+	    minimal_debugging();
+	    return 1;
+	}
+	#endif
+
+	if (fstat(fd, &st) != 0) {
+	    pr_error(stderr, "fstat failed");
+	    minimal_debugging();
+	    close(fd);
+	    return 1;
+	}
+
+	if (!S_ISREG(st.st_mode)) {
+	    pr_error(stderr, "Not a regular file");
+	    minimal_debugging();
+	    close(fd);
+	    return 1;
+	}
+
+	if (!(st.st_mode & S_IXUSR)) {
+	    pr_error(stderr, "File not executable");
+	    minimal_debugging();
+	    close(fd);
+	    return 1;
+	}
+
+	close(fd);
+
+    return 0;
+}
+
 void print_restore_color(void) {
 
 	print(BKG_DEFAULT)    ;
@@ -2010,6 +2066,10 @@ dog_check_compiler_options(int *compatibility, int *optimized_lt)
 	if (path_access(".watchdogs/compiler_test.log"))
 		remove(".watchdogs/compiler_test.log");
 
+    if (condition_check(dogconfig.dog_sef_found_list[0]) == 1) {
+    	return;
+    }
+
 	#ifdef DOG_WINDOWS
 	PROCESS_INFORMATION _PROCESS_INFO;
 	STARTUPINFO _STARTUPINFO;
@@ -2059,7 +2119,7 @@ dog_check_compiler_options(int *compatibility, int *optimized_lt)
 	#else
 	pid_t pid;
 	int fd;
-
+	
 	fd = open(".watchdogs/compiler_test.log",
 			O_CREAT | O_WRONLY | O_TRUNC,
 			0644);

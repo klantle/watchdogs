@@ -238,12 +238,12 @@ void compiler_stage_trying(const char *stage, int ms) {
 			"   |  D) |  A [$] Processing............................................\n",
 			"   |  O) |  B  '> Preparing the ? Process: vfork [right?]...............\n",
 			"   |  G) |  C  '  *  CreateProcess/_beginthreadex/posix_spawn/fork......\n",
-			"   |        D  '> Preparing to compile [right?].......................|\n",
-			" 0  ?   E   '> Preprocessing [right?].................................|\n",
-			" 0  X   F   '> Parsing [right?].......................................|\n",
-			" 0  V   G   '> Semantic Analysis [right?].............................|\n",
-			" 0  %   H   '> AMX Code Generation [right?]...........................|\n",
-			" 1  $   I   '> AMX Output File Generation [right?]....................|\n",
+			"   |        D  '> Preparing to compile [right?]......................\n",
+			" 0  ?   E   '> Preprocessing [right?]................................\n",
+			" 0  X   F   '> Parsing [right?]......................................\n",
+			" 0  V   G   '> Semantic Analysis [right?]............................\n",
+			" 0  %   H   '> AMX Code Generation [right?]..........................\n",
+			" 1  $   I   '> AMX Output File Generation [right?]...................\n",
 			"** Preparing all tasks..\n",
 			NULL
 		};
@@ -416,6 +416,10 @@ static
 int dog_exec_compiler_process(char *pawncc_path,
 							  char *input_path,
 							  char *output_path) {
+
+    if (condition_check(pawncc_path) == 1) {
+        return -2;
+    }
 
 	int         result_configure = 0;
 	int         i = 0;
@@ -973,6 +977,17 @@ dog_exec_compiler(const char *args, const char *compile_args_val,
 	size_t	       rate_sef_entries;
 	char          *gamemodes_slash = "gamemodes/";
 	char          *gamemodes_back_slash = "gamemodes\\";
+	#ifdef DOG_LINUX
+	const 	char  *posix_fzf_path[] = {
+			"~/downloads",
+			"../storage/downloads",
+			".",
+			"..",
+			NULL};
+	char posix_fzf_select[1024];
+	char posix_fzf_finder[2048];
+	char posix_fzf_command[sizeof(compiler_buf)];
+	#endif
 
 	/* Reset all compiler state */
 	compiler_refresh_data();
@@ -1337,8 +1352,7 @@ dog_exec_compiler(const char *args, const char *compile_args_val,
 				goto compiler_end;
 			}
 			/* Prompt user for compilation target if not specified */
-			static bool compiler_target = false;
-			if (compile_args_val[0] != '.' && compiler_target == false)
+			if (compile_args_val[0] != '.')
 			{
 				pr_color(stdout, DOG_COL_YELLOW,
 					DOG_COL_BYELLOW
@@ -1380,34 +1394,109 @@ dog_exec_compiler(const char *args, const char *compile_args_val,
 					"(enter), \n"
 					" * or do you want to compile for something else?\n",
 					compile_args_val, dogconfig.dog_toml_proj_input);
-				printf(
-					" * input likely:\n"
-					"   bare.pwn | grandlarc.pwn | main.pwn | server.p\n"
-					"   ../storage/downloads/dog/gamemodes/main.pwn\n"
-					"   ../storage/downloads/osint/gamemodes/gm.pwn\n"
-				);
-				fflush(stdout);
-				print_restore_color();
-				printf(DOG_COL_CYAN ">"
-					DOG_COL_DEFAULT);
-				fflush(stdout);
-				compiler_project = readline(" ");
-				if (compiler_project &&
-					strlen(compiler_project) > 0) {
-					dog_free(
-						dogconfig.dog_toml_proj_input);
-					dogconfig.dog_toml_proj_input =
-						strdup(compiler_project);
-					if (!dogconfig.dog_toml_proj_input) {
-						pr_error(stdout,
-							"Memory allocation failed");
-						dog_free(compiler_project);
-						goto compiler_end;
+				#ifndef DOG_LINUX
+					printf(
+						" * input likely:\n"
+						"   bare.pwn | grandlarc.pwn | main.pwn | server.p\n"
+						"   ../storage/downloads/dog/gamemodes/main.pwn\n"
+						"   ../storage/downloads/osint/gamemodes/gm.pwn\n"
+					);
+					fflush(stdout);
+					print_restore_color();
+					printf(DOG_COL_CYAN ">"
+						DOG_COL_DEFAULT);
+					fflush(stdout);
+					compiler_project = readline(" ");
+					if (compiler_project &&
+						strlen(compiler_project) > 0) {
+						dog_free(
+							dogconfig.dog_toml_proj_input);
+						dogconfig.dog_toml_proj_input =
+							strdup(compiler_project);
+						if (!dogconfig.dog_toml_proj_input) {
+							pr_error(stdout,
+								"Memory allocation failed");
+							dog_free(compiler_project);
+							goto compiler_end;
+						}
+					}
+					dog_free(compiler_project);
+					compiler_project = NULL;
+				#else
+				{
+					char *argv[] = { "command", "-v", "fzf", ">", "/dev/null", "2>&1", NULL };
+					int fzf_ok;
+
+					fzf_ok = dog_exec_command(argv);
+
+					if (fzf_ok == 0) {
+						printf(DOG_COL_CYAN ">"
+							DOG_COL_DEFAULT
+							" [Using fzf, press Ctrl+C for: "
+							DOG_COL_GREEN "%s" DOG_COL_DEFAULT "]\n",
+							dogconfig.dog_toml_proj_input);
+						fflush(stdout);
+
+						strlcpy(posix_fzf_finder,
+							"find ",
+							sizeof(posix_fzf_finder));
+						
+						int i;
+						for (i = 0; posix_fzf_path[i] != NULL; i++) {
+							if (path_exists(posix_fzf_path[i]) == 1) {
+								strlcat(posix_fzf_finder,
+									posix_fzf_path[i], sizeof(posix_fzf_finder));
+								strlcat(posix_fzf_finder, " ", sizeof(posix_fzf_finder));
+							}
+						}
+
+						strlcat(posix_fzf_finder,
+							"-type "
+							"f "
+							"\\( -name \"*.pwn\" "
+							"-o -name \"*.p\" \\) "
+							"2>/dev/null",
+							sizeof(posix_fzf_finder));
+
+						snprintf(posix_fzf_command, sizeof(posix_fzf_command),
+							"%s | "
+							"fzf "
+							"--height 40%% "
+							"--reverse "
+							"--prompt 'Select file to compile: ' "
+							"--preview 'if [ -f {} ]; then "
+							"echo \"=== Preview ===\"; "
+							"head -n 20 {}; "
+							"echo \"=== Path ===\"; "
+							"realpath {}; fi'",
+							posix_fzf_finder);
+
+						this_proc_file = popen(posix_fzf_command, "r");
+						if (this_proc_file == NULL)
+							goto compiler_end;
+
+						if (fgets(compiler_buf, sizeof(compiler_buf), this_proc_file) == NULL)
+							goto fzf_end;
+
+						compiler_buf[strcspn(compiler_buf, "\n")] = '\0';
+						if (compiler_buf[0] == '\0')
+							goto fzf_end;
+
+						strlcpy(posix_fzf_select, compiler_buf, sizeof(posix_fzf_select));
+
+						dog_free(dogconfig.dog_toml_proj_input);
+						
+						dogconfig.dog_toml_proj_input = strdup(posix_fzf_select);
+						if (dogconfig.dog_toml_proj_input == NULL) {
+							pr_error(stdout, "Memory allocation failed");
+							goto fzf_end;
+						}
+
+					fzf_end:
+						pclose(this_proc_file);
 					}
 				}
-				dog_free(compiler_project);
-				compiler_project = NULL;
-				compiler_target = true;
+				#endif
 			}
 
 			/* Execute compilation process */

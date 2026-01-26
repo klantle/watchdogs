@@ -328,6 +328,7 @@ int path_access(const char *path);
 int file_regular(const char *path);
 int file_same_file(const char *a, const char *b);
 int dog_dot_or_dotdot(const char *name);
+int condition_check(char *path);
 
 void path_sep_to_posix(char *path);
 const char *look_up_sep(const char *sep_path);

@@ -48,7 +48,7 @@ init:
 		apt -o Acquire::Queue-Mode=access -o Acquire::Retries=3 update -y && \
 		DEBIAN_FRONTEND=noninteractive \
 		apt -o Dpkg::Use-Pty=0 install -y --no-install-recommends \
-			unstable-repo x11-repo coreutils binutils procps clang curl tree \
+			unstable-repo x11-repo coreutils binutils procps clang curl tree fzf \
 			libarchive readline; \
 	elif echo "$$UNAME_S" | grep -qi "Linux"; then \
 		if command -v apt >/dev/null 2>&1; then \
@@ -57,7 +57,7 @@ init:
 			apt -o Acquire::Queue-Mode=access -o Acquire::Retries=3 update -y && \
 			DEBIAN_FRONTEND=noninteractive \
 			apt -o Dpkg::Use-Pty=0 install -y --no-install-recommends \
-				build-essential curl procps clang lld make binutils \
+				build-essential curl procps clang lld make binutils fzf \
 				libcurl4-openssl-dev libatomic1 libreadline-dev libarchive-dev \
 				zlib1g-dev libc6:i386 libstdc++6:i386 libcurl4:i386; \
 		elif command -v dnf >/dev/null 2>&1 || command -v dnf5 >/dev/null 2>&1; then \
@@ -89,7 +89,7 @@ init:
 			if $$DNF_CMD list 'curl-devel.i686' >/dev/null 2>&1; then \
 				echo "==> 32-bit packages available, installing both architectures"; \
 				$$DNF_CMD -y install \
-					clang lld libatomic curl-devel \
+					clang lld fzf libatomic curl-devel \
 					readline-devel libarchive-devel \
 					zlib-devel binutils procps-ng file \
 					glibc-devel.i686 libstdc++-devel.i686; \
@@ -97,7 +97,7 @@ init:
 			else \
 				echo "==> 32-bit packages not available, installing only 64-bit"; \
 				$$DNF_CMD -y install \
-					clang lld libatomic curl-devel \
+					clang lld fzf libatomic curl-devel \
 					readline-devel libarchive-devel \
 					zlib-devel binutils procps-ng file \
 					glibc.i686 libstdc++.i686; \
@@ -110,7 +110,7 @@ init:
 			echo "==> Installing additional dependencies for openSUSE (64-bit only)"; \
 			zypper --non-interactive install -y \
 				curl \
-				clang lld llvm \
+				clang lld llvm fzf \
 				libc++-devel \
 				libatomic1 \
 				libcurl-devel \
@@ -124,7 +124,7 @@ init:
 			pacman -Syu --noconfirm && \
 			pacman -S --needed --noconfirm \
 				base-devel \
-				clang lld llvm libc++ \
+				clang lld llvm libc++ fzf \
 				libatomic_ops \
 				readline \
 				curl \

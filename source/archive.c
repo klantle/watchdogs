@@ -253,40 +253,40 @@ dog_path_recursive(struct archive *archive, const char *root, const char *path)
 	snprintf(full_path, sizeof(full_path),
 	    "%s" "%s" "%s", root, _PATH_STR_SEP_POSIX, path);
 
-#ifdef DOG_WINDOWS
+	#ifdef DOG_WINDOWS
 	if (stat(full_path, &path_stat) != 0) {
 		pr_error(stdout, "stat failed..: %s..: %s",
 		    full_path, strerror(errno));
 		minimal_debugging();
 		return (-1);
 	}
-#else
+	#else
 	if (lstat(full_path, &path_stat) != 0) {
 		pr_error(stdout, "lstat failed..: %s..: %s",
 		    full_path, strerror(errno));
 		minimal_debugging();
 		return (-1);
 	}
-#endif
+	#endif
 
 	if (S_ISREG(path_stat.st_mode)) {
-#ifdef DOG_WINDOWS
+	#ifdef DOG_WINDOWS
 		fd = open(full_path, O_RDONLY|O_BINARY);
-#else
-#ifdef O_NOFOLLOW
-#ifdef O_CLOEXEC
+	#else
+	#ifdef O_NOFOLLOW
+	#ifdef O_CLOEXEC
 		fd = open(full_path, O_RDONLY|O_NOFOLLOW|O_CLOEXEC);
-#else
+	#else
 		fd = open(full_path, O_RDONLY|O_NOFOLLOW);
-#endif
-#else
-#ifdef O_CLOEXEC
+	#endif
+	#else
+	#ifdef O_CLOEXEC
 		fd = open(full_path, O_RDONLY|O_CLOEXEC);
-#else
+	#else
 		fd = open(full_path, O_RDONLY);
-#endif
-#endif
-#endif
+	#endif
+	#endif
+	#endif
 
 		if (fd == -1) {
 			pr_error(stdout, "open failed..: %s..: %s",
@@ -693,7 +693,7 @@ destroy_arch_dir(const char *filename)
 
     pr_info(stdout, "Removing: %s..", filename);
 
-#ifdef DOG_WINDOWS
+	#ifdef DOG_WINDOWS
     DWORD attr = GetFileAttributesA(filename);
     if (attr == INVALID_FILE_ATTRIBUTES)
         return;
@@ -712,7 +712,7 @@ destroy_arch_dir(const char *filename)
     } else {
         DeleteFileA(filename);
     }
-#else
+	#else
     struct stat st;
     if (lstat(filename, &st) != 0)
         return;
@@ -728,7 +728,18 @@ destroy_arch_dir(const char *filename)
         int fd = open(filename, O_RDWR);
 		unlink(filename);
     }
-#endif
+	#endif
+}
+
+int
+is_archive_file(const char *filename)
+{
+	if (strend(filename, ".zip", true) ||
+	    strend(filename, ".tar", true) ||
+	    strend(filename, ".tar.gz", true)) {
+		return 1;
+	}
+	return 0;
 }
 
 void
@@ -736,6 +747,13 @@ dog_extract_archive(const char *filename, const char *dir)
 {
 	if (dir_exists(".watchdogs") == 0)
 		MKDIR(".watchdogs");
+
+	if (!is_archive_file(filename)) {
+		pr_warning(stdout,
+			"File %s is not an archive",
+		    filename);
+		return;
+	}
 
 	pr_color(stdout, DOG_COL_CYAN,
 	    " Try Extracting %s archive file...\n", filename);

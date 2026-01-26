@@ -28,6 +28,9 @@ int dog_extract_zip(const char *zip_path, const char *dest_path);
 
 void destroy_arch_dir(const char *filename);
 
+int
+is_archive_file(const char *filename);
+
 void dog_extract_archive(const char *filename, const char *dir);
 
 #endif

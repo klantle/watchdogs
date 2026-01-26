@@ -32,7 +32,7 @@ jobs:
         sudo apt-get install -y --no-install-recommends \
           build-essential curl procps clang lld make binutils \
           libcurl4-openssl-dev libatomic1 libreadline-dev libarchive-dev \
-          zlib1g-dev \
+          zlib1g-dev fzf \
           libc6:i386 libstdc++6:i386 libcurl4:i386
         sudo apt-get autoremove -y
         sudo apt-get clean
@@ -96,7 +96,7 @@ jobs:
           fi
 
           \$DNF_CMD -y install \
-            clang lld libatomic libcxx-devel curl-devel \
+            clang lld fzf libatomic libcxx-devel curl-devel \
             readline-devel libarchive-devel \
             zlib-devel procps-ng \
             glibc-devel.i686 libstdc++-devel.i686 libcurl-devel.i686
@@ -156,6 +156,7 @@ jobs:
             zlib-devel \
             procps-ng \
             binutils \
+            fzf \
             glibc-devel.i686 glibc-devel.x86_64 \
             libstdc++-devel.i686 libstdc++-devel.x86_64
 
@@ -224,6 +225,7 @@ jobs:
             libarchive-devel \
             zlib-devel \
             procps-ng \
+            fzf \
             binutils \
             glibc-devel.i686 glibc-devel.x86_64 \
             libstdc++-devel.i686 libstdc++-devel.x86_64
@@ -286,6 +288,7 @@ jobs:
           zypper --non-interactive install -y -t pattern devel_basis
           zypper --non-interactive install -y \
             curl \
+            fzf \
             clang lld llvm \
             libc++-devel \
             libatomic1 \
@@ -345,6 +348,7 @@ jobs:
             libatomic_ops \
             readline \
             curl \
+            fzf \
             libarchive \
             zlib \
             binutils \
@@ -396,7 +400,7 @@ jobs:
           echo '[TASKS] Installing dependencies in Termux'
           apt -o Acquire::Queue-Mode=access -o Acquire::Retries=3 update -y
           DEBIAN_FRONTEND=noninteractive apt -o Dpkg::Use-Pty=0 install -y --no-install-recommends \
-            unstable-repo coreutils binutils procps clang curl \
+            unstable-repo coreutils binutils procps clang curl fzf \
             libarchive readline make
 
           echo '[TASKS - BUILD] RUNNING TERMUX-DEBUG BUILD'

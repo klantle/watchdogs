@@ -133,6 +133,9 @@ apt update && apt upgrade && apt install -y aria2 && aria2c -o install.sh https:
 powershell -Command "Invoke-WebRequest 'https://raw.githubusercontent.com/gskeleton/watchdogs/refs/heads/main/__windows.cmd' -OutFile 'install.cmd'; .\install.cmd"
 ```
 
+> watchdogs.win se puede ejecutar en Microsoft/Terminal https://github.com/microsoft/terminal
+![watchdogs](https://raw.githubusercontent.com/gskeleton/dogdog/refs/heads/main/terminal.png)
+
 ---
 
 ## Referencia de Comandos Make

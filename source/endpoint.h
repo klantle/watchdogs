@@ -30,7 +30,7 @@ struct sigaction {
  * Maps sigaction to Windows signal() function
  */
 #ifndef _sigaction_stub
-static inline int _sigaction_stub(int sig, const struct sigaction *act, struct sigaction *oldact) {
+static inline int _sigaction_stub(int sig, const struct sigaction *act, struct sigaction *oldac __UNUSED__) {
         signal(sig, act->sa_handler);
         return 0;
 }

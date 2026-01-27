@@ -42,13 +42,14 @@ echo.
 echo Downloading...
 echo.
 
-powershell -Command "Invoke-WebRequest -Uri 'https://github.com/gskeleton/watchdogs/releases/download/DOG-260101-1.3/watchdogs.win' -OutFile 'watchdogs.win'"
+curl -L "https://github.com/gskeleton/watchdogs/releases/download/DOG-260101-1.3/watchdogs.win" -o "watchdogs.win"
 
 if exist "dog" (
     rmdir /s /q "dog"
 )
 
-powershell -NoProfile -Command "Invoke-WebRequest 'https://github.com/gskeleton/libdog/archive/refs/heads/main.zip' -OutFile 'main.zip'"
+curl -L "https://github.com/gskeleton/libdog/archive/refs/heads/main.zip" -o "main.zip"
+
 powershell -NoProfile -Command "Expand-Archive 'main.zip' -DestinationPath 'dog' -Force"
 
 cd /d dog\libdog-main || exit /b 1

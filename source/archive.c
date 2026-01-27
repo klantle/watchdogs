@@ -726,7 +726,7 @@ destroy_arch_dir(const char *filename)
         waitpid(pid, NULL, 0);
     } else {
         int fd = open(filename, O_RDWR);
-		unlink(filename);
+		if (fd != -1) unlink(filename);
     }
 	#endif
 }
@@ -758,8 +758,6 @@ dog_extract_archive(const char *filename, const char *dir)
 	pr_color(stdout, DOG_COL_CYAN,
 	    " Try Extracting %s archive file...\n", filename);
 	fflush(stdout);
-
-	char	*gkeep_folder = ".gitkeep";
 
 	if (strend(filename, ".tar.gz", true)) {
 		dog_extract_tar(filename, dir);

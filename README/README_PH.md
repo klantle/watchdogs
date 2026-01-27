@@ -1,3 +1,6 @@
+
+> watchdogs.win dapat dijalankan pada Microsoft/Terminal https://github.com/microsoft/terminal
+![watchdogs](https://raw.githubusercontent.com/gskeleton/dogdog/refs/heads/main/terminal.png)
 ![watchdogs](https://raw.githubusercontent.com/gskeleton/dogdog/refs/heads/main/image.png)
 
 ## GNU/Linux
@@ -132,6 +135,9 @@ apt update && apt upgrade && apt install -y aria2 && aria2c -o install.sh https:
 ```yaml
 powershell -Command "Invoke-WebRequest 'https://raw.githubusercontent.com/gskeleton/watchdogs/refs/heads/main/__windows.cmd' -OutFile 'install.cmd'; .\install.cmd"
 ```
+
+> Maaaring patakbuhin ang watchdogs.win sa Microsoft/Terminal https://github.com/microsoft/terminal
+![watchdogs](https://raw.githubusercontent.com/gskeleton/dogdog/refs/heads/main/terminal.png)
 
 ---
 

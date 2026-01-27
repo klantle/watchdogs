@@ -18,12 +18,12 @@
  * and lengths for the pawncc compiler.
  */
 const CompilerOption object_opt[] = {
-	{ BIT_FLAG_DEBUG,     " " "-d:2" " ", 5 },
-	{ BIT_FLAG_ASSEMBLER, " " "-a"   " ", 4 },
-	{ BIT_FLAG_COMPAT,    " " "-Z:+" " ", 5 },
-	{ BIT_FLAG_PROLIX,    " " "-v:2" " ", 5 },
-	{ BIT_FLAG_COMPACT,   " " "-C:+" " ", 5 },
-	{ BIT_FLAG_TIME,      " " "-d:3" " ", 5 },
+	{ BIT_FLAG_DEBUG,     " -d:2 ", 5 },
+	{ BIT_FLAG_ASSEMBLER, " -a "  , 4 },
+	{ BIT_FLAG_COMPAT,    " -Z:+ ", 5 },
+	{ BIT_FLAG_PROLIX,    " -v:2 ", 5 },
+	{ BIT_FLAG_COMPACT,   " -C:+ ", 5 },
+	{ BIT_FLAG_TIME,      " -d:3 ", 5 },
 	{ 0, NULL, 0 }
 };
 
@@ -31,25 +31,43 @@ const CompilerOption object_opt[] = {
  * Command-line flag mapping table.
  * Maps long and short option names to their corresponding flag variables.
  */
-static bool    compiler_dog_flag_detailed = false;	/* Detailed output flag */
-bool           compiler_have_debug_flag = false;	/* Debug flag presence indicator */
-static bool    compiler_dog_flag_clean = false;	/* Clean compilation flag */
-static bool    compiler_dog_flag_asm = false;	/* Assembler output flag */
-static bool    compiler_dog_flag_compat = false;	/* Compatibility mode flag */
-static bool    compiler_dog_flag_prolix = false;	/* Verbose output flag */
-static bool    compiler_dog_flag_compact = false;	/* Compact output flag */
-static bool    compiler_dog_flag_fast = false;	/* Fast compilation flag */
+static bool    		compiler_dog_flag_detailed = false;	/* Detailed output flag */
+bool           		compiler_have_debug_flag = false;	/* Debug flag presence indicator */
+static bool    		compiler_dog_flag_clean = false;	/* Clean compilation flag */
+static bool    		compiler_dog_flag_asm = false;	/* Assembler output flag */
+static bool    		compiler_dog_flag_compat = false;	/* Compatibility mode flag */
+static bool    		compiler_dog_flag_prolix = false;	/* Verbose output flag */
+static bool    		compiler_dog_flag_compact = false;	/* Compact output flag */
+static bool    		compiler_dog_flag_fast = false;	/* Fast compilation flag */
 
 static OptionMap compiler_all_flag_map[] = {
-    {"--detailed",       "-w",   &compiler_dog_flag_detailed},
-    {"--watchdogs",      "-w",   &compiler_dog_flag_detailed},
-    {"--debug",          "-d",   &compiler_have_debug_flag},
-    {"--clean",          "-n",   &compiler_dog_flag_clean},
-    {"--assembler",      "-a",   &compiler_dog_flag_asm},
-    {"--compat",         "-c",   &compiler_dog_flag_compat},
-    {"--compact",        "-m",   &compiler_dog_flag_compact},
-    {"--prolix",         "-p",   &compiler_dog_flag_prolix},
-    {"--fast",           "-f",   &compiler_dog_flag_fast},
+#define _detailed "--detailed"
+#define _watchdogs "--watchdogs"
+#define _debug "--debug"
+#define _clean "--clean"
+#define _assembler "--assembler"
+#define _compat "--compat"
+#define _compact "--compact"
+#define _prolix "--prolix"
+#define _fast "--fast"
+    {_detailed,       "-w",
+    	&compiler_dog_flag_detailed},
+    {_watchdogs,      "-w",
+    	&compiler_dog_flag_detailed},
+    {_debug,          "-d",
+    	&compiler_have_debug_flag},
+    {_clean,          "-n",
+    	&compiler_dog_flag_clean},
+    {_assembler,      "-a",
+    	&compiler_dog_flag_asm},
+    {_compat,         "-c",
+    	&compiler_dog_flag_compat},
+    {_compact,        "-m",
+    	&compiler_dog_flag_compact},
+    {_prolix,         "-p",
+    	&compiler_dog_flag_prolix},
+    {_fast,           "-f",
+    	&compiler_dog_flag_fast},
     {NULL, NULL, NULL}
 };
 
@@ -86,7 +104,6 @@ static char   *compiler_size_last_slash = NULL;	/* Last path separator position 
 static char   *compiler_back_slash = NULL;	/* Backslash position pointer */
 static char   *size_include_extra = NULL;	/* Extra include size pointer */
 static char   *procure_string_pos = NULL;	/* String position pointer */
-static char   *pointer_signalA = NULL;	/* Signal pointer for user input */
 static char   *compiler_project = NULL;	/* Project name pointer */
 static char   *compiler_unix_token = NULL;	/* Unix token pointer for strtok */
 static char   *dog_compiler_unix_args[DOG_MAX_PATH] = { NULL };	/* Argument array for exec */
@@ -126,7 +143,7 @@ compiler_refresh_data ( void )  {
 	/* pointer reset */
 	this_proc_file = NULL, compiler_size_last_slash = NULL,
 	compiler_back_slash = NULL, size_include_extra = NULL,
-	procure_string_pos = NULL, pointer_signalA = NULL,
+	procure_string_pos = NULL,
 	compiler_project = NULL,
 	compiler_unix_token = NULL;
 
@@ -207,12 +224,15 @@ compiler_configure_libpath(void)
 #endif
 }
 
+static
 long compiler_get_milisec() {
     struct timespec ts;
     clock_gettime(CLOCK_MONOTONIC, &ts);
+#define TV_SEC 1000
+#define TV_NSEC 1000000
     return
-    	ts.tv_sec * 1000 +
-    	ts.tv_nsec / 1000000;
+    	ts.tv_sec * TV_SEC +
+    	ts.tv_nsec / TV_NSEC;
 }
 
 /*
@@ -235,22 +255,20 @@ void compiler_stage_trying(const char *stage, int ms) {
 		printf("\r\033[2K");
         fflush(stdout);
 		static const char *amx_stage_lines[] = {
-			"   |  D) |  A [$] Processing............................................\n",
-			"   |  O) |  B  '> Preparing the ? Process: vfork [right?]...............\n",
-			"   |  G) |  C  '  *  CreateProcess/_beginthreadex/posix_spawn/fork......\n",
-			"   |        D  '> Preparing to compile [right?]......................\n",
-			" 0  ?   E   '> Preprocessing [right?]................................\n",
-			" 0  X   F   '> Parsing [right?]......................................\n",
-			" 0  V   G   '> Semantic Analysis [right?]............................\n",
-			" 0  %   H   '> AMX Code Generation [right?]..........................\n",
-			" 1  $   I   '> AMX Output File Generation [right?]...................\n",
+			"  o Preparing\n"
+			"  o Preprocessing\n"
+			"  o Parsing & Analyze\n"
+			"  o Code Gen & Output Gen\n"
+      DOG_COL_DEFAULT
 			"** Preparing all tasks..\n",
 			NULL
 		};
-		
+	
+    print(DOG_COL_BCYAN);	
 		for (int i = 0; amx_stage_lines[i]; ++i) {
 			print(amx_stage_lines[i]);
 		}
+    print(DOG_COL_DEFAULT);
 	}
 }
 
@@ -291,7 +309,7 @@ void dog_proj_init(char *input_path, char *pawncc_path) {
 		rate_init_proc = true;
 	}
 
-    print(      "** Thinking all task..\n");
+    print(      "** Thinking all tasks..\n");
     compiler_stage_trying(
 			"Processing Process??..",                         16);
     compiler_stage_trying(
@@ -301,7 +319,7 @@ void dog_proj_init(char *input_path, char *pawncc_path) {
     compiler_stage_trying(
 			"Parsing??..",                                    16);
     compiler_stage_trying(
-			"Semantic Analysis??..",                          16);
+			"Analyze??..",                                    16);
     compiler_stage_trying(
 			"AMX Code Generation??..",                        16);
     compiler_stage_trying(
@@ -441,15 +459,11 @@ int dog_exec_compiler_process(char *pawncc_path,
 	dog_proj_init(pawncc_path, input_path);
 
 	/* Initialize log file path based on platform */
-	memset(compiler_temp, 0, sizeof(compiler_temp));
-	#ifdef DOG_WINDOWS
-		snprintf(compiler_temp, sizeof(compiler_temp),
-			"%s", ".watchdogs\\compiler.log");
-	#else	
-		snprintf(compiler_temp, sizeof(compiler_temp),
-			"%s", ".watchdogs/compiler.log");
-	#endif
-	char *compiler_temp2 = strdup(compiler_temp);
+#ifdef DOG_WINDOWS
+	#define COMPILER_LOG ".watchdogs\\compiler.log"
+#else
+	#define COMPILER_LOG ".watchdogs/compiler.log"
+#endif
 
 	#ifdef DOG_WINDOWS
 		ZeroMemory(&_STARTUPINFO,
@@ -465,7 +479,7 @@ int dog_exec_compiler_process(char *pawncc_path,
 			sizeof(_PROCESS_INFO));
 
 		HANDLE hFile = CreateFileA(
-			compiler_temp2,
+			COMPILER_LOG,
 			GENERIC_WRITE,
 			FILE_SHARE_READ,
 			&_ATTRIBUTES,
@@ -511,11 +525,6 @@ int dog_exec_compiler_process(char *pawncc_path,
 			pr_error(stdout,
 				"ret_compiler too long!");
 			minimal_debugging();
-			if (compiler_temp2)
-				{
-					free(compiler_temp2);
-					compiler_temp2 = NULL;
-				}
 			return (-2);
 		}
 
@@ -526,14 +535,14 @@ int dog_exec_compiler_process(char *pawncc_path,
 			HANDLE thread_handle;
 			unsigned thread_id;
 
-			thread_data.compiler_input = compiler_input;
-			thread_data.startup_info = &_STARTUPINFO;
-			thread_data.process_info = &_PROCESS_INFO;
-			thread_data.hFile = hFile;
-			thread_data.pre_start = &pre_start;
-			thread_data.post_end = &post_end;
-			thread_data.windows_redist_err = windows_redist_err;
-			thread_data.windows_redist_err2 = windows_redist_err2;
+			thread_data.compiler_input        = compiler_input;
+			thread_data.startup_info          = &_STARTUPINFO;
+			thread_data.process_info          = &_PROCESS_INFO;
+			thread_data.hFile                 = hFile;
+			thread_data.pre_start             = &pre_start;
+			thread_data.post_end              = &post_end;
+			thread_data.windows_redist_err    = windows_redist_err;
+			thread_data.windows_redist_err2   = windows_redist_err2;
 
 			thread_handle = (HANDLE)_beginthreadex(
 				NULL,
@@ -665,11 +674,6 @@ int dog_exec_compiler_process(char *pawncc_path,
 			pr_error(stdout,
 				"ret_compiler too long!");
 			minimal_debugging();
-			if (compiler_temp2)
-				{
-					free(compiler_temp2);
-					compiler_temp2 = NULL;
-				}
 			return (-2);
 		}
 
@@ -709,7 +713,7 @@ int dog_exec_compiler_process(char *pawncc_path,
 			}
 			if (compiler_process_id == 0) {
 				int logging_file = open(
-					compiler_temp2,
+					COMPILER_LOG,
 					O_WRONLY | O_CREAT | O_TRUNC, 0644);
 				if (logging_file != -1) {
 					dup2(logging_file, STDOUT_FILENO);
@@ -786,7 +790,7 @@ int dog_exec_compiler_process(char *pawncc_path,
 			posix_spawn_file_actions_init(
 				&process_file_actions);
 			int posix_logging_file = open(
-				compiler_temp2,
+				COMPILER_LOG,
 				O_WRONLY | O_CREAT | O_TRUNC, 0644);
 			if (posix_logging_file != -1) {
 				/* Redirect stdout and stderr to log file */
@@ -939,12 +943,6 @@ int dog_exec_compiler_process(char *pawncc_path,
 		#endif
 	#endif
 
-	/* Free temporary log path string */
-	if (compiler_temp2)
-		{
-			free(compiler_temp2);
-			compiler_temp2 = NULL;
-		}
 	return (0);
 }
 
@@ -986,8 +984,11 @@ dog_exec_compiler(const char *args, const char *compile_args_val,
 			NULL};
 	char posix_fzf_select[1024];
 	char posix_fzf_finder[2048];
-	char posix_fzf_command[sizeof(compiler_buf)];
 	#endif
+
+	/* Match input file against found file list */
+	rate_sef_entries = sizeof(dogconfig.dog_sef_found_list) /
+					   sizeof(dogconfig.dog_sef_found_list[0]);
 
 	/* Reset all compiler state */
 	compiler_refresh_data();
@@ -1458,7 +1459,9 @@ dog_exec_compiler(const char *args, const char *compile_args_val,
 							"2>/dev/null",
 							sizeof(posix_fzf_finder));
 
-						snprintf(posix_fzf_command, sizeof(posix_fzf_command),
+						memset(compiler_buf, 0, sizeof(compiler_buf));
+
+						snprintf(compiler_buf, sizeof(compiler_buf),
 							"%s | "
 							"fzf "
 							"--height 40%% "
@@ -1471,7 +1474,7 @@ dog_exec_compiler(const char *args, const char *compile_args_val,
 							"realpath {}; fi'",
 							posix_fzf_finder);
 
-						this_proc_file = popen(posix_fzf_command, "r");
+						this_proc_file = popen(compiler_buf, "r");
 						if (this_proc_file == NULL)
 							goto compiler_end;
 
@@ -1494,6 +1497,34 @@ dog_exec_compiler(const char *args, const char *compile_args_val,
 
 					fzf_end:
 						pclose(this_proc_file);
+					} else {
+						printf(
+							" * input likely:\n"
+							"   bare.pwn | grandlarc.pwn | main.pwn | server.p\n"
+							"   ../storage/downloads/dog/gamemodes/main.pwn\n"
+							"   ../storage/downloads/osint/gamemodes/gm.pwn\n"
+						);
+						fflush(stdout);
+						print_restore_color();
+						printf(DOG_COL_CYAN ">"
+							DOG_COL_DEFAULT);
+						fflush(stdout);
+						compiler_project = readline(" ");
+						if (compiler_project &&
+							strlen(compiler_project) > 0) {
+							dog_free(
+								dogconfig.dog_toml_proj_input);
+							dogconfig.dog_toml_proj_input =
+								strdup(compiler_project);
+							if (!dogconfig.dog_toml_proj_input) {
+								pr_error(stdout,
+									"Memory allocation failed");
+								dog_free(compiler_project);
+								goto compiler_end;
+							}
+						}
+						dog_free(compiler_project);
+						compiler_project = NULL;
 					}
 				}
 				#endif
@@ -1811,10 +1842,6 @@ dog_exec_compiler(const char *args, const char *compile_args_val,
 				}
 			}
 
-			/* Match input file against found file list */
-			rate_sef_entries = sizeof(dogconfig.dog_sef_found_list) /
-							   sizeof(dogconfig.dog_sef_found_list[0]);
-
 			for (int i = 0; i < rate_sef_entries; i++) {
 				if (strfind(dogconfig.dog_sef_found_list[i], compile_args_val, true)) {
 					memset(compiler_temp, 0, sizeof(compiler_temp));
@@ -2046,7 +2073,7 @@ dog_exec_compiler(const char *args, const char *compile_args_val,
 
 		print_restore_color();
 		
-		pointer_signalA = readline("");
+		char *pointer_signalA = readline("");
 
 		if (pointer_signalA && (pointer_signalA[0] == '\0' ||
 		    strcmp(pointer_signalA, "Y") == 0 ||
@@ -2062,6 +2089,14 @@ dog_exec_compiler(const char *args, const char *compile_args_val,
 
 /* Cleanup and return */
 compiler_end:
+	dog_sef_path_revert();
+	int ret = dog_find_path(".watchdogs", "*_temp", NULL);
+	if (ret) {
+		for (int i = 0; i < rate_sef_entries; i++) {
+			remove(dogconfig.dog_sef_found_list[i]);
+		}
+		dog_sef_path_revert();
+	}
     fflush(stdout);
 	return (1);
 /* Handle long-running compilation with retry */

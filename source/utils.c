@@ -11,6 +11,9 @@
 #include  "compiler.h"
 #include  "utils.h"
 
+static char
+	command[DOG_MAX_PATH] = {0};
+
 const char	*unit_command_list[] = {
 	"help", "exit", "sha1", "sha256", "crc32", "djb2", "pbkdf2", "config",
 	"replicate", "gamemode", "pawncc", "debug",
@@ -208,7 +211,6 @@ int
 is_running_in_container(void)
 {
 	FILE	*fp;
-	char	 line[DOG_MAX_PATH];
 
 	if (path_access("/.dockerenv"))
 		return (1);
@@ -217,10 +219,10 @@ is_running_in_container(void)
 
 	fp = fopen("/proc/1/cgroup", "r");
 	if (fp) {
-		while (fgets(line, sizeof(line), fp)) {
-			if (strstr(line, "/docker/") ||
-			    strstr(line, "/podman/") ||
-			    strstr(line, "/containerd/")) {
+		while (fgets(command, sizeof(command), fp)) {
+			if (strstr(command, "/docker/") ||
+			    strstr(command, "/podman/") ||
+			    strstr(command, "/containerd/")) {
 				fclose(fp);
 				return (1);
 			}
@@ -425,24 +427,23 @@ dog_masked_text(int reveal, const char *text)
 }
 
 int dog_mkdir_recursive(const char *path)
-{
-	char	 tmp[PATH_MAX];
+{;
 	char	*p;
 	size_t	 len;
 
 	if (!path || !*path)
 		return (-1);
 
-	snprintf(tmp, sizeof(tmp), "%s", path);
-	len = strlen(tmp);
+	snprintf(command, sizeof(command), "%s", path);
+	len = strlen(command);
 
-	if (len > 1 && tmp[len - 1] == '/')
-		tmp[len - 1] = '\0';
+	if (len > 1 && command[len - 1] == '/')
+		command[len - 1] = '\0';
 
-	for (p = tmp + 1; *p; p++) {
+	for (p = command + 1; *p; p++) {
 		if (*p == '/') {
 			*p = '\0';
-			if (MKDIR(tmp) != 0 && errno != EEXIST) {
+			if (MKDIR(command) != 0 && errno != EEXIST) {
 				perror("mkdir");
 				return (-1);
 			}
@@ -450,7 +451,7 @@ int dog_mkdir_recursive(const char *path)
 		}
 	}
 
-	if (MKDIR(tmp) != 0 && errno != EEXIST) {
+	if (MKDIR(command) != 0 && errno != EEXIST) {
 		perror("mkdir");
 		return (-1);
 	}
@@ -645,17 +646,20 @@ int dog_portable_stat(const char *path, dog_portable_stat_t *out) {
 	memset(out, 0, sizeof(*out));
 
 #ifdef DOG_WINDOWS
-	wchar_t wpath[DOG_MAX_PATH];
 	int len = MultiByteToWideChar(CP_UTF8, 0, path, -1, NULL, 0);
 
+	wchar_t
+		byte[DOG_MAX_PATH]
+		;
+
 	if (len == 0 || len > DOG_MAX_PATH) {
-			if (!MultiByteToWideChar(CP_ACP, 0, path, -1, wpath, DOG_MAX_PATH)) return (-1);
+			if (!MultiByteToWideChar(CP_ACP, 0, path, -1, byte, DOG_MAX_PATH)) return (-1);
 	} else {
-			MultiByteToWideChar(CP_UTF8, 0, path, -1, wpath, DOG_MAX_PATH);
+			MultiByteToWideChar(CP_UTF8, 0, path, -1, byte, DOG_MAX_PATH);
 	}
 
 	WIN32_FILE_ATTRIBUTE_DATA fad;
-	if (!GetFileAttributesExW(wpath, GetFileExInfoStandard, &fad)) {
+	if (!GetFileAttributesExW(byte, GetFileExInfoStandard, &fad)) {
 			return (-1);
 	}
 
@@ -740,9 +744,9 @@ void unit_show_dog(void) {
 	print("Use \"help\" for more.\n");
 }
 
-void unit_show_help(const char *command)
+void unit_show_help(const char *cmd)
 {
-	if (strlen(command) == 0) {
+	if (strlen(cmd) == 0) {
 	#ifndef DOG_ANDROID
 	static const char *help_text =
 	"Usage: help <command> | help sha1\n\n"
@@ -863,64 +867,35 @@ void unit_show_help(const char *command)
 	};
 
 	for (size_t i = 0; i < sizeof(cmd_help) / sizeof(cmd_help[0]); i++) {
-		if (strcmp(command, cmd_help[i].cmd) == 0) {
+		if (strcmp(cmd, cmd_help[i].cmd) == 0) {
 			print(cmd_help[i].help);
 			return;
 		}
 	}
 
 	print("help can't found for: '");
-	pr_color(stdout, DOG_COL_YELLOW, "%s", command);
+	pr_color(stdout, DOG_COL_YELLOW, "%s", cmd);
 	print("'\n     Oops! That command doesn't exist. Try 'help' to see available commands.\n");
 }
 
 void compiler_show_tip(void) {
-	#ifndef DOG_ANDROID
-	static const char *tip_options =
-		DOG_COL_YELLOW "Options:\n" DOG_COL_DEFAULT
-		"  " DOG_COL_CYAN "-w" DOG_COL_DEFAULT ", " DOG_COL_CYAN "--watchdogs" DOG_COL_DEFAULT
-		"   Show detailed output         - compile detail\n"
-		"  " DOG_COL_CYAN "-d" DOG_COL_DEFAULT ", " DOG_COL_CYAN "--debug" DOG_COL_DEFAULT
-		"       Enable debug level 2         - full debugging\n"
-		"  " DOG_COL_CYAN "-p" DOG_COL_DEFAULT ", " DOG_COL_CYAN "--prolix" DOG_COL_DEFAULT
-		"      Verbose mode                 - processing detail\n"
-		"  " DOG_COL_CYAN "-a" DOG_COL_DEFAULT ", " DOG_COL_CYAN "--assembler" DOG_COL_DEFAULT
-		"   Generate assembler file      - assembler ouput\n"
-		"  " DOG_COL_CYAN "-m" DOG_COL_DEFAULT ", " DOG_COL_CYAN "--compact" DOG_COL_DEFAULT
-		"     Compact encoding compression - resize output\n"
-		"  " DOG_COL_CYAN "-c" DOG_COL_DEFAULT ", " DOG_COL_CYAN "--compat" DOG_COL_DEFAULT
-		"      Compatibility mode           - path sep compat\n"
-		"  " DOG_COL_CYAN "-f" DOG_COL_DEFAULT ", " DOG_COL_CYAN "--fast" DOG_COL_DEFAULT
-		"        Fast compile-sime            - no optimize\n"
-		"  " DOG_COL_CYAN "-n" DOG_COL_DEFAULT ", " DOG_COL_CYAN "--clean" DOG_COL_DEFAULT
-		"       Compile with clean setup     - clean mode\n";
-	#else
-	static const char *tip_options =
-		DOG_COL_YELLOW "Options:\n" DOG_COL_DEFAULT
-		"  " DOG_COL_CYAN "-w" DOG_COL_DEFAULT ", " DOG_COL_CYAN "--watchdogs" DOG_COL_DEFAULT
-		"  Show detailed output        - compile detail\n"
-		"  " DOG_COL_CYAN "-d" DOG_COL_DEFAULT ", " DOG_COL_CYAN "--debug" DOG_COL_DEFAULT
-		"      Enable debug level 2        - full debugging\n"
-		"  " DOG_COL_CYAN "-p" DOG_COL_DEFAULT ", " DOG_COL_CYAN "--prolix" DOG_COL_DEFAULT
-		"     Verbose mode                - processing detail\n"
-		"  " DOG_COL_CYAN "-a" DOG_COL_DEFAULT ", " DOG_COL_CYAN "--assembler" DOG_COL_DEFAULT
-		"  Generate assembler file     - assembler ouput\n"
-		"  " DOG_COL_CYAN "-m" DOG_COL_DEFAULT ", " DOG_COL_CYAN "--compact" DOG_COL_DEFAULT
-		"    Compact encoding compression- resize output\n"
-		"  " DOG_COL_CYAN "-c" DOG_COL_DEFAULT ", " DOG_COL_CYAN "--compat" DOG_COL_DEFAULT
-		"     Compatibility mode          - path sep compat\n"
-		"  " DOG_COL_CYAN "-f" DOG_COL_DEFAULT ", " DOG_COL_CYAN "--fast" DOG_COL_DEFAULT
-		"       Fast compile-sime           - no optimize\n"
-		"  " DOG_COL_CYAN "-n" DOG_COL_DEFAULT ", " DOG_COL_CYAN "--clean" DOG_COL_DEFAULT
-		"      Compile with clean setup    - clean mode\n";
-	#endif
-	fwrite(tip_options, 1, strlen(tip_options), stdout);
+    static const char *tip_options =
+    DOG_COL_BCYAN " o [--watchdogs/--detailed/-w] * Enable detailed watchdog output\n"
+    DOG_COL_BCYAN " o [--debug/-d]                * Enable debugger options\n"
+    DOG_COL_BCYAN " o [--prolix/-p]               * Enable verbose compilation\n"
+    DOG_COL_BCYAN " o [--assembler/-a]            * Show assembler output\n"
+    DOG_COL_BCYAN " o [--compact/-m]              * Use compact encoding\n"
+    DOG_COL_BCYAN " o [--compat/-c]               * Active cross path separator\n"
+    DOG_COL_BCYAN " o [--fast/-f]                 * Enable faster compilation mode\n"
+    DOG_COL_BCYAN " o [--clean/-n]                * Enable safe mode or clean mode\n";
+    fwrite(tip_options, 1, strlen(tip_options), stdout);
+    print_restore_color();
+    return;
 }
 
 int
 dog_exec_command(char *const av[])
 {
-    char buf[DOG_MAX_PATH] = {0};
     char *p;
     size_t len = 0;
     size_t i;
@@ -959,17 +934,17 @@ dog_exec_command(char *const av[])
         }
 
         if (i > 0) {
-            rem = sizeof(buf) - len;
+            rem = sizeof(command) - len;
             if (rem < 2) {
                 pr_warning(stdout, "command buffer exhausted!");
                 return (-1);
             }
-            buf[len++] = ' ';
-            buf[len] = '\0';
+            command[len++] = ' ';
+            command[len] = '\0';
         }
 
-        rem = sizeof(buf) - len;
-        rv = snprintf(buf + len, rem, "%s", av[i]);
+        rem = sizeof(command) - len;
+        rv = snprintf(command + len, rem, "%s", av[i]);
         if (rv < 0) {
             pr_warning(stdout, "snprintf failed!");
             return (-1);
@@ -981,12 +956,12 @@ dog_exec_command(char *const av[])
         len += (size_t)rv;
     }
 
-    if (len == 0 || len >= sizeof(buf)) {
+    if (len == 0 || len >= sizeof(command)) {
         pr_warning(stdout, "invalid command length!");
         return (-1);
     }
 
-    char *cmd = strdup(buf);
+    char *cmd = strdup(command);
     if (cmd == NULL) {
         pr_warning(stdout, "memory allocation failed!");
         return (-1);
@@ -1445,7 +1420,8 @@ static void configure_path_sep(char *out, size_t out_sz,
 __PURE__
 static int __command_suggest(const char *s1, const char *s2)
 {
-	int	 len1, len2, i, j;
+	size_t	 len1, len2;
+	int i, j;
 	uint16_t*buf1, *buf2, *prev, *curr, *tmp;
 	char	 c1, c2;
 	int	 cost, del, ins, sub, val, min_row;
@@ -1492,7 +1468,7 @@ static int __command_suggest(const char *s1, const char *s2)
 	return (prev[len2]);
 }
 
-const char * dog_find_near_command(const char *command, const char *commands[],
+const char * dog_find_near_command(const char *cmd, const char *commands[],
     size_t num_cmds, int *out_distance)
 {
 	int		 best_distance = INT_MAX;
@@ -1500,7 +1476,7 @@ const char * dog_find_near_command(const char *command, const char *commands[],
 	size_t		 i;
 
 	for (i = 0; i < num_cmds; i++) {
-		int	 dist = __command_suggest(command, commands[i]);
+		int	 dist = __command_suggest(cmd, commands[i]);
 
 		if (dist < best_distance) {
 			best_distance = dist;
@@ -1518,10 +1494,8 @@ const char * dog_find_near_command(const char *command, const char *commands[],
 
 void __set_default_access(const char *c_dest)
 {
-	if (_set_full_access(c_dest)) {
-		pr_warning(stdout, "chmod failed: %s (errno=%d %s)",
-		    c_dest, errno, strerror(errno));
-	}
+	_set_full_access(c_dest);
+	
 	return;
 }
 
@@ -1576,7 +1550,6 @@ dog_kill_process(const char *process)
     STARTUPINFOA _STARTUPINFO;
     PROCESS_INFORMATION _PROCESS_INFO;
     SECURITY_ATTRIBUTES _ATTRIBUTES;
-    char command[DOG_PATH_MAX * 2];
 
     ZeroMemory(&_STARTUPINFO, sizeof(_STARTUPINFO));
     ZeroMemory(&_PROCESS_INFO, sizeof(_PROCESS_INFO));
@@ -1798,7 +1771,7 @@ _run_command_vfork(char *const argv[])
 #ifdef DOG_WINDOWS
 
 static int
-_run_windows_command(const char *command)
+_run_windows_command(const char *cmds)
 {
     PROCESS_INFORMATION _PROCESS_INFO;
     STARTUPINFO _STARTUPINFO;
@@ -1810,7 +1783,7 @@ _run_windows_command(const char *command)
     memset(&_PROCESS_INFO, 0, sizeof(_PROCESS_INFO));
 
     if (!CreateProcess(
-		NULL, (char *)command,
+		NULL, (char *)cmds,
 		NULL, NULL, FALSE,
 		0, NULL, NULL,
 		&_STARTUPINFO,
@@ -1916,7 +1889,7 @@ _run_file_operation(
 
 #ifdef DOG_WINDOWS
 
-    char command[DOG_PATH_MAX * 2];
+    (void)super_mode;
 
     char *p;
     
@@ -2056,7 +2029,6 @@ dog_sef_wcopy(const char *c_src, const char *c_dest)
 static void
 dog_check_compiler_options(int *compatibility, int *optimized_lt)
 {
-	char	 command[DOG_PATH_MAX * 2];
 	FILE	*this_proc_fileile;
 	char	 log_line[1024];
 	int	 found_Z = 0, found_ver = 0;
@@ -2182,7 +2154,6 @@ static int
 dog_parse_toml_config(void)
 {
 	FILE		*this_proc_fileile;
-	char		 dog_buffer_error[DOG_PATH_MAX];
 	toml_table_t	*dog_toml_parse;
 	toml_table_t	*general_table;
 
@@ -2193,12 +2164,12 @@ dog_parse_toml_config(void)
 		return (0);
 	}
 
-	dog_toml_parse = toml_parse_file(this_proc_fileile, dog_buffer_error,
-	    sizeof(dog_buffer_error));
+	dog_toml_parse = toml_parse_file(this_proc_fileile, command,
+	    sizeof(command));
 	fclose(this_proc_fileile);
 
 	if (!dog_toml_parse) {
-		pr_error(stdout, "Parsing TOML: %s", dog_buffer_error);
+		pr_error(stdout, "Parsing TOML: %s", command);
 		minimal_debugging();
 		return (0);
 	}
@@ -2365,13 +2336,13 @@ dog_configure_toml(void)
 	int		 compatibility = 0, optimized_lt = 0;
 	const char	*dog_os_type;
 	FILE		*toml_file;
-	char		 dog_buffer_error[DOG_PATH_MAX],
+	char
 				 clean_path[DOG_PATH_MAX],
 				 formatted[DOG_PATH_MAX + 10];
 	toml_table_t	*dog_toml_parse;
 	toml_table_t	*dog_toml_depends, *dog_toml_compiler, *general_table;
 	toml_array_t	*dog_toml_root_patterns;
-	toml_datum_t	 toml_compile_for, toml_gh_tokens, input_val, output_val;
+	toml_datum_t	 toml_gh_tokens, input_val, output_val;
 	toml_datum_t	 bin_val, conf_val, logs_val, webhooks_val;
 	size_t		 arr_sz;
 	char		*expect = NULL;
@@ -2379,7 +2350,6 @@ dog_configure_toml(void)
 	char 		*new_buffer = NULL;
 	size_t       buffer_size = 0;
 	size_t       buffer_len = 0;
-	char         multi_buf[DOG_MAX_PATH * 4] = { 0 };
 	char iflag[3]          = { 0 };
 	size_t siflag          = sizeof(iflag);
 
@@ -2442,14 +2412,14 @@ dog_configure_toml(void)
 	}
 
 	FILE	*this_proc_file = fopen("watchdogs.toml", "r");
-	dog_toml_parse = toml_parse_file(this_proc_file, dog_buffer_error,
-	    sizeof(dog_buffer_error));
+	dog_toml_parse = toml_parse_file(this_proc_file, command,
+	    sizeof(command));
 	if (this_proc_file)
 		fclose(this_proc_file);
 
 	if (!dog_toml_parse) {
 		pr_error(stdout, "failed to parse the watchdogs.toml...: %s",
-		    dog_buffer_error);
+		    command);
 		minimal_debugging();
 		unit_ret_main(NULL);
 	}

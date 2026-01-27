@@ -149,9 +149,10 @@ void cause_compiler_expl(const char *log_file, const char *dog_output, int debug
             total_size = strtol(strchr(compiler_line, ':') + 1, NULL, 10);
             continue;
         } else if (dog_strcase(compiler_line, "Pawn Compiler ")) {
-            const char *p = strstr(compiler_line, "Pawn Compiler ");
-            if (p)
-                sscanf(p, "Pawn Compiler %63s", compiler_ver);
+            char *p = strstr(compiler_line, " ");
+            while (*p && !isdigit(*p)) p++;
+            if (*p)
+                sscanf(p, "%63s", compiler_ver);
             continue;
         }
 

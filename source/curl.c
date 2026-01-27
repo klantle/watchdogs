@@ -431,7 +431,8 @@ static int setup_linux_library(void)
 	char        libpawnc_src[DOG_PATH_MAX];
 	char        dest_path[DOG_PATH_MAX];
 	char        _hexdump[sizeof(libpawnc_src) + 28];
-	int         i, found_lib;
+	size_t      i;
+	int         found_lib;
 
 	const char *free_usr_path[] = {
     LINUX_LIB_PATH, LINUX_LIB32_PATH, TMUX_LIB_PATH,
@@ -791,7 +792,7 @@ dog_download_file(const char *url, const char *output_filename)
 	char clean_filename[DOG_PATH_MAX];
 	char *query_pos = strchr(output_filename, '?');
 	if (query_pos) {
-		size_t name_len = query_pos - output_filename;
+		int name_len = query_pos - output_filename;
 		if (name_len >= sizeof(clean_filename)) {
 			name_len = sizeof(clean_filename) - 1;
 		}
@@ -809,7 +810,7 @@ dog_download_file(const char *url, const char *output_filename)
 		if (url_filename) {
 			char *url_query_pos = strchr(url_filename, '?');
 			if (url_query_pos) {
-				size_t url_name_len = url_query_pos -
+				int url_name_len = url_query_pos -
 				    url_filename;
 				if (url_name_len >= sizeof(final_filename)) {
 					url_name_len = sizeof(final_filename) -

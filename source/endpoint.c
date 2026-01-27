@@ -51,6 +51,7 @@ static cJSON            *msj = NULL;                   /* "msj" (gamemode script
  *     Resets all global variables, stops server tasks, restores config.
  */
 
+static
 void
 try_cleanup_server(void)
 {
@@ -84,18 +85,8 @@ try_cleanup_server(void)
         pawn = NULL;
         msj = NULL;
 
-        /* Set signal handler flag to indicate cleanup is in progress */
-        sigint_handler = 1;
-
-        /* Stop any running server tasks and restore config to default */
-        dog_stop_server_tasks();
-        restore_server_config();
-
         return;
 }
-
-/* Forward declaration for crash checking function */
-void dog_server_crash_check(void);
 
 /*
  * unit_sigint_handler:
@@ -108,8 +99,12 @@ void dog_server_crash_check(void);
 void
 unit_sigint_handler(int sig __UNUSED__)
 {
-        /* Clean up server state first */
+        /* clean first */
         try_cleanup_server();
+        restore_server_config();
+
+        /* Set signal handler flag to indicate cleanup is in progress */
+        sigint_handler = 1;
 
         /* Record the time when signal was received */
         struct timespec stop_all_timer;
@@ -320,6 +315,7 @@ restore_done:
 void
 dog_exec_samp_server(char *g, const char *server_bin)
 {
+        try_cleanup_server(); /* Cleaning */
         minimal_debugging();  /* Log minimal debug info */
 
         /* Validate configuration file type */
@@ -741,6 +737,7 @@ update_omp_config(const char *g)
  *     Wrapper function for open.mp config restoration.
  */
 
+static
 void
 restore_omp_config(void)
 {
@@ -759,6 +756,7 @@ restore_omp_config(void)
 void
 dog_exec_omp_server(char *g, const char *server_bin)
 {
+        try_cleanup_server(); /* Cleaning */
         minimal_debugging();
 
         /* Validate config file type */

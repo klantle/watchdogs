@@ -13,7 +13,7 @@
 #include  "replicate.h"
 
 bool             installing_package = 0;
-const char		*opr = NULL;
+static const char*opr = NULL;
 static char		 json_item[DOG_PATH_MAX];
 static char      command[DOG_MAX_PATH * 4];
 static int		 fdir_counts = 0;
@@ -628,7 +628,6 @@ package_handle_repo(const struct _repositories *kevlar_repos, char *put_url,
     size_t put_size, const char *branch)
 {
 	const char	*package_repo_branch[] = { branch, "main", "master" };
-	const char	*opr;
 	char		 tag_access[128];
 	char		*package_assets[10];
 	char		*package_best_asset;
@@ -1397,11 +1396,9 @@ void package_move_files(const char *package_dir, const char *package_loc)
 {
     char    the_path[DOG_PATH_MAX * 2],
 			includes[DOG_PATH_MAX],
-		    plugins[DOG_PATH_MAX], components[DOG_PATH_MAX],
-		    subdir_path[DOG_PATH_MAX],
+		    plugins[DOG_PATH_MAX * 2], components[DOG_PATH_MAX * 2],
+		    subdir_path[DOG_PATH_MAX * 2],
 			include_dest[1024], dest_file[1024 * 3];
-    const       char *packages;
-    char             *src_sep = NULL;
     struct            stat dir_st;
     struct  dirent   *dir_item;
     struct  dirent   *subdir_item;
@@ -1483,11 +1480,10 @@ void package_move_files(const char *package_dir, const char *package_loc)
                     continue;
                 }
 
-                char src_file[DOG_PATH_MAX * 2];
+                char src_file[DOG_PATH_MAX * 3];
                 snprintf(src_file, sizeof(src_file), "%s%s%s",
                          subdir_path, separator, subdir_item->d_name);
                 
-                char dest_file[DOG_MAX_PATH * 2];
                 snprintf(dest_file, sizeof(dest_file), "%s%s%s",
                          include_dest, separator, subdir_item->d_name);
                 

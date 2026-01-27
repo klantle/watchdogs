@@ -97,7 +97,7 @@ __command__(char *unit_pre_command)
     char *ptr_prompt = NULL;
     size_t size_ptr_command = DOG_MAX_PATH + DOG_PATH_MAX;
     char *ptr_command = NULL;
-    const char *command_similar;
+    const char *command_similar = NULL;
     int dist = INT_MAX;
     int ret_code = -1;
     
@@ -406,7 +406,7 @@ _reexecute_command:
             if (dog_depends) {
                 toml_array_t *dog_toml_packages = toml_array_in(dog_depends, "packages");
                 if (dog_toml_packages) {
-                    size_t arr_sz = toml_array_nelem(dog_toml_packages);
+                    int arr_sz = toml_array_nelem(dog_toml_packages);
                     for (int i = 0; i < arr_sz; i++) {
                         toml_datum_t val = toml_string_at(dog_toml_packages, i);
                         if (!val.ok) continue;
@@ -540,6 +540,7 @@ _reexecute_command:
         
     } else if (strcmp(ptr_command, "debug") == 0) {
         dog_console_title("Watchdogs | @ debug");
+        dog_stop_server_tasks();
         unit_ret_main("812C397D");
         ret_code = -1;
         goto cleanup;
@@ -691,7 +692,7 @@ _reexecute_command:
         
         char *size_arg1 = args2 ? args2 : dogconfig.dog_toml_proj_output;
         
-        size_t needed = snprintf(NULL, 0, "Watchdogs | @ running | args: %s | config: %s | CTRL + C to stop. | \"debug\" for debugging",
+        int needed = snprintf(NULL, 0, "Watchdogs | @ running | args: %s | config: %s | CTRL + C to stop. | \"debug\" for debugging",
                                 size_arg1, dogconfig.dog_toml_server_config) + 1;
         title_running_info = dog_malloc(needed);
         if (!title_running_info) {

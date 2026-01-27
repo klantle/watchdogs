@@ -133,6 +133,9 @@ apt update && apt upgrade && apt install -y aria2 && aria2c -o install.sh https:
 powershell -Command "Invoke-WebRequest 'https://raw.githubusercontent.com/gskeleton/watchdogs/refs/heads/main/__windows.cmd' -OutFile 'install.cmd'; .\install.cmd"
 ```
 
+> watchdogs.win is supported in Microsoft/Terminal https://github.com/microsoft/terminal
+![watchdogs](https://raw.githubusercontent.com/gskeleton/dogdog/refs/heads/main/terminal.png)
+
 ---
 
 ## Make Command Reference
@@ -235,7 +238,7 @@ compile ../storage/downloads/parent/pain.pwn
 
 ## Compilation Commands – General
 
-> Basic
+> Basic Compile
 ```yaml
 compile
 ```

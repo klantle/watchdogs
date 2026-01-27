@@ -173,6 +173,10 @@ static void
 compiler_configure_libpath(void)
 {
 #ifdef DOG_LINUX
+	if ((getenv("WSL_INTEROP") || getenv("WSL_DISTRO_NAME")) &&
+			strcmp(dogconfig.dog_toml_os_type, OS_SIGNAL_WINDOWS) == 0)
+		return;
+	
 	static const char *paths[] = {
 		LINUX_LIB_PATH, LINUX_LIB32_PATH,
 		TMUX_LIB_PATH, TMUX_LIB_LOC_PATH,
@@ -1599,7 +1603,7 @@ dog_exec_compiler(const char *args, const char *compile_args_val,
 				print("** Completed Tasks.\n");
 
 			pr_color(stdout, DOG_COL_CYAN,
-				" <C> (compile-time) Finished at %.3fs (%.0f ms)\n",
+				" <C> (compile-time) Complete At %.3fs (%.0f ms)\n",
 				compiler_calculate_time,
 				compiler_calculate_time * 1000.0);
 			if (compiler_calculate_time > 300) {
@@ -1969,7 +1973,7 @@ dog_exec_compiler(const char *args, const char *compile_args_val,
 					print("** Completed Tasks.\n");
 
 				pr_color(stdout, DOG_COL_CYAN,
-					" <C> (compile-time) Finished at %.3fs (%.0f ms)\n",
+					" <C> (compile-time) Complete At %.3fs (%.0f ms)\n",
 					compiler_calculate_time,
 					compiler_calculate_time * 1000.0);
 				if (compiler_calculate_time > 300) {

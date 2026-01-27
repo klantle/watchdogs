@@ -234,9 +234,11 @@ _reexecute_command:
         } else {
             unsigned char digest[20];
             if (crypto_generate_sha1_hash(args, digest) == 1) {
-                printf("        Crypto Input : %s\n", args);
-                printf("Crypto Output (sha1) : ");
+                printf("        Crypto Input : " DOG_COL_YELLOW "%s\n", args);
+                print_restore_color();
+                printf("Crypto Output (sha1) : " DOG_COL_YELLOW);
                 crypto_print_hex(digest, sizeof(digest), 1);
+                print_restore_color();
             }
         }
         ret_code = -1;
@@ -251,9 +253,11 @@ _reexecute_command:
         } else {
             unsigned char digest[32];
             if (crypto_generate_sha256_hash(args, digest) == 1) {
-                printf("          Crypto Input : %s\n", args);
-                printf("Crypto Output (SHA256) : ");
+                printf("          Crypto Input : " DOG_COL_YELLOW "%s\n", args);
+                print_restore_color();
+                printf("Crypto Output (SHA256) : " DOG_COL_YELLOW);
                 crypto_print_hex(digest, sizeof(digest), 1);
+                print_restore_color();
             }
         }
         ret_code = -1;
@@ -269,8 +273,10 @@ _reexecute_command:
             uint32_t crc32_generate = crypto_generate_crc32(args, strlen(args));
             char crc_str[11];
             sprintf(crc_str, "%08X", crc32_generate);
-            printf("         Crypto Input : %s\n", args);
-            printf("Crypto Output (CRC32) : %s\n", crc_str);
+            printf("         Crypto Input : " DOG_COL_YELLOW "%s\n", args);
+            print_restore_color();
+            printf("Crypto Output (CRC32) : " DOG_COL_YELLOW "%s\n", crc_str);
+            print_restore_color();
         }
         ret_code = -1;
         goto cleanup;
@@ -290,8 +296,10 @@ _reexecute_command:
             
             unsigned long djb2_generate = crypto_djb2_hash_file(args);
             if (djb2_generate) {
-                printf("        Crypto Input : %s\n", args);
-                printf("Crypto Output (DJB2) : %#lx\n", djb2_generate);
+                printf("        Crypto Input : " DOG_COL_YELLOW "%s\n", args);
+                print_restore_color();
+                printf("Crypto Output (DJB2) : " DOG_COL_YELLOW "%#lx\n", djb2_generate);
+                print_restore_color();
             }
         }
         ret_code = -1;
@@ -322,10 +330,10 @@ _reexecute_command:
                 goto pbkdf_done;
             }
 
-            printf("        Crypto Input : %s\n", args);
+            printf("        Crypto Input : " DOG_COL_YELLOW "%s\n", args);
             char *hex_output = NULL;
             crypto_convert_to_hex(pbkdf_generate, 32, &hex_output);
-            printf("Crypto Output (PBKDF2) : %s\n", hex_output);
+            printf("Crypto Output (PBKDF2) : " DOG_COL_YELLOW "%s\n", hex_output);
             free(hex_output);
         }
         pbkdf_done:

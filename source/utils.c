@@ -747,95 +747,49 @@ void unit_show_dog(void) {
 void unit_show_help(const char *cmd)
 {
 	if (strlen(cmd) == 0) {
-	#ifndef DOG_ANDROID
 	static const char *help_text =
 	"Usage: help <command> | help sha1\n\n"
 	"Commands:\n"
-	"  exit             exit from watchdogs | "
-	"Usage: \"exit\" " DOG_COL_CYAN "; Just type 'exit' and you're outta here!" DOG_COL_DEFAULT "\n"
-	"  sha1             generate sha1 hash | "
-	"Usage: \"sha1\" | [<args>] " DOG_COL_CYAN "; Get that SHA1 hash for your text." DOG_COL_DEFAULT "\n"
-	"  sha256           generate sha256 hash | "
-	"Usage: \"sha256\" | [<args>] " DOG_COL_CYAN "; Get that SHA256 hash for your text." DOG_COL_DEFAULT "\n"
-	"  crc32            generate crc32 checksum | "
-	"Usage: \"crc32\" | [<args>] " DOG_COL_CYAN "; Quick CRC32 checksum generation." DOG_COL_DEFAULT "\n"
-	"  djb2             generate djb2 hash file | "
-	"Usage: \"djb2\" | [<args>] " DOG_COL_CYAN "; djb2 hashing for your files." DOG_COL_DEFAULT "\n"
-	"  pbkdf2           generate passphrase | "
-	"Usage: \"pbkdf2\" | [<args>] " DOG_COL_CYAN "; Password to Passphrase." DOG_COL_DEFAULT "\n"
-	"  config           re-write watchdogs.toml | "
-	"Usage: \"config\" " DOG_COL_CYAN "; Reset your config file to default settings." DOG_COL_DEFAULT "\n"
-	"  replicate        dependency installer | "
-	"Usage: \"replicate\" " DOG_COL_CYAN "; Downloads & Install Our Dependencies." DOG_COL_DEFAULT "\n"
-	"  gamemode         download SA-MP gamemode | "
-	"Usage: \"gamemode\" " DOG_COL_CYAN "; Grab some SA-MP gamemodes quickly." DOG_COL_DEFAULT "\n"
-	"  pawncc           download SA-MP pawncc | "
-	"Usage: \"pawncc\" " DOG_COL_CYAN "; Get the Pawn Compiler for SA-MP/open.mp." DOG_COL_DEFAULT "\n"
-	"  debug            debugging & logging server logs | "
-	"Usage: \"debug\" " DOG_COL_CYAN "; Keep an eye on your server logs." DOG_COL_DEFAULT "\n"
-	"  compile          compile your project | "
-	"Usage: \"compile\" | [<args>] " DOG_COL_CYAN "; Turn your code into something runnable!" DOG_COL_DEFAULT "\n"
-	"  decompile        de-compile your project | "
-	"Usage: \"decompile\" | [<args>] " DOG_COL_CYAN "; De-compile .amx into readable .asm." DOG_COL_DEFAULT "\n"
-	"  running          running your project | "
-	"Usage: \"running\" | [<args>] " DOG_COL_CYAN "; Fire up your project and see it in action." DOG_COL_DEFAULT "\n"
-	"  compiles         compile and running your project | "
-	"Usage: \"compiles\" | [<args>] " DOG_COL_CYAN "; Two-in-one: compile then run immediately!." DOG_COL_DEFAULT "\n"
-	"  stop             stopped server tasks | "
-	"Usage: \"stop\" " DOG_COL_CYAN "; Halt everything! Stop your server tasks." DOG_COL_DEFAULT "\n"
-	"  restart          re-start server tasks | "
-	"Usage: \"restart\" " DOG_COL_CYAN "; Fresh start! Restart your server." DOG_COL_DEFAULT "\n"
-	"  tracker          account tracking | "
-	"Usage: \"tracker\" | [<args>] " DOG_COL_CYAN "; Track accounts across platforms." DOG_COL_DEFAULT "\n"
-	"  compress         create a compressed archive | "
-	"Usage: \"compress <input> <output>\" " DOG_COL_CYAN "; Generates a compressed file (e.g., .zip/.tar.gz) from the specified source." DOG_COL_DEFAULT "\n"
-	"  send             send file to Discord channel via webhook | "
-	"Usage: \"send <files>\" " DOG_COL_CYAN "; Uploads a file directly to a Discord channel using a webhook." DOG_COL_DEFAULT "\n";
-	#else
-	static const char *help_text =
-	"Usage: help <command> | help sha1\n\n"
-	"Commands:\n"
-	"  exit : exit from watchdogs | "
-	"Usage: \"exit\" " DOG_COL_CYAN "; Just type 'exit' and you're outta here!" DOG_COL_DEFAULT "\n"
-	"  sha1 : generate sha1 hash | "
-	"Usage: \"sha1\" | [<args>] " DOG_COL_CYAN "; Get that SHA1 hash for your text." DOG_COL_DEFAULT "\n"
-	"  sha256 : generate sha256 hash | "
-	"Usage: \"sha256\" | [<args>] " DOG_COL_CYAN "; Get that SHA256 hash for your text." DOG_COL_DEFAULT "\n"
-	"  crc32 : generate crc32 checksum | "
-	"Usage: \"crc32\" | [<args>] " DOG_COL_CYAN "; Quick CRC32 checksum generation." DOG_COL_DEFAULT "\n"
-	"  djb2 : generate djb2 hash file | "
-	"Usage: \"djb2\" | [<args>] " DOG_COL_CYAN "; djb2 hashing for your files." DOG_COL_DEFAULT "\n"
-	"  pbkdf2 : generate passphrase | "
-	"Usage: \"pbkdf2\" | [<args>] " DOG_COL_CYAN "; Password to Passphrase." DOG_COL_DEFAULT "\n"
-	"  config : re-write watchdogs.toml | "
-	"Usage: \"config\" " DOG_COL_CYAN "; Reset your config file to default settings." DOG_COL_DEFAULT "\n"
-	"  replicate : dependency installer | "
-	"Usage: \"replicate\" " DOG_COL_CYAN "; Downloads & Install Our Dependencies." DOG_COL_DEFAULT "\n"
-	"  gamemode : download SA-MP gamemode | "
-	"Usage: \"gamemode\" " DOG_COL_CYAN "; Grab some SA-MP gamemodes quickly." DOG_COL_DEFAULT "\n"
-	"  pawncc : download SA-MP pawncc | "
-	"Usage: \"pawncc\" " DOG_COL_CYAN "; Get the Pawn Compiler for SA-MP/open.mp." DOG_COL_DEFAULT "\n"
-	"  debug : debugging & logging server logs | "
-	"Usage: \"debug\" " DOG_COL_CYAN "; Keep an eye on your server logs." DOG_COL_DEFAULT "\n"
-	"  compile : compile your project | "
-	"Usage: \"compile\" | [<args>] " DOG_COL_CYAN "; Turn your code into something runnable!" DOG_COL_DEFAULT "\n"
-	"  decompile : de-compile your project | "
-	"Usage: \"decompile\" | [<args>] " DOG_COL_CYAN "; De-compile .amx into readable .asm." DOG_COL_DEFAULT "\n"
-	"  running : running your project | "
-	"Usage: \"running\" | [<args>] " DOG_COL_CYAN "; Fire up your project and see it in action." DOG_COL_DEFAULT "\n"
-	"  compiles : compile and running your project | "
-	"Usage: \"compiles\" | [<args>] " DOG_COL_CYAN "; Two-in-one: compile then run immediately!." DOG_COL_DEFAULT "\n"
-	"  stop : stopped server tasks | "
-	"Usage: \"stop\" " DOG_COL_CYAN "; Halt everything! Stop your server tasks." DOG_COL_DEFAULT "\n"
-	"  restart : re-start server tasks | "
-	"Usage: \"restart\" " DOG_COL_CYAN "; Fresh start! Restart your server." DOG_COL_DEFAULT "\n"
-	"  tracker : account tracking | "
-	"Usage: \"tracker\" | [<args>] " DOG_COL_CYAN "; Track accounts across platforms." DOG_COL_DEFAULT "\n"
-	"  compress : create a compressed archive | "
-	"Usage: \"compress <input> <output>\" " DOG_COL_CYAN "; Generates a compressed file (e.g., .zip/.tar.gz) from the specified source." DOG_COL_DEFAULT "\n"
-	"  send : send file to Discord channel via webhook | "
-	"Usage: \"send <files>\" " DOG_COL_CYAN "; Uploads a file directly to a Discord channel using a webhook." DOG_COL_DEFAULT "\n";
-	#endif
+	"  exit @ exit from watchdogs | "
+	"Usage: \"exit\" " DOG_COL_YELLOW "\n  ; Just type 'exit' and you're outta here!" DOG_COL_DEFAULT "\n"
+	"  sha1 @ generate sha1 hash | "
+	"Usage: \"sha1\" | [<args>] " DOG_COL_YELLOW "\n  ; Get that SHA1 hash for your text." DOG_COL_DEFAULT "\n"
+	"  sha256 @ generate sha256 hash | "
+	"Usage: \"sha256\" | [<args>] " DOG_COL_YELLOW "\n  ; Get that SHA256 hash for your text." DOG_COL_DEFAULT "\n"
+	"  crc32 @ generate crc32 checksum | "
+	"Usage: \"crc32\" | [<args>] " DOG_COL_YELLOW "\n  ; Quick CRC32 checksum generation." DOG_COL_DEFAULT "\n"
+	"  djb2 @ generate djb2 hash file | "
+	"Usage: \"djb2\" | [<args>] " DOG_COL_YELLOW "\n  ; djb2 hashing for your files." DOG_COL_DEFAULT "\n"
+	"  pbkdf2 @ generate passphrase | "
+	"Usage: \"pbkdf2\" | [<args>] " DOG_COL_YELLOW "\n  ; Password to Passphrase." DOG_COL_DEFAULT "\n"
+	"  config @ re-write watchdogs.toml | "
+	"Usage: \"config\" " DOG_COL_YELLOW "\n  ; Reset your config file to default settings." DOG_COL_DEFAULT "\n"
+	"  replicate @ dependency installer | "
+	"Usage: \"replicate\" " DOG_COL_YELLOW "\n  ; Downloads & Install Our Dependencies." DOG_COL_DEFAULT "\n"
+	"  gamemode @ download SA-MP gamemode | "
+	"Usage: \"gamemode\" " DOG_COL_YELLOW "\n  ; Grab some SA-MP gamemodes quickly." DOG_COL_DEFAULT "\n"
+	"  pawncc @ download SA-MP pawncc | "
+	"Usage: \"pawncc\" " DOG_COL_YELLOW "\n  ; Get the Pawn Compiler for SA-MP/open.mp." DOG_COL_DEFAULT "\n"
+	"  debug @ debugging & logging server logs | "
+	"Usage: \"debug\" " DOG_COL_YELLOW "\n  ; Keep an eye on your server logs." DOG_COL_DEFAULT "\n"
+	"  compile @ compile your project | "
+	"Usage: \"compile\" | [<args>] " DOG_COL_YELLOW "\n  ; Turn your code into something runnable!" DOG_COL_DEFAULT "\n"
+	"  decompile @ de-compile your project | "
+	"Usage: \"decompile\" | [<args>] " DOG_COL_YELLOW "\n  ; De-compile .amx into readable .asm." DOG_COL_DEFAULT "\n"
+	"  running @ running your project | "
+	"Usage: \"running\" | [<args>] " DOG_COL_YELLOW "\n  ; Fire up your project and see it in action." DOG_COL_DEFAULT "\n"
+	"  compiles @ compile and running your project | "
+	"Usage: \"compiles\" | [<args>] " DOG_COL_YELLOW "\n  ; Two-in-one: compile then run immediately!." DOG_COL_DEFAULT "\n"
+	"  stop @ stopped server tasks | "
+	"Usage: \"stop\" " DOG_COL_YELLOW "\n  ; Halt everything! Stop your server tasks." DOG_COL_DEFAULT "\n"
+	"  restart @ re-start server tasks | "
+	"Usage: \"restart\" " DOG_COL_YELLOW "\n  ; Fresh start! Restart your server." DOG_COL_DEFAULT "\n"
+	"  tracker @ account tracking | "
+	"Usage: \"tracker\" | [<args>] " DOG_COL_YELLOW "\n  ; Track accounts across platforms." DOG_COL_DEFAULT "\n"
+	"  compress @ create a compressed archive | "
+	"Usage: \"compress <input> <output>\" " DOG_COL_YELLOW "\n  ; Generates a compressed file (e.g., .zip/.tar.gz) from the specified source." DOG_COL_DEFAULT "\n"
+	"  send @ send file to Discord channel via webhook | "
+	"Usage: \"send <files>\" " DOG_COL_YELLOW "\n  ; Uploads a file directly to a Discord channel using a webhook." DOG_COL_DEFAULT "\n";
 	fwrite(help_text, 1, strlen(help_text), stdout);
 	return;
 	}
@@ -918,13 +872,13 @@ dog_exec_command(char *const av[])
             c = (unsigned char)*p;
 
             if (c == '`' || c == '$' || c == '(' || c == ')' ||
-                c == '\n' || c == '\r' || c == '\t' ||
-                c == '|' || c == '&' || c == '>' || c == '<' ||
-                c == '\\' || c == '"' ||
+                c == '\n' || c == '|' || c == '&' ||
                 c == '!' || c == '?' || c == '*' || c == '[' ||
                 c == ']' || c == '{' || c == '}' ||
                 (c < 0x20 && c != '\0')) {
-                    ;
+                    pr_warning(stdout,
+                    	"shell injection potent: %s", p);
+                	printf("   file.txt; rm name.txt << sample of dangerous!..\n");
             }
 
             if (c == '.' && p[1] == '.' && p[2] == '/') {

@@ -11,7 +11,7 @@ fi
 if command -v tree >/dev/null 2>&1; then
   tree "download"
 else
-  la -a "download"
+  ls -a "download"
 fi
 
 echo
@@ -37,10 +37,26 @@ rand=$(date +%s%N | tail -c 7)
 
 if ! command -v git >/dev/null 2>&1; then
   echo "* git not found! install first.."
-  echo "** apt? apt install git"
-  echo "** dnf? dng install git"
-  echo "** pacman? pacman -S git"
-  echo "** zypper? zypper install git"
+  if command -v apt >/dev/null 2>&1; then
+  echo
+  echo "  sudo apt install git"
+  echo
+  fi
+  if command -v dnf >/dev/null 2>&1; then
+  echo
+  echo "  sudo dnf install git"
+  echo
+  fi
+  if command -v pacman >/dev/null 2>&1; then
+  echo
+  echo "  sudo pacman -S git"
+  echo
+  fi
+  if command -v zypper >/dev/null 2>&1; then
+  echo
+  echo "  sudo zypper install git"
+  echo
+  fi
   exit
 fi
 
@@ -54,10 +70,26 @@ fi
 
 if ! command -v make >/dev/null 2>&1; then
   echo "* make not found! install first.."
-  echo "** apt? apt install make"
-  echo "** dnf? dng install make"
-  echo "** pacman? pacman -S make"
-  echo "** zypper? zypper install make"
+  if command -v apt >/dev/null 2>&1; then
+  echo
+  echo "  sudo apt install make"
+  echo
+  fi
+  if command -v dnf >/dev/null 2>&1; then
+  echo
+  echo "  sudo dnf install make"
+  echo
+  fi
+  if command -v pacman >/dev/null 2>&1; then
+  echo
+  echo "  sudo pacman -S make"
+  echo
+  fi
+  if command -v zypper >/dev/null 2>&1; then
+  echo
+  echo "  sudo zypper install make"
+  echo
+  fi
   exit
 fi
 
@@ -71,4 +103,8 @@ if [ ! -f "/etc/ssl/certs/cacert.pem" ]; then
   fi
 fi
 
-make && make linux && chmod +x watchdogs && && clear && ./watchdogs
+if command -v sudo >/dev/null 2>&1; then
+  sudo make && make linux && chmod +x watchdogs && clear && ./watchdogs
+else
+  make && make linux && chmod +x watchdogs && clear && ./watchdogs
+fi

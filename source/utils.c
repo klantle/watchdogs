@@ -649,17 +649,17 @@ int dog_portable_stat(const char *path, dog_portable_stat_t *out) {
 	int len = MultiByteToWideChar(CP_UTF8, 0, path, -1, NULL, 0);
 
 	wchar_t
-		byte[DOG_MAX_PATH]
+		buffer[DOG_MAX_PATH]
 		;
 
 	if (len == 0 || len > DOG_MAX_PATH) {
-			if (!MultiByteToWideChar(CP_ACP, 0, path, -1, byte, DOG_MAX_PATH)) return (-1);
+			if (!MultiByteToWideChar(CP_ACP, 0, path, -1, buffer, DOG_MAX_PATH)) return (-1);
 	} else {
-			MultiByteToWideChar(CP_UTF8, 0, path, -1, byte, DOG_MAX_PATH);
+			MultiByteToWideChar(CP_UTF8, 0, path, -1, buffer, DOG_MAX_PATH);
 	}
 
 	WIN32_FILE_ATTRIBUTE_DATA fad;
-	if (!GetFileAttributesExW(byte, GetFileExInfoStandard, &fad)) {
+	if (!GetFileAttributesExW(buffer, GetFileExInfoStandard, &fad)) {
 			return (-1);
 	}
 

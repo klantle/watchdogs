@@ -315,19 +315,19 @@ void dog_proj_init(char *input_path, char *pawncc_path) {
 
     print(      "** Thinking all tasks..\n");
     compiler_stage_trying(
-			"Processing Process??..",                         16);
+			"Processing Process??..",                         30);
     compiler_stage_trying(
-			"Compiling??..",                                  16);
+			"Compiling??..",                                  30);
     compiler_stage_trying(
-			"Preprocessing??..",                              16);
+			"Preprocessing??..",                              30);
     compiler_stage_trying(
-			"Parsing??..",                                    16);
+			"Parsing??..",                                    30);
     compiler_stage_trying(
-			"Analyze??..",                                    16);
+			"Analyze??..",                                    30);
     compiler_stage_trying(
-			"AMX Code Generation??..",                        16);
+			"AMX Code Generation??..",                        30);
     compiler_stage_trying(
-			"AMX Output File??..",                            16);
+			"AMX Output File??..",                            30);
 
     fflush(stdout);
 }
@@ -990,6 +990,8 @@ dog_exec_compiler(const char *args, const char *compile_args_val,
 	char posix_fzf_finder[2048];
 	#endif
 
+	print(DOG_COL_DEFAULT);
+
 	/* Match input file against found file list */
 	rate_sef_entries = sizeof(dogconfig.dog_sef_found_list) /
 					   sizeof(dogconfig.dog_sef_found_list[0]);
@@ -1391,13 +1393,14 @@ dog_exec_compiler(const char *args, const char *compile_args_val,
 					#endif
 				}
 				printf(DOG_COL_BCYAN);
+				printf("-------------------------------------\n");
 				printf(
-					" * You run the compiler command "
+					"|- * You run the compiler command "
 					"without any args | compile %s | compile mode.pwn\n"
-					" * Do you want to compile for "
+					"|- * Do you want to compile for "
 					DOG_COL_GREEN "%s " DOG_COL_BCYAN
 					"(enter), \n"
-					" * or do you want to compile for something else?\n",
+					"|- * or do you want to compile for something else?\n",
 					compile_args_val, dogconfig.dog_toml_proj_input);
 				#ifndef DOG_LINUX
 					printf(

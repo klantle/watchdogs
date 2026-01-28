@@ -60,12 +60,14 @@ if ! command -v git >/dev/null 2>&1; then
   exit
 fi
 
-if [ -d "watchdogs" ]; then
-  git clone --single-branch --branch main https://github.com/gskeleton/watchdogs "watchdogs_$rand"
-  cd "watchdogs_$rand"
+if [ -d "dog" ]; then
+  git clone --single-branch --branch main https://github.com/gskeleton/watchdogs "dog_$rand"
+  echo ".. Saving into: $pwd/dog_$rand"
+  cd "dog_$rand"
 else
-  git clone --single-branch --branch main https://github.com/gskeleton/watchdogs "watchdogs"
-  cd "watchdogs"
+  git clone --single-branch --branch main https://github.com/gskeleton/watchdogs "dog"
+  echo ".. Saving into: $pwd/dog"
+  cd "dog"
 fi
 
 if ! command -v make >/dev/null 2>&1; then

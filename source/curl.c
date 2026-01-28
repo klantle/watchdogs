@@ -977,34 +977,11 @@ dog_download_file(const char *url, const char *output_filename)
 				    size_filename);
 
 				if (installing_package) {
-					static int remove_archive = 0;
-					if (remove_archive == 0) {
-						pr_color(stdout, DOG_COL_CYAN,
-						    "==> Remove archive %s? ",
-						    final_filename);
-						char *confirm = readline(
-						    "(y/n): ");
-
-						if (confirm[0] == '\0' ||
-						    confirm[0] == 'Y' ||
-						    confirm[0] == 'y') {
-							if (path_exists(
-							    final_filename) ==
-							    1) {
-								destroy_arch_dir(
-								    final_filename);
-							}
-							remove_archive = 1;
-						}
-						dog_free(confirm);
-					} else {
-						if (path_exists(
-						    final_filename) == 1) {
-							destroy_arch_dir(
-							    final_filename);
-						}
-					}
-				} else {
+					if (path_exists(
+              final_filename) == 1) {
+              destroy_arch_dir(final_filename);
+          }
+        } else {
 					if (installing_pawncc) {
 						if (path_exists(
 						    final_filename) == 1) {

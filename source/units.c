@@ -445,7 +445,8 @@ _reexecute_command:
             dog_free(dogconfig.dog_toml_packages);
             dogconfig.dog_toml_packages = expect;
             
-            pr_info(stdout, "Trying to installing: %s", dogconfig.dog_toml_packages);
+            printf("Trying to installing:\n   %s",
+                dogconfig.dog_toml_packages);
             
             if (raw_branch && raw_save) dog_install_depends(dogconfig.dog_toml_packages, raw_branch, raw_save);
             else if (raw_branch) dog_install_depends(dogconfig.dog_toml_packages, raw_branch, NULL);
